@@ -1,0 +1,18 @@
+package api
+
+type FieldError struct {
+	Field string `json:"field"`
+	Tags  string `json:"tags"`
+}
+
+type SuccessResponse struct {
+	Message string `json:"message,omitempty"`
+	Data    any    `json:"data,omitempty"`
+	Meta    any    `json:"meta,omitempty"`
+}
+
+type ErrorResponse struct {
+	Code    string       `json:"code,omitempty"`
+	Message string       `json:"message,omitempty"`
+	Details []FieldError `json:"details,omitempty"`
+}
