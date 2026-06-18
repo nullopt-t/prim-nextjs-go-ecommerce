@@ -1,6 +1,6 @@
 package types
 
-func Bool(p *any) bool {
+func Bool[T any](p *T) bool {
 	if p == nil {
 		return false
 	}
