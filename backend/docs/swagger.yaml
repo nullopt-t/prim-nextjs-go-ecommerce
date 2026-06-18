@@ -1,0 +1,71 @@
+basePath: /api/v1
+definitions:
+  api.ErrorResponse:
+    properties:
+      code:
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/api.FieldError'
+        type: array
+      message:
+        type: string
+    type: object
+  api.FieldError:
+    properties:
+      field:
+        type: string
+      tags:
+        type: string
+    type: object
+  api.SuccessResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+      meta: {}
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+  description: This is the Booky API
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Booky API
+  version: "1.0"
+paths:
+  /products:
+    get:
+      consumes:
+      - application/json
+      description: Get all products
+      parameters:
+      - in: query
+        name: page
+        type: integer
+      - in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get all products
+      tags:
+      - Products
+swagger: "2.0"

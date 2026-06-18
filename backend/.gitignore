@@ -33,6 +33,3 @@ go.work.sum
 
 #out bin folder
 /tmp
-
-#swagger docs
-/docs
