@@ -1,4 +1,4 @@
-DB_URL=postgres://prim:prim@localhost:5432/bookshop?sslmode=disable
+DB_URL=postgres://prim:prim@localhost:5432/prim?sslmode=disable
 MIGRATIONS=./migrations
 
 hot:
