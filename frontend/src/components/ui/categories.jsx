@@ -44,7 +44,7 @@ export function Categories() {
     ];
 
     return (
-        <p className='flex gap-2.5 '>
+        <p className='flex gap-2.5 text-txt-sm md:text-txt-md lg:text-txt-lg'>
             {categories.map(value => (
                 <span key={value.id} className='cursor-pointer'>{value.name.en}</span>
             ))}

@@ -9,6 +9,15 @@
     /* Use for bold titles, headers, and button text (class="font-medium") */
     --font-weight-medium: 500;
 
+    --font-size-txt-sm: 14px;
+    --font-size-title-sm: 20px;
+    /* Tablet Screen Sizes (md) */
+    --font-size-txt-md: 15px;
+    --font-size-title-md: 24px;
+    /* Desktop Screen Sizes (lg) */
+    --font-size-txt-lg: 16px;
+    --font-size-title-lg: 32px;
+
     /* THE MAIN WEBSITE PAGE */
     /* Use for the background of the whole website screen (class="bg-background") */
     --page-bg: #ffffff;
@@ -118,9 +127,15 @@
     --sidebar-focus-ring: oklch(0.439 0 0);
 }
 
-@theme inline {
+@theme base inline {
     /* Sizes & Text Weight Hooks */
-    --font-size-base: var(--font-size);
+    --text-txt-sm: var(--font-size-txt-sm);
+    --text-title-sm: var(--font-size-title-sm);
+    --text-txt-md: var(--font-size-txt-md);
+    --text-title-md: var(--font-size-title-md);
+    --text-txt-lg: var(--font-size-txt-lg);
+    --text-title-lg: var(--font-size-title-lg);
+
     --font-weight-normal: var(--font-weight-normal);
     --font-weight-medium: var(--font-weight-medium);
 
