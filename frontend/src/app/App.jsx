@@ -1,13 +1,8 @@
-import { Header, Footer } from '@/components/ui'
+import Router from '@/app/router'
 
 function App() {
 
-  return (
-    <>
-      <Header />
-      <Footer />
-    </>
-  )
+  return <Router />
 }
 
 export default App
