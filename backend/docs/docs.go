@@ -43,7 +43,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.ForgetPasswordRequest"
+                            "$ref": "#/definitions/auth.ForgotPasswordRequest"
                         }
                     }
                 ],
@@ -64,6 +64,18 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/api.UnauthorizedResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -117,13 +129,25 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/api.BadReqResponse"
                         }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
                     }
                 }
             }
         },
-        "/auth/refresh": {
-            "post": {
-                "description": "Refresh access_token by passing refresh_token",
+        "/auth/me": {
+            "get": {
+                "description": "fetch session user data",
                 "consumes": [
                     "application/json"
                 ],
@@ -133,7 +157,48 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Refresh access_token by passing refresh_token",
+                "summary": "fetch session user data",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/auth.MeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Rotate refresh token and issue new access and refresh tokens.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Rotate refresh token and issue new access and refresh tokens.",
                 "parameters": [
                     {
                         "description": "Refresh Token",
@@ -175,6 +240,18 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/api.UnauthorizedResponse"
                         }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -215,6 +292,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/api.BadReqResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -254,6 +337,18 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/api.BadReqResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -301,13 +396,19 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/api.UnauthorizedResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
                     }
                 }
             }
         },
-        "/auth/verify-otp": {
+        "/auth/verify-email": {
             "post": {
-                "description": "verify user email by otp code",
+                "description": "Verify a user's email using a one-time verification code.",
                 "consumes": [
                     "application/json"
                 ],
@@ -317,7 +418,7 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "verify user email by otp code",
+                "summary": "Verify a user's email address",
                 "parameters": [
                     {
                         "description": "Email and OTP",
@@ -346,6 +447,18 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/api.UnauthorizedResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     }
                 }
@@ -571,14 +684,15 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.ForgetPasswordRequest": {
+        "auth.ForgotPasswordRequest": {
             "type": "object",
             "required": [
                 "email"
             ],
             "properties": {
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 254
                 }
             }
         },
@@ -590,9 +704,35 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 254
                 },
                 "password": {
+                    "type": "string",
+                    "maxLength": 70,
+                    "minLength": 8
+                }
+            }
+        },
+        "auth.MeResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "email_verified": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }
@@ -616,10 +756,12 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 254
                 },
                 "password": {
                     "type": "string",
+                    "maxLength": 70,
                     "minLength": 8
                 }
             }
@@ -631,7 +773,8 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 254
                 }
             }
         },
@@ -643,7 +786,9 @@ const docTemplate = `{
             ],
             "properties": {
                 "password": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 70,
+                    "minLength": 8
                 },
                 "token": {
                     "type": "string"
@@ -669,11 +814,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "code": {
-                    "type": "string",
-                    "maxLength": 999999
+                    "type": "string"
                 },
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 254
                 }
             }
         },
@@ -750,7 +895,19 @@ const docTemplate = `{
                 }
             }
         }
-    }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    },
+    "security": [
+        {
+            "BearerAuth": []
+        }
+    ]
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it

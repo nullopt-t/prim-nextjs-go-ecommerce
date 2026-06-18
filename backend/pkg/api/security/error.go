@@ -1,10 +1,11 @@
 package security
 
 import (
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 )
 
 const (
@@ -16,6 +17,7 @@ const (
 )
 
 const (
+	CodeRateLimit    = "LIMIT_EXCEEDED"
 	CodeValidation   = "VALIDATION_ERROR"
 	CodeInternal     = "INTERNAL_ERROR"
 	CodeConflict     = "CONFLICT_ERROR"

@@ -1,18 +1,20 @@
 package jwt
 
 import (
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"crypto/rand"
 	"encoding/hex"
 	"time"
+
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type UserClaims struct {
-	UserID   string `json:"user_id"`
-	UserRole string `json:"user_role"`
-	Type     string `json:"type"`
+	UserID    string `json:"user_id"`
+	UserRole  string `json:"user_role"`
+	UserEmail string `json:"user_email"`
+	Type      string `json:"type"`
 	jwt.RegisteredClaims
 }
 
@@ -43,10 +45,11 @@ func RandomToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func (s *JWTManager) GenerateAccessToken(userID, userRole string) (string, error) {
+func (s *JWTManager) GenerateAccessToken(userID, email, userRole string) (string, error) {
 	claims := UserClaims{
-		UserID: userID,
-		Type:   "access_token",
+		UserID:    userID,
+		UserEmail: email,
+		Type:      "access_token",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID,
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -79,8 +82,8 @@ func (s *JWTManager) GenerateRefreshToken(userID string) (string, error) {
 	return tokenString, nil
 }
 
-func (s *JWTManager) GenerateTokenPair(userID, userRole string) (string, string, error) {
-	accessToken, err := s.GenerateAccessToken(userID, userRole)
+func (s *JWTManager) GenerateTokenPair(userID, email, userRole string) (string, string, error) {
+	accessToken, err := s.GenerateAccessToken(userID, email, userRole)
 	if err != nil {
 		return "", "", err
 	}

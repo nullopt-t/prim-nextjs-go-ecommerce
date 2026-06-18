@@ -7,21 +7,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
+	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/types"
 )
 
 const (
 	ResendOTPLimit = 5
 	VerifyOTPLimit = 3
-
-	maxEmailLength = 255
 )
 
 type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
+	RefreshToken string `json:"refresh_token" binding:"required,token"`
 }
 
 type TokensResponse struct {
@@ -29,41 +28,41 @@ type TokensResponse struct {
 	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
-type ForgetPasswordRequest struct {
-	Email string `json:"email" binding:"required,email"`
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email,max=254"`
 }
 
 type ResetTokenRequest struct {
 	Token    string `json:"token" binding:"required,token"`
-	Password string `json:"password" binding:"required,password"`
+	Password string `json:"password" binding:"required,password,min=8,max=70"`
 }
 
 type VerifyOTPRequest struct {
-	Email string `json:"email" binding:"required,email"`
-	Code  string `json:"code" binding:"required,max=999999"`
+	Email string `json:"email" binding:"required,email,max=254"`
+	Code  string `json:"code" binding:"required,len=6,numeric"`
 }
 
 type ResendOTPRequest struct {
-	Email string `json:"email" binding:"required,email"`
-}
-
-type UserRegisterResponse struct {
-	Message string `json:"message"`
+	Email string `json:"email" binding:"required,email,max=254"`
 }
 
 type RegisterUserRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
+	Email    string `json:"email" binding:"required,email,max=254"`
+	Password string `json:"password" binding:"required,min=8,max=70"`
 }
 
 type LoginUserRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email    string `json:"email" binding:"required,email,max=254"`
+	Password string `json:"password" binding:"required,min=8,max=70"`
 }
 
-type LoginUserResponse struct {
-	AccessToken  string `json:"access_token,omitempty"`
-	RefreshToken string `json:"refresh_token,omitempty"`
+type MeResponse struct {
+	ID            uuid.UUID `json:"id,omitempty"`
+	Email         string    `json:"email,omitempty"`
+	EmailVerified bool      `json:"email_verified"`
+	Role          string    `json:"role,omitempty"`
+	Status        string    `json:"status,omitempty"`
+	CreatedAt     time.Time `json:"created_at,omitzero"`
 }
 
 type Handler struct {
@@ -120,31 +119,12 @@ func (h *Handler) handleValidationError(c *gin.Context, err error) {
 // @Param user body RegisterUserRequest true "User Credentials"
 // @Success 201 {object} api.MessageResponse
 // @Failure 400 {object} api.BadReqResponse
+// @Failure 500 {object} api.ErrorResponse
 // @Router /auth/register [post]
 func (h *Handler) Register(c *gin.Context) {
 	var req RegisterUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleValidationError(c, err)
-		return
-	}
-
-	if err := validation.IsValidEmail(req.Email); err != nil {
-		c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			"VALIDATION_ERROR",
-			"invalid email",
-			err,
-		))
-		return
-	}
-
-	if err := validation.IsValidPassword(req.Password); err != nil {
-		c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			"VALIDATION_ERROR",
-			"invalid password",
-			err,
-		))
 		return
 	}
 
@@ -178,31 +158,13 @@ func (h *Handler) Register(c *gin.Context) {
 // @Param credentials body LoginUserRequest true "User Credentials"
 // @Success 200 {object} api.DataResponse{data=TokensResponse}
 // @Failure 400 {object} api.BadReqResponse
+// @Failure 401 {object} api.UnauthorizedResponse
+// @Failure 500 {object} api.ErrorResponse
 // @Router /auth/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleValidationError(c, err)
-		return
-	}
-
-	if err := validation.IsValidEmail(req.Email); err != nil {
-		c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			"VALIDATION_ERROR",
-			"invalid email",
-			err,
-		))
-		return
-	}
-
-	if err := validation.IsValidPassword(req.Password); err != nil {
-		c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			"VALIDATION_ERROR",
-			"invalid password",
-			err,
-		))
 		return
 	}
 
@@ -224,8 +186,8 @@ func (h *Handler) Login(c *gin.Context) {
 }
 
 // Refresh godoc
-// @Summary Refresh access_token by passing refresh_token
-// @Description Refresh access_token by passing refresh_token
+// @Summary Rotate refresh token and issue new access and refresh tokens.
+// @Description Rotate refresh token and issue new access and refresh tokens.
 // @Tags Auth
 // @Accept json
 // @Produce json
@@ -233,6 +195,8 @@ func (h *Handler) Login(c *gin.Context) {
 // @Success 200 {object} api.DataResponse{data=TokensResponse}
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 401 {object} api.UnauthorizedResponse
+// @Failure 429 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
 // @Router /auth/refresh [post]
 func (h *Handler) Refresh(c *gin.Context) {
 	var req RefreshTokenRequest
@@ -267,27 +231,17 @@ func (h *Handler) Refresh(c *gin.Context) {
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param email body ForgetPasswordRequest true "User Email"
+// @Param email body ForgotPasswordRequest true "User Email"
 // @Success 200 {object} api.MessageResponse
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 401 {object} api.UnauthorizedResponse
+// @Failure 429 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
 // @Router /auth/forget-password [post]
-func (h *Handler) ForgetPassword(c *gin.Context) {
-	var req ForgetPasswordRequest
+func (h *Handler) ForgotPassword(c *gin.Context) {
+	var req ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleValidationError(c, err)
-		return
-	}
-
-	if err := validation.IsValidEmail(req.Email); err != nil {
-		c.Error(
-			security.NewSecureError(
-				http.StatusBadRequest,
-				"VALIDATION_ERROR",
-				"Invalid email address",
-				err,
-			),
-		)
 		return
 	}
 
@@ -303,7 +257,12 @@ func (h *Handler) ForgetPassword(c *gin.Context) {
 		return
 	}
 	if !allow {
-		c.Error(http.ErrBodyNotAllowed)
+		c.Error(security.NewSecureError(
+			http.StatusTooManyRequests,
+			security.CodeRateLimit,
+			"too many requests",
+			nil,
+		))
 		return
 	}
 
@@ -311,7 +270,7 @@ func (h *Handler) ForgetPassword(c *gin.Context) {
 	// if the email exists, a reset token will be generated and sent to the user's email
 	// if the email does not exist, no action will be taken
 	// but no error will be returned, to prevent email enumeration
-	err = h.authService.ForgetPassword(ctx, req.Email)
+	err = h.authService.ForgotPassword(ctx, req.Email)
 	if err != nil {
 		h.logger.Error("failed to forget password", log.Meta{
 			"email": req.Email,
@@ -321,7 +280,7 @@ func (h *Handler) ForgetPassword(c *gin.Context) {
 
 	c.JSON(
 		http.StatusOK,
-		api.SuccessResponse{
+		api.MessageResponse{
 			Message: "If an account exists, a password reset email has been sent.",
 		},
 	)
@@ -337,23 +296,12 @@ func (h *Handler) ForgetPassword(c *gin.Context) {
 // @Success 200 {object} api.MessageResponse
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 401 {object} api.UnauthorizedResponse
+// @Failure 500 {object} api.ErrorResponse
 // @Router /auth/reset-password [post]
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req ResetTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleValidationError(c, err)
-		return
-	}
-
-	if err := validation.IsValidPassword(req.Password); err != nil {
-		c.Error(
-			security.NewSecureError(
-				http.StatusBadRequest,
-				"VALIDATION_ERROR",
-				"Invalid password",
-				err,
-			),
-		)
 		return
 	}
 
@@ -368,15 +316,15 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 
 	c.JSON(
 		http.StatusOK,
-		api.SuccessResponse{
+		api.MessageResponse{
 			Message: "password updated successfully",
 		},
 	)
 }
 
 // VerifyOTP godoc
-// @Summary verify user email by otp code
-// @Description verify user email by otp code
+// @Summary Verify a user's email address
+// @Description Verify a user's email using a one-time verification code.
 // @Tags Auth
 // @Accept json
 // @Produce json
@@ -384,22 +332,14 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 // @Success 200 {object} api.MessageResponse
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 401 {object} api.UnauthorizedResponse
-// @Router /auth/verify-otp [post]
-func (h *Handler) VerifyOTP(c *gin.Context) {
+// @Failure 429 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
+// @Router /auth/verify-email [post]
+func (h *Handler) VerifyEmail(c *gin.Context) {
 	ctx := c.Request.Context()
 	var req VerifyOTPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleValidationError(c, err)
-		return
-	}
-
-	if err := validation.IsValidEmail(req.Email); err != nil {
-		c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			"INVALID_EMAIL",
-			"invalid email",
-			err,
-		))
 		return
 	}
 
@@ -434,8 +374,8 @@ func (h *Handler) VerifyOTP(c *gin.Context) {
 
 	c.JSON(
 		http.StatusOK,
-		api.SuccessResponse{
-			Message: "OK",
+		api.MessageResponse{
+			Message: "Email verified successfully.",
 		},
 	)
 }
@@ -449,6 +389,8 @@ func (h *Handler) VerifyOTP(c *gin.Context) {
 // @Param req body ResendOTPRequest true "Email and OTP"
 // @Success 200 {object} api.MessageResponse
 // @Failure 400 {object} api.BadReqResponse
+// @Failure 429 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
 // @Router /auth/resend-otp [post]
 func (h *Handler) ResendOTP(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -459,17 +401,7 @@ func (h *Handler) ResendOTP(c *gin.Context) {
 		return
 	}
 
-	if err := validation.IsValidEmail(req.Email); err != nil {
-		c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			"INVALID_EMAIL",
-			"invalid email",
-			err,
-		))
-		return
-	}
-
-	key := "otp:verify:" + req.Email
+	key := "otp:send:" + req.Email
 	allowed, err := h.limiter.Allow(
 		ctx,
 		key,
@@ -507,8 +439,58 @@ func (h *Handler) ResendOTP(c *gin.Context) {
 
 	c.JSON(
 		http.StatusOK,
-		api.SuccessResponse{
-			Message: "go check your email !",
+		api.MessageResponse{
+			Message: "If the email exists, a new verification code has been sent.",
+		},
+	)
+}
+
+// GetMe godoc
+// @Summary fetch session user data
+// @Description fetch session user data
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} api.DataResponse{data=MeResponse}
+// @Failure 500 {object} api.ErrorResponse
+// @Router /auth/me [get]
+func (h *Handler) GetMe(c *gin.Context) {
+	val, exists := c.Get("userID")
+	if !exists {
+		c.Error(security.NewSecureError(
+			http.StatusUnauthorized,
+			"UNAUTHORIZED",
+			"no session for this user",
+			nil,
+		))
+		return
+	}
+
+	userID, err := uuid.Parse(val.(string))
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	user, err := h.authService.GetCurrentUser(
+		c.Request.Context(),
+		userID,
+	)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		api.DataResponse{
+			Data: MeResponse{
+				ID:            user.ID,
+				Email:         user.Email,
+				EmailVerified: types.Bool(user.EmailVerifiedAt),
+				Role:          user.Role.String(),
+				Status:        string(user.Status),
+			},
 		},
 	)
 }

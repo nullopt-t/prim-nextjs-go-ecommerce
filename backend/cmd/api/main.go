@@ -1,12 +1,20 @@
-// Run starts the server
 // @title Prim API
 // @version 1.0
 // @description This is the Prim API
 // @termsOfService http://swagger.io/terms/
+
 // @contact.name API Support
 // @contact.email support@swagger.io
+
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+
+// @security BearerAuth
+
 // @host localhost:8081
 // @BasePath /api/v1
 package main

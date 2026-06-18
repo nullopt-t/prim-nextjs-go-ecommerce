@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
@@ -195,44 +194,6 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 		http.StatusOK,
 		api.SuccessResponse{
 			Message: "User deleted successfully",
-		},
-	)
-}
-
-func (h *Handler) GetMe(c *gin.Context) {
-	claims, err := middleware.ClaimsWithContext(c)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	userID, err := uuid.Parse(claims.UserID)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	user, err := h.userService.GetUserByID(
-		c.Request.Context(),
-		userID,
-	)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	c.JSON(
-		http.StatusOK,
-		api.SuccessResponse{
-			Data: UserResponse{
-				ID:             user.ID,
-				Role:           string(user.Role),
-				Email:          user.Email,
-				SuspendedUntil: user.SuspendedUntil,
-				LockedUntil:    user.LockedUntil,
-				CreatedAt:      user.CreatedAt,
-				UpdatedAt:      user.UpdatedAt,
-			},
 		},
 	)
 }
