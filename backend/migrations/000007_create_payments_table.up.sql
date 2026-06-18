@@ -1,0 +1,39 @@
+-- CREATE TABLE IF NOT EXISTS payments (
+--     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--     order_id UUID UNIQUE NOT NULL REFERENCES orders(id) ON DELETE RESTRICT,
+--     amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+--     currency VARCHAR(3) NOT NULL DEFAULT 'EGP',
+--     payment_method VARCHAR(30) NOT NULL CHECK (
+--         payment_method IN (
+--             'credit_card',
+--             'debit_card',
+--             'paypal',
+--             'cash_on_delivery',
+--             'bank_transfer',
+--             'mobile_wallet',
+--             'fawry'
+--         )
+--     ),
+--     status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (
+--         status IN (
+--             'pending',
+--             'processing',
+--             'completed',
+--             'failed',
+--             'cancelled',
+--             'refunded',
+--             'partially_refunded'
+--         )
+--     ),
+--     idempotency_key TEXT UNIQUE NOT NULL,
+--     provider VARCHAR(50),
+--     provider_transaction_id VARCHAR(255) UNIQUE,
+--     gateway_response JSONB NULL,
+--     payment_attempt INT DEFAULT 1,
+--     failure_reason TEXT NULL,
+--     paid_at TIMESTAMPTZ NULL,
+--     failed_at TIMESTAMPTZ NULL,
+--     refunded_at TIMESTAMPTZ NULL,
+--     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+--     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- );
