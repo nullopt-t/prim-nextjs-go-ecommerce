@@ -32,11 +32,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type application interface {
-	Run() error
-	Shutdown()
-}
-
 type App struct {
 	// http server
 	server *http.Server
@@ -175,7 +170,10 @@ func (app *App) Shutdown() {
 	defer cancel()
 
 	if app.server != nil {
-		app.server.Shutdown(ctx)
+		err := app.server.Shutdown(ctx)
+		if err != nil {
+			app.logger.Info("the server is down")
+		}
 	}
 
 	if app.db != nil {

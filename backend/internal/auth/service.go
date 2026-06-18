@@ -306,6 +306,9 @@ func (s *AuthService) RotateToken(
 		ctx,
 		userID,
 	)
+	if err != nil {
+		return "", "", err
+	}
 
 	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
 		user.ID.String(),

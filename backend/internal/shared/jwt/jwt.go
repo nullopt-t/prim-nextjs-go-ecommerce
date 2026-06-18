@@ -8,6 +8,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 
 	"github.com/golang-jwt/jwt/v5"
+	_jwt "github.com/golang-jwt/jwt/v5"
 )
 
 type UserClaims struct {
@@ -15,7 +16,7 @@ type UserClaims struct {
 	UserRole  string `json:"user_role"`
 	UserEmail string `json:"user_email"`
 	Type      string `json:"type"`
-	jwt.RegisteredClaims
+	_jwt.RegisteredClaims
 }
 
 type JWTManager struct {

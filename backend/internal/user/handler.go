@@ -93,7 +93,7 @@ func (h *Handler) handleValidationError(c *gin.Context, err error) {
 				Tags:  e.Tag(),
 			})
 		}
-		c.Error(security.NewSecureError(
+		_ = c.Error(security.NewSecureError(
 			http.StatusBadRequest,
 			security.CodeValidation,
 			"bad request data",
@@ -101,7 +101,7 @@ func (h *Handler) handleValidationError(c *gin.Context, err error) {
 		).WithFields(fieldErrors))
 		return
 	}
-	c.Error(
+	_ = c.Error(
 		security.NewSecureError(
 			http.StatusBadRequest,
 			security.CodeValidation,
@@ -123,7 +123,7 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 		uri.UserID,
 	)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -161,7 +161,7 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 		q,
 	)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -186,7 +186,7 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 		uri.UserID,
 	)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
