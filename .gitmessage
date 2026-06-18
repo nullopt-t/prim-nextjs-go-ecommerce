@@ -1,0 +1,51 @@
+# -------------------------------------------------------------------
+# Git Commit Message Template
+# -------------------------------------------------------------------
+#
+# Format:
+# <type>(optional scope): <short summary>
+#
+# Examples:
+# feat(auth): add JWT refresh token support
+# fix(api): handle nil pointer in user handler
+#
+# -------------------------------------------------------------------
+# TYPES:
+# feat     → new feature
+# fix      → bug fix
+# refactor → code change that doesn’t add features or fix bugs
+# chore    → tooling, build, CI, deps
+# docs     → documentation only changes
+# test     → adding or updating tests
+# perf     → performance improvements
+# style    → formatting, no logic change
+# ci       → CI/CD changes
+# build    → build system changes
+# revert   → revert previous commit
+# -------------------------------------------------------------------
+#
+# BODY (optional):
+# Explain WHY this change is needed and WHAT changed.
+#
+# - bullet points are good
+# - keep it focused and short
+#
+# Example:
+#
+# Why:
+# - JWT tokens were expiring too early causing logout issues
+#
+# What:
+# - increased token TTL
+# - fixed refresh flow in auth middleware
+#
+# -------------------------------------------------------------------
+# BREAKING CHANGES (if any):
+# - describe breaking API / DB / behavior changes
+#
+# -------------------------------------------------------------------
+# FOOTER (optional):
+# Closes #123
+# Fixes #456
+#
+# -------------------------------------------------------------------
