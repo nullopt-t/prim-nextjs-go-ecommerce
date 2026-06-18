@@ -284,25 +284,25 @@ func (s *AuthService) ResetPassword(
 	return nil
 }
 
-func (s *AuthService) RotateAccessToken(
+func (s *AuthService) RotateToken(
 	ctx context.Context,
 	refreshToken string,
-) (string, error) {
+) (string, string, error) {
 	claims, err := s.jwtService.VerifyToken(
 		refreshToken,
 		s.secrets.JwtRefreshTokenSecretKey,
 	)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	accessToken, err := s.jwtService.GenerateAccessToken(
+	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
 		claims.UserID,
 		claims.UserRole,
 	)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return accessToken, nil
+	return accessToken, refreshToken, nil
 }

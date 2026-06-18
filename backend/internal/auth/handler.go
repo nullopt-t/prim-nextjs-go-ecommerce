@@ -24,15 +24,16 @@ type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
-type RefreshTokenResponse struct {
-	AccessToken string `json:"access_token"`
+type TokensResponse struct {
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 type ForgetPasswordRequest struct {
 	Email string `json:"email" binding:"required,email"`
 }
 
-type VerifyResetTokenRequest struct {
+type ResetTokenRequest struct {
 	Token    string `json:"token" binding:"required,token"`
 	Password string `json:"password" binding:"required,password"`
 }
@@ -58,6 +59,11 @@ type RegisterUserRequest struct {
 type LoginUserRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
+}
+
+type LoginUserResponse struct {
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 type Handler struct {
@@ -105,17 +111,17 @@ func (h *Handler) handleValidationError(c *gin.Context, err error) {
 	)
 }
 
-// UserRegister godoc
+// Register godoc
 // @Summary Register a new user
 // @Description Register a new user
-// @Tags Users
+// @Tags Auth
 // @Accept json
 // @Produce json
 // @Param user body RegisterUserRequest true "User Credentials"
 // @Success 201 {object} api.SuccessResponse{data=UserRegisterResponse}
 // @Failure 400 {object} api.ErrorResponse
 // @Failure 404 {object} api.ErrorResponse
-// @Router /auth [post]
+// @Router /auth/register [post]
 func (h *Handler) Register(c *gin.Context) {
 	var req RegisterUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -164,6 +170,17 @@ func (h *Handler) Register(c *gin.Context) {
 	)
 }
 
+// Login godoc
+// @Summary Login user by email and password
+// @Description Login user by email and password
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param credentials body LoginUserRequest true "User Credentials"
+// @Success 200 {object} api.SuccessResponse{data=LoginUserResponse}
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 404 {object} api.ErrorResponse
+// @Router /auth/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -208,6 +225,17 @@ func (h *Handler) Login(c *gin.Context) {
 	)
 }
 
+// Refresh godoc
+// @Summary Refresh access_token by passing refresh_token
+// @Description Refresh access_token by passing refresh_token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param refresh_token body RefreshTokenRequest true "Refresh Token"
+// @Success 200 {object} api.SuccessResponse{data=TokensResponse}
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 401 {object} api.ErrorResponse
+// @Router /auth/refresh [post]
 func (h *Handler) Refresh(c *gin.Context) {
 	var req RefreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -215,7 +243,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 		return
 	}
 
-	accessToken, err := h.authService.RotateAccessToken(
+	accessToken, refreshToken, err := h.authService.RotateToken(
 		c.Request.Context(),
 		req.RefreshToken,
 	)
@@ -227,13 +255,25 @@ func (h *Handler) Refresh(c *gin.Context) {
 	c.JSON(
 		http.StatusOK,
 		api.SuccessResponse{
-			Data: RefreshTokenResponse{
-				AccessToken: accessToken,
+			Data: TokensResponse{
+				AccessToken:  accessToken,
+				RefreshToken: refreshToken,
 			},
 		},
 	)
 }
 
+// ForgetPassword godoc
+// @Summary Email reset password link
+// @Description Email reset password link
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param email body ForgetPasswordRequest true "User Email"
+// @Success 200 {object} api.MessageResponse
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 401 {object} api.ErrorResponse
+// @Router /auth/forget-password [post]
 func (h *Handler) ForgetPassword(c *gin.Context) {
 	var req ForgetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -289,8 +329,19 @@ func (h *Handler) ForgetPassword(c *gin.Context) {
 	)
 }
 
+// ResetPassword godoc
+// @Summary Reset password using a reset token
+// @Description Reset password using a reset token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body ResetTokenRequest true "Password and Reset Token"
+// @Success 200 {object} api.MessageResponse
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 401 {object} api.ErrorResponse
+// @Router /auth/reset-password [post]
 func (h *Handler) ResetPassword(c *gin.Context) {
-	var req VerifyResetTokenRequest
+	var req ResetTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleValidationError(c, err)
 		return
@@ -325,6 +376,17 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 	)
 }
 
+// VerifyOTP godoc
+// @Summary verify user email by otp code
+// @Description verify user email by otp code
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param req body VerifyOTPRequest true "Email and OTP"
+// @Success 200 {object} api.MessageResponse
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 401 {object} api.ErrorResponse
+// @Router /auth/verify-otp [post]
 func (h *Handler) VerifyOTP(c *gin.Context) {
 	ctx := c.Request.Context()
 	var req VerifyOTPRequest
@@ -380,6 +442,17 @@ func (h *Handler) VerifyOTP(c *gin.Context) {
 	)
 }
 
+// ResendOTP godoc
+// @Summary resend email otp
+// @Description resend email otp
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param req body ResendOTPRequest true "Email and OTP"
+// @Success 200 {object} api.MessageResponse
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 401 {object} api.ErrorResponse
+// @Router /auth/resend-otp [post]
 func (h *Handler) ResendOTP(c *gin.Context) {
 	ctx := c.Request.Context()
 

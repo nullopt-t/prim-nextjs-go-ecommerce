@@ -5,6 +5,10 @@ type FieldError struct {
 	Tags  string `json:"tags"`
 }
 
+type MessageResponse struct {
+	Message string `json:"message"`
+}
+
 type SuccessResponse struct {
 	Message string `json:"message,omitempty"`
 	Data    any    `json:"data,omitempty"`
