@@ -1,8 +1,5 @@
 package types
 
-func Bool[T any](p *T) bool {
-	if p == nil {
-		return false
-	}
-	return true
+func BoolFromPtr[T any](p *T) bool {
+	return p != nil
 }

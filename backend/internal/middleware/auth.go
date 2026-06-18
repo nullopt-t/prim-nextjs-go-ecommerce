@@ -25,7 +25,7 @@ func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, ok := c.Get("role")
 		if !ok {
-			c.Error(
+			_ = c.Error(
 				security.NewSecureError(
 					http.StatusUnauthorized,
 					"INVALID_USER",
@@ -37,7 +37,7 @@ func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 			return
 		}
 		if role.(string) != string(requiredRole) {
-			c.Error(
+			_ = c.Error(
 				security.NewSecureError(
 					http.StatusUnauthorized,
 					"FORBIDDEN",
@@ -58,7 +58,7 @@ func Authanticate(secrets *config.Secrets) gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 
 		if authHeader == "" {
-			c.Error(
+			_ = c.Error(
 				security.NewSecureError(
 					http.StatusUnauthorized,
 					"MISSING_AUTH_HEADER",
@@ -71,7 +71,7 @@ func Authanticate(secrets *config.Secrets) gin.HandlerFunc {
 		}
 
 		if !strings.HasPrefix(authHeader, prefix) {
-			c.Error(
+			_ = c.Error(
 				security.NewSecureError(
 					http.StatusUnauthorized,
 					"INVALID_AUTH_FORMAT",
@@ -92,7 +92,7 @@ func Authanticate(secrets *config.Secrets) gin.HandlerFunc {
 		)
 
 		if err != nil {
-			c.Error(
+			_ = c.Error(
 				security.NewSecureError(
 					http.StatusUnauthorized,
 					"INVALID_TOKEN",

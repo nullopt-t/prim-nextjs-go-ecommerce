@@ -77,7 +77,7 @@ func (h *Handler) handleValidationError(c *gin.Context, err error) {
 				Tags:  e.Tag(),
 			})
 		}
-		c.Error(security.NewSecureError(
+		_ = c.Error(security.NewSecureError(
 			http.StatusBadRequest,
 			security.CodeValidation,
 			"bad request data",
@@ -85,7 +85,7 @@ func (h *Handler) handleValidationError(c *gin.Context, err error) {
 		).WithFields(fieldErrors))
 		return
 	}
-	c.Error(
+	_ = c.Error(
 		security.NewSecureError(
 			http.StatusBadRequest,
 			security.CodeValidation,
@@ -126,7 +126,7 @@ func (h *Handler) GetAllProducts(c *gin.Context) {
 		query,
 	)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -221,7 +221,7 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 
 	id, err := h.service.Create(c.Request.Context(), p)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 

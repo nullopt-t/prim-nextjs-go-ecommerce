@@ -1,13 +1,14 @@
 package otp
 
 import (
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/crypto"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 	"context"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/crypto"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 )
 
 const OTPTTL = 15 * time.Minute
@@ -178,8 +179,7 @@ func (s *Service) VerifyOTP(
 	purpose string,
 	otp string,
 ) error {
-	var key string
-	key = fmt.Sprintf("%s:%s",
+	key := fmt.Sprintf("%s:%s",
 		purpose,
 		email,
 	)

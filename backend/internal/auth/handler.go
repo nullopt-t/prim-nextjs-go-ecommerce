@@ -92,7 +92,7 @@ func (h *Handler) handleValidationError(c *gin.Context, err error) {
 				Tags:  e.Tag(),
 			})
 		}
-		c.Error(security.NewSecureError(
+		_ = c.Error(security.NewSecureError(
 			http.StatusBadRequest,
 			security.CodeValidation,
 			"bad request data",
@@ -100,7 +100,7 @@ func (h *Handler) handleValidationError(c *gin.Context, err error) {
 		).WithFields(fieldErrors))
 		return
 	}
-	c.Error(
+	_ = c.Error(
 		security.NewSecureError(
 			http.StatusBadRequest,
 			security.CodeValidation,
@@ -170,7 +170,7 @@ func (h *Handler) Login(c *gin.Context) {
 
 	tokens, err := h.authService.Login(c.Request.Context(), req)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -210,7 +210,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 		req.RefreshToken,
 	)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -253,11 +253,11 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 		time.Minute,
 	)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 	if !allow {
-		c.Error(security.NewSecureError(
+		_ = c.Error(security.NewSecureError(
 			http.StatusTooManyRequests,
 			security.CodeRateLimit,
 			"too many requests",
@@ -310,7 +310,7 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 		req.Token,
 		req.Password,
 	); err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -351,12 +351,12 @@ func (h *Handler) VerifyEmail(c *gin.Context) {
 		10*time.Minute,
 	)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
 	if !allowed {
-		c.Error(
+		_ = c.Error(
 			security.NewSecureError(
 				http.StatusTooManyRequests,
 				"RATE_LIMIT_EXCEEDED",
@@ -368,7 +368,7 @@ func (h *Handler) VerifyEmail(c *gin.Context) {
 	}
 
 	if err := h.authService.VerifyOTP(ctx, req); err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -409,12 +409,12 @@ func (h *Handler) ResendOTP(c *gin.Context) {
 		1*time.Hour,
 	)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
 	if !allowed {
-		c.Error(
+		_ = c.Error(
 			security.NewSecureError(
 				http.StatusTooManyRequests,
 				"RATE_LIMIT_EXCEEDED",
@@ -457,7 +457,7 @@ func (h *Handler) ResendOTP(c *gin.Context) {
 func (h *Handler) GetMe(c *gin.Context) {
 	val, exists := c.Get("userID")
 	if !exists {
-		c.Error(security.NewSecureError(
+		_ = c.Error(security.NewSecureError(
 			http.StatusUnauthorized,
 			"UNAUTHORIZED",
 			"no session for this user",
@@ -468,7 +468,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 
 	userID, err := uuid.Parse(val.(string))
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -477,7 +477,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 		userID,
 	)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -487,7 +487,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 			Data: MeResponse{
 				ID:            user.ID,
 				Email:         user.Email,
-				EmailVerified: types.Bool(user.EmailVerifiedAt),
+				EmailVerified: types.BoolFromPtr(user.EmailVerifiedAt),
 				Role:          user.Role.String(),
 				Status:        string(user.Status),
 			},

@@ -1,13 +1,14 @@
 package user
 
 import (
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 
 	"github.com/google/uuid"
 )
@@ -104,7 +105,6 @@ func (r *UserRepository) Get(
 	if filter.Phone != nil {
 		query += fmt.Sprintf(" AND phone = $%d", i)
 		args = append(args, *filter.Phone)
-		i++
 	}
 
 	var u model.User
@@ -329,7 +329,6 @@ func (r *UserRepository) UpdatePasswordHash(
 	if filter.Phone != nil {
 		query += fmt.Sprintf(" AND phone = $%d", i)
 		args = append(args, *filter.Phone)
-		i++
 	}
 
 	res, err := qe.Exec(ctx, query, args...)
