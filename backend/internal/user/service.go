@@ -1,16 +1,17 @@
 package user
 
 import (
+	"context"
+	"errors"
+	"net/http"
+	"time"
+
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
-	"context"
-	"errors"
-	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -18,37 +19,19 @@ import (
 
 const ResetTokenTTL = 15 * time.Minute
 
-type OTPService interface {
-	SendOTP(
-		ctx context.Context,
-		email string,
-		purpose string,
-	) error
-
-	VerifyOTP(
-		ctx context.Context,
-		email string,
-		purpose string,
-		otp string,
-	) error
-}
-
 type UserService struct {
 	dbExecuter database.Runner
-	otpService OTPService
 	repo       *UserRepository
 	logger     log.Logger
 }
 
 func NewService(
 	dbExecuter database.Runner,
-	otpService OTPService,
 	repo *UserRepository,
 	logger log.Logger,
 ) *UserService {
 	return &UserService{
 		dbExecuter: dbExecuter,
-		otpService: otpService,
 		repo:       repo,
 		logger:     logger,
 	}
@@ -338,9 +321,9 @@ func (s *UserService) DeleteUserByID(
 	return nil
 }
 
-func (s *UserService) UpdatePassword(
+func (s *UserService) UpdateUserPassword(
 	ctx context.Context,
-	userID uuid.UUID,
+	user *model.User,
 	newPassword string,
 ) error {
 	hashedPassword, err := utils.HashPassword(newPassword)
@@ -360,7 +343,7 @@ func (s *UserService) UpdatePassword(
 				ctx,
 				db,
 				Filter{
-					ID: &userID,
+					ID: &user.ID,
 				},
 				hashedPassword,
 			)
@@ -377,34 +360,17 @@ func (s *UserService) UpdatePassword(
 	return nil
 }
 
-func (s *UserService) CheckPassword(
-	ctx context.Context,
-	userID uuid.UUID,
+func (s *UserService) CheckUserPassword(
+	user *model.User,
 	password string,
 ) error {
-	return s.dbExecuter.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			user, err := s.repo.Get(
-				ctx,
-				db,
-				Filter{
-					ID: &userID,
-				},
-			)
-			if err != nil {
-				return err
-			}
-
-			if err := utils.ComparePassword(user.PasswordHash, password); err != nil {
-				return security.NewSecureError(
-					http.StatusUnauthorized,
-					security.CodeUnauthorized,
-					"invalid password",
-					err,
-				)
-			}
-			return nil
-		},
-	)
+	if err := utils.ComparePassword(user.PasswordHash, password); err != nil {
+		return security.NewSecureError(
+			http.StatusUnauthorized,
+			security.CodeUnauthorized,
+			"invalid password",
+			err,
+		)
+	}
+	return nil
 }

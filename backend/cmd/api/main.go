@@ -1,19 +1,17 @@
 // Run starts the server
-// @title Booky API
+// @title Prim API
 // @version 1.0
-// @description This is the Booky API
+// @description This is the Prim API
 // @termsOfService http://swagger.io/terms/
 // @contact.name API Support
 // @contact.email support@swagger.io
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
-// @host localhost:8080
+// @host localhost:8081
 // @BasePath /api/v1
 package main
 
 import (
-	_ "github.com/m-mahmoud-alsaid/prim-backend/docs"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/app"
 	"context"
 	"errors"
 	"log"
@@ -21,6 +19,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	_ "github.com/m-mahmoud-alsaid/prim-backend/docs"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/app"
 )
 
 func main() {

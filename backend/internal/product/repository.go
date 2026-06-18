@@ -1,12 +1,13 @@
 package product
 
 import (
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"context"
 	"database/sql"
 	"fmt"
+
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 
 	"github.com/google/uuid"
 )
@@ -18,7 +19,7 @@ type Filter struct {
 type ProductRepository struct {
 }
 
-func NewPostgresRepository() *ProductRepository {
+func NewProductRepository() *ProductRepository {
 	return &ProductRepository{}
 }
 

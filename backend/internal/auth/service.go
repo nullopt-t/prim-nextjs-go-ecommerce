@@ -1,18 +1,69 @@
-package user
+package auth
 
 import (
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 	"context"
 	"fmt"
 	"time"
 
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/crypto"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
+
+type OTPService interface {
+	SendOTP(
+		ctx context.Context,
+		email string,
+		purpose string,
+	) error
+
+	VerifyOTP(
+		ctx context.Context,
+		email string,
+		purpose string,
+		otp string,
+	) error
+}
+
+type UserService interface {
+	CreateUser(
+		ctx context.Context,
+		email string,
+		password string,
+	) (*model.User, error)
+
+	GetUserByEmail(
+		ctx context.Context,
+		email string,
+	) (*model.User, error)
+
+	GetUserByID(
+		ctx context.Context,
+		userID uuid.UUID,
+	) (*model.User, error)
+
+	CheckUserPassword(
+		user *model.User,
+		password string,
+	) error
+
+	UpdateUserPassword(
+		ctx context.Context,
+		user *model.User,
+		password string,
+	) error
+
+	MarkEmailVerified(
+		ctx context.Context,
+		email string,
+	) error
+}
 
 type Notifier interface {
 	NotifyResetPassword(ctx context.Context, email, token string) error
@@ -26,7 +77,7 @@ type Tokens struct {
 type AuthService struct {
 	jwtService  *jwt.JWTManager
 	otpService  OTPService
-	userService *UserService
+	userService UserService
 	logger      log.Logger
 	redisClient *redis.Client
 	notifier    Notifier
@@ -35,7 +86,7 @@ type AuthService struct {
 
 func NewAuthService(
 	logger log.Logger,
-	userService *UserService,
+	userService UserService,
 	jwtService *jwt.JWTManager,
 	otpService OTPService,
 	redisClient *redis.Client,
@@ -53,13 +104,30 @@ func NewAuthService(
 	}
 }
 
-func (s *AuthService) Login(ctx context.Context, req LoginUserRequest) (*Tokens, error) {
-	user, err := s.userService.Login(ctx, req.Email, req.Password)
+func (s *AuthService) Login(
+	ctx context.Context,
+	req LoginUserRequest,
+) (*Tokens, error) {
+	user, err := s.userService.GetUserByEmail(
+		ctx,
+		req.Email,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(user.ID.String(), string(user.Role))
+	err = s.userService.CheckUserPassword(
+		user,
+		req.Password,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
+		user.ID.String(),
+		user.Role.String(),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -196,9 +264,17 @@ func (s *AuthService) ResetPassword(
 
 	defer s.redisClient.Del(ctx, key)
 
-	err = s.userService.UpdatePassword(
+	user, err := s.userService.GetUserByID(
 		ctx,
 		userID,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = s.userService.UpdateUserPassword(
+		ctx,
+		user,
 		newPassword,
 	)
 	if err != nil {
@@ -208,25 +284,25 @@ func (s *AuthService) ResetPassword(
 	return nil
 }
 
-func (s *AuthService) RotateAccessToken(
+func (s *AuthService) RotateToken(
 	ctx context.Context,
 	refreshToken string,
-) (string, error) {
+) (string, string, error) {
 	claims, err := s.jwtService.VerifyToken(
 		refreshToken,
 		s.secrets.JwtRefreshTokenSecretKey,
 	)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	accessToken, err := s.jwtService.GenerateAccessToken(
+	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
 		claims.UserID,
 		claims.UserRole,
 	)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return accessToken, nil
+	return accessToken, refreshToken, nil
 }

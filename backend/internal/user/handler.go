@@ -1,27 +1,20 @@
 package user
 
 import (
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 	"errors"
 	"net/http"
 	"time"
 
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-)
-
-const (
-	ResendOTPLimit = 5
-	VerifyOTPLimit = 3
-
-	maxEmailLength = 255
 )
 
 type UsersResponse struct {
@@ -29,32 +22,6 @@ type UsersResponse struct {
 }
 
 type UserByEmailRequest struct {
-	Email string `json:"email" binding:"required,email"`
-}
-
-type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-}
-
-type RefreshTokenResponse struct {
-	AccessToken string `json:"access_token"`
-}
-
-type ForgetPasswordRequest struct {
-	Email string `json:"email" binding:"required,email"`
-}
-
-type VerifyResetTokenRequest struct {
-	Token    string `json:"token" binding:"required,token"`
-	Password string `json:"password" binding:"required,password"`
-}
-
-type VerifyOTPRequest struct {
-	Email string `json:"email" binding:"required,email"`
-	Code  string `json:"code" binding:"required,max=999999"`
-}
-
-type ResendOTPRequest struct {
 	Email string `json:"email" binding:"required,email"`
 }
 
@@ -97,19 +64,8 @@ func ToUserListResponse(users []model.User) UsersResponse {
 	return list
 }
 
-type RegisterUserRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
-}
-
-type LoginUserRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-}
-
 type Handler struct {
 	userService *UserService
-	authService *AuthService
 	limiter     *security.RateLimiter
 	secrets     *config.Secrets
 	logger      log.Logger
@@ -117,14 +73,12 @@ type Handler struct {
 
 func NewHandler(
 	userService *UserService,
-	authService *AuthService,
 	limiter *security.RateLimiter,
 	secrets *config.Secrets,
 	logger log.Logger,
 ) *Handler {
 	return &Handler{
 		userService: userService,
-		authService: authService,
 		limiter:     limiter,
 		secrets:     secrets,
 		logger:      logger,
@@ -155,98 +109,6 @@ func (h *Handler) handleValidationError(c *gin.Context, err error) {
 			"bad request data",
 			err,
 		),
-	)
-}
-
-func (h *Handler) UserRegister(c *gin.Context) {
-	var req RegisterUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
-		return
-	}
-
-	if err := validation.IsValidEmail(req.Email); err != nil {
-		c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			"VALIDATION_ERROR",
-			"invalid email",
-			err,
-		))
-		return
-	}
-
-	if err := validation.IsValidPassword(req.Password); err != nil {
-		c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			"VALIDATION_ERROR",
-			"invalid password",
-			err,
-		))
-		return
-	}
-
-	err := h.authService.Register(
-		c.Request.Context(),
-		req,
-	)
-	if err != nil {
-		h.logger.Error(
-			"user register",
-			log.Meta{
-				"Error": err,
-			},
-		)
-	}
-
-	c.JSON(
-		http.StatusCreated,
-		api.SuccessResponse{
-			Message: "If the email is valid, you will receive a verification email.",
-		},
-	)
-}
-
-func (h *Handler) UserLogin(c *gin.Context) {
-	var req LoginUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
-		return
-	}
-
-	if err := validation.IsValidEmail(req.Email); err != nil {
-		c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			"VALIDATION_ERROR",
-			"invalid email",
-			err,
-		))
-		return
-	}
-
-	if err := validation.IsValidPassword(req.Password); err != nil {
-		c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			"VALIDATION_ERROR",
-			"invalid password",
-			err,
-		))
-		return
-	}
-
-	tokens, err := h.authService.Login(c.Request.Context(), req)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	c.JSON(
-		http.StatusOK,
-		api.SuccessResponse{
-			Data: map[string]string{
-				"access_token":  tokens.AccessToken,
-				"refresh_token": tokens.RefreshToken,
-			},
-		},
 	)
 }
 
@@ -337,123 +199,6 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 	)
 }
 
-func (h *Handler) RefreshToken(c *gin.Context) {
-	var req RefreshTokenRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
-		return
-	}
-
-	accessToken, err := h.authService.RotateAccessToken(
-		c.Request.Context(),
-		req.RefreshToken,
-	)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	c.JSON(
-		http.StatusOK,
-		api.SuccessResponse{
-			Data: RefreshTokenResponse{
-				AccessToken: accessToken,
-			},
-		},
-	)
-}
-
-func (h *Handler) ForgetPassword(c *gin.Context) {
-	var req ForgetPasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
-		return
-	}
-
-	if err := validation.IsValidEmail(req.Email); err != nil {
-		c.Error(
-			security.NewSecureError(
-				http.StatusBadRequest,
-				"VALIDATION_ERROR",
-				"Invalid email address",
-				err,
-			),
-		)
-		return
-	}
-
-	ctx := c.Request.Context()
-	allow, err := h.limiter.Allow(
-		ctx,
-		"forget_password:"+req.Email,
-		10,
-		time.Minute,
-	)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-	if !allow {
-		c.Error(http.ErrBodyNotAllowed)
-		return
-	}
-
-	// generate reset token and send email
-	// if the email exists, a reset token will be generated and sent to the user's email
-	// if the email does not exist, no action will be taken
-	// but no error will be returned, to prevent email enumeration
-	err = h.authService.ForgetPassword(ctx, req.Email)
-	if err != nil {
-		h.logger.Error("failed to forget password", log.Meta{
-			"email": req.Email,
-			"error": err,
-		})
-	}
-
-	c.JSON(
-		http.StatusOK,
-		api.SuccessResponse{
-			Message: "If an account exists, a password reset email has been sent.",
-		},
-	)
-}
-
-func (h *Handler) ResetPassword(c *gin.Context) {
-	var req VerifyResetTokenRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
-		return
-	}
-
-	if err := validation.IsValidPassword(req.Password); err != nil {
-		c.Error(
-			security.NewSecureError(
-				http.StatusBadRequest,
-				"VALIDATION_ERROR",
-				"Invalid password",
-				err,
-			),
-		)
-		return
-	}
-
-	if err := h.authService.ResetPassword(
-		c.Request.Context(),
-		req.Token,
-		req.Password,
-	); err != nil {
-		c.Error(err)
-		return
-	}
-
-	c.JSON(
-		http.StatusOK,
-		api.SuccessResponse{
-			Message: "password updated successfully",
-		},
-	)
-}
-
 func (h *Handler) GetMe(c *gin.Context) {
 	claims, err := middleware.ClaimsWithContext(c)
 	if err != nil {
@@ -488,124 +233,6 @@ func (h *Handler) GetMe(c *gin.Context) {
 				CreatedAt:      user.CreatedAt,
 				UpdatedAt:      user.UpdatedAt,
 			},
-		},
-	)
-}
-
-func (h *Handler) VerifyOTP(c *gin.Context) {
-	ctx := c.Request.Context()
-	var req VerifyOTPRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
-		return
-	}
-
-	if err := validation.IsValidEmail(req.Email); err != nil {
-		c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			"INVALID_EMAIL",
-			"invalid email",
-			err,
-		))
-		return
-	}
-
-	key := "otp:verify:" + req.Email
-	allowed, err := h.limiter.Allow(
-		ctx,
-		key,
-		VerifyOTPLimit,
-		10*time.Minute,
-	)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	if !allowed {
-		c.Error(
-			security.NewSecureError(
-				http.StatusTooManyRequests,
-				"RATE_LIMIT_EXCEEDED",
-				"too many verification attempts",
-				nil,
-			),
-		)
-		return
-	}
-
-	if err := h.authService.VerifyOTP(ctx, req); err != nil {
-		c.Error(err)
-		return
-	}
-
-	c.JSON(
-		http.StatusOK,
-		api.SuccessResponse{
-			Message: "OK",
-		},
-	)
-}
-
-func (h *Handler) ResendOTP(c *gin.Context) {
-	ctx := c.Request.Context()
-
-	var req ResendOTPRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
-		return
-	}
-
-	if err := validation.IsValidEmail(req.Email); err != nil {
-		c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			"INVALID_EMAIL",
-			"invalid email",
-			err,
-		))
-		return
-	}
-
-	key := "otp:verify:" + req.Email
-	allowed, err := h.limiter.Allow(
-		ctx,
-		key,
-		ResendOTPLimit,
-		1*time.Hour,
-	)
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	if !allowed {
-		c.Error(
-			security.NewSecureError(
-				http.StatusTooManyRequests,
-				"RATE_LIMIT_EXCEEDED",
-				"too many otp resend requests",
-				nil,
-			),
-		)
-		return
-	}
-
-	// we should not return an error here, as the email may not exist
-	// if the email does not exist, we will simply not send an OTP
-	err = h.authService.SendEmailOTP(ctx, req.Email)
-	if err != nil {
-		h.logger.Error(
-			"send otp email",
-			log.Meta{
-				"Error": err,
-			},
-		)
-	}
-
-	c.JSON(
-		http.StatusOK,
-		api.SuccessResponse{
-			Message: "go check your email !",
 		},
 	)
 }

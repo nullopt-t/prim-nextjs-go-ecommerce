@@ -51,9 +51,9 @@ func Load() *Config {
 		DBCfg: &DatabaseConfig{
 			DBHost:     utils.GetEnvOrDefault("DB_HOST", "localhost"),
 			DBPort:     utils.GetEnvOrDefault("DB_PORT", "5432"),
-			DBUser:     utils.GetEnvOrDefault("DB_USER", "bookshop"),
-			DBPassword: utils.GetEnvOrDefault("DB_PASSWORD", "bookshop123"),
-			DBName:     utils.GetEnvOrDefault("DB_NAME", "bookshop"),
+			DBUser:     utils.GetEnvOrDefault("DB_USER", "prim"),
+			DBPassword: utils.GetEnvOrDefault("DB_PASSWORD", "prim"),
+			DBName:     utils.GetEnvOrDefault("DB_NAME", "prim"),
 		},
 		RedisCfg: &RedisConfig{
 			Host:     utils.GetEnvOrDefault("REDIS_HOST", "localhost"),
