@@ -12,7 +12,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: "1.24.2"   # ← was "1.26.2" (doesn't exist)
+        go-version: "1.25.0"   # ← was "1.26.2" (doesn't exist)
     # -----------------------------
     # Ensure module consistency
     # -----------------------------
