@@ -126,6 +126,7 @@ func (s *AuthService) Login(
 
 	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
 		user.ID.String(),
+		user.Email,
 		user.Role.String(),
 	)
 	if err != nil {
@@ -296,9 +297,20 @@ func (s *AuthService) RotateToken(
 		return "", "", err
 	}
 
+	userID, err := uuid.Parse(claims.UserID)
+	if err != nil {
+		return "", "", err
+	}
+
+	user, err := s.userService.GetUserByID(
+		ctx,
+		userID,
+	)
+
 	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
-		claims.UserID,
-		claims.UserRole,
+		user.ID.String(),
+		user.Email,
+		user.Role.String(),
 	)
 	if err != nil {
 		return "", "", err

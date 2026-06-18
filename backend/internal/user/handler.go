@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
@@ -200,13 +199,18 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 }
 
 func (h *Handler) GetMe(c *gin.Context) {
-	claims, err := middleware.ClaimsWithContext(c)
-	if err != nil {
-		c.Error(err)
+	val, exists := c.Get("userID")
+	if !exists {
+		c.Error(security.NewSecureError(
+			http.StatusUnauthorized,
+			"UNAUTHORIZED",
+			"no session for this user",
+			nil,
+		))
 		return
 	}
 
-	userID, err := uuid.Parse(claims.UserID)
+	userID, err := uuid.Parse(val.(string))
 	if err != nil {
 		c.Error(err)
 		return

@@ -1,12 +1,13 @@
 package middleware
 
 import (
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"errors"
 	"net/http"
 	"strings"
+
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 
@@ -20,34 +21,22 @@ var (
 
 const prefix = "Bearer "
 
-func ClaimsWithContext(c *gin.Context) (*jwt.UserClaims, error) {
-	claims, ok := c.Get("claims")
-	if !ok {
-		return nil, ErrNoClaimsInContext
-	}
-	tclaims, ok := claims.(*jwt.UserClaims)
-	if !ok {
-		return nil, ErrInvalidUserSubject
-	}
-	return tclaims, nil
-}
-
 func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		claims, err := ClaimsWithContext(c)
-		if err != nil {
+		role, ok := c.Get("role")
+		if !ok {
 			c.Error(
 				security.NewSecureError(
 					http.StatusUnauthorized,
 					"INVALID_USER",
 					"invalid user",
-					err,
+					nil,
 				),
 			)
 			c.Abort()
 			return
 		}
-		if claims.UserRole != string(requiredRole) {
+		if role.(string) != string(requiredRole) {
 			c.Error(
 				security.NewSecureError(
 					http.StatusUnauthorized,
@@ -115,7 +104,9 @@ func Authanticate(secrets *config.Secrets) gin.HandlerFunc {
 			return
 		}
 
-		c.Set("claims", claims)
+		c.Set("userID", claims.UserID)
+		c.Set("userEmail", claims.UserEmail)
+		c.Set("userRole", claims.UserRole)
 		c.Next()
 	}
 }
