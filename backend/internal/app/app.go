@@ -114,7 +114,10 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		app.logger,
 	)
 
-	authRouter := auth.NewRouter(authHandler)
+	authRouter := auth.NewRouter(
+		authHandler,
+		config.KeysCfg,
+	)
 	authRouter.MapRoutes(v1)
 
 	userHandler := user.NewHandler(

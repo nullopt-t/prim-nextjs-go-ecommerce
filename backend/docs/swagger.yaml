@@ -46,9 +46,10 @@ definitions:
       message:
         type: string
     type: object
-  auth.ForgetPasswordRequest:
+  auth.ForgotPasswordRequest:
     properties:
       email:
+        maxLength: 254
         type: string
     required:
     - email
@@ -56,12 +57,30 @@ definitions:
   auth.LoginUserRequest:
     properties:
       email:
+        maxLength: 254
         type: string
       password:
+        maxLength: 70
+        minLength: 8
         type: string
     required:
     - email
     - password
+    type: object
+  auth.MeResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      id:
+        type: string
+      role:
+        type: string
+      status:
+        type: string
     type: object
   auth.RefreshTokenRequest:
     properties:
@@ -73,8 +92,10 @@ definitions:
   auth.RegisterUserRequest:
     properties:
       email:
+        maxLength: 254
         type: string
       password:
+        maxLength: 70
         minLength: 8
         type: string
     required:
@@ -84,6 +105,7 @@ definitions:
   auth.ResendOTPRequest:
     properties:
       email:
+        maxLength: 254
         type: string
     required:
     - email
@@ -91,6 +113,8 @@ definitions:
   auth.ResetTokenRequest:
     properties:
       password:
+        maxLength: 70
+        minLength: 8
         type: string
       token:
         type: string
@@ -108,9 +132,9 @@ definitions:
   auth.VerifyOTPRequest:
     properties:
       code:
-        maxLength: 999999
         type: string
       email:
+        maxLength: 254
         type: string
     required:
     - code
@@ -189,7 +213,7 @@ paths:
         name: email
         required: true
         schema:
-          $ref: '#/definitions/auth.ForgetPasswordRequest'
+          $ref: '#/definitions/auth.ForgotPasswordRequest'
       produces:
       - application/json
       responses:
@@ -205,6 +229,14 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/api.UnauthorizedResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
       summary: Email reset password link
       tags:
       - Auth
@@ -236,14 +268,46 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.BadReqResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
       summary: Login user by email and password
+      tags:
+      - Auth
+  /auth/me:
+    get:
+      consumes:
+      - application/json
+      description: fetch session user data
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.MeResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: fetch session user data
       tags:
       - Auth
   /auth/refresh:
     post:
       consumes:
       - application/json
-      description: Refresh access_token by passing refresh_token
+      description: Rotate refresh token and issue new access and refresh tokens.
       parameters:
       - description: Refresh Token
         in: body
@@ -271,7 +335,15 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/api.UnauthorizedResponse'
-      summary: Refresh access_token by passing refresh_token
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Rotate refresh token and issue new access and refresh tokens.
       tags:
       - Auth
   /auth/register:
@@ -297,6 +369,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.BadReqResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
       summary: Register a new user
       tags:
       - Auth
@@ -323,6 +399,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.BadReqResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
       summary: resend email otp
       tags:
       - Auth
@@ -353,14 +437,18 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/api.UnauthorizedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
       summary: Reset password using a reset token
       tags:
       - Auth
-  /auth/verify-otp:
+  /auth/verify-email:
     post:
       consumes:
       - application/json
-      description: verify user email by otp code
+      description: Verify a user's email using a one-time verification code.
       parameters:
       - description: Email and OTP
         in: body
@@ -383,7 +471,15 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/api.UnauthorizedResponse'
-      summary: verify user email by otp code
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Verify a user's email address
       tags:
       - Auth
   /products:
@@ -479,4 +575,11 @@ paths:
       summary: Get a product by id
       tags:
       - Products
+security:
+- BearerAuth: []
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

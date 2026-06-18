@@ -195,7 +195,7 @@ func (h *Handler) Login(c *gin.Context) {
 // @Success 200 {object} api.DataResponse{data=TokensResponse}
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 401 {object} api.UnauthorizedResponse
-// @Failure 429 {object} api.TooManyRequestsResponse
+// @Failure 429 {object} api.ErrorResponse
 // @Failure 500 {object} api.ErrorResponse
 // @Router /auth/refresh [post]
 func (h *Handler) Refresh(c *gin.Context) {
@@ -231,11 +231,11 @@ func (h *Handler) Refresh(c *gin.Context) {
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param email body ForgetPasswordRequest true "User Email"
+// @Param email body ForgotPasswordRequest true "User Email"
 // @Success 200 {object} api.MessageResponse
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 401 {object} api.UnauthorizedResponse
-// @Failure 429 {object} api.TooManyRequestsResponse
+// @Failure 429 {object} api.ErrorResponse
 // @Failure 500 {object} api.ErrorResponse
 // @Router /auth/forget-password [post]
 func (h *Handler) ForgotPassword(c *gin.Context) {
@@ -332,7 +332,7 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 // @Success 200 {object} api.MessageResponse
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 401 {object} api.UnauthorizedResponse
-// @Failure 429 {object} api.TooManyRequestsResponse
+// @Failure 429 {object} api.ErrorResponse
 // @Failure 500 {object} api.ErrorResponse
 // @Router /auth/verify-email [post]
 func (h *Handler) VerifyEmail(c *gin.Context) {
@@ -389,7 +389,7 @@ func (h *Handler) VerifyEmail(c *gin.Context) {
 // @Param req body ResendOTPRequest true "Email and OTP"
 // @Success 200 {object} api.MessageResponse
 // @Failure 400 {object} api.BadReqResponse
-// @Failure 429 {object} api.TooManyRequestsResponse
+// @Failure 429 {object} api.ErrorResponse
 // @Failure 500 {object} api.ErrorResponse
 // @Router /auth/resend-otp [post]
 func (h *Handler) ResendOTP(c *gin.Context) {
@@ -453,6 +453,7 @@ func (h *Handler) ResendOTP(c *gin.Context) {
 // @Produce json
 // @Success 200 {object} api.DataResponse{data=MeResponse}
 // @Failure 500 {object} api.ErrorResponse
+// @Router /auth/me [get]
 func (h *Handler) GetMe(c *gin.Context) {
 	val, exists := c.Get("userID")
 	if !exists {

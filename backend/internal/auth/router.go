@@ -14,11 +14,11 @@ type AuthHandler interface {
 	ResetPassword(c *gin.Context)
 	VerifyEmail(c *gin.Context)
 	ResendOTP(c *gin.Context)
-	ChangePassword(c *gin.Context)
+	// ChangePassword(c *gin.Context)
 	GetMe(c *gin.Context)
-	EmailStatus(c *gin.Context)
-	GetSessions(c *gin.Context)
-	DeleteSessionByID(c *gin.Context)
+	// EmailStatus(c *gin.Context)
+	// GetSessions(c *gin.Context)
+	// DeleteSessionByID(c *gin.Context)
 }
 
 type Router struct {
@@ -45,12 +45,12 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	auth.POST("/reset-password", r.authHandler.ResetPassword)
 	auth.POST("/verify-email", r.authHandler.VerifyEmail)
 	auth.POST("/resend-otp", r.authHandler.ResendOTP)
-	auth.POST("/change-password", r.authHandler.ChangePassword)
+	// auth.POST("/change-password", r.authHandler.ChangePassword)
 
 	// protected
 	auth.Use(middleware.Authanticate(r.secrets))
 	auth.GET("/me", r.authHandler.GetMe)
-	auth.GET("/email-status", r.authHandler.EmailStatus)
-	auth.GET("/sessions", r.authHandler.GetSessions)
-	auth.DELETE("/sessions/:id", r.authHandler.DeleteSessionByID)
+	// auth.GET("/email-status", r.authHandler.EmailStatus)
+	// auth.GET("/sessions", r.authHandler.GetSessions)
+	// auth.DELETE("/sessions/:id", r.authHandler.DeleteSessionByID)
 }

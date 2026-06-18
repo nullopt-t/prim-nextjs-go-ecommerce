@@ -11,7 +11,6 @@ type UserHandler interface {
 	GetUserByID(c *gin.Context)
 	DeleteUser(c *gin.Context)
 	GetAllUsers(c *gin.Context)
-	GetMe(c *gin.Context)
 }
 
 type Router struct {
@@ -32,7 +31,6 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		middleware.Authanticate(r.config.KeysCfg),
 	)
 
-	users.GET("/me", r.handler.GetMe)
 	users.GET("", r.handler.GetAllUsers)
 	users.GET("/:id", r.handler.GetUserByID)
 	users.DELETE("/:id", r.handler.DeleteUser)
