@@ -3,11 +3,14 @@
 
 * {
     transition: all 0.3s;
-    outline: none;
 }
 
 html,
 body {
     min-height: 100vh;
     background-color: var(--page-bg);
+}
+
+input {
+    outline: none;
 }
