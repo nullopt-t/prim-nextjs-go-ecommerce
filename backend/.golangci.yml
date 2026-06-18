@@ -3,17 +3,18 @@ run:
 
 linters:
   enable:
-  - govet
-  - errcheck
-  - staticcheck
-  - ineffassign
-  - gocritic
-  - revive
+    - govet
+    - errcheck
+    - staticcheck
+    - ineffassign
+    - gocritic
+    - revive
+    - unused
 
 linters-settings:
   revive:
     rules:
-    - name: var-naming
+      - name: var-naming
 
 issues:
   exclude-use-default: false

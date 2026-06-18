@@ -205,7 +205,7 @@ func (s *AuthService) SendEmailOTP(
 	)
 }
 
-func (s *AuthService) ForgetPassword(
+func (s *AuthService) ForgotPassword(
 	ctx context.Context,
 	email string,
 ) error {
