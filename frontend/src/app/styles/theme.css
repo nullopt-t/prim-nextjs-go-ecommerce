@@ -167,7 +167,6 @@
     /* dark sidebar dividers */
     --sidebar-focus-ring: oklch(0.439 0 0);
     /* dark sidebar focus ring */
-
 }
 
 @theme inline {
