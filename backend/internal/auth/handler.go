@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"errors"
 	"net/http"
 	"time"
 
@@ -84,7 +83,7 @@ func NewAuthHandler(
 }
 
 func (h *Handler) handleValidationError(c *gin.Context, err error) {
-	if ve, ok := errors.AsType[validator.ValidationErrors](err); ok && ve != nil {
+	if ve, ok := err.(validator.ValidationErrors); ok && ve != nil {
 		fieldErrors := make([]api.FieldError, 0, len(ve))
 		for _, e := range ve {
 			fieldErrors = append(fieldErrors, api.FieldError{
