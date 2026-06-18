@@ -42,14 +42,11 @@ jobs:
     # -----------------------------
     # Lint (now safe)
     # -----------------------------
-    - name: Install golangci-lint
-      run: |
-        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
-        | sh -s v1.66.0
-    
-    - name: Run lint
-      run: ~/bin/golangci-lint run
-      working-directory: backend
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
+        working-directory: backend
 
     - name: Test
       working-directory: backend
