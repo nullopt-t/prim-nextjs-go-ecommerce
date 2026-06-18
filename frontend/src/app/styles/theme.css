@@ -1,0 +1,188 @@
+:root {
+    /* GLOBAL SETTINGS (Sizes & Corners) */
+    /* Use for text size base scale */
+    --font-size: 16px;
+    /* Use for rounding corners (e.g., class="rounded-lg" sets it to 10px) */
+    --radius: 0.625rem;
+    /* Use for regular descriptions and body text (class="font-normal") */
+    --font-weight-normal: 400;
+    /* Use for bold titles, headers, and button text (class="font-medium") */
+    --font-weight-medium: 500;
+
+    --font-size-txt-sm: 14px;
+    --font-size-title-sm: 20px;
+    /* Tablet Screen Sizes (md) */
+    --font-size-txt-md: 15px;
+    --font-size-title-md: 24px;
+    /* Desktop Screen Sizes (lg) */
+    --font-size-txt-lg: 16px;
+    --font-size-title-lg: 32px;
+
+    /* THE MAIN WEBSITE PAGE */
+    /* Use for the background of the whole website screen (class="bg-background") */
+    --page-bg: #ffffff;
+    /* Use for the default main reading text color (class="text-foreground") */
+    --page-text: oklch(0.145 0 0);
+
+    /* CARDS (Product boxes, Info grids) */
+    /* Use for the background block of a product box or white container (class="bg-card") */
+    --card-bg: #ffffff;
+    /* Use for the product title text color inside a product box (class="text-card-foreground") */
+    --card-text: oklch(0.145 0 0);
+
+    /* DROPDOWNS & OVERLAYS (Select boxes, tooltips) */
+    /* Use for the background of dropdown selector blocks or menus (class="bg-popover") */
+    --dropdown-bg: oklch(1 0 0);
+    /* Use for the clickable text options inside a dropdown menu (class="text-popover-foreground") */
+    --dropdown-text: oklch(0.145 0 0);
+
+    /* BUTTONS (Actions) */
+    /* Use for major buttons like "Add to Cart" or "Checkout" (class="bg-primary") */
+    --btn-primary-bg: #030213;
+    /* Use for the text color layered inside the main primary button (class="text-primary-foreground") */
+    --btn-primary-text: oklch(1 0 0);
+    /* Use for non-focal secondary actions like "View Details" (class="bg-secondary") */
+    --btn-secondary-bg: oklch(0.95 0.0058 264.53);
+    /* Use for the text color layered inside the secondary button (class="text-secondary-foreground") */
+    --btn-secondary-text: #030213;
+    /* Use for high-alert dangerous actions like "Delete Item" or "Remove" (class="bg-destructive") */
+    --btn-destructive-bg: #d4183d;
+    /* Use for the text color layered inside the delete/destructive button (class="text-destructive-foreground") */
+    --btn-destructive-text: #ffffff;
+
+
+    /* REUSABLE ACCENTS, INPUTS & HOVER STATES */
+    /* Use for dividing lines, thin borders, and card outlines (class="border-border") */
+    --border-line: rgba(0, 0, 0, 0.1);
+    /* Use for changing backgrounds when a user hovers a text link or list item (class="bg-accent") */
+    --hover-bg: #e9ebef;
+    /* Use for changing text colors when a user hovers a link or list item (class="text-accent-foreground") */
+    --hover-text: #030213;
+    /* Use for the glowing outer safety outline when clicking into text fields (class="ring-ring") */
+    --focus-ring: oklch(0.708 0 0);
+    /* Kept transparent for native HTML input boxes */
+    --input-raw: transparent;
+    /* Use for the shaded search bar or login input background fill (class="bg-input-background") */
+    --input-fill: #f3f3f5;
+    /* Use for the background line of an unselected dark mode switch/toggle track (class="bg-switch-background") */
+    --toggle-track: #cbced4;
+
+
+    /* SKELETON LOADING TEXT*/
+    /* Use for the background boxes of loading placeholders/skeleton screens (class="bg-muted") */
+    --skeleton-bg: #ececf0;
+    /* Use for low-importance text like item timestamps, placeholders, or tiny hints (class="text-muted-foreground") */
+    --muted-text: #717182;
+    /* Use for the background block of your admin/dashboard navigation sidebar (class="bg-sidebar") */
+    --sidebar-bg: oklch(0.985 0 0);
+    /* Use for the normal link item text inside that navigation sidebar (class="text-sidebar-foreground") */
+    --sidebar-text: oklch(0.145 0 0);
+    /* Use for the background highlight of the link the user is *currently* looking at (class="bg-sidebar-primary") */
+    --sidebar-active-bg: #030213;
+    /* Use for the active text layered over that sidebar highlight element (class="text-sidebar-primary-foreground") */
+    --sidebar-active-text: oklch(0.985 0 0);
+    /* Use for the background block of a sidebar navigation row when hovering it (class="bg-sidebar-accent") */
+    --sidebar-hover-bg: oklch(0.97 0 0);
+    /* Use for the sidebar navigation text color when hovering it (class="text-sidebar-accent-foreground") */
+    --sidebar-hover-text: oklch(0.205 0 0);
+    /* Use for split section line barriers strictly nested inside your sidebars (class="border-sidebar-border") */
+    --sidebar-divider: oklch(0.922 0 0);
+    /* Use for focus outline ring glow selections inside sidebars (class="ring-sidebar-ring") */
+    --sidebar-focus-ring: oklch(0.708 0 0);
+}
+
+[data-theme="dark"] {
+    --page-bg: oklch(0.145 0 0);
+    --page-text: oklch(0.985 0 0);
+
+    --card-bg: oklch(0.145 0 0);
+    --card-text: oklch(0.985 0 0);
+
+    --dropdown-bg: oklch(0.145 0 0);
+    --dropdown-text: oklch(0.985 0 0);
+
+    --btn-primary-bg: oklch(0.985 0 0);
+    --btn-primary-text: oklch(0.205 0 0);
+    --btn-secondary-bg: oklch(0.269 0 0);
+    --btn-secondary-text: oklch(0.985 0 0);
+    --btn-destructive-bg: oklch(0.396 0.141 25.723);
+    --btn-destructive-text: oklch(0.637 0.237 25.331);
+
+    --border-line: oklch(0.269 0 0);
+    --hover-bg: oklch(0.269 0 0);
+    --hover-text: oklch(0.985 0 0);
+    --focus-ring: oklch(0.439 0 0);
+    --input-raw: oklch(0.269 0 0);
+
+    --skeleton-bg: oklch(0.269 0 0);
+    --muted-text: oklch(0.708 0 0);
+
+    --sidebar-bg: oklch(0.205 0 0);
+    --sidebar-text: oklch(0.985 0 0);
+    --sidebar-active-bg: oklch(0.488 0.243 264.376);
+    --sidebar-active-text: oklch(0.985 0 0);
+    --sidebar-hover-bg: oklch(0.269 0 0);
+    --sidebar-hover-text: oklch(0.985 0 0);
+    --sidebar-divider: oklch(0.269 0 0);
+    --sidebar-focus-ring: oklch(0.439 0 0);
+}
+
+@theme base inline {
+    /* Sizes & Text Weight Hooks */
+    --text-txt-sm: var(--font-size-txt-sm);
+    --text-title-sm: var(--font-size-title-sm);
+    --text-txt-md: var(--font-size-txt-md);
+    --text-title-md: var(--font-size-title-md);
+    --text-txt-lg: var(--font-size-txt-lg);
+    --text-title-lg: var(--font-size-title-lg);
+
+    --font-weight-normal: var(--font-weight-normal);
+    --font-weight-medium: var(--font-weight-medium);
+
+    /* Page Utilities Setup */
+    --color-background: var(--page-bg);
+    --color-foreground: var(--page-text);
+    --color-border: var(--border-line);
+    --color-ring: var(--focus-ring);
+
+    /* Containers & Boxes */
+    --color-card: var(--card-bg);
+    --color-card-foreground: var(--card-text);
+    --color-popover: var(--dropdown-bg);
+    --color-popover-foreground: var(--dropdown-text);
+
+    /* Buttons & Main Action Classes */
+    --color-primary: var(--btn-primary-bg);
+    --color-primary-foreground: var(--btn-primary-text);
+    --color-secondary: var(--btn-secondary-bg);
+    --color-secondary-foreground: var(--btn-secondary-text);
+    --color-destructive: var(--btn-destructive-bg);
+    --color-destructive-foreground: var(--btn-destructive-text);
+
+    /* Input Elements Config */
+    --color-input: var(--input-raw);
+    --color-input-background: var(--input-fill);
+    --color-switch-background: var(--toggle-track);
+
+    /* Hover & Skeleton Screen States */
+    --color-accent: var(--hover-bg);
+    --color-accent-foreground: var(--hover-text);
+    --color-muted: var(--skeleton-bg);
+    --color-muted-foreground: var(--muted-text);
+
+    /* Auto-calculated layout border rounding sizes */
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+
+    /* Dashboard Navigation Panels Setup */
+    --color-sidebar: var(--sidebar-bg);
+    --color-sidebar-foreground: var(--sidebar-text);
+    --color-sidebar-primary: var(--sidebar-active-bg);
+    --color-sidebar-primary-foreground: var(--sidebar-active-text);
+    --color-sidebar-accent: var(--sidebar-hover-bg);
+    --color-sidebar-accent-foreground: var(--sidebar-hover-text);
+    --color-sidebar-border: var(--sidebar-divider);
+    --color-sidebar-ring: var(--sidebar-focus-ring);
+}
