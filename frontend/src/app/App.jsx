@@ -1,10 +1,11 @@
-import { Header } from '@/components/ui'
+import { Header, Footer } from '@/components/ui'
 
 function App() {
 
   return (
     <>
       <Header />
+      <Footer />
     </>
   )
 }
