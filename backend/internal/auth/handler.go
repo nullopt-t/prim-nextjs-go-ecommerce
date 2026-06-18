@@ -7,9 +7,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/types"
 )
 
 const (
@@ -52,6 +54,15 @@ type RegisterUserRequest struct {
 type LoginUserRequest struct {
 	Email    string `json:"email" binding:"required,email,max=254"`
 	Password string `json:"password" binding:"required,min=8,max=70"`
+}
+
+type MeResponse struct {
+	ID            uuid.UUID `json:"id,omitempty"`
+	Email         string    `json:"email,omitempty"`
+	EmailVerified bool      `json:"email_verified"`
+	Role          string    `json:"role,omitempty"`
+	Status        string    `json:"status,omitempty"`
+	CreatedAt     time.Time `json:"created_at,omitzero"`
 }
 
 type Handler struct {
@@ -430,6 +441,55 @@ func (h *Handler) ResendOTP(c *gin.Context) {
 		http.StatusOK,
 		api.MessageResponse{
 			Message: "If the email exists, a new verification code has been sent.",
+		},
+	)
+}
+
+// GetMe godoc
+// @Summary fetch session user data
+// @Description fetch session user data
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} api.DataResponse{data=MeResponse}
+// @Failure 500 {object} api.ErrorResponse
+func (h *Handler) GetMe(c *gin.Context) {
+	val, exists := c.Get("userID")
+	if !exists {
+		c.Error(security.NewSecureError(
+			http.StatusUnauthorized,
+			"UNAUTHORIZED",
+			"no session for this user",
+			nil,
+		))
+		return
+	}
+
+	userID, err := uuid.Parse(val.(string))
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	user, err := h.authService.GetCurrentUser(
+		c.Request.Context(),
+		userID,
+	)
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		api.DataResponse{
+			Data: MeResponse{
+				ID:            user.ID,
+				Email:         user.Email,
+				EmailVerified: types.Bool(user.EmailVerifiedAt),
+				Role:          user.Role.String(),
+				Status:        string(user.Status),
+			},
 		},
 	)
 }

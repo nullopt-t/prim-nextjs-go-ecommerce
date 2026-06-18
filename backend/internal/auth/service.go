@@ -318,3 +318,10 @@ func (s *AuthService) RotateToken(
 
 	return accessToken, refreshToken, nil
 }
+
+func (s *AuthService) GetCurrentUser(
+	ctx context.Context,
+	userID uuid.UUID,
+) (*model.User, error) {
+	return s.userService.GetUserByID(ctx, userID)
+}
