@@ -1,6 +1,6 @@
 module github.com/m-mahmoud-alsaid/prim-backend
 
-go 1.26.2
+go 1.25.0
 
 replace github.com/imdario/mergo => github.com/imdario/mergo v0.3.16
 
