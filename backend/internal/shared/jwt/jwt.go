@@ -7,7 +7,6 @@ import (
 
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 
-	"github.com/golang-jwt/jwt/v5"
 	_jwt "github.com/golang-jwt/jwt/v5"
 )
 
@@ -51,13 +50,13 @@ func (s *JWTManager) GenerateAccessToken(userID, email, userRole string) (string
 		UserID:    userID,
 		UserEmail: email,
 		Type:      "access_token",
-		RegisteredClaims: jwt.RegisteredClaims{
+		RegisteredClaims: _jwt.RegisteredClaims{
 			Subject:   userID,
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(AccessTokenExpiration)),
+			IssuedAt:  _jwt.NewNumericDate(time.Now()),
+			ExpiresAt: _jwt.NewNumericDate(time.Now().Add(AccessTokenExpiration)),
 		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := _jwt.NewWithClaims(_jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(s.secrets.JwtAccessTokenSecretKey))
 	if err != nil {
 		return "", err
@@ -69,13 +68,13 @@ func (s *JWTManager) GenerateRefreshToken(userID string) (string, error) {
 	claims := UserClaims{
 		UserID: userID,
 		Type:   "refresh_token",
-		RegisteredClaims: jwt.RegisteredClaims{
+		RegisteredClaims: _jwt.RegisteredClaims{
 			Subject:   userID,
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(RefreshTokenExpiration)),
+			IssuedAt:  _jwt.NewNumericDate(time.Now()),
+			ExpiresAt: _jwt.NewNumericDate(time.Now().Add(RefreshTokenExpiration)),
 		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := _jwt.NewWithClaims(_jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(s.secrets.JwtRefreshTokenSecretKey))
 	if err != nil {
 		return "", err
@@ -97,7 +96,7 @@ func (s *JWTManager) GenerateTokenPair(userID, email, userRole string) (string, 
 
 func (s *JWTManager) VerifyToken(tokenString string, secretKey string) (*UserClaims, error) {
 	claims := &UserClaims{}
-	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+	_, err := _jwt.ParseWithClaims(tokenString, claims, func(token *_jwt.Token) (interface{}, error) {
 		return []byte(secretKey), nil
 	})
 	if err != nil {
