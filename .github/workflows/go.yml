@@ -21,8 +21,12 @@ jobs:
       run: |
         go mod tidy
         git diff --exit-code
+        
     - name: Download dependencies
       working-directory: backend
+      env:
+        GOPROXY: "https://proxy.golang.org,https://goproxy.io,direct"
+        GONOSUMCHECK: "*"
       run: go mod download
     # -----------------------------
     # IMPORTANT: build first
