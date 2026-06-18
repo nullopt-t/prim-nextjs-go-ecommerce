@@ -25,6 +25,55 @@ definitions:
         type: string
       meta: {}
     type: object
+  product.CreateProductRequest:
+    properties:
+      currency:
+        type: string
+      description:
+        type: string
+      price:
+        type: integer
+      short_description:
+        type: string
+      sku:
+        type: string
+      slug:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+    required:
+    - price
+    - slug
+    - status
+    - title
+    type: object
+  product.ProductResponse:
+    properties:
+      created_at:
+        type: string
+      currency:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      price:
+        type: integer
+      short_description:
+        type: string
+      sku:
+        type: string
+      slug:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -66,6 +115,69 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Get all products
+      tags:
+      - Products
+    post:
+      consumes:
+      - application/json
+      description: Create a new product
+      parameters:
+      - description: Product Data
+        in: body
+        name: product
+        required: true
+        schema:
+          $ref: '#/definitions/product.CreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/product.ProductResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create a new product
+      tags:
+      - Products
+  /products/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a product by passing it's id
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/product.ProductResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get a product by id
       tags:
       - Products
 swagger: "2.0"

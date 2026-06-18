@@ -15,6 +15,10 @@ const (
 	VendorRole   UserRole = "vendor"
 )
 
+func (ur *UserRole) String() string {
+	return string(*ur)
+}
+
 type AccountStatus string
 
 const (

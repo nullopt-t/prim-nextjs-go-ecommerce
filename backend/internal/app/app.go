@@ -2,28 +2,30 @@ package app
 
 import (
 	// "github.com/m-mahmoud-alsaid/prim-backend/internal/cart"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/auth"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/http/swagger"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/notifier"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/otp"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/user/otp"
 
 	// "github.com/m-mahmoud-alsaid/prim-backend/internal/inventory"
-	// "github.com/m-mahmoud-alsaid/prim-backend/internal/product"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/product"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
 
 	// "github.com/m-mahmoud-alsaid/prim-backend/internal/checkout"
 	// "github.com/m-mahmoud-alsaid/prim-backend/internal/order"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 	"context"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -88,7 +90,6 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	userRepo := user.NewPostgresRepository()
 	userService := user.NewService(
 		txRunner,
-		otpService,
 		userRepo,
 		app.logger,
 	)
@@ -97,7 +98,7 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		config.KeysCfg,
 	)
 
-	authService := user.NewAuthService(
+	authService := auth.NewAuthService(
 		app.logger,
 		userService,
 		jwtService,
@@ -107,9 +108,17 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		config.KeysCfg,
 	)
 
+	authHandler := auth.NewAuthHandler(
+		authService,
+		rateLimiter,
+		app.logger,
+	)
+
+	authRouter := auth.NewRouter(authHandler)
+	authRouter.MapRoutes(v1)
+
 	userHandler := user.NewHandler(
 		userService,
-		authService,
 		rateLimiter,
 		config.KeysCfg,
 		app.logger,
@@ -128,12 +137,12 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	// inventoryRouter := inventory.NewRouter(inventoryHandler)
 	// inventoryRouter.MapRoutes(v1.Group("/inventories"))
 
-	// // product
-	// productRepo := product.NewPostgresRepository()
-	// productService := product.NewService(txRunner, productRepo, inventoryRepo)
-	// productHandler := product.NewHandler(productService)
-	// productRouter := product.NewRouter(productHandler)
-	// productRouter.MapRoutes(v1.Group("/products"))
+	// product
+	productRepo := product.NewProductRepository()
+	productService := product.NewService(txRunner, productRepo)
+	productHandler := product.NewHandler(productService)
+	productRouter := product.NewRouter(productHandler)
+	productRouter.MapRoutes(v1)
 
 	// // cart
 	// cartRepo := cart.NewPostgresRepository()
