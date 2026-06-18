@@ -32,6 +32,7 @@ jobs:
       uses: golangci/golangci-lint-action@v6
       with:
         version: v1.57
+        working-directory: backend
     
     - name: Build
       run: go build -v ./cmd/api
@@ -40,4 +41,5 @@ jobs:
       run: go test -v ./...
       
     - name: Run govulncheck
+      working-directory: backend
       run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
