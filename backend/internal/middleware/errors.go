@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"errors"
-
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
@@ -19,7 +17,7 @@ func ErrorHandler(logger log.Logger) gin.HandlerFunc {
 		}
 
 		err := c.Errors.Last().Err
-		if se, ok := errors.AsType[*security.SecureError](err); ok {
+		if se, ok := err.(*security.SecureError); ok {
 			logger.Error(
 				se.UserMsg,
 				log.Meta{
