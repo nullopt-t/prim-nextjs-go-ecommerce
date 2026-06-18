@@ -1,8 +1,8 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "This is the Booky API",
-        "title": "Booky API",
+        "description": "This is the Prim API",
+        "title": "Prim API",
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "API Support",
@@ -14,7 +14,7 @@
         },
         "version": "1.0"
     },
-    "host": "localhost:8080",
+    "host": "localhost:8081",
     "basePath": "/api/v1",
     "paths": {
         "/auth/forget-password": {
@@ -51,13 +51,13 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.UnauthorizedResponse"
                         }
                     }
                 }
@@ -93,13 +93,13 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.SuccessResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/auth.LoginUserResponse"
+                                            "$ref": "#/definitions/auth.TokensResponse"
                                         }
                                     }
                                 }
@@ -109,13 +109,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     }
                 }
@@ -151,7 +145,7 @@
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.SuccessResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
@@ -167,13 +161,13 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.UnauthorizedResponse"
                         }
                     }
                 }
@@ -207,31 +201,13 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.SuccessResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/auth.UserRegisterResponse"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     }
                 }
@@ -271,13 +247,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     }
                 }
@@ -317,13 +287,13 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.UnauthorizedResponse"
                         }
                     }
                 }
@@ -363,13 +333,13 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.UnauthorizedResponse"
                         }
                     }
                 }
@@ -410,7 +380,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     },
                     "500": {
@@ -466,7 +436,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     },
                     "404": {
@@ -510,7 +480,7 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     },
                     "404": {
@@ -524,7 +494,7 @@
         }
     },
     "definitions": {
-        "api.ErrorResponse": {
+        "api.BadReqResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -535,6 +505,23 @@
                     "items": {
                         "$ref": "#/definitions/api.FieldError"
                     }
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.DataResponse": {
+            "type": "object",
+            "properties": {
+                "data": {}
+            }
+        },
+        "api.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
                 },
                 "message": {
                     "type": "string"
@@ -570,6 +557,14 @@
                 "meta": {}
             }
         },
+        "api.UnauthorizedResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
         "auth.ForgetPasswordRequest": {
             "type": "object",
             "required": [
@@ -592,17 +587,6 @@
                     "type": "string"
                 },
                 "password": {
-                    "type": "string"
-                }
-            }
-        },
-        "auth.LoginUserResponse": {
-            "type": "object",
-            "properties": {
-                "access_token": {
-                    "type": "string"
-                },
-                "refresh_token": {
                     "type": "string"
                 }
             }
@@ -667,14 +651,6 @@
                     "type": "string"
                 },
                 "refresh_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "auth.UserRegisterResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
                     "type": "string"
                 }
             }

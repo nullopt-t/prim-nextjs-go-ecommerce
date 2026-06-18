@@ -118,9 +118,8 @@ func (h *Handler) handleValidationError(c *gin.Context, err error) {
 // @Accept json
 // @Produce json
 // @Param user body RegisterUserRequest true "User Credentials"
-// @Success 201 {object} api.SuccessResponse{data=UserRegisterResponse}
-// @Failure 400 {object} api.ErrorResponse
-// @Failure 404 {object} api.ErrorResponse
+// @Success 201 {object} api.MessageResponse
+// @Failure 400 {object} api.BadReqResponse
 // @Router /auth/register [post]
 func (h *Handler) Register(c *gin.Context) {
 	var req RegisterUserRequest
@@ -164,7 +163,7 @@ func (h *Handler) Register(c *gin.Context) {
 
 	c.JSON(
 		http.StatusCreated,
-		api.SuccessResponse{
+		api.MessageResponse{
 			Message: "If the email is valid, you will receive a verification email.",
 		},
 	)
@@ -177,9 +176,8 @@ func (h *Handler) Register(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param credentials body LoginUserRequest true "User Credentials"
-// @Success 200 {object} api.SuccessResponse{data=LoginUserResponse}
-// @Failure 400 {object} api.ErrorResponse
-// @Failure 404 {object} api.ErrorResponse
+// @Success 200 {object} api.DataResponse{data=TokensResponse}
+// @Failure 400 {object} api.BadReqResponse
 // @Router /auth/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginUserRequest
@@ -216,10 +214,10 @@ func (h *Handler) Login(c *gin.Context) {
 
 	c.JSON(
 		http.StatusOK,
-		api.SuccessResponse{
-			Data: map[string]string{
-				"access_token":  tokens.AccessToken,
-				"refresh_token": tokens.RefreshToken,
+		api.DataResponse{
+			Data: TokensResponse{
+				AccessToken:  tokens.AccessToken,
+				RefreshToken: tokens.RefreshToken,
 			},
 		},
 	)
@@ -232,9 +230,9 @@ func (h *Handler) Login(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param refresh_token body RefreshTokenRequest true "Refresh Token"
-// @Success 200 {object} api.SuccessResponse{data=TokensResponse}
-// @Failure 400 {object} api.ErrorResponse
-// @Failure 401 {object} api.ErrorResponse
+// @Success 200 {object} api.DataResponse{data=TokensResponse}
+// @Failure 400 {object} api.BadReqResponse
+// @Failure 401 {object} api.UnauthorizedResponse
 // @Router /auth/refresh [post]
 func (h *Handler) Refresh(c *gin.Context) {
 	var req RefreshTokenRequest
@@ -254,7 +252,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 
 	c.JSON(
 		http.StatusOK,
-		api.SuccessResponse{
+		api.DataResponse{
 			Data: TokensResponse{
 				AccessToken:  accessToken,
 				RefreshToken: refreshToken,
@@ -271,8 +269,8 @@ func (h *Handler) Refresh(c *gin.Context) {
 // @Produce json
 // @Param email body ForgetPasswordRequest true "User Email"
 // @Success 200 {object} api.MessageResponse
-// @Failure 400 {object} api.ErrorResponse
-// @Failure 401 {object} api.ErrorResponse
+// @Failure 400 {object} api.BadReqResponse
+// @Failure 401 {object} api.UnauthorizedResponse
 // @Router /auth/forget-password [post]
 func (h *Handler) ForgetPassword(c *gin.Context) {
 	var req ForgetPasswordRequest
@@ -337,8 +335,8 @@ func (h *Handler) ForgetPassword(c *gin.Context) {
 // @Produce json
 // @Param body body ResetTokenRequest true "Password and Reset Token"
 // @Success 200 {object} api.MessageResponse
-// @Failure 400 {object} api.ErrorResponse
-// @Failure 401 {object} api.ErrorResponse
+// @Failure 400 {object} api.BadReqResponse
+// @Failure 401 {object} api.UnauthorizedResponse
 // @Router /auth/reset-password [post]
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req ResetTokenRequest
@@ -384,8 +382,8 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 // @Produce json
 // @Param req body VerifyOTPRequest true "Email and OTP"
 // @Success 200 {object} api.MessageResponse
-// @Failure 400 {object} api.ErrorResponse
-// @Failure 401 {object} api.ErrorResponse
+// @Failure 400 {object} api.BadReqResponse
+// @Failure 401 {object} api.UnauthorizedResponse
 // @Router /auth/verify-otp [post]
 func (h *Handler) VerifyOTP(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -450,8 +448,7 @@ func (h *Handler) VerifyOTP(c *gin.Context) {
 // @Produce json
 // @Param req body ResendOTPRequest true "Email and OTP"
 // @Success 200 {object} api.MessageResponse
-// @Failure 400 {object} api.ErrorResponse
-// @Failure 401 {object} api.ErrorResponse
+// @Failure 400 {object} api.BadReqResponse
 // @Router /auth/resend-otp [post]
 func (h *Handler) ResendOTP(c *gin.Context) {
 	ctx := c.Request.Context()

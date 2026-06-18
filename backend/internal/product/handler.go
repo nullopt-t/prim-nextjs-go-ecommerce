@@ -103,7 +103,7 @@ func (h *Handler) handleValidationError(c *gin.Context, err error) {
 // @Produce json
 // @Param query query api.PageQuery true "Pagination query"
 // @Success 200 {object} api.SuccessResponse
-// @Failure 400 {object} api.ErrorResponse
+// @Failure 400 {object} api.BadReqResponse
 // @Failure 500 {object} api.ErrorResponse
 // @Router /products [get]
 func (h *Handler) GetAllProducts(c *gin.Context) {
@@ -161,7 +161,7 @@ func (h *Handler) GetAllProducts(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Product ID"
 // @Success 200 {object} ProductResponse
-// @Failure 400 {object} api.ErrorResponse
+// @Failure 400 {object} api.BadReqResponse
 // @Failure 404 {object} api.ErrorResponse
 // @Router /products/{id} [get]
 func (h *Handler) GetProductByID(c *gin.Context) {
@@ -209,7 +209,7 @@ func (h *Handler) GetProductByID(c *gin.Context) {
 // @Produce json
 // @Param product body CreateProductRequest true "Product Data"
 // @Success 201 {object} api.SuccessResponse{data=ProductResponse}
-// @Failure 400 {object} api.ErrorResponse
+// @Failure 400 {object} api.BadReqResponse
 // @Failure 404 {object} api.ErrorResponse
 // @Router /products [post]
 func (h *Handler) CreateProduct(c *gin.Context) {

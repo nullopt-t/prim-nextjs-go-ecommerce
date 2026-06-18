@@ -1,10 +1,11 @@
 package middleware
 
 import (
+	"errors"
+
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
-	"errors"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,7 +27,7 @@ func ErrorHandler(logger log.Logger) gin.HandlerFunc {
 					"Stack": se.Stack,
 				},
 			)
-			c.JSON(se.Status, api.ErrorResponse{
+			c.JSON(se.Status, api.BadReqResponse{
 				Code:    se.Code,
 				Message: se.UserMsg,
 				Details: se.Fields,

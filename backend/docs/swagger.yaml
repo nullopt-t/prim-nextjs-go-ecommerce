@@ -1,6 +1,6 @@
 basePath: /api/v1
 definitions:
-  api.ErrorResponse:
+  api.BadReqResponse:
     properties:
       code:
         type: string
@@ -8,6 +8,17 @@ definitions:
         items:
           $ref: '#/definitions/api.FieldError'
         type: array
+      message:
+        type: string
+    type: object
+  api.DataResponse:
+    properties:
+      data: {}
+    type: object
+  api.ErrorResponse:
+    properties:
+      code:
+        type: string
       message:
         type: string
     type: object
@@ -30,6 +41,11 @@ definitions:
         type: string
       meta: {}
     type: object
+  api.UnauthorizedResponse:
+    properties:
+      message:
+        type: string
+    type: object
   auth.ForgetPasswordRequest:
     properties:
       email:
@@ -46,13 +62,6 @@ definitions:
     required:
     - email
     - password
-    type: object
-  auth.LoginUserResponse:
-    properties:
-      access_token:
-        type: string
-      refresh_token:
-        type: string
     type: object
   auth.RefreshTokenRequest:
     properties:
@@ -94,11 +103,6 @@ definitions:
       access_token:
         type: string
       refresh_token:
-        type: string
-    type: object
-  auth.UserRegisterResponse:
-    properties:
-      message:
         type: string
     type: object
   auth.VerifyOTPRequest:
@@ -161,17 +165,17 @@ definitions:
       updated_at:
         type: string
     type: object
-host: localhost:8080
+host: localhost:8081
 info:
   contact:
     email: support@swagger.io
     name: API Support
-  description: This is the Booky API
+  description: This is the Prim API
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
-  title: Booky API
+  title: Prim API
   version: "1.0"
 paths:
   /auth/forget-password:
@@ -196,11 +200,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.BadReqResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.UnauthorizedResponse'
       summary: Email reset password link
       tags:
       - Auth
@@ -223,19 +227,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
+            - $ref: '#/definitions/api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/auth.LoginUserResponse'
+                  $ref: '#/definitions/auth.TokensResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.BadReqResponse'
       summary: Login user by email and password
       tags:
       - Auth
@@ -258,7 +258,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
+            - $ref: '#/definitions/api.DataResponse'
             - properties:
                 data:
                   $ref: '#/definitions/auth.TokensResponse'
@@ -266,11 +266,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.BadReqResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.UnauthorizedResponse'
       summary: Refresh access_token by passing refresh_token
       tags:
       - Auth
@@ -292,20 +292,11 @@ paths:
         "201":
           description: Created
           schema:
-            allOf:
-            - $ref: '#/definitions/api.SuccessResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/auth.UserRegisterResponse'
-              type: object
+            $ref: '#/definitions/api.MessageResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.BadReqResponse'
       summary: Register a new user
       tags:
       - Auth
@@ -331,11 +322,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.BadReqResponse'
       summary: resend email otp
       tags:
       - Auth
@@ -361,11 +348,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.BadReqResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.UnauthorizedResponse'
       summary: Reset password using a reset token
       tags:
       - Auth
@@ -391,11 +378,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.BadReqResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.UnauthorizedResponse'
       summary: verify user email by otp code
       tags:
       - Auth
@@ -421,7 +408,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.BadReqResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -455,7 +442,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.BadReqResponse'
         "404":
           description: Not Found
           schema:
@@ -484,7 +471,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/api.BadReqResponse'
         "404":
           description: Not Found
           schema:
