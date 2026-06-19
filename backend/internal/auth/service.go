@@ -3,8 +3,10 @@ package auth
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 
@@ -115,7 +117,12 @@ func (s *AuthService) Login(
 		req.Password,
 	)
 	if err != nil {
-		return nil, err
+		return nil, security.NewSecureError(
+			http.StatusUnauthorized,
+			"INVALID_CREDENTIALS",
+			"email or password is incorrect",
+			err,
+		)
 	}
 
 	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
