@@ -359,18 +359,3 @@ func (s *UserService) UpdateUserPassword(
 	}
 	return nil
 }
-
-func (s *UserService) CheckUserPassword(
-	user *model.User,
-	password string,
-) error {
-	if err := utils.ComparePassword(user.PasswordHash, password); err != nil {
-		return security.NewSecureError(
-			http.StatusUnauthorized,
-			security.CodeUnauthorized,
-			"invalid password",
-			err,
-		)
-	}
-	return nil
-}

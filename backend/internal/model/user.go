@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 )
 
 type UserRole string
@@ -83,6 +84,10 @@ func (u *User) IsActive() bool {
 
 func (u *User) IsSuspended() bool {
 	return u.Status == StatusSuspended
+}
+
+func (u *User) VerifyPassword(password string) error {
+	return utils.ComparePassword(u.PasswordHash, password)
 }
 
 func (u *User) String() string {
