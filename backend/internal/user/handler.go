@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
@@ -83,37 +83,10 @@ func NewHandler(
 	}
 }
 
-func (h *Handler) handleValidationError(c *gin.Context, err error) {
-	if ve, ok := err.(validator.ValidationErrors); ok && ve != nil {
-		fieldErrors := make([]api.FieldError, 0, len(ve))
-		for _, e := range ve {
-			fieldErrors = append(fieldErrors, api.FieldError{
-				Field: e.Field(),
-				Tags:  e.Tag(),
-			})
-		}
-		_ = c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			security.CodeValidation,
-			"bad request data",
-			err,
-		).WithFields(fieldErrors))
-		return
-	}
-	_ = c.Error(
-		security.NewSecureError(
-			http.StatusBadRequest,
-			security.CodeValidation,
-			"bad request data",
-			err,
-		),
-	)
-}
-
 func (h *Handler) GetUserByID(c *gin.Context) {
 	var uri UserURIParam
 	if err := c.ShouldBindJSON(&uri); err != nil {
-		h.handleValidationError(c, err)
+		validation.ValidationError(c, err)
 		return
 	}
 
@@ -143,7 +116,7 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 func (h *Handler) GetAllUsers(c *gin.Context) {
 	var q api.PageQuery
 	if err := c.ShouldBindQuery(&q); err != nil {
-		h.handleValidationError(c, err)
+		validation.ValidationError(c, err)
 		return
 	}
 
@@ -176,7 +149,7 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 func (h *Handler) DeleteUser(c *gin.Context) {
 	var uri UserURIParam
 	if err := c.ShouldBindUri(&uri); err != nil {
-		h.handleValidationError(c, err)
+		validation.ValidationError(c, err)
 		return
 	}
 

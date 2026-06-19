@@ -4,11 +4,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
@@ -67,33 +66,6 @@ func NewHandler(s *ProductService) ProductHandler {
 	return &Handler{s}
 }
 
-func (h *Handler) handleValidationError(c *gin.Context, err error) {
-	if ve, ok := err.(validator.ValidationErrors); ok && ve != nil {
-		fieldErrors := make([]api.FieldError, 0, len(ve))
-		for _, e := range ve {
-			fieldErrors = append(fieldErrors, api.FieldError{
-				Field: e.Field(),
-				Tags:  e.Tag(),
-			})
-		}
-		_ = c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			security.CodeValidation,
-			"bad request data",
-			err,
-		).WithFields(fieldErrors))
-		return
-	}
-	_ = c.Error(
-		security.NewSecureError(
-			http.StatusBadRequest,
-			security.CodeValidation,
-			"bad request data",
-			err,
-		),
-	)
-}
-
 // GetAllProducts godoc
 // @Summary Get all products
 // @Description Get all products
@@ -108,7 +80,7 @@ func (h *Handler) handleValidationError(c *gin.Context, err error) {
 func (h *Handler) GetAllProducts(c *gin.Context) {
 	var query api.PageQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		h.handleValidationError(c, err)
+		validation.ValidationError(c, err)
 		return
 	}
 
@@ -166,7 +138,7 @@ func (h *Handler) GetAllProducts(c *gin.Context) {
 func (h *Handler) GetProductByID(c *gin.Context) {
 	var params ProductURIParam
 	if err := c.ShouldBindUri(&params); err != nil {
-		h.handleValidationError(c, err)
+		validation.ValidationError(c, err)
 		return
 	}
 
@@ -214,7 +186,7 @@ func (h *Handler) GetProductByID(c *gin.Context) {
 func (h *Handler) CreateProduct(c *gin.Context) {
 	var p CreateProductRequest
 	if err := c.ShouldBindJSON(&p); err != nil {
-		h.handleValidationError(c, err)
+		validation.ValidationError(c, err)
 		return
 	}
 
