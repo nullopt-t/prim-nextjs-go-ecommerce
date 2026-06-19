@@ -48,11 +48,6 @@ type UserService interface {
 		userID uuid.UUID,
 	) (*model.User, error)
 
-	CheckUserPassword(
-		user *model.User,
-		password string,
-	) error
-
 	UpdateUserPassword(
 		ctx context.Context,
 		user *model.User,
@@ -116,8 +111,7 @@ func (s *AuthService) Login(
 		return nil, err
 	}
 
-	err = s.userService.CheckUserPassword(
-		user,
+	err = user.VerifyPassword(
 		req.Password,
 	)
 	if err != nil {
