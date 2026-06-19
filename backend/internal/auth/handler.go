@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
@@ -82,33 +82,6 @@ func NewAuthHandler(
 	}
 }
 
-func (h *Handler) handleValidationError(c *gin.Context, err error) {
-	if ve, ok := err.(validator.ValidationErrors); ok && ve != nil {
-		fieldErrors := make([]api.FieldError, 0, len(ve))
-		for _, e := range ve {
-			fieldErrors = append(fieldErrors, api.FieldError{
-				Field: e.Field(),
-				Tags:  e.Tag(),
-			})
-		}
-		_ = c.Error(security.NewSecureError(
-			http.StatusBadRequest,
-			security.CodeValidation,
-			"bad request data",
-			err,
-		).WithFields(fieldErrors))
-		return
-	}
-	_ = c.Error(
-		security.NewSecureError(
-			http.StatusBadRequest,
-			security.CodeValidation,
-			"bad request data",
-			err,
-		),
-	)
-}
-
 // Register godoc
 // @Summary Register a new user
 // @Description Register a new user
@@ -123,7 +96,7 @@ func (h *Handler) handleValidationError(c *gin.Context, err error) {
 func (h *Handler) Register(c *gin.Context) {
 	var req RegisterUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
+		validation.ValidationError(c, err)
 		return
 	}
 
@@ -163,7 +136,7 @@ func (h *Handler) Register(c *gin.Context) {
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
+		validation.ValidationError(c, err)
 		return
 	}
 
@@ -200,7 +173,7 @@ func (h *Handler) Login(c *gin.Context) {
 func (h *Handler) Refresh(c *gin.Context) {
 	var req RefreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
+		validation.ValidationError(c, err)
 		return
 	}
 
@@ -240,7 +213,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 func (h *Handler) ForgotPassword(c *gin.Context) {
 	var req ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
+		validation.ValidationError(c, err)
 		return
 	}
 
@@ -300,7 +273,7 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req ResetTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
+		validation.ValidationError(c, err)
 		return
 	}
 
@@ -338,7 +311,7 @@ func (h *Handler) VerifyEmail(c *gin.Context) {
 	ctx := c.Request.Context()
 	var req VerifyOTPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
+		validation.ValidationError(c, err)
 		return
 	}
 
@@ -396,7 +369,7 @@ func (h *Handler) ResendOTP(c *gin.Context) {
 
 	var req ResendOTPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleValidationError(c, err)
+		validation.ValidationError(c, err)
 		return
 	}
 
