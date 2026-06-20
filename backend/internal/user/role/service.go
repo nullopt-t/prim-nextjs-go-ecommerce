@@ -5,10 +5,15 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
+)
+
+var (
+	ErrRoleNotFound = errors.New("role not found")
 )
 
 type RoleService struct {
@@ -118,4 +123,78 @@ func (s *RoleService) GetAll(
 		},
 	)
 	return roles, page, err
+}
+
+func (s *RoleService) Assign(
+	ctx context.Context,
+	userID uuid.UUID,
+	roleID int,
+) error {
+	ur := &model.UserRole{
+		UserID: userID,
+		RoleID: roleID,
+	}
+	return s.dbExecuter.WithDB(
+		ctx,
+		func(db database.QueryExecutor) error {
+			return s.roleRepo.Assign(
+				ctx,
+				db,
+				ur,
+			)
+		},
+	)
+}
+
+func (s *RoleService) Revoke(
+	ctx context.Context,
+	userID uuid.UUID,
+	roleID int,
+) error {
+	ur := &model.UserRole{
+		UserID: userID,
+		RoleID: roleID,
+	}
+	return s.dbExecuter.WithDB(
+		ctx,
+		func(db database.QueryExecutor) error {
+			return s.roleRepo.Revoke(
+				ctx,
+				db,
+				ur,
+			)
+		},
+	)
+}
+
+func (s *RoleService) HasRole(
+	ctx context.Context,
+	userID uuid.UUID,
+	code model.RoleCode,
+) error {
+
+	exists := false
+	err := s.dbExecuter.WithDB(
+		ctx,
+		func(db database.QueryExecutor) error {
+			e, err := s.roleRepo.HasRole(
+				ctx,
+				db,
+				userID,
+				code,
+			)
+			exists = e
+			return err
+		},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return ErrRoleNotFound
+	}
+
+	return nil
 }

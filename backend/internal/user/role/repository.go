@@ -3,6 +3,7 @@ package role
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
@@ -136,4 +137,83 @@ func (r *RoleRepository) List(
 	}
 
 	return roles, page, nil
+}
+
+func (r *RoleRepository) Assign(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	ur *model.UserRole,
+) error {
+	query := `
+	INSERT INTO
+		user_roles(
+		user_id,
+	 	role_id
+		)
+	VALUES
+	($1, $2)
+	`
+	_, err := qe.Exec(
+		ctx,
+		query,
+		ur.UserID,
+		ur.RoleID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *RoleRepository) Revoke(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	ur *model.UserRole,
+) error {
+	query := `
+		DELETE FROM
+		user_roles
+		WHERE
+		user_id = $1
+		AND
+		role_id = $2
+	`
+	_, err := qe.Exec(
+		ctx,
+		query,
+		ur.UserID,
+		ur.RoleID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *RoleRepository) HasRole(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	userID uuid.UUID,
+	roleCode model.RoleCode,
+) (bool, error) {
+	query := `
+	SELECT EXISTS (
+		SELECT 1
+		FROM user_roles ur
+		JOIN roles r ON r.id = ur.role_id
+		WHERE ur.user_id = $1
+		  AND r.code = $2
+	)
+	`
+
+	var exists bool
+
+	err := qe.QueryRow(ctx, query, userID, roleCode).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
 }

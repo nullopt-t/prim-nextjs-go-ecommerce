@@ -27,6 +27,18 @@ type RoleResponse struct {
 	CreatedAt string `json:"created_at"`
 }
 
+// GetAll godoc
+// @Summary fetch all the roles using pagination
+// @Description fetch all the roles using pagination
+// @Tags Roles
+// @Accept json
+// @Produce json
+// @Param query query api.PageQuery true "query"
+// @Success 200 {object} api.PaginatedResponse
+// @Failure 400 {object} api.BadReqResponse
+// @Failure 401 {object} api.UnauthorizedResponse
+// @Failure 500 {object} api.ErrorResponse
+// @Router /roles [get]
 func (h *RoleHandler) GetAll(c *gin.Context) {
 	ctx := c.Request.Context()
 	var q api.PageQuery

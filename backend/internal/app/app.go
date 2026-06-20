@@ -1,22 +1,16 @@
 package app
 
 import (
-	// "github.com/m-mahmoud-alsaid/prim-backend/internal/cart"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/auth"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/http/swagger"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/notifier"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/otp"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/product"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/user/role"
-
-	// "github.com/m-mahmoud-alsaid/prim-backend/internal/inventory"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/product"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
-
-	// "github.com/m-mahmoud-alsaid/prim-backend/internal/checkout"
-	// "github.com/m-mahmoud-alsaid/prim-backend/internal/order"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/user/role"
 
 	"context"
 	"fmt"
