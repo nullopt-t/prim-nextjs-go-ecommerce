@@ -59,7 +59,6 @@ type MeResponse struct {
 	ID            uuid.UUID `json:"id,omitempty"`
 	Email         string    `json:"email,omitempty"`
 	EmailVerified bool      `json:"email_verified"`
-	Role          string    `json:"role,omitempty"`
 	Status        string    `json:"status,omitempty"`
 	CreatedAt     time.Time `json:"created_at,omitzero"`
 }
@@ -460,7 +459,6 @@ func (h *Handler) GetMe(c *gin.Context) {
 				ID:            user.ID,
 				Email:         user.Email,
 				EmailVerified: types.BoolFromPtr(user.EmailVerifiedAt),
-				Role:          user.Role.String(),
 				Status:        string(user.Status),
 			},
 		},

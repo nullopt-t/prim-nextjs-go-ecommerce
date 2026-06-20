@@ -19,6 +19,11 @@ type SuccessResponse struct {
 	Meta    any    `json:"meta,omitempty"`
 }
 
+type PaginatedResponse struct {
+	Data any `json:"data,omitempty"`
+	Meta any `json:"meta,omitempty"`
+}
+
 type DataResponse struct {
 	Data any `json:"data"`
 }

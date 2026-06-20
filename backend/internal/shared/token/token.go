@@ -8,6 +8,6 @@ import (
 
 type UserSubject struct {
 	UserID          uuid.UUID      `json:"user_id"`
-	UserRole        model.UserRole `json:"user_role"`
+	UserRole        model.RoleCode `json:"user_role"`
 	IsEmailVerified bool           `json:"is_email_verified"`
 }

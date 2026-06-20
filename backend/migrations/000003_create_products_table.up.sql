@@ -1,4 +1,3 @@
-CREATE TYPE product_status AS ENUM ('draft', 'active', 'archived');
 CREATE TABLE products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
@@ -6,7 +5,9 @@ CREATE TABLE products (
   description TEXT NOT NULL,
   sku TEXT UNIQUE NOT NULL,
   slug TEXT UNIQUE NOT NULL CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
-  status product_status NOT NULL DEFAULT 'draft',
+  status TEXT NOT NULL DEFAULT 'draft' CHECK(
+        status IN ('draft', 'active', 'archived')
+  ),
   price BIGINT NOT NULL,
   currency TEXT NOT NULL DEFAULT 'USD' CHECK(
     currency IN ('USD', 'EUR', 'EGP')

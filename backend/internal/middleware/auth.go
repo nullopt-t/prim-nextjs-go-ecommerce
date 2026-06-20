@@ -21,7 +21,7 @@ var (
 
 const prefix = "Bearer "
 
-func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
+func Authorize(requiredRole model.RoleCode) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, ok := c.Get("role")
 		if !ok {
