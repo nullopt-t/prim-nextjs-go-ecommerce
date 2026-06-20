@@ -12,6 +12,10 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
+var (
+	ErrRoleNotFound = errors.New("role not found")
+)
+
 type RoleService struct {
 	roleRepo   *RoleRepository
 	dbExecuter database.Runner
@@ -161,4 +165,36 @@ func (s *RoleService) Revoke(
 			)
 		},
 	)
+}
+
+func (s *RoleService) HasRole(
+	ctx context.Context,
+	userID uuid.UUID,
+	code model.RoleCode,
+) error {
+
+	exists := false
+	err := s.dbExecuter.WithDB(
+		ctx,
+		func(db database.QueryExecutor) error {
+			e, err := s.roleRepo.HasRole(
+				ctx,
+				db,
+				userID,
+				code,
+			)
+			exists = e
+			return err
+		},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return ErrRoleNotFound
+	}
+
+	return nil
 }
