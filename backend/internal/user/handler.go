@@ -29,7 +29,6 @@ type UserURIParam struct {
 
 type UserResponse struct {
 	ID             uuid.UUID  `json:"id,omitempty"`
-	Role           string     `json:"role,omitempty"`
 	Email          string     `json:"email,omitempty"`
 	Phone          *string    `json:"phone,omitempty"`
 	Status         string     `json:"status,omitempty"`
@@ -42,7 +41,6 @@ type UserResponse struct {
 func ToUserResponse(user model.User) UserResponse {
 	return UserResponse{
 		ID:             user.ID,
-		Role:           string(user.Role),
 		Email:          user.Email,
 		Phone:          user.Phone,
 		Status:         string(user.Status),

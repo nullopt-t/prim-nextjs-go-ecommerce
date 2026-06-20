@@ -8,15 +8,15 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 )
 
-type UserRole string
+type RoleCode string
 
 const (
-	CustomerRole UserRole = "customer"
-	AdminRole    UserRole = "admin"
-	VendorRole   UserRole = "vendor"
+	OwnerRole  RoleCode = "OWNER"
+	AdminRole  RoleCode = "ADMIN"
+	VendorRole RoleCode = "VENDOR"
 )
 
-func (ur *UserRole) String() string {
+func (ur *RoleCode) String() string {
 	return string(*ur)
 }
 
@@ -43,7 +43,6 @@ type User struct {
 	LastLoginAt *time.Time
 	LastLoginIP *string
 
-	Role   UserRole
 	Status AccountStatus
 
 	SuspendedUntil *time.Time
@@ -66,18 +65,6 @@ func NewUser(
 	}
 }
 
-func (u *User) IsAdmin() bool {
-	return u.Role == AdminRole
-}
-
-func (u *User) IsVendor() bool {
-	return u.Role == VendorRole
-}
-
-func (u *User) IsCustomer() bool {
-	return u.Role == CustomerRole
-}
-
 func (u *User) IsActive() bool {
 	return u.Status == StatusActive
 }
@@ -97,10 +84,9 @@ func (u *User) String() string {
 	}
 
 	return fmt.Sprintf(
-		"user{id=%s, email=%s, role=%s, status=%s}",
+		"user{id=%s, email=%s, status=%s}",
 		u.ID,
 		email,
-		u.Role,
 		u.Status,
 	)
 }

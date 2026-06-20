@@ -9,6 +9,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/otp"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/user/role"
 
 	// "github.com/m-mahmoud-alsaid/prim-backend/internal/inventory"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product"
@@ -82,6 +83,12 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		notifier,
 	)
 	// user
+	roleRepo := role.NewRoleRepository()
+	roleService := role.NewRoleService(txRunner, roleRepo)
+	roleHandler := role.NewRoleHandler(roleService)
+	roleRouter := role.NewRoleRouter(roleHandler)
+	roleRouter.MapRoutes(v1)
+
 	userRepo := user.NewPostgresRepository()
 	userService := user.NewService(
 		txRunner,

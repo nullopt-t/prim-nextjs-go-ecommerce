@@ -269,26 +269,12 @@ func (s *UserService) GetAllUsers(
 				q,
 			)
 			if err != nil {
-				mappedErr := database.MapError(err)
-				switch {
-				case errors.Is(
-					mappedErr,
-					database.ErrNotFound,
-				):
-					return security.NewSecureError(
-						http.StatusNotFound,
-						security.CodeNotFound,
-						err.Error(),
-						err,
-					)
-				default:
-					return security.NewSecureError(
-						http.StatusInternalServerError,
-						security.CodeInternal,
-						"failed to fetch users",
-						err,
-					)
-				}
+				return security.NewSecureError(
+					http.StatusInternalServerError,
+					security.CodeInternal,
+					"failed to fetch users",
+					err,
+				)
 			}
 			return nil
 		},

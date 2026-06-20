@@ -128,7 +128,6 @@ func (s *AuthService) Login(
 	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
 		user.ID.String(),
 		user.Email,
-		user.Role.String(),
 	)
 	if err != nil {
 		return nil, err
@@ -314,7 +313,6 @@ func (s *AuthService) RotateToken(
 	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
 		user.ID.String(),
 		user.Email,
-		user.Role.String(),
 	)
 	if err != nil {
 		return "", "", err

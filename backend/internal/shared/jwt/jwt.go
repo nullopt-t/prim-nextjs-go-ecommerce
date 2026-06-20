@@ -45,7 +45,7 @@ func RandomToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func (s *JWTManager) GenerateAccessToken(userID, email, userRole string) (string, error) {
+func (s *JWTManager) GenerateAccessToken(userID, email string) (string, error) {
 	claims := UserClaims{
 		UserID:    userID,
 		UserEmail: email,
@@ -82,8 +82,8 @@ func (s *JWTManager) GenerateRefreshToken(userID string) (string, error) {
 	return tokenString, nil
 }
 
-func (s *JWTManager) GenerateTokenPair(userID, email, userRole string) (string, string, error) {
-	accessToken, err := s.GenerateAccessToken(userID, email, userRole)
+func (s *JWTManager) GenerateTokenPair(userID, email string) (string, string, error) {
+	accessToken, err := s.GenerateAccessToken(userID, email)
 	if err != nil {
 		return "", "", err
 	}
