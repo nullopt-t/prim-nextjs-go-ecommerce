@@ -33,6 +33,7 @@ type RoleResponse struct {
 // @Tags Roles
 // @Accept json
 // @Produce json
+// @Param query query api.PageQuery true "query"
 // @Success 200 {object} api.PaginatedResponse
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 401 {object} api.UnauthorizedResponse

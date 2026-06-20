@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
@@ -118,4 +119,24 @@ func (s *RoleService) GetAll(
 		},
 	)
 	return roles, page, err
+}
+
+func (s *RoleService) Assign(
+	ctx context.Context,
+	userID uuid.UUID,
+	roleID int,
+) error {
+	return s.dbExecuter.WithDB(
+		ctx,
+		func(db database.QueryExecutor) error {
+			return s.roleRepo.Assign(
+				ctx,
+				db,
+				model.UserRole{
+					UserID: userID,
+					RoleID: roleID,
+				},
+			)
+		},
+	)
 }

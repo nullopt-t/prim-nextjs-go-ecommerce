@@ -137,3 +137,30 @@ func (r *RoleRepository) List(
 
 	return roles, page, nil
 }
+
+func (r *RoleRepository) Assign(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	ur model.UserRole,
+) error {
+	query := `
+	INSERT INTO
+		user_roles(
+		user_id,
+	 	role_id
+		)
+	VALUES
+	($1, $2)
+	`
+	_, err := qe.Exec(
+		ctx,
+		query,
+		ur.UserID,
+		ur.RoleID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
