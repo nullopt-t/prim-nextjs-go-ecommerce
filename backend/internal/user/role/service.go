@@ -126,16 +126,38 @@ func (s *RoleService) Assign(
 	userID uuid.UUID,
 	roleID int,
 ) error {
+	ur := &model.UserRole{
+		UserID: userID,
+		RoleID: roleID,
+	}
 	return s.dbExecuter.WithDB(
 		ctx,
 		func(db database.QueryExecutor) error {
 			return s.roleRepo.Assign(
 				ctx,
 				db,
-				model.UserRole{
-					UserID: userID,
-					RoleID: roleID,
-				},
+				ur,
+			)
+		},
+	)
+}
+
+func (s *RoleService) Revoke(
+	ctx context.Context,
+	userID uuid.UUID,
+	roleID int,
+) error {
+	ur := &model.UserRole{
+		UserID: userID,
+		RoleID: roleID,
+	}
+	return s.dbExecuter.WithDB(
+		ctx,
+		func(db database.QueryExecutor) error {
+			return s.roleRepo.Revoke(
+				ctx,
+				db,
+				ur,
 			)
 		},
 	)

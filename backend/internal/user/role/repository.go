@@ -141,7 +141,7 @@ func (r *RoleRepository) List(
 func (r *RoleRepository) Assign(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	ur model.UserRole,
+	ur *model.UserRole,
 ) error {
 	query := `
 	INSERT INTO
@@ -151,6 +151,32 @@ func (r *RoleRepository) Assign(
 		)
 	VALUES
 	($1, $2)
+	`
+	_, err := qe.Exec(
+		ctx,
+		query,
+		ur.UserID,
+		ur.RoleID,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *RoleRepository) Revoke(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	ur *model.UserRole,
+) error {
+	query := `
+		DELETE FROM
+		user_roles
+		WHERE
+		user_id = $1
+		AND
+		role_id = $2
 	`
 	_, err := qe.Exec(
 		ctx,
