@@ -24,7 +24,7 @@ jobs:
       working-directory: backend
       run: |
         go mod tidy
-        git diff --exit-code
+        git diff --exit-code go.mod go.sum
         
     - name: Download dependencies
       working-directory: backend
