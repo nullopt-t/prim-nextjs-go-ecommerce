@@ -624,6 +624,18 @@ const docTemplate = `{
                     "Roles"
                 ],
                 "summary": "fetch all the roles using pagination",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",

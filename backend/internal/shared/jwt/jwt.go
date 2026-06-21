@@ -11,10 +11,10 @@ import (
 )
 
 type UserClaims struct {
-	UserID    string `json:"user_id"`
-	UserRole  string `json:"user_role"`
-	UserEmail string `json:"user_email"`
-	Type      string `json:"type"`
+	UserID    string   `json:"user_id"`
+	UserRole  []string `json:"user_role"`
+	UserEmail string   `json:"user_email"`
+	Type      string   `json:"type"`
 	_jwt.RegisteredClaims
 }
 
@@ -45,16 +45,12 @@ func RandomToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func (s *JWTManager) GenerateAccessToken(userID, email string) (string, error) {
-	claims := UserClaims{
-		UserID:    userID,
-		UserEmail: email,
-		Type:      "access_token",
-		RegisteredClaims: _jwt.RegisteredClaims{
-			Subject:   userID,
-			IssuedAt:  _jwt.NewNumericDate(time.Now()),
-			ExpiresAt: _jwt.NewNumericDate(time.Now().Add(AccessTokenExpiration)),
-		},
+func (s *JWTManager) GenerateAccessToken(claims *UserClaims) (string, error) {
+	claims.Type = "access_token"
+	claims.RegisteredClaims = _jwt.RegisteredClaims{
+		Subject:   claims.UserID,
+		IssuedAt:  _jwt.NewNumericDate(time.Now()),
+		ExpiresAt: _jwt.NewNumericDate(time.Now().Add(AccessTokenExpiration)),
 	}
 	token := _jwt.NewWithClaims(_jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(s.secrets.JwtAccessTokenSecretKey))
@@ -64,15 +60,12 @@ func (s *JWTManager) GenerateAccessToken(userID, email string) (string, error) {
 	return tokenString, nil
 }
 
-func (s *JWTManager) GenerateRefreshToken(userID string) (string, error) {
-	claims := UserClaims{
-		UserID: userID,
-		Type:   "refresh_token",
-		RegisteredClaims: _jwt.RegisteredClaims{
-			Subject:   userID,
-			IssuedAt:  _jwt.NewNumericDate(time.Now()),
-			ExpiresAt: _jwt.NewNumericDate(time.Now().Add(RefreshTokenExpiration)),
-		},
+func (s *JWTManager) GenerateRefreshToken(claims *UserClaims) (string, error) {
+	claims.Type = "refresh_token"
+	claims.RegisteredClaims = _jwt.RegisteredClaims{
+		Subject:   claims.UserID,
+		IssuedAt:  _jwt.NewNumericDate(time.Now()),
+		ExpiresAt: _jwt.NewNumericDate(time.Now().Add(RefreshTokenExpiration)),
 	}
 	token := _jwt.NewWithClaims(_jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(s.secrets.JwtRefreshTokenSecretKey))
@@ -82,12 +75,12 @@ func (s *JWTManager) GenerateRefreshToken(userID string) (string, error) {
 	return tokenString, nil
 }
 
-func (s *JWTManager) GenerateTokenPair(userID, email string) (string, string, error) {
-	accessToken, err := s.GenerateAccessToken(userID, email)
+func (s *JWTManager) GenerateTokenPair(claims *UserClaims) (string, string, error) {
+	accessToken, err := s.GenerateAccessToken(claims)
 	if err != nil {
 		return "", "", err
 	}
-	refreshToken, err := s.GenerateRefreshToken(userID)
+	refreshToken, err := s.GenerateRefreshToken(claims)
 	if err != nil {
 		return "", "", err
 	}

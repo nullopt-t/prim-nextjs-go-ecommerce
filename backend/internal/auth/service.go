@@ -62,8 +62,19 @@ type UserService interface {
 	) error
 }
 
+type RoleService interface {
+	UserRoles(
+		ctx context.Context,
+		userID uuid.UUID,
+	) ([]*model.Role, error)
+}
+
 type Notifier interface {
-	NotifyResetPassword(ctx context.Context, email, token string) error
+	NotifyResetPassword(
+		ctx context.Context,
+		email,
+		token string,
+	) error
 }
 
 type Tokens struct {
@@ -75,6 +86,7 @@ type AuthService struct {
 	jwtService  *jwt.JWTManager
 	otpService  OTPService
 	userService UserService
+	roleService RoleService
 	logger      log.Logger
 	redisClient *redis.Client
 	notifier    Notifier
@@ -84,6 +96,7 @@ type AuthService struct {
 func NewAuthService(
 	logger log.Logger,
 	userService UserService,
+	roleService RoleService,
 	jwtService *jwt.JWTManager,
 	otpService OTPService,
 	redisClient *redis.Client,
@@ -94,6 +107,7 @@ func NewAuthService(
 		jwtService:  jwtService,
 		otpService:  otpService,
 		userService: userService,
+		roleService: roleService,
 		logger:      logger,
 		redisClient: redisClient,
 		notifier:    notifier,
@@ -125,9 +139,27 @@ func (s *AuthService) Login(
 		)
 	}
 
+	roles, err := s.roleService.UserRoles(
+		ctx,
+		user.ID,
+	)
+	if err != nil {
+		return nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch user roles",
+			err,
+		)
+	}
+
+	claims := &jwt.UserClaims{
+		UserID:    user.ID.String(),
+		UserEmail: user.Email,
+		UserRole:  model.RolesToStrings(roles),
+	}
+
 	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
-		user.ID.String(),
-		user.Email,
+		claims,
 	)
 	if err != nil {
 		return nil, err
@@ -310,9 +342,22 @@ func (s *AuthService) RotateToken(
 		return "", "", err
 	}
 
+	roles, err := s.roleService.UserRoles(
+		ctx,
+		user.ID,
+	)
+	if err != nil {
+		return "", "", err
+	}
+
+	newClaims := &jwt.UserClaims{
+		UserID:    user.ID.String(),
+		UserEmail: user.Email,
+		UserRole:  model.RolesToStrings(roles),
+	}
+
 	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
-		user.ID.String(),
-		user.Email,
+		newClaims,
 	)
 	if err != nil {
 		return "", "", err
@@ -324,6 +369,22 @@ func (s *AuthService) RotateToken(
 func (s *AuthService) GetCurrentUser(
 	ctx context.Context,
 	userID uuid.UUID,
-) (*model.User, error) {
-	return s.userService.GetUserByID(ctx, userID)
+) (*model.User, []*model.Role, error) {
+	user, err := s.userService.GetUserByID(
+		ctx,
+		userID,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	roles, err := s.roleService.UserRoles(
+		ctx,
+		user.ID,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return user, roles, nil
 }
