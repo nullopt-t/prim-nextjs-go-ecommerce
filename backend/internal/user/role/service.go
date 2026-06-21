@@ -198,3 +198,23 @@ func (s *RoleService) HasRole(
 
 	return nil
 }
+
+func (s *RoleService) UserRoles(
+	ctx context.Context,
+	userID uuid.UUID,
+) ([]*model.Role, error) {
+	var roles []*model.Role
+	err := s.dbExecuter.WithDB(
+		ctx,
+		func(db database.QueryExecutor) error {
+			rls, err := s.roleRepo.UserRoles(
+				ctx,
+				db,
+				userID,
+			)
+			roles = rls
+			return err
+		},
+	)
+	return roles, err
+}

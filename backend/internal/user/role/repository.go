@@ -217,3 +217,54 @@ func (r *RoleRepository) HasRole(
 
 	return exists, nil
 }
+
+func (r *RoleRepository) UserRoles(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	userID uuid.UUID,
+) ([]*model.Role, error) {
+	query := `
+	SELECT
+		r.id,
+		r.code,
+		r.created_at
+	FROM roles r
+	JOIN user_roles ur
+		ON ur.role_id = r.id
+	WHERE ur.user_id = $1
+	`
+
+	rows, err := qe.Query(
+		ctx,
+		query,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var roles = make([]*model.Role, 0)
+	for rows.Next() {
+		var role model.Role
+		err := rows.Scan(
+			&role.ID,
+			&role.Code,
+			&role.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		roles = append(
+			roles,
+			&role,
+		)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return roles, nil
+}
