@@ -12,10 +12,14 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: "1.25.0"   # ← was "1.26.2" (doesn't exist)
+        go-version: "1.26"
     # -----------------------------
     # Ensure module consistency
     # -----------------------------
+    - name: Print Go version
+      run: |
+        go version
+    
     - name: Tidy modules
       working-directory: backend
       run: |
