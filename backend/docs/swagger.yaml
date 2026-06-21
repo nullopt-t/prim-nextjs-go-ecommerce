@@ -583,6 +583,13 @@ paths:
       consumes:
       - application/json
       description: fetch all the roles using pagination
+      parameters:
+      - in: query
+        name: page
+        type: integer
+      - in: query
+        name: pageSize
+        type: integer
       produces:
       - application/json
       responses:

@@ -4,8 +4,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/bytedance/gopkg/util/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
@@ -59,6 +61,7 @@ type MeResponse struct {
 	ID            uuid.UUID `json:"id,omitempty"`
 	Email         string    `json:"email,omitempty"`
 	EmailVerified bool      `json:"email_verified"`
+	Role          []string  `json:"role"`
 	Status        string    `json:"status,omitempty"`
 	CreatedAt     time.Time `json:"created_at,omitzero"`
 }
@@ -104,12 +107,19 @@ func (h *Handler) Register(c *gin.Context) {
 		req,
 	)
 	if err != nil {
-		h.logger.Error(
-			"user register",
-			log.Meta{
-				"Error": err,
-			},
-		)
+		if se, ok := err.(*security.SecureError); ok {
+			logger.Error(
+				se.UserMsg,
+				log.Meta{
+					"Error": se.Internal,
+					"Stack": se.Stack,
+				},
+			)
+			if se.Code == security.CodeInternal {
+				_ = c.Error(se)
+				return
+			}
+		}
 	}
 
 	c.JSON(
@@ -443,7 +453,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 		return
 	}
 
-	user, err := h.authService.GetCurrentUser(
+	user, roles, err := h.authService.GetCurrentUser(
 		c.Request.Context(),
 		userID,
 	)
@@ -460,6 +470,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 				Email:         user.Email,
 				EmailVerified: types.BoolFromPtr(user.EmailVerifiedAt),
 				Status:        string(user.Status),
+				Role:          model.RolesToStrings(roles),
 			},
 		},
 	)

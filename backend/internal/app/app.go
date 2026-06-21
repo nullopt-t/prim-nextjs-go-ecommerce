@@ -97,6 +97,7 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	authService := auth.NewAuthService(
 		app.logger,
 		userService,
+		roleService,
 		jwtService,
 		otpService,
 		app.redisClient,
