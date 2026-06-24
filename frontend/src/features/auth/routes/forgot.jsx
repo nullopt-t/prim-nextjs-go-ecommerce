@@ -1,9 +1,9 @@
 import Form from '@/features/auth/components/ui/form'
 
-export function Login() {
+export function Forgot() {
     return (
         <div className='overflow-y-auto max-h-full'>
-            <Form formType='login' />
+            <Form formType='forget' />
         </div>
     )
 }

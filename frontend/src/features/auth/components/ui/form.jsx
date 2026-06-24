@@ -52,7 +52,7 @@ function Form({ formType }) {
                     <Fragment key={value.id}>
                         {value.isExist &&
                             <label className=''>
-                                <p className='capitalize font-medium text-foreground mb-2.5 text-txt-sm md:text-txt-md lg:text-txt-lg'>{value.name}</p>
+                                <p className={`${formType === 'register' ? 'after:content-["*"] after:ml-0.5 after:text-red-500' : ''} capitalize font-medium text-foreground mb-2.5 text-txt-sm md:text-txt-md lg:text-txt-lg`}>{value.name}</p>
                                 <FormInput inputObj={value} />
                             </label>}
                     </Fragment>
