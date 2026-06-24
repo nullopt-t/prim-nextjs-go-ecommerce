@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import FormButton from '@/features/auth/components/ui/formButton'
 import FormTitle from '@/features/auth/components/ui/formTitle'
 import FormSubtitle from '@/features/auth/components/ui/formSubtitle'
@@ -27,6 +28,13 @@ function Form({ formType }) {
             type: 'password',
             placeholder: 'Confirm your password',
             isExist: formType === 'register' ? true : false
+        },
+        {
+            id: 4,
+            name: 'password',
+            type: 'password',
+            placeholder: 'Enter your password',
+            isExist: formType === 'reset' ? true : false
         }
     ];
 
@@ -41,14 +49,13 @@ function Form({ formType }) {
 
             <form className='flex flex-col gap-7.5'>
                 {inputTypes.map(value => (
-                    <label key={value.id} className=''>
+                    <Fragment key={value.id}>
                         {value.isExist &&
-                            <>
-                                <p className='capitalize text-foreground mb-2.5 text-txt-sm md:text-txt-md lg:text-txt-lg'>{value.name}</p>
+                            <label className=''>
+                                <p className='capitalize font-medium text-foreground mb-2.5 text-txt-sm md:text-txt-md lg:text-txt-lg'>{value.name}</p>
                                 <FormInput inputObj={value} />
-                            </>
-                        }
-                    </label>
+                            </label>}
+                    </Fragment>
                 ))}
 
                 <FormLinks type={formType} />
