@@ -1,0 +1,222 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" preserveAspectRatio="xMidYMid slice" width="800" height="1000">
+  <defs>
+    <linearGradient id="bggrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#111111"/>
+      <stop offset="100%" stop-color="#0a0a0a"/>
+    </linearGradient>
+    <linearGradient id="glowgrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d97757" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#d97757" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cardgrad1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2a2a2a"/>
+      <stop offset="100%" stop-color="#1a1a1a"/>
+    </linearGradient>
+    <clipPath id="mainclip">
+      <rect width="800" height="1000"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#mainclip)">
+
+    <!-- BG -->
+    <rect width="800" height="1000" fill="url(#bggrad)"/>
+
+    <!-- ambient glow top right -->
+    <circle cx="700" cy="140" r="380" fill="#d97757" opacity="0.06"/>
+    <!-- ambient glow bottom left -->
+    <circle cx="100" cy="860" r="300" fill="#d97757" opacity="0.07"/>
+
+    <!-- subtle grid -->
+    <g opacity="0.06" stroke="#ffffff" stroke-width="0.5">
+      <line x1="0" y1="100" x2="800" y2="100"/>
+      <line x1="0" y1="200" x2="800" y2="200"/>
+      <line x1="0" y1="300" x2="800" y2="300"/>
+      <line x1="0" y1="400" x2="800" y2="400"/>
+      <line x1="0" y1="500" x2="800" y2="500"/>
+      <line x1="0" y1="600" x2="800" y2="600"/>
+      <line x1="0" y1="700" x2="800" y2="700"/>
+      <line x1="0" y1="800" x2="800" y2="800"/>
+      <line x1="0" y1="900" x2="800" y2="900"/>
+      <line x1="100" y1="0" x2="100" y2="1000"/>
+      <line x1="200" y1="0" x2="200" y2="1000"/>
+      <line x1="300" y1="0" x2="300" y2="1000"/>
+      <line x1="400" y1="0" x2="400" y2="1000"/>
+      <line x1="500" y1="0" x2="500" y2="1000"/>
+      <line x1="600" y1="0" x2="600" y2="1000"/>
+      <line x1="700" y1="0" x2="700" y2="1000"/>
+    </g>
+
+    <!-- top accent bar -->
+    <rect x="0" y="0" width="800" height="3" fill="#d97757" opacity="0.8"/>
+
+    <!-- LOGO -->
+    <text x="50" y="70" font-family="sans-serif" font-size="30" font-weight="700" letter-spacing="10" fill="#ffffff">PRI<tspan fill="#d97757">M</tspan></text>
+    <text x="50" y="90" font-family="sans-serif" font-size="11" letter-spacing="3" fill="rgba(255,255,255,0.35)">EVERYTHING, DELIVERED.</text>
+
+    <!-- top right dots -->
+    <circle cx="750" cy="55" r="3.5" fill="#d97757" opacity="0.8"/>
+    <circle cx="732" cy="55" r="3.5" fill="#ffffff" opacity="0.15"/>
+    <circle cx="714" cy="55" r="3.5" fill="#ffffff" opacity="0.07"/>
+
+    <!-- HERO TEXT -->
+    <text x="50" y="180" font-family="Georgia, serif" font-size="44" fill="#ffffff">Shop without</text>
+    <text x="50" y="232" font-family="Georgia, serif" font-size="44" fill="#ffffff">limits.<tspan fill="#d97757"> Anywhere.</tspan></text>
+    <text x="50" y="265" font-family="sans-serif" font-size="13" fill="rgba(255,255,255,0.4)" letter-spacing="1">Millions of products · 190+ countries · Free returns</text>
+    <line x1="50" y1="285" x2="220" y2="285" stroke="#d97757" stroke-width="1.2" opacity="0.7"/>
+    <line x1="228" y1="285" x2="242" y2="285" stroke="#d97757" stroke-width="1.2" opacity="0.25"/>
+
+    <!-- ===== CARD 1 — Watch ===== -->
+    <rect x="50" y="308" width="210" height="260" rx="14" fill="#1c1c1c" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.1"/>
+    <rect x="50" y="308" width="210" height="155" rx="14" fill="url(#cardgrad1)"/>
+    <rect x="50" y="433" width="210" height="30" fill="#1c1c1c"/>
+    <!-- watch body -->
+    <rect x="134" y="328" width="42" height="54" rx="12" fill="#252525" stroke="#d97757" stroke-width="1" stroke-opacity="0.6"/>
+    <rect x="139" y="335" width="32" height="40" rx="8" fill="#111111"/>
+    <circle cx="155" cy="355" r="11" fill="none" stroke="#d97757" stroke-width="0.8" opacity="0.6"/>
+    <line x1="155" y1="349" x2="155" y2="355" stroke="#d97757" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="155" y1="355" x2="160" y2="359" stroke="#ffffff" stroke-width="0.8" stroke-linecap="round" opacity="0.6"/>
+    <rect x="143" y="319" width="24" height="11" rx="3" fill="#252525"/>
+    <rect x="143" y="380" width="24" height="11" rx="3" fill="#252525"/>
+    <!-- NEW badge -->
+    <rect x="58" y="316" width="34" height="17" rx="8" fill="#d97757"/>
+    <text x="75" y="328" font-family="sans-serif" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle">NEW</text>
+    <!-- info -->
+    <text x="62" y="476" font-family="sans-serif" font-size="12" font-weight="500" fill="#ffffff">Smart Watch Pro</text>
+    <text x="62" y="492" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.4)">Series 9 · Midnight</text>
+    <text x="62" y="514" font-family="sans-serif" font-size="14" font-weight="700" fill="#ffffff">$299</text>
+    <text x="100" y="514" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.3)" text-decoration="line-through">$399</text>
+    <text x="62" y="530" font-family="sans-serif" font-size="10" fill="#d97757">★★★★★</text>
+    <text x="110" y="530" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.35)">(2.4k)</text>
+
+    <!-- ===== CARD 2 — Headphones (featured, center, taller) ===== -->
+    <rect x="278" y="284" width="220" height="284" rx="14" fill="#1c1c1c" stroke="#d97757" stroke-width="1" stroke-opacity="0.5"/>
+    <rect x="278" y="284" width="220" height="284" rx="14" fill="url(#glowgrad)" opacity="0.6"/>
+    <rect x="278" y="284" width="220" height="168" rx="14" fill="#1e1e1e"/>
+    <rect x="278" y="412" width="220" height="40" fill="#1c1c1c"/>
+    <!-- headphones -->
+    <path d="M350 314 Q388 290 426 314" stroke="#d97757" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <rect x="338" y="312" width="20" height="32" rx="10" fill="#2a2a2a" stroke="#d97757" stroke-width="1"/>
+    <rect x="342" y="317" width="12" height="22" rx="6" fill="#d97757" opacity="0.25"/>
+    <rect x="418" y="312" width="20" height="32" rx="10" fill="#2a2a2a" stroke="#d97757" stroke-width="1"/>
+    <rect x="422" y="317" width="12" height="22" rx="6" fill="#d97757" opacity="0.25"/>
+    <path d="M358 344 Q388 360 418 344" stroke="#ffffff" stroke-width="0.5" fill="none" opacity="0.15"/>
+    <!-- FEATURED badge -->
+    <rect x="286" y="292" width="58" height="17" rx="8" fill="#d97757"/>
+    <text x="315" y="304" font-family="sans-serif" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle">FEATURED</text>
+    <!-- heart -->
+    <circle cx="480" cy="300" r="14" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.12"/>
+    <text x="480" y="305" font-family="sans-serif" font-size="13" fill="#d97757" text-anchor="middle">♥</text>
+    <!-- info -->
+    <text x="290" y="470" font-family="sans-serif" font-size="13" font-weight="500" fill="#ffffff">AirPods Max</text>
+    <text x="290" y="487" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.4)">Noise Cancelling · Space Grey</text>
+    <text x="290" y="510" font-family="sans-serif" font-size="15" font-weight="700" fill="#ffffff">$449</text>
+    <text x="332" y="510" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.3)" text-decoration="line-through">$549</text>
+    <rect x="352" y="498" width="30" height="15" rx="7" fill="#d97757" opacity="0.9"/>
+    <text x="367" y="509" font-family="sans-serif" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle">-18%</text>
+    <text x="290" y="526" font-family="sans-serif" font-size="10" fill="#d97757">★★★★★</text>
+    <text x="344" y="526" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.35)">(8.1k)</text>
+
+    <!-- ===== CARD 3 — Sneakers ===== -->
+    <rect x="516" y="308" width="210" height="260" rx="14" fill="#1c1c1c" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.1"/>
+    <rect x="516" y="308" width="210" height="155" rx="14" fill="#1e1e1e"/>
+    <rect x="516" y="433" width="210" height="30" fill="#1c1c1c"/>
+    <!-- sneaker -->
+    <path d="M548 400 Q572 358 618 362 Q648 365 658 378 Q663 383 653 392 Q638 398 604 396 Q572 394 560 402 Z" fill="#2a2a2a" stroke="#ffffff" stroke-width="0.8" stroke-opacity="0.2"/>
+    <path d="M560 402 Q572 394 604 396 Q638 398 653 392" stroke="#d97757" stroke-width="1.2" fill="none" opacity="0.6"/>
+    <rect x="548" y="396" width="106" height="10" rx="5" fill="#d97757" opacity="0.7"/>
+    <line x1="584" y1="368" x2="622" y2="370" stroke="#ffffff" stroke-width="0.6" opacity="0.25"/>
+    <line x1="585" y1="376" x2="622" y2="378" stroke="#ffffff" stroke-width="0.6" opacity="0.25"/>
+    <!-- LIMITED badge -->
+    <rect x="524" y="316" width="48" height="17" rx="8" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.15"/>
+    <text x="548" y="328" font-family="sans-serif" font-size="9" font-weight="700" fill="rgba(255,255,255,0.5)" text-anchor="middle">LIMITED</text>
+    <!-- info -->
+    <text x="528" y="476" font-family="sans-serif" font-size="12" font-weight="500" fill="#ffffff">Air Max Pulse</text>
+    <text x="528" y="492" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.4)">Nike · Size 40–46</text>
+    <text x="528" y="514" font-family="sans-serif" font-size="14" font-weight="700" fill="#ffffff">$189</text>
+    <text x="528" y="530" font-family="sans-serif" font-size="10" fill="#d97757">★★★★</text>
+    <text x="574" y="530" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.15)">★</text>
+    <text x="586" y="530" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.35)">(943)</text>
+
+    <!-- ===== MINI CARD — Perfume ===== -->
+    <rect x="50" y="592" width="150" height="90" rx="12" fill="#1c1c1c" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.08"/>
+    <rect x="64" y="606" width="26" height="46" rx="5" fill="#252525" stroke="#d97757" stroke-width="0.8" stroke-opacity="0.7"/>
+    <rect x="69" y="600" width="16" height="9" rx="3" fill="#d97757" opacity="0.6"/>
+    <rect x="66" y="610" width="22" height="34" rx="4" fill="#d97757" opacity="0.08"/>
+    <line x1="64" y1="624" x2="90" y2="624" stroke="#d97757" stroke-width="0.5" opacity="0.4"/>
+    <text x="100" y="622" font-family="sans-serif" font-size="11" font-weight="500" fill="#ffffff">Parfum No.5</text>
+    <text x="100" y="636" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.4)">50ml EDP</text>
+    <text x="100" y="654" font-family="sans-serif" font-size="13" font-weight="700" fill="#ffffff">$120</text>
+    <text x="134" y="654" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.3)" text-decoration="line-through">$160</text>
+    <text x="100" y="670" font-family="sans-serif" font-size="9" fill="#d97757">★★★★★</text>
+
+    <!-- ===== MINI CARD — Bag ===== -->
+    <rect x="216" y="592" width="150" height="90" rx="12" fill="#1c1c1c" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.08"/>
+    <path d="M232 648 Q234 622 244 622 L268 622 Q278 622 280 648 Z" fill="#252525" stroke="#d97757" stroke-width="0.8" stroke-opacity="0.6"/>
+    <path d="M242 622 Q248 612 268 612 Q276 612 274 622" stroke="#ffffff" stroke-width="1" fill="none" opacity="0.25"/>
+    <line x1="244" y1="634" x2="272" y2="634" stroke="#d97757" stroke-width="0.5" opacity="0.35"/>
+    <text x="294" y="622" font-family="sans-serif" font-size="11" font-weight="500" fill="#ffffff">Tote Bag</text>
+    <text x="294" y="636" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.4)">Leather · Tan</text>
+    <text x="294" y="654" font-family="sans-serif" font-size="13" font-weight="700" fill="#ffffff">$340</text>
+    <text x="294" y="670" font-family="sans-serif" font-size="9" fill="#d97757">★★★★</text>
+    <text x="330" y="670" font-family="sans-serif" font-size="9" fill="rgba(255,255,255,0.15)">★</text>
+
+    <!-- ===== MINI CARD — Sunglasses ===== -->
+    <rect x="382" y="592" width="150" height="90" rx="12" fill="#1c1c1c" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.08"/>
+    <!-- glasses illustration -->
+    <circle cx="410" cy="634" r="14" fill="none" stroke="#d97757" stroke-width="1.2" stroke-opacity="0.7"/>
+    <circle cx="410" cy="634" r="10" fill="#d97757" opacity="0.12"/>
+    <circle cx="438" cy="634" r="14" fill="none" stroke="#d97757" stroke-width="1.2" stroke-opacity="0.7"/>
+    <circle cx="438" cy="634" r="10" fill="#d97757" opacity="0.12"/>
+    <line x1="424" y1="634" x2="424" y2="634" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+    <line x1="396" y1="628" x2="388" y2="622" stroke="#ffffff" stroke-width="1" stroke-linecap="round" opacity="0.2"/>
+    <line x1="452" y1="628" x2="460" y2="622" stroke="#ffffff" stroke-width="1" stroke-linecap="round" opacity="0.2"/>
+    <line x1="422" y1="633" x2="426" y2="633" stroke="#ffffff" stroke-width="1" stroke-linecap="round" opacity="0.3"/>
+    <text x="472" y="622" font-family="sans-serif" font-size="11" font-weight="500" fill="#ffffff">Sunglasses</text>
+    <text x="472" y="636" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.4)">Ray-Ban · Classic</text>
+    <text x="472" y="654" font-family="sans-serif" font-size="13" font-weight="700" fill="#ffffff">$210</text>
+    <text x="472" y="670" font-family="sans-serif" font-size="9" fill="#d97757">★★★★★</text>
+
+    <!-- ===== MINI CARD — Sneakers 2 ===== -->
+    <rect x="548" y="592" width="178" height="90" rx="12" fill="#1c1c1c" stroke="#d97757" stroke-width="0.5" stroke-opacity="0.3"/>
+    <rect x="560" y="606" width="40" height="28" rx="6" fill="#d97757" opacity="0.15" stroke="#d97757" stroke-width="0.8" opacity="0.4"/>
+    <path d="M562 626 Q572 614 584 618 Q590 620 590 626 Z" fill="#d97757" opacity="0.5"/>
+    <rect x="562" y="624" width="28" height="5" rx="2" fill="#d97757" opacity="0.6"/>
+    <text x="610" y="622" font-family="sans-serif" font-size="11" font-weight="500" fill="#ffffff">Jordan 1 Retro</text>
+    <text x="610" y="636" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.4)">Chicago · OG</text>
+    <text x="610" y="654" font-family="sans-serif" font-size="13" font-weight="700" fill="#ffffff">$520</text>
+    <rect x="648" y="642" width="30" height="15" rx="7" fill="#d97757" opacity="0.85"/>
+    <text x="663" y="653" font-family="sans-serif" font-size="9" font-weight="700" fill="#ffffff" text-anchor="middle">HOT</text>
+    <text x="610" y="670" font-family="sans-serif" font-size="9" fill="#d97757">★★★★★</text>
+
+    <!-- ===== STATS BAR ===== -->
+    <rect x="50" y="712" width="686" height="72" rx="14" fill="#161616" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.07"/>
+    <text x="152" y="742" font-family="sans-serif" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">50K+</text>
+    <text x="152" y="762" font-family="sans-serif" font-size="11" fill="rgba(255,255,255,0.35)" text-anchor="middle">Products</text>
+    <line x1="244" y1="724" x2="244" y2="772" stroke="#ffffff" stroke-width="0.5" opacity="0.07"/>
+    <text x="322" y="742" font-family="sans-serif" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">190+</text>
+    <text x="322" y="762" font-family="sans-serif" font-size="11" fill="rgba(255,255,255,0.35)" text-anchor="middle">Countries</text>
+    <line x1="400" y1="724" x2="400" y2="772" stroke="#ffffff" stroke-width="0.5" opacity="0.07"/>
+    <text x="478" y="742" font-family="sans-serif" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">2M+</text>
+    <text x="478" y="762" font-family="sans-serif" font-size="11" fill="rgba(255,255,255,0.35)" text-anchor="middle">Customers</text>
+    <line x1="556" y1="724" x2="556" y2="772" stroke="#ffffff" stroke-width="0.5" opacity="0.07"/>
+    <text x="634" y="742" font-family="sans-serif" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">4.9 ★</text>
+    <text x="634" y="762" font-family="sans-serif" font-size="11" fill="rgba(255,255,255,0.35)" text-anchor="middle">Avg Rating</text>
+
+    <!-- ===== QUOTE ===== -->
+    <text x="400" y="836" font-family="Georgia, serif" font-size="24" fill="#ffffff" text-anchor="middle" opacity="0.9">"Discover everything you need,</text>
+    <text x="400" y="866" font-family="Georgia, serif" font-size="24" fill="#d97757" text-anchor="middle">in one place."</text>
+
+    <!-- pills -->
+    <rect x="216" y="892" width="110" height="26" rx="13" fill="#1e1e1e" stroke="#d97757" stroke-width="0.8" stroke-opacity="0.5"/>
+    <text x="271" y="909" font-family="sans-serif" font-size="10" fill="rgba(217,119,87,0.85)" text-anchor="middle" letter-spacing="1.5">FREE SHIPPING</text>
+    <rect x="340" y="892" width="110" height="26" rx="13" fill="#1e1e1e" stroke="#ffffff" stroke-width="0.5" stroke-opacity="0.1"/>
+    <text x="395" y="909" font-family="sans-serif" font-size="10" fill="rgba(255,255,255,0.4)" text-anchor="middle" letter-spacing="1.5">EASY RETURNS</text>
+    <rect x="464" y="892" width="110" height="26" rx="13" fill="#d97757" opacity="0.9"/>
+    <text x="519" y="909" font-family="sans-serif" font-size="10" font-weight="700" fill="#ffffff" text-anchor="middle" letter-spacing="1.5">SECURE PAY</text>
+
+    <!-- bottom accent bar -->
+    <rect x="0" y="997" width="800" height="3" fill="#d97757" opacity="0.5"/>
+
+  </g>
+</svg>
