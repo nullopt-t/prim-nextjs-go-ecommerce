@@ -1,5 +1,4 @@
-x-app-env: &app-env
-  # Database
+x-app-env: &app-env # Database
   DB_HOST: postgres
   DB_PORT: "5432"
   DB_NAME: prim
@@ -75,8 +74,8 @@ services:
     image: postgres:18-alpine
     environment:
       POSTGRES_DB: prim
-      POSTGRES_USER: prim 
-      POSTGRES_PASSWORD: prim 
+      POSTGRES_USER: prim
+      POSTGRES_PASSWORD: prim
     ports:
       - "5432:5432"
     volumes:
@@ -98,18 +97,18 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+
   migrate:
     image: migrate/migrate
     volumes:
       - ./migrations:/migrations
-    command:
-      [
-        "-path",
-        "/migrations",
-        "-database",
-        "postgres://prim:prim@postgres:5432/prim?sslmode=disable",
-        "up"
-      ]
+    entrypoint:
+      - migrate
+      - -path
+      - /migrations
+      - -database
+      - postgres://prim:prim@postgres:5432/prim?sslmode=disable
+    command: up
     depends_on:
       postgres:
         condition: service_healthy

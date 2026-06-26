@@ -1,21 +1,40 @@
+COMPOSE=docker compose -f docker-compose.dev.yml
+
+.PHONY: up up-d down clean logs logs-api logs-worker migrate-up migrate-down migrate-drop migrate-reset migrate-force
+
 up:
-	docker compose -f docker-compose.dev.yml up --build
+	$(COMPOSE) up --build
+
+up-d:
+	$(COMPOSE) up --build -d
 
 down:
-	docker compose -f docker-compose.dev.yml down
+	$(COMPOSE) down
+
+clean:
+	$(COMPOSE) down -v
+
+logs:
+	$(COMPOSE) logs -f
+
+logs-api:
+	$(COMPOSE) logs -f api
+
+logs-worker:
+	$(COMPOSE) logs -f worker
 
 migrate-up:
-	docker compose -f docker-compose.dev.yml run --rm migrate
+	$(COMPOSE) run --rm migrate
 
 migrate-down:
-	docker compose -f docker-compose.dev.yml run --rm migrate down
+	$(COMPOSE) run --rm migrate down
 
 migrate-drop:
-	docker compose -f docker-compose.dev.yml run --rm migrate drop -f
+	$(COMPOSE) run --rm migrate drop -f
 
 migrate-reset:
-	docker compose -f docker-compose.dev.yml run --rm migrate drop -f
-	docker compose -f docker-compose.dev.yml run --rm migrate
+	$(COMPOSE) run --rm migrate drop -f
+	$(COMPOSE) run --rm migrate
 
 migrate-force:
-	docker compose -f docker-compose.dev.yml run --rm migrate force $(version)
+	$(COMPOSE) run --rm migrate force $(version)

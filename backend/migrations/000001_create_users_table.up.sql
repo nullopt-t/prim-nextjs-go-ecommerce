@@ -81,11 +81,11 @@ CREATE TABLE user_roles (
 );
 
 INSERT INTO
-  roles (id, code, name)
+  roles (id, code)
 VALUES
-  (1, 'OWNER', 'owner'),
-  (2, 'ADMIN', 'admin'),
-  (3, 'VENDOR', 'vendor');
+  (1, 'OWNER'),
+  (2, 'ADMIN'),
+  (3, 'VENDOR');
 
 CREATE TYPE vendor_status As ENUM('pending', 'approved', 'rejected', 'suspended');
 
