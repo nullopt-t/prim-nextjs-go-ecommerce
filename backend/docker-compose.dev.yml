@@ -1,0 +1,120 @@
+x-app-env: &app-env
+  # Database
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: prim
+  DB_USER: prim
+  DB_PASSWORD: prim
+
+  # Redis
+  REDIS_DB: "0"
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: ""
+
+  # SMTP
+  SMTP_HOST: smtp.gmail.com
+  SMTP_PORT: "587"
+  SMTP_USERNAME: ${SMTP_USERNAME}
+  SMTP_PASSWORD: ${SMTP_PASSWORD}
+  SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
+  SMTP_FROM_NAME: Prim
+
+  # Server
+  HTTP_PORT: "8080"
+
+  # JWT
+  JWT_ACCESS_SECRET: dev-access-secret
+  JWT_REFRESH_SECRET: dev-refresh-secret
+  JWT_RESET_PASS_SECRET: dev-reset-secret
+
+  # Client
+  CLIENT_BASE_URL: http://localhost:3000
+
+  # App
+  ENV: development
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+    ports:
+      - "8080:8080"
+    command: air -c .air.server.toml
+    env_file:
+      - .env
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+    command: air -c .air.worker.toml
+    env_file:
+      - .env
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: prim
+      POSTGRES_USER: prim 
+      POSTGRES_PASSWORD: prim 
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prim -d prim"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - ./migrations:/migrations
+    command:
+      [
+        "-path",
+        "/migrations",
+        "-database",
+        "postgres://prim:prim@postgres:5432/prim?sslmode=disable",
+        "up"
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  go-mod-cache:

@@ -1,34 +1,21 @@
-DB_URL=postgres://prim:prim@localhost:5432/prim?sslmode=disable
-MIGRATIONS=./migrations
+up:
+	docker compose -f docker-compose.dev.yml up --build
 
-hot:
-	air -c .air.toml
-
-run:
-	@go run cmd/api/main.go
-
-build:
-	@go build -o tmp/bin cmd/api/main.go
-
-run-worker:
-	@go run cmd/worker/main.go
-
-all: hot-reload
-
-migrate-new:
-	migrate create -ext sql -dir $(MIGRATIONS) -seq $(name)
+down:
+	docker compose -f docker-compose.dev.yml down
 
 migrate-up:
-	migrate -path $(MIGRATIONS) -database "$(DB_URL)" up
+	docker compose -f docker-compose.dev.yml run --rm migrate
 
 migrate-down:
-	migrate -path $(MIGRATIONS) -database "$(DB_URL)" down
+	docker compose -f docker-compose.dev.yml run --rm migrate down
 
 migrate-drop:
-	migrate -path $(MIGRATIONS) -database "$(DB_URL)" drop -f
+	docker compose -f docker-compose.dev.yml run --rm migrate drop -f
 
 migrate-reset:
-	migrate -path $(MIGRATIONS) -database "$(DB_URL)" drop -f
-	migrate -path $(MIGRATIONS) -database "$(DB_URL)" up
+	docker compose -f docker-compose.dev.yml run --rm migrate drop -f
+	docker compose -f docker-compose.dev.yml run --rm migrate
 
-.PHONY: migrate-new migrate-up migrate-down migrate-drop migrate-reset hot run-worker all build
+migrate-force:
+	docker compose -f docker-compose.dev.yml run --rm migrate force $(version)

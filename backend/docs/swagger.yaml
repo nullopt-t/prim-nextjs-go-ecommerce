@@ -82,6 +82,10 @@ definitions:
         type: boolean
       id:
         type: string
+      role:
+        items:
+          type: string
+        type: array
       status:
         type: string
     type: object

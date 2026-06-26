@@ -789,6 +789,12 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "role": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "status": {
                     "type": "string"
                 }
