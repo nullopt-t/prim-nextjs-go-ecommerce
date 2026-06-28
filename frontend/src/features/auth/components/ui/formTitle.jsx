@@ -1,9 +1,11 @@
+import {useNavigate} from 'react-router-dom'
 import { House, Moon } from 'lucide-react'
 import { MdOutlineWbSunny } from "react-icons/md"
 import { useTheme } from '@/context/theme'
 
 function FormTitle({ type }) {
     const { theme, toggle } = useTheme();
+const navigate = useNavigate();
 
     const title = type === 'login' ? 'welcome back.'
         : type === 'register' ? 'Create an Account' :
@@ -15,7 +17,7 @@ function FormTitle({ type }) {
 
             <span className='flex items-center gap-2.5 text-muted-foreground'>
                 <span className='hover:scale-85 hover:text-accent-foreground'>
-                    <House className='size-6 cursor-pointer' />
+                    <House onClick={()=> navigate('/home')} className='size-6 cursor-pointer' />
                 </span>
                 <span className='hover:scale-85 hover:text-accent-foreground'>{theme === 'light' ?
                     <MdOutlineWbSunny onClick={toggle} className='size-6 cursor-pointer' />
