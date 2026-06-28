@@ -1,15 +1,13 @@
 import { Header, Footer } from '@/components/ui'
-import { Section } from '@/features/home/components/ui'
 
-function HomeLayout({ children }) {
+function MainLayout({ children }) {
     return (
         <>
             <Header />
             {children}
-            <Section />
             <Footer />
         </>
     )
 }
 
-export default HomeLayout;
+export default MainLayout;

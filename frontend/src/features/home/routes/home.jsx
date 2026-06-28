@@ -1,10 +1,10 @@
-import HomeLayout from '@/features/home/components/layouts/homeLayout'
+import MainLayout from '@/components/layouts/mainLayout'
 import { Outlet } from 'react-router-dom'
 
 export function Home() {
     return (
-        <HomeLayout>
+        <MainLayout>
             <Outlet />
-        </HomeLayout>
+        </MainLayout>
     )
 }
