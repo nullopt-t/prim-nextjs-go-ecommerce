@@ -1,9 +1,10 @@
 package notifier
 
 import (
+	"encoding/json"
+
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/html"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
-	"encoding/json"
 )
 
 type Mailer interface {
@@ -50,7 +51,7 @@ func (h *EmailHandler) SendEmailOTP(
 	}
 
 	return h.mailer.SendHTML(
-		[]string{payload.Email},
+		[]string{payload.Identifier},
 		"OTP Code",
 		html,
 	)

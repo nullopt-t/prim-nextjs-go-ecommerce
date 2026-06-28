@@ -1,5 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS citext;
 
+DROP TYPE IF EXISTS user_status CASCADE;
+
 CREATE TYPE user_status AS ENUM(
   'active',
   'inactive',
@@ -10,41 +12,16 @@ CREATE TYPE user_status AS ENUM(
 
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email CITEXT NOT NULL UNIQUE CHECK (
-    email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
-  ),
-  phone TEXT NULL UNIQUE CHECK (phone ~* '^\+?[0-9]{10,15}$'),
-  email_verified_at TIMESTAMPTZ NULL,
-  phone_verified_at TIMESTAMPTZ NULL,
+  identifier TEXT NOT NULL,
   status user_status NOT NULL DEFAULT 'active',
   suspended_until TIMESTAMPTZ NULL,
   locked_until TIMESTAMPTZ NULL,
-  password_hash TEXT NOT NULL,
-  password_changed_at TIMESTAMPTZ NULL,
   last_login_at TIMESTAMPTZ NULL,
   last_login_ip TEXT NULL,
   deleted_at TIMESTAMPTZ NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-CREATE INDEX users_email_idx ON users (email)
-WHERE
-  deleted_at IS NULL;
-
-CREATE INDEX users_phone_idx ON users (phone)
-WHERE
-  deleted_at IS NULL;
-
-CREATE INDEX users_email_verified_idx ON users (id)
-WHERE
-  email_verified_at IS NOT NULL
-  AND deleted_at IS NULL;
-
-CREATE INDEX users_phone_verified_idx ON users (id)
-WHERE
-  phone_verified_at IS NOT NULL
-  AND deleted_at IS NULL;
 
 CREATE INDEX users_active_idx ON users (id)
 WHERE
@@ -86,6 +63,8 @@ VALUES
   (1, 'OWNER'),
   (2, 'ADMIN'),
   (3, 'VENDOR');
+
+DROP TYPE IF EXISTS vendor_status CASCADE;
 
 CREATE TYPE vendor_status As ENUM('pending', 'approved', 'rejected', 'suspended');
 

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 )
 
 type RoleCode string
@@ -30,15 +29,12 @@ const (
 )
 
 type User struct {
-	ID    uuid.UUID
-	Email string
-	Phone *string
+	ID uuid.UUID
+
+	Identifier string
 
 	EmailVerifiedAt *time.Time
 	PhoneVerifiedAt *time.Time
-
-	PasswordHash      []byte
-	PasswordChangedAt *time.Time
 
 	LastLoginAt *time.Time
 	LastLoginIP *string
@@ -56,12 +52,10 @@ type User struct {
 }
 
 func NewUser(
-	email string,
-	passwordHash []byte,
+	identifier string,
 ) *User {
 	return &User{
-		Email:        email,
-		PasswordHash: passwordHash,
+		Identifier: identifier,
 	}
 }
 
@@ -73,20 +67,11 @@ func (u *User) IsSuspended() bool {
 	return u.Status == StatusSuspended
 }
 
-func (u *User) VerifyPassword(password string) error {
-	return utils.ComparePassword(u.PasswordHash, password)
-}
-
 func (u *User) String() string {
-	email := u.Email
-	if email == "" {
-		email = "nil"
-	}
-
 	return fmt.Sprintf(
-		"user{id=%s, email=%s, status=%s}",
+		"user{id=%s, identifier=%s, status=%s}",
 		u.ID,
-		email,
+		u.Identifier,
 		u.Status,
 	)
 }

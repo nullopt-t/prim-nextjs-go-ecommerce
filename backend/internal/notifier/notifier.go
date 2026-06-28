@@ -1,8 +1,8 @@
 package notifier
 
 type OTPPayload struct {
-	Email string `json:"email"`
-	Code  string `json:"code"`
+	Identifier string `json:"identifier"`
+	Code       string `json:"code"`
 }
 
 type ResetPasswordPayload struct {

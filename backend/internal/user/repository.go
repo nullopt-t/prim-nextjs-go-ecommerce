@@ -3,7 +3,6 @@ package user
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
@@ -21,9 +20,8 @@ const (
 )
 
 type Filter struct {
-	ID    *uuid.UUID
-	Email *string
-	Phone *string
+	ID         *uuid.UUID
+	Identifier *string
 }
 
 type UserRepository struct {
@@ -37,26 +35,24 @@ func (r *UserRepository) Create(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	user *model.User,
-) error {
+) (uuid.UUID, error) {
 	var createdUserID uuid.UUID
 	err := qe.QueryRow(
 		ctx,
 		`
 		INSERT INTO users (
-			email,
-			password_hash
+			identifier
 		)
-		VALUES ($1, $2)
+		VALUES ($1)
 		RETURNING id
 		`,
-		user.Email,
-		user.PasswordHash,
+		user.Identifier,
 	).Scan(&createdUserID)
 
 	if err != nil {
-		return fmt.Errorf("failed to create user: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to create user: %w", err)
 	}
-	return nil
+	return createdUserID, nil
 }
 
 func (r *UserRepository) Get(
@@ -68,13 +64,8 @@ func (r *UserRepository) Get(
 	query := `
 		SELECT
 			id,
-			email,
-			phone,
-			email_verified_at,
-			phone_verified_at,
+			identifier,
 			status,
-			password_hash,
-			password_changed_at,
 			last_login_at,
 			last_login_ip,
 			locked_until,
@@ -95,28 +86,18 @@ func (r *UserRepository) Get(
 		i++
 	}
 
-	if filter.Email != nil {
-		query += fmt.Sprintf(" AND email = $%d", i)
-		args = append(args, *filter.Email)
+	if filter.Identifier != nil {
+		query += fmt.Sprintf(" AND identifier = $%d", i)
+		args = append(args, *filter.Identifier)
 		i++
-	}
-
-	if filter.Phone != nil {
-		query += fmt.Sprintf(" AND phone = $%d", i)
-		args = append(args, *filter.Phone)
 	}
 
 	var u model.User
 
 	err := qe.QueryRow(ctx, query, args...).Scan(
 		&u.ID,
-		&u.Email,
-		&u.Phone,
-		&u.EmailVerifiedAt,
-		&u.PhoneVerifiedAt,
+		&u.Identifier,
 		&u.Status,
-		&u.PasswordHash,
-		&u.PasswordChangedAt,
 		&u.LastLoginAt,
 		&u.LastLoginIP,
 		&u.LockedUntil,
@@ -127,9 +108,6 @@ func (r *UserRepository) Get(
 	)
 
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("get user: %w", err)
 	}
 
@@ -147,13 +125,9 @@ func (r *UserRepository) Delete(
 		query += ` AND id = $1`
 		args = append(args, *filter.ID)
 	}
-	if filter.Email != nil {
-		query += ` AND email = $2`
-		args = append(args, *filter.Email)
-	}
-	if filter.Phone != nil {
-		query += ` AND phone = $3`
-		args = append(args, *filter.Phone)
+	if filter.Identifier != nil {
+		query += ` AND identifier = $2`
+		args = append(args, *filter.Identifier)
 	}
 
 	res, err := qe.Exec(
@@ -194,13 +168,8 @@ func (r *UserRepository) GetAll(
 		ctx,
 		`SELECT
 			id,
-			email,
-			phone,
-			email_verified_at,
-			phone_verified_at,
+			identifier,
 			status,
-			password_hash,
-			password_changed_at,
 			last_login_at,
 			last_login_ip,
 			suspended_until,
@@ -225,13 +194,8 @@ func (r *UserRepository) GetAll(
 
 		if err := rows.Scan(
 			&u.ID,
-			&u.Email,
-			&u.Phone,
-			&u.EmailVerifiedAt,
-			&u.PhoneVerifiedAt,
+			&u.Identifier,
 			&u.Status,
-			&u.PasswordHash,
-			&u.PasswordChangedAt,
 			&u.LastLoginAt,
 			&u.LastLoginIP,
 			&u.SuspendedUntil,
@@ -266,76 +230,4 @@ func (r *UserRepository) GetAll(
 	}
 
 	return users, page, nil
-}
-
-func (r *UserRepository) VerifyIdentifier(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	identifierType IdentifierType,
-	identifier string,
-) error {
-	query := `UPDATE users SET email_verified_at = NOW() WHERE deleted_at IS NULL AND email = $1`
-	if identifierType == IdentifierTypePhone {
-		query = `UPDATE users SET phone_verified_at = NOW() WHERE deleted_at IS NULL AND phone = $1`
-	}
-
-	res, err := qe.Exec(
-		ctx,
-		query,
-		identifier,
-	)
-	if err != nil {
-		return fmt.Errorf("verify user identifier: %w", err)
-	}
-
-	rows := res.RowsAffected()
-	if rows == 0 {
-		return sql.ErrNoRows
-	}
-
-	return nil
-}
-
-func (r *UserRepository) UpdatePasswordHash(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	filter Filter,
-	newPassHash []byte,
-) error {
-
-	query := `UPDATE users SET password_hash = $1,
-		updated_at = NOW()
-	WHERE deleted_at IS NULL`
-
-	args := []any{newPassHash}
-	i := 2
-
-	if filter.ID != nil {
-		query += fmt.Sprintf(" AND id = $%d", i)
-		args = append(args, *filter.ID)
-		i++
-	}
-
-	if filter.Email != nil {
-		query += fmt.Sprintf(" AND email = $%d", i)
-		args = append(args, *filter.Email)
-		i++
-	}
-
-	if filter.Phone != nil {
-		query += fmt.Sprintf(" AND phone = $%d", i)
-		args = append(args, *filter.Phone)
-	}
-
-	res, err := qe.Exec(ctx, query, args...)
-	if err != nil {
-		return fmt.Errorf("update password hash: %w", err)
-	}
-
-	rows := res.RowsAffected()
-	if rows == 0 {
-		return sql.ErrNoRows
-	}
-
-	return nil
 }

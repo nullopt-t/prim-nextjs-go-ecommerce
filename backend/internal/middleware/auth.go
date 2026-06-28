@@ -105,7 +105,6 @@ func Authanticate(secrets *config.Secrets) gin.HandlerFunc {
 		}
 
 		c.Set("userID", claims.UserID)
-		c.Set("userEmail", claims.UserEmail)
 		c.Set("userRole", claims.UserRole)
 		c.Next()
 	}

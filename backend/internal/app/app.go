@@ -5,7 +5,6 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/http/swagger"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/notifier"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/otp"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
@@ -59,23 +58,11 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		jobQueue,
 		app.logger,
 	)
-	// otp
-	otpRepo := otp.NewOTPStore(
-		app.redisClient,
-		app.logger,
-	)
 
 	rateLimiter := security.NewRateLimiter(
 		app.redisClient,
 	)
-	otpGen := otp.NewOTPGenerator()
 
-	otpService := otp.NewService(
-		otpRepo,
-		otpGen,
-		app.logger,
-		notifier,
-	)
 	// user
 	roleRepo := role.NewRoleRepository()
 	roleService := role.NewRoleService(txRunner, roleRepo)
@@ -94,12 +81,19 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		config.KeysCfg,
 	)
 
+	challengeService := auth.NewChallengeService(
+		app.redisClient,
+		auth.NewOTPGenerator(),
+		notifier,
+		app.logger,
+	)
+
 	authService := auth.NewAuthService(
 		app.logger,
+		challengeService,
 		userService,
 		roleService,
 		jwtService,
-		otpService,
 		app.redisClient,
 		notifier,
 		config.KeysCfg,

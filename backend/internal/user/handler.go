@@ -41,8 +41,6 @@ type UserResponse struct {
 func ToUserResponse(user model.User) UserResponse {
 	return UserResponse{
 		ID:             user.ID,
-		Email:          user.Email,
-		Phone:          user.Phone,
 		Status:         string(user.Status),
 		SuspendedUntil: user.SuspendedUntil,
 		LockedUntil:    user.LockedUntil,
@@ -102,7 +100,6 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 		api.SuccessResponse{
 			Data: UserResponse{
 				ID:          user.ID,
-				Email:       user.Email,
 				LockedUntil: user.LockedUntil,
 				CreatedAt:   user.CreatedAt,
 				UpdatedAt:   user.UpdatedAt,

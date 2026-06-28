@@ -17,13 +17,15 @@ const (
 )
 
 const (
-	CodeRateLimit    = "LIMIT_EXCEEDED"
-	CodeValidation   = "VALIDATION_ERROR"
-	CodeInternal     = "INTERNAL_ERROR"
-	CodeConflict     = "CONFLICT_ERROR"
-	CodeAuth         = "AUTH_ERROR"
-	CodeNotFound     = "NOT_FOUND"
-	CodeUnauthorized = "UNAUTHORIZED"
+	CodeRateLimit        = "LIMIT_EXCEEDED"
+	CodeValidation       = "VALIDATION_ERROR"
+	CodeInternal         = "INTERNAL_ERROR"
+	CodeConflict         = "CONFLICT_ERROR"
+	CodeAuth             = "AUTH_ERROR"
+	CodeExpired          = "EXPIRED"
+	CodeInvalidOrExpired = "INVALID_OR_EXPIRED"
+	CodeNotFound         = "NOT_FOUND"
+	CodeUnauthorized     = "UNAUTHORIZED"
 )
 
 func stack() string {

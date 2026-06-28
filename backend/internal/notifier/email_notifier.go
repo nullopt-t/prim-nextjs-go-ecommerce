@@ -1,10 +1,11 @@
 package notifier
 
 import (
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 	"context"
 	"encoding/json"
+
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 )
 
 type EmailNotifier struct {
@@ -24,28 +25,37 @@ func NewEmailNotifier(
 
 func (n *EmailNotifier) NotifyOTP(
 	ctx context.Context,
-	email, otp string,
+	channel,
+	identifier,
+	otp string,
 ) error {
 	n.logger.Debug("notify otp",
 		log.Meta{
-			"email": email,
-			"otp":   otp,
+			"identifier": identifier,
+			"otp":        otp,
 		},
 	)
 
 	payload, err := json.Marshal(
 		OTPPayload{
-			Email: email,
-			Code:  otp,
+			Identifier: identifier,
+			Code:       otp,
 		},
 	)
 	if err != nil {
 		return err
 	}
 
+	var msgType job.MessageType
+	if channel == "sms" {
+		msgType = job.MessageTypeSMS
+	} else if channel == "email" {
+		msgType = job.MessageTypeEmail
+	}
+
 	return n.queue.Enqueue(ctx,
 		job.NewJobMessage(
-			job.MessageTypeEmail,
+			msgType,
 			job.CommandEmailOTP,
 			payload,
 		),

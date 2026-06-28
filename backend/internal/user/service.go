@@ -11,10 +11,8 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 const ResetTokenTTL = 15 * time.Minute
@@ -54,7 +52,12 @@ func (s *UserService) get(
 			mappedErr,
 			database.ErrNotFound,
 		):
-			return nil, nil
+			return nil, security.NewSecureError(
+				http.StatusNotFound,
+				security.CodeNotFound,
+				"user not found",
+				err,
+			)
 		default:
 			return nil, security.NewSecureError(
 				http.StatusInternalServerError,
@@ -69,29 +72,15 @@ func (s *UserService) get(
 
 func (s *UserService) CreateUser(
 	ctx context.Context,
-	email string,
-	password string,
+	identifier string,
 ) (*model.User, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword(
-		[]byte(password),
-		bcrypt.DefaultCost,
-	)
-	if err != nil {
-		return nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to hash password",
-			err,
-		)
-	}
 	dummyUser := model.NewUser(
-		email,
-		hashedPassword,
+		identifier,
 	)
-	err = s.dbExecuter.WithDB(
+	err := s.dbExecuter.WithDB(
 		ctx,
 		func(db database.QueryExecutor) error {
-			err = s.repo.Create(
+			id, err := s.repo.Create(
 				ctx,
 				db,
 				dummyUser,
@@ -118,93 +107,17 @@ func (s *UserService) CreateUser(
 					)
 				}
 			}
+			dummyUser.ID = id
 			return nil
 		},
 	)
 	if err != nil {
 		return nil, err
 	}
+	s.logger.Info("created user", log.Meta{
+		"user": dummyUser,
+	})
 	return dummyUser, nil
-}
-
-func (s *UserService) Login(
-	ctx context.Context,
-	email string,
-	password string,
-) (*model.User, error) {
-	var user *model.User
-	err := s.dbExecuter.WithDB(ctx,
-		func(db database.QueryExecutor) error {
-			var err error
-			user, err = s.get(
-				ctx,
-				db,
-				Filter{
-					Email: &email,
-				},
-			)
-			if err != nil {
-				return err
-			}
-			if user == nil {
-				return security.NewSecureError(
-					http.StatusUnauthorized,
-					security.CodeUnauthorized,
-					"invalid credentials",
-					nil,
-				)
-			}
-			if err := bcrypt.CompareHashAndPassword(
-				[]byte(user.PasswordHash),
-				[]byte(password),
-			); err != nil {
-				return security.NewSecureError(
-					http.StatusUnauthorized,
-					security.CodeUnauthorized,
-					"invalid credentials",
-					nil,
-				)
-			}
-			return nil
-		})
-	return user, err
-}
-
-func (s *UserService) MarkEmailVerified(
-	ctx context.Context,
-	email string,
-) error {
-	err := s.dbExecuter.WithDB(ctx,
-		func(db database.QueryExecutor) error {
-			user, err := s.repo.Get(ctx, db, Filter{
-				Email: &email,
-			})
-			if err != nil {
-				return err
-			}
-
-			if user.EmailVerifiedAt != nil {
-				s.logger.Info(
-					"email is already verified",
-					log.Meta{
-						"userID": user.ID,
-						"email":  user.Email,
-					})
-				return nil
-			}
-
-			err = s.repo.VerifyIdentifier(
-				ctx,
-				db,
-				IdentifierTypeEmail,
-				email,
-			)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-	return err
 }
 
 func (s *UserService) GetUserByID(
@@ -230,26 +143,31 @@ func (s *UserService) GetUserByID(
 	return user, err
 }
 
-func (s *UserService) GetUserByEmail(
+func (s *UserService) GetUserByIdentifier(
 	ctx context.Context,
-	email string,
+	identifier string,
 ) (*model.User, error) {
 	var user *model.User
 	err := s.dbExecuter.WithDB(ctx,
 		func(db database.QueryExecutor) error {
-			var err error
-			user, err = s.get(
+			u, err := s.get(
 				ctx,
 				db,
 				Filter{
-					Email: &email,
+					Identifier: &identifier,
 				},
 			)
 			if err != nil {
 				return err
 			}
+			user = u
 			return nil
-		})
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return user, err
 }
 
@@ -303,45 +221,6 @@ func (s *UserService) DeleteUserByID(
 	)
 	if err != nil {
 		return err
-	}
-	return nil
-}
-
-func (s *UserService) UpdateUserPassword(
-	ctx context.Context,
-	user *model.User,
-	newPassword string,
-) error {
-	hashedPassword, err := utils.HashPassword(newPassword)
-	if err != nil {
-		return security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to process the credentials",
-			nil,
-		)
-	}
-
-	err = s.dbExecuter.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			return s.repo.UpdatePasswordHash(
-				ctx,
-				db,
-				Filter{
-					ID: &user.ID,
-				},
-				hashedPassword,
-			)
-		},
-	)
-	if err != nil {
-		return security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to update password",
-			err,
-		)
 	}
 	return nil
 }
