@@ -9,32 +9,18 @@ function Form({ formType }) {
 
     const inputTypes = [
         {
-            id: 1,
+            id: 'email-1',
             name: 'email',
             type: 'email',
             placeholder: 'Enter your email',
-            isExist: formType === 'login' || formType === 'register' || formType === 'forget' ? true : false
-        },
-        {
-            id: 2,
-            name: 'password',
-            type: 'password',
-            placeholder: 'Enter your password',
             isExist: formType === 'login' || formType === 'register' ? true : false
         },
         {
-            id: 3,
-            name: 'confirm password',
-            type: 'password',
-            placeholder: 'Confirm your password',
-            isExist: formType === 'register' ? true : false
-        },
-        {
-            id: 4,
-            name: 'password',
-            type: 'password',
-            placeholder: 'Enter your password',
-            isExist: formType === 'reset' ? true : false
+            id: 'code-1',
+            name: 'code',
+            type: 'text',
+            placeholder: 'Enter your code',
+            isExist: formType === 'verify' ? true : false
         }
     ];
 

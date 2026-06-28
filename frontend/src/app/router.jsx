@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Home } from '@/features/home/routes/home'
-import { Auth, Login, Register, Reset, Forgot } from '@/features/auth'
+import { Auth, Login, Register, Verify } from '@/features/auth'
 
 function Router() {
 
@@ -13,8 +13,7 @@ function Router() {
             <Route path='/auth' element={<Auth />}>
                 <Route path='login' element={<Login />} />
                 <Route path='register' element={<Register />} />
-                <Route path='forgot' element={<Forgot />} />
-                <Route path='reset' element={<Reset />} />
+                <Route path='verify' element={<Verify />} />
             </Route>
         </Routes>
     )

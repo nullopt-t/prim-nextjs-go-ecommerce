@@ -7,18 +7,17 @@ function FormTitle({ type }) {
 
     const title = type === 'login' ? 'welcome back.'
         : type === 'register' ? 'Create an Account' :
-            type === 'forget' ? 'Forgot Password?' :
-                type === 'reset' ? 'Verify OTP Code' : '';
+            type === 'verify' ? 'Verify OTP Code' : '';
 
     return (
         <p className='flex justify-between items-center capitalize text-foreground font-medium text-title-sm md:text-title-md lg:text-title-lg'>
             <span className=''>{title}</span>
 
             <span className='flex items-center gap-2.5 text-muted-foreground'>
-                <span className='hover:scale-85'>
+                <span className='hover:scale-85 hover:text-accent-foreground'>
                     <House className='size-6 cursor-pointer' />
                 </span>
-                <span className='hover:scale-85'>{theme === 'light' ?
+                <span className='hover:scale-85 hover:text-accent-foreground'>{theme === 'light' ?
                     <MdOutlineWbSunny onClick={toggle} className='size-6 cursor-pointer' />
                     :
                     <Moon onClick={toggle} className='size-6 cursor-pointer' />

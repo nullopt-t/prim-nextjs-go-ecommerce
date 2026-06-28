@@ -1,11 +1,11 @@
 
 function FormLinks({ type }) {
 
-    let isRemember = type === 'login' || type === 'register' ? true : false;
+    let isRemember = type === 'login' ? true : false;
 
-    let txt = type === 'login' ? 'Forgot password?' :
-        type === 'register' || type === 'forget' ?
-            'Already have an account?' : type === 'reset' ? 'Resend OTP' : '';
+    let txt = type === 'login' ? `Don't have an account?` :
+        type === 'register' ?
+            'Already have an account?' : type === 'verify' ? 'Resend OTP' : '';
 
     return (
         <div className='flex justify-between items-center text-txt-sm md:text-txt-md lg:text-txt-lg text-muted-foreground'>
