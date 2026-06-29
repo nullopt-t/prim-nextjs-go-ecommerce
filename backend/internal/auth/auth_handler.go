@@ -74,6 +74,18 @@ type VerifyChallengeRequest struct {
 	Code       string `json:"code" binding:"required,len=6,numeric"`
 }
 
+// StartChallenge godoc
+// @Summary Start an authentication challenge
+// @Description Starts an authentication challenge by sending a verification code to the provided email or phone number.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body StartChallengeRequest true "Challenge Request"
+// @Success 200 {object} api.DataResponse{data=StartChallengeResponse}
+// @Failure 400 {object} api.BadReqResponse
+// @Failure 429 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
+// @Router /auth/challenge/start [post]
 func (h *Handler) StartChallenge(c *gin.Context) {
 	var req StartChallengeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -124,6 +136,19 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 	})
 }
 
+// VerifyChallenge godoc
+// @Summary Verify an authentication challenge
+// @Description Verifies the one-time code sent to the user's email or phone and returns an access token and refresh token.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body VerifyChallengeRequest true "Challenge Verification Request"
+// @Success 200 {object} api.DataResponse{data=TokensResponse}
+// @Failure 400 {object} api.BadReqResponse
+// @Failure 401 {object} api.UnauthorizedResponse
+// @Failure 429 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
+// @Router /auth/challenge/verify [post]
 func (h *Handler) VerifyChallenge(c *gin.Context) {
 	var req VerifyChallengeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -153,6 +178,18 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 	)
 }
 
+// ResendChallenge godoc
+// @Summary Resend an authentication challenge
+// @Description Resends a new verification code to the provided email or phone number if allowed by the challenge policy.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body ResendChallengeRequest true "Resend Challenge Request"
+// @Success 200 {object} api.MessageResponse
+// @Failure 400 {object} api.BadReqResponse
+// @Failure 429 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
+// @Router /auth/challenge/resend [post]
 func (h *Handler) ResendChallenge(c *gin.Context) {
 	var req ResendChallengeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
