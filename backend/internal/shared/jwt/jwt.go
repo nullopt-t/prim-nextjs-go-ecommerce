@@ -5,15 +5,16 @@ import (
 	"encoding/hex"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 
 	_jwt "github.com/golang-jwt/jwt/v5"
 )
 
 type UserClaims struct {
-	UserID   string   `json:"user_id"`
-	UserRole []string `json:"user_role"`
-	Type     string   `json:"type"`
+	UserID   uuid.UUID `json:"user_id"`
+	UserRole []string  `json:"user_role"`
+	Type     string    `json:"type"`
 	_jwt.RegisteredClaims
 }
 
@@ -47,7 +48,7 @@ func RandomToken() (string, error) {
 func (s *JWTManager) GenerateAccessToken(claims *UserClaims) (string, error) {
 	claims.Type = "access_token"
 	claims.RegisteredClaims = _jwt.RegisteredClaims{
-		Subject:   claims.UserID,
+		Subject:   claims.UserID.String(),
 		IssuedAt:  _jwt.NewNumericDate(time.Now()),
 		ExpiresAt: _jwt.NewNumericDate(time.Now().Add(AccessTokenExpiration)),
 	}
@@ -62,7 +63,7 @@ func (s *JWTManager) GenerateAccessToken(claims *UserClaims) (string, error) {
 func (s *JWTManager) GenerateRefreshToken(claims *UserClaims) (string, error) {
 	claims.Type = "refresh_token"
 	claims.RegisteredClaims = _jwt.RegisteredClaims{
-		Subject:   claims.UserID,
+		Subject:   claims.UserID.String(),
 		IssuedAt:  _jwt.NewNumericDate(time.Now()),
 		ExpiresAt: _jwt.NewNumericDate(time.Now().Add(RefreshTokenExpiration)),
 	}

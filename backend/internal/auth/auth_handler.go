@@ -236,15 +236,9 @@ func (h *Handler) GetMe(c *gin.Context) {
 		return
 	}
 
-	userID, err := uuid.Parse(val.(string))
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-
 	user, roles, err := h.authService.GetCurrentUser(
 		c.Request.Context(),
-		userID,
+		val.(uuid.UUID),
 	)
 	if err != nil {
 		_ = c.Error(err)

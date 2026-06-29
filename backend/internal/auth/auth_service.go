@@ -98,14 +98,9 @@ func (s *AuthService) RotateToken(
 		return "", "", err
 	}
 
-	userID, err := uuid.Parse(claims.UserID)
-	if err != nil {
-		return "", "", err
-	}
-
 	user, err := s.userService.GetUserByID(
 		ctx,
-		userID,
+		claims.UserID,
 	)
 	if err != nil {
 		return "", "", err
@@ -120,7 +115,7 @@ func (s *AuthService) RotateToken(
 	}
 
 	newClaims := &jwt.UserClaims{
-		UserID:   user.ID.String(),
+		UserID:   user.ID,
 		UserRole: model.RolesToStrings(roles),
 	}
 
@@ -267,7 +262,7 @@ func (s *AuthService) VerifyChallange(
 	}
 
 	claims := &jwt.UserClaims{
-		UserID:   user.ID.String(),
+		UserID:   user.ID,
 		UserRole: model.RolesToStrings(roles),
 	}
 
