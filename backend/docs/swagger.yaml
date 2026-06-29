@@ -29,6 +29,11 @@ definitions:
       tags:
         type: string
     type: object
+  api.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
   api.PaginatedResponse:
     properties:
       data: {}
@@ -66,12 +71,45 @@ definitions:
     required:
     - refresh_token
     type: object
+  auth.ResendChallengeRequest:
+    properties:
+      identifier:
+        type: string
+    required:
+    - identifier
+    type: object
+  auth.StartChallengeRequest:
+    properties:
+      identifier:
+        type: string
+    required:
+    - identifier
+    type: object
+  auth.StartChallengeResponse:
+    properties:
+      duration:
+        type: integer
+      expires_at:
+        type: string
+      identifier:
+        type: string
+    type: object
   auth.TokensResponse:
     properties:
       access_token:
         type: string
       refresh_token:
         type: string
+    type: object
+  auth.VerifyChallengeRequest:
+    properties:
+      code:
+        type: string
+      identifier:
+        type: string
+    required:
+    - code
+    - identifier
     type: object
   product.CreateProductRequest:
     properties:
@@ -135,6 +173,125 @@ info:
   title: Prim API
   version: "1.0"
 paths:
+  /auth/challenge/resend:
+    post:
+      consumes:
+      - application/json
+      description: Resends a new verification code to the provided email or phone
+        number if allowed by the challenge policy.
+      parameters:
+      - description: Resend Challenge Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ResendChallengeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.BadReqResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Resend an authentication challenge
+      tags:
+      - Auth
+  /auth/challenge/start:
+    post:
+      consumes:
+      - application/json
+      description: Starts an authentication challenge by sending a verification code
+        to the provided email or phone number.
+      parameters:
+      - description: Challenge Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.StartChallengeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.StartChallengeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.BadReqResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Start an authentication challenge
+      tags:
+      - Auth
+  /auth/challenge/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verifies the one-time code sent to the user's email or phone and
+        returns an access token and refresh token.
+      parameters:
+      - description: Challenge Verification Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.VerifyChallengeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.TokensResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.BadReqResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Verify an authentication challenge
+      tags:
+      - Auth
   /auth/me:
     get:
       consumes:
