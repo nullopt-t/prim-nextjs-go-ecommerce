@@ -2,15 +2,15 @@
 @import "./theme.css";
 
 * {
-    transition: all 0.3s;
+	transition: all 0.3s;
 }
 
 html,
 body {
-    min-height: 100vh;
-    background-color: var(--page-bg);
+	min-height: 100vh;
+	background-color: var(--page-bg);
 }
 
 input {
-    outline: none;
+	outline: none;
 }

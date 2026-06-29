@@ -1,3 +1,5 @@
+import OverviewContent from "@/features/user/components/ui/overviewContent";
+
 export function Overview() {
-	return <></>;
+	return <OverviewContent></OverviewContent>;
 }
