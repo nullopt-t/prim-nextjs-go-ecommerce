@@ -3,12 +3,14 @@ definitions:
   api.BadReqResponse:
     properties:
       code:
+        example: BAD_REQUEST
         type: string
       details:
         items:
           $ref: '#/definitions/api.FieldError'
         type: array
       message:
+        example: field name should be string
         type: string
     type: object
   api.DataResponse:
@@ -18,21 +20,47 @@ definitions:
   api.ErrorResponse:
     properties:
       code:
+        example: CODE_ERROR
         type: string
       message:
+        example: an error occured
         type: string
     type: object
   api.FieldError:
     properties:
       field:
+        example: name
         type: string
       tags:
+        example: string
         type: string
     type: object
   api.MessageResponse:
     properties:
       message:
+        example: the request sent successfully
         type: string
+    type: object
+  api.Page:
+    properties:
+      has_next:
+        example: true
+        type: boolean
+      has_previous:
+        example: false
+        type: boolean
+      page:
+        example: 1
+        type: integer
+      page_size:
+        example: 10
+        type: integer
+      total_items:
+        example: 20
+        type: integer
+      total_pages:
+        example: 2
+        type: integer
     type: object
   api.PaginatedResponse:
     properties:
@@ -110,6 +138,38 @@ definitions:
     required:
     - code
     - identifier
+    type: object
+  category.CategoryResponse:
+    properties:
+      created_at:
+        example: "2026-06-30T15:47:19Z"
+        type: string
+      id:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+      name:
+        example: Electronic
+        type: string
+      parent_id:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+      slug:
+        example: electronic
+        type: string
+      updated_at:
+        example: "2026-06-30T15:47:19Z"
+        type: string
+    type: object
+  category.CreateCategoryRequest:
+    properties:
+      name:
+        example: electronic
+        type: string
+      parent_id:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+    required:
+    - name
     type: object
   product.CreateProductRequest:
     properties:
@@ -359,16 +419,171 @@ paths:
       summary: Rotate refresh token and issue new access and refresh tokens.
       tags:
       - Auth
+  /categories:
+    get:
+      consumes:
+      - application/json
+      description: list all categories
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/category.CategoryResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/api.Page'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: list all categories
+      tags:
+      - Category
+    post:
+      consumes:
+      - application/json
+      description: create a new category
+      parameters:
+      - description: 'Category Data '
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/category.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/category.CategoryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: create a new category
+      tags:
+      - Category
+  /categories/{id}:
+    get:
+      consumes:
+      - application/json
+      description: fetch a category by id
+      parameters:
+      - description: Category ID (UUID)
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/category.CategoryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: get a category by id
+      tags:
+      - Category
+  /categories/{slug}:
+    get:
+      consumes:
+      - application/json
+      description: fetch a category by slug
+      parameters:
+      - description: Category slug(string)
+        format: string
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/category.CategoryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: get a category by slug
+      tags:
+      - Category
   /products:
     get:
       consumes:
       - application/json
       description: Get all products
       parameters:
-      - in: query
+      - example: 1
+        in: query
         name: page
         type: integer
-      - in: query
+      - example: 10
+        in: query
         name: pageSize
         type: integer
       produces:
@@ -458,10 +673,12 @@ paths:
       - application/json
       description: fetch all the roles using pagination
       parameters:
-      - in: query
+      - example: 1
+        in: query
         name: page
         type: integer
-      - in: query
+      - example: 10
+        in: query
         name: pageSize
         type: integer
       produces:

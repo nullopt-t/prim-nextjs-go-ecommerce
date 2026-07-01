@@ -3,14 +3,14 @@
 CAUTION: Do not modify this file unless you know what you are doing.
  Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="2.0.0-beta" use-changelog="false" max-obj-count="4"
+<dbmodel pgmodeler-ver="2.0.0-beta" use-changelog="false" max-obj-count="15"
 	 gen-disabled-objs-code="false" show-sys-schemas-rects="true"
-	 last-position="0,204" last-zoom="0.95"
+	 last-position="633,184" last-zoom="0.9" scene-rect="-226.316,0,3175.65,1361.94"
 	 default-schema="public" default-owner="postgres"
 	 layers="Default layer"
 	 active-layers="0"
-	 layer-name-colors="#000000"
-	 layer-rect-colors="#b4b4b4"
+	 layer-name-colors="#62a0ea"
+	 layer-rect-colors="#1c71d8"
 	 show-layer-names="false" show-layer-rects="false">
 <database name="new_database" is-template="false" allow-conns="true">
 </database>
@@ -18,27 +18,15 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <schema name="public" layers="0" fill-color="#e1e1e1" name-color="#000000" sql-disabled="true">
 </schema>
 
-<table name="users" layers="0" collapse-mode="1" max-obj-count="15" z-value="0">
+<table name="users" layers="0" collapse-mode="1" max-obj-count="10" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="60" y="280"/>
+	<position x="520" y="480"/>
 	<column name="id" not-null="true" default-value="gen_random_uuid()">
 		<type name="uuid" length="0"/>
 	</column>
-	<column name="email" not-null="true">
+	<column name="identifier" not-null="true">
 		<type name="text" length="0"/>
-	</column>
-	<column name="password_hash" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<column name="phone">
-		<type name="text" length="0"/>
-	</column>
-	<column name="email_verified_at">
-		<type name="timestamptz" length="0"/>
-	</column>
-	<column name="phone_verified_at">
-		<type name="timestamptz" length="0"/>
 	</column>
 	<column name="status" not-null="true">
 		<type name="text" length="0"/>
@@ -79,7 +67,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="roles" layers="0" collapse-mode="1" max-obj-count="3" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="600" y="200"/>
+	<position x="-180" y="140"/>
 	<column name="id" not-null="true">
 		<type name="integer" length="0"/>
 	</column>
@@ -100,7 +88,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="user_roles" layers="0" collapse-mode="1" max-obj-count="3" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="560" y="460"/>
+	<position x="120" y="420"/>
 	<column name="id" not-null="true">
 		<type name="uuid" length="0"/>
 	</column>
@@ -118,7 +106,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="vendors" layers="0" collapse-mode="1" max-obj-count="6" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="520" y="640"/>
+	<position x="100" y="120"/>
 	<column name="id" not-null="true" default-value="gen_random_uuid()">
 		<type name="uuid" length="0"/>
 	</column>
@@ -145,6 +133,219 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	</constraint>
 </table>
 
+<table name="category" layers="0" collapse-mode="1" max-obj-count="4" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1073.33" y="368.889"/>
+	<column name="id" not-null="true" default-value="get_random_uuid()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="slug" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="parent_id" default-value="NULL">
+		<type name="uuid" length="0"/>
+	</column>
+	<constraint name="category_pk" type="pk-constr" table="public.category">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="products" layers="0" collapse-mode="2" max-obj-count="8" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="2040" y="820"/>
+	<column name="id" not-null="true" default-value="get_random_uuid()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="title" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="short_description" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="description" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="slug" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="brand_id">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="status" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<constraint name="products_pk" type="pk-constr" table="public.products">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+	<constraint name="status_ck" type="ck-constr" table="public.products">
+			<expression> <![CDATA[status IN ('draft', 'published')]]> </expression>
+	</constraint>
+</table>
+
+<table name="product_categories" layers="0" collapse-mode="1" max-obj-count="3" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1460" y="680"/>
+	<column name="id" not-null="true" default-value="gen_random_uuid()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="category_id" default-value="gen_random_uuid()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="product_id" default-value="gen_random_uuid()">
+		<type name="uuid" length="0"/>
+	</column>
+	<constraint name="product_categories_pk" type="pk-constr" table="public.product_categories">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="tags" layers="0" collapse-mode="1" max-obj-count="2" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="987.778" y="581.111"/>
+	<column name="id" not-null="true" default-value="gen_random_uuid()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<constraint name="tags_pk" type="pk-constr" table="public.tags">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="product_tags" layers="0" collapse-mode="1" max-obj-count="3" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1460" y="820"/>
+	<column name="id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="product_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="tag_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<constraint name="product_tags_pk" type="pk-constr" table="public.product_tags">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="variants" layers="0" collapse-mode="1" max-obj-count="6" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1480" y="980"/>
+	<column name="id" not-null="true" default-value="gen_random_uuid()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="product_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="sku" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="price" not-null="true">
+		<type name="bigint" length="0"/>
+	</column>
+	<column name="currency">
+		<type name="bigint" length="0"/>
+	</column>
+	<constraint name="variants_pk" type="pk-constr" table="public.variants">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="brands" layers="0" collapse-mode="1" max-obj-count="6" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="1480" y="1160"/>
+	<column name="id" not-null="true" default-value="gen_random_uuid()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="name" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="slug" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="logo_url">
+		<type name="text" length="0"/>
+	</column>
+	<column name="logo_label" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<constraint name="brands_pk" type="pk-constr" table="public.brands">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="product_media" layers="0" collapse-mode="1" max-obj-count="8" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="940" y="780"/>
+	<column name="id" not-null="true" default-value="gen_random_uuid()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="varient_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="url" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="type" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="mime_type" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="sort_order" not-null="true">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="url_label" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<constraint name="media_pk" type="pk-constr" table="public.product_media">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<table name="inventory" layers="0" collapse-mode="1" max-obj-count="4" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="920" y="1000"/>
+	<column name="id" not-null="true" default-value="gen_random_uuid()" generated="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="variant_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="quantity" not-null="true" default-value="0">
+		<type name="integer" length="0"/>
+	</column>
+	<column name="reserved_quantity" not-null="true" default-value="0">
+		<type name="integer" length="0"/>
+	</column>
+	<constraint name="inventory_pk" type="pk-constr" table="public.inventory">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<index name="products_slug_idx" table="public.products"
+	 concurrent="false" unique="false" fast-update="false" buffering="false" nulls-not-distinct="false"
+	 index-type="btree" factor="0">
+		<idxelement use-sorting="false">
+			<column name="slug"/>
+		</idxelement>
+	<columns names="slug"/>
+</index>
+
 <constraint name="user_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.users" table="public.user_roles">
 	<columns names="user_id" ref-type="src-columns"/>
@@ -160,6 +361,60 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <constraint name="user_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
 	 upd-action="NO ACTION" del-action="CASCADE" ref-table="public.users" table="public.vendors">
 	<columns names="user_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="parend_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.category" table="public.category">
+	<columns names="parent_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="brand_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.brands" table="public.products">
+	<columns names="brand_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="product_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.products" table="public.product_categories">
+	<columns names="product_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="category_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.category" table="public.product_categories">
+	<columns names="category_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="tag_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.tags" table="public.product_tags">
+	<columns names="tag_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="product_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.products" table="public.product_tags">
+	<columns names="product_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="product_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.products" table="public.variants">
+	<columns names="product_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="varient_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.variants" table="public.product_media">
+	<columns names="varient_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="variant_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.variants" table="public.inventory">
+	<columns names="variant_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
@@ -181,5 +436,72 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	 src-table="public.vendors"
 	 dst-table="public.users" reference-fk="user_id_fk"
 	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_product_categories_products" type="relfk" layers="0"
+	 src-table="public.product_categories"
+	 dst-table="public.products" reference-fk="product_id_fk"
+	 src-required="false" dst-required="false">
+	<label ref-type="name-label">
+		<position x="-48.3675" y="-63.56"/>
+	</label>
+</relationship>
+
+<relationship name="rel_product_categories_category" type="relfk" layers="0"
+	 src-table="public.product_categories"
+	 dst-table="public.category" reference-fk="category_id_fk"
+	 src-required="false" dst-required="false">
+	<label ref-type="name-label">
+		<position x="55.9028" y="11.2909"/>
+	</label>
+</relationship>
+
+<relationship name="rel_product_tags_tags" type="relfk" layers="0"
+	 src-table="public.product_tags"
+	 dst-table="public.tags" reference-fk="tag_id_fk"
+	 src-required="false" dst-required="true">
+	<label ref-type="name-label">
+		<position x="22.0996" y="-34.2863"/>
+	</label>
+</relationship>
+
+<relationship name="rel_product_tags_products" type="relfk" layers="0"
+	 src-table="public.product_tags"
+	 dst-table="public.products" reference-fk="product_id_fk"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_variants_products" type="relfk" layers="0"
+	 src-table="public.variants"
+	 dst-table="public.products" reference-fk="product_id_fk"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_products_brands" type="relfk" layers="0"
+	 src-table="public.products"
+	 dst-table="public.brands" reference-fk="brand_id_fk"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_media_variants" type="relfk" layers="0"
+	 src-table="public.product_media"
+	 dst-table="public.variants" reference-fk="varient_id_fk"
+	 src-required="false" dst-required="true">
+	<label ref-type="name-label">
+		<position x="29.102" y="28.9125"/>
+	</label>
+</relationship>
+
+<relationship name="rel_inventory_variants" type="relfk" layers="0"
+	 src-table="public.inventory"
+	 dst-table="public.variants" reference-fk="variant_id_fk"
+	 src-required="false" dst-required="true"/>
+
+<relationship name="rel_category_category" type="relfk" layers="0"
+	 src-table="public.category"
+	 dst-table="public.category" reference-fk="parend_id_fk"
+	 src-required="false" dst-required="false">
+	<line>
+		<position x="1269.37" y="414.664"/>
+	<position x="1269.37" y="346.889"/>
+	<position x="1189.36" y="346.889"/>
+	</line>
+</relationship>
 
 </dbmodel>

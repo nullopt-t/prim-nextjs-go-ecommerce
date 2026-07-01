@@ -131,9 +131,9 @@ func (r *RoleRepository) List(
 	}
 
 	page := &api.Page{
-		Page:     q.Page,
-		PageSize: len,
-		Total:    total,
+		Page:       q.Page,
+		PageSize:   len,
+		TotalItems: total,
 	}
 
 	return roles, page, nil

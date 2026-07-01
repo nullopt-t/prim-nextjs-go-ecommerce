@@ -167,9 +167,9 @@ func (r *ProductRepository) GetAll(
 	}
 
 	page := &api.Page{
-		Page:     q.Page,
-		PageSize: q.PageSize,
-		Total:    total,
+		Page:       q.Page,
+		PageSize:   q.PageSize,
+		TotalItems: total,
 	}
 
 	return products, page, nil

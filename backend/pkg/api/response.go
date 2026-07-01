@@ -1,12 +1,12 @@
 package api
 
 type FieldError struct {
-	Field string `json:"field"`
-	Tags  string `json:"tags"`
+	Field string `json:"field" example:"name"`
+	Tags  string `json:"tags" example:"string"`
 }
 
 type MessageResponse struct {
-	Message string `json:"message"`
+	Message string `json:"message" example:"the request sent successfully"`
 }
 
 type UnauthorizedResponse struct {
@@ -29,12 +29,12 @@ type DataResponse struct {
 }
 
 type BadReqResponse struct {
-	Code    string       `json:"code,omitempty"`
-	Message string       `json:"message,omitempty"`
+	Code    string       `json:"code,omitempty" example:"BAD_REQUEST"`
+	Message string       `json:"message,omitempty" example:"field name should be string"`
 	Details []FieldError `json:"details,omitempty"`
 }
 
 type ErrorResponse struct {
-	Code    string `json:"code,omitempty"`
-	Message string `json:"message,omitempty"`
+	Code    string `json:"code,omitempty" example:"CODE_ERROR"`
+	Message string `json:"message,omitempty" example:"an error occured"`
 }

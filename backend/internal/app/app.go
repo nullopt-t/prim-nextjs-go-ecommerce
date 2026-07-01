@@ -6,6 +6,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/notifier"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/category"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
@@ -124,6 +125,19 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	)
 
 	userRouter.MapRoutes(v1)
+
+	categoryRepo := category.NewRepository()
+	categoryService := category.NewService(
+		txRunner,
+		categoryRepo,
+	)
+	categoryHandler := category.NewHandler(
+		categoryService,
+	)
+	categoryRouter := category.NewRouter(
+		categoryHandler,
+	)
+	categoryRouter.MapRoutes(v1)
 
 	// inventoryRepo := inventory.NewPostgresRepository()
 	// inventoryService := inventory.NewService(txRunner, inventoryRepo)

@@ -1,0 +1,206 @@
+package category
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
+)
+
+type Filter struct {
+	ID   *uuid.UUID
+	Slug *string
+}
+
+type CategoryRepository struct {
+}
+
+func NewRepository() *CategoryRepository {
+	return &CategoryRepository{}
+}
+
+func (cr *CategoryRepository) Create(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	category *model.Category,
+) error {
+	_, err := qe.Exec(
+		ctx,
+		`
+		INSERT INTO
+		categories (
+			id,
+			name,
+			slug,
+			parent_id,
+			created_at,
+			updated_at
+		)
+		VALUES(
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6
+		)
+		`,
+		category.ID,
+		category.Name,
+		category.Slug,
+		category.ParentID,
+		category.CreatedAt,
+		category.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("create category: %w", err)
+	}
+	return err
+}
+
+func (cr *CategoryRepository) Get(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	filter Filter,
+) (*model.Category, error) {
+	var category model.Category
+
+	query :=
+		`
+			SELECT
+				id,
+				name,
+				slug,
+				parent_id,
+				created_at,
+				updated_at
+			FROM
+				categories
+			WHERE
+			deleted_at IS NULL
+		`
+
+	args := []any{}
+	argID := 1
+	if filter.ID != nil {
+		query += fmt.Sprintf(" AND id = $%d", argID)
+		args = append(args, *filter.ID)
+		argID++
+	}
+
+	if filter.Slug != nil {
+		query += fmt.Sprintf(" AND slug = $%d", argID)
+		args = append(args, *filter.Slug)
+		argID++
+	}
+
+	err := qe.QueryRow(
+		ctx,
+		query,
+		args...,
+	).Scan(
+		&category.ID,
+		&category.Name,
+		&category.Slug,
+		&category.ParentID,
+		&category.CreatedAt,
+		&category.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("get category: %w", err)
+	}
+
+	return &category, nil
+}
+
+func (cr *CategoryRepository) List(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	q *api.PageQuery,
+) ([]*model.Category, *api.Page, error) {
+	offset := (q.Page - 1) * q.PageSize
+
+	query := `
+	SELECT
+		id,
+		name,
+		slug,
+		parent_id,
+		created_at,
+		updated_at
+	FROM
+		categories
+	WHERE
+		deleted_at IS NULL
+	LIMIT $1
+	OFFSET $2
+	`
+
+	var total int
+	err := qe.QueryRow(
+		ctx,
+		`
+		SELECT
+			COUNT(id)
+		FROM
+			categories
+		`,
+	).Scan(&total)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list categories: %w", err)
+	}
+
+	rows, err := qe.Query(
+		ctx,
+		query,
+		q.PageSize,
+		offset,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list categories: %w", err)
+	}
+
+	var result = make(
+		[]*model.Category,
+		0,
+	)
+
+	for rows.Next() {
+		var c model.Category
+		err = rows.Scan(
+			&c.ID,
+			&c.Name,
+			&c.Slug,
+			&c.ParentID,
+			&c.CreatedAt,
+			&c.UpdatedAt,
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf("list categories: %w", err)
+		}
+		result = append(
+			result,
+			&c,
+		)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("list categories: %w", err)
+	}
+
+	totalPages := (total + q.PageSize - 1) / q.PageSize
+	p := &api.Page{
+		Page:        q.Page,
+		PageSize:    q.PageSize,
+		TotalItems:  total,
+		TotalPages:  totalPages,
+		HasPrevious: q.Page > 1,
+		HasNext:     q.Page < totalPages,
+	}
+
+	return result, p, nil
+}

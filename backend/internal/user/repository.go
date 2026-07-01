@@ -224,9 +224,9 @@ func (r *UserRepository) GetAll(
 	}
 
 	page := api.Page{
-		Page:     q.Page,
-		PageSize: q.PageSize,
-		Total:    total,
+		Page:       q.Page,
+		PageSize:   q.PageSize,
+		TotalItems: total,
 	}
 
 	return users, page, nil
