@@ -26,7 +26,8 @@ func MapError(err error) error {
 		return ErrNotFound
 	}
 
-	if pgErr, ok := err.(*pgconn.PgError); ok {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
 
 		// Unique violation

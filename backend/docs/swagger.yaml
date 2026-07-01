@@ -139,6 +139,43 @@ definitions:
     - code
     - identifier
     type: object
+  brand.BrandResponse:
+    properties:
+      created_at:
+        example: "2026-07-01T05:04:38Z"
+        type: string
+      id:
+        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
+        type: string
+      logo_label:
+        example: nvidia logo
+        type: string
+      logo_url:
+        example: https://pictures.com/nvidia.png
+        type: string
+      name:
+        example: nvidia
+        type: string
+      udpated_at:
+        example: "2026-07-01T05:04:38Z"
+        type: string
+    type: object
+  brand.CreateBrandRequest:
+    properties:
+      logo_label:
+        example: apple logo
+        type: string
+      logo_url:
+        example: https://pictures.com/apple.png
+        type: string
+      name:
+        example: apple
+        type: string
+    required:
+    - logo_label
+    - logo_url
+    - name
+    type: object
   category.CategoryResponse:
     properties:
       created_at:
@@ -419,6 +456,100 @@ paths:
       summary: Rotate refresh token and issue new access and refresh tokens.
       tags:
       - Auth
+  /brands:
+    get:
+      consumes:
+      - application/json
+      description: list all the brands in pages
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.PaginatedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: list all the brands in pages
+      tags:
+      - Brand
+    post:
+      consumes:
+      - application/json
+      description: create a new products brand
+      parameters:
+      - description: brand data
+        in: body
+        name: brand
+        required: true
+        schema:
+          $ref: '#/definitions/brand.CreateBrandRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/brand.BrandResponse'
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: create a new products brand
+      tags:
+      - Brand
+  /brands/{id}:
+    get:
+      consumes:
+      - application/json
+      description: get brand by id
+      parameters:
+      - in: path
+        name: id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/brand.BrandResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: get brand by id
+      tags:
+      - Brand
   /categories:
     get:
       consumes:

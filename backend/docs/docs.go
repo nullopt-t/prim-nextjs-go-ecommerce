@@ -320,6 +320,159 @@ const docTemplate = `{
                 }
             }
         },
+        "/brands": {
+            "get": {
+                "description": "list all the brands in pages",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand"
+                ],
+                "summary": "list all the brands in pages",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.PaginatedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "create a new products brand",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand"
+                ],
+                "summary": "create a new products brand",
+                "parameters": [
+                    {
+                        "description": "brand data",
+                        "name": "brand",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/brand.CreateBrandRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/brand.BrandResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/brands/{id}": {
+            "get": {
+                "description": "get brand by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand"
+                ],
+                "summary": "get brand by id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "name": "id",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/brand.BrandResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/categories": {
             "get": {
                 "description": "list all categories",
@@ -979,6 +1132,57 @@ const docTemplate = `{
                 },
                 "identifier": {
                     "type": "string"
+                }
+            }
+        },
+        "brand.BrandResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-07-01T05:04:38Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "logo_label": {
+                    "type": "string",
+                    "example": "nvidia logo"
+                },
+                "logo_url": {
+                    "type": "string",
+                    "example": "https://pictures.com/nvidia.png"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "nvidia"
+                },
+                "udpated_at": {
+                    "type": "string",
+                    "example": "2026-07-01T05:04:38Z"
+                }
+            }
+        },
+        "brand.CreateBrandRequest": {
+            "type": "object",
+            "required": [
+                "logo_label",
+                "logo_url",
+                "name"
+            ],
+            "properties": {
+                "logo_label": {
+                    "type": "string",
+                    "example": "apple logo"
+                },
+                "logo_url": {
+                    "type": "string",
+                    "example": "https://pictures.com/apple.png"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "apple"
                 }
             }
         },
