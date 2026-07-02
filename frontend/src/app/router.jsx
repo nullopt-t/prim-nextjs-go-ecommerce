@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { Cart } from "@/features/cart";
 import { Home } from "@/features/home";
 import { Auth, Login, Register, Verify } from "@/features/auth";
 import {
@@ -34,6 +35,8 @@ function Router() {
 				<Route path="wishlist" element={<Wishlist />} />
 				<Route path="address" element={<Address />} />
 			</Route>
+
+			<Route path="/cart" element={<Cart />} />
 		</Routes>
 	);
 }
