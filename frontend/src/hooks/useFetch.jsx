@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import GetData from "@/api/get";
 
-function useFetch(endpoint) {
+function useFetch(func, endpoint) {
 	const [data, setData] = useState();
 	const [errorMsg, setErrorMsg] = useState();
 	const [loading, setLoading] = useState(() => true);
@@ -9,7 +8,7 @@ function useFetch(endpoint) {
 	useEffect(() => {
 		const brngData = async () => {
 			try {
-				const result = await GetData(endpoint);
+				const result = await func(endpoint);
 				setData(result);
 			} catch (error) {
 				setErrorMsg(error);
@@ -19,7 +18,7 @@ function useFetch(endpoint) {
 		};
 
 		brngData();
-	}, [endpoint]);
+	}, [func, endpoint]);
 
 	return { data, loading, errorMsg };
 }
