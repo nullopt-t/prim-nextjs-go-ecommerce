@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 )
@@ -77,6 +78,60 @@ func (th *TagHandler) CreateTag(c *gin.Context) {
 			},
 		},
 	)
+}
+
+type TagURIParam struct {
+	ID string `uri:"id" binding:"uuid"`
+}
+
+// GetTagByID godoc
+// @Summary get tag by id
+// @Description get tag by id
+// @Tags Tag
+// @Accept json
+// @Produce json
+// @Param id path TagURIParam true "tag id"
+// @Failure 404 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
+// @Success 200 {object} api.DataResponse
+// @Router /tags/{id} [get]
+func (th *TagHandler) GetTagByID(c *gin.Context) {
+	var param TagURIParam
+	if err := c.ShouldBindUri(&param); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	tagID, err := uuid.Parse(param.ID)
+	if err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	ctx := c.Request.Context()
+	tag, err := th.tservice.GetTagByID(
+		ctx,
+		tagID,
+	)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	res := &TagResponse{
+		ID:        tag.ID.String(),
+		Name:      tag.Name,
+		CreatedAt: tag.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: tag.UpdatedAt.Format(time.RFC3339),
+	}
+
+	c.JSON(
+		http.StatusOK,
+		api.DataResponse{
+			Data: res,
+		},
+	)
+
 }
 
 // ListTags godoc

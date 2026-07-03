@@ -940,6 +940,33 @@ paths:
       summary: create a new products tag
       tags:
       - Tag
+  /tags/{id}:
+    get:
+      consumes:
+      - application/json
+      description: get tag by id
+      parameters:
+      - in: path
+        name: id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DataResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: get tag by id
+      tags:
+      - Tag
 security:
 - BearerAuth: []
 securityDefinitions:

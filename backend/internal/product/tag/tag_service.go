@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
@@ -56,6 +57,52 @@ func (ts *TagService) CreateTag(
 				http.StatusConflict,
 				security.CodeConflict,
 				"resource already existed",
+				err,
+			)
+		default:
+			return nil, security.NewSecureError(
+				http.StatusInternalServerError,
+				security.CodeInternal,
+				"internal server error",
+				err,
+			)
+		}
+	}
+
+	return tag, nil
+}
+
+func (ts *TagService) GetTagByID(
+	ctx context.Context,
+	tagID uuid.UUID,
+) (*model.Tag, error) {
+	var tag *model.Tag
+	err := ts.qexecuter.WithDB(ctx,
+		func(db database.QueryExecutor) error {
+			t, err := ts.trepo.Get(
+				ctx,
+				db,
+				&Filter{
+					ID: &tagID,
+				},
+			)
+			if err != nil {
+				return err
+			}
+			tag = t
+			return nil
+		})
+	if err != nil {
+		mappedError := database.MapError(err)
+		switch {
+		case errors.Is(
+			mappedError,
+			database.ErrNotFound,
+		):
+			return nil, security.NewSecureError(
+				http.StatusNotFound,
+				security.CodeNotFound,
+				"resource not found",
 				err,
 			)
 		default:
