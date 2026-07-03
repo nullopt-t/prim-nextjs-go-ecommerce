@@ -12,5 +12,6 @@ func NewRouter(h *TagHandler) *TagRouter {
 
 func (tr *TagRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	tags := vgroup.Group("/tags")
+	tags.GET("", tr.th.ListTags)
 	tags.POST("", tr.th.CreateTag)
 }

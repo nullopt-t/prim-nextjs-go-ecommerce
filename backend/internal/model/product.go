@@ -15,8 +15,12 @@ type Tag struct {
 }
 
 func NewTag(name string) *Tag {
+	now := time.Now().UTC()
 	return &Tag{
-		Name: name,
+		ID:        uuid.New(),
+		Name:      name,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 }
 

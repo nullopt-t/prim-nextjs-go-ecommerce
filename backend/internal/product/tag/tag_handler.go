@@ -38,10 +38,12 @@ type TagResponse struct {
 // @Tags Tag
 // @Accept json
 // @Produce json
+// @Param data body CreateTagRequest true "tag data"
 // @Failure 400 {object} api.ErrorResponse
 // @Failure 404 {object} api.ErrorResponse
 // @Failure 500 {object} api.ErrorResponse
 // @Success 201 {object} api.DataResponse{data=TagResponse}
+// @Router /tags [post]
 func (th *TagHandler) CreateTag(c *gin.Context) {
 	var req CreateTagRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -73,6 +75,60 @@ func (th *TagHandler) CreateTag(c *gin.Context) {
 				CreatedAt: tag.CreatedAt.Format(time.RFC3339),
 				UpdatedAt: tag.UpdatedAt.Format(time.RFC3339),
 			},
+		},
+	)
+}
+
+// ListTags godoc
+// @Summary list all tags
+// @Description list all tags
+// @Tags Tag
+// @Accept json
+// @Produce json
+// @Param q query api.PageQuery true "url query"
+// @Failure 500 {object} api.ErrorResponse
+// @Success 200 {object} api.PaginatedResponse{data=[]TagResponse,meta=api.Page}
+// @Router /tags [get]
+func (th *TagHandler) ListTags(c *gin.Context) {
+	var q api.PageQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	if q.Page == 0 {
+		q.Page = 1
+	}
+
+	if q.PageSize == 0 {
+		q.PageSize = 10
+	}
+
+	ctx := c.Request.Context()
+	tags, page, err := th.tservice.ListTags(
+		ctx,
+		&q,
+	)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	var res = make([]*TagResponse, 0, len(tags))
+	for _, tag := range tags {
+		res = append(res, &TagResponse{
+			ID:        tag.ID.String(),
+			Name:      tag.Name,
+			CreatedAt: tag.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: tag.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+
+	c.JSON(
+		http.StatusOK,
+		api.PaginatedResponse{
+			Data: res,
+			Meta: page,
 		},
 	)
 }

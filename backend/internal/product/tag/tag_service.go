@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
@@ -68,4 +69,40 @@ func (ts *TagService) CreateTag(
 	}
 
 	return tag, nil
+}
+
+func (ts *TagService) ListTags(
+	ctx context.Context,
+	q *api.PageQuery,
+) ([]*model.Tag, *api.Page, error) {
+	var tags []*model.Tag
+	var page *api.Page
+	err := ts.qexecuter.WithDB(
+		ctx,
+		func(db database.QueryExecutor) error {
+			ts, p, err := ts.trepo.List(
+				ctx,
+				db,
+				q,
+			)
+			if err != nil {
+				return err
+			}
+			tags = ts
+			page = p
+			return nil
+		},
+	)
+	if err != nil {
+		switch {
+		default:
+			return nil, nil, security.NewSecureError(
+				http.StatusInternalServerError,
+				security.CodeInternal,
+				"failed to fetch the categories",
+				err,
+			)
+		}
+	}
+	return tags, page, nil
 }

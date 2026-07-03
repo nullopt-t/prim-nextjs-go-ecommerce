@@ -257,6 +257,13 @@ definitions:
       updated_at:
         type: string
     type: object
+  tag.CreateTagRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
   tag.TagResponse:
     properties:
       created_at:
@@ -858,6 +865,81 @@ paths:
       summary: fetch all the roles using pagination
       tags:
       - Roles
+  /tags:
+    get:
+      consumes:
+      - application/json
+      description: list all tags
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/tag.TagResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/api.Page'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: list all tags
+      tags:
+      - Tag
+    post:
+      consumes:
+      - application/json
+      description: create a new products tag
+      parameters:
+      - description: tag data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/tag.CreateTagRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/tag.TagResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: create a new products tag
+      tags:
+      - Tag
 security:
 - BearerAuth: []
 securityDefinitions:
