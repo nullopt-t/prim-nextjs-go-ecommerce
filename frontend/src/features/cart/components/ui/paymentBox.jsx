@@ -1,7 +1,10 @@
+import CustomButton from "@/components/ui/button";
+import PaymentMethods from "@/features/cart/components/ui/paymentMethods";
+
 function PaymentBox() {
 	return (
 		<div className="border border-border p-2.5 md:p-5 rounded-md">
-			<p className="mb-5">Order summary</p>
+			<p className="mb-5 font-medium">Order summary</p>
 			<div className="flex flex-col gap-2.5 mb-5">
 				<p className="flex justify-between text-txt-sm md:text-txt-sm lg:text-txt-sm">
 					<span className="text-muted-foreground">Subtotal</span>
@@ -24,6 +27,12 @@ function PaymentBox() {
 					<span className="text-foreground font-medium">Total</span>
 					<span className="text-foreground font-medium">$625.50</span>
 				</p>
+			</div>
+			<div className="mt-5 h-12">
+				<CustomButton text="Proceed to checkout" />
+			</div>
+			<div className="mt-5">
+				<PaymentMethods />
 			</div>
 		</div>
 	);
