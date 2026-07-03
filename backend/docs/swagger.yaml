@@ -257,6 +257,21 @@ definitions:
       updated_at:
         type: string
     type: object
+  tag.TagResponse:
+    properties:
+      created_at:
+        example: "2026-06-30T15:47:19Z"
+        type: string
+      id:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+      name:
+        example: black-friday
+        type: string
+      updated_at:
+        example: "2026-06-30T15:47:19Z"
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -476,7 +491,16 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.PaginatedResponse'
+            allOf:
+            - $ref: '#/definitions/api.PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/brand.BrandResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/api.Page'
+              type: object
         "500":
           description: Internal Server Error
           schema:

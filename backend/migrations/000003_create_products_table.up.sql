@@ -11,6 +11,17 @@ CREATE TABLE brands (
 CREATE INDEX brands_name_idx ON brands(name)
   WHERE deleted_at IS NULL;
 
+CREATE TABLE tags (
+  id UUID PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  deleted_at TIMESTAMPTZ NULL
+)
+
+CREATE INDEX tags_name_idx ON brands(name)
+  WHERE deleted_at IS NULL;
+
 DROP TYPE IF EXISTS tproduct_status;
 CREATE TYPE tproduct_status AS ENUM(
   'draft',
@@ -23,7 +34,7 @@ CREATE TYPE tcurrency AS ENUM(
   'USD',
   'EUR',
   'EGP'
-);
+)
 
 CREATE TABLE products (
   id UUID PRIMARY KEY NOT NULL,

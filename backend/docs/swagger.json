@@ -345,7 +345,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.PaginatedResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/brand.BrandResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/api.Page"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
@@ -1295,6 +1313,27 @@
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "tag.TagResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-06-30T15:47:19Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "black-friday"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-06-30T15:47:19Z"
                 }
             }
         }
