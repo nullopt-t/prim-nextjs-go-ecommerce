@@ -10,12 +10,10 @@ function FormTitle({ type }) {
 
 	const title =
 		type === "login"
-			? "welcome back."
-			: type === "register"
-				? "Create an Account"
-				: type === "verify"
-					? "Verify OTP Code"
-					: "";
+			? "Get Started"
+			: type === "verify"
+				? "Verify OTP Code"
+				: "";
 
 	return (
 		<p className="flex justify-between items-center capitalize text-foreground font-medium text-title-sm md:text-title-md lg:text-title-lg">

@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Cart } from "@/features/cart";
 import { Home } from "@/features/home";
-import { Auth, Login, Register, Verify } from "@/features/auth";
+import { Auth, Login, Verify } from "@/features/auth";
 import {
 	User,
 	Payment,
@@ -22,7 +22,6 @@ function Router() {
 
 			<Route path="/auth" element={<Auth />}>
 				<Route path="login" element={<Login />} />
-				<Route path="register" element={<Register />} />
 				<Route path="verify" element={<Verify />} />
 			</Route>
 
