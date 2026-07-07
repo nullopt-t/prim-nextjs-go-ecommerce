@@ -62,7 +62,7 @@ func (tr *TagRepository) Get(
 	filter *Filter,
 ) (*model.Tag, error) {
 	query := `
-	SELECT 
+	SELECT
 		id,
 		name,
 		created_at,
@@ -107,17 +107,17 @@ func (tr *TagRepository) Get(
 func (tr *TagRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	q *api.PageQuery,
+	q *api.ListQuery,
 ) ([]*model.Tag, *api.Page, error) {
 	query := `
-	SELECT 
+	SELECT
 		id,
 		name,
 		created_at,
 		updated_at
-	FROM 
+	FROM
 		tags
-	WHERE 
+	WHERE
 		deleted_at IS NULL
 	LIMIT $1
 	OFFSET $2
@@ -161,9 +161,9 @@ func (tr *TagRepository) List(
 	err = qe.QueryRow(
 		ctx,
 		`
-		SELECT 
+		SELECT
 			COUNT(id)
-		FROM 
+		FROM
 			tags
 		`).Scan(&total)
 	if err != nil {

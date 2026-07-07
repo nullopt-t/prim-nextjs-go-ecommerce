@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
@@ -36,14 +37,18 @@ type CreateCategoryInput struct {
 func (cs *CategoryService) CreateCategory(
 	ctx context.Context,
 	in CreateCategoryInput,
-) (*model.Category, error) {
+) (*model.ProductCategory, error) {
 	slug := utils.Slugify(in.Name)
 
-	category := model.NewCategory(
-		in.Name,
-		slug,
-		in.ParentID,
-	)
+	now := time.Now()
+	category := &model.ProductCategory{
+		ID:        uuid.New(),
+		Name:      in.Name,
+		Slug:      slug,
+		ParentID:  in.ParentID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
 
 	err := cs.qexecuter.WithDB(
 		ctx,
@@ -84,8 +89,8 @@ func (cs *CategoryService) CreateCategory(
 func (cs *CategoryService) GetCategoryByID(
 	ctx context.Context,
 	categoryID uuid.UUID,
-) (*model.Category, error) {
-	var category *model.Category
+) (*model.ProductCategory, error) {
+	var category *model.ProductCategory
 	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		c, err := cs.crepository.Get(
 			ctx,
@@ -132,8 +137,8 @@ func (cs *CategoryService) GetCategoryByID(
 func (cs *CategoryService) GetCategoryBySlug(
 	ctx context.Context,
 	slug string,
-) (*model.Category, error) {
-	var category *model.Category
+) (*model.ProductCategory, error) {
+	var category *model.ProductCategory
 	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		c, err := cs.crepository.Get(
 			ctx,
@@ -179,9 +184,9 @@ func (cs *CategoryService) GetCategoryBySlug(
 
 func (cs *CategoryService) List(
 	ctx context.Context,
-	q *api.PageQuery,
-) ([]*model.Category, *api.Page, error) {
-	var res []*model.Category
+	q *api.ListQuery,
+) ([]*model.ProductCategory, *api.Page, error) {
+	var res []*model.ProductCategory
 	var page *api.Page
 	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		categories, p, err := cs.crepository.List(
@@ -197,16 +202,12 @@ func (cs *CategoryService) List(
 		return nil
 	})
 	if err != nil {
-		// mappedError := database.MapError(err)
-		switch {
-		default:
-			return nil, nil, security.NewSecureError(
-				http.StatusInternalServerError,
-				security.CodeInternal,
-				"failed to fetch the categories",
-				err,
-			)
-		}
+		return nil, nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch the categories",
+			err,
+		)
 	}
 	return res, page, nil
 }

@@ -13,7 +13,7 @@ import (
 
 type UserClaims struct {
 	UserID   uuid.UUID `json:"user_id"`
-	UserRole []string  `json:"user_role"`
+	UserRole string    `json:"user_role,omitempty"`
 	Type     string    `json:"type"`
 	_jwt.RegisteredClaims
 }

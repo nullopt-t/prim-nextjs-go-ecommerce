@@ -36,7 +36,7 @@ func (br *BrandRepository) Create(
 			logo_label,
 			created_at,
 			updated_at
-		) 
+		)
 		VALUES(
 			$1,
 			$2,
@@ -49,7 +49,7 @@ func (br *BrandRepository) Create(
 		brand.ID,
 		brand.Name,
 		brand.LogoURL,
-		brand.LogoLabel,
+		brand.LogoAlt,
 		brand.CreatedAt,
 		brand.UpdatedAt,
 	)
@@ -95,7 +95,7 @@ func (br *BrandRepository) Get(
 		&brand.ID,
 		&brand.Name,
 		&brand.LogoURL,
-		&brand.LogoLabel,
+		&brand.LogoAlt,
 		&brand.CreatedAt,
 		&brand.UpdatedAt,
 	)
@@ -108,10 +108,10 @@ func (br *BrandRepository) Get(
 func (br *BrandRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	q *api.PageQuery,
+	q *api.ListQuery,
 ) ([]*model.Brand, *api.Page, error) {
 	query := `
-	SELECT 
+	SELECT
 		id,
 		name,
 		logo_url,
@@ -156,7 +156,7 @@ func (br *BrandRepository) List(
 			&brand.ID,
 			&brand.Name,
 			&brand.LogoURL,
-			&brand.LogoLabel,
+			&brand.LogoAlt,
 			&brand.CreatedAt,
 			&brand.UpdatedAt,
 		)

@@ -74,16 +74,21 @@ func (s *UserService) CreateUser(
 	ctx context.Context,
 	identifier string,
 ) (*model.User, error) {
-	dummyUser := model.NewUser(
-		identifier,
-	)
+
+	now := time.Now()
+	u := &model.User{
+		Identifier: identifier,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+
 	err := s.dbExecuter.WithDB(
 		ctx,
 		func(db database.QueryExecutor) error {
 			id, err := s.repo.Create(
 				ctx,
 				db,
-				dummyUser,
+				u,
 			)
 			if err != nil {
 				mappedErr := database.MapError(err)
@@ -107,7 +112,7 @@ func (s *UserService) CreateUser(
 					)
 				}
 			}
-			dummyUser.ID = id
+			u.ID = id
 			return nil
 		},
 	)
@@ -115,9 +120,9 @@ func (s *UserService) CreateUser(
 		return nil, err
 	}
 	s.logger.Info("created user", log.Meta{
-		"user": dummyUser,
+		"user": u,
 	})
-	return dummyUser, nil
+	return u, nil
 }
 
 func (s *UserService) GetUserByID(
@@ -173,7 +178,7 @@ func (s *UserService) GetUserByIdentifier(
 
 func (s *UserService) GetAllUsers(
 	ctx context.Context,
-	q api.PageQuery,
+	q api.ListQuery,
 ) ([]model.User, api.Page, error) {
 	var users []model.User
 	var page api.Page

@@ -23,16 +23,16 @@ func NewHandler(
 }
 
 type CreateBrandRequest struct {
-	Name      string `json:"name" binding:"required" example:"apple"`
-	LogoURL   string `json:"logo_url" binding:"required" example:"https://pictures.com/apple.png"`
-	LogoLable string `json:"logo_label" binding:"required" example:"apple logo"`
+	Name    string `json:"name" binding:"required" example:"apple"`
+	LogoURL string `json:"logo_url" binding:"required" example:"https://pictures.com/apple.png"`
+	LogoAlt string `json:"logo_alt" binding:"required" example:"apple logo"`
 }
 
 type BrandResponse struct {
 	ID        uuid.UUID `json:"id" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
 	Name      string    `json:"name" example:"nvidia"`
 	LogoURL   string    `json:"logo_url" example:"https://pictures.com/nvidia.png"`
-	LogoLabel string    `json:"logo_label" example:"nvidia logo"`
+	LogoAlt   string    `json:"logo_alt" example:"nvidia logo"`
 	CreatedAt string    `json:"created_at" example:"2026-07-01T05:04:38Z"`
 	UpdatedAt string    `json:"udpated_at" example:"2026-07-01T05:04:38Z"`
 }
@@ -55,10 +55,10 @@ func (bh *BrandHandler) CreateBrand(c *gin.Context) {
 		return
 	}
 
-	in := CreateBrandInput{
-		Name:      req.Name,
-		LogoURL:   req.LogoURL,
-		LogoLabel: req.LogoLable,
+	in := &CreateBrandInput{
+		Name:    req.Name,
+		LogoURL: req.LogoURL,
+		LogoAlt: req.LogoAlt,
 	}
 
 	ctx := c.Request.Context()
@@ -78,7 +78,7 @@ func (bh *BrandHandler) CreateBrand(c *gin.Context) {
 				ID:        brand.ID,
 				Name:      brand.Name,
 				LogoURL:   brand.LogoURL,
-				LogoLabel: brand.LogoLabel,
+				LogoAlt:   brand.LogoAlt,
 				CreatedAt: brand.CreatedAt.Format(time.RFC3339),
 				UpdatedAt: brand.UpdatedAt.Format(time.RFC3339),
 			},
@@ -131,7 +131,7 @@ func (bh *BrandHandler) GetBrandByID(c *gin.Context) {
 				ID:        brand.ID,
 				Name:      brand.Name,
 				LogoURL:   brand.LogoURL,
-				LogoLabel: brand.LogoLabel,
+				LogoAlt:   brand.LogoAlt,
 				CreatedAt: brand.CreatedAt.Format(time.RFC3339),
 				UpdatedAt: brand.UpdatedAt.Format(time.RFC3339),
 			},
@@ -145,12 +145,12 @@ func (bh *BrandHandler) GetBrandByID(c *gin.Context) {
 // @Tags Brand
 // @Accept json
 // @Produce json
-// @Param q query api.PageQuery true "page query"
+// @Param q query api.ListQuery true "page query"
 // @Failure 500 {object} api.ErrorResponse
 // @Failure 200 {object} api.PaginatedResponse{data=[]BrandResponse,meta=api.Page}
 // @Router /brands [get]
 func (bh *BrandHandler) ListBrands(c *gin.Context) {
-	var q api.PageQuery
+	var q api.ListQuery
 	if err := c.ShouldBindQuery(&q); err != nil {
 		validation.ValidationError(c, err)
 		return
@@ -180,7 +180,7 @@ func (bh *BrandHandler) ListBrands(c *gin.Context) {
 			ID:        brand.ID,
 			Name:      brand.Name,
 			LogoURL:   brand.LogoURL,
-			LogoLabel: brand.LogoLabel,
+			LogoAlt:   brand.LogoAlt,
 			CreatedAt: brand.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: brand.UpdatedAt.Format(time.RFC3339),
 		})

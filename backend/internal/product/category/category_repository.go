@@ -25,7 +25,7 @@ func NewRepository() *CategoryRepository {
 func (cr *CategoryRepository) Create(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	category *model.Category,
+	category *model.ProductCategory,
 ) error {
 	_, err := qe.Exec(
 		ctx,
@@ -65,8 +65,8 @@ func (cr *CategoryRepository) Get(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	filter Filter,
-) (*model.Category, error) {
-	var category model.Category
+) (*model.ProductCategory, error) {
+	var category model.ProductCategory
 
 	query :=
 		`
@@ -120,8 +120,8 @@ func (cr *CategoryRepository) Get(
 func (cr *CategoryRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	q *api.PageQuery,
-) ([]*model.Category, *api.Page, error) {
+	q *api.ListQuery,
+) ([]*model.ProductCategory, *api.Page, error) {
 	offset := (q.Page - 1) * q.PageSize
 
 	query := `
@@ -165,12 +165,12 @@ func (cr *CategoryRepository) List(
 	}
 
 	var result = make(
-		[]*model.Category,
+		[]*model.ProductCategory,
 		0,
 	)
 
 	for rows.Next() {
-		var c model.Category
+		var c model.ProductCategory
 		err = rows.Scan(
 			&c.ID,
 			&c.Name,

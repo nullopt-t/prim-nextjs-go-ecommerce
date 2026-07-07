@@ -7,17 +7,13 @@ import (
 	"github.com/google/uuid"
 )
 
-type RoleCode string
+type UserRole string
 
 const (
-	OwnerRole  RoleCode = "OWNER"
-	AdminRole  RoleCode = "ADMIN"
-	VendorRole RoleCode = "VENDOR"
+	SuperRole  UserRole = "super"
+	AdminRole  UserRole = "admin"
+	VendorRole UserRole = "vendor"
 )
-
-func (ur *RoleCode) String() string {
-	return string(*ur)
-}
 
 type AccountStatus string
 
@@ -32,6 +28,7 @@ type User struct {
 	ID uuid.UUID
 
 	Identifier string
+	Role       *UserRole
 
 	EmailVerifiedAt *time.Time
 	PhoneVerifiedAt *time.Time
@@ -49,14 +46,6 @@ type User struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
-}
-
-func NewUser(
-	identifier string,
-) *User {
-	return &User{
-		Identifier: identifier,
-	}
 }
 
 func (u *User) IsActive() bool {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
@@ -35,7 +36,18 @@ func (ts *TagService) CreateTag(
 	ctx context.Context,
 	in CreateTagInput,
 ) (*model.Tag, error) {
-	tag := model.NewTag(in.Name)
+	userID := ctx.Value("userID").(uuid.UUID)
+
+	now := time.Now()
+	tag := &model.Tag{
+		ID:        uuid.New(),
+		Name:      in.Name,
+		CreatedBy: userID,
+		UpdatedBy: userID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
 	err := ts.qexecuter.WithDB(
 		ctx,
 		func(db database.QueryExecutor) error {
@@ -120,7 +132,7 @@ func (ts *TagService) GetTagByID(
 
 func (ts *TagService) ListTags(
 	ctx context.Context,
-	q *api.PageQuery,
+	q *api.ListQuery,
 ) ([]*model.Tag, *api.Page, error) {
 	var tags []*model.Tag
 	var page *api.Page
@@ -141,15 +153,12 @@ func (ts *TagService) ListTags(
 		},
 	)
 	if err != nil {
-		switch {
-		default:
-			return nil, nil, security.NewSecureError(
-				http.StatusInternalServerError,
-				security.CodeInternal,
-				"failed to fetch the categories",
-				err,
-			)
-		}
+		return nil, nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch the categories",
+			err,
+		)
 	}
 	return tags, page, nil
 }

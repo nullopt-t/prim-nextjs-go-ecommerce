@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 
@@ -13,6 +14,10 @@ import (
 
 type ProductURIParam struct {
 	ID uuid.UUID `uri:"id" binding:"required,uuid"`
+}
+
+type ProductSlugParam struct {
+	Slug string `uri:"slug" binding:"required"`
 }
 
 type CreateCategoryRequest struct {
@@ -35,10 +40,13 @@ type CategoriesResponse struct {
 
 type ProductResponse struct {
 	ID               uuid.UUID `json:"id,omitempty"`
+	BrandID          uuid.UUID `json:"brand_id,omitempty"`
 	Title            string    `json:"title,omitempty"`
 	ShortDescription string    `json:"short_description,omitempty"`
 	Description      string    `json:"description,omitempty"`
 	Sku              string    `json:"sku,omitempty"`
+	ThumbnailURL     string    `json:"thumbnail_url,omitempty"`
+	BrandName        string    `json:"brand_name,omitempty"`
 	Slug             string    `json:"slug,omitempty"`
 	Status           string    `json:"status,omitempty"`
 	Price            int64     `json:"price,omitempty"`
@@ -48,6 +56,7 @@ type ProductResponse struct {
 }
 
 type CreateProductRequest struct {
+	BrandID          string `json:"brand_id" binding:"required,uuid"`
 	Title            string `json:"title" binding:"required"`
 	ShortDescription string `json:"short_description" binding:"requried"`
 	Description      string `json:"description" binding:"requried"`
@@ -55,15 +64,16 @@ type CreateProductRequest struct {
 	SKU              string `json:"sku" binding:"requried"`
 	Status           string `json:"status" binding:"required"`
 	Price            int64  `json:"price" binding:"required"`
-	Currency         string `json:"currency" binding:"requried"`
 }
 
-type Handler struct {
+type ProductHandler struct {
 	service *ProductService
 }
 
-func NewHandler(s *ProductService) ProductHandler {
-	return &Handler{s}
+func NewHandler(
+	s *ProductService,
+) *ProductHandler {
+	return &ProductHandler{s}
 }
 
 // GetAllProducts godoc
@@ -72,14 +82,14 @@ func NewHandler(s *ProductService) ProductHandler {
 // @Tags Products
 // @Accept json
 // @Produce json
-// @Param query query api.PageQuery true "Pagination query"
+// @Param query query api.ListQuery true "Pagination query"
 // @Success 200 {object} api.SuccessResponse
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 500 {object} api.ErrorResponse
 // @Router /products [get]
-func (h *Handler) GetAllProducts(c *gin.Context) {
-	var query api.PageQuery
-	if err := c.ShouldBindQuery(&query); err != nil {
+func (h *ProductHandler) GetAllProducts(c *gin.Context) {
+	query := &api.ListQuery{}
+	if err := c.ShouldBindQuery(query); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
@@ -92,7 +102,7 @@ func (h *Handler) GetAllProducts(c *gin.Context) {
 		query.PageSize = 10
 	}
 
-	result, page, err := h.service.GetAll(
+	result, page, err := h.service.List(
 		c.Request.Context(),
 		query,
 	)
@@ -106,11 +116,15 @@ func (h *Handler) GetAllProducts(c *gin.Context) {
 		products = append(
 			products,
 			&ProductResponse{
-				ID:        p.ID,
-				Title:     p.Title,
-				Price:     p.Price,
-				CreatedAt: p.CreatedAt,
-				UpdatedAt: p.UpdatedAt,
+				ID:               p.ID,
+				Title:            p.Title,
+				ShortDescription: p.ShortDescription,
+				ThumbnailURL:     p.ThumbnailURL,
+				Status:           string(p.Status),
+				BrandName:        p.BrandName,
+				Price:            p.Price,
+				CreatedAt:        p.CreatedAt,
+				UpdatedAt:        p.UpdatedAt,
 			},
 		)
 	}
@@ -135,16 +149,16 @@ func (h *Handler) GetAllProducts(c *gin.Context) {
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 404 {object} api.ErrorResponse
 // @Router /products/{id} [get]
-func (h *Handler) GetProductByID(c *gin.Context) {
-	var params ProductURIParam
-	if err := c.ShouldBindUri(&params); err != nil {
+func (h *ProductHandler) GetProductByID(c *gin.Context) {
+	param := &ProductURIParam{}
+	if err := c.ShouldBindUri(param); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
 	p, err := h.service.GetByID(
 		c.Request.Context(),
-		params.ID,
+		param.ID,
 	)
 	if err != nil {
 		return
@@ -152,14 +166,58 @@ func (h *Handler) GetProductByID(c *gin.Context) {
 
 	res := &ProductResponse{
 		ID:               p.ID,
+		BrandID:          p.BrandID,
 		Title:            p.Title,
 		ShortDescription: p.ShortDescription,
 		Description:      p.Description,
-		Sku:              p.SKU,
 		Slug:             p.Slug,
-		Status:           p.Status,
-		Price:            p.Price,
-		Currency:         p.Currency,
+		Status:           string(p.Status),
+		CreatedAt:        p.CreatedAt,
+		UpdatedAt:        p.UpdatedAt,
+	}
+
+	c.JSON(
+		http.StatusFound,
+		api.SuccessResponse{
+			Data: res,
+		},
+	)
+}
+
+// GetProductBySlug godoc
+// @Summary Get a product by slug
+// @Description Get a product by passing it's slug
+// @Tags Products
+// @Accept json
+// @Produce json
+// @Param slug path string true "Product Slug"
+// @Success 200 {object} ProductResponse
+// @Failure 400 {object} api.BadReqResponse
+// @Failure 404 {object} api.ErrorResponse
+// @Router /products/{slug} [get]
+func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
+	param := &ProductSlugParam{}
+	if err := c.ShouldBindUri(param); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	p, err := h.service.GetBySlug(
+		c.Request.Context(),
+		param.Slug,
+	)
+	if err != nil {
+		return
+	}
+
+	res := &ProductResponse{
+		ID:               p.ID,
+		BrandID:          p.BrandID,
+		Title:            p.Title,
+		ShortDescription: p.ShortDescription,
+		Description:      p.Description,
+		Slug:             p.Slug,
+		Status:           string(p.Status),
 		CreatedAt:        p.CreatedAt,
 		UpdatedAt:        p.UpdatedAt,
 	}
@@ -183,21 +241,38 @@ func (h *Handler) GetProductByID(c *gin.Context) {
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 404 {object} api.ErrorResponse
 // @Router /products [post]
-func (h *Handler) CreateProduct(c *gin.Context) {
-	var p CreateProductRequest
-	if err := c.ShouldBindJSON(&p); err != nil {
+func (h *ProductHandler) CreateProduct(c *gin.Context) {
+	req := &CreateProductRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
-	id, err := h.service.Create(c.Request.Context(), p)
+	in := CreateProductInput{
+		BrandID:          uuid.MustParse(req.BrandID),
+		Title:            req.Title,
+		ShortDescription: req.ShortDescription,
+		Description:      req.Description,
+		Slug:             req.Slug,
+		Status:           model.ProductStatus(req.Status),
+	}
+
+	product, err := h.service.Create(c.Request.Context(), in)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
 	res := &ProductResponse{
-		ID: id,
+		ID:               product.ID,
+		BrandID:          product.BrandID,
+		Title:            product.Title,
+		ShortDescription: product.ShortDescription,
+		Description:      product.Description,
+		Slug:             product.Slug,
+		Status:           string(product.Status),
+		CreatedAt:        product.CreatedAt,
+		UpdatedAt:        product.UpdatedAt,
 	}
 
 	c.JSON(http.StatusCreated, api.SuccessResponse{

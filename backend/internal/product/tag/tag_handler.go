@@ -140,12 +140,12 @@ func (th *TagHandler) GetTagByID(c *gin.Context) {
 // @Tags Tag
 // @Accept json
 // @Produce json
-// @Param q query api.PageQuery true "url query"
+// @Param q query api.ListQuery true "url query"
 // @Failure 500 {object} api.ErrorResponse
 // @Success 200 {object} api.PaginatedResponse{data=[]TagResponse,meta=api.Page}
 // @Router /tags [get]
 func (th *TagHandler) ListTags(c *gin.Context) {
-	var q api.PageQuery
+	var q api.ListQuery
 	if err := c.ShouldBindQuery(&q); err != nil {
 		validation.ValidationError(c, err)
 		return

@@ -12,7 +12,6 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/user/role"
 
 	"context"
 	"fmt"
@@ -46,6 +45,7 @@ type App struct {
 func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	// setup middlewares
 	router.Use(middleware.ErrorHandler(app.logger))
+	router.Use(middleware.CORS())
 
 	v1 := router.Group("/api/v1")
 	swagger.SetUpDocs(v1)
@@ -65,13 +65,6 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	rateLimiter := security.NewRateLimiter(
 		app.redisClient,
 	)
-
-	// user
-	roleRepo := role.NewRoleRepository()
-	roleService := role.NewRoleService(txRunner, roleRepo)
-	roleHandler := role.NewRoleHandler(roleService)
-	roleRouter := role.NewRoleRouter(roleHandler)
-	roleRouter.MapRoutes(v1)
 
 	userRepo := user.NewPostgresRepository()
 	userService := user.NewService(
@@ -95,7 +88,6 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		app.logger,
 		challengeService,
 		userService,
-		roleService,
 		jwtService,
 		app.redisClient,
 		notifier,

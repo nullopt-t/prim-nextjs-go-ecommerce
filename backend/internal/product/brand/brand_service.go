@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
@@ -28,20 +29,29 @@ func NewService(
 }
 
 type CreateBrandInput struct {
-	Name      string
-	LogoURL   string
-	LogoLabel string
+	Name    string
+	LogoURL string
+	LogoAlt string
 }
 
 func (bs *BrandService) CreateBrand(
 	ctx context.Context,
-	in CreateBrandInput,
+	in *CreateBrandInput,
 ) (*model.Brand, error) {
-	brand := model.NewBrand(
-		in.Name,
-		in.LogoURL,
-		in.LogoLabel,
-	)
+	userID := ctx.Value("userID").(uuid.UUID)
+
+	now := time.Now()
+	brand := &model.Brand{
+		ID:        uuid.New(),
+		Name:      in.Name,
+		LogoURL:   in.LogoURL,
+		LogoAlt:   in.LogoAlt,
+		CreatedBy: userID,
+		UpdatedBy: userID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
 	err := bs.qexecuter.WithDB(
 		ctx,
 		func(db database.QueryExecutor) error {
@@ -127,7 +137,7 @@ func (bs *BrandService) GetBrandByID(
 
 func (bs *BrandService) List(
 	ctx context.Context,
-	q *api.PageQuery,
+	q *api.ListQuery,
 ) ([]*model.Brand, *api.Page, error) {
 	var res []*model.Brand
 	var page *api.Page
@@ -145,15 +155,12 @@ func (bs *BrandService) List(
 		return nil
 	})
 	if err != nil {
-		switch {
-		default:
-			return nil, nil, security.NewSecureError(
-				http.StatusInternalServerError,
-				security.CodeInternal,
-				"failed to fetch the categories",
-				err,
-			)
-		}
+		return nil, nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch the categories",
+			err,
+		)
 	}
 	return res, page, nil
 }

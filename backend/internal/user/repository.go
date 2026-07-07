@@ -65,6 +65,7 @@ func (r *UserRepository) Get(
 		SELECT
 			id,
 			identifier,
+			role,
 			status,
 			last_login_at,
 			last_login_ip,
@@ -89,7 +90,6 @@ func (r *UserRepository) Get(
 	if filter.Identifier != nil {
 		query += fmt.Sprintf(" AND identifier = $%d", i)
 		args = append(args, *filter.Identifier)
-		i++
 	}
 
 	var u model.User
@@ -97,6 +97,7 @@ func (r *UserRepository) Get(
 	err := qe.QueryRow(ctx, query, args...).Scan(
 		&u.ID,
 		&u.Identifier,
+		&u.Role,
 		&u.Status,
 		&u.LastLoginAt,
 		&u.LastLoginIP,
@@ -150,7 +151,7 @@ func (r *UserRepository) Delete(
 func (r *UserRepository) GetAll(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	q api.PageQuery,
+	q api.ListQuery,
 ) ([]model.User, api.Page, error) {
 
 	if q.Page < 1 {
