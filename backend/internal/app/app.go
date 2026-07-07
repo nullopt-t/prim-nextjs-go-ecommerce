@@ -130,6 +130,7 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	)
 	brandRouter := brand.NewRouter(
 		brandHandler,
+		config.KeysCfg,
 	)
 	brandRouter.MapRoutes(v1)
 

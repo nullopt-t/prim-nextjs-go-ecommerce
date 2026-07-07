@@ -6,69 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type Brand struct {
-	ID uuid.UUID
-
-	Name    string
-	LogoURL string
-	LogoAlt string
-
-	CreatedBy uuid.UUID
-	UpdatedBy uuid.UUID
-
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
-}
-
-type Tag struct {
-	ID uuid.UUID
-
-	Name string
-
-	CreatedBy uuid.UUID
-	UpdatedBy uuid.UUID
-
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
-}
-
-type ProductMedia struct {
-	ID        uuid.UUID
-	VariantID uuid.UUID
-
-	URL      string
-	Alt      string
-	MimeType string
-
-	// the first media always the main
-	SortOrder int
-
-	Width    int
-	Height   int
-	FileSize int64
-
-	CreatedBy uuid.UUID
-	UpdatedBy uuid.UUID
-
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
-}
-
-type ProductCategory struct {
-	ID uuid.UUID
-
-	Name string
-	Slug string
-
-	ParentID *uuid.UUID
-
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
 type ProductVariantStatus string
 
 const (

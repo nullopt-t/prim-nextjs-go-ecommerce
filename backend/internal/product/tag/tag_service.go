@@ -35,11 +35,11 @@ type CreateTagInput struct {
 func (ts *TagService) CreateTag(
 	ctx context.Context,
 	in CreateTagInput,
-) (*model.Tag, error) {
+) (*model.ProductTag, error) {
 	userID := ctx.Value("userID").(uuid.UUID)
 
 	now := time.Now()
-	tag := &model.Tag{
+	tag := &model.ProductTag{
 		ID:        uuid.New(),
 		Name:      in.Name,
 		CreatedBy: userID,
@@ -87,8 +87,8 @@ func (ts *TagService) CreateTag(
 func (ts *TagService) GetTagByID(
 	ctx context.Context,
 	tagID uuid.UUID,
-) (*model.Tag, error) {
-	var tag *model.Tag
+) (*model.ProductTag, error) {
+	var tag *model.ProductTag
 	err := ts.qexecuter.WithDB(ctx,
 		func(db database.QueryExecutor) error {
 			t, err := ts.trepo.Get(
@@ -133,8 +133,8 @@ func (ts *TagService) GetTagByID(
 func (ts *TagService) ListTags(
 	ctx context.Context,
 	q *api.ListQuery,
-) ([]*model.Tag, *api.Page, error) {
-	var tags []*model.Tag
+) ([]*model.ProductTag, *api.Page, error) {
+	var tags []*model.ProductTag
 	var page *api.Page
 	err := ts.qexecuter.WithDB(
 		ctx,

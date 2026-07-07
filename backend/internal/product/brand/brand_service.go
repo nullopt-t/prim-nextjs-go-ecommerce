@@ -30,6 +30,7 @@ func NewService(
 
 type CreateBrandInput struct {
 	Name    string
+	Slug    string
 	LogoURL string
 	LogoAlt string
 }
@@ -37,17 +38,18 @@ type CreateBrandInput struct {
 func (bs *BrandService) CreateBrand(
 	ctx context.Context,
 	in *CreateBrandInput,
-) (*model.Brand, error) {
-	userID := ctx.Value("userID").(uuid.UUID)
+) (*model.ProductBrand, error) {
+	// userID := ctx.Value("userID").(uuid.UUID)
 
 	now := time.Now()
-	brand := &model.Brand{
-		ID:        uuid.New(),
-		Name:      in.Name,
-		LogoURL:   in.LogoURL,
-		LogoAlt:   in.LogoAlt,
-		CreatedBy: userID,
-		UpdatedBy: userID,
+	brand := &model.ProductBrand{
+		ID:      uuid.New(),
+		Name:    in.Name,
+		Slug:    in.Slug,
+		LogoURL: in.LogoURL,
+		LogoAlt: in.LogoAlt,
+		// CreatedBy: userID,
+		// UpdatedBy: userID,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -91,8 +93,8 @@ func (bs *BrandService) CreateBrand(
 func (bs *BrandService) GetBrandByID(
 	ctx context.Context,
 	brandID uuid.UUID,
-) (*model.Brand, error) {
-	var brand *model.Brand
+) (*model.ProductBrand, error) {
+	var brand *model.ProductBrand
 	err := bs.qexecuter.WithDB(
 		ctx,
 		func(db database.QueryExecutor) error {
@@ -135,25 +137,99 @@ func (bs *BrandService) GetBrandByID(
 	return brand, nil
 }
 
+func (bs *BrandService) GetBrandBySlug(
+	ctx context.Context,
+	slug string,
+) (*model.ProductBrand, error) {
+	var brand *model.ProductBrand
+	err := bs.qexecuter.WithDB(
+		ctx,
+		func(db database.QueryExecutor) error {
+			b, err := bs.brepo.Get(
+				ctx,
+				db,
+				&Filter{
+					Slug: &slug,
+				},
+			)
+			if err != nil {
+				return err
+			}
+			brand = b
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch the brand",
+			err,
+		)
+	}
+	return brand, nil
+}
+
+type UpdateBrandInput struct {
+	Name    *string
+	LogoURL *string
+	LogoAlt *string
+}
+
+func (bs *BrandService) UpdateBrand(
+	ctx context.Context,
+	brandID uuid.UUID,
+	input *UpdateBrandInput,
+) error {
+	userID := ctx.Value("userID").(uuid.UUID)
+	fields := &UpdateBrandFields{
+		Name:      input.Name,
+		LogoURL:   input.LogoURL,
+		LogoAlt:   input.LogoAlt,
+		UpdatedBy: userID,
+	}
+	err := bs.qexecuter.WithDB(
+		ctx,
+		func(db database.QueryExecutor) error {
+			return bs.brepo.Update(
+				ctx,
+				db,
+				brandID,
+				fields,
+			)
+		},
+	)
+	if err != nil {
+		return security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to update the brand",
+			err,
+		)
+	}
+	return nil
+}
+
 func (bs *BrandService) List(
 	ctx context.Context,
 	q *api.ListQuery,
-) ([]*model.Brand, *api.Page, error) {
-	var res []*model.Brand
+) ([]*model.ProductBrand, *api.Page, error) {
+	var res []*model.ProductBrand
 	var page *api.Page
-	err := bs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		brands, p, err := bs.brepo.List(
-			ctx,
-			db,
-			q,
-		)
-		if err != nil {
-			return err
-		}
-		res = brands
-		page = p
-		return nil
-	})
+	err := bs.qexecuter.WithDB(ctx,
+		func(db database.QueryExecutor) error {
+			brands, p, err := bs.brepo.List(
+				ctx,
+				db,
+				q,
+			)
+			if err != nil {
+				return err
+			}
+			res = brands
+			page = p
+			return nil
+		})
 	if err != nil {
 		return nil, nil, security.NewSecureError(
 			http.StatusInternalServerError,
@@ -163,4 +239,54 @@ func (bs *BrandService) List(
 		)
 	}
 	return res, page, nil
+}
+
+func (bs *BrandService) DeleteBrandByID(
+	ctx context.Context,
+	id uuid.UUID,
+) error {
+	err := bs.qexecuter.WithDB(ctx,
+		func(db database.QueryExecutor) error {
+			return bs.brepo.Delete(
+				ctx,
+				db,
+				&Filter{
+					ID: &id,
+				},
+			)
+		})
+	if err != nil {
+		return security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to delete the brand",
+			err,
+		)
+	}
+	return nil
+}
+
+func (bs *BrandService) DeleteBrandBySlug(
+	ctx context.Context,
+	slug string,
+) error {
+	err := bs.qexecuter.WithDB(ctx,
+		func(db database.QueryExecutor) error {
+			return bs.brepo.Delete(
+				ctx,
+				db,
+				&Filter{
+					Slug: &slug,
+				},
+			)
+		})
+	if err != nil {
+		return security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to delete the brand",
+			err,
+		)
+	}
+	return nil
 }

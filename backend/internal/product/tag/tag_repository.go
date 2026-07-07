@@ -20,7 +20,7 @@ func NewRepository() *TagRepository {
 func (tr *TagRepository) Create(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	tag *model.Tag,
+	tag *model.ProductTag,
 ) error {
 	query := `
 	INSERT INTO tags(
@@ -60,7 +60,7 @@ func (tr *TagRepository) Get(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	filter *Filter,
-) (*model.Tag, error) {
+) (*model.ProductTag, error) {
 	query := `
 	SELECT
 		id,
@@ -83,10 +83,9 @@ func (tr *TagRepository) Get(
 	if filter.Name != nil {
 		query += fmt.Sprintf(" AND name = $%d", argID)
 		args = append(args, *filter.Name)
-		argID++
 	}
 
-	var tag model.Tag
+	var tag model.ProductTag
 	err := qe.QueryRow(
 		ctx,
 		query,
@@ -108,7 +107,7 @@ func (tr *TagRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	q *api.ListQuery,
-) ([]*model.Tag, *api.Page, error) {
+) ([]*model.ProductTag, *api.Page, error) {
 	query := `
 	SELECT
 		id,
@@ -134,9 +133,9 @@ func (tr *TagRepository) List(
 		return nil, nil, fmt.Errorf("list tags:%w", err)
 	}
 
-	tags := make([]*model.Tag, 0)
+	tags := make([]*model.ProductTag, 0)
 	for rows.Next() {
-		var tag model.Tag
+		var tag model.ProductTag
 		err := rows.Scan(
 			&tag.ID,
 			&tag.Name,
