@@ -6,6 +6,24 @@ import (
 	"github.com/google/uuid"
 )
 
+type Tag struct {
+	ID        uuid.UUID
+	Name      string
+	DeletedAt time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func NewTag(name string) *Tag {
+	now := time.Now().UTC()
+	return &Tag{
+		ID:        uuid.New(),
+		Name:      name,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+}
+
 type Product struct {
 	ID               uuid.UUID
 	Title            string

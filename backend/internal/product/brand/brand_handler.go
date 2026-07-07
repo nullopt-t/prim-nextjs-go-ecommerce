@@ -147,7 +147,7 @@ func (bh *BrandHandler) GetBrandByID(c *gin.Context) {
 // @Produce json
 // @Param q query api.PageQuery true "page query"
 // @Failure 500 {object} api.ErrorResponse
-// @Failure 200 {object} api.PaginatedResponse
+// @Failure 200 {object} api.PaginatedResponse{data=[]BrandResponse,meta=api.Page}
 // @Router /brands [get]
 func (bh *BrandHandler) ListBrands(c *gin.Context) {
 	var q api.PageQuery
