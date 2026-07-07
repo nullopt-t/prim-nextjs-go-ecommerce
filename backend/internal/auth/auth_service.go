@@ -98,7 +98,7 @@ func (s *AuthService) RotateToken(
 
 	newClaims := &jwt.UserClaims{
 		UserID:   user.ID,
-		UserRole: string(*user.Role),
+		UserRole: (*string)(user.Role),
 	}
 
 	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
@@ -223,7 +223,7 @@ func (s *AuthService) VerifyChallange(
 
 	claims := &jwt.UserClaims{
 		UserID:   user.ID,
-		UserRole: string(*user.Role),
+		UserRole: (*string)(user.Role),
 	}
 
 	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
