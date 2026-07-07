@@ -53,68 +53,30 @@ func (cs *ChallengeService) Create(
 	identifier string,
 	channel string,
 ) (*model.Challenge, error) {
-	// generate a new otp code
 	otp, err := cs.otpGen.GenerateOTP()
 	if err != nil {
-		return nil, fmt.Errorf("create challenge:%w", err)
+		return nil, fmt.Errorf("create challenge: %w", err)
 	}
-
-	// hash the new otp code
 	otpHash, err := crypto.Hash(otp)
 	if err != nil {
-		return nil, fmt.Errorf("create challenge:%w", err)
+		return nil, fmt.Errorf("create challenge: %w", err)
 	}
 
-	// at first check if there is an existed old challenge
-	challenge, err := cs.Get(
-		ctx,
-		identifier,
-	)
-	if err != nil {
-		// validate the identifier
+	k := key(identifier)
 
-		// create a new challenge instance
-		challenge = model.NewChallenge(
-			identifier,
-			channel,
-			otpHash,
-			ChallengeTTL,
-		)
+	existing, err := cs.Get(ctx, identifier)
 
-		key := key(challenge.Identifier)
+	var challenge *model.Challenge
+	isNew := false
 
-		// start a new redis pipeline
-		pipe := cs.redisClient.Pipeline()
-		pipe.HSet(
-			ctx,
-			key,
-			map[string]any{
-				"id":           challenge.ID,
-				"identifier":   challenge.Identifier,
-				"channel":      challenge.Channel,
-				"otp_hash":     challenge.OtpHash,
-				"status":       challenge.Status,
-				"attempts":     challenge.Attempts,
-				"resend_count": challenge.ResendCount,
-				"expires_at":   challenge.ExpiresAt,
-				"created_at":   challenge.CreatedAt,
-			},
-		)
+	switch {
+	case err != nil:
+		// No existing challenge.
+		challenge = model.NewChallenge(identifier, channel, otpHash, ChallengeTTL)
+		isNew = true
 
-		pipe.Expire(
-			ctx,
-			key,
-			ChallengeTTL,
-		)
-
-		// execute the pipeline and make sure it's successfully done
-		_, err = pipe.Exec(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("create challenge:%w", err)
-		}
-
-	} else {
-		if challenge.ResendCount >= MaxResendTimes {
+	case existing.Status == "pending":
+		if existing.ResendCount >= MaxResendTimes {
 			return nil, security.NewSecureError(
 				http.StatusTooManyRequests,
 				security.CodeRateLimit,
@@ -122,41 +84,54 @@ func (cs *ChallengeService) Create(
 				nil,
 			)
 		}
-		err = cs.updateOTP(
-			ctx,
-			challenge.Identifier,
-			otpHash,
-		)
-		if err != nil {
-			return nil, err
-		}
+		existing.OtpHash = otpHash
+		existing.ResendCount++
+		challenge = existing
 
-		_, err := cs.redisClient.HIncrBy(
-			ctx,
-			key(challenge.Identifier),
-			"resend_count",
-			1,
-		).Result()
-		if err != nil {
-			return nil, fmt.Errorf("create challenge: %w", err)
-		}
+	case existing.Status == "verified" || existing.Status == "expired":
+		challenge = model.NewChallenge(identifier, channel, otpHash, ChallengeTTL)
+		isNew = true
+
+	default:
+		return nil, fmt.Errorf("unknown challenge status: %q", existing.Status)
 	}
 
-	// send the otp code to the user identifier
-	err = cs.notifier.NotifyOTP(
-		ctx,
-		challenge.Channel,
-		challenge.Identifier,
-		otp,
-	)
-	if err != nil {
-		cs.logger.Warn(
-			"failed to send otp code",
-			log.Meta{
-				"Error": err,
-			},
-		)
+	// Persist in all cases — new challenge, resend, or reset after
+	// verified/expired. Always refresh TTL so a resend can't expire
+	// mid-flow.
+	pipe := cs.redisClient.Pipeline()
+	pipe.HSet(ctx, k, map[string]any{
+		"id":           challenge.ID,
+		"identifier":   challenge.Identifier,
+		"channel":      challenge.Channel,
+		"otp_hash":     challenge.OtpHash,
+		"status":       challenge.Status,
+		"attempts":     challenge.Attempts,
+		"resend_count": challenge.ResendCount,
+		"expires_at":   challenge.ExpiresAt,
+		"created_at":   challenge.CreatedAt,
+	})
+	pipe.Expire(ctx, k, ChallengeTTL)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return nil, fmt.Errorf("create challenge: persist: %w", err)
 	}
+
+	// Send the OTP. A failed send is NOT a successful challenge creation —
+	// don't burn the user's resend budget on a code they never got, and
+	// don't tell the caller everything is fine.
+	if err := cs.notifier.NotifyOTP(ctx, challenge.Channel, challenge.Identifier, otp); err != nil {
+		cs.logger.Warn("failed to send otp code", log.Meta{"Error": err})
+
+		if !isNew {
+			// Roll back the resend-count increment so the failed send
+			// doesn't cost the user an attempt.
+			if _, rbErr := cs.redisClient.HIncrBy(ctx, k, "resend_count", -1).Result(); rbErr != nil {
+				cs.logger.Warn("failed to roll back resend_count", log.Meta{"Error": rbErr})
+			}
+		}
+		return nil, fmt.Errorf("create challenge: notify: %w", err)
+	}
+
 	return challenge, nil
 }
 
