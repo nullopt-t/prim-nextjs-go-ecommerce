@@ -157,6 +157,7 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	)
 	categoryRouter := category.NewRouter(
 		categoryHandler,
+		config.KeysCfg,
 	)
 	categoryRouter.MapRoutes(v1)
 

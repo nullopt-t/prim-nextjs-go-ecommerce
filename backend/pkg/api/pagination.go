@@ -10,8 +10,8 @@ type Page struct {
 }
 
 type ListQuery struct {
-	Page     int `form:"page,default=1" example:"1"`
-	PageSize int `form:"pageSize,default=10" example:"10"`
+	Page     int `form:"page" example:"1"`
+	PageSize int `form:"pageSize" example:"10"`
 
 	Search string `form:"search" example:"television"`
 

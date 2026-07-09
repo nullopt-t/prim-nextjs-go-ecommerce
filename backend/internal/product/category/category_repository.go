@@ -11,8 +11,7 @@ import (
 )
 
 type Filter struct {
-	ID   *uuid.UUID
-	Slug *string
+	ID *uuid.UUID
 }
 
 type CategoryRepository struct {
@@ -34,8 +33,9 @@ func (cr *CategoryRepository) Create(
 		categories (
 			id,
 			name,
-			slug,
 			parent_id,
+			created_by,
+			updated_by,
 			created_at,
 			updated_at
 		)
@@ -45,13 +45,15 @@ func (cr *CategoryRepository) Create(
 			$3,
 			$4,
 			$5,
-			$6
+			$6,
+			$7
 		)
 		`,
 		category.ID,
 		category.Name,
-		category.Slug,
 		category.ParentID,
+		category.CreatedBy,
+		category.UpdatedBy,
 		category.CreatedAt,
 		category.UpdatedAt,
 	)
@@ -73,8 +75,9 @@ func (cr *CategoryRepository) Get(
 			SELECT
 				id,
 				name,
-				slug,
 				parent_id,
+				created_by,
+				updated_by,
 				created_at,
 				updated_at
 			FROM
@@ -91,12 +94,6 @@ func (cr *CategoryRepository) Get(
 		argID++
 	}
 
-	if filter.Slug != nil {
-		query += fmt.Sprintf(" AND slug = $%d", argID)
-		args = append(args, *filter.Slug)
-		argID++
-	}
-
 	err := qe.QueryRow(
 		ctx,
 		query,
@@ -104,8 +101,9 @@ func (cr *CategoryRepository) Get(
 	).Scan(
 		&category.ID,
 		&category.Name,
-		&category.Slug,
 		&category.ParentID,
+		&category.CreatedBy,
+		&category.UpdatedBy,
 		&category.CreatedAt,
 		&category.UpdatedAt,
 	)
@@ -115,6 +113,43 @@ func (cr *CategoryRepository) Get(
 	}
 
 	return &category, nil
+}
+
+type UpdateCategoryFields struct {
+	Name      *string
+	ParentID  *uuid.UUID
+	UpdatedBy uuid.UUID
+}
+
+func (cr *CategoryRepository) Update(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	categoryID uuid.UUID,
+	fields UpdateCategoryFields,
+) error {
+	query := `
+	UPDATE
+		categories
+	SET
+		name = COALESCE($1, name),
+		parent_id = COALESCE($2, parent_id),
+		updated_by = $3
+	WHERE
+		id = $4
+	`
+	_, err := qe.Exec(
+		ctx,
+		query,
+		fields.Name,
+		fields.ParentID,
+		fields.UpdatedBy,
+		categoryID,
+	)
+	if err != nil {
+		return fmt.Errorf("update category: %w", err)
+	}
+
+	return nil
 }
 
 func (cr *CategoryRepository) List(
@@ -128,8 +163,9 @@ func (cr *CategoryRepository) List(
 	SELECT
 		id,
 		name,
-		slug,
 		parent_id,
+		created_by,
+		updated_by,
 		created_at,
 		updated_at
 	FROM
@@ -174,8 +210,9 @@ func (cr *CategoryRepository) List(
 		err = rows.Scan(
 			&c.ID,
 			&c.Name,
-			&c.Slug,
 			&c.ParentID,
+			&c.CreatedBy,
+			&c.UpdatedBy,
 			&c.CreatedAt,
 			&c.UpdatedAt,
 		)
