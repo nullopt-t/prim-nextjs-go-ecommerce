@@ -112,8 +112,21 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+  minio:
+    image: minio/minio:latest
+    container_name: prim-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: supersecret
+    volumes:
+      - minio_data:/data
 
 volumes:
   postgres_data:
   redis_data:
   go-mod-cache:
+  minio_data:
