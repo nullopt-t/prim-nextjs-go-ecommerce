@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Cart } from "@/features/cart";
+import { Products } from "@/features/products";
 import { Home } from "@/features/home";
 import { Auth, Login, Verify } from "@/features/auth";
 import {
@@ -36,6 +37,7 @@ function Router() {
 			</Route>
 
 			<Route path="/cart" element={<Cart />} />
+			<Route path="/products" element={<Products />} />
 		</Routes>
 	);
 }
