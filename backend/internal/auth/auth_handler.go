@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
@@ -32,7 +31,7 @@ type TokensResponse struct {
 
 type MeResponse struct {
 	ID        uuid.UUID `json:"id,omitempty"`
-	Role      []string  `json:"role"`
+	Role      string    `json:"role,omitempty"`
 	Status    string    `json:"status,omitempty"`
 	CreatedAt time.Time `json:"created_at,omitzero"`
 }
@@ -273,7 +272,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 		return
 	}
 
-	user, roles, err := h.authService.GetCurrentUser(
+	user, err := h.authService.GetCurrentUser(
 		c.Request.Context(),
 		val.(uuid.UUID),
 	)
@@ -288,7 +287,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 			Data: MeResponse{
 				ID:     user.ID,
 				Status: string(user.Status),
-				Role:   model.RolesToStrings(roles),
+				Role:   string(*user.Role),
 			},
 		},
 	)

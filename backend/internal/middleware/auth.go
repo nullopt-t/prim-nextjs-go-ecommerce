@@ -21,9 +21,9 @@ var (
 
 const prefix = "Bearer "
 
-func Authorize(requiredRole model.RoleCode) gin.HandlerFunc {
+func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		role, ok := c.Get("role")
+		role, ok := c.Get("userRole")
 		if !ok {
 			_ = c.Error(
 				security.NewSecureError(
@@ -36,7 +36,7 @@ func Authorize(requiredRole model.RoleCode) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		if role.(string) != string(requiredRole) {
+		if role.(string) != strings.ToLower(string(requiredRole)) {
 			_ = c.Error(
 				security.NewSecureError(
 					http.StatusUnauthorized,

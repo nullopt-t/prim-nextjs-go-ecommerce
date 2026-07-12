@@ -9,7 +9,23 @@ type Page struct {
 	HasNext     bool `json:"has_next" example:"true"`
 }
 
-type PageQuery struct {
+type ListQuery struct {
 	Page     int `form:"page" example:"1"`
 	PageSize int `form:"pageSize" example:"10"`
+
+	Search string `form:"search" example:"television"`
+
+	Sort []Sort `form:"-"`
 }
+
+type Sort struct {
+	Field string    `example:"name"`
+	Order SortOrder `example:"asc"`
+}
+
+type SortOrder string
+
+const (
+	SortAsc  SortOrder = "asc"
+	SortDesc SortOrder = "desc"
+)

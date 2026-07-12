@@ -32,13 +32,6 @@ type UserService interface {
 	) (*model.User, error)
 }
 
-type RoleService interface {
-	UserRoles(
-		ctx context.Context,
-		userID uuid.UUID,
-	) ([]*model.Role, error)
-}
-
 type Notifier interface {
 	NotifyOTP(
 		ctx context.Context,
@@ -57,7 +50,6 @@ type AuthService struct {
 	jwtService       *jwt.JWTManager
 	challengeService *ChallengeService
 	userService      UserService
-	roleService      RoleService
 	logger           log.Logger
 	redisClient      *redis.Client
 	notifier         Notifier
@@ -68,7 +60,6 @@ func NewAuthService(
 	logger log.Logger,
 	challengeService *ChallengeService,
 	userService UserService,
-	roleService RoleService,
 	jwtService *jwt.JWTManager,
 	redisClient *redis.Client,
 	notifier Notifier,
@@ -78,7 +69,6 @@ func NewAuthService(
 		jwtService:       jwtService,
 		challengeService: challengeService,
 		userService:      userService,
-		roleService:      roleService,
 		logger:           logger,
 		redisClient:      redisClient,
 		notifier:         notifier,
@@ -106,17 +96,9 @@ func (s *AuthService) RotateToken(
 		return "", "", err
 	}
 
-	roles, err := s.roleService.UserRoles(
-		ctx,
-		user.ID,
-	)
-	if err != nil {
-		return "", "", err
-	}
-
 	newClaims := &jwt.UserClaims{
 		UserID:   user.ID,
-		UserRole: model.RolesToStrings(roles),
+		UserRole: (*string)(user.Role),
 	}
 
 	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
@@ -132,24 +114,15 @@ func (s *AuthService) RotateToken(
 func (s *AuthService) GetCurrentUser(
 	ctx context.Context,
 	userID uuid.UUID,
-) (*model.User, []*model.Role, error) {
+) (*model.User, error) {
 	user, err := s.userService.GetUserByID(
 		ctx,
 		userID,
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	roles, err := s.roleService.UserRoles(
-		ctx,
-		user.ID,
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return user, roles, nil
+	return user, nil
 }
 
 func (s *AuthService) StartChallange(
@@ -248,22 +221,9 @@ func (s *AuthService) VerifyChallange(
 		return nil, err
 	}
 
-	roles, err := s.roleService.UserRoles(
-		ctx,
-		user.ID,
-	)
-	if err != nil {
-		return nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to fetch user roles",
-			err,
-		)
-	}
-
 	claims := &jwt.UserClaims{
 		UserID:   user.ID,
-		UserRole: model.RolesToStrings(roles),
+		UserRole: (*string)(user.Role),
 	}
 
 	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(

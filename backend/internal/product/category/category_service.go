@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 )
 
 type CategoryService struct {
@@ -29,21 +29,27 @@ func NewService(
 }
 
 type CreateCategoryInput struct {
-	Name     string
-	ParentID *uuid.UUID
+	Name      string
+	ParentID  *uuid.UUID
+	CreatedBy uuid.UUID
+	UpdatedBy uuid.UUID
 }
 
 func (cs *CategoryService) CreateCategory(
 	ctx context.Context,
-	in CreateCategoryInput,
-) (*model.Category, error) {
-	slug := utils.Slugify(in.Name)
+	in *CreateCategoryInput,
+) (*model.ProductCategory, error) {
 
-	category := model.NewCategory(
-		in.Name,
-		slug,
-		in.ParentID,
-	)
+	now := time.Now().UTC()
+	category := &model.ProductCategory{
+		ID:        uuid.New(),
+		Name:      in.Name,
+		ParentID:  in.ParentID,
+		CreatedBy: in.CreatedBy,
+		UpdatedBy: in.UpdatedBy,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
 
 	err := cs.qexecuter.WithDB(
 		ctx,
@@ -84,8 +90,8 @@ func (cs *CategoryService) CreateCategory(
 func (cs *CategoryService) GetCategoryByID(
 	ctx context.Context,
 	categoryID uuid.UUID,
-) (*model.Category, error) {
-	var category *model.Category
+) (*model.ProductCategory, error) {
+	var category *model.ProductCategory
 	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		c, err := cs.crepository.Get(
 			ctx,
@@ -129,28 +135,32 @@ func (cs *CategoryService) GetCategoryByID(
 	return category, nil
 }
 
-func (cs *CategoryService) GetCategoryBySlug(
+type UpdateCategoryInput struct {
+	Name      *string
+	ParentID  *uuid.UUID
+	UpdatedBy uuid.UUID
+}
+
+func (cs *CategoryService) UpdateCategory(
 	ctx context.Context,
-	slug string,
-) (*model.Category, error) {
-	var category *model.Category
-	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		c, err := cs.crepository.Get(
-			ctx,
-			db,
-			Filter{
-				Slug: &slug,
-			},
-		)
-
-		if err != nil {
-			return err
-		}
-
-		category = c
-		return nil
-	})
-
+	categoryID uuid.UUID,
+	input *UpdateCategoryInput,
+) error {
+	fields := UpdateCategoryFields{
+		Name:      input.Name,
+		ParentID:  input.ParentID,
+		UpdatedBy: input.UpdatedBy,
+	}
+	err := cs.qexecuter.WithDB(ctx,
+		func(db database.QueryExecutor) error {
+			return cs.crepository.Update(
+				ctx,
+				db,
+				categoryID,
+				fields,
+			)
+		},
+	)
 	if err != nil {
 		mappedErr := database.MapError(err)
 		switch {
@@ -158,14 +168,14 @@ func (cs *CategoryService) GetCategoryBySlug(
 			mappedErr,
 			database.ErrNotFound,
 		):
-			return nil, security.NewSecureError(
+			return security.NewSecureError(
 				http.StatusNotFound,
 				security.CodeNotFound,
 				"resource not found",
 				err,
 			)
 		default:
-			return nil, security.NewSecureError(
+			return security.NewSecureError(
 				http.StatusInternalServerError,
 				security.CodeInternal,
 				"failed to fetch the resource",
@@ -174,14 +184,14 @@ func (cs *CategoryService) GetCategoryBySlug(
 		}
 	}
 
-	return category, nil
+	return nil
 }
 
 func (cs *CategoryService) List(
 	ctx context.Context,
-	q *api.PageQuery,
-) ([]*model.Category, *api.Page, error) {
-	var res []*model.Category
+	q *api.ListQuery,
+) ([]*model.ProductCategory, *api.Page, error) {
+	var res []*model.ProductCategory
 	var page *api.Page
 	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		categories, p, err := cs.crepository.List(
@@ -197,16 +207,12 @@ func (cs *CategoryService) List(
 		return nil
 	})
 	if err != nil {
-		// mappedError := database.MapError(err)
-		switch {
-		default:
-			return nil, nil, security.NewSecureError(
-				http.StatusInternalServerError,
-				security.CodeInternal,
-				"failed to fetch the categories",
-				err,
-			)
-		}
+		return nil, nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch the categories",
+			err,
+		)
 	}
 	return res, page, nil
 }

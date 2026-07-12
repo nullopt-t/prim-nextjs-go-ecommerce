@@ -11,8 +11,7 @@ import (
 )
 
 type Filter struct {
-	ID   *uuid.UUID
-	Slug *string
+	ID *uuid.UUID
 }
 
 type CategoryRepository struct {
@@ -25,7 +24,7 @@ func NewRepository() *CategoryRepository {
 func (cr *CategoryRepository) Create(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	category *model.Category,
+	category *model.ProductCategory,
 ) error {
 	_, err := qe.Exec(
 		ctx,
@@ -34,8 +33,9 @@ func (cr *CategoryRepository) Create(
 		categories (
 			id,
 			name,
-			slug,
 			parent_id,
+			created_by,
+			updated_by,
 			created_at,
 			updated_at
 		)
@@ -45,13 +45,15 @@ func (cr *CategoryRepository) Create(
 			$3,
 			$4,
 			$5,
-			$6
+			$6,
+			$7
 		)
 		`,
 		category.ID,
 		category.Name,
-		category.Slug,
 		category.ParentID,
+		category.CreatedBy,
+		category.UpdatedBy,
 		category.CreatedAt,
 		category.UpdatedAt,
 	)
@@ -65,16 +67,17 @@ func (cr *CategoryRepository) Get(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	filter Filter,
-) (*model.Category, error) {
-	var category model.Category
+) (*model.ProductCategory, error) {
+	var category model.ProductCategory
 
 	query :=
 		`
 			SELECT
 				id,
 				name,
-				slug,
 				parent_id,
+				created_by,
+				updated_by,
 				created_at,
 				updated_at
 			FROM
@@ -91,12 +94,6 @@ func (cr *CategoryRepository) Get(
 		argID++
 	}
 
-	if filter.Slug != nil {
-		query += fmt.Sprintf(" AND slug = $%d", argID)
-		args = append(args, *filter.Slug)
-		argID++
-	}
-
 	err := qe.QueryRow(
 		ctx,
 		query,
@@ -104,8 +101,9 @@ func (cr *CategoryRepository) Get(
 	).Scan(
 		&category.ID,
 		&category.Name,
-		&category.Slug,
 		&category.ParentID,
+		&category.CreatedBy,
+		&category.UpdatedBy,
 		&category.CreatedAt,
 		&category.UpdatedAt,
 	)
@@ -117,19 +115,57 @@ func (cr *CategoryRepository) Get(
 	return &category, nil
 }
 
+type UpdateCategoryFields struct {
+	Name      *string
+	ParentID  *uuid.UUID
+	UpdatedBy uuid.UUID
+}
+
+func (cr *CategoryRepository) Update(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	categoryID uuid.UUID,
+	fields UpdateCategoryFields,
+) error {
+	query := `
+	UPDATE
+		categories
+	SET
+		name = COALESCE($1, name),
+		parent_id = COALESCE($2, parent_id),
+		updated_by = $3
+	WHERE
+		id = $4
+	`
+	_, err := qe.Exec(
+		ctx,
+		query,
+		fields.Name,
+		fields.ParentID,
+		fields.UpdatedBy,
+		categoryID,
+	)
+	if err != nil {
+		return fmt.Errorf("update category: %w", err)
+	}
+
+	return nil
+}
+
 func (cr *CategoryRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	q *api.PageQuery,
-) ([]*model.Category, *api.Page, error) {
+	q *api.ListQuery,
+) ([]*model.ProductCategory, *api.Page, error) {
 	offset := (q.Page - 1) * q.PageSize
 
 	query := `
 	SELECT
 		id,
 		name,
-		slug,
 		parent_id,
+		created_by,
+		updated_by,
 		created_at,
 		updated_at
 	FROM
@@ -165,17 +201,18 @@ func (cr *CategoryRepository) List(
 	}
 
 	var result = make(
-		[]*model.Category,
+		[]*model.ProductCategory,
 		0,
 	)
 
 	for rows.Next() {
-		var c model.Category
+		var c model.ProductCategory
 		err = rows.Scan(
 			&c.ID,
 			&c.Name,
-			&c.Slug,
 			&c.ParentID,
+			&c.CreatedBy,
+			&c.UpdatedBy,
 			&c.CreatedAt,
 			&c.UpdatedAt,
 		)

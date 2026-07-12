@@ -109,7 +109,7 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 }
 
 func (h *Handler) GetAllUsers(c *gin.Context) {
-	var q api.PageQuery
+	var q api.ListQuery
 	if err := c.ShouldBindQuery(&q); err != nil {
 		validation.ValidationError(c, err)
 		return
