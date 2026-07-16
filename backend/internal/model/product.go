@@ -6,21 +6,13 @@ import (
 	"github.com/google/uuid"
 )
 
-type ProductVariantStatus string
-
-const (
-	ProductVariantActive       ProductVariantStatus = "active"
-	ProductVariantInactive     ProductVariantStatus = "inactive"
-	ProductVariantDiscontinued ProductVariantStatus = "discontinued"
-)
-
 type ProductVariant struct {
 	ID        uuid.UUID
 	ProductID uuid.UUID
 
-	SKU    string
-	Status ProductVariantStatus
-	Price  int64 // minor units
+	SKU      string
+	Price    int64 // minor units
+	Currency string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -35,9 +27,13 @@ const (
 	ProductStatusArchived ProductStatus = "archived"
 )
 
+func (p ProductStatus) String() string {
+	return string(p)
+}
+
 type Product struct {
 	ID      uuid.UUID
-	BrandID uuid.UUID
+	BrandID *uuid.UUID
 
 	Slug             string
 	Title            string
@@ -47,18 +43,6 @@ type Product struct {
 
 	CreatedBy uuid.UUID
 	UpdatedBy uuid.UUID
-
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
-}
-
-type Inventory struct {
-	ID        uuid.UUID
-	VariantID uuid.UUID
-
-	Quantity         int64
-	ReservedQuantity int64
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

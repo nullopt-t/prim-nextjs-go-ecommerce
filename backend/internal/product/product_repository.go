@@ -3,7 +3,6 @@ package product
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
@@ -155,69 +154,56 @@ func (r *ProductRepository) Update(
 }
 
 type ProductListItem struct {
-	ID               uuid.UUID
-	Title            string
-	ShortDescription string
-	Slug             string
-	Status           model.ProductStatus
+	ID           uuid.UUID `json:"id"`
+	Title        string    `json:"title"`
+	Slug         string    `json:"slug"`
+	ThumbnailURL *string   `json:"thumbnailUrl"`
+	Price        int64     `json:"price"`
+	Currency     string    `json:"currency"`
+}
 
-	BrandName    string
-	ThumbnailURL string
-
-	Price int64
-
-	CreatedAt time.Time
-	UpdatedAt time.Time
+type ProductList struct {
+	Items []*ProductListItem `json:"items"`
+	Page  *api.Page          `json:"page"`
 }
 
 func (r *ProductRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	q *api.ListQuery,
-) ([]*ProductListItem, *api.Page, error) {
+) (*ProductList, error) {
 	query := `
-		SELECT
-			p.id,
-			p.title,
-			p.short_description,
-			p.slug,
-			p.status,
+	SELECT
+    p.id,
+    p.title,
+    p.slug,
+    dv.price,
+		dv.currency,
+    thumb.url
+FROM products p
+LEFT JOIN product_variants dv
+    ON dv.id = p.default_variant_id
+    AND dv.deleted_at IS NULL
+LEFT JOIN product_media thumb
+    ON thumb.variant_id = dv.id
+    AND thumb.is_primary = true
+WHERE p.deleted_at IS NULL
+ORDER BY p.created_at DESC
+LIMIT $1 OFFSET $2	`
 
-			b.name,
-
-			MIN(pv.price) AS starting_price,
-
-			(
-				SELECT pm.url
-				FROM product_media pm
-				WHERE pm.product_id = p.id
-				ORDER BY pm.sort_order
-				LIMIT 1
-			) AS thumbnail_url,
-
-			p.created_at,
-			p.updated_at
-		FROM products p
-		JOIN brands b
-			ON b.id = p.brand_id
-		LEFT JOIN product_variants pv
-			ON pv.product_id = p.id
-		WHERE p.deleted_at IS NULL
-		GROUP BY
-			p.id,
-			b.name
-		ORDER BY p.created_at DESC
-		LIMIT $1 OFFSET $2;
-	`
+	offset := (q.Page - 1) * q.PageSize
 
 	rows, err := qe.Query(
 		ctx,
 		query,
 		q.PageSize,
-		(q.Page-1)*q.PageSize,
+		offset,
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("list products: %w", err)
+		return nil, fmt.Errorf(
+			"list products: %w",
+			err,
+		)
 	}
 	defer rows.Close()
 
@@ -226,41 +212,55 @@ func (r *ProductRepository) List(
 	for rows.Next() {
 		var p ProductListItem
 
-		if err := rows.Scan(
+		err = rows.Scan(
 			&p.ID,
 			&p.Title,
-			&p.ShortDescription,
 			&p.Slug,
-			&p.Status,
-			&p.BrandName,
 			&p.Price,
+			&p.Currency,
 			&p.ThumbnailURL,
-			&p.CreatedAt,
-			&p.UpdatedAt,
-		); err != nil {
-			return nil, nil, fmt.Errorf("scan product: %w", err)
+		)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"scan product: %w",
+				err,
+			)
 		}
 
 		products = append(products, &p)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, nil, fmt.Errorf("iterate products: %w", err)
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf(
+			"iterate products: %w",
+			err,
+		)
 	}
 
 	var totalItems int
+
 	err = qe.QueryRow(
 		ctx,
 		`
-		SELECT COUNT(id)
+		SELECT COUNT(*)
 		FROM products
 		WHERE deleted_at IS NULL
-		`).Scan(&totalItems)
+		`,
+	).Scan(&totalItems)
 	if err != nil {
-		return nil, nil, fmt.Errorf("count products: %w", err)
+		return nil, fmt.Errorf(
+			"count products: %w",
+			err,
+		)
 	}
 
-	totalPages := (len(products) + q.PageSize - 1) / q.PageSize
+	totalPages := 0
+	if totalItems > 0 {
+		totalPages =
+			(totalItems + q.PageSize - 1) /
+				q.PageSize
+	}
+
 	page := &api.Page{
 		Page:        q.Page,
 		PageSize:    q.PageSize,
@@ -270,7 +270,10 @@ func (r *ProductRepository) List(
 		HasNext:     q.Page < totalPages,
 	}
 
-	return products, page, nil
+	return &ProductList{
+		Items: products,
+		Page:  page,
+	}, nil
 }
 
 func (r *ProductRepository) SoftDelete(
@@ -303,6 +306,249 @@ func (r *ProductRepository) SoftDelete(
 	if err != nil {
 		return fmt.Errorf(
 			"soft delete a product:%w",
+			err,
+		)
+	}
+	return nil
+}
+
+func (r *ProductRepository) GetVariants(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) ([]*model.ProductVariant, error) {
+	var variants []*model.ProductVariant
+	rows, err := qe.Query(
+		ctx,
+		`
+		SELECT
+			id,
+			product_id,
+			sku,
+			price,
+			currency,
+			created_at,
+			updated_at,
+			deleted_at
+		FROM product_variants
+		WHERE product_id=$1 AND deleted_at IS NULL
+		`,
+		productID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"get variants: %w",
+			err,
+		)
+	}
+	for rows.Next() {
+		var variant model.ProductVariant
+		err = rows.Scan(
+			&variant.ID,
+			&variant.ProductID,
+			&variant.SKU,
+			&variant.Price,
+			&variant.Currency,
+			&variant.CreatedAt,
+			&variant.UpdatedAt,
+			&variant.DeletedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"get variants: %w",
+				err,
+			)
+		}
+		variants = append(variants, &variant)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"get variants: %w",
+			err,
+		)
+	}
+	return variants, nil
+}
+
+func (r *ProductRepository) GetCategories(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) ([]*model.ProductCategory, error) {
+	var categories []*model.ProductCategory
+	rows, err := qe.Query(
+		ctx,
+		`
+		SELECT
+			c.id,
+			c.name,
+			c.parent_id,
+			c.created_at,
+			c.updated_at,
+			c.deleted_at
+		FROM product_categories pc
+		JOIN categories c ON pc.category_id = c.id
+		JOIN products ps ON pc.product_id = ps.id
+		WHERE ps.id=$1 AND c.deleted_at IS NULL
+		`,
+		productID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"get categories: %w",
+			err,
+		)
+	}
+	for rows.Next() {
+		var category model.ProductCategory
+		err = rows.Scan(
+			&category.ID,
+			&category.Name,
+			&category.ParentID,
+			&category.CreatedAt,
+			&category.UpdatedAt,
+			&category.DeletedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"get categories: %w",
+				err,
+			)
+		}
+		categories = append(categories, &category)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"get categories: %w",
+			err,
+		)
+	}
+	return categories, nil
+}
+
+func (r *ProductRepository) GetTags(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) ([]*model.ProductTag, error) {
+	var tags []*model.ProductTag
+	rows, err := qe.Query(
+		ctx,
+		`
+		SELECT
+			t.id,
+			t.name,
+			t.created_at,
+			t.updated_at
+		FROM product_tags pt
+		JOIN tags t ON pt.tag_id = t.id
+		JOIN products ps ON pt.product_id = ps.id
+		WHERE ps.id=$1 AND t.deleted_at IS NULL
+		`,
+		productID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"get tags: %w",
+			err,
+		)
+	}
+	for rows.Next() {
+		var tag model.ProductTag
+		err = rows.Scan(
+			&tag.ID,
+			&tag.Name,
+			&tag.CreatedAt,
+			&tag.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"get tags: %w",
+				err,
+			)
+		}
+		tags = append(tags, &tag)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"get tags: %w",
+			err,
+		)
+	}
+	return tags, nil
+}
+
+func (r *ProductRepository) SetDefaultVariant(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+	variantID uuid.UUID,
+) error {
+	_, err := qe.Exec(
+		ctx,
+		`
+		UPDATE products
+		SET default_variant_id = $2
+		WHERE id = $1
+		`,
+		productID,
+		variantID,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"set default variant: %w",
+			err,
+		)
+	}
+	return nil
+}
+
+func (r *ProductRepository) PublishProduct(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) error {
+	_, err := qe.Exec(
+		ctx,
+		`
+		UPDATE products
+		SET status = 'active'
+		WHERE id = $1
+		`,
+		productID,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"publish product: %w",
+			err,
+		)
+	}
+	return nil
+}
+
+func (r *ProductRepository) ArchiveProduct(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) error {
+	_, err := qe.Exec(
+		ctx,
+		`
+		UPDATE products
+		SET status = 'archived'
+		WHERE id = $1
+		`,
+		productID,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"archive product: %w",
 			err,
 		)
 	}

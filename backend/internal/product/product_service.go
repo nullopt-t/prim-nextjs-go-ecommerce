@@ -6,41 +6,51 @@ import (
 	"net/http"
 
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/brand"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/category"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/types"
 
 	"github.com/google/uuid"
 )
 
 type ProductService struct {
-	dbExecuter  database.Runner
-	productRepo *ProductRepository
+	dbExecuter      database.Runner
+	productRepo     *ProductRepository
+	brandService    *brand.BrandService
+	categoryService *category.CategoryService
 }
 
 func NewService(r database.Runner,
 	productRepo *ProductRepository,
+	brandService *brand.BrandService,
+	categoryService *category.CategoryService,
 ) *ProductService {
 	return &ProductService{
-		dbExecuter:  r,
-		productRepo: productRepo,
+		dbExecuter:      r,
+		productRepo:     productRepo,
+		brandService:    brandService,
+		categoryService: categoryService,
 	}
 }
 
 type CreateProductInput struct {
-	BrandID          uuid.UUID
+	BrandID          *uuid.UUID
 	Title            string
 	ShortDescription string
 	Description      string
 	Slug             string
 	Status           model.ProductStatus
+	CreatedBy        uuid.UUID
 }
 
-func (s *ProductService) Create(
+func (s *ProductService) CreateProductAsDraft(
 	ctx context.Context,
 	input CreateProductInput,
 ) (*model.Product, error) {
-	userID := ctx.Value("userID").(uuid.UUID)
+
 	product := &model.Product{
 		ID:               uuid.New(),
 		BrandID:          input.BrandID,
@@ -48,9 +58,9 @@ func (s *ProductService) Create(
 		ShortDescription: input.ShortDescription,
 		Description:      input.Description,
 		Slug:             input.Slug,
-		Status:           input.Status,
-		CreatedBy:        userID,
-		UpdatedBy:        userID,
+		Status:           model.ProductStatusDraft,
+		CreatedBy:        input.CreatedBy,
+		UpdatedBy:        input.CreatedBy,
 	}
 
 	err := s.dbExecuter.WithDB(ctx,
@@ -62,7 +72,6 @@ func (s *ProductService) Create(
 			return nil
 		},
 	)
-
 	if err != nil {
 		mappedErr := database.MapError(err)
 		switch {
@@ -89,20 +98,25 @@ func (s *ProductService) Create(
 	return product, nil
 }
 
+type ProductDetails struct {
+	Product *model.Product
+	Brand   *model.ProductBrand
+}
+
 func (s *ProductService) GetByID(
 	ctx context.Context,
 	productID uuid.UUID,
 ) (*model.Product, error) {
-	var p *model.Product
+	product := &model.Product{}
 	err := s.dbExecuter.WithDB(ctx,
 		func(db database.QueryExecutor) error {
 			prod, err := s.productRepo.Get(ctx, db, Filter{
-				ID: &productID,
+				ID: types.Ptr(productID),
 			})
 			if err != nil {
 				return err
 			}
-			p = prod
+			product = prod
 			return nil
 		},
 	)
@@ -128,23 +142,24 @@ func (s *ProductService) GetByID(
 			)
 		}
 	}
-	return p, err
+
+	return product, nil
 }
 
 func (s *ProductService) GetBySlug(
 	ctx context.Context,
 	slug string,
-) (*model.Product, error) {
-	var p *model.Product
+) (*ProductDetails, error) {
+	productDetails := &ProductDetails{}
 	err := s.dbExecuter.WithDB(ctx,
 		func(db database.QueryExecutor) error {
 			prod, err := s.productRepo.Get(ctx, db, Filter{
-				Slug: &slug,
+				Slug: types.Ptr(slug),
 			})
 			if err != nil {
 				return err
 			}
-			p = prod
+			productDetails.Product = prod
 			return nil
 		},
 	)
@@ -170,32 +185,196 @@ func (s *ProductService) GetBySlug(
 			)
 		}
 	}
-	return p, err
+
+	if productDetails.Product.BrandID != nil {
+		brand, err := s.brandService.GetBrandByID(ctx, *productDetails.Product.BrandID)
+		if err != nil {
+			return nil, err
+		}
+		productDetails.Brand = brand
+	}
+
+	return productDetails, nil
 }
 
 func (s *ProductService) List(
 	ctx context.Context,
 	q *api.ListQuery,
-) ([]*ProductListItem, *api.Page, error) {
-	var products []*ProductListItem
-	var page *api.Page
+) (*ProductList, error) {
+	var res *ProductList
 	err := s.dbExecuter.WithDB(ctx,
 		func(db database.QueryExecutor) error {
-			var err error
-			products, page, err = s.productRepo.List(ctx, db, q)
+			list, err := s.productRepo.List(ctx, db, q)
 			if err != nil {
 				return err
 			}
+			res = list
 			return nil
 		},
 	)
 	if err != nil {
-		return nil, nil, security.NewSecureError(
+		return nil, security.NewSecureError(
 			http.StatusInternalServerError,
 			security.CodeInternal,
 			"failed to fetch products",
 			err,
 		)
 	}
-	return products, page, nil
+	return res, nil
+}
+
+func (s *ProductService) GetProductVariants(
+	ctx context.Context,
+	productID uuid.UUID,
+) ([]*model.ProductVariant, error) {
+	var variants []*model.ProductVariant
+	err := s.dbExecuter.WithDB(ctx,
+		func(db database.QueryExecutor) error {
+			var err error
+			variants, err = s.productRepo.GetVariants(
+				ctx,
+				db,
+				productID,
+			)
+
+			return err
+		},
+	)
+	if err != nil {
+		return nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch product variants",
+			err,
+		)
+	}
+	return variants, nil
+}
+
+func (s *ProductService) GetProductCategories(
+	ctx context.Context,
+	productID uuid.UUID,
+) ([]*model.ProductCategory, error) {
+	var categories []*model.ProductCategory
+	err := s.dbExecuter.WithDB(ctx,
+		func(db database.QueryExecutor) error {
+			var err error
+			categories, err = s.productRepo.GetCategories(
+				ctx,
+				db,
+				productID,
+			)
+			return err
+		},
+	)
+	if err != nil {
+		return nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch product categories",
+			err,
+		)
+	}
+	return categories, nil
+}
+
+func (s *ProductService) GetProductTags(
+	ctx context.Context,
+	productID uuid.UUID,
+) ([]*model.ProductTag, error) {
+	var tags []*model.ProductTag
+	err := s.dbExecuter.WithDB(ctx,
+		func(db database.QueryExecutor) error {
+			var err error
+			tags, err = s.productRepo.GetTags(
+				ctx,
+				db,
+				productID,
+			)
+			return err
+		},
+	)
+	if err != nil {
+		return nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch product tags",
+			err,
+		)
+	}
+	return tags, nil
+}
+
+func (s *ProductService) SetDefaultVariant(
+	ctx context.Context,
+	productID uuid.UUID,
+	variantID uuid.UUID,
+) error {
+	err := s.dbExecuter.WithDB(ctx,
+		func(db database.QueryExecutor) error {
+			return s.productRepo.SetDefaultVariant(
+				ctx,
+				db,
+				productID,
+				variantID,
+			)
+		},
+	)
+	if err != nil {
+		return security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to set default variant",
+			err,
+		)
+	}
+	return nil
+}
+
+func (s *ProductService) PublishProduct(
+	ctx context.Context,
+	productID uuid.UUID,
+) error {
+	err := s.dbExecuter.WithDB(ctx,
+		func(db database.QueryExecutor) error {
+			return s.productRepo.PublishProduct(
+				ctx,
+				db,
+				productID,
+			)
+		},
+	)
+	if err != nil {
+		return security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to publish product",
+			err,
+		)
+	}
+	return nil
+}
+
+func (s *ProductService) ArchiveProduct(
+	ctx context.Context,
+	productID uuid.UUID,
+) error {
+	err := s.dbExecuter.WithDB(ctx,
+		func(db database.QueryExecutor) error {
+			return s.productRepo.ArchiveProduct(
+				ctx,
+				db,
+				productID,
+			)
+		},
+	)
+	if err != nil {
+		return security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to archive product",
+			err,
+		)
+	}
+	return nil
 }

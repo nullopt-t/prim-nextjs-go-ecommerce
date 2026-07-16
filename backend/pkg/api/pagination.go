@@ -1,5 +1,10 @@
 package api
 
+const (
+	DefaultPageSize = 10
+	MaxPageSize     = 100
+)
+
 type Page struct {
 	Page        int  `json:"page" example:"1"`
 	PageSize    int  `json:"page_size" example:"10"`
@@ -16,6 +21,37 @@ type ListQuery struct {
 	Search string `form:"search" example:"television"`
 
 	Sort []Sort `form:"-"`
+}
+
+type QueryOptions struct {
+	DefaultPageSize int
+	MaxPageSize     int
+}
+
+func NewQueryOptions() QueryOptions {
+	return QueryOptions{
+		DefaultPageSize: DefaultPageSize,
+		MaxPageSize:     MaxPageSize,
+	}
+}
+
+func (lq *ListQuery) SetDefaults(opts *QueryOptions) {
+	if opts == nil {
+		opts = &QueryOptions{
+			DefaultPageSize: DefaultPageSize,
+			MaxPageSize:     MaxPageSize,
+		}
+	}
+
+	if lq.Page == 0 {
+		lq.Page = 1
+	}
+	if lq.PageSize == 0 {
+		lq.PageSize = opts.DefaultPageSize
+	}
+	if lq.PageSize > opts.MaxPageSize {
+		lq.PageSize = opts.MaxPageSize
+	}
 }
 
 type Sort struct {

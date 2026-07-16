@@ -6,15 +6,12 @@ import (
 	"github.com/google/uuid"
 )
 
-type ProductCategory struct {
-	ID uuid.UUID
+type Inventory struct {
+	ID        uuid.UUID
+	VariantID uuid.UUID
 
-	Name string
-
-	ParentID *uuid.UUID
-
-	CreatedBy uuid.UUID
-	UpdatedBy uuid.UUID
+	Quantity         int64
+	ReservedQuantity int64
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
