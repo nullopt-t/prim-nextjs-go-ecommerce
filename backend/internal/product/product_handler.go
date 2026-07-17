@@ -341,6 +341,7 @@ func (h *ProductHandler) GetProductVariants(c *gin.Context) {
 
 type ProductCategoryResponse struct {
 	ID        uuid.UUID  `json:"id,omitzero"`
+	Slug      string     `json:"slug,omitempty"`
 	Name      string     `json:"name,omitempty"`
 	ParentID  *uuid.UUID `json:"parent_id,omitzero"`
 	CreatedAt string     `json:"created_at,omitempty"`
@@ -369,11 +370,12 @@ func (h *ProductHandler) GetProductCategories(c *gin.Context) {
 		return
 	}
 
-	var res []ProductCategoryResponse
+	var res = make([]ProductCategoryResponse, 0, len(categories))
 	for _, category := range categories {
 		res = append(res, ProductCategoryResponse{
 			ID:        category.ID,
 			Name:      category.Name,
+			Slug:      category.Slug,
 			ParentID:  category.ParentID,
 			CreatedAt: category.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: category.UpdatedAt.Format(time.RFC3339),
@@ -513,5 +515,75 @@ func (h *ProductHandler) ArchiveProduct(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.SuccessResponse{
 		Message: "product archived successfully",
+	})
+}
+
+func (h *ProductHandler) PutProductCategories(c *gin.Context) {
+	param := &ProductURIParam{}
+	if err := c.ShouldBindUri(param); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	productID, err := uuid.Parse(param.ID)
+	if err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	var body struct {
+		CategoryIDs []uuid.UUID `json:"category_ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	if err := h.service.PutProductCategories(
+		c.Request.Context(),
+		productID,
+		body.CategoryIDs,
+	); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.SuccessResponse{
+		Message: "product categories updated successfully",
+	})
+}
+
+func (h *ProductHandler) PutProductTags(c *gin.Context) {
+	param := &ProductURIParam{}
+	if err := c.ShouldBindUri(param); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	productID, err := uuid.Parse(param.ID)
+	if err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	var body struct {
+		TagIDs []uuid.UUID `json:"tag_ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	if err := h.service.PutProductTags(
+		c.Request.Context(),
+		productID,
+		body.TagIDs,
+	); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.SuccessResponse{
+		Message: "product tags updated successfully",
 	})
 }

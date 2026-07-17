@@ -180,3 +180,101 @@ func (tr *TagRepository) List(
 	}
 	return tags, p, nil
 }
+
+func (tr *TagRepository) PutProductTags(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	productID uuid.UUID,
+	tagsIDs []uuid.UUID,
+) error {
+	_, err := tx.Exec(
+		ctx,
+		`DELETE FROM
+			product_tags
+		WHERE product_id = $1`,
+		productID,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"put product tags: %w",
+			err,
+		)
+	}
+
+	for _, tagID := range tagsIDs {
+		_, err := tx.Exec(
+			ctx,
+			`INSERT INTO product_tags (
+				product_id,
+				tag_id
+			) VALUES (
+				$1,
+				$2
+			)`,
+			productID,
+			tagID,
+		)
+		if err != nil {
+			return fmt.Errorf(
+				"put product tags: %w",
+				err,
+			)
+		}
+	}
+	return nil
+}
+
+func (tr *TagRepository) ListProductTags(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) ([]*model.ProductTag, error) {
+	query := `
+	SELECT
+		id,
+		name,
+		created_at,
+		updated_at
+	FROM
+		product_tags pt
+	JOIN
+		tags ts ON pt.tag_id = ts.id
+	WHERE
+		deleted_at IS NULL
+	AND
+		pt.product_id = $1
+	`
+	rows, err := qe.Query(
+		ctx,
+		query,
+		productID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list product tags: %w", err)
+	}
+
+	tags := make([]*model.ProductTag, 0)
+	for rows.Next() {
+		var tag model.ProductTag
+		err := rows.Scan(
+			&tag.ID,
+			&tag.Name,
+			&tag.CreatedAt,
+			&tag.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("list product tags: %w", err)
+		}
+
+		tags = append(
+			tags,
+			&tag,
+		)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list product tags: %w", err)
+	}
+
+	return tags, nil
+}

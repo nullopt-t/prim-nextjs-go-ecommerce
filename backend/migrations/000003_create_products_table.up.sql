@@ -384,6 +384,7 @@ WHERE
       id UUID PRIMARY KEY,
       name TEXT NOT NULL,
       slug TEXT NOT NULL,
+      parent_id UUID NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       deleted_at TIMESTAMPTZ,

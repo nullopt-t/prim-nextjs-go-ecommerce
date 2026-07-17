@@ -130,6 +130,61 @@ func (ts *TagService) GetTagByID(
 	return tag, nil
 }
 
+func (ts *TagService) PutProductTags(
+	ctx context.Context,
+	productID uuid.UUID,
+	tagsIDs []uuid.UUID,
+) error {
+	err := ts.qexecuter.WithTx(ctx,
+		func(tx database.QueryExecutor) error {
+			return ts.trepo.PutProductTags(
+				ctx,
+				tx,
+				productID,
+				tagsIDs,
+			)
+		},
+	)
+	if err != nil {
+		return security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"internal server error",
+			err,
+		)
+	}
+	return nil
+}
+
+func (ts *TagService) ListProductTags(
+	ctx context.Context,
+	productID uuid.UUID,
+) ([]*model.ProductTag, error) {
+	var tags []*model.ProductTag
+	err := ts.qexecuter.WithDB(ctx,
+		func(db database.QueryExecutor) error {
+			t, err := ts.trepo.ListProductTags(
+				ctx,
+				db,
+				productID,
+			)
+			if err != nil {
+				return err
+			}
+			tags = t
+			return nil
+		})
+	if err != nil {
+		return nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"internal server error",
+			err,
+		)
+	}
+	return tags, nil
+}
+
 func (ts *TagService) ListTags(
 	ctx context.Context,
 	q *api.ListQuery,

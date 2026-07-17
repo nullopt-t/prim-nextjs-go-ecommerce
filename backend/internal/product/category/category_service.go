@@ -3,6 +3,7 @@ package category
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -185,6 +186,56 @@ func (cs *CategoryService) UpdateCategory(
 	}
 
 	return nil
+}
+
+func (cs *CategoryService) PutProductCategories(
+	ctx context.Context,
+	productID uuid.UUID,
+	categoryIDs []uuid.UUID,
+) error {
+	err := cs.qexecuter.WithTx(
+		ctx,
+		func(tx database.QueryExecutor) error {
+			return cs.crepository.PutProductCategories(
+				ctx,
+				tx,
+				productID,
+				categoryIDs,
+			)
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("put product categories: %w", err)
+	}
+	return nil
+}
+
+func (cs *CategoryService) ListProductCategories(
+	ctx context.Context,
+	productID uuid.UUID,
+) ([]*model.ProductCategory, error) {
+	var res []*model.ProductCategory
+	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		categories, err := cs.crepository.ListProductCategories(
+			ctx,
+			db,
+			productID,
+		)
+		if err != nil {
+			return err
+		}
+		res = categories
+		return nil
+	})
+	if err != nil {
+		return nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch the product categories",
+			err,
+		)
+	}
+	return res, nil
 }
 
 func (cs *CategoryService) List(

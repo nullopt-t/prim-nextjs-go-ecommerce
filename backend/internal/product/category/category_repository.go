@@ -152,6 +152,106 @@ func (cr *CategoryRepository) Update(
 	return nil
 }
 
+func (cr *CategoryRepository) ListProductCategories(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) ([]*model.ProductCategory, error) {
+	query := `
+	SELECT
+		c.id,
+		c.name,
+		c.slug,
+		c.parent_id,
+		c.created_at,
+		c.updated_at
+	FROM
+		product_categories pc
+	JOIN
+		categories c ON pc.category_id = c.id
+	WHERE
+		deleted_at IS NULL AND pc.product_id = $1
+	`
+	rows, err := qe.Query(
+		ctx,
+		query,
+		productID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list product categories: %w", err)
+	}
+	defer rows.Close()
+
+	var result = make([]*model.ProductCategory, 0)
+	for rows.Next() {
+		var category model.ProductCategory
+		if err := rows.Scan(
+			&category.ID,
+			&category.Name,
+			&category.Slug,
+			&category.ParentID,
+			&category.CreatedAt,
+			&category.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("list product categories: %w", err)
+		}
+		result = append(result, &category)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list product categories: %w", err)
+	}
+	return result, nil
+}
+
+func (cr *CategoryRepository) PutProductCategories(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	productID uuid.UUID,
+	categoryIDs []uuid.UUID,
+) error {
+	query := `
+	DELETE FROM
+	product_categories
+	WHERE product_id = $1
+	`
+	if _, err := tx.Exec(
+		ctx,
+		query,
+		productID,
+	); err != nil {
+		return fmt.Errorf(
+			"put product categories: %w",
+			err,
+		)
+	}
+
+	for _, categoryID := range categoryIDs {
+		query := `
+		INSERT INTO
+		product_categories (
+			product_id,
+			category_id
+		)
+		VALUES (
+			$1,
+			$2
+		)
+		`
+		if _, err := tx.Exec(
+			ctx,
+			query,
+			productID,
+			categoryID,
+		); err != nil {
+			return fmt.Errorf(
+				"put product categories: %w",
+				err,
+			)
+		}
+	}
+	return nil
+}
+
 func (cr *CategoryRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -163,9 +263,8 @@ func (cr *CategoryRepository) List(
 	SELECT
 		id,
 		name,
+		slug,
 		parent_id,
-		created_by,
-		updated_by,
 		created_at,
 		updated_at
 	FROM
@@ -210,9 +309,8 @@ func (cr *CategoryRepository) List(
 		err = rows.Scan(
 			&c.ID,
 			&c.Name,
+			&c.Slug,
 			&c.ParentID,
-			&c.CreatedBy,
-			&c.UpdatedBy,
 			&c.CreatedAt,
 			&c.UpdatedAt,
 		)

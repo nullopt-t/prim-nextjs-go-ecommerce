@@ -11,6 +11,7 @@ type ProductCategory struct {
 
 	Name string
 
+	Slug     string
 	ParentID *uuid.UUID
 
 	CreatedBy uuid.UUID

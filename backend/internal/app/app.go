@@ -169,7 +169,13 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 
 	// product
 	productRepo := product.NewProductRepository()
-	productService := product.NewService(txRunner, productRepo, brandService, categoryService)
+	productService := product.NewService(
+		txRunner,
+		productRepo,
+		brandService,
+		categoryService,
+		tagService,
+	)
 	productHandler := product.NewHandler(productService)
 	productRouter := product.NewRouter(productHandler)
 	productRouter.MapRoutes(v1)

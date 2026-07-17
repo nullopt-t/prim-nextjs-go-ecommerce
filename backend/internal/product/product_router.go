@@ -33,9 +33,9 @@ func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		// admin.POST("/:id/variants", r.ph.CreateProductVariant)
 
 		admin.GET("/:id/categories", r.ph.GetProductCategories)
-		// admin.PUT("/:id/categories", r.ph.UpdateProductCategories)
+		admin.PUT("/:id/categories", r.ph.PutProductCategories)
 
 		admin.GET("/:id/tags", r.ph.GetProductTags)
-		// admin.PUT("/:id/tags", r.ph.UpdateProductTags)
+		admin.PUT("/:id/tags", r.ph.PutProductTags)
 	}
 }

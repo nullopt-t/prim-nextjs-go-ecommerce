@@ -8,6 +8,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/brand"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/category"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/tag"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
@@ -21,18 +22,21 @@ type ProductService struct {
 	productRepo     *ProductRepository
 	brandService    *brand.BrandService
 	categoryService *category.CategoryService
+	tagService      *tag.TagService
 }
 
 func NewService(r database.Runner,
 	productRepo *ProductRepository,
 	brandService *brand.BrandService,
 	categoryService *category.CategoryService,
+	tagService *tag.TagService,
 ) *ProductService {
 	return &ProductService{
 		dbExecuter:      r,
 		productRepo:     productRepo,
 		brandService:    brandService,
 		categoryService: categoryService,
+		tagService:      tagService,
 	}
 }
 
@@ -259,9 +263,8 @@ func (s *ProductService) GetProductCategories(
 	err := s.dbExecuter.WithDB(ctx,
 		func(db database.QueryExecutor) error {
 			var err error
-			categories, err = s.productRepo.GetCategories(
+			categories, err = s.categoryService.ListProductCategories(
 				ctx,
-				db,
 				productID,
 			)
 			return err
@@ -278,29 +281,34 @@ func (s *ProductService) GetProductCategories(
 	return categories, nil
 }
 
+func (s *ProductService) PutProductCategories(
+	ctx context.Context,
+	productID uuid.UUID,
+	categoryIDs []uuid.UUID,
+) error {
+	err := s.categoryService.PutProductCategories(
+		ctx,
+		productID,
+		categoryIDs,
+	)
+	if err != nil {
+		return security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to put product categories",
+			err,
+		)
+	}
+	return nil
+}
+
 func (s *ProductService) GetProductTags(
 	ctx context.Context,
 	productID uuid.UUID,
 ) ([]*model.ProductTag, error) {
-	var tags []*model.ProductTag
-	err := s.dbExecuter.WithDB(ctx,
-		func(db database.QueryExecutor) error {
-			var err error
-			tags, err = s.productRepo.GetTags(
-				ctx,
-				db,
-				productID,
-			)
-			return err
-		},
-	)
+	tags, err := s.tagService.ListProductTags(ctx, productID)
 	if err != nil {
-		return nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to fetch product tags",
-			err,
-		)
+		return nil, err
 	}
 	return tags, nil
 }
@@ -373,6 +381,27 @@ func (s *ProductService) ArchiveProduct(
 			http.StatusInternalServerError,
 			security.CodeInternal,
 			"failed to archive product",
+			err,
+		)
+	}
+	return nil
+}
+
+func (s *ProductService) PutProductTags(
+	ctx context.Context,
+	productID uuid.UUID,
+	tagsIDs []uuid.UUID,
+) error {
+	err := s.tagService.PutProductTags(
+		ctx,
+		productID,
+		tagsIDs,
+	)
+	if err != nil {
+		return security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to put product tags",
 			err,
 		)
 	}
