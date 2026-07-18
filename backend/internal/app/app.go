@@ -9,6 +9,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/brand"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/category"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/tag"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
@@ -161,6 +162,12 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	)
 	categoryRouter.MapRoutes(v1)
 
+	variantRepository := variant.NewRepository()
+	variantService := variant.NewService(
+		txRunner,
+		variantRepository,
+	)
+
 	// inventoryRepo := inventory.NewPostgresRepository()
 	// inventoryService := inventory.NewService(txRunner, inventoryRepo)
 	// inventoryHandler := inventory.NewHandler(inventoryService)
@@ -175,6 +182,7 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		brandService,
 		categoryService,
 		tagService,
+		variantService,
 	)
 	productHandler := product.NewHandler(productService)
 	productRouter := product.NewRouter(productHandler)

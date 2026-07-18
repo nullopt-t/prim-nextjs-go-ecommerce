@@ -30,6 +30,7 @@ func (r *ProductRepository) Create(
 ) error {
 	_, err := qe.Exec(ctx,
 		`INSERT INTO products (
+			id,
 			title,
 	 		short_description,
 			description,
@@ -46,8 +47,10 @@ func (r *ProductRepository) Create(
 			$5,
 			$6,
 			$7,
+			$8
 		)
 		`,
+		p.ID,
 		p.Title,
 		p.ShortDescription,
 		p.Description,
@@ -328,10 +331,9 @@ func (r *ProductRepository) GetVariants(
 			price,
 			currency,
 			created_at,
-			updated_at,
-			deleted_at
+			updated_at
 		FROM product_variants
-		WHERE product_id=$1 AND deleted_at IS NULL
+		WHERE product_id=$1
 		`,
 		productID,
 	)
@@ -351,7 +353,6 @@ func (r *ProductRepository) GetVariants(
 			&variant.Currency,
 			&variant.CreatedAt,
 			&variant.UpdatedAt,
-			&variant.DeletedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf(
@@ -518,7 +519,7 @@ func (r *ProductRepository) PublishProduct(
 		ctx,
 		`
 		UPDATE products
-		SET status = 'active'
+		SET status = 'published'
 		WHERE id = $1
 		`,
 		productID,
