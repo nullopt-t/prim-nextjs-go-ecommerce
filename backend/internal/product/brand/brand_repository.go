@@ -36,7 +36,7 @@ func (br *BrandRepository) Create(
 			name,
 			slug,
 			logo_url,
-			logo_label,
+			logo_alt,
 			created_at,
 			updated_at
 		)
@@ -74,7 +74,7 @@ func (br *BrandRepository) Get(
 		name,
 		slug,
 		logo_url,
-		logo_label,
+		logo_alt,
 		created_at,
 		updated_at
 	FROM
@@ -130,7 +130,7 @@ func (br *BrandRepository) Update(
 	SET
 		name = COALESCE($1, name),
 		logo_url = COALESCE($2, logo_url),
-		logo_label = COALESCE($3, logo_label),
+		logo_alt = COALESCE($3, logo_alt),
 		updated_at = $4
 	WHERE
 		id = $5
@@ -170,7 +170,7 @@ func (br *BrandRepository) List(
 		name,
 		slug,
 		logo_url,
-		logo_label,
+		logo_alt,
 		created_at,
 		updated_at
 	FROM

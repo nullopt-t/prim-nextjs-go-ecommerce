@@ -3,9 +3,9 @@
 CAUTION: Do not modify this file unless you know what you are doing.
  Unexpected results may occur if the code is changed deliberately.
 -->
-<dbmodel pgmodeler-ver="2.0.0-beta" use-changelog="false" max-obj-count="15"
+<dbmodel pgmodeler-ver="2.0.0-beta" use-changelog="false" max-obj-count="16"
 	 gen-disabled-objs-code="false" show-sys-schemas-rects="true"
-	 last-position="633,184" last-zoom="0.9" scene-rect="-226.316,0,3175.65,1361.94"
+	 last-position="749,198" last-zoom="0.7" scene-rect="-226.316,0,3877.7,1361.94"
 	 default-schema="public" default-owner="postgres"
 	 layers="Default layer"
 	 active-layers="0"
@@ -136,7 +136,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="category" layers="0" collapse-mode="1" max-obj-count="4" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1073.33" y="368.889"/>
+	<position x="1000" y="360"/>
 	<column name="id" not-null="true" default-value="get_random_uuid()">
 		<type name="uuid" length="0"/>
 	</column>
@@ -154,10 +154,10 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	</constraint>
 </table>
 
-<table name="products" layers="0" collapse-mode="2" max-obj-count="8" z-value="0">
+<table name="products" layers="0" collapse-mode="1" max-obj-count="9" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="2040" y="820"/>
+	<position x="1900" y="400"/>
 	<column name="id" not-null="true" default-value="get_random_uuid()">
 		<type name="uuid" length="0"/>
 	</column>
@@ -179,6 +179,9 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<column name="status" not-null="true">
 		<type name="text" length="0"/>
 	</column>
+	<column name="default_variant_id">
+		<type name="uuid" length="0"/>
+	</column>
 	<constraint name="products_pk" type="pk-constr" table="public.products">
 		<columns names="id" ref-type="src-columns"/>
 	</constraint>
@@ -190,7 +193,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="product_categories" layers="0" collapse-mode="1" max-obj-count="3" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1460" y="680"/>
+	<position x="1380" y="500"/>
 	<column name="id" not-null="true" default-value="gen_random_uuid()">
 		<type name="uuid" length="0"/>
 	</column>
@@ -208,7 +211,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="tags" layers="0" collapse-mode="1" max-obj-count="2" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="987.778" y="581.111"/>
+	<position x="980" y="580"/>
 	<column name="id" not-null="true" default-value="gen_random_uuid()">
 		<type name="uuid" length="0"/>
 	</column>
@@ -223,7 +226,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="product_tags" layers="0" collapse-mode="1" max-obj-count="3" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1460" y="820"/>
+	<position x="1380" y="660"/>
 	<column name="id" not-null="true">
 		<type name="uuid" length="0"/>
 	</column>
@@ -238,34 +241,18 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	</constraint>
 </table>
 
-<table name="variants" layers="0" collapse-mode="1" max-obj-count="6" z-value="0">
+<usertype name="tcurrency" configuration="enumeration">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1480" y="980"/>
-	<column name="id" not-null="true" default-value="gen_random_uuid()">
-		<type name="uuid" length="0"/>
-	</column>
-	<column name="product_id" not-null="true">
-		<type name="uuid" length="0"/>
-	</column>
-	<column name="sku" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<column name="price" not-null="true">
-		<type name="bigint" length="0"/>
-	</column>
-	<column name="currency">
-		<type name="bigint" length="0"/>
-	</column>
-	<constraint name="variants_pk" type="pk-constr" table="public.variants">
-		<columns names="id" ref-type="src-columns"/>
-	</constraint>
-</table>
+	<enumeration label="USD"/>
+	<enumeration label="EUR"/>
+	<enumeration label="EGP"/>
+</usertype>
 
 <table name="brands" layers="0" collapse-mode="1" max-obj-count="6" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="1480" y="1160"/>
+	<position x="1360" y="840"/>
 	<column name="id" not-null="true" default-value="gen_random_uuid()">
 		<type name="uuid" length="0"/>
 	</column>
@@ -278,7 +265,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	<column name="logo_url">
 		<type name="text" length="0"/>
 	</column>
-	<column name="logo_label" not-null="true">
+	<column name="logo_alt" not-null="true">
 		<type name="text" length="0"/>
 	</column>
 	<constraint name="brands_pk" type="pk-constr" table="public.brands">
@@ -286,30 +273,21 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	</constraint>
 </table>
 
-<table name="product_media" layers="0" collapse-mode="1" max-obj-count="8" z-value="0">
+<table name="product_media" layers="0" collapse-mode="1" max-obj-count="4" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="940" y="780"/>
+	<position x="3000" y="620"/>
 	<column name="id" not-null="true" default-value="gen_random_uuid()">
 		<type name="uuid" length="0"/>
 	</column>
 	<column name="varient_id" not-null="true">
 		<type name="uuid" length="0"/>
 	</column>
-	<column name="url" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<column name="type" not-null="true">
-		<type name="text" length="0"/>
-	</column>
-	<column name="mime_type" not-null="true">
-		<type name="text" length="0"/>
+	<column name="object_id" not-null="true">
+		<type name="uuid" length="0"/>
 	</column>
 	<column name="sort_order" not-null="true">
 		<type name="integer" length="0"/>
-	</column>
-	<column name="url_label" not-null="true">
-		<type name="text" length="0"/>
 	</column>
 	<constraint name="media_pk" type="pk-constr" table="public.product_media">
 		<columns names="id" ref-type="src-columns"/>
@@ -319,7 +297,7 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <table name="inventory" layers="0" collapse-mode="1" max-obj-count="4" z-value="0">
 	<schema name="public"/>
 	<role name="postgres"/>
-	<position x="920" y="1000"/>
+	<position x="2880" y="280"/>
 	<column name="id" not-null="true" default-value="gen_random_uuid()" generated="true">
 		<type name="uuid" length="0"/>
 	</column>
@@ -345,6 +323,56 @@ CAUTION: Do not modify this file unless you know what you are doing.
 		</idxelement>
 	<columns names="slug"/>
 </index>
+
+<table name="variants" layers="0" collapse-mode="1" max-obj-count="6" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="2480" y="460"/>
+	<column name="id" not-null="true" default-value="gen_random_uuid()">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="product_id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="sku" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="price" not-null="true">
+		<type name="bigint" length="0"/>
+	</column>
+	<column name="currency" not-null="true">
+		<type name="public.tcurrency" length="0"/>
+	</column>
+	<constraint name="variants_pk" type="pk-constr" table="public.variants">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
+
+<usertype name="tmedia_type" configuration="enumeration">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<enumeration label="image"/>
+	<enumeration label="video"/>
+	<enumeration label="document"/>
+</usertype>
+
+<table name="objects" layers="0" collapse-mode="1" max-obj-count="3" z-value="0">
+	<schema name="public"/>
+	<role name="postgres"/>
+	<position x="3400" y="400"/>
+	<column name="id" not-null="true">
+		<type name="uuid" length="0"/>
+	</column>
+	<column name="mime_type" not-null="true">
+		<type name="text" length="0"/>
+	</column>
+	<column name="size" not-null="true">
+		<type name="bigint" length="0"/>
+	</column>
+	<constraint name="objects_pk" type="pk-constr" table="public.objects">
+		<columns names="id" ref-type="src-columns"/>
+	</constraint>
+</table>
 
 <constraint name="user_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.users" table="public.user_roles">
@@ -373,6 +401,12 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <constraint name="brand_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.brands" table="public.products">
 	<columns names="brand_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="default_variant_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.variants" table="public.products">
+	<columns names="default_variant_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
@@ -409,6 +443,12 @@ CAUTION: Do not modify this file unless you know what you are doing.
 <constraint name="varient_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
 	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.variants" table="public.product_media">
 	<columns names="varient_id" ref-type="src-columns"/>
+	<columns names="id" ref-type="dst-columns"/>
+</constraint>
+
+<constraint name="object_id_fk" type="fk-constr" comparison-type="MATCH SIMPLE"
+	 upd-action="NO ACTION" del-action="NO ACTION" ref-table="public.objects" table="public.product_media">
+	<columns names="object_id" ref-type="src-columns"/>
 	<columns names="id" ref-type="dst-columns"/>
 </constraint>
 
@@ -498,10 +538,23 @@ CAUTION: Do not modify this file unless you know what you are doing.
 	 dst-table="public.category" reference-fk="parend_id_fk"
 	 src-required="false" dst-required="false">
 	<line>
-		<position x="1269.37" y="414.664"/>
-	<position x="1269.37" y="346.889"/>
-	<position x="1189.36" y="346.889"/>
+		<position x="1196.04" y="405.775"/>
+	<position x="1196.04" y="338"/>
+	<position x="1116.03" y="338"/>
 	</line>
+	<label ref-type="src-label">
+		<position x="0" y="0"/>
+	</label>
 </relationship>
+
+<relationship name="rel_products_variants" type="relfk" layers="0"
+	 src-table="public.products"
+	 dst-table="public.variants" reference-fk="default_variant_id_fk"
+	 src-required="false" dst-required="false"/>
+
+<relationship name="rel_product_media_objects" type="relfk" layers="0"
+	 src-table="public.product_media"
+	 dst-table="public.objects" reference-fk="object_id_fk"
+	 src-required="false" dst-required="true"/>
 
 </dbmodel>

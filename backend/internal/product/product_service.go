@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/brand"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/category"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/tag"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
@@ -23,6 +25,7 @@ type ProductService struct {
 	brandService    *brand.BrandService
 	categoryService *category.CategoryService
 	tagService      *tag.TagService
+	variantService  *variant.VariantService
 }
 
 func NewService(r database.Runner,
@@ -30,6 +33,7 @@ func NewService(r database.Runner,
 	brandService *brand.BrandService,
 	categoryService *category.CategoryService,
 	tagService *tag.TagService,
+	variantService *variant.VariantService,
 ) *ProductService {
 	return &ProductService{
 		dbExecuter:      r,
@@ -37,6 +41,7 @@ func NewService(r database.Runner,
 		brandService:    brandService,
 		categoryService: categoryService,
 		tagService:      tagService,
+		variantService:  variantService,
 	}
 }
 
@@ -55,6 +60,7 @@ func (s *ProductService) CreateProductAsDraft(
 	input CreateProductInput,
 ) (*model.Product, error) {
 
+	now := time.Now().UTC()
 	product := &model.Product{
 		ID:               uuid.New(),
 		BrandID:          input.BrandID,
@@ -63,8 +69,8 @@ func (s *ProductService) CreateProductAsDraft(
 		Description:      input.Description,
 		Slug:             input.Slug,
 		Status:           model.ProductStatusDraft,
-		CreatedBy:        input.CreatedBy,
-		UpdatedBy:        input.CreatedBy,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 
 	err := s.dbExecuter.WithDB(ctx,
@@ -406,4 +412,23 @@ func (s *ProductService) PutProductTags(
 		)
 	}
 	return nil
+}
+
+type CreateProductVariantInput struct {
+	SKU      *string
+	Price    int64
+	Currency string
+}
+
+func (s *ProductService) CreateProductVariant(
+	ctx context.Context,
+	productID uuid.UUID,
+	input CreateProductVariantInput,
+) (*model.ProductVariant, error) {
+	return s.variantService.CreateVariant(ctx, variant.CreateVariantInput{
+		ProductID: productID,
+		SKU:       input.SKU,
+		Price:     input.Price,
+		Currency:  input.Currency,
+	})
 }

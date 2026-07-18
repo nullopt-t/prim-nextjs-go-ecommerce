@@ -14,6 +14,10 @@ const (
 	DocumentType MediaType = "document"
 )
 
+func (m MediaType) String() string {
+	return string(m)
+}
+
 type Media struct {
 	ID uuid.UUID
 
@@ -25,9 +29,6 @@ type Media struct {
 
 	Width  int
 	Height int
-
-	CreatedBy uuid.UUID
-	UpdatedBy uuid.UUID
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

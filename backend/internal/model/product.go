@@ -6,19 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type ProductVariant struct {
-	ID        uuid.UUID
-	ProductID uuid.UUID
-
-	SKU      string
-	Price    int64 // minor units
-	Currency string
-
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
-}
-
 type ProductStatus string
 
 const (

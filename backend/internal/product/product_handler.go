@@ -8,6 +8,8 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/types"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -37,17 +39,6 @@ type CategoriesResponse struct {
 	Page       int                `json:"page"`
 	PageSize   int                `json:"page_size"`
 	Total      int                `json:"total"`
-}
-
-type CreateProductRequest struct {
-	BrandID          *uuid.UUID `json:"brand_id" binding:"required,uuid"`
-	Title            string     `json:"title" binding:"required"`
-	ShortDescription string     `json:"short_description" binding:"requried"`
-	Description      string     `json:"description" binding:"requried"`
-	Slug             string     `json:"slug" binding:"required"`
-	SKU              string     `json:"sku" binding:"requried"`
-	Status           string     `json:"status" binding:"required"`
-	Price            int64      `json:"price" binding:"required"`
 }
 
 type ProductHandler struct {
@@ -245,19 +236,40 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 // @Failure 404 {object} api.ErrorResponse
 // @Router /products [post]
 func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
-	req := &CreateProductRequest{}
-	if err := c.ShouldBindJSON(req); err != nil {
+
+	var body struct {
+		BrandID          *string `json:"brand_id"`
+		Title            string  `json:"title" binding:"required"`
+		ShortDescription string  `json:"short_description" binding:"required"`
+		Description      string  `json:"description" binding:"required"`
+		Slug             *string `json:"slug"`
+	}
+
+	if err := c.ShouldBindJSON(&body); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
 	in := CreateProductInput{
-		BrandID:          req.BrandID,
-		Title:            req.Title,
-		ShortDescription: req.ShortDescription,
-		Description:      req.Description,
-		Slug:             req.Slug,
-		Status:           model.ProductStatus(req.Status),
+		Title:            body.Title,
+		ShortDescription: body.ShortDescription,
+		Description:      body.Description,
+		Status:           model.ProductStatusDraft,
+	}
+
+	if body.BrandID != nil {
+		brandID, err := uuid.Parse(*body.BrandID)
+		if err != nil {
+			validation.ValidationError(c, err)
+			return
+		}
+		in.BrandID = types.Ptr(brandID)
+	}
+
+	if body.Slug != nil {
+		in.Slug = *body.Slug
+	} else {
+		in.Slug = utils.Slugify(body.Title)
 	}
 
 	product, err := h.service.CreateProductAsDraft(
@@ -269,7 +281,6 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 		return
 	}
 
-	userID, _ := c.Get("userID")
 	res := &ProductResponse{
 		ID:               product.ID,
 		BrandID:          product.BrandID,
@@ -278,8 +289,6 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 		Description:      product.Description,
 		Slug:             product.Slug,
 		Status:           product.Status.String(),
-		CreatedBy:        userID.(uuid.UUID),
-		UpdatedBy:        userID.(uuid.UUID),
 		CreatedAt:        product.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:        product.UpdatedAt.Format(time.RFC3339),
 	}
@@ -290,9 +299,9 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 }
 
 type ProductVariantResponse struct {
-	ID        uuid.UUID `json:"id,omitempty"`
-	ProductID uuid.UUID `json:"product_id,omitempty"`
-	SKU       string    `json:"sku,omitempty"`
+	ID        uuid.UUID `json:"id,omitzero"`
+	ProductID uuid.UUID `json:"product_id,omitzero"`
+	SKU       *string   `json:"sku,omitempty"`
 	Price     int64     `json:"price,omitempty"`
 	Currency  string    `json:"currency,omitempty"`
 	CreatedAt string    `json:"created_at,omitempty"`
@@ -586,4 +595,58 @@ func (h *ProductHandler) PutProductTags(c *gin.Context) {
 	c.JSON(http.StatusOK, api.SuccessResponse{
 		Message: "product tags updated successfully",
 	})
+}
+
+func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
+	param := &ProductURIParam{}
+	if err := c.ShouldBindUri(param); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	productID, err := uuid.Parse(param.ID)
+	if err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	var body struct {
+		SKU      *string `json:"sku"`
+		Price    int64   `json:"price" binding:"required"`
+		Currency string  `json:"currency" binding:"required"`
+	}
+	if err = c.ShouldBindJSON(&body); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	input := CreateProductVariantInput{
+		SKU:      body.SKU,
+		Price:    body.Price,
+		Currency: body.Currency,
+	}
+
+	v, err := h.service.CreateProductVariant(
+		c.Request.Context(),
+		productID,
+		input,
+	)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusCreated,
+		api.DataResponse{
+			Data: ProductVariantResponse{
+				ID:        v.ID,
+				ProductID: v.ProductID,
+				SKU:       v.SKU,
+				Price:     v.Price,
+				Currency:  v.Currency,
+				CreatedAt: v.CreatedAt.Format(time.RFC3339),
+				UpdatedAt: v.UpdatedAt.Format(time.RFC3339),
+			},
+		},
+	)
 }
