@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/media"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
@@ -14,15 +15,18 @@ import (
 type VariantService struct {
 	dr database.Runner
 	vr *VariantRepository
+	ms *media.MediaService
 }
 
 func NewService(
 	r database.Runner,
 	vr *VariantRepository,
+	ms *media.MediaService,
 ) *VariantService {
 	return &VariantService{
 		dr: r,
 		vr: vr,
+		ms: ms,
 	}
 }
 
@@ -68,6 +72,36 @@ func (vs *VariantService) CreateVariant(
 		)
 	}
 	return variant, nil
+}
+
+func (vs *VariantService) GetVariantMedia(
+	ctx context.Context,
+	variantID uuid.UUID,
+) ([]*model.ProductMedia, error) {
+	var media []*model.ProductMedia
+	err := vs.dr.WithDB(
+		ctx,
+		func(db database.QueryExecutor) error {
+			m, err := vs.ms.GetVariantMedia(
+				ctx,
+				variantID,
+			)
+			if err != nil {
+				return err
+			}
+			media = m
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to create a new variant",
+			err,
+		)
+	}
+	return media, nil
 }
 
 type UpdateVariantInput struct {

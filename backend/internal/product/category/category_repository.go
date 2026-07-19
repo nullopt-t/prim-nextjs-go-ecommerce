@@ -34,8 +34,6 @@ func (cr *CategoryRepository) Create(
 			id,
 			name,
 			parent_id,
-			created_by,
-			updated_by,
 			created_at,
 			updated_at
 		)
@@ -45,15 +43,11 @@ func (cr *CategoryRepository) Create(
 			$3,
 			$4,
 			$5,
-			$6,
-			$7
 		)
 		`,
 		category.ID,
 		category.Name,
 		category.ParentID,
-		category.CreatedBy,
-		category.UpdatedBy,
 		category.CreatedAt,
 		category.UpdatedAt,
 	)
@@ -76,8 +70,6 @@ func (cr *CategoryRepository) Get(
 				id,
 				name,
 				parent_id,
-				created_by,
-				updated_by,
 				created_at,
 				updated_at
 			FROM
@@ -102,8 +94,6 @@ func (cr *CategoryRepository) Get(
 		&category.ID,
 		&category.Name,
 		&category.ParentID,
-		&category.CreatedBy,
-		&category.UpdatedBy,
 		&category.CreatedAt,
 		&category.UpdatedAt,
 	)
@@ -118,7 +108,6 @@ func (cr *CategoryRepository) Get(
 type UpdateCategoryFields struct {
 	Name      *string
 	ParentID  *uuid.UUID
-	UpdatedBy uuid.UUID
 }
 
 func (cr *CategoryRepository) Update(
@@ -133,16 +122,14 @@ func (cr *CategoryRepository) Update(
 	SET
 		name = COALESCE($1, name),
 		parent_id = COALESCE($2, parent_id),
-		updated_by = $3
 	WHERE
-		id = $4
+		id = $3
 	`
 	_, err := qe.Exec(
 		ctx,
 		query,
 		fields.Name,
 		fields.ParentID,
-		fields.UpdatedBy,
 		categoryID,
 	)
 	if err != nil {
