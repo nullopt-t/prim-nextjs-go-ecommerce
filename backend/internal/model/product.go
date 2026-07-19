@@ -9,9 +9,9 @@ import (
 type ProductStatus string
 
 const (
-	ProductStatusActive   ProductStatus = "active"
-	ProductStatusDraft    ProductStatus = "draft"
-	ProductStatusArchived ProductStatus = "archived"
+	ProductStatusPublished ProductStatus = "published"
+	ProductStatusDraft     ProductStatus = "draft"
+	ProductStatusArchived  ProductStatus = "archived"
 )
 
 func (p ProductStatus) String() string {

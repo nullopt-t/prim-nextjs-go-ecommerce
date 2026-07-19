@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,35 +19,28 @@ func (m MediaType) String() string {
 	return string(m)
 }
 
-type Media struct {
-	ID uuid.UUID
+func ValidateMediaType(s string) (MediaType, error) {
+	switch s {
+	case ImageType.String():
+		return ImageType, nil
+	case VideoType.String():
+		return VideoType, nil
+	case DocumentType.String():
+		return DocumentType, nil
+	default:
+		return "", errors.New("unsupported media type")
+	}
+}
 
-	Alt      string
-	Type     MediaType
-	MimeType string
-	FileSize int64
-	Checksum string
+type ProductMedia struct {
+	ID        uuid.UUID
+	VariantID uuid.UUID
+	ObjectID  uuid.UUID
 
-	Width  int
-	Height int
+	Type      MediaType
+	SortOrder int
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt *time.Time
-}
-
-type ProductMedia struct {
-	ProductID uuid.UUID
-	MediaID   uuid.UUID
-
-	SortOrder int
-	IsPrimary bool
-}
-
-type VariantMedia struct {
-	ProductID uuid.UUID
-	MediaID   uuid.UUID
-
-	SortOrder int
-	IsPrimary bool
 }
