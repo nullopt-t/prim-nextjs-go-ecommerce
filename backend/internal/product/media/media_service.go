@@ -2,7 +2,6 @@ package media
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 
@@ -12,99 +11,84 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
-type ProductMediaService struct {
-	qexecutor database.Runner
-	mr        *MediaRepository
+type MediaService struct {
+	dr database.Runner
+	mr *MediaRepository
 }
 
-func NewProductMediaService(
-	qexecutor database.Runner,
+func NewService(
+	dr database.Runner,
 	mr *MediaRepository,
-) *ProductMediaService {
-	return &ProductMediaService{
-		qexecutor: qexecutor,
-		mr:        mr,
+) *MediaService {
+	return &MediaService{
+		dr: dr,
+		mr: mr,
 	}
 }
 
-type CreateMediaInput struct {
-	Alt       string
-	Type      model.MediaType
-	MimeType  string
-	FileSize  int64
-	Checksum  string
-	Width     int
-	Height    int
-	CreatedBy uuid.UUID
-	UpdatedBy uuid.UUID
+type CreateProductMediaInput struct {
+	VariantID uuid.UUID
+	ObjectID  uuid.UUID
+	Type      string
+	SortOrder int
 }
 
-func (ms *ProductMediaService) CreateMedia(
+func (ms *MediaService) CreateProductMedia(
 	ctx context.Context,
-	input CreateMediaInput,
-) error {
+	input CreateProductMediaInput,
+) (*model.ProductMedia, error) {
 
-	now := time.Now()
-	media := &model.Media{
+	now := time.Now().UTC()
+	media := &model.ProductMedia{
 		ID:        uuid.New(),
-		Alt:       input.Alt,
-		Type:      input.Type,
-		MimeType:  input.MimeType,
-		FileSize:  input.FileSize,
-		Checksum:  input.Checksum,
-		Width:     input.Width,
-		Height:    input.Height,
-		CreatedBy: input.CreatedBy,
-		UpdatedBy: input.UpdatedBy,
+		VariantID: input.VariantID,
+		ObjectID:  input.ObjectID,
+		SortOrder: input.SortOrder,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
 
-	err := ms.qexecutor.WithDB(
-		ctx,
+	validType, err := model.ValidateMediaType(input.Type)
+	if err != nil {
+		return nil, security.NewSecureError(
+			http.StatusBadRequest,
+			security.CodeValidation,
+			"invalid media type",
+			err,
+		)
+	}
+
+	media.Type = validType
+
+	err = ms.dr.WithDB(ctx,
 		func(db database.QueryExecutor) error {
 			return ms.mr.Create(
 				ctx,
 				db,
 				media,
 			)
-		},
-	)
+		})
 	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(
-			mappedErr,
-			database.ErrConflict,
-		):
-			return security.NewSecureError(
-				http.StatusConflict,
-				security.CodeConflict,
-				"conflict",
-				err,
-			)
-		default:
-			return security.NewSecureError(
-				http.StatusInternalServerError,
-				security.CodeInternal,
-				"internal server error",
-				err,
-			)
-		}
+		return nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to create a new product media",
+			err,
+		)
 	}
-	return nil
+
+	return media, nil
 }
 
-func (ms *ProductMediaService) GetByID(
+func (ms *MediaService) GetProductMediaByID(
 	ctx context.Context,
 	mediaID uuid.UUID,
-) ([]*model.Media, error) {
-	var media []*model.Media
-	err := ms.qexecutor.WithDB(
+) (*model.ProductMedia, error) {
+	var media *model.ProductMedia
+	err := ms.dr.WithDB(
 		ctx,
 		func(db database.QueryExecutor) error {
-			var err error
-			media, err = ms.mr.GetByID(
+			m, err := ms.mr.GetByID(
 				ctx,
 				db,
 				mediaID,
@@ -112,141 +96,49 @@ func (ms *ProductMediaService) GetByID(
 			if err != nil {
 				return err
 			}
+			media = m
 			return nil
 		},
 	)
 	if err != nil {
-		mappedError := database.MapError(err)
-		switch {
-		case errors.Is(
-			mappedError,
-			database.ErrNotFound,
-		):
-			return nil, security.NewSecureError(
-				http.StatusNotFound,
-				security.CodeNotFound,
-				"not found",
-				err,
-			)
-		default:
-			return nil, security.NewSecureError(
-				http.StatusInternalServerError,
-				security.CodeInternal,
-				"internal server error",
-				err,
-			)
-		}
+		return nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch a media",
+			err,
+		)
 	}
-
 	return media, nil
 }
 
-func (ms *ProductMediaService) GetByChecksum(
+func (ms *MediaService) GetVariantMedia(
 	ctx context.Context,
-	checksum string,
-) (*model.Media, error) {
-	var media *model.Media
-	err := ms.qexecutor.WithDB(
+	variantID uuid.UUID,
+) ([]*model.ProductMedia, error) {
+	var media []*model.ProductMedia
+	err := ms.dr.WithDB(
 		ctx,
 		func(db database.QueryExecutor) error {
-			var err error
-			media, err = ms.mr.GetByChecksum(
+			m, err := ms.mr.GetVariantMedia(
 				ctx,
 				db,
-				checksum,
+				variantID,
 			)
 			if err != nil {
 				return err
 			}
+
+			media = m
 			return nil
 		},
 	)
 	if err != nil {
-		mappedError := database.MapError(err)
-		switch {
-		case errors.Is(
-			mappedError,
-			database.ErrNotFound,
-		):
-			return nil, security.NewSecureError(
-				http.StatusNotFound,
-				security.CodeNotFound,
-				"not found",
-				err,
-			)
-		default:
-			return nil, security.NewSecureError(
-				http.StatusInternalServerError,
-				security.CodeInternal,
-				"internal server error",
-				err,
-			)
-		}
+		return nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch a media",
+			err,
+		)
 	}
-
 	return media, nil
-}
-
-type UpdateMediaInput struct {
-	Alt       *string
-	Type      *string
-	Checksum  *string
-	MimeType  *string
-	Width     *int
-	Height    *int
-	FileSize  *int64
-	UpdatedBy uuid.UUID
-}
-
-func (ms *ProductMediaService) Update(
-	ctx context.Context,
-	mediaID uuid.UUID,
-	input UpdateMediaInput,
-) error {
-	media := UpdateMediaFields{
-		Alt:       input.Alt,
-		Type:      input.Type,
-		Checksum:  input.Checksum,
-		MimeType:  input.MimeType,
-		Width:     input.Width,
-		Height:    input.Height,
-		FileSize:  input.FileSize,
-		UpdatedBy: input.UpdatedBy,
-		UpdatedAt: time.Now().UTC(),
-	}
-	err := ms.qexecutor.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			return ms.mr.Update(
-				ctx,
-				db,
-				mediaID,
-				media,
-			)
-		},
-	)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (ms *ProductMediaService) Delete(
-	ctx context.Context,
-	mediaID uuid.UUID,
-) error {
-	err := ms.qexecutor.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			return ms.mr.Delete(
-				ctx,
-				db,
-				mediaID,
-			)
-		},
-	)
-	if err != nil {
-		return err
-	}
-	return nil
 }

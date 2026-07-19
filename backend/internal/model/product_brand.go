@@ -14,9 +14,6 @@ type ProductBrand struct {
 	LogoURL string
 	LogoAlt string
 
-	CreatedBy uuid.UUID
-	UpdatedBy uuid.UUID
-
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt *time.Time
