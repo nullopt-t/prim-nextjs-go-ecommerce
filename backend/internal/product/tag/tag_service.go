@@ -36,14 +36,11 @@ func (ts *TagService) CreateTag(
 	ctx context.Context,
 	in CreateTagInput,
 ) (*model.ProductTag, error) {
-	userID := ctx.Value("userID").(uuid.UUID)
 
 	now := time.Now()
 	tag := &model.ProductTag{
 		ID:        uuid.New(),
 		Name:      in.Name,
-		CreatedBy: userID,
-		UpdatedBy: userID,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}

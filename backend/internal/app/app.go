@@ -8,6 +8,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/brand"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/category"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/media"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/tag"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
@@ -162,10 +163,17 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	)
 	categoryRouter.MapRoutes(v1)
 
+	mediaRepository := media.NewRepository()
+	mediaService := media.NewService(
+		txRunner,
+		mediaRepository,
+	)
+
 	variantRepository := variant.NewRepository()
 	variantService := variant.NewService(
 		txRunner,
 		variantRepository,
+		mediaService,
 	)
 
 	// inventoryRepo := inventory.NewPostgresRepository()

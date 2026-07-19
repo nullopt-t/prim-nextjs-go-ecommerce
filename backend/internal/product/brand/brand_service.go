@@ -181,12 +181,12 @@ func (bs *BrandService) UpdateBrand(
 	brandID uuid.UUID,
 	input *UpdateBrandInput,
 ) error {
-	userID := ctx.Value("userID").(uuid.UUID)
+	// userID := ctx.Value("userID").(uuid.UUID)
 	fields := &UpdateBrandFields{
 		Name:      input.Name,
 		LogoURL:   input.LogoURL,
 		LogoAlt:   input.LogoAlt,
-		UpdatedBy: userID,
+		// UpdatedBy: userID,
 	}
 	err := bs.qexecuter.WithDB(
 		ctx,
