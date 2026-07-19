@@ -202,12 +202,13 @@ CREATE TABLE IF NOT EXISTS product_variant_attributes (
 CREATE TABLE IF NOT EXISTS objects (
     id UUID PRIMARY KEY,
     size BIGINT NOT NULL,
-    mime_type TEXT NOT NULL,
+    content_type TEXT NOT NULL,
     bucket TEXT NOT NULL,
     key TEXT NOT NULL,
+    status TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
-    deleted_at TIMESTAMPTZ
+    deleted_at TIMESTAMPTZ NULL
 );
 
 -- ============================================================
@@ -229,7 +230,8 @@ CREATE TABLE IF NOT EXISTS product_media (
     type product_media_type NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
 
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE INDEX product_media_variant_idx
