@@ -1,10 +1,10 @@
-import MainLayout from '@/components/layouts/mainLayout'
-import { Outlet } from 'react-router-dom'
+import MainLayout from "@/components/layouts/mainLayout";
+import Section from "@/features/home/components/ui/section";
 
 export function Home() {
-    return (
-        <MainLayout>
-            <Outlet />
-        </MainLayout>
-    )
+	return (
+		<MainLayout>
+			<Section />
+		</MainLayout>
+	);
 }
