@@ -52,7 +52,7 @@ function SideBarCategories() {
 
 			<div
 				style={{ height: `${height}px` }}
-				className="overflow-hidden transition-[height] duration-300 ease-in-out"
+				className="bg-amber-700 transition-[height] duration-300 ease-in-out"
 			>
 				<ul ref={catRef} className="mt-3 space-y-2">
 					{categories.map((category) => (
