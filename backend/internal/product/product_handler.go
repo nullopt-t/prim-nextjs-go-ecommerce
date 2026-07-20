@@ -80,6 +80,13 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 		return
 	}
 
+	for _, item := range result.Items {
+		if item.ThumbnailBucket != nil && item.ThumbnailKey != nil {
+			thumbnailURL := string(*item.ThumbnailBucket) + "/" + string(*item.ThumbnailKey)
+			item.ThumbnailURL = &thumbnailURL
+		}
+	}
+
 	c.JSON(
 		http.StatusOK,
 		api.SuccessResponse{

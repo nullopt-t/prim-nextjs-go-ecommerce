@@ -39,17 +39,14 @@ func (bs *BrandService) CreateBrand(
 	ctx context.Context,
 	in *CreateBrandInput,
 ) (*model.ProductBrand, error) {
-	// userID := ctx.Value("userID").(uuid.UUID)
 
 	now := time.Now()
 	brand := &model.ProductBrand{
-		ID:      uuid.New(),
-		Name:    in.Name,
-		Slug:    in.Slug,
-		LogoURL: in.LogoURL,
-		LogoAlt: in.LogoAlt,
-		// CreatedBy: userID,
-		// UpdatedBy: userID,
+		ID:        uuid.New(),
+		Name:      in.Name,
+		Slug:      in.Slug,
+		LogoURL:   in.LogoURL,
+		LogoAlt:   in.LogoAlt,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -181,12 +178,10 @@ func (bs *BrandService) UpdateBrand(
 	brandID uuid.UUID,
 	input *UpdateBrandInput,
 ) error {
-	// userID := ctx.Value("userID").(uuid.UUID)
 	fields := &UpdateBrandFields{
-		Name:      input.Name,
-		LogoURL:   input.LogoURL,
-		LogoAlt:   input.LogoAlt,
-		// UpdatedBy: userID,
+		Name:    input.Name,
+		LogoURL: input.LogoURL,
+		LogoAlt: input.LogoAlt,
 	}
 	err := bs.qexecuter.WithDB(
 		ctx,

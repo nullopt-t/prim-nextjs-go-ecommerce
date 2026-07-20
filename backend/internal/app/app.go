@@ -5,15 +5,17 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/http/swagger"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/notifier"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/object"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/brand"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/category"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/media"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/tag"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 
 	"context"
 	"fmt"
@@ -42,6 +44,9 @@ type App struct {
 
 	// database
 	db *database.DB
+
+	// minio
+	minioClient *minio.Client
 }
 
 func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
@@ -163,24 +168,27 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	)
 	categoryRouter.MapRoutes(v1)
 
-	mediaRepository := media.NewRepository()
-	mediaService := media.NewService(
+	objectRepository := object.NewRepository()
+	objectService := object.NewService(
 		txRunner,
-		mediaRepository,
+		objectRepository,
 	)
 
 	variantRepository := variant.NewRepository()
+	mediaRepository := variant.NewMediaRepository()
 	variantService := variant.NewService(
+		app.logger,
 		txRunner,
+		app.minioClient,
 		variantRepository,
-		mediaService,
+		mediaRepository,
+		objectService,
+		config.MinioCfg,
 	)
 
-	// inventoryRepo := inventory.NewPostgresRepository()
-	// inventoryService := inventory.NewService(txRunner, inventoryRepo)
-	// inventoryHandler := inventory.NewHandler(inventoryService)
-	// inventoryRouter := inventory.NewRouter(inventoryHandler)
-	// inventoryRouter.MapRoutes(v1.Group("/inventories"))
+	variantHandler := variant.NewHandler(variantService)
+	variantRouter := variant.NewRouter(variantHandler)
+	variantRouter.MapRoutes(v1)
 
 	// product
 	productRepo := product.NewProductRepository()
@@ -196,24 +204,6 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	productRouter := product.NewRouter(productHandler)
 	productRouter.MapRoutes(v1)
 
-	// // cart
-	// cartRepo := cart.NewPostgresRepository()
-	// cartService := cart.NewService(txRunner, cartRepo, productRepo)
-	// cartHandler := cart.NewHandler(cartService)
-	// cartRouter := cart.NewRouter(cartHandler)
-	// cartRouter.MapRoutes(v1.Group("/carts"))
-
-	// // order
-	// orderRepo := order.NewPostgresRepository()
-	// orderService := order.NewService(txRunner, orderRepo)
-	// orderHandler := order.NewHandler(orderService)
-	// orderRouter := order.NewRouter(orderHandler)
-	// orderRouter.MapRoutes(v1.Group("/orders"))
-
-	// // checkout
-	// checkoutService := checkout.NewService(app.db.GetPool(), orderRepo, cartRepo)
-	// checkoutHandler := checkout.NewHandler(checkoutService)
-	// checkout.RegisterRoutes(checkoutHandler, apiV1.Group("/checkout"), app.db.GetPool())
 }
 
 func (app *App) Shutdown() {
@@ -269,6 +259,21 @@ func (app *App) Run() error {
 				"Error": err.Error(),
 			},
 		)
+	}
+
+	app.minioClient, err = minio.New(cfg.MinioCfg.Endpoint, &minio.Options{
+		Creds:      credentials.NewStaticV4(cfg.MinioCfg.AccessKey, cfg.MinioCfg.SecretKey, ""),
+		Secure:     false,
+		EnableRDMA: true,
+	})
+	if err != nil {
+		app.logger.Error(
+			"minio connection issue",
+			log.Meta{
+				"Error": err,
+			},
+		)
+		return err
 	}
 
 	app.redisClient = redis.NewClient(&redis.Options{

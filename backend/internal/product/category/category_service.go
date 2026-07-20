@@ -30,10 +30,8 @@ func NewService(
 }
 
 type CreateCategoryInput struct {
-	Name      string
-	ParentID  *uuid.UUID
-	CreatedBy uuid.UUID
-	// UpdatedBy uuid.UUID
+	Name     string
+	ParentID *uuid.UUID
 }
 
 func (cs *CategoryService) CreateCategory(
@@ -46,8 +44,6 @@ func (cs *CategoryService) CreateCategory(
 		ID:        uuid.New(),
 		Name:      in.Name,
 		ParentID:  in.ParentID,
-		// CreatedBy: in.CreatedBy,
-		// UpdatedBy: in.UpdatedBy,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -137,9 +133,8 @@ func (cs *CategoryService) GetCategoryByID(
 }
 
 type UpdateCategoryInput struct {
-	Name      *string
-	ParentID  *uuid.UUID
-	UpdatedBy uuid.UUID
+	Name     *string
+	ParentID *uuid.UUID
 }
 
 func (cs *CategoryService) UpdateCategory(
@@ -148,9 +143,8 @@ func (cs *CategoryService) UpdateCategory(
 	input *UpdateCategoryInput,
 ) error {
 	fields := UpdateCategoryFields{
-		Name:      input.Name,
-		ParentID:  input.ParentID,
-		// UpdatedBy: input.UpdatedBy,
+		Name:     input.Name,
+		ParentID: input.ParentID,
 	}
 	err := cs.qexecuter.WithDB(ctx,
 		func(db database.QueryExecutor) error {

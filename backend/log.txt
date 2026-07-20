@@ -1,0 +1,1905 @@
+diff --git a/backend/go.mod b/backend/go.mod
+index d08086e..74049e4 100644
+--- a/backend/go.mod
++++ b/backend/go.mod
+@@ -28,6 +28,7 @@ require (
+ 	github.com/bytedance/sonic/loader v0.5.1 // indirect
+ 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+ 	github.com/cloudwego/base64x v0.1.7 // indirect
++	github.com/dustin/go-humanize v1.0.1 // indirect
+ 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
+ 	github.com/gin-contrib/sse v1.1.1 // indirect
+ 	github.com/go-openapi/jsonpointer v0.23.1 // indirect
+@@ -48,17 +49,26 @@ require (
+ 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+ 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+ 	github.com/json-iterator/go v1.1.12 // indirect
++	github.com/klauspost/compress v1.18.6 // indirect
+ 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
++	github.com/klauspost/crc32 v1.3.0 // indirect
+ 	github.com/leodido/go-urn v1.4.0 // indirect
+ 	github.com/mattn/go-isatty v0.0.22 // indirect
++	github.com/minio/crc64nvme v1.1.1 // indirect
++	github.com/minio/md5-simd v1.1.2 // indirect
++	github.com/minio/minio-go/v7 v7.2.1 // indirect
+ 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+ 	github.com/modern-go/reflect2 v1.0.2 // indirect
+ 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect
++	github.com/philhofer/fwd v1.2.0 // indirect
+ 	github.com/quic-go/qpack v0.6.0 // indirect
+ 	github.com/quic-go/quic-go v0.59.1 // indirect
+ 	github.com/rogpeppe/go-internal v1.14.1 // indirect
++	github.com/rs/xid v1.6.0 // indirect
++	github.com/tinylib/msgp v1.6.1 // indirect
+ 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
+ 	github.com/ugorji/go/codec v1.3.1 // indirect
++	github.com/zeebo/xxh3 v1.1.0 // indirect
+ 	go.mongodb.org/mongo-driver/v2 v2.6.0 // indirect
+ 	go.uber.org/atomic v1.11.0 // indirect
+ 	go.yaml.in/yaml/v3 v3.0.4 // indirect
+@@ -70,4 +80,5 @@ require (
+ 	golang.org/x/text v0.37.0 // indirect
+ 	golang.org/x/tools v0.45.0 // indirect
+ 	google.golang.org/protobuf v1.36.11 // indirect
++	gopkg.in/ini.v1 v1.67.2 // indirect
+ )
+diff --git a/backend/go.sum b/backend/go.sum
+index ba556fe..0380ea2 100644
+--- a/backend/go.sum
++++ b/backend/go.sum
+@@ -19,6 +19,8 @@ github.com/cloudwego/base64x v0.1.7/go.mod h1:Cu1PV9zfrSf7ET2tIbWbbEy7jO7HHJ13q4
+ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+ github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
++github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
++github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
+ github.com/gabriel-vasile/mimetype v1.4.13 h1:46nXokslUBsAJE/wMsp5gtO500a4F3Nkz9Ufpk2AcUM=
+ github.com/gabriel-vasile/mimetype v1.4.13/go.mod h1:d+9Oxyo1wTzWdyVUPMmXFvp4F9tea18J8ufA774AB3s=
+ github.com/gin-contrib/gzip v0.0.6 h1:NjcunTcGAj5CO1gn4N8jHOSIeRFHIbn51z6K+xaN4d4=
+@@ -87,8 +89,13 @@ github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
+ github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible/go.mod h1:1c7szIrayyPPB/987hsnvNzLushdWf4o/79s3P08L8A=
+ github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
+ github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
++github.com/klauspost/compress v1.18.6 h1:2jupLlAwFm95+YDR+NwD2MEfFO9d4z4Prjl1XXDjuao=
++github.com/klauspost/compress v1.18.6/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=
++github.com/klauspost/cpuid/v2 v2.0.1/go.mod h1:FInQzS24/EEf25PyTYn52gqo7WaD8xa0213Md/qVLRg=
+ github.com/klauspost/cpuid/v2 v2.3.0 h1:S4CRMLnYUhGeDFDqkGriYKdfoFlDnMtqTiI/sFzhA9Y=
+ github.com/klauspost/cpuid/v2 v2.3.0/go.mod h1:hqwkgyIinND0mEev00jJYCxPNVRVXFQeu1XKlok6oO0=
++github.com/klauspost/crc32 v1.3.0 h1:sSmTt3gUt81RP655XGZPElI0PelVTZ6YwCRnPSupoFM=
++github.com/klauspost/crc32 v1.3.0/go.mod h1:D7kQaZhnkX/Y0tstFGf8VUzv2UofNGqCjnC3zdHB0Hw=
+ github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
+ github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
+ github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
+@@ -97,6 +104,12 @@ github.com/leodido/go-urn v1.4.0 h1:WT9HwE9SGECu3lg4d/dIA+jxlljEa1/ffXKmRjqdmIQ=
+ github.com/leodido/go-urn v1.4.0/go.mod h1:bvxc+MVxLKB4z00jd1z+Dvzr47oO32F/QSNjSBOlFxI=
+ github.com/mattn/go-isatty v0.0.22 h1:j8l17JJ9i6VGPUFUYoTUKPSgKe/83EYU2zBC7YNKMw4=
+ github.com/mattn/go-isatty v0.0.22/go.mod h1:ZXfXG4SQHsB/w3ZeOYbR0PrPwLy+n6xiMrJlRFqopa4=
++github.com/minio/crc64nvme v1.1.1 h1:8dwx/Pz49suywbO+auHCBpCtlW1OfpcLN7wYgVR6wAI=
++github.com/minio/crc64nvme v1.1.1/go.mod h1:eVfm2fAzLlxMdUGc0EEBGSMmPwmXD5XiNRpnu9J3bvg=
++github.com/minio/md5-simd v1.1.2 h1:Gdi1DZK69+ZVMoNHRXJyNcxrMA4dSxoYHZSQbirFg34=
++github.com/minio/md5-simd v1.1.2/go.mod h1:MzdKDxYpY2BT9XQFocsiZf/NKVtR7nkE4RoEpN+20RM=
++github.com/minio/minio-go/v7 v7.2.1 h1:PfBfwvKB/MmqyN8Vb1G9voWisaM9OrLv+WwOvMwS9Dw=
++github.com/minio/minio-go/v7 v7.2.1/go.mod h1:EU9hENAStx/xXduNdrGO5e4X5vk19NtgB+RIPjZO8o0=
+ github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
+ github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w8PVh93nsPXa1VrQ6jlwL5oN8l14QlcNfg=
+ github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
+@@ -106,6 +119,8 @@ github.com/nyaruka/phonenumbers v1.8.0 h1:TrXNJmbwcAHajzDqin3mLWw57vqLUA6ZjVdeNd
+ github.com/nyaruka/phonenumbers v1.8.0/go.mod h1:fsKPJ70O9JetEA4ggnJadYTFWwtGPvu/lETTXNXq6Cs=
+ github.com/pelletier/go-toml/v2 v2.3.1 h1:MYEvvGnQjeNkRF1qUuGolNtNExTDwct51yp7olPtrEc=
+ github.com/pelletier/go-toml/v2 v2.3.1/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
++github.com/philhofer/fwd v1.2.0 h1:e6DnBTl7vGY+Gz322/ASL4Gyp1FspeMvx1RNDoToZuM=
++github.com/philhofer/fwd v1.2.0/go.mod h1:RqIHx9QI14HlwKwm98g9Re5prTQ6LdeRQn+gXJFxsJM=
+ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+ github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+ github.com/quic-go/qpack v0.6.0 h1:g7W+BMYynC1LbYLSqRt8PBg5Tgwxn214ZZR34VIOjz8=
+@@ -116,6 +131,8 @@ github.com/redis/go-redis/v9 v9.20.0 h1:WnQYxLkgO2xiXTCJY0ldIiI8dNqCDlQAG+AtaH7a
+ github.com/redis/go-redis/v9 v9.20.0/go.mod h1:v/M13XI1PVCDcm01VtPFOADfZtHf8YW3baQf57KlIkA=
+ github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
+ github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
++github.com/rs/xid v1.6.0 h1:fV591PaemRlL6JfRxGDEPl69wICngIQ3shQtzfy2gxU=
++github.com/rs/xid v1.6.0/go.mod h1:7XoLgs4eV+QndskICGsho+ADou8ySMSjJKDIan90Nz0=
+ github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+ github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=
+ github.com/stretchr/objx v0.5.0/go.mod h1:Yh+to48EsGEfYuaHDzXPcE3xhTkx73EhmCGUpEOglKo=
+@@ -134,6 +151,8 @@ github.com/swaggo/gin-swagger v1.6.1 h1:Ri06G4gc9N4t4k8hekMigJ9zKTFSlqj/9paAQCQs
+ github.com/swaggo/gin-swagger v1.6.1/go.mod h1:LQ+hJStHakCWRiK/YNYtJOu4mR2FP+pxLnILT/qNiTw=
+ github.com/swaggo/swag v1.16.6 h1:qBNcx53ZaX+M5dxVyTrgQ0PJ/ACK+NzhwcbieTt+9yI=
+ github.com/swaggo/swag v1.16.6/go.mod h1:ngP2etMK5a0P3QBizic5MEwpRmluJZPHjXcMoj4Xesg=
++github.com/tinylib/msgp v1.6.1 h1:ESRv8eL3u+DNHUoSAAQRE50Hm162zqAnBoGv9PzScPY=
++github.com/tinylib/msgp v1.6.1/go.mod h1:RSp0LW9oSxFut3KzESt5Voq4GVWyS+PSulT77roAqEA=
+ github.com/twitchyliquid64/golang-asm v0.15.1 h1:SU5vSMR7hnwNxj24w34ZyCi/FmDZTkS4MhqMhdFk5YI=
+ github.com/twitchyliquid64/golang-asm v0.15.1/go.mod h1:a1lVb/DtPvCB8fslRZhAngC2+aY1QWCk3Cedj/Gdt08=
+ github.com/ugorji/go/codec v1.3.1 h1:waO7eEiFDwidsBN6agj1vJQ4AG7lh2yqXyOXqhgQuyY=
+@@ -196,6 +215,8 @@ google.golang.org/protobuf v1.36.11/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j
+ gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+ gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=
+ gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=
++gopkg.in/ini.v1 v1.67.2 h1:JtOSMb9OuaCZKr7h5D/h6iii14sK0hLbplTc6frx4Ss=
++gopkg.in/ini.v1 v1.67.2/go.mod h1:x/cyOwCgZqOkJoDIJ3c1KNHMo10+nLGAhh+kn3Zizss=
+ gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+ gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+ gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+diff --git a/backend/internal/app/app.go b/backend/internal/app/app.go
+index f820684..de8d7d1 100644
+--- a/backend/internal/app/app.go
++++ b/backend/internal/app/app.go
+@@ -5,15 +5,17 @@ import (
+ 	"github.com/m-mahmoud-alsaid/prim-backend/internal/http/swagger"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/internal/notifier"
++	"github.com/m-mahmoud-alsaid/prim-backend/internal/object"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/brand"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/category"
+-	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/media"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/tag"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/variant"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
++	"github.com/minio/minio-go/v7"
++	"github.com/minio/minio-go/v7/pkg/credentials"
+ 
+ 	"context"
+ 	"fmt"
+@@ -42,6 +44,9 @@ type App struct {
+ 
+ 	// database
+ 	db *database.DB
++
++	// minio
++	minioClient *minio.Client
+ }
+ 
+ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
+@@ -163,24 +168,27 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
+ 	)
+ 	categoryRouter.MapRoutes(v1)
+ 
+-	mediaRepository := media.NewRepository()
+-	mediaService := media.NewService(
++	objectRepository := object.NewRepository()
++	objectService := object.NewService(
+ 		txRunner,
+-		mediaRepository,
++		objectRepository,
+ 	)
+ 
+ 	variantRepository := variant.NewRepository()
++	mediaRepository := variant.NewMediaRepository()
+ 	variantService := variant.NewService(
++		app.logger,
+ 		txRunner,
++		app.minioClient,
+ 		variantRepository,
+-		mediaService,
++		mediaRepository,
++		objectService,
++		config.MinioCfg,
+ 	)
+ 
+-	// inventoryRepo := inventory.NewPostgresRepository()
+-	// inventoryService := inventory.NewService(txRunner, inventoryRepo)
+-	// inventoryHandler := inventory.NewHandler(inventoryService)
+-	// inventoryRouter := inventory.NewRouter(inventoryHandler)
+-	// inventoryRouter.MapRoutes(v1.Group("/inventories"))
++	variantHandler := variant.NewHandler(variantService)
++	variantRouter := variant.NewRouter(variantHandler)
++	variantRouter.MapRoutes(v1)
+ 
+ 	// product
+ 	productRepo := product.NewProductRepository()
+@@ -196,24 +204,6 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
+ 	productRouter := product.NewRouter(productHandler)
+ 	productRouter.MapRoutes(v1)
+ 
+-	// // cart
+-	// cartRepo := cart.NewPostgresRepository()
+-	// cartService := cart.NewService(txRunner, cartRepo, productRepo)
+-	// cartHandler := cart.NewHandler(cartService)
+-	// cartRouter := cart.NewRouter(cartHandler)
+-	// cartRouter.MapRoutes(v1.Group("/carts"))
+-
+-	// // order
+-	// orderRepo := order.NewPostgresRepository()
+-	// orderService := order.NewService(txRunner, orderRepo)
+-	// orderHandler := order.NewHandler(orderService)
+-	// orderRouter := order.NewRouter(orderHandler)
+-	// orderRouter.MapRoutes(v1.Group("/orders"))
+-
+-	// // checkout
+-	// checkoutService := checkout.NewService(app.db.GetPool(), orderRepo, cartRepo)
+-	// checkoutHandler := checkout.NewHandler(checkoutService)
+-	// checkout.RegisterRoutes(checkoutHandler, apiV1.Group("/checkout"), app.db.GetPool())
+ }
+ 
+ func (app *App) Shutdown() {
+@@ -271,6 +261,21 @@ func (app *App) Run() error {
+ 		)
+ 	}
+ 
++	app.minioClient, err = minio.New(cfg.MinioCfg.Endpoint, &minio.Options{
++		Creds:      credentials.NewStaticV4(cfg.MinioCfg.AccessKey, cfg.MinioCfg.SecretKey, ""),
++		Secure:     false,
++		EnableRDMA: true,
++	})
++	if err != nil {
++		app.logger.Error(
++			"minio connection issue",
++			log.Meta{
++				"Error": err,
++			},
++		)
++		return err
++	}
++
+ 	app.redisClient = redis.NewClient(&redis.Options{
+ 		Addr: fmt.Sprintf("%s:%d",
+ 			cfg.RedisCfg.Host,
+diff --git a/backend/internal/model/cart.go b/backend/internal/model/cart.go
+deleted file mode 100644
+index 4208a79..0000000
+--- a/backend/internal/model/cart.go
++++ /dev/null
+@@ -1,20 +0,0 @@
+-package model
+-
+-import (
+-	"time"
+-
+-	"github.com/google/uuid"
+-)
+-
+-type Cart struct {
+-	ID        uuid.UUID  `json:"id"`
+-	UserID    uuid.UUID  `json:"user_id"`
+-	Items     []CartItem `json:"items"`
+-	CreatedAt time.Time  `json:"created_at"`
+-	UpdatedAt time.Time  `json:"updated_at"`
+-}
+-
+-type CartItem struct {
+-	ProductID uuid.UUID `json:"item_id"`
+-	Quantity  int       `json:"quantity"`
+-}
+diff --git a/backend/internal/model/object.go b/backend/internal/model/object.go
+index b602672..998127b 100644
+--- a/backend/internal/model/object.go
++++ b/backend/internal/model/object.go
+@@ -6,15 +6,29 @@ import (
+ 	"github.com/google/uuid"
+ )
+ 
++type ObjectStatus string
++
++const (
++	ObjectStatusUploading ObjectStatus = "uploading"
++	ObjectStatusUploaded  ObjectStatus = "uploaded"
++	ObjectStatusDeleting  ObjectStatus = "deleting"
++	ObjectStatusDeleted   ObjectStatus = "deleted"
++)
++
++func (o ObjectStatus) String() string {
++	return string(o)
++}
++
+ type Object struct {
+ 	ID uuid.UUID
+ 
+ 	Size        int64
+-	Status      string
++	Status      ObjectStatus
+ 	ContentType string
+ 
+-	Key    string
+-	Bucket string
++	Key       string
++	Bucket    string
++	PublicURL string
+ 
+ 	CreatedAt time.Time
+ 	UpdatedAt time.Time
+diff --git a/backend/internal/model/product_media.go b/backend/internal/model/product_media.go
+deleted file mode 100644
+index 1c1a868..0000000
+--- a/backend/internal/model/product_media.go
++++ /dev/null
+@@ -1,46 +0,0 @@
+-package model
+-
+-import (
+-	"errors"
+-	"time"
+-
+-	"github.com/google/uuid"
+-)
+-
+-type MediaType string
+-
+-const (
+-	ImageType    MediaType = "image"
+-	VideoType    MediaType = "video"
+-	DocumentType MediaType = "document"
+-)
+-
+-func (m MediaType) String() string {
+-	return string(m)
+-}
+-
+-func ValidateMediaType(s string) (MediaType, error) {
+-	switch s {
+-	case ImageType.String():
+-		return ImageType, nil
+-	case VideoType.String():
+-		return VideoType, nil
+-	case DocumentType.String():
+-		return DocumentType, nil
+-	default:
+-		return "", errors.New("unsupported media type")
+-	}
+-}
+-
+-type ProductMedia struct {
+-	ID        uuid.UUID
+-	VariantID uuid.UUID
+-	ObjectID  uuid.UUID
+-
+-	Type      MediaType
+-	SortOrder int
+-
+-	CreatedAt time.Time
+-	UpdatedAt time.Time
+-	DeletedAt *time.Time
+-}
+diff --git a/backend/internal/object/object_repository.go b/backend/internal/object/object_repository.go
+index c1c9765..3a59b8f 100644
+--- a/backend/internal/object/object_repository.go
++++ b/backend/internal/object/object_repository.go
+@@ -18,10 +18,10 @@ func NewRepository() *ObjectRepository {
+ 
+ func (or *ObjectRepository) Create(
+ 	ctx context.Context,
+-	db database.QueryExecutor,
++	qe database.QueryExecutor,
+ 	object *model.Object,
+ ) error {
+-	_, err := db.Exec(
++	_, err := qe.Exec(
+ 		ctx,
+ 		`
+ 		INSERT INTO objects(
+@@ -63,71 +63,28 @@ func (or *ObjectRepository) Create(
+ 	return nil
+ }
+ 
+-func (or *ObjectRepository) GetByID(
+-	ctx context.Context,
+-	db database.QueryExecutor,
+-	objectID uuid.UUID,
+-) (*model.Object, error) {
+-	object := &model.Object{}
+-	err := db.QueryRow(
+-		ctx,
+-		`
+-		SELECT 
+-			id,
+-			key,
+-			bucket,
+-			size,
+-			status,
+-			content_type,
+-			created_at,
+-			updated_at,
+-			deleted_at
+-		FROM 
+-			objects
+-		WHERE
+-			id = $1
+-		`,
+-		objectID,
+-	).Scan(
+-		&object.ID,
+-		&object.Key,
+-		&object.Bucket,
+-		&object.Size,
+-		&object.Status,
+-		&object.ContentType,
+-		&object.CreatedAt,
+-		&object.UpdatedAt,
+-		&object.DeletedAt,
+-	)
+-	if err != nil {
+-		return nil, fmt.Errorf(
+-			"get by id : %w",
+-			err,
+-		)
+-	}
+-	return object, nil
+-}
+-
+-func (or *ObjectRepository) Delete(
++func (or *ObjectRepository) UpdateStatus(
+ 	ctx context.Context,
+ 	db database.QueryExecutor,
+ 	objectID uuid.UUID,
++	status model.ObjectStatus,
+ ) error {
+ 	_, err := db.Exec(
+ 		ctx,
+ 		`
+-		UPDATE 
++		UPDATE
+ 			objects
+ 		SET
+-			status = 'deleting'
++			status = $1
+ 		WHERE
+-			id = $1
++			id = $2
+ 		`,
++		status,
+ 		objectID,
+ 	)
+ 	if err != nil {
+ 		return fmt.Errorf(
+-			"delete an object: %w",
++			"update status: %w",
+ 			err,
+ 		)
+ 	}
+diff --git a/backend/internal/object/object_service.go b/backend/internal/object/object_service.go
+index 6868c4d..2d7268d 100644
+--- a/backend/internal/object/object_service.go
++++ b/backend/internal/object/object_service.go
+@@ -27,25 +27,24 @@ func NewService(
+ }
+ 
+ type CreateObjectInput struct {
+-	ContentType string
+-	Size        int64
+-	Status      string
+-	Bucket      string
+-	Key         string
+ }
+ 
+ func (os *ObjectService) CreateObject(
+ 	ctx context.Context,
+-	input CreateObjectInput,
++	ContentType string,
++	Size int64,
++	Bucket string,
++	Key string,
++	status model.ObjectStatus,
+ ) (*model.Object, error) {
+ 	now := time.Now().UTC()
+ 	object := &model.Object{
+ 		ID:          uuid.New(),
+-		Size:        input.Size,
+-		Status:      input.Status,
+-		ContentType: input.ContentType,
+-		Bucket:      input.Bucket,
+-		Key:         input.Key,
++		Size:        Size,
++		Status:      status,
++		ContentType: ContentType,
++		Bucket:      Bucket,
++		Key:         Key,
+ 		CreatedAt:   now,
+ 		UpdatedAt:   now,
+ 	}
+@@ -72,58 +71,34 @@ func (os *ObjectService) CreateObject(
+ 	return object, nil
+ }
+ 
+-func (os *ObjectService) GetObjectByID(
++func (os *ObjectService) CreateObjectWithTx(
+ 	ctx context.Context,
+-	objectID uuid.UUID,
++	tx database.QueryExecutor,
++	bucket, key string,
++	size int64,
++	contentType string,
++	status model.ObjectStatus,
+ ) (*model.Object, error) {
+-	var object *model.Object
+-	err := os.dr.WithDB(
+-		ctx,
+-		func(db database.QueryExecutor) error {
+-			o, err := os.or.GetByID(
+-				ctx,
+-				db,
+-				objectID,
+-			)
+-			if err != nil {
+-				return err
+-			}
+-			object = o
+-			return nil
+-		},
+-	)
+-	if err != nil {
+-		return nil, security.NewSecureError(
+-			http.StatusInternalServerError,
+-			security.CodeInternal,
+-			"failed to create a new object",
+-			err,
+-		)
++	now := time.Now().UTC()
++	object := &model.Object{
++		ID:          uuid.New(),
++		Size:        size,
++		Status:      status,
++		ContentType: contentType,
++		Bucket:      bucket,
++		Key:         key,
++		CreatedAt:   now,
++		UpdatedAt:   now,
+ 	}
+-	return object, nil
+-}
+ 
+-func (os *ObjectService) DeleteObject(
+-	ctx context.Context,
+-	objectID uuid.UUID,
+-) error {
+-	err := os.dr.WithDB(
++	err := os.or.Create(
+ 		ctx,
+-		func(db database.QueryExecutor) error {
+-			return os.or.Delete(
+-				ctx,
+-				db,
+-				objectID,
+-			)
+-		},
++		tx,
++		object,
+ 	)
+ 	if err != nil {
+-		return security.NewSecureError(
+-			http.StatusInternalServerError,
+-			security.CodeInternal,
+-			"failed to delete and object",
+-			err,
+-		)
++		return nil, err
+ 	}
+-	return nil
++
++	return object, nil
+ }
+diff --git a/backend/internal/product/brand/brand_router.go b/backend/internal/product/brand/brand_router.go
+index fbe4131..923cc5c 100644
+--- a/backend/internal/product/brand/brand_router.go
++++ b/backend/internal/product/brand/brand_router.go
+@@ -2,8 +2,6 @@ package brand
+ 
+ import (
+ 	"github.com/gin-gonic/gin"
+-	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
+-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
+ )
+ 
+@@ -30,10 +28,10 @@ func (r *Router) MapRoutes(
+ 	brands.GET("/slug/:slug", r.bh.GetBrandBySlug)
+ 
+ 	admin := vgroup.Group("/admin/brands")
+-	admin.Use(
+-		middleware.Authanticate(r.secrets),
+-		middleware.Authorize(model.AdminRole),
+-	)
++	// admin.Use(
++	// 	middleware.Authanticate(r.secrets),
++	// 	middleware.Authorize(model.AdminRole),
++	// )
+ 
+ 	admin.GET("", r.bh.ListAdminBrands)
+ 	admin.GET("/:id", r.bh.GetBrandByID)
+diff --git a/backend/internal/product/brand/brand_service.go b/backend/internal/product/brand/brand_service.go
+index e0e7da9..cb1964d 100644
+--- a/backend/internal/product/brand/brand_service.go
++++ b/backend/internal/product/brand/brand_service.go
+@@ -39,17 +39,14 @@ func (bs *BrandService) CreateBrand(
+ 	ctx context.Context,
+ 	in *CreateBrandInput,
+ ) (*model.ProductBrand, error) {
+-	// userID := ctx.Value("userID").(uuid.UUID)
+ 
+ 	now := time.Now()
+ 	brand := &model.ProductBrand{
+-		ID:      uuid.New(),
+-		Name:    in.Name,
+-		Slug:    in.Slug,
+-		LogoURL: in.LogoURL,
+-		LogoAlt: in.LogoAlt,
+-		// CreatedBy: userID,
+-		// UpdatedBy: userID,
++		ID:        uuid.New(),
++		Name:      in.Name,
++		Slug:      in.Slug,
++		LogoURL:   in.LogoURL,
++		LogoAlt:   in.LogoAlt,
+ 		CreatedAt: now,
+ 		UpdatedAt: now,
+ 	}
+@@ -181,12 +178,10 @@ func (bs *BrandService) UpdateBrand(
+ 	brandID uuid.UUID,
+ 	input *UpdateBrandInput,
+ ) error {
+-	// userID := ctx.Value("userID").(uuid.UUID)
+ 	fields := &UpdateBrandFields{
+-		Name:      input.Name,
+-		LogoURL:   input.LogoURL,
+-		LogoAlt:   input.LogoAlt,
+-		// UpdatedBy: userID,
++		Name:    input.Name,
++		LogoURL: input.LogoURL,
++		LogoAlt: input.LogoAlt,
+ 	}
+ 	err := bs.qexecuter.WithDB(
+ 		ctx,
+diff --git a/backend/internal/product/category/category_handler.go b/backend/internal/product/category/category_handler.go
+index 50343c6..d54a73e 100644
+--- a/backend/internal/product/category/category_handler.go
++++ b/backend/internal/product/category/category_handler.go
+@@ -46,12 +46,9 @@ func (ch *CategoryHandler) CreateCategory(c *gin.Context) {
+ 		return
+ 	}
+ 
+-	// userID, _ := c.Get("userID")
+ 	in := &CreateCategoryInput{
+-		Name:      req.Name,
+-		ParentID:  req.ParentID,
+-		// CreatedBy: userID.(uuid.UUID),
+-		// UpdatedBy: userID.(uuid.UUID),
++		Name:     req.Name,
++		ParentID: req.ParentID,
+ 	}
+ 
+ 	ctx := c.Request.Context()
+@@ -71,8 +68,6 @@ func (ch *CategoryHandler) CreateCategory(c *gin.Context) {
+ 				ID:        category.ID,
+ 				Name:      category.Name,
+ 				ParentID:  category.ParentID,
+-				// CreatedBy: category.CreatedBy,
+-				// UpdatedBy: category.UpdatedBy,
+ 				CreatedAt: category.CreatedAt.Format(time.RFC3339),
+ 				UpdatedAt: category.UpdatedAt.Format(time.RFC3339),
+ 			},
+@@ -235,8 +230,6 @@ func (ch *CategoryHandler) ListAdminCategories(c *gin.Context) {
+ 			ID:        c.ID,
+ 			Name:      c.Name,
+ 			ParentID:  c.ParentID,
+-			// CreatedBy: c.CreatedBy,
+-			// UpdatedBy: c.UpdatedBy,
+ 			CreatedAt: c.CreatedAt.Format(time.RFC3339),
+ 			UpdatedAt: c.UpdatedAt.Format(time.RFC3339),
+ 		})
+@@ -286,11 +279,9 @@ func (ch *CategoryHandler) UpdateCategory(c *gin.Context) {
+ 		return
+ 	}
+ 
+-	// userID, _ := c.Get("userID")
+ 	in := &UpdateCategoryInput{
+-		Name:      body.Name,
+-		ParentID:  body.ParentID,
+-		// UpdatedBy: userID.(uuid.UUID),
++		Name:     body.Name,
++		ParentID: body.ParentID,
+ 	}
+ 
+ 	ctx := c.Request.Context()
+diff --git a/backend/internal/product/category/category_service.go b/backend/internal/product/category/category_service.go
+index 66a23ef..8e0c915 100644
+--- a/backend/internal/product/category/category_service.go
++++ b/backend/internal/product/category/category_service.go
+@@ -30,10 +30,8 @@ func NewService(
+ }
+ 
+ type CreateCategoryInput struct {
+-	Name      string
+-	ParentID  *uuid.UUID
+-	CreatedBy uuid.UUID
+-	// UpdatedBy uuid.UUID
++	Name     string
++	ParentID *uuid.UUID
+ }
+ 
+ func (cs *CategoryService) CreateCategory(
+@@ -46,8 +44,6 @@ func (cs *CategoryService) CreateCategory(
+ 		ID:        uuid.New(),
+ 		Name:      in.Name,
+ 		ParentID:  in.ParentID,
+-		// CreatedBy: in.CreatedBy,
+-		// UpdatedBy: in.UpdatedBy,
+ 		CreatedAt: now,
+ 		UpdatedAt: now,
+ 	}
+@@ -137,9 +133,8 @@ func (cs *CategoryService) GetCategoryByID(
+ }
+ 
+ type UpdateCategoryInput struct {
+-	Name      *string
+-	ParentID  *uuid.UUID
+-	UpdatedBy uuid.UUID
++	Name     *string
++	ParentID *uuid.UUID
+ }
+ 
+ func (cs *CategoryService) UpdateCategory(
+@@ -148,9 +143,8 @@ func (cs *CategoryService) UpdateCategory(
+ 	input *UpdateCategoryInput,
+ ) error {
+ 	fields := UpdateCategoryFields{
+-		Name:      input.Name,
+-		ParentID:  input.ParentID,
+-		// UpdatedBy: input.UpdatedBy,
++		Name:     input.Name,
++		ParentID: input.ParentID,
+ 	}
+ 	err := cs.qexecuter.WithDB(ctx,
+ 		func(db database.QueryExecutor) error {
+diff --git a/backend/internal/product/media/media_repository.go b/backend/internal/product/media/media_repository.go
+deleted file mode 100644
+index de01eb9..0000000
+--- a/backend/internal/product/media/media_repository.go
++++ /dev/null
+@@ -1,165 +0,0 @@
+-package media
+-
+-import (
+-	"context"
+-	"fmt"
+-
+-	"github.com/google/uuid"
+-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
+-)
+-
+-type MediaRepository struct{}
+-
+-func NewRepository() *MediaRepository {
+-	return &MediaRepository{}
+-}
+-
+-func (mr *MediaRepository) Create(
+-	ctx context.Context,
+-	qe database.QueryExecutor,
+-	media *model.ProductMedia,
+-) error {
+-	_, err := qe.Exec(
+-		ctx,
+-		`
+-		INSERT INTO product_media(
+-			id,
+-			variant_id,
+-			object_id,
+-			sort_order,
+-			type,
+-			created_at,
+-			updated_at
+-		)
+-		VALUES (
+-			$1,
+-			$2,
+-			$3,
+-			$4,
+-			$5,
+-			$6,
+-			$7
+-		)
+-		`,
+-		media.ID,
+-		media.VariantID,
+-		media.ObjectID,
+-		media.SortOrder,
+-		media.Type,
+-		media.CreatedAt,
+-		media.UpdatedAt,
+-	)
+-	if err != nil {
+-		return fmt.Errorf(
+-			"create a new product media :%w",
+-			err,
+-		)
+-	}
+-	return nil
+-}
+-
+-func (mr *MediaRepository) GetByID(
+-	ctx context.Context,
+-	qe database.QueryExecutor,
+-	mediaID uuid.UUID,
+-) (*model.ProductMedia, error) {
+-	media := &model.ProductMedia{}
+-	err := qe.QueryRow(
+-		ctx,
+-		`
+-		SELECT 
+-			id,
+-			variant_id,
+-			object_id,
+-			type,
+-			sort_order,
+-			created_at,
+-			updated_at,
+-			deleted_at
+-		FROM
+-			product_media
+-		WHERE
+-			id = $1
+-		`,
+-		mediaID,
+-	).Scan(
+-		&media.ID,
+-		&media.VariantID,
+-		&media.ObjectID,
+-		&media.Type,
+-		&media.SortOrder,
+-		&media.CreatedAt,
+-		&media.UpdatedAt,
+-		&media.DeletedAt,
+-	)
+-	if err != nil {
+-		return nil, fmt.Errorf(
+-			"get media by id :%w",
+-			err,
+-		)
+-	}
+-	return media, nil
+-}
+-
+-func (mr *MediaRepository) GetVariantMedia(
+-	ctx context.Context,
+-	qe database.QueryExecutor,
+-	variantID uuid.UUID,
+-) ([]*model.ProductMedia, error) {
+-
+-	rows, err := qe.Query(
+-		ctx,
+-		`
+-		SELECT
+-			id,
+-			variant_id,
+-			object_id,
+-			type,
+-			sort_order,
+-			created_at,
+-			updated_at,
+-			deleted_at
+-		FROM
+-			product_media
+-		WHERE
+-			variant_id = $1
+-		`,
+-		variantID,
+-	)
+-	if err != nil {
+-		return nil, fmt.Errorf(
+-			"get variant media :%w",
+-			err,
+-		)
+-	}
+-
+-	var media = make([]*model.ProductMedia, 0)
+-	for rows.Next() {
+-		m := &model.ProductMedia{}
+-		err := rows.Scan(
+-			&m.ID,
+-			&m.VariantID,
+-			&m.ObjectID,
+-			&m.Type,
+-			&m.SortOrder,
+-			&m.CreatedAt,
+-			&m.UpdatedAt,
+-			&m.DeletedAt,
+-		)
+-		if err != nil {
+-			return nil, fmt.Errorf(
+-				"get variant media :%w",
+-				err,
+-			)
+-		}
+-		media = append(media, m)
+-	}
+-	if err := rows.Err(); err != nil {
+-		return nil, fmt.Errorf(
+-			"get variant media :%w",
+-			err,
+-		)
+-	}
+-	return media, nil
+-}
+diff --git a/backend/internal/product/media/media_service.go b/backend/internal/product/media/media_service.go
+deleted file mode 100644
+index 91786e5..0000000
+--- a/backend/internal/product/media/media_service.go
++++ /dev/null
+@@ -1,144 +0,0 @@
+-package media
+-
+-import (
+-	"context"
+-	"net/http"
+-	"time"
+-
+-	"github.com/google/uuid"
+-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
+-)
+-
+-type MediaService struct {
+-	dr database.Runner
+-	mr *MediaRepository
+-}
+-
+-func NewService(
+-	dr database.Runner,
+-	mr *MediaRepository,
+-) *MediaService {
+-	return &MediaService{
+-		dr: dr,
+-		mr: mr,
+-	}
+-}
+-
+-type CreateProductMediaInput struct {
+-	VariantID uuid.UUID
+-	ObjectID  uuid.UUID
+-	Type      string
+-	SortOrder int
+-}
+-
+-func (ms *MediaService) CreateProductMedia(
+-	ctx context.Context,
+-	input CreateProductMediaInput,
+-) (*model.ProductMedia, error) {
+-
+-	now := time.Now().UTC()
+-	media := &model.ProductMedia{
+-		ID:        uuid.New(),
+-		VariantID: input.VariantID,
+-		ObjectID:  input.ObjectID,
+-		SortOrder: input.SortOrder,
+-		CreatedAt: now,
+-		UpdatedAt: now,
+-	}
+-
+-	validType, err := model.ValidateMediaType(input.Type)
+-	if err != nil {
+-		return nil, security.NewSecureError(
+-			http.StatusBadRequest,
+-			security.CodeValidation,
+-			"invalid media type",
+-			err,
+-		)
+-	}
+-
+-	media.Type = validType
+-
+-	err = ms.dr.WithDB(ctx,
+-		func(db database.QueryExecutor) error {
+-			return ms.mr.Create(
+-				ctx,
+-				db,
+-				media,
+-			)
+-		})
+-	if err != nil {
+-		return nil, security.NewSecureError(
+-			http.StatusInternalServerError,
+-			security.CodeInternal,
+-			"failed to create a new product media",
+-			err,
+-		)
+-	}
+-
+-	return media, nil
+-}
+-
+-func (ms *MediaService) GetProductMediaByID(
+-	ctx context.Context,
+-	mediaID uuid.UUID,
+-) (*model.ProductMedia, error) {
+-	var media *model.ProductMedia
+-	err := ms.dr.WithDB(
+-		ctx,
+-		func(db database.QueryExecutor) error {
+-			m, err := ms.mr.GetByID(
+-				ctx,
+-				db,
+-				mediaID,
+-			)
+-			if err != nil {
+-				return err
+-			}
+-			media = m
+-			return nil
+-		},
+-	)
+-	if err != nil {
+-		return nil, security.NewSecureError(
+-			http.StatusInternalServerError,
+-			security.CodeInternal,
+-			"failed to fetch a media",
+-			err,
+-		)
+-	}
+-	return media, nil
+-}
+-
+-func (ms *MediaService) GetVariantMedia(
+-	ctx context.Context,
+-	variantID uuid.UUID,
+-) ([]*model.ProductMedia, error) {
+-	var media []*model.ProductMedia
+-	err := ms.dr.WithDB(
+-		ctx,
+-		func(db database.QueryExecutor) error {
+-			m, err := ms.mr.GetVariantMedia(
+-				ctx,
+-				db,
+-				variantID,
+-			)
+-			if err != nil {
+-				return err
+-			}
+-
+-			media = m
+-			return nil
+-		},
+-	)
+-	if err != nil {
+-		return nil, security.NewSecureError(
+-			http.StatusInternalServerError,
+-			security.CodeInternal,
+-			"failed to fetch a media",
+-			err,
+-		)
+-	}
+-	return media, nil
+-}
+diff --git a/backend/internal/product/product_handler.go b/backend/internal/product/product_handler.go
+index f12d321..4c9e30a 100644
+--- a/backend/internal/product/product_handler.go
++++ b/backend/internal/product/product_handler.go
+@@ -80,6 +80,13 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
+ 		return
+ 	}
+ 
++	for _, item := range result.Items {
++		if item.ThumbnailBucket != nil && item.ThumbnailKey != nil {
++			thumbnailURL := string(*item.ThumbnailBucket) + "/" + string(*item.ThumbnailKey)
++			item.ThumbnailURL = &thumbnailURL
++		}
++	}
++
+ 	c.JSON(
+ 		http.StatusOK,
+ 		api.SuccessResponse{
+diff --git a/backend/internal/product/product_repository.go b/backend/internal/product/product_repository.go
+index 734d402..53f4f7d 100644
+--- a/backend/internal/product/product_repository.go
++++ b/backend/internal/product/product_repository.go
+@@ -157,12 +157,14 @@ func (r *ProductRepository) Update(
+ }
+ 
+ type ProductListItem struct {
+-	ID           uuid.UUID `json:"id"`
+-	Title        string    `json:"title"`
+-	Slug         string    `json:"slug"`
+-	ThumbnailURL *string   `json:"thumbnailUrl"`
+-	Price        int64     `json:"price"`
+-	Currency     string    `json:"currency"`
++	ID              uuid.UUID `json:"id"`
++	Title           string    `json:"title"`
++	Slug            string    `json:"slug"`
++	Price           int64     `json:"price"`
++	Currency        string    `json:"currency"`
++	ThumbnailBucket *string   `json:"-"`
++	ThumbnailKey    *string   `json:"-"`
++	ThumbnailURL    *string   `json:"thumbnailUrl"`
+ }
+ 
+ type ProductList struct {
+@@ -177,22 +179,31 @@ func (r *ProductRepository) List(
+ ) (*ProductList, error) {
+ 	query := `
+ 	SELECT
+-    p.id,
+-    p.title,
+-    p.slug,
+-    dv.price,
++		p.id,
++		p.title,
++		p.slug,
++		dv.price,
+ 		dv.currency,
+-    thumb.url
+-FROM products p
+-LEFT JOIN product_variants dv
+-    ON dv.id = p.default_variant_id
+-    AND dv.deleted_at IS NULL
+-LEFT JOIN product_media thumb
+-    ON thumb.variant_id = dv.id
+-    AND thumb.is_primary = true
+-WHERE p.deleted_at IS NULL
+-ORDER BY p.created_at DESC
+-LIMIT $1 OFFSET $2	`
++		o.bucket,
++		o.key
++	FROM products p
++	LEFT JOIN product_variants dv
++		ON dv.id = p.default_variant_id
++	LEFT JOIN LATERAL (
++		SELECT vm.object_id
++		FROM variant_media vm
++		WHERE vm.variant_id = dv.id
++		ORDER BY vm.sort_order ASC
++		LIMIT 1
++	) thumb ON true
++	LEFT JOIN objects o
++		ON o.id = thumb.object_id
++		AND o.deleted_at IS NULL
++		AND o.status = 'uploaded'
++	WHERE p.deleted_at IS NULL
++	ORDER BY p.created_at DESC
++	LIMIT $1 OFFSET $2
++	`
+ 
+ 	offset := (q.Page - 1) * q.PageSize
+ 
+@@ -210,18 +221,22 @@ LIMIT $1 OFFSET $2	`
+ 	}
+ 	defer rows.Close()
+ 
+-	var products []*ProductListItem
++	products := make([]*ProductListItem, 0)
+ 
+ 	for rows.Next() {
+ 		var p ProductListItem
+ 
+-		err = rows.Scan(
++		var bucket *string
++		var key *string
++
++		err := rows.Scan(
+ 			&p.ID,
+ 			&p.Title,
+ 			&p.Slug,
+ 			&p.Price,
+ 			&p.Currency,
+-			&p.ThumbnailURL,
++			&bucket,
++			&key,
+ 		)
+ 		if err != nil {
+ 			return nil, fmt.Errorf(
+@@ -230,10 +245,13 @@ LIMIT $1 OFFSET $2	`
+ 			)
+ 		}
+ 
++		p.ThumbnailBucket = bucket
++		p.ThumbnailKey = key
++
+ 		products = append(products, &p)
+ 	}
+ 
+-	if err = rows.Err(); err != nil {
++	if err := rows.Err(); err != nil {
+ 		return nil, fmt.Errorf(
+ 			"iterate products: %w",
+ 			err,
+@@ -264,18 +282,16 @@ LIMIT $1 OFFSET $2	`
+ 				q.PageSize
+ 	}
+ 
+-	page := &api.Page{
+-		Page:        q.Page,
+-		PageSize:    q.PageSize,
+-		TotalItems:  totalItems,
+-		TotalPages:  totalPages,
+-		HasPrevious: q.Page > 1,
+-		HasNext:     q.Page < totalPages,
+-	}
+-
+ 	return &ProductList{
+ 		Items: products,
+-		Page:  page,
++		Page: &api.Page{
++			Page:        q.Page,
++			PageSize:    q.PageSize,
++			TotalItems:  totalItems,
++			TotalPages:  totalPages,
++			HasPrevious: q.Page > 1,
++			HasNext:     q.Page < totalPages,
++		},
+ 	}, nil
+ }
+ 
+diff --git a/backend/internal/product/variant/varaint_service.go b/backend/internal/product/variant/varaint_service.go
+index 085060b..fc832cb 100644
+--- a/backend/internal/product/variant/varaint_service.go
++++ b/backend/internal/product/variant/varaint_service.go
+@@ -2,34 +2,89 @@ package variant
+ 
+ import (
+ 	"context"
++	"fmt"
++	"mime/multipart"
+ 	"net/http"
++	"strings"
+ 	"time"
+ 
+ 	"github.com/google/uuid"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+-	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/media"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
++	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
++	fileUtil "github.com/m-mahmoud-alsaid/prim-backend/pkg/file"
++	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
++	"github.com/minio/minio-go/v7"
+ )
+ 
++const (
++	variantMediaBucket = "variant-media"
++)
++
++type ObjectService interface {
++	CreateObjectWithTx(
++		ctx context.Context,
++		tx database.QueryExecutor,
++		bucket string,
++		key string,
++		size int64,
++		contentType string,
++		status model.ObjectStatus,
++	) (*model.Object, error)
++}
++
+ type VariantService struct {
+-	dr database.Runner
+-	vr *VariantRepository
+-	ms *media.MediaService
++	logger      log.Logger
++	dr          database.Runner
++	minioClient *minio.Client
++	vr          *VariantRepository
++	mr          *MediaRepository
++	os          ObjectService
++	minCfg      *config.MinioConfig
+ }
+ 
+ func NewService(
++	logger log.Logger,
+ 	r database.Runner,
++	minioClient *minio.Client,
+ 	vr *VariantRepository,
+-	ms *media.MediaService,
++	mr *MediaRepository,
++	os ObjectService,
++	minCfg *config.MinioConfig,
+ ) *VariantService {
+ 	return &VariantService{
+-		dr: r,
+-		vr: vr,
+-		ms: ms,
++		logger:      logger,
++		dr:          r,
++		minioClient: minioClient,
++		vr:          vr,
++		mr:          mr,
++		os:          os,
++		minCfg:      minCfg,
+ 	}
+ }
+ 
++func (vs *VariantService) GenPublicURL(bucket, key string) string {
++	return fmt.Sprintf(
++		"%s/%s/%s",
++		strings.TrimRight(vs.minCfg.PublicURL, "/"),
++		bucket,
++		strings.TrimLeft(key, "/"),
++	)
++}
++
++func (vs *VariantService) GenObjectKey(
++	variantID uuid.UUID,
++	contentType string,
++) string {
++	return fmt.Sprintf(
++		"%s/%s%s",
++		variantID,
++		uuid.NewString(),
++		fileUtil.MimeExtension(contentType),
++	)
++}
++
+ type CreateVariantInput struct {
+ 	ProductID uuid.UUID
+ 	SKU       *string
+@@ -74,16 +129,121 @@ func (vs *VariantService) CreateVariant(
+ 	return variant, nil
+ }
+ 
++func (vs *VariantService) AttachMediaObject(
++	ctx context.Context,
++	VariantID uuid.UUID,
++	ObjectID uuid.UUID,
++	MediaType model.MediaType,
++	SortOrder int,
++) (*model.VariantMedia, error) {
++
++	now := time.Now().UTC()
++	media := &model.VariantMedia{
++		ID:        uuid.New(),
++		VariantID: VariantID,
++		ObjectID:  ObjectID,
++		Type:      MediaType,
++		SortOrder: SortOrder,
++		CreatedAt: now,
++		UpdatedAt: now,
++	}
++
++	err := vs.dr.WithDB(
++		ctx,
++		func(db database.QueryExecutor) error {
++			return vs.mr.CreateVariantMedia(
++				ctx,
++				db,
++				media,
++			)
++		},
++	)
++	if err != nil {
++		return nil, security.NewSecureError(
++			http.StatusInternalServerError,
++			security.CodeInternal,
++			"failed to create variant media",
++			err,
++		)
++	}
++	return media, nil
++}
++
++func (vs *VariantService) ReorderVariantMedia(
++	ctx context.Context,
++	variantID uuid.UUID,
++	media []uuid.UUID,
++) error {
++	err := vs.dr.WithTx(
++		ctx,
++		func(tx database.QueryExecutor) error {
++			for i, mediaID := range media {
++				err := vs.mr.ReorderVariantMedia(
++					ctx,
++					tx,
++					variantID,
++					mediaID,
++					i,
++				)
++				if err != nil {
++					return err
++				}
++			}
++			return nil
++		},
++	)
++	if err != nil {
++		return security.NewSecureError(
++			http.StatusInternalServerError,
++			security.CodeInternal,
++			"failed to reorder variant media",
++			err,
++		)
++	}
++	return nil
++}
++
++func (vs *VariantService) AttachMediaObjectWithTx(
++	ctx context.Context,
++	tx database.QueryExecutor,
++	variantID uuid.UUID,
++	objectID uuid.UUID,
++	mediaType model.MediaType,
++	sortOrder int,
++) error {
++	now := time.Now().UTC()
++	media := &model.VariantMedia{
++		ID:        uuid.New(),
++		VariantID: variantID,
++		ObjectID:  objectID,
++		Type:      mediaType,
++		SortOrder: sortOrder,
++		CreatedAt: now,
++		UpdatedAt: now,
++	}
++
++	err := vs.mr.CreateVariantMedia(
++		ctx,
++		tx,
++		media,
++	)
++	if err != nil {
++		return err
++	}
++	return nil
++}
++
+ func (vs *VariantService) GetVariantMedia(
+ 	ctx context.Context,
+ 	variantID uuid.UUID,
+-) ([]*model.ProductMedia, error) {
+-	var media []*model.ProductMedia
++) ([]*model.VariantMedia, error) {
++	var media []*model.VariantMedia
+ 	err := vs.dr.WithDB(
+ 		ctx,
+ 		func(db database.QueryExecutor) error {
+-			m, err := vs.ms.GetVariantMedia(
++			m, err := vs.mr.GetVariantMedia(
+ 				ctx,
++				db,
+ 				variantID,
+ 			)
+ 			if err != nil {
+@@ -101,33 +261,162 @@ func (vs *VariantService) GetVariantMedia(
+ 			err,
+ 		)
+ 	}
++
++	for _, m := range media {
++		m.Object.PublicURL = vs.GenPublicURL(
++			m.Object.Bucket,
++			m.Object.Key,
++		)
++	}
+ 	return media, nil
+ }
+ 
+-type UpdateVariantInput struct {
+-	ProductID *uuid.UUID
+-	SKU       *string
+-	Price     *int64
+-	Currency  *string
++func (vs *VariantService) GetVariant(
++	ctx context.Context,
++	variantID uuid.UUID,
++) (*model.ProductVariant, error) {
++	var variant *model.ProductVariant
++	err := vs.dr.WithDB(
++		ctx,
++		func(db database.QueryExecutor) error {
++			v, err := vs.vr.GetVariant(
++				ctx,
++				db,
++				variantID,
++			)
++			if err != nil {
++				return err
++			}
++			variant = v
++			return nil
++		},
++	)
++	if err != nil {
++		return nil, err
++	}
++	return variant, nil
+ }
+ 
+-func (vs *VariantService) UpdateVariant(
++func (vs *VariantService) UploadVariantMedia(
+ 	ctx context.Context,
+ 	variantID uuid.UUID,
++	fileHeader *multipart.FileHeader,
+ ) error {
+-	err := vs.dr.WithDB(
++	file, err := fileHeader.Open()
++	if err != nil {
++		return err
++	}
++	defer file.Close()
++
++	detectedContentType, err := fileUtil.DetectContentType(file)
++	if err != nil {
++		return err
++	}
++
++	mediaType, err := model.ParseMediaType(detectedContentType)
++	if err != nil {
++		return security.NewSecureError(
++			http.StatusBadRequest,
++			security.CodeValidation,
++			"invalid media type",
++			err,
++		)
++	}
++
++	vs.logger.Debug("detected content type", log.Meta{
++		"ContentType": detectedContentType,
++	})
++
++	variant, err := vs.GetVariant(ctx, variantID)
++	if err != nil {
++		return err
++	}
++
++	key := vs.GenObjectKey(variant.ID, detectedContentType)
++	vs.logger.Debug("uploading variant media", log.Meta{
++		"VariantID": variantID.String(),
++		"Key":       key,
++	})
++
++	exists, err := vs.minioClient.BucketExists(ctx, variantMediaBucket)
++	if err != nil {
++		return err
++	}
++
++	if !exists {
++		err := vs.minioClient.MakeBucket(
++			ctx,
++			variantMediaBucket,
++			minio.MakeBucketOptions{},
++		)
++		if err != nil {
++			return err
++		}
++	}
++
++	cleanCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
++	defer cancel()
++	info, err := vs.minioClient.PutObject(
++		cleanCtx,
++		variantMediaBucket,
++		key,
++		file,
++		fileHeader.Size,
++		minio.PutObjectOptions{
++			ContentType: detectedContentType,
++		},
++	)
++	if err != nil {
++		return err
++	}
++
++	err = vs.dr.WithTx(
+ 		ctx,
+-		func(db database.QueryExecutor) error {
+-			panic("TODO: delegate database variant updating to respository")
++		func(tx database.QueryExecutor) error {
++			obj, err := vs.os.CreateObjectWithTx(
++				ctx,
++				tx,
++				info.Bucket,
++				key,
++				info.Size,
++				detectedContentType,
++				model.ObjectStatusUploaded,
++			)
++			if err != nil {
++				return err
++			}
++
++			err = vs.AttachMediaObjectWithTx(
++				ctx,
++				tx,
++				variantID,
++				obj.ID,
++				mediaType,
++				0,
++			)
++			if err != nil {
++				return err
++			}
++
++			return nil
+ 		},
+ 	)
+ 	if err != nil {
++		_ = vs.minioClient.RemoveObject(
++			ctx,
++			info.Bucket,
++			info.Key,
++			minio.RemoveObjectOptions{
++				ForceDelete: false,
++			},
++		)
+ 		return security.NewSecureError(
+ 			http.StatusInternalServerError,
+ 			security.CodeInternal,
+-			"failed to create a new variant",
++			"failed to upload the media",
+ 			err,
+ 		)
+ 	}
++
+ 	return nil
+ }
+diff --git a/backend/internal/product/variant/variant_handler.go b/backend/internal/product/variant/variant_handler.go
+index edd83ff..eebee46 100644
+--- a/backend/internal/product/variant/variant_handler.go
++++ b/backend/internal/product/variant/variant_handler.go
+@@ -2,6 +2,7 @@ package variant
+ 
+ import (
+ 	"net/http"
++	"time"
+ 
+ 	"github.com/gin-gonic/gin"
+ 	"github.com/google/uuid"
+@@ -23,6 +24,21 @@ type VariantIdURIParma struct {
+ 	ID string `uri:"id"`
+ }
+ 
++type VariantMediaResponse struct {
++	ID     uuid.UUID `json:"id,omitzero"`
++	Object struct {
++		ID          uuid.UUID `json:"id"`
++		URL         string    `json:"url"`
++		ContentType string    `json:"content_type"`
++		Size        int64     `json:"size"`
++		Status      string    `json:"status"`
++	} `json:"object"`
++	Type      string `json:"type,omitempty"`
++	SortOrder int    `json:"order"`
++	CreatedAt string `json:"created_at,omitempty"`
++	UpdatedAt string `json:"updated_at,omitempty"`
++}
++
+ func (vh *VariantHandler) GetVariantMedia(c *gin.Context) {
+ 	param := &VariantIdURIParma{}
+ 	if err := c.ShouldBindUri(param); err != nil {
+@@ -45,10 +61,104 @@ func (vh *VariantHandler) GetVariantMedia(c *gin.Context) {
+ 		return
+ 	}
+ 
++	var res = make([]*VariantMediaResponse, 0, len(media))
++	for _, m := range media {
++		vm := &VariantMediaResponse{
++			ID:        m.ID,
++			Type:      m.Type.String(),
++			SortOrder: m.SortOrder,
++			CreatedAt: m.CreatedAt.Format(time.RFC3339),
++			UpdatedAt: m.UpdatedAt.Format(time.RFC3339),
++		}
++
++		vm.Object.ID = m.Object.ID
++		vm.Object.URL = m.Object.PublicURL
++		vm.Object.Size = m.Object.Size
++		vm.Object.Status = m.Object.Status.String()
++		vm.Object.ContentType = m.Object.ContentType
++		res = append(res, vm)
++	}
++
+ 	c.JSON(
+ 		http.StatusOK,
+ 		api.DataResponse{
+-			Data: media,
++			Data: res,
++		},
++	)
++}
++
++func (vh *VariantHandler) UploadVariantMedia(c *gin.Context) {
++	param := &VariantIdURIParma{}
++	if err := c.ShouldBindUri(param); err != nil {
++		validation.ValidationError(c, err)
++		return
++	}
++
++	variantID, err := uuid.Parse(param.ID)
++	if err != nil {
++		validation.ValidationError(c, err)
++		return
++	}
++
++	file, err := c.FormFile("file")
++	if err != nil {
++		_ = c.Error(err)
++		return
++	}
++
++	err = vh.vs.UploadVariantMedia(
++		c.Request.Context(),
++		variantID,
++		file,
++	)
++	if err != nil {
++		_ = c.Error(err)
++		return
++	}
++
++	c.JSON(
++		http.StatusCreated,
++		api.SuccessResponse{
++			Message: "media uploaded successfully",
++		},
++	)
++}
++
++func (vh *VariantHandler) ReorderVariantMedia(c *gin.Context) {
++	param := &VariantIdURIParma{}
++	if err := c.ShouldBindUri(param); err != nil {
++		validation.ValidationError(c, err)
++		return
++	}
++
++	variantID, err := uuid.Parse(param.ID)
++	if err != nil {
++		validation.ValidationError(c, err)
++		return
++	}
++
++	var body struct {
++		IDs []uuid.UUID `json:"ids"`
++	}
++	if err := c.ShouldBindJSON(&body); err != nil {
++		validation.ValidationError(c, err)
++		return
++	}
++
++	err = vh.vs.ReorderVariantMedia(
++		c.Request.Context(),
++		variantID,
++		body.IDs,
++	)
++	if err != nil {
++		_ = c.Error(err)
++		return
++	}
++
++	c.JSON(
++		http.StatusOK,
++		api.SuccessResponse{
++			Message: "media reordered successfully",
+ 		},
+ 	)
+ }
+diff --git a/backend/internal/product/variant/variant_repository.go b/backend/internal/product/variant/variant_repository.go
+index e4b1b13..eb7ea34 100644
+--- a/backend/internal/product/variant/variant_repository.go
++++ b/backend/internal/product/variant/variant_repository.go
+@@ -4,6 +4,7 @@ import (
+ 	"context"
+ 	"fmt"
+ 
++	"github.com/google/uuid"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+ 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
+ )
+@@ -54,3 +55,39 @@ func (vr *VariantRepository) Create(
+ 	}
+ 	return nil
+ }
++
++func (vr *VariantRepository) GetVariant(
++	ctx context.Context,
++	db database.QueryExecutor,
++	variantID uuid.UUID,
++) (*model.ProductVariant, error) {
++	variant := &model.ProductVariant{}
++	err := db.QueryRow(
++		ctx,
++		`
++		SELECT
++			id,
++			product_id,
++			sku,
++			price,
++			currency,
++			created_at,
++			updated_at
++		FROM product_variants
++		WHERE id = $1
++		`,
++		variantID,
++	).Scan(
++		&variant.ID,
++		&variant.ProductID,
++		&variant.SKU,
++		&variant.Price,
++		&variant.Currency,
++		&variant.CreatedAt,
++		&variant.UpdatedAt,
++	)
++	if err != nil {
++		return nil, fmt.Errorf("get variant by id: %w", err)
++	}
++	return variant, nil
++}
+diff --git a/backend/internal/product/variant/variant_router.go b/backend/internal/product/variant/variant_router.go
+index babfd33..1e91e4c 100644
+--- a/backend/internal/product/variant/variant_router.go
++++ b/backend/internal/product/variant/variant_router.go
+@@ -15,6 +15,8 @@ func NewRouter(vh *VariantHandler) *VariantRouter {
+ func (vr *VariantRouter) MapRoutes(vgroup *gin.RouterGroup) {
+ 	private := vgroup.Group("/admin/variants")
+ 	{
++		private.POST("/:id/media", vr.vh.UploadVariantMedia)
+ 		private.GET("/:id/media", vr.vh.GetVariantMedia)
++		private.PUT("/:id/media/order", vr.vh.ReorderVariantMedia)
+ 	}
+ }
+diff --git a/backend/migrations/000003_create_products_table.up.sql b/backend/migrations/000003_create_products_table.up.sql
+index 5f89044..fa4d4b1 100644
+--- a/backend/migrations/000003_create_products_table.up.sql
++++ b/backend/migrations/000003_create_products_table.up.sql
+@@ -16,8 +16,8 @@ CREATE TYPE currency AS ENUM (
+     'EGP'
+ );
+ 
+-DROP TYPE IF EXISTS product_media_type;
+-CREATE TYPE product_media_type AS ENUM (
++DROP TYPE IF EXISTS variant_media_type;
++CREATE TYPE variant_media_type AS ENUM (
+     'thumbnail',
+     'image',
+     'video',
+@@ -215,7 +215,7 @@ CREATE TABLE IF NOT EXISTS objects (
+ -- PRODUCT MEDIA
+ -- ============================================================
+ 
+-CREATE TABLE IF NOT EXISTS product_media (
++CREATE TABLE IF NOT EXISTS variant_media (
+     id UUID PRIMARY KEY,
+ 
+     variant_id UUID
+@@ -227,15 +227,15 @@ CREATE TABLE IF NOT EXISTS product_media (
+         ON DELETE CASCADE,
+ 
+ 
+-    type product_media_type NOT NULL,
++    type variant_media_type NOT NULL,
+     sort_order INTEGER NOT NULL DEFAULT 0,
+ 
+     created_at TIMESTAMPTZ NOT NULL,
+     updated_at TIMESTAMPTZ NOT NULL
+ );
+ 
+-CREATE INDEX product_media_variant_idx
+-ON product_media(variant_id);
++CREATE INDEX variant_media_variant_idx
++ON variant_media(variant_id);
+ 
+ -- ============================================================
+ -- INVENTORIES
+diff --git a/backend/pkg/config/config.go b/backend/pkg/config/config.go
+index a46e5be..9915395 100644
+--- a/backend/pkg/config/config.go
++++ b/backend/pkg/config/config.go
+@@ -34,6 +34,13 @@ type ClientConfig struct {
+ 	BaseURL string
+ }
+ 
++type MinioConfig struct {
++	Endpoint  string
++	AccessKey string
++	SecretKey string
++	PublicURL string
++}
++
+ type Config struct {
+ 	ClientCfg *ClientConfig
+ 	DBCfg     *DatabaseConfig
+@@ -41,10 +48,17 @@ type Config struct {
+ 	SMTPCfg   *SMTPConfig
+ 	KeysCfg   *Secrets
+ 	SvPort    string
++	MinioCfg  *MinioConfig
+ }
+ 
+ func Load() *Config {
+ 	return &Config{
++		MinioCfg: &MinioConfig{
++			Endpoint:  utils.GetEnvOrDefault("MINIO_ENDPOINT", "minio:9000"),
++			PublicURL: utils.GetEnvOrDefault("MINIO_PUBLIC_URL", "http://localhost:9000"),
++			AccessKey: utils.GetEnvOrDefault("MINIO_ACCESS_KEY", "admin"),
++			SecretKey: utils.GetEnvOrDefault("MINIO_SECRET_KEY", "supersecret"),
++		},
+ 		ClientCfg: &ClientConfig{
+ 			BaseURL: utils.GetEnvOrDefault("CLIENT_BASE_URL", "http://localhost:8080"),
+ 		},
