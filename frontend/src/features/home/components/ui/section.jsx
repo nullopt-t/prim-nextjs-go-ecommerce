@@ -4,12 +4,14 @@ import ProductsSection from "@/features/home/components/ui/productsSection";
 
 export default function Section() {
 	return (
-		<>
-			<div className="mb-5">
-				<SectionTitle title="categories" />
+		<div className="flex flex-col gap-10">
+			<div className="">
+				<div className="mb-2.5">
+					<SectionTitle title="categories" />
+				</div>
+				<SectionGrid />
 			</div>
-			<SectionGrid />
 			<ProductsSection />
-		</>
+		</div>
 	);
 }
