@@ -1,4 +1,4 @@
-package media
+package variant
 
 import (
 	"context"
@@ -11,19 +11,19 @@ import (
 
 type MediaRepository struct{}
 
-func NewRepository() *MediaRepository {
+func NewMediaRepository() *MediaRepository {
 	return &MediaRepository{}
 }
 
-func (mr *MediaRepository) Create(
+func (mr *MediaRepository) CreateVariantMedia(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	media *model.ProductMedia,
+	media *model.VariantMedia,
 ) error {
 	_, err := qe.Exec(
 		ctx,
 		`
-		INSERT INTO product_media(
+		INSERT INTO variant_media(
 			id,
 			variant_id,
 			object_id,
@@ -59,71 +59,64 @@ func (mr *MediaRepository) Create(
 	return nil
 }
 
-func (mr *MediaRepository) GetByID(
+func (mr *MediaRepository) ReorderVariantMedia(
 	ctx context.Context,
 	qe database.QueryExecutor,
+	variantID uuid.UUID,
 	mediaID uuid.UUID,
-) (*model.ProductMedia, error) {
-	media := &model.ProductMedia{}
-	err := qe.QueryRow(
+	idx int,
+) error {
+	_, err := qe.Exec(
 		ctx,
 		`
-		SELECT 
-			id,
-			variant_id,
-			object_id,
-			type,
-			sort_order,
-			created_at,
-			updated_at,
-			deleted_at
-		FROM
-			product_media
-		WHERE
-			id = $1
+		UPDATE variant_media
+		SET sort_order = $1
+		WHERE variant_id = $2 AND id = $3
 		`,
+		idx,
+		variantID,
 		mediaID,
-	).Scan(
-		&media.ID,
-		&media.VariantID,
-		&media.ObjectID,
-		&media.Type,
-		&media.SortOrder,
-		&media.CreatedAt,
-		&media.UpdatedAt,
-		&media.DeletedAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"get media by id :%w",
+		return fmt.Errorf(
+			"reorder variant media :%w",
 			err,
 		)
 	}
-	return media, nil
+	return nil
 }
 
 func (mr *MediaRepository) GetVariantMedia(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	variantID uuid.UUID,
-) ([]*model.ProductMedia, error) {
+) ([]*model.VariantMedia, error) {
 
 	rows, err := qe.Query(
 		ctx,
 		`
 		SELECT
-			id,
-			variant_id,
-			object_id,
-			type,
-			sort_order,
-			created_at,
-			updated_at,
-			deleted_at
+			vm.id,
+			vm.type,
+			vm.sort_order,
+			vm.created_at,
+			vm.updated_at,
+			os.id,
+			os.bucket,
+			os.key,
+			os.content_type,
+			os.size,
+			os.status,
+			os.created_at,
+			os.updated_at
 		FROM
-			product_media
+			variant_media vm
+		JOIN objects os
+			ON vm.object_id = os.id
 		WHERE
-			variant_id = $1
+			vm.variant_id = $1
+		ORDER BY
+			vm.sort_order
 		`,
 		variantID,
 	)
@@ -134,18 +127,24 @@ func (mr *MediaRepository) GetVariantMedia(
 		)
 	}
 
-	var media = make([]*model.ProductMedia, 0)
+	var media = make([]*model.VariantMedia, 0)
 	for rows.Next() {
-		m := &model.ProductMedia{}
+		m := &model.VariantMedia{}
+		o := &model.Object{}
 		err := rows.Scan(
 			&m.ID,
-			&m.VariantID,
-			&m.ObjectID,
 			&m.Type,
 			&m.SortOrder,
 			&m.CreatedAt,
 			&m.UpdatedAt,
-			&m.DeletedAt,
+			&o.ID,
+			&o.Bucket,
+			&o.Key,
+			&o.ContentType,
+			&o.Size,
+			&o.Status,
+			&o.CreatedAt,
+			&o.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf(
@@ -153,6 +152,7 @@ func (mr *MediaRepository) GetVariantMedia(
 				err,
 			)
 		}
+		m.Object = o
 		media = append(media, m)
 	}
 	if err := rows.Err(); err != nil {

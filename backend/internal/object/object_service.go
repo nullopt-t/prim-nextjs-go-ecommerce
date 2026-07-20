@@ -27,25 +27,24 @@ func NewService(
 }
 
 type CreateObjectInput struct {
-	ContentType string
-	Size        int64
-	Status      string
-	Bucket      string
-	Key         string
 }
 
 func (os *ObjectService) CreateObject(
 	ctx context.Context,
-	input CreateObjectInput,
+	ContentType string,
+	Size int64,
+	Bucket string,
+	Key string,
+	status model.ObjectStatus,
 ) (*model.Object, error) {
 	now := time.Now().UTC()
 	object := &model.Object{
 		ID:          uuid.New(),
-		Size:        input.Size,
-		Status:      input.Status,
-		ContentType: input.ContentType,
-		Bucket:      input.Bucket,
-		Key:         input.Key,
+		Size:        Size,
+		Status:      status,
+		ContentType: ContentType,
+		Bucket:      Bucket,
+		Key:         Key,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -72,58 +71,34 @@ func (os *ObjectService) CreateObject(
 	return object, nil
 }
 
-func (os *ObjectService) GetObjectByID(
+func (os *ObjectService) CreateObjectWithTx(
 	ctx context.Context,
-	objectID uuid.UUID,
+	tx database.QueryExecutor,
+	bucket, key string,
+	size int64,
+	contentType string,
+	status model.ObjectStatus,
 ) (*model.Object, error) {
-	var object *model.Object
-	err := os.dr.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			o, err := os.or.GetByID(
-				ctx,
-				db,
-				objectID,
-			)
-			if err != nil {
-				return err
-			}
-			object = o
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to create a new object",
-			err,
-		)
+	now := time.Now().UTC()
+	object := &model.Object{
+		ID:          uuid.New(),
+		Size:        size,
+		Status:      status,
+		ContentType: contentType,
+		Bucket:      bucket,
+		Key:         key,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
-	return object, nil
-}
 
-func (os *ObjectService) DeleteObject(
-	ctx context.Context,
-	objectID uuid.UUID,
-) error {
-	err := os.dr.WithDB(
+	err := os.or.Create(
 		ctx,
-		func(db database.QueryExecutor) error {
-			return os.or.Delete(
-				ctx,
-				db,
-				objectID,
-			)
-		},
+		tx,
+		object,
 	)
 	if err != nil {
-		return security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to delete and object",
-			err,
-		)
+		return nil, err
 	}
-	return nil
+
+	return object, nil
 }

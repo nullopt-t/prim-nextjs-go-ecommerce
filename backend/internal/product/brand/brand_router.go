@@ -2,8 +2,6 @@ package brand
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
@@ -30,10 +28,10 @@ func (r *Router) MapRoutes(
 	brands.GET("/slug/:slug", r.bh.GetBrandBySlug)
 
 	admin := vgroup.Group("/admin/brands")
-	admin.Use(
-		middleware.Authanticate(r.secrets),
-		middleware.Authorize(model.AdminRole),
-	)
+	// admin.Use(
+	// 	middleware.Authanticate(r.secrets),
+	// 	middleware.Authorize(model.AdminRole),
+	// )
 
 	admin.GET("", r.bh.ListAdminBrands)
 	admin.GET("/:id", r.bh.GetBrandByID)

@@ -157,12 +157,14 @@ func (r *ProductRepository) Update(
 }
 
 type ProductListItem struct {
-	ID           uuid.UUID `json:"id"`
-	Title        string    `json:"title"`
-	Slug         string    `json:"slug"`
-	ThumbnailURL *string   `json:"thumbnailUrl"`
-	Price        int64     `json:"price"`
-	Currency     string    `json:"currency"`
+	ID              uuid.UUID `json:"id"`
+	Title           string    `json:"title"`
+	Slug            string    `json:"slug"`
+	Price           int64     `json:"price"`
+	Currency        string    `json:"currency"`
+	ThumbnailBucket *string   `json:"-"`
+	ThumbnailKey    *string   `json:"-"`
+	ThumbnailURL    *string   `json:"thumbnailUrl"`
 }
 
 type ProductList struct {
@@ -177,22 +179,31 @@ func (r *ProductRepository) List(
 ) (*ProductList, error) {
 	query := `
 	SELECT
-    p.id,
-    p.title,
-    p.slug,
-    dv.price,
+		p.id,
+		p.title,
+		p.slug,
+		dv.price,
 		dv.currency,
-    thumb.url
-FROM products p
-LEFT JOIN product_variants dv
-    ON dv.id = p.default_variant_id
-    AND dv.deleted_at IS NULL
-LEFT JOIN product_media thumb
-    ON thumb.variant_id = dv.id
-    AND thumb.is_primary = true
-WHERE p.deleted_at IS NULL
-ORDER BY p.created_at DESC
-LIMIT $1 OFFSET $2	`
+		o.bucket,
+		o.key
+	FROM products p
+	LEFT JOIN product_variants dv
+		ON dv.id = p.default_variant_id
+	LEFT JOIN LATERAL (
+		SELECT vm.object_id
+		FROM variant_media vm
+		WHERE vm.variant_id = dv.id
+		ORDER BY vm.sort_order ASC
+		LIMIT 1
+	) thumb ON true
+	LEFT JOIN objects o
+		ON o.id = thumb.object_id
+		AND o.deleted_at IS NULL
+		AND o.status = 'uploaded'
+	WHERE p.deleted_at IS NULL
+	ORDER BY p.created_at DESC
+	LIMIT $1 OFFSET $2
+	`
 
 	offset := (q.Page - 1) * q.PageSize
 
@@ -210,18 +221,22 @@ LIMIT $1 OFFSET $2	`
 	}
 	defer rows.Close()
 
-	var products []*ProductListItem
+	products := make([]*ProductListItem, 0)
 
 	for rows.Next() {
 		var p ProductListItem
 
-		err = rows.Scan(
+		var bucket *string
+		var key *string
+
+		err := rows.Scan(
 			&p.ID,
 			&p.Title,
 			&p.Slug,
 			&p.Price,
 			&p.Currency,
-			&p.ThumbnailURL,
+			&bucket,
+			&key,
 		)
 		if err != nil {
 			return nil, fmt.Errorf(
@@ -230,10 +245,13 @@ LIMIT $1 OFFSET $2	`
 			)
 		}
 
+		p.ThumbnailBucket = bucket
+		p.ThumbnailKey = key
+
 		products = append(products, &p)
 	}
 
-	if err = rows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf(
 			"iterate products: %w",
 			err,
@@ -264,18 +282,16 @@ LIMIT $1 OFFSET $2	`
 				q.PageSize
 	}
 
-	page := &api.Page{
-		Page:        q.Page,
-		PageSize:    q.PageSize,
-		TotalItems:  totalItems,
-		TotalPages:  totalPages,
-		HasPrevious: q.Page > 1,
-		HasNext:     q.Page < totalPages,
-	}
-
 	return &ProductList{
 		Items: products,
-		Page:  page,
+		Page: &api.Page{
+			Page:        q.Page,
+			PageSize:    q.PageSize,
+			TotalItems:  totalItems,
+			TotalPages:  totalPages,
+			HasPrevious: q.Page > 1,
+			HasNext:     q.Page < totalPages,
+		},
 	}, nil
 }
 

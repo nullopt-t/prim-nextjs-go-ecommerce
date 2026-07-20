@@ -34,6 +34,13 @@ type ClientConfig struct {
 	BaseURL string
 }
 
+type MinioConfig struct {
+	Endpoint  string
+	AccessKey string
+	SecretKey string
+	PublicURL string
+}
+
 type Config struct {
 	ClientCfg *ClientConfig
 	DBCfg     *DatabaseConfig
@@ -41,10 +48,17 @@ type Config struct {
 	SMTPCfg   *SMTPConfig
 	KeysCfg   *Secrets
 	SvPort    string
+	MinioCfg  *MinioConfig
 }
 
 func Load() *Config {
 	return &Config{
+		MinioCfg: &MinioConfig{
+			Endpoint:  utils.GetEnvOrDefault("MINIO_ENDPOINT", "minio:9000"),
+			PublicURL: utils.GetEnvOrDefault("MINIO_PUBLIC_URL", "http://localhost:9000"),
+			AccessKey: utils.GetEnvOrDefault("MINIO_ACCESS_KEY", "admin"),
+			SecretKey: utils.GetEnvOrDefault("MINIO_SECRET_KEY", "supersecret"),
+		},
 		ClientCfg: &ClientConfig{
 			BaseURL: utils.GetEnvOrDefault("CLIENT_BASE_URL", "http://localhost:8080"),
 		},

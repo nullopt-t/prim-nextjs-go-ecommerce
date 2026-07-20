@@ -18,10 +18,10 @@ func NewRepository() *ObjectRepository {
 
 func (or *ObjectRepository) Create(
 	ctx context.Context,
-	db database.QueryExecutor,
+	qe database.QueryExecutor,
 	object *model.Object,
 ) error {
-	_, err := db.Exec(
+	_, err := qe.Exec(
 		ctx,
 		`
 		INSERT INTO objects(
@@ -63,71 +63,28 @@ func (or *ObjectRepository) Create(
 	return nil
 }
 
-func (or *ObjectRepository) GetByID(
+func (or *ObjectRepository) UpdateStatus(
 	ctx context.Context,
 	db database.QueryExecutor,
 	objectID uuid.UUID,
-) (*model.Object, error) {
-	object := &model.Object{}
-	err := db.QueryRow(
-		ctx,
-		`
-		SELECT 
-			id,
-			key,
-			bucket,
-			size,
-			status,
-			content_type,
-			created_at,
-			updated_at,
-			deleted_at
-		FROM 
-			objects
-		WHERE
-			id = $1
-		`,
-		objectID,
-	).Scan(
-		&object.ID,
-		&object.Key,
-		&object.Bucket,
-		&object.Size,
-		&object.Status,
-		&object.ContentType,
-		&object.CreatedAt,
-		&object.UpdatedAt,
-		&object.DeletedAt,
-	)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"get by id : %w",
-			err,
-		)
-	}
-	return object, nil
-}
-
-func (or *ObjectRepository) Delete(
-	ctx context.Context,
-	db database.QueryExecutor,
-	objectID uuid.UUID,
+	status model.ObjectStatus,
 ) error {
 	_, err := db.Exec(
 		ctx,
 		`
-		UPDATE 
+		UPDATE
 			objects
 		SET
-			status = 'deleting'
+			status = $1
 		WHERE
-			id = $1
+			id = $2
 		`,
+		status,
 		objectID,
 	)
 	if err != nil {
 		return fmt.Errorf(
-			"delete an object: %w",
+			"update status: %w",
 			err,
 		)
 	}

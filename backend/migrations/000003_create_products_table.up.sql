@@ -16,8 +16,8 @@ CREATE TYPE currency AS ENUM (
     'EGP'
 );
 
-DROP TYPE IF EXISTS product_media_type;
-CREATE TYPE product_media_type AS ENUM (
+DROP TYPE IF EXISTS variant_media_type;
+CREATE TYPE variant_media_type AS ENUM (
     'thumbnail',
     'image',
     'video',
@@ -215,7 +215,7 @@ CREATE TABLE IF NOT EXISTS objects (
 -- PRODUCT MEDIA
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS product_media (
+CREATE TABLE IF NOT EXISTS variant_media (
     id UUID PRIMARY KEY,
 
     variant_id UUID
@@ -227,15 +227,15 @@ CREATE TABLE IF NOT EXISTS product_media (
         ON DELETE CASCADE,
 
 
-    type product_media_type NOT NULL,
+    type variant_media_type NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
 
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL
 );
 
-CREATE INDEX product_media_variant_idx
-ON product_media(variant_id);
+CREATE INDEX variant_media_variant_idx
+ON variant_media(variant_id);
 
 -- ============================================================
 -- INVENTORIES

@@ -46,12 +46,9 @@ func (ch *CategoryHandler) CreateCategory(c *gin.Context) {
 		return
 	}
 
-	// userID, _ := c.Get("userID")
 	in := &CreateCategoryInput{
-		Name:      req.Name,
-		ParentID:  req.ParentID,
-		// CreatedBy: userID.(uuid.UUID),
-		// UpdatedBy: userID.(uuid.UUID),
+		Name:     req.Name,
+		ParentID: req.ParentID,
 	}
 
 	ctx := c.Request.Context()
@@ -71,8 +68,6 @@ func (ch *CategoryHandler) CreateCategory(c *gin.Context) {
 				ID:        category.ID,
 				Name:      category.Name,
 				ParentID:  category.ParentID,
-				// CreatedBy: category.CreatedBy,
-				// UpdatedBy: category.UpdatedBy,
 				CreatedAt: category.CreatedAt.Format(time.RFC3339),
 				UpdatedAt: category.UpdatedAt.Format(time.RFC3339),
 			},
@@ -235,8 +230,6 @@ func (ch *CategoryHandler) ListAdminCategories(c *gin.Context) {
 			ID:        c.ID,
 			Name:      c.Name,
 			ParentID:  c.ParentID,
-			// CreatedBy: c.CreatedBy,
-			// UpdatedBy: c.UpdatedBy,
 			CreatedAt: c.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: c.UpdatedAt.Format(time.RFC3339),
 		})
@@ -286,11 +279,9 @@ func (ch *CategoryHandler) UpdateCategory(c *gin.Context) {
 		return
 	}
 
-	// userID, _ := c.Get("userID")
 	in := &UpdateCategoryInput{
-		Name:      body.Name,
-		ParentID:  body.ParentID,
-		// UpdatedBy: userID.(uuid.UUID),
+		Name:     body.Name,
+		ParentID: body.ParentID,
 	}
 
 	ctx := c.Request.Context()
