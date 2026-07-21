@@ -198,8 +198,6 @@ definitions:
       created_at:
         example: "2026-06-30T15:47:19Z"
         type: string
-      created_by:
-        type: string
       id:
         example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
         type: string
@@ -209,10 +207,14 @@ definitions:
       parent_id:
         example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
         type: string
+      publication_status:
+        example: published
+        type: string
+      slug:
+        example: electronic
+        type: string
       updated_at:
         example: "2026-06-30T15:47:19Z"
-        type: string
-      updated_by:
         type: string
     type: object
   category.CreateCategoryRequest:
@@ -223,8 +225,35 @@ definitions:
       parent_id:
         example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
         type: string
+      slug:
+        example: electronic
+        type: string
     required:
     - name
+    type: object
+  category.PublicCategoryListResponse:
+    properties:
+      id:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+      name:
+        example: Electronic
+        type: string
+      slug:
+        example: electronic
+        type: string
+    type: object
+  category.UpdateCategoryRequest:
+    properties:
+      name:
+        example: electronic
+        type: string
+      parent_id:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+      publication_status:
+        example: published
+        type: string
     type: object
   product.CreateProductRequest:
     properties:
@@ -289,11 +318,17 @@ definitions:
       created_at:
         example: "2026-06-30T15:47:19Z"
         type: string
+      deleted_at:
+        example: "2026-06-30T15:47:19Z"
+        type: string
       id:
         example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
         type: string
       name:
         example: black-friday
+        type: string
+      publication_status:
+        example: published
         type: string
       updated_at:
         example: "2026-06-30T15:47:19Z"
@@ -466,12 +501,147 @@ paths:
     get:
       consumes:
       - application/json
+      description: list all categories
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -age
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/category.CategoryResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/api.Page'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: list all categories
+      tags:
+      - Category
+    post:
+      consumes:
+      - application/json
+      description: create a new category
+      parameters:
+      - description: 'Category Data '
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/category.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/category.CategoryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: create a new category
+      tags:
+      - Category
+  /admin/categories/{id}:
+    get:
+      consumes:
+      - application/json
+      description: fetch a category by id
+      parameters:
+      - description: Category ID (UUID)
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/category.CategoryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: get a category by id
+      tags:
+      - Category
+    patch:
+      consumes:
+      - application/json
       description: update a category details
       parameters:
       - in: path
         name: id
-        required: true
         type: string
+      - description: category details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/category.UpdateCategoryRequest'
       produces:
       - application/json
       responses:
@@ -503,6 +673,56 @@ paths:
       summary: update a category details
       tags:
       - Category
+  /admin/tags:
+    get:
+      consumes:
+      - application/json
+      description: list all tags
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -age
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/tag.TagResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/api.Page'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: list all tags
+      tags:
+      - Tag
   /auth/challenge/resend:
     post:
       consumes:
@@ -777,7 +997,7 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/category.CategoryResponse'
+                    $ref: '#/definitions/category.PublicCategoryListResponse'
                   type: array
                 meta:
                   $ref: '#/definitions/api.Page'
@@ -791,83 +1011,6 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: list all categories
-      tags:
-      - Category
-    post:
-      consumes:
-      - application/json
-      description: create a new category
-      parameters:
-      - description: 'Category Data '
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/category.CreateCategoryRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/category.CategoryResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: create a new category
-      tags:
-      - Category
-  /categories/{id}:
-    get:
-      consumes:
-      - application/json
-      description: fetch a category by id
-      parameters:
-      - description: Category ID (UUID)
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/category.CategoryResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: get a category by id
       tags:
       - Category
   /products:
