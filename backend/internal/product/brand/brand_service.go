@@ -30,8 +30,8 @@ func NewService(
 type CreateBrandInput struct {
 	Name    string
 	Slug    string
-	LogoURL string
-	LogoAlt string
+	LogoURL *string
+	LogoAlt *string
 }
 
 func (bs *BrandService) CreateBrand(
@@ -42,7 +42,6 @@ func (bs *BrandService) CreateBrand(
 	brand := &model.ProductBrand{
 		ID:      uuid.New(),
 		Name:    in.Name,
-		Slug:    in.Slug,
 		LogoURL: in.LogoURL,
 		LogoAlt: in.LogoAlt,
 	}
@@ -130,43 +129,8 @@ func (bs *BrandService) GetBrandByID(
 	return brand, nil
 }
 
-func (bs *BrandService) GetBrandBySlug(
-	ctx context.Context,
-	slug string,
-) (*model.ProductBrand, error) {
-	var brand *model.ProductBrand
-	err := bs.qexecuter.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			b, err := bs.brepo.Get(
-				ctx,
-				db,
-				Filter{
-					Slug: &slug,
-				},
-			)
-			if err != nil {
-				return err
-			}
-			brand = b
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to fetch the brand",
-			err,
-		)
-	}
-	return brand, nil
-}
-
 type UpdateBrandInput struct {
 	Name    *string
-	LogoURL *string
-	LogoAlt *string
 }
 
 func (bs *BrandService) UpdateBrand(
@@ -183,8 +147,6 @@ func (bs *BrandService) UpdateBrand(
 				brandID,
 				UpdateBrandFields{
 					Name:    input.Name,
-					LogoURL: input.LogoURL,
-					LogoAlt: input.LogoAlt,
 				},
 			)
 		},
@@ -229,6 +191,37 @@ func (bs *BrandService) List(
 	return brandList, nil
 }
 
+
+func (bs *BrandService) AdminList(
+	ctx context.Context,
+	q *api.ListQuery,
+) (*BrandList, error) {
+	var brandList *BrandList
+	err := bs.qexecuter.WithDB(ctx,
+		func(db database.QueryExecutor) error {
+			var err error
+			brandList, err = bs.brepo.AdminList(
+				ctx,
+				db,
+				q,
+			)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	if err != nil {
+		return nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch the categories",
+			err,
+		)
+	}
+	return brandList, nil
+}
+
+
 func (bs *BrandService) DeleteBrandByID(
 	ctx context.Context,
 	id uuid.UUID,
@@ -248,71 +241,6 @@ func (bs *BrandService) DeleteBrandByID(
 			http.StatusInternalServerError,
 			security.CodeInternal,
 			"failed to delete the brand",
-			err,
-		)
-	}
-	return nil
-}
-
-func (bs *BrandService) DeleteBrandBySlug(
-	ctx context.Context,
-	slug string,
-) error {
-	err := bs.qexecuter.WithDB(ctx,
-		func(db database.QueryExecutor) error {
-			return bs.brepo.Delete(
-				ctx,
-				db,
-				Filter{
-					Slug: &slug,
-				},
-			)
-		})
-	if err != nil {
-		return security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to delete the brand",
-			err,
-		)
-	}
-	return nil
-}
-
-func (bs *BrandService) Unarchive(ctx context.Context, id uuid.UUID) error {
-	err := bs.qexecuter.WithDB(ctx,
-		func(db database.QueryExecutor) error {
-			return bs.brepo.Restore(
-				ctx,
-				db,
-				id,
-			)
-		})
-	if err != nil {
-		return security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to unarchive the brand",
-			err,
-		)
-	}
-	return nil
-}
-
-func (bs *BrandService) Archive(ctx context.Context, id uuid.UUID) error {
-	err := bs.qexecuter.WithDB(ctx,
-		func(db database.QueryExecutor) error {
-			return bs.brepo.Archive(
-				ctx,
-				db,
-				id,
-			)
-		})
-	if err != nil {
-		return security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to archive the brand",
 			err,
 		)
 	}

@@ -1,7 +1,6 @@
 package brand
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 )
 
 type BrandHandler struct {
@@ -26,23 +24,17 @@ func NewHandler(
 }
 
 type CreateBrandRequest struct {
-	Name    string  `json:"name" binding:"required" example:"apple"`
-	Slug    *string `json:"slug" example:"apple"`
-	LogoURL string  `json:"logo_url" binding:"required" example:"https://pictures.com/apple.png"`
-	LogoAlt string  `json:"logo_alt" binding:"required" example:"apple logo"`
+	Name string `json:"name" binding:"required" example:"apple"`
 }
 
 type BrandResponse struct {
-	ID        string `json:"id,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
-	Name      string `json:"name,omitempty" example:"nvidia"`
-	Slug      string `json:"slug,omitempty" example:"nvidia"`
-	Status    string `json:"status,omitempty" example:"active"`
-	LogoURL   string `json:"logo_url,omitempty" example:"https://pictures.com/nvidia.png"`
-	LogoAlt   string `json:"logo_alt,omitempty" example:"nvidia logo"`
-	CreatedAt string `json:"created_at,omitempty" example:"2026-07-01T05:04:38Z"`
-	UpdatedAt string `json:"updated_at,omitempty" example:"2026-07-01T05:04:38Z"`
-	// UpdatedBy string `json:"updated_by,omitzero" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
-	// CreatedBy string `json:"created_by,omitzero" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
+	ID                string  `json:"id,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
+	Name              string  `json:"name,omitempty" example:"nvidia"`
+	PublicationStatus string  `json:"publication_status,omitempty" example:"active"`
+	LogoURL           *string `json:"logo_url" example:"https://pictures.com/nvidia.png"`
+	LogoAlt           *string `json:"logo_alt" example:"nvidia logo"`
+	CreatedAt         string  `json:"created_at,omitempty" example:"2026-07-01T05:04:38Z"`
+	UpdatedAt         string  `json:"updated_at,omitempty" example:"2026-07-01T05:04:38Z"`
 }
 
 // CreateBrand godoc
@@ -55,7 +47,7 @@ type BrandResponse struct {
 // @Failure 409 {object} api.ErrorResponse
 // @Failure 500 {object} api.ErrorResponse
 // @Success 201 {object} api.DataResponse{data=BrandResponse}
-// @Router /brands [post]
+// @Router /admin/brands [post]
 func (bh *BrandHandler) CreateBrand(c *gin.Context) {
 	req := &CreateBrandRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -64,15 +56,7 @@ func (bh *BrandHandler) CreateBrand(c *gin.Context) {
 	}
 
 	in := &CreateBrandInput{
-		Name:    req.Name,
-		LogoURL: req.LogoURL,
-		LogoAlt: req.LogoAlt,
-	}
-
-	if req.Slug != nil {
-		in.Slug = *req.Slug
-	} else {
-		in.Slug = fmt.Sprintf("%s-%d", utils.Slugify(in.Name), time.Now().Unix())
+		Name: req.Name,
 	}
 
 	ctx := c.Request.Context()
@@ -91,7 +75,6 @@ func (bh *BrandHandler) CreateBrand(c *gin.Context) {
 			Data: BrandResponse{
 				ID:        brand.ID.String(),
 				Name:      brand.Name,
-				Slug:      brand.Slug,
 				LogoURL:   brand.LogoURL,
 				LogoAlt:   brand.LogoAlt,
 				CreatedAt: brand.CreatedAt.Format(time.RFC3339),
@@ -115,7 +98,7 @@ type BrandIDParam struct {
 // @Failure 404 {object} api.ErrorResponse
 // @Failure 500 {object} api.ErrorResponse
 // @Success 200 {object} api.DataResponse{data=BrandResponse}
-// @Router /brands/{id} [get]
+// @Router /admin/brands/{id} [get]
 func (bh *BrandHandler) GetBrandByID(c *gin.Context) {
 	param := &BrandIDParam{}
 	if err := c.ShouldBindUri(param); err != nil {
@@ -145,7 +128,6 @@ func (bh *BrandHandler) GetBrandByID(c *gin.Context) {
 			Data: BrandResponse{
 				ID:        brand.ID.String(),
 				Name:      brand.Name,
-				Slug:      brand.Slug,
 				LogoURL:   brand.LogoURL,
 				LogoAlt:   brand.LogoAlt,
 				UpdatedAt: brand.UpdatedAt.Format(time.RFC3339),
@@ -159,51 +141,8 @@ type BrandSlugParam struct {
 	Slug string `uri:"slug" binding:"required" example:"apple"`
 }
 
-// GetBrandBySlug godoc
-// @Summary get a brand by slug
-// @Description get a brand by slug
-// @Tags Brand
-// @Accept json
-// @Produce json
-// @Param slug path string true "brand slug"
-// @Failure 500 {object} api.ErrorResponse
-// @Failure 200 {object} api.DataResponse{data=BrandResponse}
-// @Router /brands/{slug} [get]
-func (bh *BrandHandler) GetBrandBySlug(c *gin.Context) {
-	param := &BrandSlugParam{}
-	if err := c.ShouldBindUri(param); err != nil {
-		validation.ValidationError(c, err)
-		return
-	}
-
-	ctx := c.Request.Context()
-	brand, err := bh.bservice.GetBrandBySlug(
-		ctx,
-		param.Slug,
-	)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	c.JSON(
-		http.StatusOK,
-		api.DataResponse{
-			Data: BrandResponse{
-				ID:      brand.ID.String(),
-				Name:    brand.Name,
-				Slug:    brand.Slug,
-				LogoURL: brand.LogoURL,
-				LogoAlt: brand.LogoAlt,
-			},
-		},
-	)
-}
-
 type UpdateBrandRequest struct {
 	Name    *string `json:"name"  example:"apple"`
-	LogoURL *string `json:"logo_url"  example:"https://example.com/logo.png"`
-	LogoAlt *string `json:"logo_alt"  example:"apple logo"`
 }
 
 // UpdateBrand godoc
@@ -216,10 +155,10 @@ type UpdateBrandRequest struct {
 // @Param input body UpdateBrandRequest true "brand input"
 // @Failure 500 {object} api.ErrorResponse
 // @Failure 200 {object} api.DataResponse{data=BrandResponse}
-// @Router /brands/{slug} [put]
+// @Router /admin/brands/{id} [patch]
 func (bh *BrandHandler) UpdateBrand(c *gin.Context) {
-	req := &UpdateBrandRequest{}
-	if err := c.ShouldBindJSON(req); err != nil {
+	body := &UpdateBrandRequest{}
+	if err := c.ShouldBindJSON(body); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
@@ -240,9 +179,7 @@ func (bh *BrandHandler) UpdateBrand(c *gin.Context) {
 		c.Request.Context(),
 		brandID,
 		UpdateBrandInput{
-			Name:    req.Name,
-			LogoURL: req.LogoURL,
-			LogoAlt: req.LogoAlt,
+			Name:    body.Name,
 		},
 	)
 	if err != nil {
@@ -332,7 +269,7 @@ func (bh *BrandHandler) ListAdminBrands(c *gin.Context) {
 	}).Parse()
 
 	ctx := c.Request.Context()
-	brandList, err := bh.bservice.List(
+	brandList, err := bh.bservice.AdminList(
 		ctx,
 		q,
 	)
@@ -344,13 +281,13 @@ func (bh *BrandHandler) ListAdminBrands(c *gin.Context) {
 	var res = make([]*BrandResponse, 0, len(brandList.Brands))
 	for _, brand := range brandList.Brands {
 		res = append(res, &BrandResponse{
-			ID:        brand.ID.String(),
-			Name:      brand.Name,
-			LogoURL:   brand.LogoURL,
-			LogoAlt:   brand.LogoAlt,
-			Status:    brand.Status.String(),
-			CreatedAt: brand.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: brand.UpdatedAt.Format(time.RFC3339),
+			ID:                brand.ID.String(),
+			Name:              brand.Name,
+			LogoURL:           brand.LogoURL,
+			LogoAlt:           brand.LogoAlt,
+			PublicationStatus: brand.PublicationStatus.String(),
+			CreatedAt:         brand.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:         brand.UpdatedAt.Format(time.RFC3339),
 		})
 	}
 
@@ -359,75 +296,6 @@ func (bh *BrandHandler) ListAdminBrands(c *gin.Context) {
 		api.PaginatedResponse{
 			Data: res,
 			Meta: brandList.Page,
-		},
-	)
-}
-
-// UnarchiveBrand godoc
-// @Tags Brand
-// @Accept json
-// @Produce json
-// @Param id path string true "brand id"
-// @Failure 500 {object} api.ErrorResponse
-// @Failure 200 {object} api.SuccessResponse
-// @Router /admin/brands/{id}/unarchive [post]
-func (bh *BrandHandler) UnarchiveBrand(c *gin.Context) {
-	param := &BrandIDParam{}
-	if err := c.ShouldBindUri(param); err != nil {
-		validation.ValidationError(c, err)
-		return
-	}
-
-	brandID, err := uuid.Parse(param.ID)
-	if err != nil {
-		_ = c.Error(security.SecureErrInvalidUUID(err))
-		return
-	}
-
-	ctx := c.Request.Context()
-	if err := bh.bservice.Unarchive(ctx, brandID); err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	c.JSON(
-		http.StatusOK,
-		api.SuccessResponse{
-			Message: "brand unarchived",
-		},
-	)
-}
-
-// ArchiveBrand godoc
-// @Tags Brand
-// @Accept json
-// @Produce json
-// @Param id path string true "brand id"
-// @Failure 500 {object} api.ErrorResponse
-// @Failure 200 {object} api.SuccessResponse
-// @Router /admin/brands/{id}/archive [post]
-func (bh *BrandHandler) ArchiveBrand(c *gin.Context) {
-	param := &BrandIDParam{}
-	if err := c.ShouldBindUri(param); err != nil {
-		validation.ValidationError(c, err)
-		return
-	}
-
-	brandID, err := uuid.Parse(param.ID)
-	if err != nil {
-		_ = c.Error(security.SecureErrInvalidUUID(err))
-		return
-	}
-
-	ctx := c.Request.Context()
-	if err := bh.bservice.Archive(ctx, brandID); err != nil {
-		_ = c.Error(err)
-		return
-	}
-	c.JSON(
-		http.StatusOK,
-		api.SuccessResponse{
-			Message: "brand archived",
 		},
 	)
 }

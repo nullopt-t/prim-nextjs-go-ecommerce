@@ -26,7 +26,6 @@ func (r *Router) MapRoutes(
 	brands := vgroup.Group("/brands")
 	{
 		brands.GET("", r.bh.ListBrands)
-		brands.GET("/slug/:slug", r.bh.GetBrandBySlug)
 	}
 
 	admin := vgroup.Group("/admin/brands")
@@ -36,7 +35,5 @@ func (r *Router) MapRoutes(
 
 		admin.GET("/:id", r.bh.GetBrandByID)
 		admin.PATCH("/:id", r.bh.UpdateBrand)
-		admin.POST("/:id/archive", r.bh.ArchiveBrand)
-		admin.POST("/:id/unarchive", r.bh.UnarchiveBrand)
 	}
 }
