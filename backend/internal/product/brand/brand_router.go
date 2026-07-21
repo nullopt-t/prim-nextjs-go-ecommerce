@@ -24,17 +24,19 @@ func (r *Router) MapRoutes(
 	vgroup *gin.RouterGroup,
 ) {
 	brands := vgroup.Group("/brands")
-	brands.GET("", r.bh.ListBrands)
-	brands.GET("/slug/:slug", r.bh.GetBrandBySlug)
+	{
+		brands.GET("", r.bh.ListBrands)
+		brands.GET("/slug/:slug", r.bh.GetBrandBySlug)
+	}
 
 	admin := vgroup.Group("/admin/brands")
-	// admin.Use(
-	// 	middleware.Authanticate(r.secrets),
-	// 	middleware.Authorize(model.AdminRole),
-	// )
+	{
+		admin.POST("", r.bh.CreateBrand)
+		admin.GET("", r.bh.ListAdminBrands)
 
-	admin.GET("", r.bh.ListAdminBrands)
-	admin.GET("/:id", r.bh.GetBrandByID)
-	admin.POST("", r.bh.CreateBrand)
-	admin.PATCH("/:id", r.bh.UpdateBrand)
+		admin.GET("/:id", r.bh.GetBrandByID)
+		admin.PATCH("/:id", r.bh.UpdateBrand)
+		admin.POST("/:id/archive", r.bh.ArchiveBrand)
+		admin.POST("/:id/unarchive", r.bh.UnarchiveBrand)
+	}
 }
