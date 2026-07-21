@@ -67,6 +67,24 @@ definitions:
       data: {}
       meta: {}
     type: object
+  api.Sort:
+    properties:
+      field:
+        example: name
+        type: string
+      order:
+        allOf:
+        - $ref: '#/definitions/api.SortOrder'
+        example: asc
+    type: object
+  api.SortOrder:
+    enum:
+    - asc
+    - desc
+    type: string
+    x-enum-varnames:
+    - SortAsc
+    - SortDesc
   api.SuccessResponse:
     properties:
       data: {}
@@ -86,9 +104,7 @@ definitions:
       id:
         type: string
       role:
-        items:
-          type: string
-        type: array
+        type: string
       status:
         type: string
     type: object
@@ -147,7 +163,7 @@ definitions:
       id:
         example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
         type: string
-      logo_label:
+      logo_alt:
         example: nvidia logo
         type: string
       logo_url:
@@ -156,13 +172,19 @@ definitions:
       name:
         example: nvidia
         type: string
-      udpated_at:
+      slug:
+        example: nvidia
+        type: string
+      status:
+        example: active
+        type: string
+      updated_at:
         example: "2026-07-01T05:04:38Z"
         type: string
     type: object
   brand.CreateBrandRequest:
     properties:
-      logo_label:
+      logo_alt:
         example: apple logo
         type: string
       logo_url:
@@ -171,15 +193,32 @@ definitions:
       name:
         example: apple
         type: string
+      slug:
+        example: apple
+        type: string
     required:
-    - logo_label
+    - logo_alt
     - logo_url
     - name
+    type: object
+  brand.UpdateBrandRequest:
+    properties:
+      logo_alt:
+        example: apple logo
+        type: string
+      logo_url:
+        example: https://example.com/logo.png
+        type: string
+      name:
+        example: apple
+        type: string
     type: object
   category.CategoryResponse:
     properties:
       created_at:
         example: "2026-06-30T15:47:19Z"
+        type: string
+      created_by:
         type: string
       id:
         example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
@@ -190,11 +229,10 @@ definitions:
       parent_id:
         example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
         type: string
-      slug:
-        example: electronic
-        type: string
       updated_at:
         example: "2026-06-30T15:47:19Z"
+        type: string
+      updated_by:
         type: string
     type: object
   category.CreateCategoryRequest:
@@ -210,43 +248,43 @@ definitions:
     type: object
   product.CreateProductRequest:
     properties:
-      currency:
+      brand_id:
         type: string
       description:
         type: string
-      price:
-        type: integer
       short_description:
         type: string
-      sku:
-        type: string
       slug:
-        type: string
-      status:
         type: string
       title:
         type: string
     required:
-    - price
-    - slug
-    - status
+    - description
+    - short_description
     - title
+    type: object
+  product.ProductBrandResponse:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
     type: object
   product.ProductResponse:
     properties:
+      brand:
+        $ref: '#/definitions/product.ProductBrandResponse'
+      brand_id:
+        type: string
       created_at:
         type: string
-      currency:
+      created_by:
         type: string
       description:
         type: string
       id:
         type: string
-      price:
-        type: integer
       short_description:
-        type: string
-      sku:
         type: string
       slug:
         type: string
@@ -255,6 +293,8 @@ definitions:
       title:
         type: string
       updated_at:
+        type: string
+      updated_by:
         type: string
     type: object
   tag.CreateTagRequest:
@@ -292,6 +332,142 @@ info:
   title: Prim API
   version: "1.0"
 paths:
+  /admin/brands:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -age
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/brand.BrandResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/api.Page'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: list all the brands in pages
+      tags:
+      - Brand
+  /admin/brands/{id}/archive:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: brand id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      tags:
+      - Brand
+  /admin/brands/{id}/unarchive:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: brand id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      tags:
+      - Brand
+  /admin/categories:
+    get:
+      consumes:
+      - application/json
+      description: update a category details
+      parameters:
+      - in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/category.CategoryResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/api.Page'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: update a category details
+      tags:
+      - Category
   /auth/challenge/resend:
     post:
       consumes:
@@ -492,6 +668,19 @@ paths:
         in: query
         name: pageSize
         type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -age
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
       produces:
       - application/json
       responses:
@@ -581,6 +770,71 @@ paths:
       summary: get brand by id
       tags:
       - Brand
+  /brands/{slug}:
+    get:
+      consumes:
+      - application/json
+      description: get a brand by slug
+      parameters:
+      - description: brand slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/brand.BrandResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: get a brand by slug
+      tags:
+      - Brand
+    put:
+      consumes:
+      - application/json
+      description: update a brand
+      parameters:
+      - description: brand id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: brand input
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/brand.UpdateBrandRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/brand.BrandResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: update a brand
+      tags:
+      - Brand
   /categories:
     get:
       consumes:
@@ -595,6 +849,19 @@ paths:
         in: query
         name: pageSize
         type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -age
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
       produces:
       - application/json
       responses:
@@ -611,6 +878,10 @@ paths:
                 meta:
                   $ref: '#/definitions/api.Page'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -695,45 +966,6 @@ paths:
       summary: get a category by id
       tags:
       - Category
-  /categories/{slug}:
-    get:
-      consumes:
-      - application/json
-      description: fetch a category by slug
-      parameters:
-      - description: Category slug(string)
-        format: string
-        in: path
-        name: slug
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/category.CategoryResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: get a category by slug
-      tags:
-      - Category
   /products:
     get:
       consumes:
@@ -748,6 +980,19 @@ paths:
         in: query
         name: pageSize
         type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -age
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
       produces:
       - application/json
       responses:
@@ -829,42 +1074,35 @@ paths:
       summary: Get a product by id
       tags:
       - Products
-  /roles:
+  /products/{slug}:
     get:
       consumes:
       - application/json
-      description: fetch all the roles using pagination
+      description: Get a product by passing it's slug
       parameters:
-      - example: 1
-        in: query
-        name: page
-        type: integer
-      - example: 10
-        in: query
-        name: pageSize
-        type: integer
+      - description: Product Slug
+        in: path
+        name: slug
+        required: true
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.PaginatedResponse'
+            $ref: '#/definitions/product.ProductResponse'
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/api.BadReqResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/api.UnauthorizedResponse'
-        "500":
-          description: Internal Server Error
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/api.ErrorResponse'
-      summary: fetch all the roles using pagination
+      summary: Get a product by slug
       tags:
-      - Roles
+      - Products
   /tags:
     get:
       consumes:
@@ -879,6 +1117,19 @@ paths:
         in: query
         name: pageSize
         type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -age
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
       produces:
       - application/json
       responses:
