@@ -2,12 +2,12 @@
 -- ENUMS
 -- ============================================================
 
-DROP TYPE IF EXISTS product_status;
-CREATE TYPE product_status AS ENUM (
+DROP TYPE IF EXISTS publication_status;
+CREATE TYPE publication_status AS ENUM (
     'draft',
-    'published',
-    'archived'
+    'published'
 );
+
 
 DROP TYPE IF EXISTS currency;
 CREATE TYPE currency AS ENUM (
@@ -31,24 +31,18 @@ CREATE TABLE IF NOT EXISTS brands (
     id UUID PRIMARY KEY,
 
     name TEXT NOT NULL,
-    slug TEXT NOT NULL,
 
-    logo_url TEXT NOT NULL,
-    logo_alt TEXT NOT NULL,
-    status TEXT NOT NULL,
+    logo_url TEXT NULL,
+    logo_alt TEXT NULL,
+    publication_status publication_status NOT NULL,
 
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    archived_at TIMESTAMPTZ,
-    deleted_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    deleted_at TIMESTAMPTZ NULL
 );
 
 CREATE UNIQUE INDEX brands_name_idx
 ON brands(name)
-WHERE deleted_at IS NULL;
-
-CREATE UNIQUE INDEX brands_slug_idx
-ON brands(slug)
 WHERE deleted_at IS NULL;
 
 -- ============================================================

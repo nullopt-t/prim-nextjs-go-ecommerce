@@ -14,8 +14,7 @@ import (
 )
 
 type Filter struct {
-	ID   *uuid.UUID
-	Slug *string
+	ID *uuid.UUID
 }
 
 type BrandRepository struct {
@@ -49,10 +48,7 @@ func (br *BrandRepository) Create(
 		INSERT INTO brands(
 			id,
 			name,
-			slug,
-			status,
-			logo_url,
-			logo_alt,
+			publication_status,
 			created_at,
 			updated_at
 		)
@@ -61,18 +57,12 @@ func (br *BrandRepository) Create(
 			$2,
 			$3,
 			$4,
-			$5,
-			$6,
-			$7,
-			$8
+			$5
 		)
 		`,
 		brand.ID,
 		brand.Name,
-		brand.Slug,
-		brand.Status,
-		brand.LogoURL,
-		brand.LogoAlt,
+		model.ProductBrandStatusDraft,
 		brand.CreatedAt,
 		brand.UpdatedAt,
 	)
@@ -90,9 +80,9 @@ func (br *BrandRepository) Get(
 	qe database.QueryExecutor,
 	filter Filter,
 ) (*model.ProductBrand, error) {
-	if filter.ID == nil && filter.Slug == nil {
+	if filter.ID == nil {
 		return nil, fmt.Errorf(
-			"filter must have id or slug",
+			"filter must have id",
 		)
 	}
 
@@ -100,13 +90,11 @@ func (br *BrandRepository) Get(
 	SELECT
 		id,
 		name,
-		slug,
-		status,
+		publication_status,
 		logo_url,
 		logo_alt,
 		created_at,
 		updated_at,
-		archived_at,
 		deleted_at
 	FROM
 		brands
@@ -130,13 +118,11 @@ func (br *BrandRepository) Get(
 	).Scan(
 		&brand.ID,
 		&brand.Name,
-		&brand.Slug,
-		&brand.Status,
+		&brand.PublicationStatus,
 		&brand.LogoURL,
 		&brand.LogoAlt,
 		&brand.CreatedAt,
 		&brand.UpdatedAt,
-		&brand.ArchivedAt,
 		&brand.DeletedAt,
 	)
 	if err != nil {
@@ -149,9 +135,7 @@ func (br *BrandRepository) Get(
 }
 
 type UpdateBrandFields struct {
-	Name    *string
-	LogoURL *string
-	LogoAlt *string
+	Name *string
 }
 
 func (br *BrandRepository) Update(
@@ -165,16 +149,12 @@ func (br *BrandRepository) Update(
 		brands
 	SET
 		name = COALESCE($1, name),
-		logo_url = COALESCE($2, logo_url),
-		logo_alt = COALESCE($3, logo_alt),
-		updated_at = $4
+		updated_at = $2
 	WHERE
-		id = $5
+		id = $3
 	`
 	args := []any{
 		fields.Name,
-		fields.LogoURL,
-		fields.LogoAlt,
 		time.Now().UTC(),
 		brandID,
 	}
@@ -190,79 +170,6 @@ func (br *BrandRepository) Update(
 
 	if cmd.RowsAffected() == 0 {
 		return fmt.Errorf("update brand :no rows affected")
-	}
-
-	return nil
-}
-
-func (br *BrandRepository) Archive(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	brandID uuid.UUID,
-) error {
-	query := `
-	UPDATE
-		brands
-	SET
-		archived_at = $1,
-		status = 'archived',
-		updated_at = $2
-	WHERE
-		id = $3
-	`
-	args := []any{
-		time.Now().UTC(),
-		time.Now().UTC(),
-		brandID,
-	}
-
-	cmd, err := qe.Exec(
-		ctx,
-		query,
-		args...,
-	)
-	if err != nil {
-		return fmt.Errorf("archive brand :%w", err)
-	}
-
-	if cmd.RowsAffected() == 0 {
-		return fmt.Errorf("archive brand :no rows affected")
-	}
-
-	return nil
-}
-
-func (br *BrandRepository) Restore(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	brandID uuid.UUID,
-) error {
-	query := `
-	UPDATE
-		brands
-	SET
-		status = 'active',
-		archived_at = NULL,
-		updated_at = $1
-	WHERE
-		id = $2
-	`
-	args := []any{
-		time.Now().UTC(),
-		brandID,
-	}
-
-	cmd, err := qe.Exec(
-		ctx,
-		query,
-		args...,
-	)
-	if err != nil {
-		return fmt.Errorf("restore brand :%w", err)
-	}
-
-	if cmd.RowsAffected() == 0 {
-		return fmt.Errorf("restore brand :no rows affected")
 	}
 
 	return nil
@@ -285,14 +192,11 @@ func (br *BrandRepository) List(
 		SELECT
 			id,
 			name,
-			slug,
-			status,
 			logo_url,
-			logo_alt,
-			created_at,
-			updated_at
+			logo_alt
 		FROM brands
 		WHERE 1=1
+			AND publication_status = 'published'
 	`)
 
 	countQuery.WriteString(`
@@ -300,6 +204,7 @@ func (br *BrandRepository) List(
 			COUNT(id)
 		FROM brands
 		WHERE 1=1
+			AND publication_status = 'published'
 	`)
 
 	args := make([]any, 0)
@@ -310,9 +215,8 @@ func (br *BrandRepository) List(
 		condition := fmt.Sprintf(`
 			AND (
 				name ILIKE $%d
-				OR slug ILIKE $%d
 			)
-		`, argID, argID)
+		`, argID)
 
 		query.WriteString(condition)
 		countQuery.WriteString(condition)
@@ -400,8 +304,175 @@ func (br *BrandRepository) List(
 		err := rows.Scan(
 			&brand.ID,
 			&brand.Name,
-			&brand.Slug,
-			&brand.Status,
+			&brand.LogoURL,
+			&brand.LogoAlt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"list brands scan: %w",
+				err,
+			)
+		}
+
+		brands = append(
+			brands,
+			&brand,
+		)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf(
+			"list brands rows: %w",
+			err,
+		)
+	}
+
+	totalPages := 0
+	if total > 0 {
+		totalPages = (total + q.PageSize - 1) / q.PageSize
+	}
+
+	page := &api.Page{
+		Page:        q.Page,
+		PageSize:    q.PageSize,
+		HasPrevious: q.Page > 1,
+		HasNext:     q.Page < totalPages,
+		TotalItems:  total,
+		TotalPages:  totalPages,
+	}
+
+	return &BrandList{
+		Brands: brands,
+		Page:   page,
+	}, nil
+}
+
+func (br *BrandRepository) AdminList(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	q *api.ListQuery,
+) (*BrandList, error) {
+	var query strings.Builder
+	var countQuery strings.Builder
+
+	query.WriteString(`
+		SELECT
+			id,
+			name,
+			publication_status,
+			logo_url,
+			logo_alt,
+			created_at,
+			updated_at
+		FROM brands
+		WHERE 1=1
+	`)
+
+	countQuery.WriteString(`
+		SELECT
+			COUNT(id)
+		FROM brands
+		WHERE 1=1
+	`)
+
+	args := make([]any, 0)
+	argID := 1
+
+	// Search
+	if q.Search != "" {
+		condition := fmt.Sprintf(`
+			AND (
+				name ILIKE $%d
+			)
+		`, argID)
+
+		query.WriteString(condition)
+		countQuery.WriteString(condition)
+
+		args = append(
+			args,
+			"%"+q.Search+"%",
+		)
+
+		argID++
+	}
+
+	// Sorting
+	if len(q.Sort) > 0 {
+		query.WriteString(" ORDER BY ")
+
+		for i, sort := range q.Sort {
+			fmt.Fprintf(
+				&query,
+				"%s %s",
+				sort.Field,
+				sort.Order,
+			)
+
+			if i < len(q.Sort)-1 {
+				query.WriteString(", ")
+			}
+		}
+	} else {
+		query.WriteString(`
+			ORDER BY created_at DESC
+		`)
+	}
+
+	// Pagination
+	fmt.Fprintf(
+		&query,
+		`
+		LIMIT $%d
+		OFFSET $%d
+		`,
+		argID,
+		argID+1,
+	)
+
+	queryArgs := append(
+		slices.Clone(args),
+		q.PageSize,
+		(q.Page-1)*q.PageSize,
+	)
+
+	// Count
+	var total int
+
+	err := qe.QueryRow(
+		ctx,
+		countQuery.String(),
+		args...,
+	).Scan(&total)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"list brands count: %w",
+			err,
+		)
+	}
+
+	rows, err := qe.Query(
+		ctx,
+		query.String(),
+		queryArgs...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"list brands: %w",
+			err,
+		)
+	}
+	defer rows.Close()
+
+	brands := make([]*model.ProductBrand, 0)
+
+	for rows.Next() {
+		var brand model.ProductBrand
+
+		err := rows.Scan(
+			&brand.ID,
+			&brand.Name,
+			&brand.PublicationStatus,
 			&brand.LogoURL,
 			&brand.LogoAlt,
 			&brand.CreatedAt,
@@ -452,7 +523,7 @@ func (br *BrandRepository) Delete(
 	qe database.QueryExecutor,
 	filter Filter,
 ) error {
-	if filter.ID == nil && filter.Slug == nil {
+	if filter.ID == nil {
 		return nil
 	}
 
@@ -471,11 +542,6 @@ func (br *BrandRepository) Delete(
 		query += fmt.Sprintf(` AND id = $%d`, argID)
 		args = append(args, filter.ID)
 		argID++
-	}
-
-	if filter.Slug != nil {
-		query += fmt.Sprintf(` AND slug = $%d`, argID)
-		args = append(args, filter.Slug)
 	}
 
 	cmd, err := qe.Exec(

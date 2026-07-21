@@ -9,8 +9,8 @@ import (
 type ProductBrandStatus string
 
 const (
-	ProductBrandStatusActive   ProductBrandStatus = "active"
-	ProductBrandStatusArchived ProductBrandStatus = "archived"
+	ProductBrandStatusDraft     ProductBrandStatus = "draft"
+	ProductBrandStatusPublished ProductBrandStatus = "published"
 )
 
 func (s ProductBrandStatus) String() string {
@@ -21,14 +21,13 @@ type ProductBrand struct {
 	ID uuid.UUID
 
 	Name    string
-	Slug    string
-	LogoURL string
-	LogoAlt string
-	Status  ProductBrandStatus
+	PublicationStatus  ProductBrandStatus
+
+
+	LogoURL *string
+	LogoAlt *string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
-
 	DeletedAt  *time.Time
-	ArchivedAt *time.Time
 }
