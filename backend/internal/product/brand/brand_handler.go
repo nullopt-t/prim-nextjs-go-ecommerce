@@ -1,6 +1,7 @@
 package brand
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -8,6 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 )
 
 type BrandHandler struct {
@@ -23,22 +26,23 @@ func NewHandler(
 }
 
 type CreateBrandRequest struct {
-	Name    string `json:"name" binding:"required" example:"apple"`
-	Slug    string `json:"slug" binding:"required" example:"apple"`
-	LogoURL string `json:"logo_url" binding:"required" example:"https://pictures.com/apple.png"`
-	LogoAlt string `json:"logo_alt" binding:"required" example:"apple logo"`
+	Name    string  `json:"name" binding:"required" example:"apple"`
+	Slug    *string `json:"slug" example:"apple"`
+	LogoURL string  `json:"logo_url" binding:"required" example:"https://pictures.com/apple.png"`
+	LogoAlt string  `json:"logo_alt" binding:"required" example:"apple logo"`
 }
 
 type BrandResponse struct {
-	ID        uuid.UUID `json:"id,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
-	Name      string    `json:"name,omitempty" example:"nvidia"`
-	Slug      string    `json:"slug,omitempty" example:"nvidia"`
-	LogoURL   string    `json:"logo_url,omitempty" example:"https://pictures.com/nvidia.png"`
-	LogoAlt   string    `json:"logo_alt,omitempty" example:"nvidia logo"`
-	CreatedAt string    `json:"created_at,omitempty" example:"2026-07-01T05:04:38Z"`
-	UpdatedAt string    `json:"udpated_at,omitempty" example:"2026-07-01T05:04:38Z"`
-	UpdatedBy uuid.UUID `json:"updated_by,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
-	CreatedBy uuid.UUID `json:"created_by,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
+	ID        string `json:"id,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
+	Name      string `json:"name,omitempty" example:"nvidia"`
+	Slug      string `json:"slug,omitempty" example:"nvidia"`
+	Status    string `json:"status,omitempty" example:"active"`
+	LogoURL   string `json:"logo_url,omitempty" example:"https://pictures.com/nvidia.png"`
+	LogoAlt   string `json:"logo_alt,omitempty" example:"nvidia logo"`
+	CreatedAt string `json:"created_at,omitempty" example:"2026-07-01T05:04:38Z"`
+	UpdatedAt string `json:"updated_at,omitempty" example:"2026-07-01T05:04:38Z"`
+	// UpdatedBy string `json:"updated_by,omitzero" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
+	// CreatedBy string `json:"created_by,omitzero" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
 }
 
 // CreateBrand godoc
@@ -61,9 +65,14 @@ func (bh *BrandHandler) CreateBrand(c *gin.Context) {
 
 	in := &CreateBrandInput{
 		Name:    req.Name,
-		Slug:    req.Slug,
 		LogoURL: req.LogoURL,
 		LogoAlt: req.LogoAlt,
+	}
+
+	if req.Slug != nil {
+		in.Slug = *req.Slug
+	} else {
+		in.Slug = fmt.Sprintf("%s-%d", utils.Slugify(in.Name), time.Now().Unix())
 	}
 
 	ctx := c.Request.Context()
@@ -80,7 +89,7 @@ func (bh *BrandHandler) CreateBrand(c *gin.Context) {
 		http.StatusCreated,
 		api.DataResponse{
 			Data: BrandResponse{
-				ID:        brand.ID,
+				ID:        brand.ID.String(),
 				Name:      brand.Name,
 				Slug:      brand.Slug,
 				LogoURL:   brand.LogoURL,
@@ -116,7 +125,7 @@ func (bh *BrandHandler) GetBrandByID(c *gin.Context) {
 
 	brandID, err := uuid.Parse(param.ID)
 	if err != nil {
-		validation.ValidationError(c, err)
+		_ = c.Error(security.SecureErrInvalidUUID(err))
 		return
 	}
 
@@ -134,7 +143,7 @@ func (bh *BrandHandler) GetBrandByID(c *gin.Context) {
 		http.StatusOK,
 		api.DataResponse{
 			Data: BrandResponse{
-				ID:        brand.ID,
+				ID:        brand.ID.String(),
 				Name:      brand.Name,
 				Slug:      brand.Slug,
 				LogoURL:   brand.LogoURL,
@@ -181,8 +190,9 @@ func (bh *BrandHandler) GetBrandBySlug(c *gin.Context) {
 		http.StatusOK,
 		api.DataResponse{
 			Data: BrandResponse{
-				ID:      brand.ID,
+				ID:      brand.ID.String(),
 				Name:    brand.Name,
+				Slug:    brand.Slug,
 				LogoURL: brand.LogoURL,
 				LogoAlt: brand.LogoAlt,
 			},
@@ -222,29 +232,29 @@ func (bh *BrandHandler) UpdateBrand(c *gin.Context) {
 
 	brandID, err := uuid.Parse(param.ID)
 	if err != nil {
-		validation.ValidationError(c, err)
+		_ = c.Error(security.SecureErrInvalidUUID(err))
 		return
-	}
-
-	in := &UpdateBrandInput{
-		Name:    req.Name,
-		LogoURL: req.LogoURL,
-		LogoAlt: req.LogoAlt,
 	}
 
 	err = bh.bservice.UpdateBrand(
 		c.Request.Context(),
 		brandID,
-		in,
+		UpdateBrandInput{
+			Name:    req.Name,
+			LogoURL: req.LogoURL,
+			LogoAlt: req.LogoAlt,
+		},
 	)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	c.JSON(http.StatusOK, api.DataResponse{
-		Data: in,
-	})
+	c.JSON(http.StatusOK,
+		api.MessageResponse{
+			Message: "updated successfully",
+		},
+	)
 }
 
 // ListBrands godoc
@@ -258,34 +268,31 @@ func (bh *BrandHandler) UpdateBrand(c *gin.Context) {
 // @Failure 200 {object} api.PaginatedResponse{data=[]BrandResponse,meta=api.Page}
 // @Router /brands [get]
 func (bh *BrandHandler) ListBrands(c *gin.Context) {
-	var q api.ListQuery
-	if err := c.ShouldBindQuery(&q); err != nil {
+	q := &api.ListQuery{}
+	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
-	if q.Page == 0 {
-		q.Page = 1
-	}
-
-	if q.PageSize == 0 {
-		q.PageSize = 10
-	}
+	q.ApplyDefaults(api.QueryOptions{
+		DefaultPageSize: 10,
+		MaxPageSize:     100,
+	})
 
 	ctx := c.Request.Context()
-	brands, page, err := bh.bservice.List(
+	brandList, err := bh.bservice.List(
 		ctx,
-		&q,
+		q,
 	)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	var res = make([]*BrandResponse, 0, len(brands))
-	for _, brand := range brands {
+	var res = make([]*BrandResponse, 0, len(brandList.Brands))
+	for _, brand := range brandList.Brands {
 		res = append(res, &BrandResponse{
-			ID:        brand.ID,
+			ID:        brand.ID.String(),
 			Name:      brand.Name,
 			LogoURL:   brand.LogoURL,
 			LogoAlt:   brand.LogoAlt,
@@ -298,7 +305,7 @@ func (bh *BrandHandler) ListBrands(c *gin.Context) {
 		http.StatusOK,
 		api.PaginatedResponse{
 			Data: res,
-			Meta: page,
+			Meta: brandList.Page,
 		},
 	)
 }
@@ -313,37 +320,35 @@ func (bh *BrandHandler) ListBrands(c *gin.Context) {
 // @Failure 200 {object} api.PaginatedResponse{data=[]BrandResponse,meta=api.Page}
 // @Router /admin/brands [get]
 func (bh *BrandHandler) ListAdminBrands(c *gin.Context) {
-	var q api.ListQuery
-	if err := c.ShouldBindQuery(&q); err != nil {
+	q := &api.ListQuery{}
+	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
-	if q.Page == 0 {
-		q.Page = 1
-	}
-
-	if q.PageSize == 0 {
-		q.PageSize = 10
-	}
+	q.ApplyDefaults(api.QueryOptions{
+		DefaultPageSize: 10,
+		MaxPageSize:     100,
+	}).Parse()
 
 	ctx := c.Request.Context()
-	brands, page, err := bh.bservice.List(
+	brandList, err := bh.bservice.List(
 		ctx,
-		&q,
+		q,
 	)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	var res = make([]*BrandResponse, 0, len(brands))
-	for _, brand := range brands {
+	var res = make([]*BrandResponse, 0, len(brandList.Brands))
+	for _, brand := range brandList.Brands {
 		res = append(res, &BrandResponse{
-			ID:        brand.ID,
+			ID:        brand.ID.String(),
 			Name:      brand.Name,
 			LogoURL:   brand.LogoURL,
 			LogoAlt:   brand.LogoAlt,
+			Status:    brand.Status.String(),
 			CreatedAt: brand.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: brand.UpdatedAt.Format(time.RFC3339),
 		})
@@ -353,7 +358,7 @@ func (bh *BrandHandler) ListAdminBrands(c *gin.Context) {
 		http.StatusOK,
 		api.PaginatedResponse{
 			Data: res,
-			Meta: page,
+			Meta: brandList.Page,
 		},
 	)
 }
@@ -374,6 +379,8 @@ func (bh *BrandHandler) UnarchiveBrand(c *gin.Context) {
 	}
 
 	brandID, err := uuid.Parse(param.ID)
+	if err != nil {
+		_ = c.Error(security.SecureErrInvalidUUID(err))
 		return
 	}
 
@@ -387,6 +394,40 @@ func (bh *BrandHandler) UnarchiveBrand(c *gin.Context) {
 		http.StatusOK,
 		api.SuccessResponse{
 			Message: "brand unarchived",
+		},
+	)
+}
+
+// ArchiveBrand godoc
+// @Tags Brand
+// @Accept json
+// @Produce json
+// @Param id path string true "brand id"
+// @Failure 500 {object} api.ErrorResponse
+// @Failure 200 {object} api.SuccessResponse
+// @Router /admin/brands/{id}/archive [post]
+func (bh *BrandHandler) ArchiveBrand(c *gin.Context) {
+	param := &BrandIDParam{}
+	if err := c.ShouldBindUri(param); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	brandID, err := uuid.Parse(param.ID)
+	if err != nil {
+		_ = c.Error(security.SecureErrInvalidUUID(err))
+		return
+	}
+
+	ctx := c.Request.Context()
+	if err := bh.bservice.Archive(ctx, brandID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(
+		http.StatusOK,
+		api.SuccessResponse{
+			Message: "brand archived",
 		},
 	)
 }

@@ -63,17 +63,20 @@ func NewHandler(
 // @Failure 500 {object} api.ErrorResponse
 // @Router /products [get]
 func (h *ProductHandler) GetAllProducts(c *gin.Context) {
-	query := &api.ListQuery{}
-	if err := c.ShouldBindQuery(query); err != nil {
+	q := &api.ListQuery{}
+	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
-	query.SetDefaults(nil)
+	q.ApplyDefaults(api.QueryOptions{
+		DefaultPageSize: 10,
+		MaxPageSize:     100,
+	})
 
 	result, err := h.service.List(
 		c.Request.Context(),
-		query,
+		q,
 	)
 	if err != nil {
 		_ = c.Error(err)
@@ -231,6 +234,14 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 	)
 }
 
+type CreateProductRequest struct {
+	BrandID          *string `json:"brand_id"`
+	Title            string  `json:"title" binding:"required"`
+	ShortDescription string  `json:"short_description" binding:"required"`
+	Description      string  `json:"description" binding:"required"`
+	Slug             *string `json:"slug"`
+}
+
 // CreateProductAsDraft godoc
 // @Summary Create a new product
 // @Description Create a new product
@@ -243,16 +254,8 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 // @Failure 404 {object} api.ErrorResponse
 // @Router /products [post]
 func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
-
-	var body struct {
-		BrandID          *string `json:"brand_id"`
-		Title            string  `json:"title" binding:"required"`
-		ShortDescription string  `json:"short_description" binding:"required"`
-		Description      string  `json:"description" binding:"required"`
-		Slug             *string `json:"slug"`
-	}
-
-	if err := c.ShouldBindJSON(&body); err != nil {
+	body := &CreateProductRequest{}
+	if err := c.ShouldBindJSON(body); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}

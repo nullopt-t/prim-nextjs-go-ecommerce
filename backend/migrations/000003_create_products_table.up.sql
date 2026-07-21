@@ -35,12 +35,11 @@ CREATE TABLE IF NOT EXISTS brands (
 
     logo_url TEXT NOT NULL,
     logo_alt TEXT NOT NULL,
-
-    -- created_by UUID NOT NULL,
-    -- updated_by UUID NOT NULL,
+    status TEXT NOT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    archived_at TIMESTAMPTZ,
     deleted_at TIMESTAMPTZ
 );
 

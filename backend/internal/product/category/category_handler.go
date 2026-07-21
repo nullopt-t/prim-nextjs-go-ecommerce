@@ -264,7 +264,7 @@ type UpdateCategoryResponse struct {
 // @Failure 400 {object} api.ErrorResponse
 // @Failure 404 {object} api.ErrorResponse
 // @Failure 500 {object} api.ErrorResponse
-// @Success 200 {object} api.DataResponse{data=Category}
+// @Success 200 {object} api.DataResponse{data=[]CategoryResponse,meta=api.Page}
 // @Router /admin/categories [get]
 func (ch *CategoryHandler) UpdateCategory(c *gin.Context) {
 	param := &CategoryIDURIParam{}
