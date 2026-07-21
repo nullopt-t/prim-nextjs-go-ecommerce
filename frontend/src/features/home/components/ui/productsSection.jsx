@@ -51,7 +51,7 @@ export default function ProductsSection() {
 			<div className="mb-2.5">
 				<SectionTitle title="Featured products" />
 			</div>
-			<div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-5">
+			<div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2.5 md:gap-5">
 				{cards.map((value) => (
 					<ProductsCard key={value.id} cardDetails={value} />
 				))}
