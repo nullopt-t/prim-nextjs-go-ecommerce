@@ -357,3 +357,36 @@ func (bh *BrandHandler) ListAdminBrands(c *gin.Context) {
 		},
 	)
 }
+
+// UnarchiveBrand godoc
+// @Tags Brand
+// @Accept json
+// @Produce json
+// @Param id path string true "brand id"
+// @Failure 500 {object} api.ErrorResponse
+// @Failure 200 {object} api.SuccessResponse
+// @Router /admin/brands/{id}/unarchive [post]
+func (bh *BrandHandler) UnarchiveBrand(c *gin.Context) {
+	param := &BrandIDParam{}
+	if err := c.ShouldBindUri(param); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	brandID, err := uuid.Parse(param.ID)
+		return
+	}
+
+	ctx := c.Request.Context()
+	if err := bh.bservice.Unarchive(ctx, brandID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		api.SuccessResponse{
+			Message: "brand unarchived",
+		},
+	)
+}
