@@ -1,5 +1,3 @@
-function ProductsGrid() {
-	return <></>;
+export default function ProductsGrid() {
+	return <div className=""></div>;
 }
-
-export default ProductsGrid;
