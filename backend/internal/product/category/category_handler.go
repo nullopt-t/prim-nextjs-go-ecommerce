@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 )
 
 type CategoryHandler struct {
@@ -24,7 +25,24 @@ func NewHandler(
 
 type CreateCategoryRequest struct {
 	Name     string     `json:"name" binding:"required" example:"electronic"`
-	ParentID *uuid.UUID `json:"parent_id" binding:"uuid" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	Slug     *string    `json:"slug" example:"electronic"`
+	ParentID *uuid.UUID `json:"parent_id" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+}
+
+type PublicCategoryListResponse struct {
+	ID   uuid.UUID `json:"id,omitempty" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	Name string    `json:"name,omitempty" example:"Electronic"`
+	Slug string    `json:"slug,omitempty" example:"electronic"`
+}
+
+type CategoryResponse struct {
+	ID                uuid.UUID  `json:"id,omitempty" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	Name              string     `json:"name,omitempty" example:"Electronic"`
+	Slug              string     `json:"slug,omitempty" example:"electronic"`
+	ParentID          *uuid.UUID `json:"parent_id" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	PublicationStatus string     `json:"publication_status,omitempty" example:"published"`
+	CreatedAt         string     `json:"created_at,omitempty" example:"2026-06-30T15:47:19Z"`
+	UpdatedAt         string     `json:"updated_at,omitempty" example:"2026-06-30T15:47:19Z"`
 }
 
 // CreateCategory godoc
@@ -38,17 +56,18 @@ type CreateCategoryRequest struct {
 // @Failure 404 {object} api.ErrorResponse
 // @Failure 500 {object} api.ErrorResponse
 // @Success 201 {object} api.DataResponse{data=CategoryResponse}
-// @Router /categories [post]
+// @Router /admin/categories [post]
 func (ch *CategoryHandler) CreateCategory(c *gin.Context) {
-	req := &CreateCategoryRequest{}
-	if err := c.ShouldBindJSON(req); err != nil {
+	body := &CreateCategoryRequest{}
+	if err := c.ShouldBindJSON(body); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
 	in := &CreateCategoryInput{
-		Name:     req.Name,
-		ParentID: req.ParentID,
+		Name:     body.Name,
+		Slug:     body.Slug,
+		ParentID: body.ParentID,
 	}
 
 	ctx := c.Request.Context()
@@ -76,17 +95,7 @@ func (ch *CategoryHandler) CreateCategory(c *gin.Context) {
 }
 
 type CategoryIDURIParam struct {
-	ID uuid.UUID `uri:"id" binding:"required,uuid"`
-}
-
-type CategoryResponse struct {
-	ID        uuid.UUID  `json:"id,omitempty" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
-	Name      string     `json:"name,omitempty" example:"Electronic"`
-	ParentID  *uuid.UUID `json:"parent_id" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
-	CreatedBy uuid.UUID  `json:"created_by,omitempty" exmaple:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
-	UpdatedBy uuid.UUID  `json:"updated_by,omitempty" exmaple:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
-	CreatedAt string     `json:"created_at,omitempty" example:"2026-06-30T15:47:19Z"`
-	UpdatedAt string     `json:"updated_at,omitempty" example:"2026-06-30T15:47:19Z"`
+	ID string `uri:"id"`
 }
 
 // GetCategoryById godoc
@@ -100,7 +109,7 @@ type CategoryResponse struct {
 // @Failure 404 {object} api.ErrorResponse
 // @Failure 500 {object} api.ErrorResponse
 // @Success 200 {object} api.DataResponse{data=CategoryResponse}
-// @Router /categories/{id} [get]
+// @Router /admin/categories/{id} [get]
 func (ch *CategoryHandler) GetCategoryByID(c *gin.Context) {
 	param := &CategoryIDURIParam{}
 	if err := c.ShouldBindUri(param); err != nil {
@@ -108,10 +117,16 @@ func (ch *CategoryHandler) GetCategoryByID(c *gin.Context) {
 		return
 	}
 
+	categoryID, err := uuid.Parse(param.ID)
+	if err != nil {
+		_ = c.Error(security.SecureErrInvalidUUID(err))
+		return
+	}
+
 	ctx := c.Request.Context()
 	category, err := ch.cservice.GetCategoryByID(
 		ctx,
-		param.ID,
+		categoryID,
 	)
 	if err != nil {
 		_ = c.Error(err)
@@ -122,11 +137,13 @@ func (ch *CategoryHandler) GetCategoryByID(c *gin.Context) {
 		http.StatusOK,
 		api.DataResponse{
 			Data: CategoryResponse{
-				ID:        category.ID,
-				Name:      category.Name,
-				ParentID:  category.ParentID,
-				CreatedAt: category.CreatedAt.Format(time.RFC3339),
-				UpdatedAt: category.UpdatedAt.Format(time.RFC3339),
+				ID:                category.ID,
+				Name:              category.Name,
+				Slug:              category.Slug,
+				ParentID:          category.ParentID,
+				PublicationStatus: category.PublicationStatus.String(),
+				CreatedAt:         category.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:         category.UpdatedAt.Format(time.RFC3339),
 			},
 		},
 	)
@@ -141,22 +158,19 @@ func (ch *CategoryHandler) GetCategoryByID(c *gin.Context) {
 // @Param q query api.ListQuery true "url query"
 // @Failure 400 {object} api.ErrorResponse
 // @Failure 500 {object} api.ErrorResponse
-// @Success 200 {object} api.PaginatedResponse{data=[]CategoryResponse,meta=api.Page}
+// @Success 200 {object} api.PaginatedResponse{data=[]PublicCategoryListResponse,meta=api.Page}
 // @Router /categories [get]
 func (ch *CategoryHandler) ListCategories(c *gin.Context) {
 	q := &api.ListQuery{}
-	if err := c.ShouldBindQuery(&q); err != nil {
+	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
-	if q.Page == 0 {
-		q.Page = 1
-	}
-
-	if q.PageSize == 0 {
-		q.PageSize = 10
-	}
+	q.ApplyDefaults(api.QueryOptions{
+		DefaultPageSize: 10,
+		MaxPageSize:     100,
+	}).Parse()
 
 	ctx := c.Request.Context()
 	categories, page, err := ch.cservice.List(
@@ -168,14 +182,12 @@ func (ch *CategoryHandler) ListCategories(c *gin.Context) {
 		return
 	}
 
-	var res = make([]*CategoryResponse, 0, len(categories))
+	var res = make([]*PublicCategoryListResponse, 0, len(categories))
 	for _, c := range categories {
-		res = append(res, &CategoryResponse{
-			ID:        c.ID,
-			Name:      c.Name,
-			ParentID:  c.ParentID,
-			CreatedAt: c.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: c.UpdatedAt.Format(time.RFC3339),
+		res = append(res, &PublicCategoryListResponse{
+			ID:   c.ID,
+			Name: c.Name,
+			Slug: c.Slug,
 		})
 	}
 
@@ -198,7 +210,7 @@ func (ch *CategoryHandler) ListCategories(c *gin.Context) {
 // @Failure 400 {object} api.ErrorResponse
 // @Failure 500 {object} api.ErrorResponse
 // @Success 200 {object} api.PaginatedResponse{data=[]CategoryResponse,meta=api.Page}
-// @Router /categories [get]
+// @Router /admin/categories [get]
 func (ch *CategoryHandler) ListAdminCategories(c *gin.Context) {
 	q := &api.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
@@ -206,16 +218,13 @@ func (ch *CategoryHandler) ListAdminCategories(c *gin.Context) {
 		return
 	}
 
-	if q.Page == 0 {
-		q.Page = 1
-	}
-
-	if q.PageSize == 0 {
-		q.PageSize = 10
-	}
+	q.ApplyDefaults(api.QueryOptions{
+		DefaultPageSize: 10,
+		MaxPageSize:     100,
+	}).Parse()
 
 	ctx := c.Request.Context()
-	categories, page, err := ch.cservice.List(
+	categories, page, err := ch.cservice.AdminList(
 		ctx,
 		q,
 	)
@@ -227,11 +236,13 @@ func (ch *CategoryHandler) ListAdminCategories(c *gin.Context) {
 	var res = make([]*CategoryResponse, 0, len(categories))
 	for _, c := range categories {
 		res = append(res, &CategoryResponse{
-			ID:        c.ID,
-			Name:      c.Name,
-			ParentID:  c.ParentID,
-			CreatedAt: c.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: c.UpdatedAt.Format(time.RFC3339),
+			ID:                c.ID,
+			Name:              c.Name,
+			Slug:              c.Slug,
+			ParentID:          c.ParentID,
+			PublicationStatus: c.PublicationStatus.String(),
+			CreatedAt:         c.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:         c.UpdatedAt.Format(time.RFC3339),
 		})
 	}
 
@@ -245,13 +256,15 @@ func (ch *CategoryHandler) ListAdminCategories(c *gin.Context) {
 }
 
 type UpdateCategoryRequest struct {
-	Name     *string    `json:"name" example:"electronic"`
-	ParentID *uuid.UUID `json:"parent_id" binding:"uuid" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	Name              *string    `json:"name" example:"electronic"`
+	ParentID          *uuid.UUID `json:"parent_id"  example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	PublicationStatus *string    `json:"publication_status" example:"published"`
 }
 
 type UpdateCategoryResponse struct {
-	Name     *string    `json:"name,omitempty" example:"electronic"`
-	ParentID *uuid.UUID `json:"parent_id,omitempty" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	Name              *string    `json:"name,omitempty" example:"electronic"`
+	ParentID          *uuid.UUID `json:"parent_id,omitempty" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	PublicationStatus *string    `json:"publication_status,omitempty" example:"published"`
 }
 
 // UpdateCategory godoc
@@ -261,15 +274,22 @@ type UpdateCategoryResponse struct {
 // @Accept json
 // @Produce json
 // @Param id path CategoryIDURIParam true "category id"
+// @Param body body UpdateCategoryRequest true "category details"
 // @Failure 400 {object} api.ErrorResponse
 // @Failure 404 {object} api.ErrorResponse
 // @Failure 500 {object} api.ErrorResponse
 // @Success 200 {object} api.DataResponse{data=[]CategoryResponse,meta=api.Page}
-// @Router /admin/categories [get]
+// @Router /admin/categories/{id} [patch]
 func (ch *CategoryHandler) UpdateCategory(c *gin.Context) {
 	param := &CategoryIDURIParam{}
-	if err := c.ShouldBindJSON(param); err != nil {
+	if err := c.ShouldBindUri(param); err != nil {
 		validation.ValidationError(c, err)
+		return
+	}
+
+	categoryID, err := uuid.Parse(param.ID)
+	if err != nil {
+		_ = c.Error(security.SecureErrInvalidUUID(err))
 		return
 	}
 
@@ -279,15 +299,25 @@ func (ch *CategoryHandler) UpdateCategory(c *gin.Context) {
 		return
 	}
 
+	if body.Name == nil && body.ParentID == nil && body.PublicationStatus == nil {
+		c.JSON(http.StatusOK,
+			api.DataResponse{
+				Data: UpdateCategoryResponse{},
+			},
+		)
+		return
+	}
+
 	in := &UpdateCategoryInput{
-		Name:     body.Name,
-		ParentID: body.ParentID,
+		Name:              body.Name,
+		ParentID:          body.ParentID,
+		PublicationStatus: body.PublicationStatus,
 	}
 
 	ctx := c.Request.Context()
-	err := ch.cservice.UpdateCategory(
+	err = ch.cservice.UpdateCategory(
 		ctx,
-		param.ID,
+		categoryID,
 		in,
 	)
 	if err != nil {
@@ -298,8 +328,9 @@ func (ch *CategoryHandler) UpdateCategory(c *gin.Context) {
 	c.JSON(http.StatusOK,
 		api.DataResponse{
 			Data: UpdateCategoryResponse{
-				Name:     body.Name,
-				ParentID: body.ParentID,
+				Name:              body.Name,
+				ParentID:          body.ParentID,
+				PublicationStatus: body.PublicationStatus,
 			},
 		},
 	)

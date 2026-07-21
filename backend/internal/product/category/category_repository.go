@@ -3,6 +3,8 @@ package category
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
@@ -33,7 +35,9 @@ func (cr *CategoryRepository) Create(
 		categories (
 			id,
 			name,
+			slug,
 			parent_id,
+			publication_status,
 			created_at,
 			updated_at
 		)
@@ -43,11 +47,15 @@ func (cr *CategoryRepository) Create(
 			$3,
 			$4,
 			$5,
+			$6,
+			$7
 		)
 		`,
 		category.ID,
 		category.Name,
+		category.Slug,
 		category.ParentID,
+		model.PublicationStatusDraft,
 		category.CreatedAt,
 		category.UpdatedAt,
 	)
@@ -69,7 +77,9 @@ func (cr *CategoryRepository) Get(
 			SELECT
 				id,
 				name,
+				slug,
 				parent_id,
+				publication_status,
 				created_at,
 				updated_at
 			FROM
@@ -93,7 +103,9 @@ func (cr *CategoryRepository) Get(
 	).Scan(
 		&category.ID,
 		&category.Name,
+		&category.Slug,
 		&category.ParentID,
+		&category.PublicationStatus,
 		&category.CreatedAt,
 		&category.UpdatedAt,
 	)
@@ -106,8 +118,10 @@ func (cr *CategoryRepository) Get(
 }
 
 type UpdateCategoryFields struct {
-	Name      *string
-	ParentID  *uuid.UUID
+	Name              *string
+	Slug              *string
+	ParentID          *uuid.UUID
+	PublicationStatus *model.PublicationStatus
 }
 
 func (cr *CategoryRepository) Update(
@@ -121,15 +135,19 @@ func (cr *CategoryRepository) Update(
 		categories
 	SET
 		name = COALESCE($1, name),
-		parent_id = COALESCE($2, parent_id),
+		slug = COALESCE($2, slug),
+		parent_id = COALESCE($3, parent_id),
+		publication_status = COALESCE($4, publication_status)
 	WHERE
-		id = $3
+		id = $5
 	`
 	_, err := qe.Exec(
 		ctx,
 		query,
 		fields.Name,
+		fields.Slug,
 		fields.ParentID,
+		fields.PublicationStatus,
 		categoryID,
 	)
 	if err != nil {
@@ -150,6 +168,7 @@ func (cr *CategoryRepository) ListProductCategories(
 		c.name,
 		c.slug,
 		c.parent_id,
+		c.publication_status,
 		c.created_at,
 		c.updated_at
 	FROM
@@ -177,6 +196,7 @@ func (cr *CategoryRepository) ListProductCategories(
 			&category.Name,
 			&category.Slug,
 			&category.ParentID,
+			&category.PublicationStatus,
 			&category.CreatedAt,
 			&category.UpdatedAt,
 		); err != nil {
@@ -239,90 +259,232 @@ func (cr *CategoryRepository) PutProductCategories(
 	return nil
 }
 
+func (cr *CategoryRepository) AdminList(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	q *api.ListQuery,
+) ([]*model.ProductCategory, *api.Page, error) {
+	var query strings.Builder
+	var countQuery strings.Builder
+
+	query.WriteString(`
+		SELECT
+			id,
+			name,
+			slug,
+			parent_id,
+			publication_status,
+			created_at,
+			updated_at
+		FROM categories
+		WHERE 1=1
+		`)
+
+	countQuery.WriteString(`
+		SELECT COUNT(*)
+		FROM categories
+		WHERE 1=1
+		`)
+
+	args := make([]any, 0)
+	argID := 1
+
+	if q.Search != "" {
+		condition := fmt.Sprintf(" AND name ILIKE $%d OR slug ILIKE $%d", argID, +1)
+		query.WriteString(condition)
+		countQuery.WriteString(condition)
+		args = append(args, "%"+q.Search+"%")
+		argID++
+	}
+
+	if len(q.Sort) > 0 {
+		query.WriteString(" ORDER BY ")
+		for i, sort := range q.Sort {
+			field := sort.Field
+			order := sort.Order
+			fmt.Fprintf(&query, "%s %s", field, order)
+			if i < len(q.Sort)-1 {
+				query.WriteString(", ")
+			}
+		}
+	} else {
+		query.WriteString(" ORDER BY created_at DESC")
+	}
+
+	fmt.Fprintf(&query, " LIMIT $%d OFFSET $%d", argID, argID+1)
+
+	var total int
+	err := qe.QueryRow(
+		ctx,
+		countQuery.String(),
+		args...,
+	).Scan(&total)
+	if err != nil {
+		return nil, nil, fmt.Errorf(
+			"admin list categories: %w",
+			err,
+		)
+	}
+
+	queryArgs := append(slices.Clone(args), q.PageSize, (q.Page-1)*q.PageSize)
+	var categories []*model.ProductCategory
+	rows, err := qe.Query(
+		ctx,
+		query.String(),
+		queryArgs...,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf(
+			"admin list categories: %w",
+			err,
+		)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var category model.ProductCategory
+		err := rows.Scan(
+			&category.ID,
+			&category.Name,
+			&category.Slug,
+			&category.ParentID,
+			&category.PublicationStatus,
+			&category.CreatedAt,
+			&category.UpdatedAt,
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf(
+				"admin list categories: %w",
+				err,
+			)
+		}
+		categories = append(categories, &category)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf(
+			"admin list categories: %w",
+			err,
+		)
+	}
+
+	return categories, &api.Page{
+		Page:        q.Page,
+		PageSize:    q.PageSize,
+		TotalItems:  total,
+		TotalPages:  (total + q.PageSize - 1) / q.PageSize,
+		HasPrevious: q.Page > 1,
+		HasNext:     q.Page < (total+q.PageSize-1)/q.PageSize,
+	}, nil
+}
+
 func (cr *CategoryRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	q *api.ListQuery,
 ) ([]*model.ProductCategory, *api.Page, error) {
-	offset := (q.Page - 1) * q.PageSize
+	var query strings.Builder
+	var countQuery strings.Builder
 
-	query := `
-	SELECT
-		id,
-		name,
-		slug,
-		parent_id,
-		created_at,
-		updated_at
-	FROM
-		categories
-	WHERE
-		deleted_at IS NULL
-	LIMIT $1
-	OFFSET $2
-	`
+	query.WriteString(`
+		SELECT
+			id,
+			name,
+			slug
+		FROM categories
+		WHERE 1=1
+		`)
+
+	countQuery.WriteString(`
+		SELECT COUNT(*)
+		FROM categories
+		WHERE 1=1
+		`)
+
+	args := make([]any, 0)
+	argID := 1
+
+	if q.Search != "" {
+		condition := fmt.Sprintf(" AND name ILIKE $%d OR slug ILIKE $%d", argID, +1)
+		query.WriteString(condition)
+		countQuery.WriteString(condition)
+		args = append(args, "%"+q.Search+"%")
+		argID++
+	}
+
+	if len(q.Sort) > 0 {
+		query.WriteString(" ORDER BY ")
+		for i, sort := range q.Sort {
+			field := sort.Field
+			order := sort.Order
+			fmt.Fprintf(&query, "%s %s", field, order)
+			if i < len(q.Sort)-1 {
+				query.WriteString(", ")
+			}
+		}
+	} else {
+		query.WriteString(" ORDER BY created_at DESC")
+	}
+
+	fmt.Fprintf(&query, " LIMIT $%d OFFSET $%d", argID, argID+1)
 
 	var total int
 	err := qe.QueryRow(
 		ctx,
-		`
-		SELECT
-			COUNT(id)
-		FROM
-			categories
-		`,
+		countQuery.String(),
+		args...,
 	).Scan(&total)
 	if err != nil {
-		return nil, nil, fmt.Errorf("list categories: %w", err)
+		return nil, nil, fmt.Errorf(
+			"admin list categories: %w",
+			err,
+		)
 	}
 
+	queryArgs := append(slices.Clone(args), q.PageSize, (q.Page-1)*q.PageSize)
+	var categories []*model.ProductCategory
 	rows, err := qe.Query(
 		ctx,
-		query,
-		q.PageSize,
-		offset,
+		query.String(),
+		queryArgs...,
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("list categories: %w", err)
+		return nil, nil, fmt.Errorf(
+			"admin list categories: %w",
+			err,
+		)
 	}
-
-	var result = make(
-		[]*model.ProductCategory,
-		0,
-	)
+	defer rows.Close()
 
 	for rows.Next() {
-		var c model.ProductCategory
-		err = rows.Scan(
-			&c.ID,
-			&c.Name,
-			&c.Slug,
-			&c.ParentID,
-			&c.CreatedAt,
-			&c.UpdatedAt,
+		var category model.ProductCategory
+		err := rows.Scan(
+			&category.ID,
+			&category.Name,
+			&category.Slug,
 		)
 		if err != nil {
-			return nil, nil, fmt.Errorf("list categories: %w", err)
+			return nil, nil, fmt.Errorf(
+				"admin list categories: %w",
+				err,
+			)
 		}
-		result = append(
-			result,
-			&c,
+		categories = append(categories, &category)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf(
+			"admin list categories: %w",
+			err,
 		)
 	}
 
-	if err = rows.Err(); err != nil {
-		return nil, nil, fmt.Errorf("list categories: %w", err)
-	}
-
-	totalPages := (total + q.PageSize - 1) / q.PageSize
-	p := &api.Page{
+	return categories, &api.Page{
 		Page:        q.Page,
 		PageSize:    q.PageSize,
 		TotalItems:  total,
-		TotalPages:  totalPages,
+		TotalPages:  (total + q.PageSize - 1) / q.PageSize,
 		HasPrevious: q.Page > 1,
-		HasNext:     q.Page < totalPages,
-	}
-
-	return result, p, nil
+		HasNext:     q.Page < (total+q.PageSize-1)/q.PageSize,
+	}, nil
 }

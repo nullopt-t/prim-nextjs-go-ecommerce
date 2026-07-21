@@ -12,6 +12,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 )
 
 type CategoryService struct {
@@ -31,6 +32,7 @@ func NewService(
 
 type CreateCategoryInput struct {
 	Name     string
+	Slug     *string
 	ParentID *uuid.UUID
 }
 
@@ -38,11 +40,18 @@ func (cs *CategoryService) CreateCategory(
 	ctx context.Context,
 	in *CreateCategoryInput,
 ) (*model.ProductCategory, error) {
+	var slug string
+	if in.Slug == nil {
+		slug = utils.Slugify(in.Name)
+	} else {
+		slug = *in.Slug
+	}
 
 	now := time.Now().UTC()
 	category := &model.ProductCategory{
 		ID:        uuid.New(),
 		Name:      in.Name,
+		Slug:      slug,
 		ParentID:  in.ParentID,
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -133,8 +142,9 @@ func (cs *CategoryService) GetCategoryByID(
 }
 
 type UpdateCategoryInput struct {
-	Name     *string
-	ParentID *uuid.UUID
+	Name              *string
+	ParentID          *uuid.UUID
+	PublicationStatus *string
 }
 
 func (cs *CategoryService) UpdateCategory(
@@ -142,9 +152,19 @@ func (cs *CategoryService) UpdateCategory(
 	categoryID uuid.UUID,
 	input *UpdateCategoryInput,
 ) error {
+	var status model.PublicationStatus
+	if input.PublicationStatus != nil {
+		var err error
+		status, err = model.ParsePublicationStatus(*input.PublicationStatus)
+		if err != nil {
+			return err
+		}
+	}
+
 	fields := UpdateCategoryFields{
-		Name:     input.Name,
-		ParentID: input.ParentID,
+		Name:              input.Name,
+		ParentID:          input.ParentID,
+		PublicationStatus: &status,
 	}
 	err := cs.qexecuter.WithDB(ctx,
 		func(db database.QueryExecutor) error {
@@ -240,6 +260,36 @@ func (cs *CategoryService) List(
 	var page *api.Page
 	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		categories, p, err := cs.crepository.List(
+			ctx,
+			db,
+			q,
+		)
+		if err != nil {
+			return err
+		}
+		res = categories
+		page = p
+		return nil
+	})
+	if err != nil {
+		return nil, nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch the categories",
+			err,
+		)
+	}
+	return res, page, nil
+}
+
+func (cs *CategoryService) AdminList(
+	ctx context.Context,
+	q *api.ListQuery,
+) ([]*model.ProductCategory, *api.Page, error) {
+	var res []*model.ProductCategory
+	var page *api.Page
+	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		categories, p, err := cs.crepository.AdminList(
 			ctx,
 			db,
 			q,
