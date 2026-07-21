@@ -1,6 +1,7 @@
 package security
 
 import (
+	"net/http"
 	"runtime"
 	"strconv"
 	"strings"
@@ -96,4 +97,13 @@ func (se *SecureError) WithFields(
 ) *SecureError {
 	se.Fields = fields
 	return se
+}
+
+func SecureErrInvalidUUID(err error) error {
+	return NewSecureError(
+		http.StatusBadRequest,
+		CodeValidation,
+		"invalid uuid",
+		err,
+	)
 }
