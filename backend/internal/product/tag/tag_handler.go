@@ -27,10 +27,12 @@ type CreateTagRequest struct {
 }
 
 type TagResponse struct {
-	ID        string `json:"id" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
-	Name      string `json:"name" example:"black-friday"`
-	CreatedAt string `json:"created_at" example:"2026-06-30T15:47:19Z"`
-	UpdatedAt string `json:"updated_at" example:"2026-06-30T15:47:19Z"`
+	ID                string `json:"id,omitempty" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	Name              string `json:"name,omitempty" example:"black-friday"`
+	PublicationStatus string `json:"publication_status,omitempty" example:"published"`
+	CreatedAt         string `json:"created_at,omitempty" example:"2026-06-30T15:47:19Z"`
+	UpdatedAt         string `json:"updated_at,omitempty" example:"2026-06-30T15:47:19Z"`
+	DeletedAt         string `json:"deleted_at,omitempty" example:"2026-06-30T15:47:19Z"`
 }
 
 // CreateTag godoc
@@ -46,8 +48,8 @@ type TagResponse struct {
 // @Success 201 {object} api.DataResponse{data=TagResponse}
 // @Router /tags [post]
 func (th *TagHandler) CreateTag(c *gin.Context) {
-	var req CreateTagRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	body := &CreateTagRequest{}
+	if err := c.ShouldBindJSON(body); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
@@ -55,7 +57,7 @@ func (th *TagHandler) CreateTag(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	in := CreateTagInput{
-		Name: req.Name,
+		Name: body.Name,
 	}
 
 	tag, err := th.tservice.CreateTag(
@@ -71,10 +73,17 @@ func (th *TagHandler) CreateTag(c *gin.Context) {
 		http.StatusOK,
 		api.DataResponse{
 			Data: TagResponse{
-				ID:        tag.ID.String(),
-				Name:      tag.Name,
-				CreatedAt: tag.CreatedAt.Format(time.RFC3339),
-				UpdatedAt: tag.UpdatedAt.Format(time.RFC3339),
+				ID:                tag.ID.String(),
+				Name:              tag.Name,
+				PublicationStatus: tag.PublicationStatus.String(),
+				CreatedAt:         tag.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:         tag.UpdatedAt.Format(time.RFC3339),
+				DeletedAt: func() string {
+					if tag.DeletedAt != nil {
+						return tag.DeletedAt.Format(time.RFC3339)
+					}
+					return ""
+				}(),
 			},
 		},
 	)
@@ -119,10 +128,17 @@ func (th *TagHandler) GetTagByID(c *gin.Context) {
 	}
 
 	res := &TagResponse{
-		ID:        tag.ID.String(),
-		Name:      tag.Name,
-		CreatedAt: tag.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: tag.UpdatedAt.Format(time.RFC3339),
+		ID:                tag.ID.String(),
+		Name:              tag.Name,
+		PublicationStatus: tag.PublicationStatus.String(),
+		CreatedAt:         tag.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:         tag.UpdatedAt.Format(time.RFC3339),
+		DeletedAt: func() string {
+			if tag.DeletedAt != nil {
+				return tag.DeletedAt.Format(time.RFC3339)
+			}
+			return ""
+		}(),
 	}
 
 	c.JSON(
@@ -145,24 +161,21 @@ func (th *TagHandler) GetTagByID(c *gin.Context) {
 // @Success 200 {object} api.PaginatedResponse{data=[]TagResponse,meta=api.Page}
 // @Router /tags [get]
 func (th *TagHandler) ListTags(c *gin.Context) {
-	var q api.ListQuery
-	if err := c.ShouldBindQuery(&q); err != nil {
+	q := &api.ListQuery{}
+	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
-	if q.Page == 0 {
-		q.Page = 1
-	}
-
-	if q.PageSize == 0 {
-		q.PageSize = 10
-	}
+	q.ApplyDefaults(api.QueryOptions{
+		DefaultPageSize: 10,
+		MaxPageSize:     100,
+	}).Parse()
 
 	ctx := c.Request.Context()
 	tags, page, err := th.tservice.ListTags(
 		ctx,
-		&q,
+		q,
 	)
 	if err != nil {
 		_ = c.Error(err)
@@ -172,10 +185,66 @@ func (th *TagHandler) ListTags(c *gin.Context) {
 	var res = make([]*TagResponse, 0, len(tags))
 	for _, tag := range tags {
 		res = append(res, &TagResponse{
-			ID:        tag.ID.String(),
-			Name:      tag.Name,
-			CreatedAt: tag.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: tag.UpdatedAt.Format(time.RFC3339),
+			ID:   tag.ID.String(),
+			Name: tag.Name,
+		})
+	}
+
+	c.JSON(
+		http.StatusOK,
+		api.PaginatedResponse{
+			Data: res,
+			Meta: page,
+		},
+	)
+}
+
+// AdminListTags godoc
+// @Summary list all tags
+// @Description list all tags
+// @Tags Tag
+// @Accept json
+// @Produce json
+// @Param q query api.ListQuery true "url query"
+// @Failure 500 {object} api.ErrorResponse
+// @Success 200 {object} api.PaginatedResponse{data=[]TagResponse,meta=api.Page}
+// @Router /admin/tags [get]
+func (th *TagHandler) AdminListTags(c *gin.Context) {
+	q := &api.ListQuery{}
+	if err := c.ShouldBindQuery(q); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	q.ApplyDefaults(api.QueryOptions{
+		DefaultPageSize: 10,
+		MaxPageSize:     100,
+	}).Parse()
+
+	ctx := c.Request.Context()
+	tags, page, err := th.tservice.AdminListTags(
+		ctx,
+		q,
+	)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	var res = make([]*TagResponse, 0, len(tags))
+	for _, tag := range tags {
+		res = append(res, &TagResponse{
+			ID:                tag.ID.String(),
+			Name:              tag.Name,
+			PublicationStatus: tag.PublicationStatus.String(),
+			CreatedAt:         tag.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:         tag.UpdatedAt.Format(time.RFC3339),
+			DeletedAt: func() string {
+				if tag.DeletedAt != nil {
+					return tag.DeletedAt.Format(time.RFC3339)
+				}
+				return ""
+			}(),
 		})
 	}
 

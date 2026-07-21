@@ -12,7 +12,14 @@ func NewRouter(h *TagHandler) *TagRouter {
 
 func (tr *TagRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	tags := vgroup.Group("/tags")
-	tags.GET("", tr.th.ListTags)
-	tags.GET("/:id", tr.th.GetTagByID)
-	tags.POST("", tr.th.CreateTag)
+	{
+		tags.GET("", tr.th.ListTags)
+	}
+
+	admin := vgroup.Group("/admin/tags")
+	{
+		admin.GET("", tr.th.AdminListTags)
+		admin.GET("/:id", tr.th.GetTagByID)
+		admin.POST("", tr.th.CreateTag)
+	}
 }

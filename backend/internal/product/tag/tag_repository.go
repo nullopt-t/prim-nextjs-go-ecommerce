@@ -3,6 +3,9 @@ package tag
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
@@ -22,10 +25,21 @@ func (tr *TagRepository) Create(
 	qe database.QueryExecutor,
 	tag *model.ProductTag,
 ) error {
+
+	now := time.Now().UTC()
+	if tag.CreatedAt.IsZero() {
+		tag.CreatedAt = now
+	}
+
+	if tag.UpdatedAt.IsZero() {
+		tag.UpdatedAt = now
+	}
+
 	query := `
 	INSERT INTO tags(
 		id,
 		name,
+		publication_status,
 		created_at,
 		updated_at
 	)
@@ -33,7 +47,8 @@ func (tr *TagRepository) Create(
 		$1,
 		$2,
 		$3,
-		$4
+		$4,
+		$5
 	)
 	`
 	_, err := qe.Exec(
@@ -41,6 +56,7 @@ func (tr *TagRepository) Create(
 		query,
 		tag.ID,
 		tag.Name,
+		model.PublicationStatusDraft,
 		tag.CreatedAt,
 		tag.UpdatedAt,
 	)
@@ -103,82 +119,223 @@ func (tr *TagRepository) Get(
 	return &tag, nil
 }
 
-func (tr *TagRepository) List(
+func (tr *TagRepository) AdminList(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	q *api.ListQuery,
 ) ([]*model.ProductTag, *api.Page, error) {
-	query := `
-	SELECT
-		id,
-		name,
-		created_at,
-		updated_at
-	FROM
-		tags
-	WHERE
-		deleted_at IS NULL
-	LIMIT $1
-	OFFSET $2
-	`
+	var query strings.Builder
+	var countQuery strings.Builder
 
-	offset := (q.Page - 1) * q.PageSize
-	rows, err := qe.Query(
-		ctx,
-		query,
-		q.PageSize,
-		offset,
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("list tags:%w", err)
+	query.WriteString(`
+		SELECT
+			id,
+			name,
+			publication_status,
+			created_at,
+			updated_at,
+			deleted_at
+		FROM
+			tags
+		WHERE 1 = 1
+	`)
+
+	countQuery.WriteString(`
+			SELECT
+				COUNT(*)
+			FROM
+				tags
+			WHERE 1 = 1
+		`)
+
+	args := []any{}
+	argID := 1
+
+	if q.Search != "" {
+		condition := fmt.Sprintf(" AND name ILIKE $%d", argID)
+		query.WriteString(condition)
+		countQuery.WriteString(condition)
+		args = append(args, fmt.Sprintf("%%%s%%", q.Search))
+		argID++
 	}
 
-	tags := make([]*model.ProductTag, 0)
+	if len(q.Sort) > 0 {
+		query.WriteString(" ORDER BY ")
+		for i, sort := range q.Sort {
+			field := sort.Field
+			order := sort.Order
+			fmt.Fprintf(&query, "%s %s", field, order)
+			if i < len(q.Sort)-1 {
+				query.WriteString(", ")
+			}
+		}
+	} else {
+		query.WriteString(" ORDER BY created_at DESC")
+	}
+
+	fmt.Fprintf(&query, " LIMIT $%d OFFSET $%d", argID, argID+1)
+
+	queryArgs := append(slices.Clone(args), q.Page, q.Offset)
+
+	var total int
+	err := qe.QueryRow(
+		ctx,
+		countQuery.String(),
+		args...,
+	).Scan(&total)
+	if err != nil {
+		return nil, nil, fmt.Errorf(
+			"list tags: %w",
+			err,
+		)
+	}
+
+	rows, err := qe.Query(
+		ctx,
+		query.String(),
+		queryArgs...,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf(
+			"list tags: %w",
+			err,
+		)
+	}
+	defer rows.Close()
+
+	var tags []*model.ProductTag
 	for rows.Next() {
 		var tag model.ProductTag
 		err := rows.Scan(
 			&tag.ID,
 			&tag.Name,
+			&tag.PublicationStatus,
 			&tag.CreatedAt,
 			&tag.UpdatedAt,
+			&tag.DeletedAt,
 		)
 		if err != nil {
-			return nil, nil, fmt.Errorf("list tags:%w", err)
+			return nil, nil, fmt.Errorf(
+				"list tags: %w",
+				err,
+			)
 		}
-
-		tags = append(
-			tags,
-			&tag,
-		)
+		tags = append(tags, &tag)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, nil, fmt.Errorf("list tags:%w", err)
-	}
-
-	var total int
-	err = qe.QueryRow(
-		ctx,
-		`
-		SELECT
-			COUNT(id)
-		FROM
-			tags
-		`).Scan(&total)
-	if err != nil {
-		return nil, nil, fmt.Errorf("list tags:%w", err)
-	}
-
-	totalPages := (total + q.PageSize - 1) / q.PageSize
-	p := &api.Page{
+	return tags, &api.Page{
 		Page:        q.Page,
 		PageSize:    q.PageSize,
 		TotalItems:  total,
-		TotalPages:  totalPages,
+		TotalPages:  (total + q.PageSize - 1) / q.PageSize,
 		HasPrevious: q.Page > 1,
-		HasNext:     q.Page < totalPages,
+		HasNext:     q.Page*q.PageSize < total,
+	}, nil
+}
+
+func (tr *TagRepository) List(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	q *api.ListQuery,
+) ([]*model.ProductTag, *api.Page, error) {
+	var query strings.Builder
+	var countQuery strings.Builder
+
+	query.WriteString(`
+		SELECT
+			id,
+			name
+		FROM
+			tags
+		WHERE deleted_at IS NULL
+			AND publication_status = 'published'
+	`)
+
+	countQuery.WriteString(`
+			SELECT
+				COUNT(*)
+			FROM
+				tags
+			WHERE deleted_at IS NULL
+				AND publication_status = 'published'
+		`)
+
+	args := []any{}
+	argID := 1
+
+	if q.Search != "" {
+		condition := fmt.Sprintf(" AND name ILIKE $%d", argID)
+		query.WriteString(condition)
+		countQuery.WriteString(condition)
+		args = append(args, fmt.Sprintf("%%%s%%", q.Search))
+		argID++
 	}
-	return tags, p, nil
+
+	if len(q.Sort) > 0 {
+		query.WriteString(" ORDER BY ")
+		for i, sort := range q.Sort {
+			field := sort.Field
+			order := sort.Order
+			fmt.Fprintf(&query, "%s %s", field, order)
+			if i < len(q.Sort)-1 {
+				query.WriteString(", ")
+			}
+		}
+	} else {
+		query.WriteString(" ORDER BY created_at DESC")
+	}
+
+	fmt.Fprintf(&query, " LIMIT $%d OFFSET $%d", argID, argID+1)
+
+	var total int
+	err := qe.QueryRow(
+		ctx,
+		countQuery.String(),
+		args...,
+	).Scan(&total)
+	if err != nil {
+		return nil, nil, fmt.Errorf(
+			"list tags: %w",
+			err,
+		)
+	}
+
+	queryArgs := append(args, q.Page, q.PageSize)
+
+	rows, err := qe.Query(
+		ctx,
+		query.String(),
+		queryArgs...,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf(
+			"list tags: %w",
+			err,
+		)
+	}
+	defer rows.Close()
+
+	var tags []*model.ProductTag
+	for rows.Next() {
+		var tag model.ProductTag
+		err := rows.Scan(&tag.ID, &tag.Name, &tag.CreatedAt, &tag.UpdatedAt, &tag.DeletedAt)
+		if err != nil {
+			return nil, nil, fmt.Errorf(
+				"list tags: %w",
+				err,
+			)
+		}
+		tags = append(tags, &tag)
+	}
+
+	return tags, &api.Page{
+		Page:        q.Page,
+		PageSize:    q.PageSize,
+		TotalItems:  total,
+		TotalPages:  (total + q.PageSize - 1) / q.PageSize,
+		HasPrevious: q.Page > 1,
+		HasNext:     q.Page*q.PageSize < total,
+	}, nil
 }
 
 func (tr *TagRepository) PutProductTags(

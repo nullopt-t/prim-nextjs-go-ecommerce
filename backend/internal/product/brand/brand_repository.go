@@ -62,7 +62,7 @@ func (br *BrandRepository) Create(
 		`,
 		brand.ID,
 		brand.Name,
-		model.ProductBrandStatusDraft,
+		model.PublicationStatusDraft,
 		brand.CreatedAt,
 		brand.UpdatedAt,
 	)

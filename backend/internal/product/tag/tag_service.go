@@ -214,3 +214,36 @@ func (ts *TagService) ListTags(
 	}
 	return tags, page, nil
 }
+
+func (ts *TagService) AdminListTags(
+	ctx context.Context,
+	q *api.ListQuery,
+) ([]*model.ProductTag, *api.Page, error) {
+	var tags []*model.ProductTag
+	var page *api.Page
+	err := ts.qexecuter.WithDB(
+		ctx,
+		func(db database.QueryExecutor) error {
+			ts, p, err := ts.trepo.AdminList(
+				ctx,
+				db,
+				q,
+			)
+			if err != nil {
+				return err
+			}
+			tags = ts
+			page = p
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, nil, security.NewSecureError(
+			http.StatusInternalServerError,
+			security.CodeInternal,
+			"failed to fetch the categories",
+			err,
+		)
+	}
+	return tags, page, nil
+}

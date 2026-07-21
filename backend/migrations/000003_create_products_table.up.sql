@@ -52,10 +52,11 @@ WHERE deleted_at IS NULL;
 CREATE TABLE IF NOT EXISTS tags (
     id UUID PRIMARY KEY,
 
-    name TEXT NOT NULL,
+    name TEXT NOT NULL UNIQUE,
+    publication_status publication_status NOT NULL,
 
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
     deleted_at TIMESTAMPTZ
 );
 
@@ -255,13 +256,15 @@ CREATE TABLE IF NOT EXISTS inventories (
 -- ============================================================
 CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY,
+
     name TEXT NOT NULL,
-    slug TEXT NOT NULL,
-    parent_id UUID NULL,
+    slug TEXT NOT NULL UNIQUE,
+    parent_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+    publication_status publication_status NOT NULL,
+
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
-    deleted_at TIMESTAMPTZ,
-    UNIQUE(slug)
+    deleted_at TIMESTAMPTZ
 );
 
 -- ============================================================

@@ -31,6 +31,7 @@ const (
 type ListQuery struct {
 	Page     int `form:"page" example:"1"`
 	PageSize int `form:"pageSize" example:"10"`
+	Offset   int `form:"-"`
 
 	Search string `form:"search" example:"television"`
 
@@ -57,6 +58,7 @@ func (q *ListQuery) ApplyDefaults(opt QueryOptions) *ListQuery {
 }
 
 func (q *ListQuery) Parse() {
+	q.Offset = (q.Page - 1) * q.PageSize
 	q.Sort = make([]Sort, 0)
 	for _, raw := range q.RawSort {
 		fields := strings.SplitSeq(raw, ",")

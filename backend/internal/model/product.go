@@ -1,10 +1,35 @@
 package model
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+type PublicationStatus string
+
+const (
+	PublicationStatusDraft     PublicationStatus = "draft"
+	PublicationStatusPublished PublicationStatus = "published"
+)
+
+var ErrInvalidPublicationStatus = errors.New("invalid publication status")
+
+func ParsePublicationStatus(s string) (PublicationStatus, error) {
+	switch s {
+	case "draft":
+		return PublicationStatusDraft, nil
+	case "published":
+		return PublicationStatusPublished, nil
+	default:
+		return "", ErrInvalidPublicationStatus
+	}
+}
+
+func (s PublicationStatus) String() string {
+	return string(s)
+}
 
 type ProductStatus string
 
