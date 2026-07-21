@@ -100,10 +100,9 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/admin/brands/{id}/archive": {
+            },
             "post": {
+                "description": "create a new products brand",
                 "consumes": [
                     "application/json"
                 ],
@@ -113,20 +112,41 @@ const docTemplate = `{
                 "tags": [
                     "Brand"
                 ],
+                "summary": "create a new products brand",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "brand id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
+                        "description": "brand data",
+                        "name": "brand",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/brand.CreateBrandRequest"
+                        }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/api.SuccessResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/brand.BrandResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
@@ -138,8 +158,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/brands/{id}/unarchive": {
-            "post": {
+        "/admin/brands/{id}": {
+            "get": {
+                "description": "get brand by id",
                 "consumes": [
                     "application/json"
                 ],
@@ -149,6 +170,59 @@ const docTemplate = `{
                 "tags": [
                     "Brand"
                 ],
+                "summary": "get brand by id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "name": "id",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/brand.BrandResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "update a brand",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand"
+                ],
+                "summary": "update a brand",
                 "parameters": [
                     {
                         "type": "string",
@@ -156,13 +230,34 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "brand input",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/brand.UpdateBrandRequest"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.SuccessResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/brand.BrandResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
@@ -603,223 +698,6 @@ const docTemplate = `{
                                         },
                                         "meta": {
                                             "$ref": "#/definitions/api.Page"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "create a new products brand",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Brand"
-                ],
-                "summary": "create a new products brand",
-                "parameters": [
-                    {
-                        "description": "brand data",
-                        "name": "brand",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/brand.CreateBrandRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/brand.BrandResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/brands/{id}": {
-            "get": {
-                "description": "get brand by id",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Brand"
-                ],
-                "summary": "get brand by id",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "name": "id",
-                        "in": "path"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/brand.BrandResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/brands/{slug}": {
-            "get": {
-                "description": "get a brand by slug",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Brand"
-                ],
-                "summary": "get a brand by slug",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "brand slug",
-                        "name": "slug",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/brand.BrandResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "update a brand",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Brand"
-                ],
-                "summary": "update a brand",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "brand id",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "brand input",
-                        "name": "input",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/brand.UpdateBrandRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/brand.BrandResponse"
                                         }
                                     }
                                 }
@@ -1699,11 +1577,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "nvidia"
                 },
-                "slug": {
-                    "type": "string",
-                    "example": "nvidia"
-                },
-                "status": {
+                "publication_status": {
                     "type": "string",
                     "example": "active"
                 },
@@ -1716,24 +1590,10 @@ const docTemplate = `{
         "brand.CreateBrandRequest": {
             "type": "object",
             "required": [
-                "logo_alt",
-                "logo_url",
                 "name"
             ],
             "properties": {
-                "logo_alt": {
-                    "type": "string",
-                    "example": "apple logo"
-                },
-                "logo_url": {
-                    "type": "string",
-                    "example": "https://pictures.com/apple.png"
-                },
                 "name": {
-                    "type": "string",
-                    "example": "apple"
-                },
-                "slug": {
                     "type": "string",
                     "example": "apple"
                 }
@@ -1742,14 +1602,6 @@ const docTemplate = `{
         "brand.UpdateBrandRequest": {
             "type": "object",
             "properties": {
-                "logo_alt": {
-                    "type": "string",
-                    "example": "apple logo"
-                },
-                "logo_url": {
-                    "type": "string",
-                    "example": "https://example.com/logo.png"
-                },
                 "name": {
                     "type": "string",
                     "example": "apple"

@@ -172,10 +172,7 @@ definitions:
       name:
         example: nvidia
         type: string
-      slug:
-        example: nvidia
-        type: string
-      status:
+      publication_status:
         example: active
         type: string
       updated_at:
@@ -184,31 +181,14 @@ definitions:
     type: object
   brand.CreateBrandRequest:
     properties:
-      logo_alt:
-        example: apple logo
-        type: string
-      logo_url:
-        example: https://pictures.com/apple.png
-        type: string
       name:
         example: apple
         type: string
-      slug:
-        example: apple
-        type: string
     required:
-    - logo_alt
-    - logo_url
     - name
     type: object
   brand.UpdateBrandRequest:
     properties:
-      logo_alt:
-        example: apple logo
-        type: string
-      logo_url:
-        example: https://example.com/logo.png
-        type: string
       name:
         example: apple
         type: string
@@ -381,38 +361,48 @@ paths:
       summary: list all the brands in pages
       tags:
       - Brand
-  /admin/brands/{id}/archive:
     post:
       consumes:
       - application/json
+      description: create a new products brand
       parameters:
-      - description: brand id
-        in: path
-        name: id
+      - description: brand data
+        in: body
+        name: brand
         required: true
-        type: string
+        schema:
+          $ref: '#/definitions/brand.CreateBrandRequest'
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           schema:
-            $ref: '#/definitions/api.SuccessResponse'
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/brand.BrandResponse'
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.ErrorResponse'
+      summary: create a new products brand
       tags:
       - Brand
-  /admin/brands/{id}/unarchive:
-    post:
+  /admin/brands/{id}:
+    get:
       consumes:
       - application/json
+      description: get brand by id
       parameters:
-      - description: brand id
-        in: path
+      - in: path
         name: id
-        required: true
         type: string
       produces:
       - application/json
@@ -420,11 +410,56 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.SuccessResponse'
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/brand.BrandResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.ErrorResponse'
+      summary: get brand by id
+      tags:
+      - Brand
+    patch:
+      consumes:
+      - application/json
+      description: update a brand
+      parameters:
+      - description: brand id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: brand input
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/brand.UpdateBrandRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/brand.BrandResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: update a brand
       tags:
       - Brand
   /admin/categories:
@@ -702,137 +737,6 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: list all the brands in pages
-      tags:
-      - Brand
-    post:
-      consumes:
-      - application/json
-      description: create a new products brand
-      parameters:
-      - description: brand data
-        in: body
-        name: brand
-        required: true
-        schema:
-          $ref: '#/definitions/brand.CreateBrandRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/brand.BrandResponse'
-              type: object
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: create a new products brand
-      tags:
-      - Brand
-  /brands/{id}:
-    get:
-      consumes:
-      - application/json
-      description: get brand by id
-      parameters:
-      - in: path
-        name: id
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/brand.BrandResponse'
-              type: object
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: get brand by id
-      tags:
-      - Brand
-  /brands/{slug}:
-    get:
-      consumes:
-      - application/json
-      description: get a brand by slug
-      parameters:
-      - description: brand slug
-        in: path
-        name: slug
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/brand.BrandResponse'
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: get a brand by slug
-      tags:
-      - Brand
-    put:
-      consumes:
-      - application/json
-      description: update a brand
-      parameters:
-      - description: brand id
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: brand input
-        in: body
-        name: input
-        required: true
-        schema:
-          $ref: '#/definitions/brand.UpdateBrandRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/brand.BrandResponse'
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: update a brand
       tags:
       - Brand
   /categories:
