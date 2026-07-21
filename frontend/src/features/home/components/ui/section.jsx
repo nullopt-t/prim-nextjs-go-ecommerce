@@ -1,6 +1,7 @@
 import SectionTitle from "@/features/home/components/ui/sectionTitle";
 import SectionGrid from "@/features/home/components/ui/sectionGrid";
 import ProductsSection from "@/features/home/components/ui/productsSection";
+import Recently from "@/features/home/components/ui/recently";
 
 export default function Section() {
 	return (
@@ -12,6 +13,7 @@ export default function Section() {
 				<SectionGrid />
 			</div>
 			<ProductsSection />
+			<Recently />
 		</div>
 	);
 }

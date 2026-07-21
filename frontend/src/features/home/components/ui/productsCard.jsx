@@ -1,4 +1,4 @@
-import Stars from "@/features/home/components/ui/stars";
+import Stars from "@/components/ui/stars";
 import CustomButton from "@/components/ui/button";
 import { Heart } from "lucide-react";
 
