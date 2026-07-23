@@ -75,7 +75,6 @@ func (th *TagHandler) CreateTag(c *gin.Context) {
 			Data: TagResponse{
 				ID:                tag.ID.String(),
 				Name:              tag.Name,
-				PublicationStatus: tag.PublicationStatus.String(),
 				CreatedAt:         tag.CreatedAt.Format(time.RFC3339),
 				UpdatedAt:         tag.UpdatedAt.Format(time.RFC3339),
 				DeletedAt: func() string {
@@ -130,7 +129,6 @@ func (th *TagHandler) GetTagByID(c *gin.Context) {
 	res := &TagResponse{
 		ID:                tag.ID.String(),
 		Name:              tag.Name,
-		PublicationStatus: tag.PublicationStatus.String(),
 		CreatedAt:         tag.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:         tag.UpdatedAt.Format(time.RFC3339),
 		DeletedAt: func() string {
@@ -236,7 +234,6 @@ func (th *TagHandler) AdminListTags(c *gin.Context) {
 		res = append(res, &TagResponse{
 			ID:                tag.ID.String(),
 			Name:              tag.Name,
-			PublicationStatus: tag.PublicationStatus.String(),
 			CreatedAt:         tag.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:         tag.UpdatedAt.Format(time.RFC3339),
 			DeletedAt: func() string {

@@ -39,7 +39,6 @@ func (tr *TagRepository) Create(
 	INSERT INTO tags(
 		id,
 		name,
-		publication_status,
 		created_at,
 		updated_at
 	)
@@ -47,8 +46,7 @@ func (tr *TagRepository) Create(
 		$1,
 		$2,
 		$3,
-		$4,
-		$5
+		$4
 	)
 	`
 	_, err := qe.Exec(
@@ -56,7 +54,6 @@ func (tr *TagRepository) Create(
 		query,
 		tag.ID,
 		tag.Name,
-		model.PublicationStatusDraft,
 		tag.CreatedAt,
 		tag.UpdatedAt,
 	)
@@ -131,7 +128,6 @@ func (tr *TagRepository) AdminList(
 		SELECT
 			id,
 			name,
-			publication_status,
 			created_at,
 			updated_at,
 			deleted_at
@@ -209,7 +205,6 @@ func (tr *TagRepository) AdminList(
 		err := rows.Scan(
 			&tag.ID,
 			&tag.Name,
-			&tag.PublicationStatus,
 			&tag.CreatedAt,
 			&tag.UpdatedAt,
 			&tag.DeletedAt,
@@ -248,7 +243,6 @@ func (tr *TagRepository) List(
 		FROM
 			tags
 		WHERE deleted_at IS NULL
-			AND publication_status = 'published'
 	`)
 
 	countQuery.WriteString(`
@@ -257,7 +251,6 @@ func (tr *TagRepository) List(
 			FROM
 				tags
 			WHERE deleted_at IS NULL
-				AND publication_status = 'published'
 		`)
 
 	args := []any{}
