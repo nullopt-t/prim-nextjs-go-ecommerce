@@ -29,9 +29,6 @@ func NewService(
 
 type CreateBrandInput struct {
 	Name    string
-	Slug    string
-	LogoURL *string
-	LogoAlt *string
 }
 
 func (bs *BrandService) CreateBrand(
@@ -42,8 +39,6 @@ func (bs *BrandService) CreateBrand(
 	brand := &model.ProductBrand{
 		ID:      uuid.New(),
 		Name:    in.Name,
-		LogoURL: in.LogoURL,
-		LogoAlt: in.LogoAlt,
 	}
 
 	err := bs.qexecuter.WithDB(

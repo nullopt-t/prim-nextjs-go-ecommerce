@@ -45,10 +45,9 @@ func (br *BrandRepository) Create(
 	_, err := qe.Exec(
 		ctx,
 		`
-		INSERT INTO brands(
+		INSERT INTO product_brands(
 			id,
 			name,
-			publication_status,
 			created_at,
 			updated_at
 		)
@@ -56,13 +55,11 @@ func (br *BrandRepository) Create(
 			$1,
 			$2,
 			$3,
-			$4,
-			$5
+			$4
 		)
 		`,
 		brand.ID,
 		brand.Name,
-		model.PublicationStatusDraft,
 		brand.CreatedAt,
 		brand.UpdatedAt,
 	)
@@ -90,9 +87,6 @@ func (br *BrandRepository) Get(
 	SELECT
 		id,
 		name,
-		publication_status,
-		logo_url,
-		logo_alt,
 		created_at,
 		updated_at,
 		deleted_at
@@ -118,9 +112,6 @@ func (br *BrandRepository) Get(
 	).Scan(
 		&brand.ID,
 		&brand.Name,
-		&brand.PublicationStatus,
-		&brand.LogoURL,
-		&brand.LogoAlt,
 		&brand.CreatedAt,
 		&brand.UpdatedAt,
 		&brand.DeletedAt,
@@ -191,9 +182,7 @@ func (br *BrandRepository) List(
 	query.WriteString(`
 		SELECT
 			id,
-			name,
-			logo_url,
-			logo_alt
+			name
 		FROM brands
 		WHERE 1=1
 			AND publication_status = 'published'
@@ -304,8 +293,6 @@ func (br *BrandRepository) List(
 		err := rows.Scan(
 			&brand.ID,
 			&brand.Name,
-			&brand.LogoURL,
-			&brand.LogoAlt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf(
@@ -359,11 +346,9 @@ func (br *BrandRepository) AdminList(
 		SELECT
 			id,
 			name,
-			publication_status,
-			logo_url,
-			logo_alt,
 			created_at,
-			updated_at
+			updated_at,
+			deleted_at
 		FROM brands
 		WHERE 1=1
 	`)
@@ -472,11 +457,9 @@ func (br *BrandRepository) AdminList(
 		err := rows.Scan(
 			&brand.ID,
 			&brand.Name,
-			&brand.PublicationStatus,
-			&brand.LogoURL,
-			&brand.LogoAlt,
 			&brand.CreatedAt,
 			&brand.UpdatedAt,
+			&brand.DeletedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf(
@@ -535,8 +518,8 @@ func (br *BrandRepository) Delete(
 	WHERE
 		deleted_at IS NULL
 	`
-	args := []any{}
-	argID := 1
+	args := []any{time.Now().UTC()}
+	argID := 2
 
 	if filter.ID != nil {
 		query += fmt.Sprintf(` AND id = $%d`, argID)

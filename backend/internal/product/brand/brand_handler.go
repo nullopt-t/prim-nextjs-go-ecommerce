@@ -28,13 +28,11 @@ type CreateBrandRequest struct {
 }
 
 type BrandResponse struct {
-	ID                string  `json:"id,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
-	Name              string  `json:"name,omitempty" example:"nvidia"`
-	PublicationStatus string  `json:"publication_status,omitempty" example:"active"`
-	LogoURL           *string `json:"logo_url" example:"https://pictures.com/nvidia.png"`
-	LogoAlt           *string `json:"logo_alt" example:"nvidia logo"`
-	CreatedAt         string  `json:"created_at,omitempty" example:"2026-07-01T05:04:38Z"`
-	UpdatedAt         string  `json:"updated_at,omitempty" example:"2026-07-01T05:04:38Z"`
+	ID        string `json:"id,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
+	Name      string `json:"name,omitempty" example:"nvidia"`
+	CreatedAt string `json:"created_at,omitempty" example:"2026-07-01T05:04:38Z"`
+	UpdatedAt string `json:"updated_at,omitempty" example:"2026-07-01T05:04:38Z"`
+	DeletedAt string `json:"deleted_at,omitempty" example:"2026-07-01T05:04:38Z"`
 }
 
 // CreateBrand godoc
@@ -75,8 +73,6 @@ func (bh *BrandHandler) CreateBrand(c *gin.Context) {
 			Data: BrandResponse{
 				ID:        brand.ID.String(),
 				Name:      brand.Name,
-				LogoURL:   brand.LogoURL,
-				LogoAlt:   brand.LogoAlt,
 				CreatedAt: brand.CreatedAt.Format(time.RFC3339),
 				UpdatedAt: brand.UpdatedAt.Format(time.RFC3339),
 			},
@@ -128,8 +124,6 @@ func (bh *BrandHandler) GetBrandByID(c *gin.Context) {
 			Data: BrandResponse{
 				ID:        brand.ID.String(),
 				Name:      brand.Name,
-				LogoURL:   brand.LogoURL,
-				LogoAlt:   brand.LogoAlt,
 				UpdatedAt: brand.UpdatedAt.Format(time.RFC3339),
 				CreatedAt: brand.CreatedAt.Format(time.RFC3339),
 			},
@@ -142,7 +136,7 @@ type BrandSlugParam struct {
 }
 
 type UpdateBrandRequest struct {
-	Name    *string `json:"name"  example:"apple"`
+	Name *string `json:"name"  example:"apple"`
 }
 
 // UpdateBrand godoc
@@ -179,7 +173,7 @@ func (bh *BrandHandler) UpdateBrand(c *gin.Context) {
 		c.Request.Context(),
 		brandID,
 		UpdateBrandInput{
-			Name:    body.Name,
+			Name: body.Name,
 		},
 	)
 	if err != nil {
@@ -231,8 +225,6 @@ func (bh *BrandHandler) ListBrands(c *gin.Context) {
 		res = append(res, &BrandResponse{
 			ID:        brand.ID.String(),
 			Name:      brand.Name,
-			LogoURL:   brand.LogoURL,
-			LogoAlt:   brand.LogoAlt,
 			CreatedAt: brand.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: brand.UpdatedAt.Format(time.RFC3339),
 		})
@@ -283,9 +275,6 @@ func (bh *BrandHandler) ListAdminBrands(c *gin.Context) {
 		res = append(res, &BrandResponse{
 			ID:                brand.ID.String(),
 			Name:              brand.Name,
-			LogoURL:           brand.LogoURL,
-			LogoAlt:           brand.LogoAlt,
-			PublicationStatus: brand.PublicationStatus.String(),
 			CreatedAt:         brand.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:         brand.UpdatedAt.Format(time.RFC3339),
 		})
