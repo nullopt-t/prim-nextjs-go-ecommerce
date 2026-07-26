@@ -11,7 +11,7 @@ export default function ProductsCard({ cardDetails }) {
 					alt=""
 					className="object-center object-cover w-full h-full"
 				/>
-				<div className="absolute flex items-center justify-center top-2.5 right-2.5 group rounded-full w-8 h-8 bg-background text-foreground hover:bg-accent-brand">
+				<div className="absolute flex items-center justify-center top-2.5 right-2.5 group rounded-full w-8 h-8 bg-background text-foreground hover:bg-accent-brand hover:text-white">
 					<Heart className="" />
 				</div>
 			</div>
