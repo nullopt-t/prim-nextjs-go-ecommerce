@@ -4,15 +4,15 @@ import { Heart } from "lucide-react";
 
 export default function ProductsCard({ cardDetails }) {
 	return (
-		<div className="cursor-pointer hover:scale-95 border border-border rounded-md overflow-hidden">
+		<div className="shadow-lg cursor-pointer hover:scale-95 hover:border-accent-brand border-2 border-border rounded-md overflow-hidden">
 			<div className="relative aspect-auto">
 				<img
 					src={cardDetails.img}
 					alt=""
 					className="object-center object-cover w-full h-full"
 				/>
-				<div className="absolute flex items-center justify-center top-2.5 right-2.5 group rounded-full w-8 h-8 md:w-10 md:h-10 bg-background text-foreground">
-					<Heart className="group-hover:scale-110" />
+				<div className="absolute flex items-center justify-center top-2.5 right-2.5 group rounded-full w-8 h-8 bg-background text-foreground hover:bg-accent-brand">
+					<Heart className="" />
 				</div>
 			</div>
 			<div className="p-2">
