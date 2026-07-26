@@ -42,10 +42,34 @@ export default function SectionGrid() {
 				ar: "وحدات الإضاءة",
 			},
 		},
+		{
+			id: "cat_6",
+			slug: "gaming",
+			name: {
+				en: "Gaming",
+				ar: "الألعاب",
+			},
+		},
+		{
+			id: "cat_7",
+			slug: "smart-home",
+			name: {
+				en: "Smart Home",
+				ar: "المنزل الذكي",
+			},
+		},
+		{
+			id: "cat_",
+			slug: "Others",
+			name: {
+				en: "Others",
+				ar: "الكاميرات",
+			},
+		},
 	];
 
 	return (
-		<div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-5">
+		<div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-5">
 			{categories.map((value) => (
 				<SectionCard key={value.id} category={value.name.en} />
 			))}
