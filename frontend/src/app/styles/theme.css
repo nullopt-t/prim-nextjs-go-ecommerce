@@ -29,7 +29,7 @@
 
 	/* CARDS (Product boxes, Info grids) */
 	/* Use for the background block of a product box or white container (class="bg-card") */
-	--card-bg: #ffffff;
+	--card-bg: #f9f9f9;
 	/* Use for the product title text color inside a product box (class="text-card-foreground") */
 	--card-text: oklch(0.145 0 0);
 
