@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { Cart } from "@/features/cart";
 import { Products } from "@/features/products";
 import { Home } from "@/features/home";
+import { About } from "@/features/about";
 import { Auth, Login, Verify } from "@/features/auth";
 import {
 	User,
@@ -37,6 +38,7 @@ function Router() {
 			</Route>
 
 			<Route path="/cart" element={<Cart />} />
+			<Route path="/About" element={<About />} />
 			<Route path="/products" element={<Products />} />
 		</Routes>
 	);

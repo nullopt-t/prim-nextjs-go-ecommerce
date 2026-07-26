@@ -1,6 +1,6 @@
 import ProductsCard from "@/features/home/components/ui/productsCard";
 import SectionTitle from "@/features/home/components/ui/sectionTitle";
-import Image from "@/assets/product.jpeg";
+import Image from "@/assets/imgs/placeholders/product.jpeg";
 
 export default function ProductsSection() {
 	const cards = [

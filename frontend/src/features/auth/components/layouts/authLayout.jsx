@@ -1,13 +1,16 @@
-import AuthImage from '@/assets/auth.png'
+import AuthImage from "@/assets/imgs/auth.png";
 
 export function AuthLayout({ children }) {
-
-    return (
-        <div className='grid grid-cols-1 md:grid-cols-2 min-h-screen max-h-screen overflow-hidden'>
-            {children}
-            <div className='aspect-square w-0 h-0 md:w-full md:h-full duration'>
-                <img className='w-full h-full object-center object-cover' src={AuthImage} alt='Authentication image' />
-            </div>
-        </div>
-    )
+	return (
+		<div className="grid grid-cols-1 md:grid-cols-2 min-h-screen max-h-screen overflow-hidden">
+			{children}
+			<div className="aspect-square w-0 h-0 md:w-full md:h-full duration">
+				<img
+					className="w-full h-full object-center object-cover"
+					src={AuthImage}
+					alt="Authentication image"
+				/>
+			</div>
+		</div>
+	);
 }

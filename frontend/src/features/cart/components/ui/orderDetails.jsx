@@ -1,4 +1,4 @@
-import ProductImage from "@/assets/product.jpeg";
+import ProductImage from "@/assets/imgs/placeholders/product.jpeg";
 
 function OrderDetails() {
 	return (
