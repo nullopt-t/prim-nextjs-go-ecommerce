@@ -113,7 +113,7 @@ export function Footer() {
 				<div className="flex-1">
 					<p className="font-medium text-title-sm md:text-title-md">
 						<span className="text-white">PRI</span>
-						<span className="text-orange-500">M</span>
+						<span className="text-accent-brand">M</span>
 					</p>
 					<p className="text-muted-foreground">
 						Your one-stop destination for everything you need.
@@ -130,7 +130,7 @@ export function Footer() {
 							{value.content.map((content) => (
 								<span
 									key={content.id}
-									className="capitalize text-muted-foreground cursor-pointer hover:text-accent"
+									className="capitalize text-muted-foreground cursor-pointer hover:text-accent-brand"
 								>
 									{content.name}
 								</span>
@@ -148,7 +148,7 @@ export function Footer() {
 					{social.map((value) => (
 						<value.icon
 							key={value.id}
-							className="size-6 hover:text-accent"
+							className="size-6 hover:text-accent-brand"
 						/>
 					))}
 				</div>
