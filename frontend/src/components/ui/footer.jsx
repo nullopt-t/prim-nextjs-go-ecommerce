@@ -111,7 +111,7 @@ export function Footer() {
 		<div className="bg-[#111111] p-2.5 pt-5 pb-5">
 			<div className="mb-5 flex flex-col gap-10 md:flex-row text-white text-txt-sm md:text-txt-md lg:text-txt-lg">
 				<div className="flex-1">
-					<p className="font-medium text-title-sm md:text-title-md">
+					<p className="font-black text-title-sm md:text-title-md">
 						<span className="text-white">PRI</span>
 						<span className="text-accent-brand">M</span>
 					</p>
