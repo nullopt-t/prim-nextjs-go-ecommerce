@@ -4,8 +4,8 @@ import { HeaderActions } from "@/components/ui/headerActions";
 
 export function Header() {
 	return (
-		<div className="sticky top-0 z-50 text-foreground bg-background/70 backdrop-blur-3xl">
-			<div className="grid gap-5 grid-cols-3 p-5 pr-2.5 pl-2.5 border-b border-border-color">
+		<div className="p-2.5 md:p-5 lg:p-10 sticky top-0 z-50 text-foreground bg-background/70 backdrop-blur-3xl">
+			<div className="pb-2.5 grid gap-5 grid-cols-3 border-b border-border">
 				<h1 className="col-span-3 md:col-span-1 md:justify-self-start font-black text-title-sm md:text-title-md lg:text-title-lg text-center">
 					<span className="">PRI</span>
 					<span className="text-accent-brand">M</span>
@@ -17,7 +17,7 @@ export function Header() {
 					<HeaderActions />
 				</div>
 			</div>
-			<div className="p-5 pr-2.5 pl-2.5">
+			<div className="pt-2.5">
 				<Categories />
 			</div>
 		</div>
