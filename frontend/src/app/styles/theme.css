@@ -21,6 +21,9 @@
 	/* PRIM Brand Accent */
 	--accent-brand: #d97757;
 
+	/* Footer */
+	--footer: #111111;
+
 	/* THE MAIN WEBSITE PAGE */
 	/* Use for the background of the whole website screen (class="bg-background") */
 	--page-bg: #ffffff;
@@ -140,6 +143,9 @@
 
 	--font-weight-normal: var(--font-weight-normal);
 	--font-weight-medium: var(--font-weight-medium);
+
+	/* Footer */
+	--color-footer: var(--footer);
 
 	/* Page Utilities Setup */
 	--color-background: var(--page-bg);

@@ -16,7 +16,7 @@ export default function Contributors({ contObj }) {
 						key={link.id}
 						className="text-lg text-muted-foreground hover:text-accent-brand"
 					>
-						<a href={link.link} className="">
+						<a href={link.link} target="_blank" className="">
 							<link.icon />
 						</a>
 					</li>
