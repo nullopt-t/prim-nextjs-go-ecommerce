@@ -1,7 +1,6 @@
 import SectionTitle from "@/features/home/components/ui/sectionTitle";
 import SectionGrid from "@/features/home/components/ui/sectionGrid";
 import ProductsSection from "@/features/home/components/ui/productsSection";
-import Recently from "@/features/home/components/ui/recently";
 import Hero from "@/features/home/components/ui/hero";
 
 export default function HomeLayout() {
@@ -17,7 +16,6 @@ export default function HomeLayout() {
 				<SectionGrid />
 			</div>
 			<ProductsSection />
-			<Recently />
 		</div>
 	);
 }
