@@ -108,7 +108,7 @@ export function Footer() {
 	];
 
 	return (
-		<div className="bg-footer p-2.5 pt-5 pb-5">
+		<div className="bg-footer p-2.5 md:p-5 lg:p-10">
 			<div className="mb-5 flex flex-col gap-10 md:flex-row text-white text-txt-sm md:text-txt-md lg:text-txt-lg">
 				<div className="flex-1">
 					<p className="font-black text-title-sm md:text-title-md">

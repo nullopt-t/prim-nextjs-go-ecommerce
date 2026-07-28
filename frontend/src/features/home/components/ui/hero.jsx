@@ -16,7 +16,7 @@ export default function Hero() {
 				<div className="w-32 h-12 bg-accent-brand hover:scale-90 text-white rounded-md">
 					<Button text="Shop now" />
 				</div>
-				<div className="bg-secondary text-black hover:scale-90 rounded-md w-32 h-12">
+				<div className="bg-secondary text-secondary-foreground hover:scale-90 rounded-md w-32 h-12">
 					<Button text="View deals" />
 				</div>
 			</div>
