@@ -1,10 +1,10 @@
 import MainLayout from "@/components/layouts/mainLayout";
-import Section from "@/features/home/components/ui/section";
+import HomeLayout from "@/features/home/components/layout/homeLayout";
 
 export function Home() {
 	return (
 		<MainLayout>
-			<Section />
+			<HomeLayout />
 		</MainLayout>
 	);
 }
