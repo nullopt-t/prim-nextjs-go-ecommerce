@@ -1,4 +1,4 @@
-import AmrImg from "@/assets/imgs/team/Mohamed.jpg";
+import AmrImg from "@/assets/imgs/team/Amr.jpeg";
 import MohamedImg from "@/assets/imgs/team/Mohamed.jpg";
 import { FaLinkedinIn, FaGithub } from "react-icons/fa6";
 import Contributors from "@/features/about/ui/contributors";
@@ -15,12 +15,12 @@ export default function Team() {
 			links: [
 				{
 					id: "m-mahmoud-alsaid-linkedin",
-					link: "http:",
+					link: "https://www.linkedin.com/in/m-mahmoud-alsaid/",
 					icon: FaLinkedinIn,
 				},
 				{
 					id: "m-mahmoud-alsaid-github",
-					link: "http:",
+					link: "https://github.com/m-mahmoud-alsaid",
 					icon: FaGithub,
 				},
 			],
@@ -39,7 +39,7 @@ export default function Team() {
 				},
 				{
 					id: "nullopt-t-github",
-					link: "http:",
+					link: "https://github.com/nullopt-t",
 					icon: FaGithub,
 				},
 			],
