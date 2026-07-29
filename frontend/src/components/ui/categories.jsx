@@ -1,6 +1,9 @@
 import { NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 export function Categories() {
+	const { t } = useTranslation("common");
+
 	const categories = [
 		{
 			id: "cat_1",
@@ -48,24 +51,19 @@ export function Categories() {
 			},
 		},
 	];
+
 	const constCategories = [
 		{
 			id: "home-232f",
 			slug: "Home",
 			path: "/home",
-			name: {
-				en: "Home",
-				ar: "",
-			},
+			label: "header.home",
 		},
 		{
 			id: "all-catg-2389",
 			slug: "All categories",
 			path: "/all-categories",
-			name: {
-				en: "All categories",
-				ar: "",
-			},
+			label: "header.allCategories",
 		},
 	];
 
@@ -80,7 +78,7 @@ export function Categories() {
 						}) => `group-hover:text-accent-brand
 						${isActive ? `text-accent-brand underline underline-offset-8 decoration-2 decoration-accent-brand` : `text-foreground`}`}
 					>
-						{value.name.en}
+						{t(value.label)}
 					</NavLink>
 				</li>
 			))}
