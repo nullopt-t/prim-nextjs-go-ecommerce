@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 export function Categories() {
-	const { t } = useTranslation("common");
+	const { t, i18n } = useTranslation("common");
 
 	const categories = [
 		{
@@ -91,7 +91,9 @@ export function Categories() {
 						}) => `group-hover:text-accent-brand
 						${isActive ? `text-accent-brand underline underline-offset-8 decoration-2 decoration-accent-brand` : `text-foreground`}`}
 					>
-						{value.name.en}
+						{i18n.resolvedLanguage === "en"
+							? value.name.en
+							: value.name.ar}
 					</NavLink>
 				</li>
 			))}

@@ -1,6 +1,9 @@
 import SectionCard from "@/features/home/components/ui/sectionCard";
+import { useTranslation } from "react-i18next";
 
 export default function SectionGrid() {
+	const { i18n } = useTranslation("home");
+
 	const categories = [
 		{
 			id: "cat_1",
@@ -63,7 +66,7 @@ export default function SectionGrid() {
 			slug: "Others",
 			name: {
 				en: "Others",
-				ar: "الكاميرات",
+				ar: "اخر",
 			},
 		},
 	];
@@ -71,7 +74,14 @@ export default function SectionGrid() {
 	return (
 		<div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-5">
 			{categories.map((value) => (
-				<SectionCard key={value.id} category={value.name.en} />
+				<SectionCard
+					key={value.id}
+					category={
+						i18n.resolvedLanguage === "en"
+							? value.name.en
+							: value.name.ar
+					}
+				/>
 			))}
 		</div>
 	);
