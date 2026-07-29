@@ -1,9 +1,16 @@
 import { Heart, ShoppingCart, User, Moon } from "lucide-react";
 import { MdOutlineWbSunny } from "react-icons/md";
 import { useTheme } from "@/context/theme";
+import { useTranslation } from "react-i18next";
 
 export function HeaderActions() {
 	const { theme, toggle } = useTheme();
+	const { i18n } = useTranslation();
+
+	const currentLanguage = i18n.resolvedLanguage;
+
+	const toggleLang = () =>
+		i18n.changeLanguage(currentLanguage === "en" ? "ar" : "en");
 
 	const icons = [
 		{
@@ -22,8 +29,21 @@ export function HeaderActions() {
 
 	return (
 		<>
-			<p className="cursor-pointer font-medium hover:text-accent-brand">
-				EN/ع
+			<p
+				onClick={toggleLang}
+				className="cursor-pointer font-medium hover:text-accent-brand"
+			>
+				<span
+					className={`${currentLanguage === "en" ? `text-accent-brand` : ``}`}
+				>
+					En
+				</span>
+				<span className=""> / </span>
+				<span
+					className={`${currentLanguage === "ar" ? `text-accent-brand` : ``}`}
+				>
+					ع
+				</span>
 			</p>
 			{theme === "light" ? (
 				<MdOutlineWbSunny
