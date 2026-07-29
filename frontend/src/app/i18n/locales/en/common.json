@@ -1,4 +1,6 @@
 {
+	"currency": "$",
+
 	"header": {
 		"search": "Search",
 		"home": "Home",
@@ -20,7 +22,7 @@
 		"press": "Press",
 		"Sustainability": "Sustainability",
 		"blog": "Blog",
-		"copyright": "PRIM. All rights reserved.",
+		"copyright": "© {{year}} PRIM. All rights reserved.",
 		"footerDescription": "Your one-stop destination for everything you need. Quality products, fast delivery, and exceptional service since 2020."
 	}
 }

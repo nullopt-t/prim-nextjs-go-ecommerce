@@ -4,14 +4,17 @@ import {
 	FaSquareXTwitter,
 	FaTiktok,
 } from "react-icons/fa6";
+import { useTranslation } from "react-i18next";
 
 const currentDate = new Date().getFullYear();
 
 export function Footer() {
+	const { t } = useTranslation("common");
+
 	const sections = [
 		{
 			id: "shop-pp",
-			title: "shop",
+			title: "footer.shop",
 			content: [
 				{
 					id: "cat_1",
@@ -32,57 +35,57 @@ export function Footer() {
 		},
 		{
 			id: "support-pp",
-			title: "support",
+			title: "footer.support",
 			content: [
 				{
 					id: "supp-1",
-					name: "contact us",
+					name: "footer.contactUs",
 				},
 				{
 					id: "supp_2",
-					name: "FAQs",
+					name: "footer.faqs",
 				},
 				{
 					id: "supp_3",
-					name: "shipping",
+					name: "footer.shipping",
 				},
 				{
 					id: "supp_4",
-					name: "returns",
+					name: "footer.returns",
 				},
 				{
 					id: "supp_5",
-					name: "track order",
+					name: "footer.trackOrders",
 				},
 				{
 					id: "supp_6",
-					name: "size guide",
+					name: "footer.sizeGuide",
 				},
 			],
 		},
 		{
 			id: "company-pp",
-			title: "company",
+			title: "footer.company",
 			content: [
 				{
 					id: "comp-1",
-					name: "about us",
+					name: "footer.aboutUs",
 				},
 				{
 					id: "comp-2",
-					name: "careers",
+					name: "footer.careers",
 				},
 				{
 					id: "comp-3",
-					name: "press",
+					name: "footer.press",
 				},
 				{
 					id: "comp-4",
-					name: "Sustainability",
+					name: "footer.sustainability",
 				},
 				{
 					id: "comp-5",
-					name: "blog",
+					name: "footer.blog",
 				},
 			],
 		},
@@ -111,20 +114,18 @@ export function Footer() {
 		<div className="bg-footer p-2.5 md:p-5 lg:p-10">
 			<div className="mb-5 flex flex-col gap-10 md:flex-row text-white text-txt-sm md:text-txt-md lg:text-txt-lg">
 				<div className="flex-1">
-					<p className="font-black text-title-sm md:text-title-md">
+					<p className="mb-2.5 font-black text-title-sm md:text-title-md">
 						<span className="text-white">PRI</span>
 						<span className="text-accent-brand">M</span>
 					</p>
 					<p className="text-muted-foreground">
-						Your one-stop destination for everything you need.
-						Quality products, fast delivery, and exceptional service
-						since 2020.
+						{t("footer.footerDescription")}
 					</p>
 				</div>
 				{sections.map((value) => (
 					<div key={value.id} className="flex-1">
 						<p className="mb-5 text-txt-lg font-medium capitalize">
-							{value.title}
+							{t(value.title)}
 						</p>
 						<p className="flex flex-col gap-2.5">
 							{value.content.map((content) => (
@@ -132,7 +133,7 @@ export function Footer() {
 									key={content.id}
 									className="capitalize text-muted-foreground cursor-pointer hover:text-accent-brand"
 								>
-									{content.name}
+									{t(content.name)}
 								</span>
 							))}
 						</p>
@@ -141,9 +142,8 @@ export function Footer() {
 			</div>
 			<hr className="text-muted-foreground" />
 			<div className="flex flex-col gap-5 md:flex-row md:justify-between text-muted-foreground pt-5">
-				<p className="">
-					&copy; {currentDate} PRIM. All rights reserved.
-				</p>
+				<p>{t("footer.copyright", { year: currentDate })}</p>
+
 				<div className="flex gap-2.5">
 					{social.map((value) => (
 						<value.icon
