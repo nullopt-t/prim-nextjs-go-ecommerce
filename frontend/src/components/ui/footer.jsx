@@ -5,6 +5,7 @@ import {
 	FaTiktok,
 } from "react-icons/fa6";
 import { useTranslation } from "react-i18next";
+
 const currentDate = new Date().getFullYear();
 
 export function Footer() {

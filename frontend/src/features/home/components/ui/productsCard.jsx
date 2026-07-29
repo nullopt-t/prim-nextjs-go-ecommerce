@@ -1,8 +1,11 @@
 import Stars from "@/components/ui/stars";
 import CustomButton from "@/components/ui/button";
 import { Heart } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function ProductsCard({ cardDetails }) {
+	const { t } = useTranslation(["home", "common"]);
+
 	return (
 		<div className="shadow-lg cursor-pointer hover:scale-95 hover:border-accent-brand border-2 border-border rounded-md overflow-hidden">
 			<div className="relative aspect-auto">
@@ -28,13 +31,13 @@ export default function ProductsCard({ cardDetails }) {
 						&#40;{cardDetails.reviews}&#41;
 					</span>
 				</p>
-				<p className="flex gap-2.5 items-center">
+				<p className="flex flex-wrap gap-2.5 items-center">
 					<span className="font-medium text-title-sm md:text-title-md text-foreground">
-						{cardDetails.price}
+						{t("common:currency")}&nbsp;{cardDetails.price}
 					</span>
 					<span className="">
 						<del className="text-muted-foreground">
-							{cardDetails.oldPrice}
+							{t("common:currency")}&nbsp;{cardDetails.oldPrice}
 						</del>
 					</span>
 					<span className="bg-[#d4183d] text-white rounded pr-1 pl-1">
@@ -43,7 +46,7 @@ export default function ProductsCard({ cardDetails }) {
 				</p>
 			</div>
 			<div className="h-10 m-2.5 text-primary-foreground bg-primary rounded-md hover:bg-accent hover:text-accent-foreground">
-				<CustomButton text="Add to cart" />
+				<CustomButton text={t("product.addToCart")} />
 			</div>
 		</div>
 	);

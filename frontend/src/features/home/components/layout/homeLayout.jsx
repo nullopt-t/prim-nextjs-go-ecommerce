@@ -11,7 +11,7 @@ export default function HomeLayout() {
 			</div>
 			<div className="">
 				<div className="mb-2.5">
-					<SectionTitle title="categories" />
+					<SectionTitle title="categories.title" />
 				</div>
 				<SectionGrid />
 			</div>

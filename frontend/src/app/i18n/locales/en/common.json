@@ -1,4 +1,6 @@
 {
+	"currency": "$",
+
 	"header": {
 		"search": "Search",
 		"home": "Home",

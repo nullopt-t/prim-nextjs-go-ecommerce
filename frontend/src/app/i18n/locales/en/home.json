@@ -1,0 +1,23 @@
+{
+	"hero": {
+		"badge": "New Season — {{year}}",
+		"title": "Everything you need, ",
+		"delivered": "delivered.",
+		"description": "Discover thousands of products from trusted brands, all in one place. Fast shipping, easy returns, and unbeatable prices.",
+		"shopNow": "Shop now",
+		"viewDeals": "View deals"
+	},
+	"categories": {
+		"title": "Categories",
+		"seeAll": "See all"
+	},
+	"featuredProducts": {
+		"title": "Featured Products"
+	},
+	"recentlyViewed": {
+		"title": "Recently Viewed"
+	},
+	"product": {
+		"addToCart": "Add to cart"
+	}
+}
