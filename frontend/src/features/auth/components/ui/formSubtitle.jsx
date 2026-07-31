@@ -1,9 +1,12 @@
+import { useTranslation } from "react-i18next";
+
 function FormSubtitle({ type }) {
+	const { t } = useTranslation("auth");
 	const subTitle =
 		type === "login"
-			? "Enter your email to sign in or create a new account."
+			? t("sign.subtitle")
 			: type === "verify"
-				? "We sent a verification code to your email. Enter it below to proceed."
+				? t("sign.subtitle")
 				: "";
 
 	return (

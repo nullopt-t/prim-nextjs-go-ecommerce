@@ -2,17 +2,18 @@ import { useNavigate } from "react-router-dom";
 import { House, Moon } from "lucide-react";
 import { MdOutlineWbSunny } from "react-icons/md";
 import { useTheme } from "@/context/theme";
+import { useTranslation } from "react-i18next";
 
 function FormTitle({ type }) {
 	const { theme, toggle } = useTheme();
-
 	const navigate = useNavigate();
 
+	const { t } = useTranslation("auth");
 	const title =
 		type === "login"
-			? "Get Started"
+			? t("sign.title")
 			: type === "verify"
-				? "Verify OTP Code"
+				? t("verify.title")
 				: "";
 
 	return (

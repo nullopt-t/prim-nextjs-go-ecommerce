@@ -3,8 +3,11 @@ import FormButton from "@/features/auth/components/ui/formButton";
 import FormTitle from "@/features/auth/components/ui/formTitle";
 import FormSubtitle from "@/features/auth/components/ui/formSubtitle";
 import FormInput from "@/features/auth/components/ui/formInput";
+import { useTranslation } from "react-i18next";
 
 function Form({ formType, handleSubmit }) {
+	const { t } = useTranslation("auth");
+
 	const [inputs, setInputs] = useState({
 		email: "",
 		code: "",
@@ -25,9 +28,9 @@ function Form({ formType, handleSubmit }) {
 	const inputTypes = [
 		{
 			id: "email-1",
-			name: "email",
+			name: "sign.emailLabel",
 			type: "email",
-			placeholder: "Enter your email",
+			placeholder: "sign.emailPlaceholder",
 			value: inputs.email,
 			setValue: handleEmail,
 			isExist:
@@ -35,9 +38,9 @@ function Form({ formType, handleSubmit }) {
 		},
 		{
 			id: "code-1",
-			name: "code",
+			name: "verify.codeLabel",
 			type: "text",
-			placeholder: "Enter your code",
+			placeholder: "verify.codePlaceholder",
 			value: inputs.code,
 			setValue: handleCode,
 			isExist: formType === "verify" ? true : false,
@@ -61,7 +64,7 @@ function Form({ formType, handleSubmit }) {
 								<p
 									className={`${formType === "register" ? 'after:content-["*"] after:ml-0.5 after:text-red-500' : ""} capitalize font-medium text-foreground mb-2.5 text-txt-sm md:text-txt-md lg:text-txt-lg`}
 								>
-									{value.name}
+									{t(value.name)}
 								</p>
 								<FormInput inputObj={value} />
 							</label>

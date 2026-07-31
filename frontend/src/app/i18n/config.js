@@ -5,10 +5,12 @@ import LanguageDetector from "i18next-browser-languagedetector";
 // English
 import commonEn from "./locales/en/common.json";
 import homeEn from "./locales/en/home.json";
+import authEn from "./locales/en/auth.json";
 
 // Arabic
 import commonAr from "./locales/ar/common.json";
 import homeAr from "./locales/ar/home.json";
+import authAr from "./locales/ar/auth.json";
 
 i18n.use(LanguageDetector)
 	.use(initReactI18next)
@@ -17,10 +19,12 @@ i18n.use(LanguageDetector)
 			en: {
 				common: commonEn,
 				home: homeEn,
+				auth: authEn,
 			},
 			ar: {
 				common: commonAr,
 				home: homeAr,
+				auth: authAr,
 			},
 		},
 
@@ -31,7 +35,7 @@ i18n.use(LanguageDetector)
 		defaultNS: "common",
 
 		// Register all namespaces
-		ns: ["common", "home"],
+		ns: ["common", "home", "auth"],
 
 		// Language detection settings
 		detection: {

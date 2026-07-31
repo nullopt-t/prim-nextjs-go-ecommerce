@@ -1,6 +1,13 @@
+import { useTranslation } from "react-i18next";
+
 function Button({ type, payload, handle }) {
+	const { t } = useTranslation("auth");
 	const buttonTxt =
-		type === "login" ? "enter" : type === "verify" ? "Verify OTP Code" : "";
+		type === "login"
+			? t("sign.signButton")
+			: type === "verify"
+				? t("verify.verifyButton")
+				: "";
 
 	return (
 		<input

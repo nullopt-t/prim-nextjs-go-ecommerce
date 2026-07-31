@@ -23,7 +23,7 @@ function Router() {
 			<Route path="/home" element={<Home />} />
 
 			<Route path="/auth" element={<Auth />}>
-				<Route path="login" element={<Login />} />
+				<Route index element={<Login />} />
 				<Route path="verify" element={<Verify />} />
 			</Route>
 
