@@ -18,7 +18,7 @@ import {
 function Router() {
 	return (
 		<Routes>
-			<Route path="/" element={<Navigate to="/home" />} />
+			<Route path="/" element={<Navigate to="/home" />} replace />
 
 			<Route path="/home" element={<Home />} />
 
@@ -38,7 +38,7 @@ function Router() {
 			</Route>
 
 			<Route path="/cart" element={<Cart />} />
-			<Route path="/About" element={<About />} />
+			<Route path="/about" element={<About />} />
 			<Route path="/products" element={<Products />} />
 		</Routes>
 	);

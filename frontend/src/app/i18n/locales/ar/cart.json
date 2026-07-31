@@ -1,0 +1,23 @@
+{
+	"cart": {
+		"title": "سلة التسوق",
+		"item": "{{count}} عنصر",
+		"items": "{{count}} عناصر"
+	},
+	"product": {
+		"remove": "إزالة"
+	},
+	"coupon": {
+		"placeholder": "أدخل رمز الخصم",
+		"apply": "تطبيق"
+	},
+	"orderSummary": {
+		"title": "ملخص الطلب",
+		"subtotal": "المجموع الفرعي",
+		"shipping": "الشحن",
+		"free": "مجاني",
+		"tax": "الضريبة (8٪)",
+		"total": "الإجمالي",
+		"checkout": "إتمام الشراء"
+	}
+}

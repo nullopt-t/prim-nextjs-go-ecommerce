@@ -1,0 +1,23 @@
+{
+	"cart": {
+		"title": "Your Cart",
+		"item": "{{count}} item",
+		"items": "{{count}} items"
+	},
+	"product": {
+		"remove": "Remove"
+	},
+	"coupon": {
+		"placeholder": "Enter your coupon",
+		"apply": "Apply"
+	},
+	"orderSummary": {
+		"title": "Order Summary",
+		"subtotal": "Subtotal",
+		"shipping": "Shipping",
+		"free": "Free",
+		"tax": "Tax (8%)",
+		"total": "Total",
+		"checkout": "Proceed to Checkout"
+	}
+}
