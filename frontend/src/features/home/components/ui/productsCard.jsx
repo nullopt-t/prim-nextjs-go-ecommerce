@@ -4,7 +4,7 @@ import { Heart } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export default function ProductsCard({ cardDetails }) {
-	const { t } = useTranslation(["home", "common"]);
+	const { t, i18n } = useTranslation(["home", "common"]);
 
 	return (
 		<div className="shadow-lg cursor-pointer hover:scale-95 hover:border-accent-brand border-2 border-border rounded-md overflow-hidden">
@@ -20,7 +20,9 @@ export default function ProductsCard({ cardDetails }) {
 			</div>
 			<div className="p-2">
 				<p className="font-medium mb-1 text-foreground">
-					{cardDetails.product}
+					{i18n.resolvedLanguage === "en"
+						? cardDetails.product.en
+						: cardDetails.product.ar}
 				</p>
 				<p className=""></p>
 				<p className="flex items-center gap-2.5 mb-2.5">

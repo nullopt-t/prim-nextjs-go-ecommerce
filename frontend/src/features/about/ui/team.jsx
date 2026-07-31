@@ -11,7 +11,7 @@ export default function Team() {
 			name: "Mohamed Mahmoud",
 			img: MohamedImg,
 			imgAlt: "Mohamed image",
-			role: "Frontend developer",
+			role: "developers.frontend",
 			links: [
 				{
 					id: "m-mahmoud-alsaid-linkedin",
@@ -30,7 +30,7 @@ export default function Team() {
 			name: "Amr",
 			img: AmrImg,
 			imgAlt: "Amr Image",
-			role: "Backend developer",
+			role: "developers.backend",
 			links: [
 				{
 					id: "nullopt-t-linkedin",
@@ -48,7 +48,7 @@ export default function Team() {
 
 	return (
 		<div className="">
-			<Title title="Developers" />
+			<Title title="developers.title" />
 			<div className="flex flex-wrap gap-15">
 				{ContArr.map((contributorObj) => (
 					<Contributors

@@ -1,4 +1,8 @@
+import { useTranslation } from "react-i18next";
+
 export default function Contributors({ contObj }) {
+	const { t } = useTranslation("about");
+
 	return (
 		<div className="flex flex-col items-center">
 			<img
@@ -9,7 +13,7 @@ export default function Contributors({ contObj }) {
 			<p className="max-w-16 truncate hover:whitespace-normal hover:overflow-visible hover:text-clip mt-2.5 font-medium text-foreground text-txt-sm md:text-txt-md lg:text-txt-lg">
 				{contObj.name}
 			</p>
-			<p className="text-sm text-muted-foreground">{contObj.role}</p>
+			<p className="text-sm text-muted-foreground">{t(contObj.role)}</p>
 			<ul className="flex gap-2.5 mt-2.5">
 				{contObj.links.map((link) => (
 					<li

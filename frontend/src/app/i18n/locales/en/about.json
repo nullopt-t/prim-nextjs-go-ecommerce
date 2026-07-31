@@ -1,0 +1,34 @@
+{
+	"hero": {
+		"badge": "Our Story",
+		"title": "Built for everyone, everywhere.",
+		"description": "PRIM was founded with a single belief: great products should be accessible to everyone, delivered with care."
+	},
+	"belief": {
+		"title": "What We Believe",
+		"description": "We started PRIM because we were tired of shopping experiences that felt complicated, expensive, and impersonal. We believed there was a better way — a way to bring together thousands of trusted sellers, millions of products, and a platform that actually felt good to use. Since 2020, we've grown from a small team of five to a global marketplace serving customers in over 190 countries. But our core belief hasn't changed: shopping should be simple, honest, and built for people — not algorithms."
+	},
+	"values": {
+		"quality": {
+			"title": "Quality",
+			"description": "Every product is vetted for excellence before it reaches you."
+		},
+		"speed": {
+			"title": "Speed",
+			"description": "Same-day dispatch and next-day delivery across the region."
+		},
+		"trust": {
+			"title": "Trust",
+			"description": "Transparent pricing, honest reviews, and no hidden fees."
+		},
+		"simplicity": {
+			"title": "Simplicity",
+			"description": "Shopping should feel effortless — we obsess over the details."
+		}
+	},
+	"developers": {
+		"title": "Developers",
+		"frontend": "Frontend Developer",
+		"backend": "Backend Developer"
+	}
+}
