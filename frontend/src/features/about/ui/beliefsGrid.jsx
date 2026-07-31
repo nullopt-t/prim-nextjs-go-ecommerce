@@ -5,30 +5,26 @@ export default function BeliefsGrid() {
 	const beliefsArr = [
 		{
 			id: "quality-cdkt",
-			title: "Quality",
-			subTitle:
-				"Every product is vetted for excellence before it reaches you.",
+			title: "values.quality.title",
+			subTitle: "values.quality.description",
 			icon: Star,
 		},
 		{
 			id: "speed-cdkt",
-			title: "Speed",
-			subTitle:
-				"Same-day dispatch and next-day delivery across the region.",
+			title: "values.speed.title",
+			subTitle: "values.speed.description",
 			icon: Gauge,
 		},
 		{
 			id: "trust-cdkt",
-			title: "Trust",
-			subTitle:
-				"Transparent pricing, honest reviews, and no hidden fees.",
+			title: "values.trust.title",
+			subTitle: "values.trust.description",
 			icon: ShieldCheck,
 		},
 		{
 			id: "Simplicity-cdkt",
-			title: "Simplicity",
-			subTitle:
-				"Shopping should feel effortless — we obsess over the details",
+			title: "values.simplicity.title",
+			subTitle: "values.simplicity.description",
 			icon: Smile,
 		},
 	];
