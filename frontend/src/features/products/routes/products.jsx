@@ -1,4 +1,4 @@
-import ProductsLayout from "@/features/products/layout/productsLayout";
+import ProductsLayout from "@/features/products/components/layout/productsLayout";
 import MainLayout from "@/components/layouts/mainLayout";
 
 export function Products() {

@@ -7,7 +7,9 @@ function SideBarFilters() {
 				<SlidersHorizontal />
 				<p className="">Filters</p>
 			</div>
-			<p className="cursor-pointer">Clear all</p>
+			<p className="cursor-pointer text-accent-brand font-medium">
+				Clear all
+			</p>
 		</div>
 	);
 }

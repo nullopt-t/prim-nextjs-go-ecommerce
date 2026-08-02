@@ -1,11 +1,10 @@
 import ProductsGrid from "@/components/ui/productsGrid";
-import SectionTitle from "@/features/home/components/ui/sectionTitle";
 import Image from "@/assets/imgs/placeholders/product.jpeg";
 
-export default function ProductsSection() {
-	const cards = [
+export default function Content() {
+	const products = [
 		{
-			id: "pfd-1",
+			id: "pfd-sf1",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
@@ -18,7 +17,7 @@ export default function ProductsSection() {
 			discountPercentage: "37%",
 		},
 		{
-			id: "pfd-1",
+			id: "pfd-asfd1",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
@@ -31,7 +30,7 @@ export default function ProductsSection() {
 			discountPercentage: "37%",
 		},
 		{
-			id: "pfd-1",
+			id: "asfdas-1",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
@@ -44,7 +43,7 @@ export default function ProductsSection() {
 			discountPercentage: "37%",
 		},
 		{
-			id: "pfd-1",
+			id: "safsafda-1",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
@@ -57,7 +56,7 @@ export default function ProductsSection() {
 			discountPercentage: "37%",
 		},
 		{
-			id: "pfd-1",
+			id: "safsdafc-1",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
@@ -72,14 +71,9 @@ export default function ProductsSection() {
 	];
 
 	return (
-		<div className="">
-			<div className="mb-2.5">
-				<SectionTitle title="featuredProducts.title" />
-			</div>
-			<ProductsGrid
-				products={cards}
-				className="grid-cols-2 md:grid-cols-4 lg:grid-cols-5"
-			/>
-		</div>
+		<ProductsGrid
+			products={products}
+			className="grid-cols-2 lg:grid-cols-4"
+		/>
 	);
 }
