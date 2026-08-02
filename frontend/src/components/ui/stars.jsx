@@ -2,7 +2,7 @@ import { Star } from "lucide-react";
 
 export default function Stars({ starsNum = 0 }) {
 	return (
-		<div className="flex">
+		<span className="flex">
 			{Array.from({ length: 5 }).map((_, index) => {
 				const isFilled = index < starsNum;
 
@@ -17,6 +17,6 @@ export default function Stars({ starsNum = 0 }) {
 					/>
 				);
 			})}
-		</div>
+		</span>
 	);
 }

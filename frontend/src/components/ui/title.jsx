@@ -1,11 +1,12 @@
-import { useTranslation } from "react-i18next";
-
-export default function Title({ title }) {
-	const { t } = useTranslation("about");
-
+export default function Title({ title, subtitle }) {
 	return (
-		<p className="mb-5 font-medium text-title-lg md:text-title-md lg:text-title-lg text-foreground">
-			{t(title)}
+		<p className="flex flex-col mb-5">
+			<span className="font-medium text-title-lg md:text-title-md lg:text-title-lg text-foreground">
+				{title}
+			</span>
+			<span className="text-txt-lg md:text-txt-md lg:text-txt-lg text-muted-foreground">
+				{subtitle}
+			</span>
 		</p>
 	);
 }

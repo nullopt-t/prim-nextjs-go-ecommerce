@@ -1,5 +1,6 @@
 import { ChevronUp } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import SideBarTitle from "@/features/products/components/ui/sideBarTitle";
 
 function SideBarCategories() {
 	const catRef = useRef(null);
@@ -33,9 +34,9 @@ function SideBarCategories() {
 	}, [isOpen]);
 
 	return (
-		<div>
+		<div className="border-b border-border pb-5">
 			<p className="flex justify-between items-center">
-				<span className="text-foreground uppercase">Category</span>
+				<SideBarTitle title="category" />
 
 				<button
 					type="button"
@@ -52,7 +53,7 @@ function SideBarCategories() {
 
 			<div
 				style={{ height: `${height}px` }}
-				className="bg-amber-700 transition-[height] duration-300 ease-in-out"
+				className="transition-[height] duration-300 ease-in-out"
 			>
 				<ul ref={catRef} className="mt-3 space-y-2">
 					{categories.map((category) => (
@@ -65,8 +66,6 @@ function SideBarCategories() {
 					))}
 				</ul>
 			</div>
-
-			<p className="bg-red-500 mt-4">Test</p>
 		</div>
 	);
 }

@@ -3,8 +3,10 @@ import MohamedImg from "@/assets/imgs/team/Mohamed.jpg";
 import { FaLinkedinIn, FaGithub } from "react-icons/fa6";
 import Contributors from "@/features/about/ui/contributors";
 import Title from "@/components/ui/title";
+import { useTranslation } from "react-i18next";
 
 export default function Team() {
+	const { t } = useTranslation("about");
 	const ContArr = [
 		{
 			id: "m-mahmoud-alsaid",
@@ -48,7 +50,7 @@ export default function Team() {
 
 	return (
 		<div className="">
-			<Title title="developers.title" />
+			<Title title={t("developers.title")} />
 			<div className="flex flex-wrap gap-15">
 				{ContArr.map((contributorObj) => (
 					<Contributors
