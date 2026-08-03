@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 )
 
 type BrandHandler struct {
@@ -112,7 +112,7 @@ func (bh *BrandHandler) GetBrandByID(c *gin.Context) {
 	brandID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(
-			security.ErrInvalidUUID().WithFields(
+			apierr.ErrInvalidUUID().WithFields(
 				api.FieldError{
 					Field:   "brand_id",
 					Message: "invalid brand UUID format",
@@ -161,7 +161,7 @@ func (bh *BrandHandler) UpdateBrand(c *gin.Context) {
 	brandID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(
-			security.ErrInvalidUUID().WithFields(
+			apierr.ErrInvalidUUID().WithFields(
 				api.FieldError{
 					Field:   "brand_id",
 					Message: "invalid brand UUID format",
@@ -212,7 +212,7 @@ func (bh *BrandHandler) DeleteBrandByID(c *gin.Context) {
 	brandID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(
-			security.ErrInvalidUUID().WithFields(
+			apierr.ErrInvalidUUID().WithFields(
 				api.FieldError{
 					Field:   "brand_id",
 					Message: "invalid brand UUID format",

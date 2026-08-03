@@ -25,6 +25,7 @@ const docTemplate = `{
     "paths": {
         "/admin/brands": {
             "get": {
+                "description": "list all brands in pages for administration",
                 "consumes": [
                     "application/json"
                 ],
@@ -34,7 +35,7 @@ const docTemplate = `{
                 "tags": [
                     "Brand"
                 ],
-                "summary": "list all the brands in pages",
+                "summary": "list all brands including soft-deleted ones (admin)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -62,7 +63,7 @@ const docTemplate = `{
                         "collectionFormat": "csv",
                         "example": [
                             "name",
-                            "-age"
+                            "-created_at"
                         ],
                         "name": "sort",
                         "in": "query"
@@ -82,7 +83,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/brand.BrandResponse"
+                                                "$ref": "#/definitions/brand.AdminBrandResponse"
                                             }
                                         },
                                         "meta": {
@@ -91,6 +92,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
@@ -102,7 +109,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "create a new products brand",
+                "description": "create a new product brand",
                 "consumes": [
                     "application/json"
                 ],
@@ -112,7 +119,7 @@ const docTemplate = `{
                 "tags": [
                     "Brand"
                 ],
-                "summary": "create a new products brand",
+                "summary": "create a new product brand",
                 "parameters": [
                     {
                         "description": "brand data",
@@ -141,6 +148,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "409": {
@@ -174,8 +187,11 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "format": "uuid",
+                        "description": "Brand ID (UUID)",
                         "name": "id",
-                        "in": "path"
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -195,6 +211,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "404": {
@@ -212,7 +234,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "update a brand",
+                "description": "soft-delete an active brand by id",
                 "consumes": [
                     "application/json"
                 ],
@@ -222,42 +244,34 @@ const docTemplate = `{
                 "tags": [
                     "Brand"
                 ],
-                "summary": "update a brand",
+                "summary": "soft-delete a brand",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "brand id",
+                        "format": "uuid",
+                        "description": "Brand ID (UUID)",
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "brand input",
-                        "name": "input",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/brand.UpdateBrandRequest"
-                        }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/brand.BrandResponse"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
@@ -269,7 +283,7 @@ const docTemplate = `{
                 }
             },
             "patch": {
-                "description": "update a brand",
+                "description": "update specific brand fields by id",
                 "consumes": [
                     "application/json"
                 ],
@@ -283,13 +297,14 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "brand id",
+                        "format": "uuid",
+                        "description": "Brand ID (UUID)",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "brand input",
+                        "description": "brand update payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -302,19 +317,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/api.DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/brand.BrandResponse"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
@@ -328,7 +349,7 @@ const docTemplate = `{
         },
         "/admin/categories": {
             "get": {
-                "description": "list all categories",
+                "description": "list all categories including soft-deleted ones for administration",
                 "consumes": [
                     "application/json"
                 ],
@@ -338,7 +359,7 @@ const docTemplate = `{
                 "tags": [
                     "Category"
                 ],
-                "summary": "list all categories",
+                "summary": "list all categories (admin)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -366,7 +387,7 @@ const docTemplate = `{
                         "collectionFormat": "csv",
                         "example": [
                             "name",
-                            "-age"
+                            "-created_at"
                         ],
                         "name": "sort",
                         "in": "query"
@@ -386,7 +407,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/category.CategoryResponse"
+                                                "$ref": "#/definitions/category.AdminCategoryResponse"
                                             }
                                         },
                                         "meta": {
@@ -425,7 +446,7 @@ const docTemplate = `{
                 "summary": "create a new category",
                 "parameters": [
                     {
-                        "description": "Category Data ",
+                        "description": "Category Data",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -446,7 +467,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/category.CategoryResponse"
+                                            "$ref": "#/definitions/category.AdminCategoryResponse"
                                         }
                                     }
                                 }
@@ -459,8 +480,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -509,7 +530,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/category.CategoryResponse"
+                                            "$ref": "#/definitions/category.AdminCategoryResponse"
                                         }
                                     }
                                 }
@@ -537,7 +558,7 @@ const docTemplate = `{
                 }
             },
             "patch": {
-                "description": "update a category details",
+                "description": "update category details by id",
                 "consumes": [
                     "application/json"
                 ],
@@ -547,15 +568,18 @@ const docTemplate = `{
                 "tags": [
                     "Category"
                 ],
-                "summary": "update a category details",
+                "summary": "update category details",
                 "parameters": [
                     {
                         "type": "string",
+                        "format": "uuid",
+                        "description": "Category ID (UUID)",
                         "name": "id",
-                        "in": "path"
+                        "in": "path",
+                        "required": true
                     },
                     {
-                        "description": "category details",
+                        "description": "Category details",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -576,13 +600,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/category.CategoryResponse"
-                                            }
-                                        },
-                                        "meta": {
-                                            "$ref": "#/definitions/api.Page"
+                                            "$ref": "#/definitions/category.AdminCategoryResponse"
                                         }
                                     }
                                 }
@@ -601,6 +619,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -610,19 +634,15 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/tags": {
+        "/admin/products": {
             "get": {
-                "description": "list all tags",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Tag"
+                    "Products"
                 ],
-                "summary": "list all tags",
+                "summary": "list all products including soft-deleted ones (admin)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -650,7 +670,7 @@ const docTemplate = `{
                         "collectionFormat": "csv",
                         "example": [
                             "name",
-                            "-age"
+                            "-created_at"
                         ],
                         "name": "sort",
                         "in": "query"
@@ -670,7 +690,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/tag.TagResponse"
+                                                "$ref": "#/definitions/product.ProductListItem"
                                             }
                                         },
                                         "meta": {
@@ -679,6 +699,985 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "create a new draft product",
+                "parameters": [
+                    {
+                        "description": "Product Data",
+                        "name": "product",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/product.CreateProductRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/product.ProductResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/products/{id}": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "soft-delete a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "update product details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/product.UpdateProductRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/products/{id}/archive": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "archive a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/products/{id}/categories": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "update the category of a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Category ID to assign",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/product.PutProductCategoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/products/{id}/media": {
+            "post": {
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Product Media"
+                ],
+                "summary": "upload media file for a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Media File",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/product.ProductMediaResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/products/{id}/media/reorder": {
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Product Media"
+                ],
+                "summary": "batch reorder media items for a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "ordered media IDs",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/product.ReorderMediaRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/products/{id}/media/{media_id}": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Product Media"
+                ],
+                "summary": "remove a media attachment from a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Media ID (UUID)",
+                        "name": "media_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/products/{id}/publish": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "publish a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/products/{id}/tags": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "replace all tag assignments for a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tag IDs to assign",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/product.PutProductTagsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/products/{id}/variants": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Product Variants"
+                ],
+                "summary": "create a variant under a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Variant Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/product.CreateProductVariantRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/variant.VariantResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/products/{id}/variants/default": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Product Variants"
+                ],
+                "summary": "set a variant as the default for a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Variant to set as default",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/product.SetDefaultVariantRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/products/{product_id}/variants": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant"
+                ],
+                "summary": "list all variants for a product including soft-deleted ones (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "product_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/variant.AdminVariantResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/api.Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant"
+                ],
+                "summary": "create a product variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "product_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "variant payload",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/variant.CreateVariantRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/variant.VariantResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/tags": {
+            "get": {
+                "description": "list all tags including soft-deleted ones for administration",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tag"
+                ],
+                "summary": "list all tags (admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/tag.AdminTagResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/api.Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "create a new product tag",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tag"
+                ],
+                "summary": "create a new product tag",
+                "parameters": [
+                    {
+                        "description": "tag data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/tag.CreateTagRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/tag.TagResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
@@ -691,8 +1690,8 @@ const docTemplate = `{
             }
         },
         "/admin/tags/{id}": {
-            "delete": {
-                "description": "update a tag",
+            "get": {
+                "description": "get tag by id",
                 "consumes": [
                     "application/json"
                 ],
@@ -702,23 +1701,15 @@ const docTemplate = `{
                 "tags": [
                     "Tag"
                 ],
-                "summary": "update a tag",
+                "summary": "get tag by id",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "tag id",
+                        "format": "uuid",
+                        "description": "Tag ID (UUID)",
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "tag input",
-                        "name": "input",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/tag.UpdateTagRequest"
-                        }
                     }
                 ],
                 "responses": {
@@ -732,12 +1723,73 @@ const docTemplate = `{
                                 {
                                     "type": "object",
                                     "properties": {
-                                        "message": {
-                                            "type": "string"
+                                        "data": {
+                                            "$ref": "#/definitions/tag.TagResponse"
                                         }
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "soft-delete a tag by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tag"
+                ],
+                "summary": "delete a tag",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Tag ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
@@ -749,7 +1801,7 @@ const docTemplate = `{
                 }
             },
             "patch": {
-                "description": "update a tag",
+                "description": "update a tag details by id",
                 "consumes": [
                     "application/json"
                 ],
@@ -763,13 +1815,14 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "tag id",
+                        "format": "uuid",
+                        "description": "Tag ID (UUID)",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "tag input",
+                        "description": "tag update payload",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -782,6 +1835,175 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/variants/{id}": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant"
+                ],
+                "summary": "soft-delete a product variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant"
+                ],
+                "summary": "update a product variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "variant update payload",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/variant.UpdateVariantRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/variants/{id}/media": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant Media"
+                ],
+                "summary": "attach a storage object to a variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "media attachment details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/variant.AttachMediaRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
                             "allOf": [
                                 {
                                     "$ref": "#/definitions/api.DataResponse"
@@ -789,12 +2011,132 @@ const docTemplate = `{
                                 {
                                     "type": "object",
                                     "properties": {
-                                        "message": {
-                                            "type": "string"
+                                        "data": {
+                                            "$ref": "#/definitions/variant.VariantMediaResponse"
                                         }
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/variants/{id}/media/reorder": {
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant Media"
+                ],
+                "summary": "batch reorder media items for a variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "ordered media IDs",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/variant.ReorderMediaRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/variants/{id}/media/{media_id}": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant Media"
+                ],
+                "summary": "remove a media attachment from a variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Media ID (UUID)",
+                        "name": "media_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
@@ -1105,7 +2447,7 @@ const docTemplate = `{
         },
         "/brands": {
             "get": {
-                "description": "list all the brands in pages",
+                "description": "list public active brands in pages",
                 "consumes": [
                     "application/json"
                 ],
@@ -1115,7 +2457,7 @@ const docTemplate = `{
                 "tags": [
                     "Brand"
                 ],
-                "summary": "list all the brands in pages",
+                "summary": "list public active brands",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1143,7 +2485,7 @@ const docTemplate = `{
                         "collectionFormat": "csv",
                         "example": [
                             "name",
-                            "-age"
+                            "-created_at"
                         ],
                         "name": "sort",
                         "in": "query"
@@ -1174,6 +2516,12 @@ const docTemplate = `{
                             ]
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1185,7 +2533,7 @@ const docTemplate = `{
         },
         "/categories": {
             "get": {
-                "description": "list all categories",
+                "description": "list all public active categories",
                 "consumes": [
                     "application/json"
                 ],
@@ -1223,7 +2571,7 @@ const docTemplate = `{
                         "collectionFormat": "csv",
                         "example": [
                             "name",
-                            "-age"
+                            "-created_at"
                         ],
                         "name": "sort",
                         "in": "query"
@@ -1271,17 +2619,13 @@ const docTemplate = `{
         },
         "/products": {
             "get": {
-                "description": "Get all products",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Products"
                 ],
-                "summary": "Get all products",
+                "summary": "list active products",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1309,7 +2653,7 @@ const docTemplate = `{
                         "collectionFormat": "csv",
                         "example": [
                             "name",
-                            "-age"
+                            "-created_at"
                         ],
                         "name": "sort",
                         "in": "query"
@@ -1319,13 +2663,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.SuccessResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/product.ProductListItem"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/api.Page"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.BadReqResponse"
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
@@ -1335,37 +2697,92 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "post": {
-                "description": "Create a new product",
-                "consumes": [
-                    "application/json"
-                ],
+            }
+        },
+        "/products/p/:pid": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Products"
                 ],
-                "summary": "Create a new product",
+                "summary": "get product details by public ID",
                 "parameters": [
                     {
-                        "description": "Product Data",
-                        "name": "product",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/product.CreateProductRequest"
-                        }
+                        "type": "string",
+                        "description": "Product Public ID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.SuccessResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/product.ProductDetailsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "get product by id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1381,7 +2798,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.BadReqResponse"
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "404": {
@@ -1389,27 +2806,30 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
                     }
                 }
             }
         },
-        "/products/{id}": {
+        "/products/{id}/media": {
             "get": {
-                "description": "Get a product by passing it's id",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Product Media"
                 ],
-                "summary": "Get a product by id",
+                "summary": "list all media for a product",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Product ID",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -1419,17 +2839,32 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/product.ProductResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/product.ProductMediaResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.BadReqResponse"
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -1437,24 +2872,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/products/{pid}": {
+        "/products/{id}/variants": {
             "get": {
-                "description": "Get a product by passing it's slug",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Product Variants"
                 ],
-                "summary": "Get a product by slug",
+                "summary": "list public variants for a product",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Product public ID",
-                        "name": "pid",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -1463,17 +2895,125 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/product.ProductResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/variant.VariantResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/api.Page"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.BadReqResponse"
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/{product_id}/variants": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant"
+                ],
+                "summary": "list public variants for a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "product_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/variant.VariantResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/api.Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -1483,7 +3023,7 @@ const docTemplate = `{
         },
         "/tags": {
             "get": {
-                "description": "list all tags",
+                "description": "list public active tags in pages",
                 "consumes": [
                     "application/json"
                 ],
@@ -1493,7 +3033,7 @@ const docTemplate = `{
                 "tags": [
                     "Tag"
                 ],
-                "summary": "list all tags",
+                "summary": "list public active tags",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1521,7 +3061,7 @@ const docTemplate = `{
                         "collectionFormat": "csv",
                         "example": [
                             "name",
-                            "-age"
+                            "-created_at"
                         ],
                         "name": "sort",
                         "in": "query"
@@ -1552,6 +3092,12 @@ const docTemplate = `{
                             ]
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1559,33 +3105,30 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "post": {
-                "description": "create a new products tag",
-                "consumes": [
-                    "application/json"
-                ],
+            }
+        },
+        "/variants/{id}": {
+            "get": {
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Tag"
+                    "Variant"
                 ],
-                "summary": "create a new products tag",
+                "summary": "get variant by id",
                 "parameters": [
                     {
-                        "description": "tag data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/tag.CreateTagRequest"
-                        }
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
@@ -1595,7 +3138,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/tag.TagResponse"
+                                            "$ref": "#/definitions/variant.VariantResponse"
                                         }
                                     }
                                 }
@@ -1623,35 +3166,49 @@ const docTemplate = `{
                 }
             }
         },
-        "/tags/{id}": {
+        "/variants/{id}/media": {
             "get": {
-                "description": "get tag by id",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Tag"
+                    "Variant Media"
                 ],
-                "summary": "get tag by id",
+                "summary": "list all media for a variant",
                 "parameters": [
                     {
                         "type": "string",
+                        "format": "uuid",
+                        "description": "Variant ID (UUID)",
                         "name": "id",
-                        "in": "path"
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.DataResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/variant.VariantMediaResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -1711,6 +3268,10 @@ const docTemplate = `{
                 "field": {
                     "type": "string",
                     "example": "name"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "x should be integer"
                 },
                 "tags": {
                     "type": "string",
@@ -1790,16 +3351,6 @@ const docTemplate = `{
                 "SortAsc",
                 "SortDesc"
             ]
-        },
-        "api.SuccessResponse": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "message": {
-                    "type": "string"
-                },
-                "meta": {}
-            }
         },
         "api.UnauthorizedResponse": {
             "type": "object",
@@ -1899,7 +3450,7 @@ const docTemplate = `{
                 }
             }
         },
-        "brand.BrandResponse": {
+        "brand.AdminBrandResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -1911,6 +3462,43 @@ const docTemplate = `{
                     "example": "2026-07-01T05:04:38Z"
                 },
                 "id": {
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "link": {
+                    "type": "string",
+                    "example": "https://nvidia.com"
+                },
+                "logo_storage_object_id": {
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "nvidia"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-07-01T05:04:38Z"
+                }
+            }
+        },
+        "brand.BrandResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-07-01T05:04:38Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "link": {
+                    "type": "string",
+                    "example": "https://nvidia.com"
+                },
+                "logo_storage_object_id": {
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
@@ -1930,6 +3518,10 @@ const docTemplate = `{
                 "name"
             ],
             "properties": {
+                "link": {
+                    "type": "string",
+                    "example": "https://apple.com"
+                },
                 "name": {
                     "type": "string",
                     "example": "apple"
@@ -1939,18 +3531,30 @@ const docTemplate = `{
         "brand.UpdateBrandRequest": {
             "type": "object",
             "properties": {
+                "link": {
+                    "type": "string",
+                    "example": "https://apple.com"
+                },
+                "logo_storage_object_id": {
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
                 "name": {
                     "type": "string",
                     "example": "apple"
                 }
             }
         },
-        "category.CategoryResponse": {
+        "category.AdminCategoryResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
                     "type": "string",
                     "example": "2026-06-30T15:47:19Z"
+                },
+                "deleted_at": {
+                    "type": "string",
+                    "example": "2026-07-01T10:00:00Z"
                 },
                 "id": {
                     "type": "string",
@@ -1958,19 +3562,11 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string",
-                    "example": "Electronic"
+                    "example": "Electronics"
                 },
                 "parent_id": {
                     "type": "string",
                     "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                },
-                "publication_status": {
-                    "type": "string",
-                    "example": "published"
-                },
-                "slug": {
-                    "type": "string",
-                    "example": "electronic"
                 },
                 "updated_at": {
                     "type": "string",
@@ -1985,16 +3581,10 @@ const docTemplate = `{
             ],
             "properties": {
                 "name": {
-                    "type": "string",
-                    "example": "electronic"
+                    "type": "string"
                 },
                 "parent_id": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                },
-                "slug": {
-                    "type": "string",
-                    "example": "electronic"
+                    "type": "string"
                 }
             }
         },
@@ -2020,17 +3610,26 @@ const docTemplate = `{
             "properties": {
                 "name": {
                     "type": "string",
-                    "example": "electronic"
+                    "example": "Electronics"
                 },
                 "parent_id": {
                     "type": "string",
                     "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                },
-                "publication_status": {
-                    "type": "string",
-                    "example": "published"
                 }
             }
+        },
+        "model.PublicationStatus": {
+            "type": "string",
+            "enum": [
+                "draft",
+                "published",
+                "archived"
+            ],
+            "x-enum-varnames": [
+                "PublicationStatusDraft",
+                "PublicationStatusPublished",
+                "PublicationStatusArchived"
+            ]
         },
         "product.CreateProductRequest": {
             "type": "object",
@@ -2041,39 +3640,89 @@ const docTemplate = `{
             ],
             "properties": {
                 "brand_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
                 },
                 "category_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
                 },
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Premium over-ear Bluetooth headphones with active noise cancellation."
                 },
-                "is_configurable": {
-                    "type": "boolean"
+                "highlights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "title": {
+                    "type": "string",
+                    "example": "Wireless Noise-Canceling Headphones"
+                }
+            }
+        },
+        "product.CreateProductVariantRequest": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossed_out_price": {
+                    "type": "integer",
+                    "example": 3999
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "USD"
+                },
+                "is_default": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "price": {
+                    "type": "integer",
+                    "example": 2999
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Black / XL"
+                }
+            }
+        },
+        "product.ProductBrandSummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 }
             }
         },
-        "product.ProductResponse": {
+        "product.ProductDetailsResponse": {
             "type": "object",
             "properties": {
+                "brand": {
+                    "$ref": "#/definitions/product.ProductBrandSummary"
+                },
                 "brand_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
                 },
                 "category_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
                 },
                 "created_at": {
-                    "type": "string"
-                },
-                "created_by": {
-                    "type": "string"
-                },
-                "default_variant": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2026-08-02T16:00:00Z"
                 },
                 "description": {
                     "type": "string"
@@ -2085,40 +3734,227 @@ const docTemplate = `{
                     }
                 },
                 "id": {
+                    "type": "string",
+                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                },
+                "public_id": {
+                    "type": "string",
+                    "example": "prod_abc123"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "draft"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Wireless Headphones"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-08-02T16:00:00Z"
+                }
+            }
+        },
+        "product.ProductListItem": {
+            "type": "object",
+            "properties": {
+                "brand_id": {
                     "type": "string"
                 },
-                "is_configurable": {
-                    "type": "boolean"
+                "category_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
                 },
                 "public_id": {
                     "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.PublicationStatus"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "product.ProductMediaResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "8f123456-e89b-12d3-a456-426614174000"
+                },
+                "media_type": {
+                    "type": "string",
+                    "example": "image"
+                },
+                "object": {
+                    "$ref": "#/definitions/product.StorageObjectResponse"
+                },
+                "product_id": {
+                    "type": "string",
+                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                },
+                "sort_order": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "storage_object_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                }
+            }
+        },
+        "product.ProductResponse": {
+            "type": "object",
+            "properties": {
+                "brand_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                },
+                "category_id": {
+                    "type": "string",
+                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-08-02T16:00:00Z"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "highlights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string",
+                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                },
+                "public_id": {
+                    "type": "string",
+                    "example": "prod_abc123"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "draft"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Wireless Headphones"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-08-02T16:00:00Z"
+                }
+            }
+        },
+        "product.PutProductCategoryRequest": {
+            "type": "object",
+            "required": [
+                "category_id"
+            ],
+            "properties": {
+                "category_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "product.PutProductTagsRequest": {
+            "type": "object",
+            "required": [
+                "tag_ids"
+            ],
+            "properties": {
+                "tag_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "product.ReorderMediaRequest": {
+            "type": "object",
+            "required": [
+                "ordered_media_ids"
+            ],
+            "properties": {
+                "ordered_media_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "product.SetDefaultVariantRequest": {
+            "type": "object",
+            "required": [
+                "variant_id"
+            ],
+            "properties": {
+                "variant_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "product.StorageObjectResponse": {
+            "type": "object",
+            "properties": {
+                "bucket": {
+                    "type": "string"
+                },
+                "content_type": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "public_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "product.UpdateProductRequest": {
+            "type": "object",
+            "properties": {
+                "brand_id": {
+                    "type": "string"
+                },
+                "category_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "highlights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "status": {
                     "type": "string"
                 },
                 "title": {
                     "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "updated_by": {
-                    "type": "string"
                 }
             }
         },
-        "tag.CreateTagRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "tag.TagResponse": {
+        "tag.AdminTagResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -2137,9 +3973,38 @@ const docTemplate = `{
                     "type": "string",
                     "example": "black-friday"
                 },
-                "publication_status": {
+                "updated_at": {
                     "type": "string",
-                    "example": "published"
+                    "example": "2026-06-30T15:47:19Z"
+                }
+            }
+        },
+        "tag.CreateTagRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "black-friday"
+                }
+            }
+        },
+        "tag.TagResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-06-30T15:47:19Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "black-friday"
                 },
                 "updated_at": {
                     "type": "string",
@@ -2152,7 +4017,248 @@ const docTemplate = `{
             "properties": {
                 "name": {
                     "type": "string",
-                    "example": "best seller"
+                    "example": "best-seller"
+                }
+            }
+        },
+        "variant.AdminVariantResponse": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-08-02T16:00:00Z"
+                },
+                "crossed_out_price": {
+                    "type": "integer",
+                    "example": 3999
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "USD"
+                },
+                "deleted_at": {
+                    "type": "string",
+                    "example": "2026-08-02T16:15:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                },
+                "is_default": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "price": {
+                    "type": "integer",
+                    "example": 2999
+                },
+                "product_id": {
+                    "type": "string",
+                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Red / XL"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-08-02T16:00:00Z"
+                }
+            }
+        },
+        "variant.AttachMediaRequest": {
+            "type": "object",
+            "required": [
+                "media_type",
+                "storage_object_id"
+            ],
+            "properties": {
+                "media_type": {
+                    "type": "string",
+                    "example": "image"
+                },
+                "sort_order": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "storage_object_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                }
+            }
+        },
+        "variant.CreateVariantRequest": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossed_out_price": {
+                    "type": "integer",
+                    "example": 3999
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "USD"
+                },
+                "is_default": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "price": {
+                    "type": "integer",
+                    "example": 2999
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Red / XL"
+                }
+            }
+        },
+        "variant.ReorderMediaRequest": {
+            "type": "object",
+            "required": [
+                "ordered_media_ids"
+            ],
+            "properties": {
+                "ordered_media_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "variant.StorageObjectResponse": {
+            "type": "object",
+            "properties": {
+                "bucket": {
+                    "type": "string"
+                },
+                "content_type": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "public_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "variant.UpdateVariantRequest": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossed_out_price": {
+                    "type": "integer",
+                    "example": 4499
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "USD"
+                },
+                "is_default": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "price": {
+                    "type": "integer",
+                    "example": 3499
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Red / XXL"
+                }
+            }
+        },
+        "variant.VariantMediaResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "8f123456-e89b-12d3-a456-426614174000"
+                },
+                "media_type": {
+                    "type": "string",
+                    "example": "image"
+                },
+                "object": {
+                    "$ref": "#/definitions/variant.StorageObjectResponse"
+                },
+                "sort_order": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "storage_object_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                },
+                "variant_id": {
+                    "type": "string",
+                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                }
+            }
+        },
+        "variant.VariantResponse": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-08-02T16:00:00Z"
+                },
+                "crossed_out_price": {
+                    "type": "integer",
+                    "example": 3999
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "USD"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                },
+                "is_default": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "price": {
+                    "type": "integer",
+                    "example": 2999
+                },
+                "product_id": {
+                    "type": "string",
+                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Red / XL"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-08-02T16:00:00Z"
                 }
             }
         }

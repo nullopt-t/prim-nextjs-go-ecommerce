@@ -10,7 +10,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/types"
 )
 
@@ -184,7 +184,7 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 
 	categoryID, err := uuid.Parse(body.CategoryID)
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "category_id",
 			Message: "invalid category UUID format",
 		}))
@@ -201,7 +201,7 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 	if body.BrandID != nil {
 		brandID, err := uuid.Parse(*body.BrandID)
 		if err != nil {
-			_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+			_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 				Field:   "brand_id",
 				Message: "invalid brand UUID format",
 			}))
@@ -292,7 +292,7 @@ func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
 func (h *ProductHandler) GetProductByID(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -360,7 +360,7 @@ func (h *ProductHandler) GetProductByPID(c *gin.Context) {
 func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -382,7 +382,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	if body.BrandID != nil {
 		parsedBrand, err := uuid.Parse(*body.BrandID)
 		if err != nil {
-			_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+			_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 				Field:   "brand_id",
 				Message: "invalid brand UUID format",
 			}))
@@ -394,7 +394,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	if body.CategoryID != nil {
 		parsedCat, err := uuid.Parse(*body.CategoryID)
 		if err != nil {
-			_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+			_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 				Field:   "category_id",
 				Message: "invalid category UUID format",
 			}))
@@ -406,9 +406,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	if body.Status != nil {
 		ps, err := model.ParsePublicationStatus(*body.Status)
 		if err != nil {
-			_ = c.Error(security.NewSecureError(http.StatusBadRequest).
-				WithCode("INVALID_STATUS").
-				WithMessage("invalid publication status"))
+			_ = c.Error(apierr.New(http.StatusBadRequest, "invalid publication status").WithCode(apierr.CodeValidationFailed))
 			return
 		}
 		input.Status = &ps
@@ -437,7 +435,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 func (h *ProductHandler) PublishProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -467,7 +465,7 @@ func (h *ProductHandler) PublishProduct(c *gin.Context) {
 func (h *ProductHandler) ArchiveProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -497,7 +495,7 @@ func (h *ProductHandler) ArchiveProduct(c *gin.Context) {
 func (h *ProductHandler) SoftDeleteProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -530,7 +528,7 @@ func (h *ProductHandler) SoftDeleteProduct(c *gin.Context) {
 func (h *ProductHandler) UploadProductMedia(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -539,9 +537,8 @@ func (h *ProductHandler) UploadProductMedia(c *gin.Context) {
 
 	mfile, err := c.FormFile("file")
 	if err != nil {
-		_ = c.Error(security.NewSecureError(http.StatusBadRequest).
-			WithCode("FILE_REQUIRED").
-			WithMessage("file is required"))
+		_ = c.Error(apierr.New(http.StatusBadRequest, "file is required").
+			WithCode(apierr.CodeFileRequired))
 		return
 	}
 
@@ -568,7 +565,7 @@ func (h *ProductHandler) UploadProductMedia(c *gin.Context) {
 func (h *ProductHandler) GetProductMedia(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -605,7 +602,7 @@ func (h *ProductHandler) GetProductMedia(c *gin.Context) {
 func (h *ProductHandler) DetachMedia(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -614,7 +611,7 @@ func (h *ProductHandler) DetachMedia(c *gin.Context) {
 
 	mediaID, err := uuid.Parse(c.Param("media_id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "media_id",
 			Message: "invalid media UUID format",
 		}))
@@ -645,7 +642,7 @@ func (h *ProductHandler) DetachMedia(c *gin.Context) {
 func (h *ProductHandler) ReorderMedia(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -662,7 +659,7 @@ func (h *ProductHandler) ReorderMedia(c *gin.Context) {
 	for _, idStr := range body.OrderedMediaIDs {
 		parsed, err := uuid.Parse(idStr)
 		if err != nil {
-			_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+			_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 				Field:   "ordered_media_ids",
 				Message: "invalid UUID in ordered list",
 			}))
@@ -697,7 +694,7 @@ func (h *ProductHandler) ReorderMedia(c *gin.Context) {
 func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -751,7 +748,7 @@ func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 func (h *ProductHandler) GetProductVariants(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -812,7 +809,7 @@ func (h *ProductHandler) GetProductVariants(c *gin.Context) {
 func (h *ProductHandler) SetDefaultVariant(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -827,7 +824,7 @@ func (h *ProductHandler) SetDefaultVariant(c *gin.Context) {
 
 	variantID, err := uuid.Parse(body.VariantID)
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "variant_id",
 			Message: "invalid variant UUID format",
 		}))
@@ -858,7 +855,7 @@ func (h *ProductHandler) SetDefaultVariant(c *gin.Context) {
 func (h *ProductHandler) PutProductTags(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -875,7 +872,7 @@ func (h *ProductHandler) PutProductTags(c *gin.Context) {
 	for _, idStr := range body.TagIDs {
 		parsed, err := uuid.Parse(idStr)
 		if err != nil {
-			_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+			_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 				Field:   "tag_ids",
 				Message: "invalid UUID in tag list",
 			}))
@@ -909,7 +906,7 @@ func (h *ProductHandler) PutProductTags(c *gin.Context) {
 func (h *ProductHandler) PutProductCategories(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -924,7 +921,7 @@ func (h *ProductHandler) PutProductCategories(c *gin.Context) {
 
 	categoryID, err := uuid.Parse(body.CategoryID)
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "category_id",
 			Message: "invalid category UUID format",
 		}))
@@ -941,4 +938,3 @@ func (h *ProductHandler) PutProductCategories(c *gin.Context) {
 		Message: "product category updated successfully",
 	})
 }
-

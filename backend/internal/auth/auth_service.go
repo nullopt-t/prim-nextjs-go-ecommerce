@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 
@@ -192,9 +192,10 @@ func (s *AuthService) VerifyChallange(
 	}
 
 	if !ok {
-		return nil, security.NewSecureError(
+		return nil, apierr.New(
 			http.StatusUnauthorized,
-		)
+			"Unauthorized",
+		).WithCode(apierr.CodeUnauthorized)
 	}
 
 	user, err := s.userService.GetUserByIdentifier(

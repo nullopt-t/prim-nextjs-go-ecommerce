@@ -1,6 +1,6 @@
 module github.com/m-mahmoud-alsaid/prim-backend
 
-go 1.25.0
+go 1.26.5
 
 replace github.com/imdario/mergo => github.com/imdario/mergo v0.3.16
 
@@ -14,6 +14,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/minio/minio-go/v7 v7.2.1
+	github.com/nullopt-t/errs v0.0.0-20260803143755-a57a0d38ef33
 	github.com/nyaruka/phonenumbers v1.8.0
 	github.com/redis/go-redis/v9 v9.20.0
 	github.com/swaggo/files v1.0.1

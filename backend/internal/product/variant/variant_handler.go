@@ -9,7 +9,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 )
 
 type VariantHandler struct {
@@ -155,7 +155,7 @@ func mapVariantMediaResponse(m *model.VariantMedia) VariantMediaResponse {
 func (vh *VariantHandler) CreateVariant(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("product_id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "product_id",
 			Message: "invalid product UUID format",
 		}))
@@ -202,7 +202,7 @@ func (vh *VariantHandler) CreateVariant(c *gin.Context) {
 func (vh *VariantHandler) GetVariantByID(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid variant UUID format",
 		}))
@@ -235,7 +235,7 @@ func (vh *VariantHandler) GetVariantByID(c *gin.Context) {
 func (vh *VariantHandler) UpdateVariantByID(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid variant UUID format",
 		}))
@@ -279,7 +279,7 @@ func (vh *VariantHandler) UpdateVariantByID(c *gin.Context) {
 func (vh *VariantHandler) DeleteVariantByID(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid variant UUID format",
 		}))
@@ -309,7 +309,7 @@ func (vh *VariantHandler) DeleteVariantByID(c *gin.Context) {
 func (vh *VariantHandler) ListVariantsByProductID(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("product_id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "product_id",
 			Message: "invalid product UUID format",
 		}))
@@ -353,7 +353,7 @@ func (vh *VariantHandler) ListVariantsByProductID(c *gin.Context) {
 func (vh *VariantHandler) AdminListVariantsByProductID(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("product_id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "product_id",
 			Message: "invalid product UUID format",
 		}))
@@ -399,7 +399,7 @@ func (vh *VariantHandler) AdminListVariantsByProductID(c *gin.Context) {
 func (vh *VariantHandler) AttachMedia(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid variant UUID format",
 		}))
@@ -414,7 +414,7 @@ func (vh *VariantHandler) AttachMedia(c *gin.Context) {
 
 	objectID, err := uuid.Parse(body.StorageObjectID)
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "storage_object_id",
 			Message: "invalid storage object UUID format",
 		}))
@@ -449,7 +449,7 @@ func (vh *VariantHandler) AttachMedia(c *gin.Context) {
 func (vh *VariantHandler) ListVariantMedia(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid variant UUID format",
 		}))
@@ -486,7 +486,7 @@ func (vh *VariantHandler) ListVariantMedia(c *gin.Context) {
 func (vh *VariantHandler) DetachMedia(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid variant UUID format",
 		}))
@@ -495,7 +495,7 @@ func (vh *VariantHandler) DetachMedia(c *gin.Context) {
 
 	mediaID, err := uuid.Parse(c.Param("media_id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "media_id",
 			Message: "invalid media UUID format",
 		}))
@@ -526,7 +526,7 @@ func (vh *VariantHandler) DetachMedia(c *gin.Context) {
 func (vh *VariantHandler) ReorderMedia(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid variant UUID format",
 		}))
@@ -543,7 +543,7 @@ func (vh *VariantHandler) ReorderMedia(c *gin.Context) {
 	for _, idStr := range body.OrderedMediaIDs {
 		parsed, err := uuid.Parse(idStr)
 		if err != nil {
-			_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+			_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
 				Field:   "ordered_media_ids",
 				Message: "invalid UUID in ordered list",
 			}))

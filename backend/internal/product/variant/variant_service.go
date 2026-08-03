@@ -9,8 +9,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
@@ -72,15 +73,13 @@ func (vs *VariantService) CreateVariant(
 	in *CreateVariantInput,
 ) (*model.ProductVariant, error) {
 	if in == nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_PAYLOAD").
-			WithMessage("Request body is required")
+		return nil, apierr.New(http.StatusBadRequest, "Request body is required").
+			WithCode(apierr.CodeInvalidPayload)
 	}
 
 	if in.ProductID == uuid.Nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("VALIDATION_FAILED").
-			WithMessage("Validation error").
+		return nil, apierr.New(http.StatusBadRequest, "Validation error").
+			WithCode(apierr.CodeValidationFailed).
 			WithFields(api.FieldError{
 				Field:   "product_id",
 				Message: "product_id is required",
@@ -89,9 +88,8 @@ func (vs *VariantService) CreateVariant(
 
 	title := strings.TrimSpace(in.Title)
 	if title == "" {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("VALIDATION_FAILED").
-			WithMessage("Validation error").
+		return nil, apierr.New(http.StatusBadRequest, "Validation error").
+			WithCode(apierr.CodeValidationFailed).
 			WithFields(api.FieldError{
 				Field:   "title",
 				Message: "title cannot be empty",
@@ -130,9 +128,8 @@ func (vs *VariantService) CreateVariant(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
-			return nil, security.NewSecureError(http.StatusBadRequest).
-				WithCode("PRODUCT_NOT_FOUND").
-				WithMessage("Referenced product does not exist").
+			return nil, apierr.New(http.StatusBadRequest, "Referenced product does not exist").
+				WithCode(errcode.CodeProductNotFound).
 				Wrap(err).
 				WithFields(api.FieldError{
 					Field:   "product_id",
@@ -140,9 +137,8 @@ func (vs *VariantService) CreateVariant(
 				})
 
 		default:
-			return nil, security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to create variant").
+			return nil, apierr.New(http.StatusInternalServerError, "Failed to create variant").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -156,9 +152,8 @@ func (vs *VariantService) GetVariantByID(
 	variantID uuid.UUID,
 ) (*model.ProductVariant, error) {
 	if variantID == uuid.Nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Variant ID is required")
+		return nil, apierr.New(http.StatusBadRequest, "Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	var variant *model.ProductVariant
@@ -172,15 +167,13 @@ func (vs *VariantService) GetVariantByID(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return nil, security.NewSecureError(http.StatusNotFound).
-				WithCode("VARIANT_NOT_FOUND").
-				WithMessage("Variant not found").
+			return nil, apierr.New(http.StatusNotFound, "Variant not found").
+				WithCode(errcode.CodeVariantNotFound).
 				Wrap(err)
 
 		default:
-			return nil, security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to fetch variant").
+			return nil, apierr.New(http.StatusInternalServerError, "Failed to fetch variant").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -195,9 +188,8 @@ func (vs *VariantService) UpdateVariant(
 	in UpdateVariantInput,
 ) error {
 	if variantID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Variant ID is required")
+		return apierr.New(http.StatusBadRequest, "Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	fields := UpdateVariantFields{
@@ -211,9 +203,8 @@ func (vs *VariantService) UpdateVariant(
 	if in.Title != nil {
 		title := strings.TrimSpace(*in.Title)
 		if title == "" {
-			return security.NewSecureError(http.StatusBadRequest).
-				WithCode("VALIDATION_FAILED").
-				WithMessage("Validation error").
+			return apierr.New(http.StatusBadRequest, "Validation error").
+				WithCode(apierr.CodeValidationFailed).
 				WithFields(api.FieldError{
 					Field:   "title",
 					Message: "title cannot be empty",
@@ -239,15 +230,13 @@ func (vs *VariantService) UpdateVariant(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return security.NewSecureError(http.StatusNotFound).
-				WithCode("VARIANT_NOT_FOUND").
-				WithMessage("Variant not found").
+			return apierr.New(http.StatusNotFound, "Variant not found").
+				WithCode(errcode.CodeVariantNotFound).
 				Wrap(err)
 
 		default:
-			return security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to update variant").
+			return apierr.New(http.StatusInternalServerError, "Failed to update variant").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -263,9 +252,8 @@ func (vs *VariantService) ListVariantsByProductID(
 	includeDeleted bool,
 ) (*api.PagedResult[model.ProductVariant], error) {
 	if productID == uuid.Nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Product ID is required")
+		return nil, apierr.New(http.StatusBadRequest, "Product ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	if q == nil {
@@ -284,9 +272,8 @@ func (vs *VariantService) ListVariantsByProductID(
 	})
 
 	if err != nil {
-		return nil, security.NewSecureError(http.StatusInternalServerError).
-			WithCode("INTERNAL_ERROR").
-			WithMessage("Failed to list variants").
+		return nil, apierr.New(http.StatusInternalServerError, "Failed to list variants").
+			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
 	}
@@ -299,9 +286,8 @@ func (vs *VariantService) DeleteVariantByID(
 	variantID uuid.UUID,
 ) error {
 	if variantID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Variant ID is required")
+		return apierr.New(http.StatusBadRequest, "Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
@@ -312,15 +298,13 @@ func (vs *VariantService) DeleteVariantByID(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return security.NewSecureError(http.StatusNotFound).
-				WithCode("VARIANT_NOT_FOUND").
-				WithMessage("Variant not found").
+			return apierr.New(http.StatusNotFound, "Variant not found").
+				WithCode(errcode.CodeVariantNotFound).
 				Wrap(err)
 
 		default:
-			return security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to delete variant").
+			return apierr.New(http.StatusInternalServerError, "Failed to delete variant").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -328,21 +312,20 @@ func (vs *VariantService) DeleteVariantByID(
 
 	return nil
 }
+
 func (vs *VariantService) AttachMedia(
 	ctx context.Context,
 	in AttachMediaInput,
 ) (*model.VariantMedia, error) {
 	if in.VariantID == uuid.Nil || in.StorageObjectID == uuid.Nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Variant ID and Storage Object ID are required")
+		return nil, apierr.New(http.StatusBadRequest, "Variant ID and Storage Object ID are required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	mediaType := strings.TrimSpace(in.MediaType)
 	if mediaType == "" {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("VALIDATION_FAILED").
-			WithMessage("Validation error").
+		return nil, apierr.New(http.StatusBadRequest, "Validation error").
+			WithCode(apierr.CodeValidationFailed).
 			WithFields(api.FieldError{
 				Field:   "media_type",
 				Message: "media_type is required",
@@ -365,21 +348,18 @@ func (vs *VariantService) AttachMedia(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrConflict):
-			return nil, security.NewSecureError(http.StatusConflict).
-				WithCode("MEDIA_ALREADY_ATTACHED").
-				WithMessage("This storage object is already attached to this variant").
+			return nil, apierr.New(http.StatusConflict, "This storage object is already attached to this variant").
+				WithCode(errcode.CodeMediaAlreadyAttached).
 				Wrap(err)
 
 		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
-			return nil, security.NewSecureError(http.StatusBadRequest).
-				WithCode("INVALID_REFERENCE").
-				WithMessage("Referenced variant or storage object does not exist").
+			return nil, apierr.New(http.StatusBadRequest, "Referenced variant or storage object does not exist").
+				WithCode(apierr.CodeInvalidReference).
 				Wrap(err)
 
 		default:
-			return nil, security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to attach media to variant").
+			return nil, apierr.New(http.StatusInternalServerError, "Failed to attach media to variant").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -394,9 +374,8 @@ func (vs *VariantService) DetachMedia(
 	mediaID uuid.UUID,
 ) error {
 	if variantID == uuid.Nil || mediaID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Variant ID and Media ID are required")
+		return apierr.New(http.StatusBadRequest, "Variant ID and Media ID are required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
@@ -407,15 +386,13 @@ func (vs *VariantService) DetachMedia(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return security.NewSecureError(http.StatusNotFound).
-				WithCode("MEDIA_NOT_FOUND").
-				WithMessage("Variant media relationship not found").
+			return apierr.New(http.StatusNotFound, "Variant media relationship not found").
+				WithCode(errcode.CodeMediaNotFound).
 				Wrap(err)
 
 		default:
-			return security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to detach media from variant").
+			return apierr.New(http.StatusInternalServerError, "Failed to detach media from variant").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -430,9 +407,8 @@ func (vs *VariantService) ReorderMedia(
 	orderedMediaIDs []uuid.UUID,
 ) error {
 	if variantID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Variant ID is required")
+		return apierr.New(http.StatusBadRequest, "Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	if len(orderedMediaIDs) == 0 {
@@ -444,23 +420,22 @@ func (vs *VariantService) ReorderMedia(
 	})
 
 	if err != nil {
-		return security.NewSecureError(http.StatusInternalServerError).
-			WithCode("INTERNAL_ERROR").
-			WithMessage("Failed to reorder variant media").
+		return apierr.New(http.StatusInternalServerError, "Failed to reorder variant media").
+			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
 	}
 
 	return nil
 }
+
 func (vs *VariantService) ListVariantMedia(
 	ctx context.Context,
 	variantID uuid.UUID,
 ) ([]*model.VariantMedia, error) {
 	if variantID == uuid.Nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Variant ID is required")
+		return nil, apierr.New(http.StatusBadRequest, "Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	var mediaList []*model.VariantMedia
@@ -471,9 +446,8 @@ func (vs *VariantService) ListVariantMedia(
 	})
 
 	if err != nil {
-		return nil, security.NewSecureError(http.StatusInternalServerError).
-			WithCode("INTERNAL_ERROR").
-			WithMessage("Failed to list variant media").
+		return nil, apierr.New(http.StatusInternalServerError, "Failed to list variant media").
+			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
 	}
@@ -483,7 +457,6 @@ func (vs *VariantService) ListVariantMedia(
 			continue
 		}
 
-		// Fallback to presigned URL if PublicURL is not set
 		if m.Object.PublicURL == "" && m.Object.Bucket != "" && m.Object.Key != "" {
 			presignedGET, err := vs.minioClient.PresignedGetObject(
 				ctx,
@@ -507,24 +480,20 @@ func (vs *VariantService) SetDefaultVariant(
 	variantID uuid.UUID,
 ) error {
 	if productID == uuid.Nil || variantID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Product ID and Variant ID are required")
+		return apierr.New(http.StatusBadRequest, "Product ID and Variant ID are required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		// Verify variant belongs to product
 		v, err := vs.vr.Get(ctx, tx, &Filter{ID: &variantID})
 		if err != nil {
 			return err
 		}
 		if v.ProductID != productID {
-			return security.NewSecureError(http.StatusBadRequest).
-				WithCode("VARIANT_PRODUCT_MISMATCH").
-				WithMessage("Variant does not belong to this product")
+			return apierr.New(http.StatusBadRequest, "Variant does not belong to this product").
+				WithCode(errcode.CodeVariantProductMismatch)
 		}
 
-		// Clear existing defaults then set new one
 		if err := vs.vr.ClearDefaultFlags(ctx, tx, productID); err != nil {
 			return err
 		}
@@ -536,9 +505,8 @@ func (vs *VariantService) SetDefaultVariant(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return security.NewSecureError(http.StatusNotFound).
-				WithCode("VARIANT_NOT_FOUND").
-				WithMessage("Variant not found").
+			return apierr.New(http.StatusNotFound, "Variant not found").
+				WithCode(errcode.CodeVariantNotFound).
 				Wrap(err)
 		default:
 			return err

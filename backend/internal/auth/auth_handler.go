@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
@@ -98,9 +99,10 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 		email, err := utils.IsValidEmail(req.Identifier)
 		if err != nil {
 			_ = c.Error(
-				security.NewSecureError(
+				apierr.New(
 					http.StatusBadRequest,
-				).WithMessage("invalid identifier"),
+					"invalid identifier",
+				),
 			)
 			return
 		}
@@ -260,9 +262,10 @@ func (h *Handler) Refresh(c *gin.Context) {
 func (h *Handler) GetMe(c *gin.Context) {
 	val, exists := c.Get("userID")
 	if !exists {
-		_ = c.Error(security.NewSecureError(
+		_ = c.Error(apierr.New(
 			http.StatusUnauthorized,
-		))
+			"Unauthorized",
+		).WithCode(apierr.CodeUnauthorized))
 		return
 	}
 

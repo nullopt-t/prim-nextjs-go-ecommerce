@@ -9,7 +9,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 )
 
 type CategoryHandler struct {
@@ -124,7 +124,7 @@ func (ch *CategoryHandler) CreateCategory(c *gin.Context) {
 func (ch *CategoryHandler) GetCategoryByID(c *gin.Context) {
 	categoryID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().
+		_ = c.Error(apierr.ErrInvalidUUID().
 			WithFields(api.FieldError{
 				Field:   "id",
 				Message: "invalid category UUID format",
@@ -260,7 +260,7 @@ type UpdateCategoryRequest struct {
 func (ch *CategoryHandler) UpdateCategory(c *gin.Context) {
 	categoryID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(security.ErrInvalidUUID().
+		_ = c.Error(apierr.ErrInvalidUUID().
 			WithFields(api.FieldError{
 				Field:   "id",
 				Message: "invalid category UUID format",

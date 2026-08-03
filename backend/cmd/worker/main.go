@@ -1,16 +1,17 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/notifier"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/html"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/mail"
-	"context"
-	"fmt"
-	"os"
-	"os/signal"
 
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"

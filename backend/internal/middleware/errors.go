@@ -3,11 +3,10 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
-
 	"github.com/gin-gonic/gin"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 )
 
 func ErrorHandler(logger log.Logger) gin.HandlerFunc {
@@ -19,19 +18,17 @@ func ErrorHandler(logger log.Logger) gin.HandlerFunc {
 		}
 
 		err := c.Errors.Last().Err
-		if se, ok := err.(*security.SecureError); ok {
+		if ae, ok := err.(*apierr.ApiError); ok {
 			logger.Error(
 				"something went wrong",
 				log.Meta{
-					"error": se.LogValue(),
+					"error": ae.LogValue(),
 				},
 			)
-			// TODO: map the error code to the status
-			// instead of writing it every where
-			c.JSON(se.Status, api.BadReqResponse{
-				Code:    se.Code,
-				Message: se.Message,
-				Details: se.Fields,
+			c.JSON(ae.Status, api.BadReqResponse{
+				Code:    ae.Code,
+				Message: ae.Error(),
+				Details: ae.Fields,
 			})
 			c.Abort()
 			return

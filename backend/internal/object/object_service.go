@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
@@ -60,13 +60,12 @@ func (os *ObjectService) CreateObject(
 		},
 	)
 	if err != nil {
-		return nil, security.NewSecureError(
+		return nil, apierr.New(
 			http.StatusInternalServerError,
+			"internal server error",
 		).WithCode("INTERNAL_ERROR").
 			Wrap(err).
-			WithMessage("internal server error").
 			WithStack()
-
 	}
 
 	return object, nil

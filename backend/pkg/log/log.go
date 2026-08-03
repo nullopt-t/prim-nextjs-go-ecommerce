@@ -42,7 +42,6 @@ func NewConsoleLogger() *ConsoleLogger {
 	}
 }
 
-
 func (l *ConsoleLogger) Info(msg string, meta ...Meta) {
 	logsData := []any{}
 	for _, m := range meta {

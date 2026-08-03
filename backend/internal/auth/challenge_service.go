@@ -8,7 +8,7 @@ import (
 
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/crypto"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 	"github.com/redis/go-redis/v9"
@@ -77,9 +77,10 @@ func (cs *ChallengeService) Create(
 
 	case existing.Status == "pending":
 		if existing.ResendCount >= MaxResendTimes {
-			return nil, security.NewSecureError(
+			return nil, apierr.New(
 				http.StatusTooManyRequests,
-			)
+				"Too many resend attempts",
+			).WithCode(apierr.CodeRateLimitExceeded)
 		}
 		existing.OtpHash = otpHash
 		existing.ResendCount++
@@ -145,9 +146,10 @@ func (cs *ChallengeService) Get(
 	}
 
 	if len(val) == 0 {
-		return nil, security.NewSecureError(
+		return nil, apierr.New(
 			http.StatusUnauthorized,
-		)
+			"Challenge not found or expired",
+		).WithCode(apierr.CodeUnauthorized)
 	}
 
 	expiresAt, err := time.Parse(time.RFC3339, val["expires_at"])
@@ -205,21 +207,24 @@ func (cs *ChallengeService) Resend(
 	challenge *model.Challenge,
 ) error {
 	if challenge.ResendCount >= MaxResendTimes {
-		return security.NewSecureError(
+		return apierr.New(
 			http.StatusTooManyRequests,
-		)
+			"Too many resend attempts",
+		).WithCode(apierr.CodeRateLimitExceeded)
 	}
 
 	if challenge.Status != "pending" {
-		return security.NewSecureError(
+		return apierr.New(
 			http.StatusGone,
-		)
+			"Challenge expired or invalid",
+		).WithCode(apierr.CodeExpired)
 	}
 
 	if time.Now().After(challenge.ExpiresAt) {
-		return security.NewSecureError(
+		return apierr.New(
 			http.StatusGone,
-		)
+			"Challenge expired",
+		).WithCode(apierr.CodeExpired)
 	}
 
 	newOtp, err := cs.otpGen.GenerateOTP()
@@ -265,21 +270,24 @@ func (cs *ChallengeService) Verify(
 	otp string,
 ) (bool, error) {
 	if challenge.Status == "verified" {
-		return false, security.NewSecureError(
+		return false, apierr.New(
 			http.StatusConflict,
-		)
+			"Challenge already verified",
+		).WithCode(apierr.CodeResourceConflict)
 	}
 
 	if challenge.Status == "expired" {
-		return false, security.NewSecureError(
+		return false, apierr.New(
 			http.StatusGone,
-		)
+			"Challenge expired",
+		).WithCode(apierr.CodeExpired)
 	}
 
 	if time.Now().After(challenge.ExpiresAt) {
-		return false, security.NewSecureError(
+		return false, apierr.New(
 			http.StatusGone,
-		)
+			"Challenge expired",
+		).WithCode(apierr.CodeExpired)
 	}
 
 	ok, err := crypto.Equal(challenge.OtpHash, otp)

@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 )
 
 type TagHandler struct {
@@ -99,7 +99,7 @@ func (th *TagHandler) GetTagByID(c *gin.Context) {
 	tagID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(
-			security.ErrInvalidUUID().WithFields(
+			apierr.ErrInvalidUUID().WithFields(
 				api.FieldError{
 					Field:   "tag_id",
 					Message: "invalid tag UUID format",
@@ -146,7 +146,7 @@ func (th *TagHandler) UpdateTagByID(c *gin.Context) {
 	tagID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(
-			security.ErrInvalidUUID().WithFields(
+			apierr.ErrInvalidUUID().WithFields(
 				api.FieldError{
 					Field:   "tag_id",
 					Message: "invalid tag UUID format",
@@ -162,10 +162,10 @@ func (th *TagHandler) UpdateTagByID(c *gin.Context) {
 		return
 	}
 
-	err = th.tservice.UpdateByID(
+	err = th.tservice.UpdateTagByID(
 		c.Request.Context(),
 		tagID,
-		UpdateTagInput{
+		&UpdateTagInput{
 			Name: body.Name,
 		},
 	)
@@ -195,7 +195,7 @@ func (th *TagHandler) DeleteTagByID(c *gin.Context) {
 	tagID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(
-			security.ErrInvalidUUID().WithFields(
+			apierr.ErrInvalidUUID().WithFields(
 				api.FieldError{
 					Field:   "tag_id",
 					Message: "invalid tag UUID format",
@@ -205,7 +205,7 @@ func (th *TagHandler) DeleteTagByID(c *gin.Context) {
 		return
 	}
 
-	if err := th.tservice.DeleteByID(c.Request.Context(), tagID); err != nil {
+	if err := th.tservice.DeleteTagByID(c.Request.Context(), tagID); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -238,7 +238,10 @@ func (th *TagHandler) ListTags(c *gin.Context) {
 		MaxPageSize:     100,
 	})
 
-	result, err := th.tservice.ListTags(c.Request.Context(), q)
+	result, err := th.tservice.ListTags(c.Request.Context(), ListTagsInput{
+		Query:          q,
+		IncludeDeleted: false,
+	})
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -286,7 +289,7 @@ func (th *TagHandler) AdminListTags(c *gin.Context) {
 		MaxPageSize:     100,
 	})
 
-	result, err := th.tservice.AdminListTags(c.Request.Context(), q)
+	result, err := th.tservice.AdminList(c.Request.Context(), q)
 	if err != nil {
 		_ = c.Error(err)
 		return

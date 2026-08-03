@@ -9,8 +9,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
@@ -20,46 +21,39 @@ type TagService struct {
 }
 
 func NewService(
-	r database.Runner,
-	tr *TagRepository,
+	qexecuter database.Runner,
+	r *TagRepository,
 ) *TagService {
 	return &TagService{
-		qexecuter: r,
-		trepo:     tr,
+		qexecuter: qexecuter,
+		trepo:     r,
 	}
 }
 
 type CreateTagInput struct {
-	Name string
+	Name string `json:"name"`
 }
 
-type UpdateTagInput struct {
-	Name *string
-}
-
-// CreateTag validates and creates a new product tag.
 func (ts *TagService) CreateTag(
 	ctx context.Context,
 	in *CreateTagInput,
 ) (*model.ProductTag, error) {
 	if in == nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_PAYLOAD").
-			WithMessage("Request body is required")
+		return nil, apierr.New(http.StatusBadRequest, "Request body cannot be empty").
+			WithCode(apierr.CodeInvalidPayload)
 	}
 
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("VALIDATION_FAILED").
-			WithMessage("Validation error").
+		return nil, apierr.New(http.StatusBadRequest, "Validation error").
+			WithCode(apierr.CodeValidationFailed).
 			WithFields(api.FieldError{
 				Field:   "name",
-				Message: "tag name cannot be empty",
+				Message: "tag name is required and cannot be empty",
 			})
 	}
 
-	now := time.Now().UTC().Truncate(time.Millisecond)
+	now := time.Now().UTC()
 	tag := &model.ProductTag{
 		ID:        uuid.New(),
 		Name:      name,
@@ -72,18 +66,16 @@ func (ts *TagService) CreateTag(
 	})
 
 	if err != nil {
-		mappedError := database.MapError(err)
+		mappedErr := database.MapError(err)
 		switch {
-		case errors.Is(mappedError, database.ErrConflict):
-			return nil, security.NewSecureError(http.StatusConflict).
-				WithCode("TAG_ALREADY_EXISTS").
-				WithMessage("A tag with this name already exists").
+		case errors.Is(mappedErr, database.ErrConflict):
+			return nil, apierr.New(http.StatusConflict, "A tag with this name already exists").
+				WithCode(errcode.CodeTagAlreadyExists).
 				Wrap(err)
 
 		default:
-			return nil, security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to create tag").
+			return nil, apierr.New(http.StatusInternalServerError, "Failed to create product tag").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -92,15 +84,13 @@ func (ts *TagService) CreateTag(
 	return tag, nil
 }
 
-// GetTagByID retrieves an active tag by UUID.
 func (ts *TagService) GetTagByID(
 	ctx context.Context,
 	tagID uuid.UUID,
 ) (*model.ProductTag, error) {
 	if tagID == uuid.Nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Tag ID is required")
+		return nil, apierr.New(http.StatusBadRequest, "Tag ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	var tag *model.ProductTag
@@ -111,18 +101,16 @@ func (ts *TagService) GetTagByID(
 	})
 
 	if err != nil {
-		mappedError := database.MapError(err)
+		mappedErr := database.MapError(err)
 		switch {
-		case errors.Is(mappedError, database.ErrNotFound):
-			return nil, security.NewSecureError(http.StatusNotFound).
-				WithCode("TAG_NOT_FOUND").
-				WithMessage("Tag not found").
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return nil, apierr.New(http.StatusNotFound, "Product tag not found").
+				WithCode(errcode.CodeTagNotFound).
 				Wrap(err)
 
 		default:
-			return nil, security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to fetch tag").
+			return nil, apierr.New(http.StatusInternalServerError, "Failed to fetch product tag").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -131,25 +119,32 @@ func (ts *TagService) GetTagByID(
 	return tag, nil
 }
 
-// UpdateByID modifies an active tag.
-func (ts *TagService) UpdateByID(
+type UpdateTagInput struct {
+	Name *string
+}
+
+func (ts *TagService) UpdateTagByID(
 	ctx context.Context,
 	tagID uuid.UUID,
-	input UpdateTagInput,
+	in *UpdateTagInput,
 ) error {
 	if tagID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Tag ID is required")
+		return apierr.New(http.StatusBadRequest, "Tag ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	if in == nil {
+		return apierr.New(http.StatusBadRequest, "Update payload cannot be empty").
+			WithCode(apierr.CodeInvalidPayload)
 	}
 
 	fields := UpdateTagFields{}
-	if input.Name != nil {
-		name := strings.TrimSpace(*input.Name)
+
+	if in.Name != nil {
+		name := strings.TrimSpace(*in.Name)
 		if name == "" {
-			return security.NewSecureError(http.StatusBadRequest).
-				WithCode("VALIDATION_FAILED").
-				WithMessage("Validation error").
+			return apierr.New(http.StatusBadRequest, "Validation error").
+				WithCode(apierr.CodeValidationFailed).
 				WithFields(api.FieldError{
 					Field:   "name",
 					Message: "tag name cannot be empty",
@@ -163,24 +158,21 @@ func (ts *TagService) UpdateByID(
 	})
 
 	if err != nil {
-		mappedError := database.MapError(err)
+		mappedErr := database.MapError(err)
 		switch {
-		case errors.Is(mappedError, database.ErrNotFound):
-			return security.NewSecureError(http.StatusNotFound).
-				WithCode("TAG_NOT_FOUND").
-				WithMessage("Tag not found").
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return apierr.New(http.StatusNotFound, "Product tag not found").
+				WithCode(errcode.CodeTagNotFound).
 				Wrap(err)
 
-		case errors.Is(mappedError, database.ErrConflict):
-			return security.NewSecureError(http.StatusConflict).
-				WithCode("TAG_ALREADY_EXISTS").
-				WithMessage("A tag with this name already exists").
+		case errors.Is(mappedErr, database.ErrConflict):
+			return apierr.New(http.StatusConflict, "A tag with this name already exists").
+				WithCode(errcode.CodeTagAlreadyExists).
 				Wrap(err)
 
 		default:
-			return security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to update tag").
+			return apierr.New(http.StatusInternalServerError, "Failed to update product tag").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -189,66 +181,34 @@ func (ts *TagService) UpdateByID(
 	return nil
 }
 
-// DeleteByID soft-deletes an active tag.
-func (ts *TagService) DeleteByID(
-	ctx context.Context,
-	tagID uuid.UUID,
-) error {
-	if tagID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Tag ID is required")
-	}
-
-	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		return ts.trepo.Delete(ctx, db, tagID)
-	})
-
-	if err != nil {
-		mappedError := database.MapError(err)
-		switch {
-		case errors.Is(mappedError, database.ErrNotFound):
-			return security.NewSecureError(http.StatusNotFound).
-				WithCode("TAG_NOT_FOUND").
-				WithMessage("Tag not found").
-				Wrap(err)
-
-		default:
-			return security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to delete tag").
-				Wrap(err).
-				WithStack()
-		}
-	}
-
-	return nil
+type ListTagsInput struct {
+	Query          *api.ListQuery
+	IncludeDeleted bool
 }
 
-// List handles unified paginated list operations for public and admin callers.
-func (ts *TagService) List(
+func (ts *TagService) ListTags(
 	ctx context.Context,
-	q *api.ListQuery,
-	includeDeleted bool,
+	in ListTagsInput,
 ) (*api.PagedResult[model.ProductTag], error) {
+	q := in.Query
 	if q == nil {
 		q = &api.ListQuery{}
 	}
 
 	var result *api.PagedResult[model.ProductTag]
+
 	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		result, repoErr = ts.trepo.List(ctx, db, ListTagOptions{
 			Query:          q,
-			IncludeDeleted: includeDeleted,
+			IncludeDeleted: in.IncludeDeleted,
 		})
 		return repoErr
 	})
 
 	if err != nil {
-		return nil, security.NewSecureError(http.StatusInternalServerError).
-			WithCode("INTERNAL_ERROR").
-			WithMessage("Failed to list tags").
+		return nil, apierr.New(http.StatusInternalServerError, "Failed to list product tags").
+			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
 	}
@@ -256,31 +216,56 @@ func (ts *TagService) List(
 	return result, nil
 }
 
-func (ts *TagService) ListTags(
+func (ts *TagService) AdminList(
 	ctx context.Context,
 	q *api.ListQuery,
 ) (*api.PagedResult[model.ProductTag], error) {
-	return ts.List(ctx, q, false)
+	return ts.ListTags(ctx, ListTagsInput{
+		Query:          q,
+		IncludeDeleted: true,
+	})
 }
 
-func (ts *TagService) AdminListTags(
+func (ts *TagService) DeleteTagByID(
 	ctx context.Context,
-	q *api.ListQuery,
-) (*api.PagedResult[model.ProductTag], error) {
-	return ts.List(ctx, q, true)
+	tagID uuid.UUID,
+) error {
+	if tagID == uuid.Nil {
+		return apierr.New(http.StatusBadRequest, "Tag ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		return ts.trepo.Delete(ctx, db, tagID)
+	})
+
+	if err != nil {
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return apierr.New(http.StatusNotFound, "Product tag not found").
+				WithCode(errcode.CodeTagNotFound).
+				Wrap(err)
+
+		default:
+			return apierr.New(http.StatusInternalServerError, "Failed to delete product tag").
+				WithCode(apierr.CodeInternalError).
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	return nil
 }
 
-// ReplaceProductTags atomically replaces all tag assignments for a product.
-// Pass an empty slice to remove all tags.
 func (ts *TagService) ReplaceProductTags(
 	ctx context.Context,
 	productID uuid.UUID,
 	tagIDs []uuid.UUID,
 ) error {
 	if productID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Product ID is required")
+		return apierr.New(http.StatusBadRequest, "Product ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	err := ts.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
@@ -288,20 +273,10 @@ func (ts *TagService) ReplaceProductTags(
 	})
 
 	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
-			return security.NewSecureError(http.StatusBadRequest).
-				WithCode("INVALID_TAG").
-				WithMessage("One or more tag IDs are invalid").
-				Wrap(err)
-		default:
-			return security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to replace product tags").
-				Wrap(err).
-				WithStack()
-		}
+		return apierr.New(http.StatusInternalServerError, "Failed to update product tags").
+			WithCode(apierr.CodeInternalError).
+			Wrap(err).
+			WithStack()
 	}
 
 	return nil

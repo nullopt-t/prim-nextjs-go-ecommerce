@@ -15,10 +15,11 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/object"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/brand"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/category"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/tag"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	fileUtil "github.com/m-mahmoud-alsaid/prim-backend/pkg/file"
@@ -65,8 +66,6 @@ func NewService(
 	}
 }
 
-// --- DTO Inputs ---
-
 type CreateProductInput struct {
 	BrandID     *uuid.UUID
 	CategoryID  uuid.UUID
@@ -98,23 +97,19 @@ type ProductDetails struct {
 	Brand   *model.ProductBrand `json:"brand,omitempty"`
 }
 
-// --- Product Core Operations ---
-
 func (s *ProductService) CreateProductAsDraft(
 	ctx context.Context,
 	input CreateProductInput,
 ) (*model.Product, error) {
 	title := strings.TrimSpace(input.Title)
 	if title == "" {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("VALIDATION_FAILED").
-			WithMessage("Title is required")
+		return nil, apierr.New(http.StatusBadRequest, "Title is required").
+			WithCode(apierr.CodeValidationFailed)
 	}
 
 	if input.CategoryID == uuid.Nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("VALIDATION_FAILED").
-			WithMessage("CategoryID is required")
+		return nil, apierr.New(http.StatusBadRequest, "CategoryID is required").
+			WithCode(apierr.CodeValidationFailed)
 	}
 
 	product := &model.Product{
@@ -135,21 +130,18 @@ func (s *ProductService) CreateProductAsDraft(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrConflict):
-			return nil, security.NewSecureError(http.StatusConflict).
-				WithCode("PRODUCT_ALREADY_EXISTS").
-				WithMessage("Product with this public_id already exists").
+			return nil, apierr.New(http.StatusConflict, "Product with this public_id already exists").
+				WithCode(errcode.CodeProductAlreadyExists).
 				Wrap(err)
 
 		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
-			return nil, security.NewSecureError(http.StatusBadRequest).
-				WithCode("INVALID_REFERENCE").
-				WithMessage("Invalid brand or category reference").
+			return nil, apierr.New(http.StatusBadRequest, "Invalid brand or category reference").
+				WithCode(apierr.CodeInvalidReference).
 				Wrap(err)
 
 		default:
-			return nil, security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to create product").
+			return nil, apierr.New(http.StatusInternalServerError, "Failed to create product").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -164,9 +156,8 @@ func (s *ProductService) UpdateProduct(
 	input UpdateProductInput,
 ) error {
 	if productID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Product ID is required")
+		return apierr.New(http.StatusBadRequest, "Product ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	err := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
@@ -178,9 +169,8 @@ func (s *ProductService) UpdateProduct(
 		if input.Title != nil {
 			title := strings.TrimSpace(*input.Title)
 			if title == "" {
-				return security.NewSecureError(http.StatusBadRequest).
-					WithCode("VALIDATION_FAILED").
-					WithMessage("Title cannot be empty")
+				return apierr.New(http.StatusBadRequest, "Title cannot be empty").
+					WithCode(apierr.CodeValidationFailed)
 			}
 			product.Title = title
 		}
@@ -212,21 +202,18 @@ func (s *ProductService) UpdateProduct(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return security.NewSecureError(http.StatusNotFound).
-				WithCode("PRODUCT_NOT_FOUND").
-				WithMessage("Product not found").
+			return apierr.New(http.StatusNotFound, "Product not found").
+				WithCode(errcode.CodeProductNotFound).
 				Wrap(err)
 
 		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
-			return security.NewSecureError(http.StatusBadRequest).
-				WithCode("INVALID_REFERENCE").
-				WithMessage("Referenced brand or category does not exist").
+			return apierr.New(http.StatusBadRequest, "Referenced brand or category does not exist").
+				WithCode(apierr.CodeInvalidReference).
 				Wrap(err)
 
 		default:
-			return security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to update product").
+			return apierr.New(http.StatusInternalServerError, "Failed to update product").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -240,9 +227,8 @@ func (s *ProductService) GetByID(
 	productID uuid.UUID,
 ) (*model.Product, error) {
 	if productID == uuid.Nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Product ID is required")
+		return nil, apierr.New(http.StatusBadRequest, "Product ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	var product *model.Product
@@ -256,14 +242,12 @@ func (s *ProductService) GetByID(
 		mappedError := database.MapError(err)
 		switch {
 		case errors.Is(mappedError, database.ErrNotFound):
-			return nil, security.NewSecureError(http.StatusNotFound).
-				WithCode("PRODUCT_NOT_FOUND").
-				WithMessage("Product not found")
+			return nil, apierr.New(http.StatusNotFound, "Product not found").
+				WithCode(errcode.CodeProductNotFound)
 
 		default:
-			return nil, security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to fetch product").
+			return nil, apierr.New(http.StatusInternalServerError, "Failed to fetch product").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -278,9 +262,8 @@ func (s *ProductService) GetByPID(
 ) (*ProductDetails, error) {
 	cleanPID := strings.TrimSpace(ppid)
 	if cleanPID == "" {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Public ID is required")
+		return nil, apierr.New(http.StatusBadRequest, "Public ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	productDetails := &ProductDetails{}
@@ -297,14 +280,12 @@ func (s *ProductService) GetByPID(
 		mappedError := database.MapError(err)
 		switch {
 		case errors.Is(mappedError, database.ErrNotFound):
-			return nil, security.NewSecureError(http.StatusNotFound).
-				WithCode("PRODUCT_NOT_FOUND").
-				WithMessage("Product not found")
+			return nil, apierr.New(http.StatusNotFound, "Product not found").
+				WithCode(errcode.CodeProductNotFound)
 
 		default:
-			return nil, security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to fetch product").
+			return nil, apierr.New(http.StatusInternalServerError, "Failed to fetch product").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -337,9 +318,8 @@ func (s *ProductService) List(
 	})
 
 	if err != nil {
-		return nil, security.NewSecureError(http.StatusInternalServerError).
-			WithCode("INTERNAL_ERROR").
-			WithMessage("Failed to list products").
+		return nil, apierr.New(http.StatusInternalServerError, "Failed to list products").
+			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
 	}
@@ -352,20 +332,17 @@ func (s *ProductService) PublishProduct(
 	productID uuid.UUID,
 ) error {
 	if productID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Product ID is required")
+		return apierr.New(http.StatusBadRequest, "Product ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
-	// Guard: must have at least one active variant before publishing
 	variants, err := s.variantService.ListVariantsByProductID(ctx, productID, nil, false)
 	if err != nil {
 		return err
 	}
 	if len(variants.Items) == 0 {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("PUBLISH_FAILED").
-			WithMessage("Product must have at least one variant before publishing")
+		return apierr.New(http.StatusBadRequest, "Product must have at least one variant before publishing").
+			WithCode(errcode.CodePublishFailed)
 	}
 
 	err = s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
@@ -376,15 +353,13 @@ func (s *ProductService) PublishProduct(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return security.NewSecureError(http.StatusNotFound).
-				WithCode("PRODUCT_NOT_FOUND").
-				WithMessage("Product not found").
+			return apierr.New(http.StatusNotFound, "Product not found").
+				WithCode(errcode.CodeProductNotFound).
 				Wrap(err)
 
 		default:
-			return security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to publish product").
+			return apierr.New(http.StatusInternalServerError, "Failed to publish product").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -398,9 +373,8 @@ func (s *ProductService) ArchiveProduct(
 	productID uuid.UUID,
 ) error {
 	if productID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Product ID is required")
+		return apierr.New(http.StatusBadRequest, "Product ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
@@ -411,15 +385,13 @@ func (s *ProductService) ArchiveProduct(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return security.NewSecureError(http.StatusNotFound).
-				WithCode("PRODUCT_NOT_FOUND").
-				WithMessage("Product not found").
+			return apierr.New(http.StatusNotFound, "Product not found").
+				WithCode(errcode.CodeProductNotFound).
 				Wrap(err)
 
 		default:
-			return security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to archive product").
+			return apierr.New(http.StatusInternalServerError, "Failed to archive product").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -433,9 +405,8 @@ func (s *ProductService) SoftDeleteProduct(
 	productID uuid.UUID,
 ) error {
 	if productID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Product ID is required")
+		return apierr.New(http.StatusBadRequest, "Product ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
@@ -446,15 +417,13 @@ func (s *ProductService) SoftDeleteProduct(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return security.NewSecureError(http.StatusNotFound).
-				WithCode("PRODUCT_NOT_FOUND").
-				WithMessage("Product not found").
+			return apierr.New(http.StatusNotFound, "Product not found").
+				WithCode(errcode.CodeProductNotFound).
 				Wrap(err)
 
 		default:
-			return security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to soft-delete product").
+			return apierr.New(http.StatusInternalServerError, "Failed to soft-delete product").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
@@ -462,8 +431,6 @@ func (s *ProductService) SoftDeleteProduct(
 
 	return nil
 }
-
-// --- Cross-Domain Delegations ---
 
 func (s *ProductService) CreateProductVariant(
 	ctx context.Context,
@@ -510,8 +477,6 @@ func (s *ProductService) ReplaceProductTags(
 	return s.tagService.ReplaceProductTags(ctx, productID, tagIDs)
 }
 
-// --- Media Management ---
-
 func (ps *ProductService) GenObjectKey(
 	productID uuid.UUID,
 	contentType string,
@@ -530,52 +495,44 @@ func (ps *ProductService) UploadProductMedia(
 	fileHeader *multipart.FileHeader,
 ) (*model.ProductMedia, error) {
 	if productID == uuid.Nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Product ID is required")
+		return nil, apierr.New(http.StatusBadRequest, "Product ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_FILE").
-			WithMessage("Failed to open uploaded file").
+		return nil, apierr.New(http.StatusBadRequest, "Failed to open uploaded file").
+			WithCode(apierr.CodeValidationFailed).
 			Wrap(err)
 	}
 	defer file.Close()
 
-	const maxFileSize = 10 * 1024 * 1024 // 10 MB limit
+	const maxFileSize = 10 * 1024 * 1024
 	if fileHeader.Size > maxFileSize {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("FILE_TOO_LARGE").
-			WithMessage("File size exceeds 10MB limit")
+		return nil, apierr.New(http.StatusBadRequest, "File size exceeds 10MB limit").
+			WithCode(apierr.CodeFileTooLarge)
 	}
 
 	detectedContentType, err := fileUtil.DetectContentType(file)
 	if err != nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_FILE").
-			WithMessage("Failed to detect file content type").
+		return nil, apierr.New(http.StatusBadRequest, "Failed to detect file content type").
+			WithCode(apierr.CodeValidationFailed).
 			Wrap(err)
 	}
 
-	// Reset cursor — DetectContentType reads the first bytes, so seek back before upload
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_FILE").
-			WithMessage("Failed to reset file reader").
+		return nil, apierr.New(http.StatusBadRequest, "Failed to reset file reader").
+			WithCode(apierr.CodeValidationFailed).
 			Wrap(err)
 	}
 
 	mediaType, err := model.ParseMediaType(detectedContentType)
 	if err != nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("UNSUPPORTED_MEDIA_TYPE").
-			WithMessage("Unsupported media format").
+		return nil, apierr.New(http.StatusBadRequest, "Unsupported media format").
+			WithCode(apierr.CodeUnsupportedMediaType).
 			Wrap(err)
 	}
 
-	// Verify product exists
 	product, err := ps.GetByID(ctx, productID)
 	if err != nil {
 		return nil, err
@@ -598,16 +555,14 @@ func (ps *ProductService) UploadProductMedia(
 		},
 	)
 	if err != nil {
-		return nil, security.NewSecureError(http.StatusInternalServerError).
-			WithCode("STORAGE_ERROR").
-			WithMessage("Failed to upload file to MinIO").
+		return nil, apierr.New(http.StatusInternalServerError, "Failed to upload file to MinIO").
+			WithCode(apierr.CodeStorageError).
 			Wrap(err).
 			WithStack()
 	}
 
 	var media *model.ProductMedia
 	err = ps.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		// Auto-increment sort_order
 		maxOrder, err := ps.productRepo.GetMaxMediaSortOrder(ctx, tx, productID)
 		if err != nil {
 			return err
@@ -637,11 +592,9 @@ func (ps *ProductService) UploadProductMedia(
 	})
 
 	if err != nil {
-		// Roll back MinIO upload if DB insert fails
 		_ = ps.minioClient.RemoveObject(ctx, bucket, objectKey, minio.RemoveObjectOptions{})
-		return nil, security.NewSecureError(http.StatusInternalServerError).
-			WithCode("INTERNAL_ERROR").
-			WithMessage("Failed to attach media to product").
+		return nil, apierr.New(http.StatusInternalServerError, "Failed to attach media to product").
+			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
 	}
@@ -654,9 +607,8 @@ func (ps *ProductService) GetProductMedia(
 	productID uuid.UUID,
 ) ([]*model.ProductMedia, error) {
 	if productID == uuid.Nil {
-		return nil, security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Product ID is required")
+		return nil, apierr.New(http.StatusBadRequest, "Product ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	var mediaList []*model.ProductMedia
@@ -667,14 +619,12 @@ func (ps *ProductService) GetProductMedia(
 	})
 
 	if err != nil {
-		return nil, security.NewSecureError(http.StatusInternalServerError).
-			WithCode("INTERNAL_ERROR").
-			WithMessage("Failed to fetch product media").
+		return nil, apierr.New(http.StatusInternalServerError, "Failed to fetch product media").
+			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
 	}
 
-	// Resolve presigned URLs for media items
 	for _, m := range mediaList {
 		if m.Object != nil && m.Object.PublicURL == "" && m.Object.Bucket != "" && m.Object.Key != "" {
 			presignedGET, err := ps.minioClient.PresignedGetObject(
@@ -699,14 +649,12 @@ func (ps *ProductService) DetachMedia(
 	mediaID uuid.UUID,
 ) error {
 	if productID == uuid.Nil || mediaID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Product ID and Media ID are required")
+		return apierr.New(http.StatusBadRequest, "Product ID and Media ID are required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	var objectBucket, objectKey string
 	err := ps.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		// Fetch media + object info before deleting
 		mediaList, err := ps.productRepo.ListMediaByProductID(ctx, tx, productID)
 		if err != nil {
 			return err
@@ -723,7 +671,6 @@ func (ps *ProductService) DetachMedia(
 			return err
 		}
 
-		// Mark storage object for deletion
 		if objectKey != "" {
 			if err := ps.objectService.MarkDeletingByKey(ctx, tx, objectBucket, objectKey); err != nil {
 				ps.logger.Warn("failed to mark storage object for deletion", log.Meta{"key": objectKey, "error": err})
@@ -736,21 +683,18 @@ func (ps *ProductService) DetachMedia(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return security.NewSecureError(http.StatusNotFound).
-				WithCode("MEDIA_NOT_FOUND").
-				WithMessage("Product media relationship not found").
+			return apierr.New(http.StatusNotFound, "Product media relationship not found").
+				WithCode(errcode.CodeMediaNotFound).
 				Wrap(err)
 
 		default:
-			return security.NewSecureError(http.StatusInternalServerError).
-				WithCode("INTERNAL_ERROR").
-				WithMessage("Failed to detach media").
+			return apierr.New(http.StatusInternalServerError, "Failed to detach media").
+				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
 	}
 
-	// Best-effort MinIO deletion after successful DB commit
 	if objectKey != "" {
 		_ = ps.minioClient.RemoveObject(ctx, objectBucket, objectKey, minio.RemoveObjectOptions{})
 	}
@@ -764,9 +708,8 @@ func (ps *ProductService) ReorderMedia(
 	orderedMediaIDs []uuid.UUID,
 ) error {
 	if productID == uuid.Nil {
-		return security.NewSecureError(http.StatusBadRequest).
-			WithCode("INVALID_INPUT").
-			WithMessage("Product ID is required")
+		return apierr.New(http.StatusBadRequest, "Product ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	if len(orderedMediaIDs) == 0 {
@@ -778,9 +721,8 @@ func (ps *ProductService) ReorderMedia(
 	})
 
 	if err != nil {
-		return security.NewSecureError(http.StatusInternalServerError).
-			WithCode("INTERNAL_ERROR").
-			WithMessage("Failed to reorder product media").
+		return apierr.New(http.StatusInternalServerError, "Failed to reorder product media").
+			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
 	}

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 )
 
 func ValidationError(c *gin.Context, err error) {
@@ -18,14 +18,16 @@ func ValidationError(c *gin.Context, err error) {
 				Tags:  e.Tag(),
 			})
 		}
-		_ = c.Error(security.NewSecureError(
+		_ = c.Error(apierr.New(
 			http.StatusBadRequest,
+			"Validation failed",
 		).WithFields(fieldErrors...))
 		return
 	}
 	_ = c.Error(
-		security.NewSecureError(
+		apierr.New(
 			http.StatusBadRequest,
-		).WithMessage("bad request data").Wrap(err),
+			"bad request data",
+		).Wrap(err),
 	)
 }

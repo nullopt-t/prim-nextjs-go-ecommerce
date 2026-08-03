@@ -9,7 +9,7 @@ import (
 type ProductTag struct {
 	ID uuid.UUID
 
-	Name              string
+	Name string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

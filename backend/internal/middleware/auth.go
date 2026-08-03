@@ -5,13 +5,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
-
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
-
 	"github.com/gin-gonic/gin"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
 var (
@@ -26,18 +24,20 @@ func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 		role, ok := c.Get("userRole")
 		if !ok {
 			_ = c.Error(
-				security.NewSecureError(
+				apierr.New(
 					http.StatusUnauthorized,
-				),
+					"Unauthorized",
+				).WithCode(apierr.CodeUnauthorized),
 			)
 			c.Abort()
 			return
 		}
 		if role.(string) != strings.ToLower(string(requiredRole)) {
 			_ = c.Error(
-				security.NewSecureError(
+				apierr.New(
 					http.StatusUnauthorized,
-				),
+					"Unauthorized",
+				).WithCode(apierr.CodeUnauthorized),
 			)
 			c.Abort()
 			return
@@ -53,9 +53,10 @@ func Authanticate(secrets *config.Secrets) gin.HandlerFunc {
 
 		if authHeader == "" {
 			_ = c.Error(
-				security.NewSecureError(
+				apierr.New(
 					http.StatusUnauthorized,
-				),
+					"Unauthorized",
+				).WithCode(apierr.CodeUnauthorized),
 			)
 			c.Abort()
 			return
@@ -63,9 +64,10 @@ func Authanticate(secrets *config.Secrets) gin.HandlerFunc {
 
 		if !strings.HasPrefix(authHeader, prefix) {
 			_ = c.Error(
-				security.NewSecureError(
+				apierr.New(
 					http.StatusUnauthorized,
-				),
+					"Unauthorized",
+				).WithCode(apierr.CodeUnauthorized),
 			)
 			c.Abort()
 			return
@@ -81,9 +83,10 @@ func Authanticate(secrets *config.Secrets) gin.HandlerFunc {
 
 		if err != nil {
 			_ = c.Error(
-				security.NewSecureError(
+				apierr.New(
 					http.StatusUnauthorized,
-				),
+					"Unauthorized",
+				).WithCode(apierr.CodeUnauthorized),
 			)
 			c.Abort()
 			return

@@ -6,13 +6,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
-
-	"github.com/google/uuid"
 )
 
 const ResetTokenTTL = 15 * time.Minute
@@ -52,13 +51,15 @@ func (s *UserService) get(
 			mappedErr,
 			database.ErrNotFound,
 		):
-			return nil, security.NewSecureError(
+			return nil, apierr.New(
 				http.StatusNotFound,
-			).WithMessage("user not found")
+				"user not found",
+			)
 		default:
-			return nil, security.NewSecureError(
+			return nil, apierr.New(
 				http.StatusInternalServerError,
-			).WithMessage("failed to get a user").Wrap(err)
+				"failed to get a user",
+			).Wrap(err)
 		}
 	}
 	return user, nil
@@ -91,13 +92,15 @@ func (s *UserService) CreateUser(
 					mappedErr,
 					database.ErrConflict,
 				):
-					return security.NewSecureError(
+					return apierr.New(
 						http.StatusConflict,
-					).WithMessage("user already exists")
+						"user already exists",
+					)
 				default:
-					return security.NewSecureError(
+					return apierr.New(
 						http.StatusInternalServerError,
-					).WithMessage("failed to create a new user").Wrap(err)
+						"failed to create a new user",
+					).Wrap(err)
 				}
 			}
 			u.ID = id
@@ -180,9 +183,10 @@ func (s *UserService) GetAllUsers(
 				q,
 			)
 			if err != nil {
-				return security.NewSecureError(
+				return apierr.New(
 					http.StatusInternalServerError,
-				).WithMessage("failed to fetch users").Wrap(err)
+					"failed to fetch users",
+				).Wrap(err)
 			}
 			return nil
 		},
