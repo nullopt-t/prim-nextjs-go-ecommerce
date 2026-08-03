@@ -103,3 +103,13 @@ func (os *ObjectService) CreateObjectWithTx(
 
 	return object, nil
 }
+
+// MarkDeletingByKey marks a storage object as 'deleting' by its bucket and key.
+// Safe to call inside a transaction.
+func (os *ObjectService) MarkDeletingByKey(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	bucket, key string,
+) error {
+	return os.or.MarkDeletingByKey(ctx, tx, bucket, key)
+}

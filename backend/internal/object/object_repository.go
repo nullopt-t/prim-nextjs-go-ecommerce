@@ -24,41 +24,29 @@ func (or *ObjectRepository) Create(
 	_, err := qe.Exec(
 		ctx,
 		`
-		INSERT INTO eobjects(
+		INSERT INTO storage_objects (
 			id,
-			file_size,
-			eo_status,
+			bucket,
+			object_key,
 			content_type,
-			okey,
-			obucket,
+			file_size,
+			status,
 			created_at,
 			updated_at
 		)
-		VALUES (
-			$1,
-			$2,
-			$3,
-			$4,
-			$5,
-			$6,
-			$7,
-			$8
-		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`,
 		object.ID,
+		object.Bucket,
+		object.Key,
+		object.ContentType,
 		object.FileSize,
 		object.Status,
-		object.ContentType,
-		object.Key,
-		object.Bucket,
 		object.CreatedAt,
 		object.UpdatedAt,
 	)
 	if err != nil {
-		return fmt.Errorf(
-			"create a new object :%w",
-			err,
-		)
+		return fmt.Errorf("create storage object: %w", err)
 	}
 	return nil
 }
@@ -72,21 +60,31 @@ func (or *ObjectRepository) UpdateStatus(
 	_, err := db.Exec(
 		ctx,
 		`
-		UPDATE
-			eobjects
-		SET
-			status = $1
-		WHERE
-			id = $2
+		UPDATE storage_objects
+		SET status = $1, updated_at = now()
+		WHERE id = $2
 		`,
 		status,
 		objectID,
 	)
 	if err != nil {
-		return fmt.Errorf(
-			"update status: %w",
-			err,
-		)
+		return fmt.Errorf("update object status: %w", err)
+	}
+	return nil
+}
+
+// MarkDeletingByKey sets the status of a storage_objects row to 'deleting' by bucket+key.
+func (or *ObjectRepository) MarkDeletingByKey(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	bucket, key string,
+) error {
+	_, err := qe.Exec(ctx,
+		`UPDATE storage_objects SET status = 'deleting' WHERE bucket = $1 AND object_key = $2`,
+		bucket, key,
+	)
+	if err != nil {
+		return fmt.Errorf("mark deleting by key: %w", err)
 	}
 	return nil
 }

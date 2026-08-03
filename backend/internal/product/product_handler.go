@@ -103,6 +103,14 @@ type SetDefaultVariantRequest struct {
 	VariantID string `json:"variant_id" binding:"required,uuid"`
 }
 
+type PutProductTagsRequest struct {
+	TagIDs []string `json:"tag_ids" binding:"required,dive,uuid"`
+}
+
+type PutProductCategoryRequest struct {
+	CategoryID string `json:"category_id" binding:"required,uuid"`
+}
+
 // --- Mappers ---
 
 func mapProductResponse(p *model.Product) ProductResponse {
@@ -750,7 +758,14 @@ func (h *ProductHandler) GetProductVariants(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.GetProductVariants(c.Request.Context(), productID)
+	q := &api.ListQuery{}
+	if err := c.ShouldBindQuery(q); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+	q.Process(api.QueryOptions{DefaultPageSize: 20, MaxPageSize: 100})
+
+	result, err := h.service.GetProductVariants(c.Request.Context(), productID, q)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -781,3 +796,149 @@ func (h *ProductHandler) GetProductVariants(c *gin.Context) {
 		Meta: result.Page,
 	})
 }
+
+// SetDefaultVariant godoc
+// @Summary set a variant as the default for a product
+// @Tags Product Variants
+// @Accept json
+// @Produce json
+// @Param id path string true "Product ID (UUID)" format(uuid)
+// @Param body body SetDefaultVariantRequest true "Variant to set as default"
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 404 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
+// @Success 200 {object} api.MessageResponse
+// @Router /admin/products/{id}/variants/default [post]
+func (h *ProductHandler) SetDefaultVariant(c *gin.Context) {
+	productID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid product UUID format",
+		}))
+		return
+	}
+
+	var body SetDefaultVariantRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	variantID, err := uuid.Parse(body.VariantID)
+	if err != nil {
+		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+			Field:   "variant_id",
+			Message: "invalid variant UUID format",
+		}))
+		return
+	}
+
+	if err := h.service.SetDefaultVariant(c.Request.Context(), productID, variantID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{
+		Message: "default variant updated successfully",
+	})
+}
+
+// PutProductTags godoc
+// @Summary replace all tag assignments for a product
+// @Tags Products
+// @Accept json
+// @Produce json
+// @Param id path string true "Product ID (UUID)" format(uuid)
+// @Param body body PutProductTagsRequest true "Tag IDs to assign"
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
+// @Success 200 {object} api.MessageResponse
+// @Router /admin/products/{id}/tags [put]
+func (h *ProductHandler) PutProductTags(c *gin.Context) {
+	productID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid product UUID format",
+		}))
+		return
+	}
+
+	var body PutProductTagsRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	tagIDs := make([]uuid.UUID, 0, len(body.TagIDs))
+	for _, idStr := range body.TagIDs {
+		parsed, err := uuid.Parse(idStr)
+		if err != nil {
+			_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+				Field:   "tag_ids",
+				Message: "invalid UUID in tag list",
+			}))
+			return
+		}
+		tagIDs = append(tagIDs, parsed)
+	}
+
+	if err := h.service.ReplaceProductTags(c.Request.Context(), productID, tagIDs); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{
+		Message: "product tags updated successfully",
+	})
+}
+
+// PutProductCategories godoc
+// @Summary update the category of a product
+// @Tags Products
+// @Accept json
+// @Produce json
+// @Param id path string true "Product ID (UUID)" format(uuid)
+// @Param body body PutProductCategoryRequest true "Category ID to assign"
+// @Failure 400 {object} api.ErrorResponse
+// @Failure 404 {object} api.ErrorResponse
+// @Failure 500 {object} api.ErrorResponse
+// @Success 200 {object} api.MessageResponse
+// @Router /admin/products/{id}/categories [put]
+func (h *ProductHandler) PutProductCategories(c *gin.Context) {
+	productID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid product UUID format",
+		}))
+		return
+	}
+
+	var body PutProductCategoryRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	categoryID, err := uuid.Parse(body.CategoryID)
+	if err != nil {
+		_ = c.Error(security.ErrInvalidUUID().WithFields(api.FieldError{
+			Field:   "category_id",
+			Message: "invalid category UUID format",
+		}))
+		return
+	}
+
+	input := UpdateProductInput{CategoryID: &categoryID}
+	if err := h.service.UpdateProduct(c.Request.Context(), productID, input); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{
+		Message: "product category updated successfully",
+	})
+}
+

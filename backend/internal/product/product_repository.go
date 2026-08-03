@@ -237,6 +237,7 @@ func (r *ProductRepository) List(
 
 	if !includeDeleted {
 		whereClauses = append(whereClauses, "deleted_at IS NULL")
+		whereClauses = append(whereClauses, "status = 'published'")
 	}
 
 	search := strings.TrimSpace(q.Search)
@@ -344,9 +345,9 @@ func (r *ProductRepository) SoftDelete(
 		UPDATE products
 		SET deleted_at = $%d, updated_at = $%d
 		WHERE %s
-	`, argID, argID, strings.Join(whereClauses, " AND "))
+	`, argID, argID+1, strings.Join(whereClauses, " AND "))
 
-	args = append(args, now)
+	args = append(args, now, now)
 
 	cmd, err := qe.Exec(ctx, query, args...)
 	if err != nil {
@@ -549,4 +550,22 @@ func (r *ProductRepository) ReorderMedia(
 	}
 
 	return nil
+}
+
+// GetMaxMediaSortOrder returns the current highest sort_order for a product's media.
+// Returns -1 if no media exists (so the first item gets sort_order 0).
+func (r *ProductRepository) GetMaxMediaSortOrder(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) (int, error) {
+	var max int
+	err := qe.QueryRow(ctx,
+		`SELECT COALESCE(MAX(sort_order), -1) FROM product_media WHERE product_id = $1`,
+		productID,
+	).Scan(&max)
+	if err != nil {
+		return 0, fmt.Errorf("get max media sort_order: %w", err)
+	}
+	return max, nil
 }

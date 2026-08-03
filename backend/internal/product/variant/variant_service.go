@@ -112,13 +112,18 @@ func (vs *VariantService) CreateVariant(
 		UpdatedAt:       now,
 	}
 
-	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	execFunc := vs.dr.WithDB
+	if variant.IsDefault {
+		execFunc = vs.dr.WithTx
+	}
+
+	err := execFunc(ctx, func(db database.QueryExecutor) error {
 		if variant.IsDefault {
-			if err := vs.vr.ClearDefaultFlags(ctx, tx, variant.ProductID); err != nil {
+			if err := vs.vr.ClearDefaultFlags(ctx, db, variant.ProductID); err != nil {
 				return err
 			}
 		}
-		return vs.vr.Create(ctx, tx, variant)
+		return vs.vr.Create(ctx, db, variant)
 	})
 
 	if err != nil {
@@ -494,4 +499,51 @@ func (vs *VariantService) ListVariantMedia(
 	}
 
 	return mediaList, nil
+}
+
+func (vs *VariantService) SetDefaultVariant(
+	ctx context.Context,
+	productID uuid.UUID,
+	variantID uuid.UUID,
+) error {
+	if productID == uuid.Nil || variantID == uuid.Nil {
+		return security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Product ID and Variant ID are required")
+	}
+
+	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		// Verify variant belongs to product
+		v, err := vs.vr.Get(ctx, tx, &Filter{ID: &variantID})
+		if err != nil {
+			return err
+		}
+		if v.ProductID != productID {
+			return security.NewSecureError(http.StatusBadRequest).
+				WithCode("VARIANT_PRODUCT_MISMATCH").
+				WithMessage("Variant does not belong to this product")
+		}
+
+		// Clear existing defaults then set new one
+		if err := vs.vr.ClearDefaultFlags(ctx, tx, productID); err != nil {
+			return err
+		}
+		isDefault := true
+		return vs.vr.Update(ctx, tx, variantID, UpdateVariantFields{IsDefault: &isDefault})
+	})
+
+	if err != nil {
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return security.NewSecureError(http.StatusNotFound).
+				WithCode("VARIANT_NOT_FOUND").
+				WithMessage("Variant not found").
+				Wrap(err)
+		default:
+			return err
+		}
+	}
+
+	return nil
 }

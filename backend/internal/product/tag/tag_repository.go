@@ -292,3 +292,50 @@ func (tr *TagRepository) Delete(
 
 	return nil
 }
+
+// ReplaceTagsForProduct replaces all tag assignments for a product with the given tag IDs.
+// Pass an empty slice to remove all tags.
+func (tr *TagRepository) ReplaceTagsForProduct(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+	tagIDs []uuid.UUID,
+) error {
+	if productID == uuid.Nil {
+		return errors.New("replace product tags: productID is required")
+	}
+
+	// Delete all existing assignments
+	_, err := qe.Exec(ctx,
+		`DELETE FROM product_tag_assignments WHERE product_id = $1`,
+		productID,
+	)
+	if err != nil {
+		return fmt.Errorf("replace product tags: delete existing: %w", err)
+	}
+
+	if len(tagIDs) == 0 {
+		return nil
+	}
+
+	// Bulk insert new assignments
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	args := make([]any, 0, len(tagIDs)*3)
+	valueParts := make([]string, 0, len(tagIDs))
+	for i, tagID := range tagIDs {
+		base := i * 3
+		valueParts = append(valueParts, fmt.Sprintf("($%d, $%d, $%d)", base+1, base+2, base+3))
+		args = append(args, productID, tagID, now)
+	}
+
+	insertQuery := fmt.Sprintf(
+		`INSERT INTO product_tag_assignments (product_id, tag_id, created_at) VALUES %s ON CONFLICT DO NOTHING`,
+		strings.Join(valueParts, ", "),
+	)
+
+	if _, err := qe.Exec(ctx, insertQuery, args...); err != nil {
+		return fmt.Errorf("replace product tags: insert: %w", err)
+	}
+
+	return nil
+}

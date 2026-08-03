@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"strings"
@@ -356,7 +357,18 @@ func (s *ProductService) PublishProduct(
 			WithMessage("Product ID is required")
 	}
 
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	// Guard: must have at least one active variant before publishing
+	variants, err := s.variantService.ListVariantsByProductID(ctx, productID, nil, false)
+	if err != nil {
+		return err
+	}
+	if len(variants.Items) == 0 {
+		return security.NewSecureError(http.StatusBadRequest).
+			WithCode("PUBLISH_FAILED").
+			WithMessage("Product must have at least one variant before publishing")
+	}
+
+	err = s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.productRepo.UpdateStatus(ctx, db, productID, model.PublicationStatusPublished)
 	})
 
@@ -477,8 +489,25 @@ func (s *ProductService) CreateProductVariant(
 func (s *ProductService) GetProductVariants(
 	ctx context.Context,
 	productID uuid.UUID,
+	q *api.ListQuery,
 ) (*api.PagedResult[model.ProductVariant], error) {
-	return s.variantService.ListVariantsByProductID(ctx, productID, nil, false)
+	return s.variantService.ListVariantsByProductID(ctx, productID, q, false)
+}
+
+func (s *ProductService) SetDefaultVariant(
+	ctx context.Context,
+	productID uuid.UUID,
+	variantID uuid.UUID,
+) error {
+	return s.variantService.SetDefaultVariant(ctx, productID, variantID)
+}
+
+func (s *ProductService) ReplaceProductTags(
+	ctx context.Context,
+	productID uuid.UUID,
+	tagIDs []uuid.UUID,
+) error {
+	return s.tagService.ReplaceProductTags(ctx, productID, tagIDs)
 }
 
 // --- Media Management ---
@@ -530,6 +559,14 @@ func (ps *ProductService) UploadProductMedia(
 			Wrap(err)
 	}
 
+	// Reset cursor — DetectContentType reads the first bytes, so seek back before upload
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_FILE").
+			WithMessage("Failed to reset file reader").
+			Wrap(err)
+	}
+
 	mediaType, err := model.ParseMediaType(detectedContentType)
 	if err != nil {
 		return nil, security.NewSecureError(http.StatusBadRequest).
@@ -570,6 +607,12 @@ func (ps *ProductService) UploadProductMedia(
 
 	var media *model.ProductMedia
 	err = ps.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		// Auto-increment sort_order
+		maxOrder, err := ps.productRepo.GetMaxMediaSortOrder(ctx, tx, productID)
+		if err != nil {
+			return err
+		}
+
 		obj, err := ps.objectService.CreateObjectWithTx(
 			ctx,
 			tx,
@@ -588,7 +631,7 @@ func (ps *ProductService) UploadProductMedia(
 			ProductID:       productID,
 			StorageObjectID: obj.ID,
 			MediaType:       mediaType,
-			SortOrder:       0,
+			SortOrder:       maxOrder + 1,
 		})
 		return repoErr
 	})
@@ -661,8 +704,32 @@ func (ps *ProductService) DetachMedia(
 			WithMessage("Product ID and Media ID are required")
 	}
 
-	err := ps.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return ps.productRepo.RemoveMedia(ctx, db, productID, mediaID)
+	var objectBucket, objectKey string
+	err := ps.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		// Fetch media + object info before deleting
+		mediaList, err := ps.productRepo.ListMediaByProductID(ctx, tx, productID)
+		if err != nil {
+			return err
+		}
+		for _, m := range mediaList {
+			if m.ID == mediaID && m.Object != nil {
+				objectBucket = m.Object.Bucket
+				objectKey = m.Object.Key
+				break
+			}
+		}
+
+		if err := ps.productRepo.RemoveMedia(ctx, tx, productID, mediaID); err != nil {
+			return err
+		}
+
+		// Mark storage object for deletion
+		if objectKey != "" {
+			if err := ps.objectService.MarkDeletingByKey(ctx, tx, objectBucket, objectKey); err != nil {
+				ps.logger.Warn("failed to mark storage object for deletion", log.Meta{"key": objectKey, "error": err})
+			}
+		}
+		return nil
 	})
 
 	if err != nil {
@@ -681,6 +748,11 @@ func (ps *ProductService) DetachMedia(
 				Wrap(err).
 				WithStack()
 		}
+	}
+
+	// Best-effort MinIO deletion after successful DB commit
+	if objectKey != "" {
+		_ = ps.minioClient.RemoveObject(ctx, objectBucket, objectKey, minio.RemoveObjectOptions{})
 	}
 
 	return nil

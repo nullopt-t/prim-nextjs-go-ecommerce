@@ -269,3 +269,40 @@ func (ts *TagService) AdminListTags(
 ) (*api.PagedResult[model.ProductTag], error) {
 	return ts.List(ctx, q, true)
 }
+
+// ReplaceProductTags atomically replaces all tag assignments for a product.
+// Pass an empty slice to remove all tags.
+func (ts *TagService) ReplaceProductTags(
+	ctx context.Context,
+	productID uuid.UUID,
+	tagIDs []uuid.UUID,
+) error {
+	if productID == uuid.Nil {
+		return security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Product ID is required")
+	}
+
+	err := ts.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
+		return ts.trepo.ReplaceTagsForProduct(ctx, tx, productID, tagIDs)
+	})
+
+	if err != nil {
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+			return security.NewSecureError(http.StatusBadRequest).
+				WithCode("INVALID_TAG").
+				WithMessage("One or more tag IDs are invalid").
+				Wrap(err)
+		default:
+			return security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to replace product tags").
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	return nil
+}

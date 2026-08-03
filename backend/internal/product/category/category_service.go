@@ -158,6 +158,10 @@ func (cs *CategoryService) isDescendant(
 			}
 			parentCategory, err := cs.crepository.GetByID(ctx, db, *currentParent)
 			if err != nil {
+				mappedErr := database.MapError(err)
+				if errors.Is(mappedErr, database.ErrNotFound) {
+					return nil // Let the update foreign key constraint return PARENT_CATEGORY_NOT_FOUND
+				}
 				return err
 			}
 			currentParent = parentCategory.ParentID

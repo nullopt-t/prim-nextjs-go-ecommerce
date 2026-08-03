@@ -42,16 +42,15 @@ type Product struct {
 	BrandID    *uuid.UUID `db:"brand_id"`
 	CategoryID uuid.UUID  `db:"category_id"`
 
-	PublicID       string            `db:"public_id"`
-	Title          string            `db:"title"`
-	Description    string            `db:"description"`
-	Highlights     []string          `db:"highlights"`
-	Status         PublicationStatus `db:"status"`
-	IsConfigurable bool              `db:"is_configurable"`
-	DefaultVariant *uuid.UUID        `db:"default_variant_id"`
+	PublicID    string            `db:"public_id"`
+	Title       string            `db:"title"`
+	Description string            `db:"description"`
+	Highlights  []string          `db:"highlights"`
+	Status      PublicationStatus `db:"status"`
 
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+	CreatedAt time.Time  `db:"created_at"`
+	UpdatedAt time.Time  `db:"updated_at"`
+	DeletedAt *time.Time `db:"deleted_at"`
 }
 
 type MediaType string

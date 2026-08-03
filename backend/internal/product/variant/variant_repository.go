@@ -81,9 +81,14 @@ func (vr *VariantRepository) Create(
 		variant.UpdatedAt = now
 	}
 
+	if variant.PublicID == uuid.Nil {
+		variant.PublicID = uuid.New()
+	}
+
 	query := `
 		INSERT INTO product_variants (
 			id,
+			public_id,
 			product_id,
 			is_default,
 			title,
@@ -94,13 +99,14 @@ func (vr *VariantRepository) Create(
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	`
 
 	_, err := qe.Exec(
 		ctx,
 		query,
 		variant.ID,
+		variant.PublicID,
 		variant.ProductID,
 		variant.IsDefault,
 		variant.Title,
@@ -149,6 +155,7 @@ func (vr *VariantRepository) Get(
 	query := fmt.Sprintf(`
 		SELECT
 			id,
+			public_id,
 			product_id,
 			is_default,
 			title,
@@ -344,6 +351,7 @@ func (vr *VariantRepository) ListByProductID(
 	selectQuery := fmt.Sprintf(`
 		SELECT
 			id,
+			public_id,
 			product_id,
 			is_default,
 			title,

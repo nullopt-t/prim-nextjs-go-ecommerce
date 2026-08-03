@@ -188,14 +188,12 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	variantRouter.MapRoutes(v1)
 
 	// product
-	productMediaRepository := product.NewMediaRepository()
 	productRepo := product.NewProductRepository()
 	productService := product.NewService(
 		txRunner,
 		app.logger,
 		app.minioClient,
 		productRepo,
-		productMediaRepository,
 		objectService,
 		brandService,
 		categoryService,
