@@ -3,7 +3,6 @@ package brand
 import (
 	"context"
 	"errors"
-	"net/http"
 	"strings"
 	"time"
 
@@ -46,13 +45,13 @@ func (bs *BrandService) CreateBrand(
 	in *CreateBrandInput,
 ) (*model.ProductBrand, error) {
 	if in == nil {
-		return nil, apierr.New(http.StatusBadRequest, "Request body is required").
+		return nil, apierr.ErrBadRequest("Request body is required").
 			WithCode(apierr.CodeInvalidPayload)
 	}
 
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
-		return nil, apierr.New(http.StatusBadRequest, "Validation error").
+		return nil, apierr.ErrBadRequest("Validation error").
 			WithCode(apierr.CodeValidationFailed).
 			WithFields(api.FieldError{
 				Field:   "name",
@@ -77,12 +76,12 @@ func (bs *BrandService) CreateBrand(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrConflict):
-			return nil, apierr.New(http.StatusConflict, "A brand with this name already exists").
+			return nil, apierr.ErrConflict("A brand with this name already exists").
 				WithCode(errcode.CodeBrandAlreadyExists).
 				Wrap(err)
 
 		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
-			return nil, apierr.New(http.StatusBadRequest, "Referenced logo storage object does not exist").
+			return nil, apierr.ErrBadRequest("Referenced logo storage object does not exist").
 				WithCode(errcode.CodeLogoStorageObjectNotFound).
 				Wrap(err).
 				WithFields(api.FieldError{
@@ -91,7 +90,7 @@ func (bs *BrandService) CreateBrand(
 				})
 
 		default:
-			return nil, apierr.New(http.StatusInternalServerError, "Failed to create brand").
+			return nil, apierr.ErrInternalError("Failed to create brand").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
@@ -106,7 +105,7 @@ func (bs *BrandService) GetBrandByID(
 	brandID uuid.UUID,
 ) (*model.ProductBrand, error) {
 	if brandID == uuid.Nil {
-		return nil, apierr.New(http.StatusBadRequest, "Brand ID is required").
+		return nil, apierr.ErrBadRequest("Brand ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -121,12 +120,12 @@ func (bs *BrandService) GetBrandByID(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return nil, apierr.New(http.StatusNotFound, "Brand not found").
+			return nil, apierr.ErrNotFound("Brand not found").
 				WithCode(errcode.CodeBrandNotFound).
 				Wrap(err)
 
 		default:
-			return nil, apierr.New(http.StatusInternalServerError, "Failed to fetch brand").
+			return nil, apierr.ErrInternalError("Failed to fetch brand").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
@@ -142,7 +141,7 @@ func (bs *BrandService) UpdateBrand(
 	in UpdateBrandInput,
 ) error {
 	if brandID == uuid.Nil {
-		return apierr.New(http.StatusBadRequest, "Brand ID is required").
+		return apierr.ErrBadRequest("Brand ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -154,7 +153,7 @@ func (bs *BrandService) UpdateBrand(
 	if in.Name != nil {
 		name := strings.TrimSpace(*in.Name)
 		if name == "" {
-			return apierr.New(http.StatusBadRequest, "Validation error").
+			return apierr.ErrBadRequest("Validation error").
 				WithCode(apierr.CodeValidationFailed).
 				WithFields(api.FieldError{
 					Field:   "name",
@@ -172,17 +171,17 @@ func (bs *BrandService) UpdateBrand(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return apierr.New(http.StatusNotFound, "Brand not found").
+			return apierr.ErrNotFound("Brand not found").
 				WithCode(errcode.CodeBrandNotFound).
 				Wrap(err)
 
 		case errors.Is(mappedErr, database.ErrConflict):
-			return apierr.New(http.StatusConflict, "A brand with this name already exists").
+			return apierr.ErrConflict("A brand with this name already exists").
 				WithCode(errcode.CodeBrandAlreadyExists).
 				Wrap(err)
 
 		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
-			return apierr.New(http.StatusBadRequest, "Referenced logo storage object does not exist").
+			return apierr.ErrBadRequest("Referenced logo storage object does not exist").
 				WithCode(errcode.CodeLogoStorageObjectNotFound).
 				Wrap(err).
 				WithFields(api.FieldError{
@@ -191,7 +190,7 @@ func (bs *BrandService) UpdateBrand(
 				})
 
 		default:
-			return apierr.New(http.StatusInternalServerError, "Failed to update brand").
+			return apierr.ErrInternalError("Failed to update brand").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
@@ -221,7 +220,7 @@ func (bs *BrandService) ListBrands(
 	})
 
 	if err != nil {
-		return nil, apierr.New(http.StatusInternalServerError, "Failed to list brands").
+		return nil, apierr.ErrInternalError("Failed to list brands").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
@@ -249,7 +248,7 @@ func (bs *BrandService) DeleteBrandByID(
 	id uuid.UUID,
 ) error {
 	if id == uuid.Nil {
-		return apierr.New(http.StatusBadRequest, "Brand ID is required").
+		return apierr.ErrBadRequest("Brand ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -261,12 +260,12 @@ func (bs *BrandService) DeleteBrandByID(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return apierr.New(http.StatusNotFound, "Brand not found").
+			return apierr.ErrNotFound("Brand not found").
 				WithCode(errcode.CodeBrandNotFound).
 				Wrap(err)
 
 		default:
-			return apierr.New(http.StatusInternalServerError, "Failed to delete brand").
+			return apierr.ErrInternalError("Failed to delete brand").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()

@@ -3,7 +3,6 @@ package category
 import (
 	"context"
 	"errors"
-	"net/http"
 	"strings"
 	"time"
 
@@ -40,13 +39,13 @@ func (cs *CategoryService) CreateCategory(
 	in *CreateCategoryInput,
 ) (*model.ProductCategory, error) {
 	if in == nil {
-		return nil, apierr.New(http.StatusBadRequest, "Request body is missing").
+		return nil, apierr.ErrBadRequest("Request body is missing").
 			WithCode(apierr.CodeInvalidPayload)
 	}
 
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
-		return nil, apierr.New(http.StatusBadRequest, "Invalid category parameters").
+		return nil, apierr.ErrBadRequest("Invalid category parameters").
 			WithCode(apierr.CodeValidationFailed).
 			WithFields(api.FieldError{
 				Field:   "name",
@@ -71,12 +70,12 @@ func (cs *CategoryService) CreateCategory(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrConflict):
-			return nil, apierr.New(http.StatusConflict, "A category with this name already exists").
+			return nil, apierr.ErrConflict("A category with this name already exists").
 				WithCode(errcode.CodeCategoryAlreadyExists).
 				Wrap(err)
 
 		case errors.Is(mappedErr, database.ErrForeignKeyViolation), errors.Is(mappedErr, database.ErrNotFound):
-			return nil, apierr.New(http.StatusBadRequest, "The specified parent_id category does not exist").
+			return nil, apierr.ErrBadRequest("The specified parent_id category does not exist").
 				WithCode(errcode.CodeParentCategoryNotFound).
 				Wrap(err).
 				WithFields(api.FieldError{
@@ -85,7 +84,7 @@ func (cs *CategoryService) CreateCategory(
 				})
 
 		default:
-			return nil, apierr.New(http.StatusInternalServerError, "An unexpected database error occurred").
+			return nil, apierr.ErrInternalError("An unexpected database error occurred").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
@@ -100,7 +99,7 @@ func (cs *CategoryService) GetCategoryByID(
 	categoryID uuid.UUID,
 ) (*model.ProductCategory, error) {
 	if categoryID == uuid.Nil {
-		return nil, apierr.New(http.StatusBadRequest, "Category ID cannot be empty").
+		return nil, apierr.ErrBadRequest("Category ID cannot be empty").
 			WithCode(apierr.CodeInvalidInput).
 			WithFields(api.FieldError{
 				Field:   "id",
@@ -119,12 +118,12 @@ func (cs *CategoryService) GetCategoryByID(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return nil, apierr.New(http.StatusNotFound, "Category not found").
+			return nil, apierr.ErrNotFound("Category not found").
 				WithCode(errcode.CodeCategoryNotFound).
 				Wrap(err)
 
 		default:
-			return nil, apierr.New(http.StatusInternalServerError, "Failed to fetch category").
+			return nil, apierr.ErrInternalError("Failed to fetch category").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
@@ -173,12 +172,12 @@ func (cs *CategoryService) UpdateCategory(
 	input *UpdateCategoryInput,
 ) error {
 	if categoryID == uuid.Nil {
-		return apierr.New(http.StatusBadRequest, "Category ID is required").
+		return apierr.ErrBadRequest("Category ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
 	if input == nil {
-		return apierr.New(http.StatusBadRequest, "Update payload cannot be empty").
+		return apierr.ErrBadRequest("Update payload cannot be empty").
 			WithCode(apierr.CodeInvalidPayload)
 	}
 
@@ -187,7 +186,7 @@ func (cs *CategoryService) UpdateCategory(
 	if input.Name != nil {
 		trimmedName := strings.TrimSpace(*input.Name)
 		if trimmedName == "" {
-			return apierr.New(http.StatusBadRequest, "Validation failed").
+			return apierr.ErrBadRequest("Validation failed").
 				WithCode(apierr.CodeValidationFailed).
 				WithFields(api.FieldError{
 					Field:   "name",
@@ -201,7 +200,7 @@ func (cs *CategoryService) UpdateCategory(
 		parentID := *input.ParentID
 
 		if parentID == categoryID {
-			return apierr.New(http.StatusBadRequest, "A category cannot be set as its own parent").
+			return apierr.ErrBadRequest("A category cannot be set as its own parent").
 				WithCode(errcode.CodeInvalidCategoryHierarchy).
 				WithFields(api.FieldError{
 					Field:   "parent_id",
@@ -212,13 +211,13 @@ func (cs *CategoryService) UpdateCategory(
 		if parentID != uuid.Nil {
 			isDescendant, err := cs.isDescendant(ctx, categoryID, parentID)
 			if err != nil {
-				return apierr.New(http.StatusInternalServerError, "Failed to validate category hierarchy").
+				return apierr.ErrInternalError("Failed to validate category hierarchy").
 					WithCode(apierr.CodeInternalError).
 					Wrap(err).
 					WithStack()
 			}
 			if isDescendant {
-				return apierr.New(http.StatusBadRequest, "Cannot set a descendant category as parent").
+				return apierr.ErrBadRequest("Cannot set a descendant category as parent").
 					WithCode(errcode.CodeCyclicCategoryHierarchy).
 					WithFields(api.FieldError{
 						Field:   "parent_id",
@@ -238,17 +237,17 @@ func (cs *CategoryService) UpdateCategory(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return apierr.New(http.StatusNotFound, "Category not found").
+			return apierr.ErrNotFound("Category not found").
 				WithCode(errcode.CodeCategoryNotFound).
 				Wrap(err)
 
 		case errors.Is(mappedErr, database.ErrConflict):
-			return apierr.New(http.StatusConflict, "A category with this name already exists").
+			return apierr.ErrConflict("A category with this name already exists").
 				WithCode(errcode.CodeCategoryAlreadyExists).
 				Wrap(err)
 
 		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
-			return apierr.New(http.StatusBadRequest, "The specified parent category does not exist").
+			return apierr.ErrBadRequest("The specified parent category does not exist").
 				WithCode(errcode.CodeParentCategoryNotFound).
 				Wrap(err).
 				WithFields(api.FieldError{
@@ -257,7 +256,7 @@ func (cs *CategoryService) UpdateCategory(
 				})
 
 		default:
-			return apierr.New(http.StatusInternalServerError, "Failed to update category").
+			return apierr.ErrInternalError("Failed to update category").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
@@ -296,12 +295,12 @@ func (cs *CategoryService) ListCategories(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrInvalidInput):
-			return nil, apierr.New(http.StatusBadRequest, "Invalid search or sort filter provided").
+			return nil, apierr.ErrBadRequest("Invalid search or sort filter provided").
 				WithCode(apierr.CodeInvalidQueryParameter).
 				Wrap(err)
 
 		default:
-			return nil, apierr.New(http.StatusInternalServerError, "Failed to list categories").
+			return nil, apierr.ErrInternalError("Failed to list categories").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()

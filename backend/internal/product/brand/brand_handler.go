@@ -52,16 +52,16 @@ type AdminBrandResponse struct {
 }
 
 // CreateBrand godoc
-// @Summary create a new product brand
-// @Description create a new product brand
-// @Tags Brand
+// @Summary Create a product brand
+// @Description Adds a new product manufacturer/brand to the store catalog. Brand names must be unique.
+// @Tags Brands
 // @Accept json
 // @Produce json
-// @Param brand body CreateBrandRequest true "brand data"
-// @Failure 400 {object} api.ErrorResponse
-// @Failure 409 {object} api.ErrorResponse
-// @Failure 500 {object} api.ErrorResponse
-// @Success 201 {object} api.DataResponse{data=BrandResponse}
+// @Param brand body CreateBrandRequest true "Brand details (name and optional external website link)"
+// @Failure 400 {object} api.BadRequestErrorResponse "Validation error or missing brand name"
+// @Failure 409 {object} api.ConflictErrorResponse "A brand with this name already exists"
+// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
+// @Success 201 {object} api.DataResponse{data=BrandResponse} "Created brand details"
 // @Router /admin/brands [post]
 func (bh *BrandHandler) CreateBrand(c *gin.Context) {
 	req := &CreateBrandRequest{}
@@ -97,16 +97,16 @@ func (bh *BrandHandler) CreateBrand(c *gin.Context) {
 }
 
 // GetBrandByID godoc
-// @Summary get brand by id
-// @Description get brand by id
-// @Tags Brand
+// @Summary Get brand details by ID
+// @Description Retrieves active product brand details by its UUID.
+// @Tags Brands
 // @Accept json
 // @Produce json
-// @Param id path string true "Brand ID (UUID)" format(uuid)
-// @Failure 400 {object} api.ErrorResponse
-// @Failure 404 {object} api.ErrorResponse
-// @Failure 500 {object} api.ErrorResponse
-// @Success 200 {object} api.DataResponse{data=BrandResponse}
+// @Param id path string true "Brand UUID" format(uuid)
+// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
+// @Failure 404 {object} api.NotFoundErrorResponse "Brand not found"
+// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
+// @Success 200 {object} api.DataResponse{data=BrandResponse} "Brand details"
 // @Router /admin/brands/{id} [get]
 func (bh *BrandHandler) GetBrandByID(c *gin.Context) {
 	brandID, err := uuid.Parse(c.Param("id"))
@@ -144,18 +144,18 @@ func (bh *BrandHandler) GetBrandByID(c *gin.Context) {
 }
 
 // UpdateBrand godoc
-// @Summary update a brand
-// @Description update specific brand fields by id
-// @Tags Brand
+// @Summary Update brand details
+// @Description Updates specific fields of an existing brand such as name, website link, or logo object reference.
+// @Tags Brands
 // @Accept json
 // @Produce json
-// @Param id path string true "Brand ID (UUID)" format(uuid)
-// @Param input body UpdateBrandRequest true "brand update payload"
-// @Failure 400 {object} api.ErrorResponse
-// @Failure 404 {object} api.ErrorResponse
-// @Failure 409 {object} api.ErrorResponse
-// @Failure 500 {object} api.ErrorResponse
-// @Success 200 {object} api.MessageResponse
+// @Param id path string true "Brand UUID" format(uuid)
+// @Param input body UpdateBrandRequest true "Fields to update (name, link, logo_storage_object_id)"
+// @Failure 400 {object} api.BadRequestErrorResponse "Validation error or referenced logo object not found"
+// @Failure 404 {object} api.NotFoundErrorResponse "Brand not found"
+// @Failure 409 {object} api.ConflictErrorResponse "A brand with updated name already exists"
+// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
+// @Success 200 {object} api.MessageResponse "Update confirmation message"
 // @Router /admin/brands/{id} [patch]
 func (bh *BrandHandler) UpdateBrand(c *gin.Context) {
 	brandID, err := uuid.Parse(c.Param("id"))
@@ -197,16 +197,16 @@ func (bh *BrandHandler) UpdateBrand(c *gin.Context) {
 }
 
 // DeleteBrandByID godoc
-// @Summary soft-delete a brand
-// @Description soft-delete an active brand by id
-// @Tags Brand
+// @Summary Soft-delete a brand
+// @Description Marks an active brand as soft-deleted (`deleted_at = NOW()`), removing it from active listings.
+// @Tags Brands
 // @Accept json
 // @Produce json
-// @Param id path string true "Brand ID (UUID)" format(uuid)
-// @Failure 400 {object} api.ErrorResponse
-// @Failure 404 {object} api.ErrorResponse
-// @Failure 500 {object} api.ErrorResponse
-// @Success 200 {object} api.MessageResponse
+// @Param id path string true "Brand UUID" format(uuid)
+// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
+// @Failure 404 {object} api.NotFoundErrorResponse "Brand not found"
+// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
+// @Success 200 {object} api.MessageResponse "Deletion confirmation message"
 // @Router /admin/brands/{id} [delete]
 func (bh *BrandHandler) DeleteBrandByID(c *gin.Context) {
 	brandID, err := uuid.Parse(c.Param("id"))
@@ -233,15 +233,15 @@ func (bh *BrandHandler) DeleteBrandByID(c *gin.Context) {
 }
 
 // ListBrands godoc
-// @Summary list public active brands
-// @Description list public active brands in pages
-// @Tags Brand
+// @Summary List active product brands
+// @Description Returns a paginated list of active product brands for customer storefront browsing.
+// @Tags Brands
 // @Accept json
 // @Produce json
-// @Param q query api.ListQuery true "page query"
-// @Failure 400 {object} api.ErrorResponse
-// @Failure 500 {object} api.ErrorResponse
-// @Success 200 {object} api.PaginatedResponse{data=[]BrandResponse,meta=api.Page}
+// @Param q query api.ListQuery true "Pagination, search query, and sorting parameters"
+// @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
+// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
+// @Success 200 {object} api.PaginatedResponse{data=[]BrandResponse,meta=api.Page} "Paginated list of active brands"
 // @Router /brands [get]
 func (bh *BrandHandler) ListBrands(c *gin.Context) {
 	q := &api.ListQuery{}
@@ -283,15 +283,15 @@ func (bh *BrandHandler) ListBrands(c *gin.Context) {
 }
 
 // ListAdminBrands godoc
-// @Summary list all brands including soft-deleted ones (admin)
-// @Description list all brands in pages for administration
-// @Tags Brand
+// @Summary List all brands including soft-deleted ones (Admin)
+// @Description Returns a paginated list of all product brands including soft-deleted records for administrator management.
+// @Tags Brands
 // @Accept json
 // @Produce json
-// @Param q query api.ListQuery true "page query"
-// @Failure 400 {object} api.ErrorResponse
-// @Failure 500 {object} api.ErrorResponse
-// @Success 200 {object} api.PaginatedResponse{data=[]AdminBrandResponse,meta=api.Page}
+// @Param q query api.ListQuery true "Pagination, search query, and sorting parameters"
+// @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
+// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
+// @Success 200 {object} api.PaginatedResponse{data=[]AdminBrandResponse,meta=api.Page} "Paginated list of all brands including deleted"
 // @Router /admin/brands [get]
 func (bh *BrandHandler) ListAdminBrands(c *gin.Context) {
 	q := &api.ListQuery{}

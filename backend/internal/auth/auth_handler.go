@@ -84,7 +84,7 @@ type VerifyChallengeRequest struct {
 // @Success 200 {object} api.DataResponse{data=StartChallengeResponse}
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 429 {object} api.ErrorResponse
-// @Failure 500 {object} api.ErrorResponse
+// @Failure 500 {object} api.InternalServerErrorResponse
 // @Router /auth/challenge/start [post]
 func (h *Handler) StartChallenge(c *gin.Context) {
 	var req StartChallengeRequest
@@ -145,7 +145,7 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 401 {object} api.UnauthorizedResponse
 // @Failure 429 {object} api.ErrorResponse
-// @Failure 500 {object} api.ErrorResponse
+// @Failure 500 {object} api.InternalServerErrorResponse
 // @Router /auth/challenge/verify [post]
 func (h *Handler) VerifyChallenge(c *gin.Context) {
 	var req VerifyChallengeRequest
@@ -186,7 +186,7 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 // @Success 200 {object} api.MessageResponse
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 429 {object} api.ErrorResponse
-// @Failure 500 {object} api.ErrorResponse
+// @Failure 500 {object} api.InternalServerErrorResponse
 // @Router /auth/challenge/resend [post]
 func (h *Handler) ResendChallenge(c *gin.Context) {
 	var req ResendChallengeRequest
@@ -221,7 +221,7 @@ func (h *Handler) ResendChallenge(c *gin.Context) {
 // @Failure 400 {object} api.BadReqResponse
 // @Failure 401 {object} api.UnauthorizedResponse
 // @Failure 429 {object} api.ErrorResponse
-// @Failure 500 {object} api.ErrorResponse
+// @Failure 500 {object} api.InternalServerErrorResponse
 // @Router /auth/refresh [post]
 func (h *Handler) Refresh(c *gin.Context) {
 	var req RefreshTokenRequest
@@ -257,7 +257,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Success 200 {object} api.DataResponse{data=MeResponse}
-// @Failure 500 {object} api.ErrorResponse
+// @Failure 500 {object} api.InternalServerErrorResponse
 // @Router /auth/me [get]
 func (h *Handler) GetMe(c *gin.Context) {
 	val, exists := c.Get("userID")

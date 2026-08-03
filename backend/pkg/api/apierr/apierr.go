@@ -110,23 +110,111 @@ func (ae *ApiError) LogValue() slog.Value {
 	return slog.GroupValue(attrs...)
 }
 
-// Standard Helpers
-func ErrInvalidUUID() *ApiError {
-	return New(http.StatusBadRequest, "Invalid UUID format").WithCode(CodeInvalidInput)
-}
+// --- Predefined API Error Constructors ---
 
-func ErrInternalError() *ApiError {
-	return New(http.StatusInternalServerError, "Internal server error").WithCode(CodeInternalError)
-}
-
-func ErrNotFound(message string) *ApiError {
-	return New(http.StatusNotFound, message).WithCode(CodeNotFound)
-}
-
+// ErrBadRequest creates a 400 Bad Request error.
 func ErrBadRequest(message string) *ApiError {
 	return New(http.StatusBadRequest, message).WithCode(CodeBadRequest)
 }
 
+// BadRequestError creates a 400 Bad Request error with default or custom message.
+func BadRequestError(message ...string) *ApiError {
+	msg := "Bad request"
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+	return New(http.StatusBadRequest, msg).WithCode(CodeBadRequest)
+}
+
+// ErrNotFound creates a 404 Not Found error.
+func ErrNotFound(message string) *ApiError {
+	return New(http.StatusNotFound, message).WithCode(CodeNotFound)
+}
+
+// NotFoundError creates a 404 Not Found error with default or custom message.
+func NotFoundError(message ...string) *ApiError {
+	msg := "Resource not found"
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+	return New(http.StatusNotFound, msg).WithCode(CodeNotFound)
+}
+
+// ErrUnauthorized creates a 401 Unauthorized error.
 func ErrUnauthorized(message string) *ApiError {
 	return New(http.StatusUnauthorized, message).WithCode(CodeUnauthorized)
+}
+
+// UnauthorizedError creates a 401 Unauthorized error with default or custom message.
+func UnauthorizedError(message ...string) *ApiError {
+	msg := "Unauthorized access"
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+	return New(http.StatusUnauthorized, msg).WithCode(CodeUnauthorized)
+}
+
+// ErrForbidden creates a 403 Forbidden error.
+func ErrForbidden(message string) *ApiError {
+	return New(http.StatusForbidden, message).WithCode(CodeForbidden)
+}
+
+// ForbiddenError creates a 403 Forbidden error with default or custom message.
+func ForbiddenError(message ...string) *ApiError {
+	msg := "Access forbidden"
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+	return New(http.StatusForbidden, msg).WithCode(CodeForbidden)
+}
+
+// ErrConflict creates a 409 Conflict error.
+func ErrConflict(message string) *ApiError {
+	return New(http.StatusConflict, message).WithCode(CodeResourceConflict)
+}
+
+// ConflictError creates a 409 Conflict error with default or custom message.
+func ConflictError(message ...string) *ApiError {
+	msg := "Resource conflict"
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+	return New(http.StatusConflict, msg).WithCode(CodeResourceConflict)
+}
+
+// ErrInternalError creates a 500 Internal Server Error.
+func ErrInternalError(message ...string) *ApiError {
+	msg := "Internal server error"
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+	return New(http.StatusInternalServerError, msg).WithCode(CodeInternalError)
+}
+
+// InternalServerError creates a 500 Internal Server Error with default or custom message.
+func InternalServerError(message ...string) *ApiError {
+	return ErrInternalError(message...)
+}
+
+// ErrInvalidUUID creates a 400 Bad Request error for invalid UUID syntax.
+func ErrInvalidUUID() *ApiError {
+	return New(http.StatusBadRequest, "Invalid UUID format").WithCode(CodeInvalidInput)
+}
+
+// ErrInvalidPayload creates a 400 Bad Request error for malformed request payloads.
+func ErrInvalidPayload(message ...string) *ApiError {
+	msg := "Invalid request payload"
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+	return New(http.StatusBadRequest, msg).WithCode(CodeInvalidPayload)
+}
+
+// ErrValidationFailed creates a 400 Bad Request error for field validation failures.
+func ErrValidationFailed(message ...string) *ApiError {
+	msg := "Validation failed"
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+	return New(http.StatusBadRequest, msg).WithCode(CodeValidationFailed)
 }

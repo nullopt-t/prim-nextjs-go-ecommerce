@@ -1,50 +1,149 @@
 basePath: /api/v1
 definitions:
-  api.BadReqResponse:
+  github_com_m-mahmoud-alsaid_prim-backend_internal_model.PublicationStatus:
+    enum:
+    - draft
+    - published
+    - archived
+    type: string
+    x-enum-varnames:
+    - PublicationStatusDraft
+    - PublicationStatusPublished
+    - PublicationStatusArchived
+  github_com_m-mahmoud-alsaid_prim-backend_internal_product_variant.VariantResponse:
+    properties:
+      attributes:
+        additionalProperties: {}
+        type: object
+      created_at:
+        example: "2026-08-02T16:00:00Z"
+        type: string
+      crossed_out_price:
+        example: 3999
+        type: integer
+      currency:
+        example: USD
+        type: string
+      id:
+        example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
+        type: string
+      is_default:
+        example: false
+        type: boolean
+      price:
+        example: 2999
+        type: integer
+      product_id:
+        example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
+        type: string
+      title:
+        example: Red / XL
+        type: string
+      updated_at:
+        example: "2026-08-02T16:00:00Z"
+        type: string
+    type: object
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadReqResponse:
     properties:
       code:
-        example: BAD_REQUEST
+        example: VALIDATION_FAILED
         type: string
       details:
         items:
-          $ref: '#/definitions/api.FieldError'
+          $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError'
         type: array
       message:
-        example: field name should be string
+        example: Invalid input or payload parameters
         type: string
     type: object
-  api.DataResponse:
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse:
+    properties:
+      code:
+        example: VALIDATION_FAILED
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError'
+        type: array
+      message:
+        example: Invalid request input or malformed payload
+        type: string
+    type: object
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse:
+    properties:
+      code:
+        example: ALREADY_EXISTS
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError'
+        type: array
+      message:
+        example: A resource with this identifier or name already exists
+        type: string
+    type: object
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse:
     properties:
       data: {}
     type: object
-  api.ErrorResponse:
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ErrorResponse:
     properties:
       code:
-        example: CODE_ERROR
+        example: INTERNAL_ERROR
         type: string
+      details:
+        items:
+          $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError'
+        type: array
       message:
-        example: an error occured
+        example: An unexpected internal server error occurred
         type: string
     type: object
-  api.FieldError:
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError:
     properties:
       field:
         example: name
         type: string
       message:
-        example: x should be integer
+        example: name is required and cannot be empty
         type: string
       tags:
         example: string
         type: string
     type: object
-  api.MessageResponse:
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse:
     properties:
+      code:
+        example: INTERNAL_ERROR
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError'
+        type: array
       message:
-        example: the request sent successfully
+        example: An unexpected internal server error occurred
         type: string
     type: object
-  api.Page:
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse:
+    properties:
+      message:
+        example: Operation completed successfully
+        type: string
+    type: object
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse:
+    properties:
+      code:
+        example: NOT_FOUND
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError'
+        type: array
+      message:
+        example: The requested resource was not found
+        type: string
+    type: object
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page:
     properties:
       has_next:
         example: true
@@ -65,22 +164,22 @@ definitions:
         example: 2
         type: integer
     type: object
-  api.PaginatedResponse:
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse:
     properties:
       data: {}
       meta: {}
     type: object
-  api.Sort:
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Sort:
     properties:
       field:
         example: name
         type: string
       order:
         allOf:
-        - $ref: '#/definitions/api.SortOrder'
+        - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.SortOrder'
         example: asc
     type: object
-  api.SortOrder:
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.SortOrder:
     enum:
     - asc
     - desc
@@ -88,12 +187,16 @@ definitions:
     x-enum-varnames:
     - SortAsc
     - SortDesc
-  api.UnauthorizedResponse:
+  github_com_m-mahmoud-alsaid_prim-backend_pkg_api.UnauthorizedResponse:
     properties:
+      code:
+        example: UNAUTHORIZED
+        type: string
       message:
+        example: Authentication token is missing or invalid
         type: string
     type: object
-  auth.MeResponse:
+  internal_auth.MeResponse:
     properties:
       created_at:
         type: string
@@ -104,28 +207,28 @@ definitions:
       status:
         type: string
     type: object
-  auth.RefreshTokenRequest:
+  internal_auth.RefreshTokenRequest:
     properties:
       refresh_token:
         type: string
     required:
     - refresh_token
     type: object
-  auth.ResendChallengeRequest:
+  internal_auth.ResendChallengeRequest:
     properties:
       identifier:
         type: string
     required:
     - identifier
     type: object
-  auth.StartChallengeRequest:
+  internal_auth.StartChallengeRequest:
     properties:
       identifier:
         type: string
     required:
     - identifier
     type: object
-  auth.StartChallengeResponse:
+  internal_auth.StartChallengeResponse:
     properties:
       duration:
         type: integer
@@ -134,14 +237,14 @@ definitions:
       identifier:
         type: string
     type: object
-  auth.TokensResponse:
+  internal_auth.TokensResponse:
     properties:
       access_token:
         type: string
       refresh_token:
         type: string
     type: object
-  auth.VerifyChallengeRequest:
+  internal_auth.VerifyChallengeRequest:
     properties:
       code:
         type: string
@@ -151,136 +254,7 @@ definitions:
     - code
     - identifier
     type: object
-  brand.AdminBrandResponse:
-    properties:
-      created_at:
-        example: "2026-07-01T05:04:38Z"
-        type: string
-      deleted_at:
-        example: "2026-07-01T05:04:38Z"
-        type: string
-      id:
-        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
-        type: string
-      link:
-        example: https://nvidia.com
-        type: string
-      logo_storage_object_id:
-        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
-        type: string
-      name:
-        example: nvidia
-        type: string
-      updated_at:
-        example: "2026-07-01T05:04:38Z"
-        type: string
-    type: object
-  brand.BrandResponse:
-    properties:
-      created_at:
-        example: "2026-07-01T05:04:38Z"
-        type: string
-      id:
-        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
-        type: string
-      link:
-        example: https://nvidia.com
-        type: string
-      logo_storage_object_id:
-        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
-        type: string
-      name:
-        example: nvidia
-        type: string
-      updated_at:
-        example: "2026-07-01T05:04:38Z"
-        type: string
-    type: object
-  brand.CreateBrandRequest:
-    properties:
-      link:
-        example: https://apple.com
-        type: string
-      name:
-        example: apple
-        type: string
-    required:
-    - name
-    type: object
-  brand.UpdateBrandRequest:
-    properties:
-      link:
-        example: https://apple.com
-        type: string
-      logo_storage_object_id:
-        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
-        type: string
-      name:
-        example: apple
-        type: string
-    type: object
-  category.AdminCategoryResponse:
-    properties:
-      created_at:
-        example: "2026-06-30T15:47:19Z"
-        type: string
-      deleted_at:
-        example: "2026-07-01T10:00:00Z"
-        type: string
-      id:
-        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
-        type: string
-      name:
-        example: Electronics
-        type: string
-      parent_id:
-        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
-        type: string
-      updated_at:
-        example: "2026-06-30T15:47:19Z"
-        type: string
-    type: object
-  category.CreateCategoryRequest:
-    properties:
-      name:
-        type: string
-      parent_id:
-        type: string
-    required:
-    - name
-    type: object
-  category.PublicCategoryListResponse:
-    properties:
-      id:
-        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
-        type: string
-      name:
-        example: Electronic
-        type: string
-      slug:
-        example: electronic
-        type: string
-    type: object
-  category.UpdateCategoryRequest:
-    properties:
-      name:
-        example: Electronics
-        type: string
-      parent_id:
-        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
-        type: string
-    type: object
-  model.PublicationStatus:
-    enum:
-    - draft
-    - published
-    - archived
-    type: string
-    x-enum-varnames:
-    - PublicationStatusDraft
-    - PublicationStatusPublished
-    - PublicationStatusArchived
-  product.CreateProductRequest:
+  internal_product.CreateProductRequest:
     properties:
       brand_id:
         example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
@@ -303,7 +277,7 @@ definitions:
     - description
     - title
     type: object
-  product.CreateProductVariantRequest:
+  internal_product.CreateProductVariantRequest:
     properties:
       attributes:
         additionalProperties: {}
@@ -326,17 +300,17 @@ definitions:
     required:
     - title
     type: object
-  product.ProductBrandSummary:
+  internal_product.ProductBrandSummary:
     properties:
       id:
         type: string
       name:
         type: string
     type: object
-  product.ProductDetailsResponse:
+  internal_product.ProductDetailsResponse:
     properties:
       brand:
-        $ref: '#/definitions/product.ProductBrandSummary'
+        $ref: '#/definitions/internal_product.ProductBrandSummary'
       brand_id:
         example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
         type: string
@@ -368,7 +342,7 @@ definitions:
         example: "2026-08-02T16:00:00Z"
         type: string
     type: object
-  product.ProductListItem:
+  internal_product.ProductListItem:
     properties:
       brand_id:
         type: string
@@ -381,11 +355,11 @@ definitions:
       public_id:
         type: string
       status:
-        $ref: '#/definitions/model.PublicationStatus'
+        $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_internal_model.PublicationStatus'
       title:
         type: string
     type: object
-  product.ProductMediaResponse:
+  internal_product.ProductMediaResponse:
     properties:
       id:
         example: 8f123456-e89b-12d3-a456-426614174000
@@ -394,7 +368,7 @@ definitions:
         example: image
         type: string
       object:
-        $ref: '#/definitions/product.StorageObjectResponse'
+        $ref: '#/definitions/internal_product.StorageObjectResponse'
       product_id:
         example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
         type: string
@@ -405,7 +379,7 @@ definitions:
         example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
         type: string
     type: object
-  product.ProductResponse:
+  internal_product.ProductResponse:
     properties:
       brand_id:
         example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
@@ -438,14 +412,14 @@ definitions:
         example: "2026-08-02T16:00:00Z"
         type: string
     type: object
-  product.PutProductCategoryRequest:
+  internal_product.PutProductCategoryRequest:
     properties:
       category_id:
         type: string
     required:
     - category_id
     type: object
-  product.PutProductTagsRequest:
+  internal_product.PutProductTagsRequest:
     properties:
       tag_ids:
         items:
@@ -454,7 +428,7 @@ definitions:
     required:
     - tag_ids
     type: object
-  product.ReorderMediaRequest:
+  internal_product.ReorderMediaRequest:
     properties:
       ordered_media_ids:
         items:
@@ -463,14 +437,14 @@ definitions:
     required:
     - ordered_media_ids
     type: object
-  product.SetDefaultVariantRequest:
+  internal_product.SetDefaultVariantRequest:
     properties:
       variant_id:
         type: string
     required:
     - variant_id
     type: object
-  product.StorageObjectResponse:
+  internal_product.StorageObjectResponse:
     properties:
       bucket:
         type: string
@@ -485,7 +459,7 @@ definitions:
       public_url:
         type: string
     type: object
-  product.UpdateProductRequest:
+  internal_product.UpdateProductRequest:
     properties:
       brand_id:
         type: string
@@ -502,7 +476,123 @@ definitions:
       title:
         type: string
     type: object
-  tag.AdminTagResponse:
+  internal_product_brand.AdminBrandResponse:
+    properties:
+      created_at:
+        example: "2026-07-01T05:04:38Z"
+        type: string
+      deleted_at:
+        example: "2026-07-01T05:04:38Z"
+        type: string
+      id:
+        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
+        type: string
+      link:
+        example: https://nvidia.com
+        type: string
+      logo_storage_object_id:
+        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
+        type: string
+      name:
+        example: nvidia
+        type: string
+      updated_at:
+        example: "2026-07-01T05:04:38Z"
+        type: string
+    type: object
+  internal_product_brand.BrandResponse:
+    properties:
+      created_at:
+        example: "2026-07-01T05:04:38Z"
+        type: string
+      id:
+        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
+        type: string
+      link:
+        example: https://nvidia.com
+        type: string
+      logo_storage_object_id:
+        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
+        type: string
+      name:
+        example: nvidia
+        type: string
+      updated_at:
+        example: "2026-07-01T05:04:38Z"
+        type: string
+    type: object
+  internal_product_brand.CreateBrandRequest:
+    properties:
+      link:
+        example: https://apple.com
+        type: string
+      name:
+        example: apple
+        type: string
+    required:
+    - name
+    type: object
+  internal_product_brand.UpdateBrandRequest:
+    properties:
+      link:
+        example: https://apple.com
+        type: string
+      logo_storage_object_id:
+        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
+        type: string
+      name:
+        example: apple
+        type: string
+    type: object
+  internal_product_category.AdminCategoryResponse:
+    properties:
+      created_at:
+        example: "2026-06-30T15:47:19Z"
+        type: string
+      deleted_at:
+        example: "2026-07-01T10:00:00Z"
+        type: string
+      id:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+      name:
+        example: Electronics
+        type: string
+      parent_id:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+      updated_at:
+        example: "2026-06-30T15:47:19Z"
+        type: string
+    type: object
+  internal_product_category.CreateCategoryRequest:
+    properties:
+      name:
+        type: string
+      parent_id:
+        type: string
+    required:
+    - name
+    type: object
+  internal_product_category.PublicCategoryResponse:
+    properties:
+      id:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+      name:
+        example: Electronics
+        type: string
+    type: object
+  internal_product_category.UpdateCategoryRequest:
+    properties:
+      name:
+        example: Electronics
+        type: string
+      parent_id:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+    type: object
+  internal_product_tag.AdminTagResponse:
     properties:
       created_at:
         example: "2026-06-30T15:47:19Z"
@@ -520,7 +610,7 @@ definitions:
         example: "2026-06-30T15:47:19Z"
         type: string
     type: object
-  tag.CreateTagRequest:
+  internal_product_tag.CreateTagRequest:
     properties:
       name:
         example: black-friday
@@ -528,7 +618,7 @@ definitions:
     required:
     - name
     type: object
-  tag.TagResponse:
+  internal_product_tag.TagResponse:
     properties:
       created_at:
         example: "2026-06-30T15:47:19Z"
@@ -543,13 +633,13 @@ definitions:
         example: "2026-06-30T15:47:19Z"
         type: string
     type: object
-  tag.UpdateTagRequest:
+  internal_product_tag.UpdateTagRequest:
     properties:
       name:
         example: best-seller
         type: string
     type: object
-  variant.AdminVariantResponse:
+  internal_product_variant.AdminVariantResponse:
     properties:
       attributes:
         additionalProperties: {}
@@ -585,7 +675,7 @@ definitions:
         example: "2026-08-02T16:00:00Z"
         type: string
     type: object
-  variant.AttachMediaRequest:
+  internal_product_variant.AttachMediaRequest:
     properties:
       media_type:
         example: image
@@ -600,7 +690,7 @@ definitions:
     - media_type
     - storage_object_id
     type: object
-  variant.CreateVariantRequest:
+  internal_product_variant.CreateVariantRequest:
     properties:
       attributes:
         additionalProperties: {}
@@ -623,7 +713,7 @@ definitions:
     required:
     - title
     type: object
-  variant.ReorderMediaRequest:
+  internal_product_variant.ReorderMediaRequest:
     properties:
       ordered_media_ids:
         items:
@@ -632,7 +722,7 @@ definitions:
     required:
     - ordered_media_ids
     type: object
-  variant.StorageObjectResponse:
+  internal_product_variant.StorageObjectResponse:
     properties:
       bucket:
         type: string
@@ -647,7 +737,7 @@ definitions:
       public_url:
         type: string
     type: object
-  variant.UpdateVariantRequest:
+  internal_product_variant.UpdateVariantRequest:
     properties:
       attributes:
         additionalProperties: {}
@@ -668,7 +758,7 @@ definitions:
         example: Red / XXL
         type: string
     type: object
-  variant.VariantMediaResponse:
+  internal_product_variant.VariantMediaResponse:
     properties:
       id:
         example: 8f123456-e89b-12d3-a456-426614174000
@@ -677,7 +767,7 @@ definitions:
         example: image
         type: string
       object:
-        $ref: '#/definitions/variant.StorageObjectResponse'
+        $ref: '#/definitions/internal_product_variant.StorageObjectResponse'
       sort_order:
         example: 0
         type: integer
@@ -688,7 +778,7 @@ definitions:
         example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
         type: string
     type: object
-  variant.VariantResponse:
+  internal_product_variant.VariantResponse:
     properties:
       attributes:
         additionalProperties: {}
@@ -738,7 +828,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: list all brands in pages for administration
+      description: Returns a paginated list of all product brands including soft-deleted
+        records for administrator management.
       parameters:
       - example: 1
         in: query
@@ -765,74 +856,76 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Paginated list of all brands including deleted
           schema:
             allOf:
-            - $ref: '#/definitions/api.PaginatedResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/brand.AdminBrandResponse'
+                    $ref: '#/definitions/internal_product_brand.AdminBrandResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid query parameters
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: list all brands including soft-deleted ones (admin)
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: List all brands including soft-deleted ones (Admin)
       tags:
-      - Brand
+      - Brands
     post:
       consumes:
       - application/json
-      description: create a new product brand
+      description: Adds a new product manufacturer/brand to the store catalog. Brand
+        names must be unique.
       parameters:
-      - description: brand data
+      - description: Brand details (name and optional external website link)
         in: body
         name: brand
         required: true
         schema:
-          $ref: '#/definitions/brand.CreateBrandRequest'
+          $ref: '#/definitions/internal_product_brand.CreateBrandRequest'
       produces:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Created brand details
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/brand.BrandResponse'
+                  $ref: '#/definitions/internal_product_brand.BrandResponse'
               type: object
         "400":
-          description: Bad Request
+          description: Validation error or missing brand name
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "409":
-          description: Conflict
+          description: A brand with this name already exists
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: create a new product brand
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Create a product brand
       tags:
-      - Brand
+      - Brands
   /admin/brands/{id}:
     delete:
       consumes:
       - application/json
-      description: soft-delete an active brand by id
+      description: Marks an active brand as soft-deleted (`deleted_at = NOW()`), removing
+        it from active listings.
       parameters:
-      - description: Brand ID (UUID)
+      - description: Brand UUID
         format: uuid
         in: path
         name: id
@@ -842,30 +935,30 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Deletion confirmation message
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
-          description: Bad Request
+          description: Invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Brand not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: soft-delete a brand
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Soft-delete a brand
       tags:
-      - Brand
+      - Brands
     get:
       consumes:
       - application/json
-      description: get brand by id
+      description: Retrieves active product brand details by its UUID.
       parameters:
-      - description: Brand ID (UUID)
+      - description: Brand UUID
         format: uuid
         in: path
         name: id
@@ -875,77 +968,79 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Brand details
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/brand.BrandResponse'
+                  $ref: '#/definitions/internal_product_brand.BrandResponse'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Brand not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: get brand by id
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Get brand details by ID
       tags:
-      - Brand
+      - Brands
     patch:
       consumes:
       - application/json
-      description: update specific brand fields by id
+      description: Updates specific fields of an existing brand such as name, website
+        link, or logo object reference.
       parameters:
-      - description: Brand ID (UUID)
+      - description: Brand UUID
         format: uuid
         in: path
         name: id
         required: true
         type: string
-      - description: brand update payload
+      - description: Fields to update (name, link, logo_storage_object_id)
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/brand.UpdateBrandRequest'
+          $ref: '#/definitions/internal_product_brand.UpdateBrandRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Update confirmation message
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
-          description: Bad Request
+          description: Validation error or referenced logo object not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Brand not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "409":
-          description: Conflict
+          description: A brand with updated name already exists
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: update a brand
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Update brand details
       tags:
-      - Brand
+      - Brands
   /admin/categories:
     get:
       consumes:
       - application/json
-      description: list all categories including soft-deleted ones for administration
+      description: Returns a paginated list of all product categories including soft-deleted
+        records for administrator taxonomy management.
       parameters:
       - example: 1
         in: query
@@ -972,74 +1067,75 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Paginated list of all categories including deleted
           schema:
             allOf:
-            - $ref: '#/definitions/api.PaginatedResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/category.AdminCategoryResponse'
+                    $ref: '#/definitions/internal_product_category.AdminCategoryResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid query parameters
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: list all categories (admin)
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: List all categories including soft-deleted ones (Admin)
       tags:
-      - Category
+      - Categories
     post:
       consumes:
       - application/json
-      description: create a new category
+      description: Creates a new product category in the taxonomy tree. Can optionally
+        be assigned a parent category ID for hierarchical nesting.
       parameters:
-      - description: Category Data
+      - description: Category name and optional parent category UUID
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/category.CreateCategoryRequest'
+          $ref: '#/definitions/internal_product_category.CreateCategoryRequest'
       produces:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Created category details
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/category.AdminCategoryResponse'
+                  $ref: '#/definitions/internal_product_category.AdminCategoryResponse'
               type: object
         "400":
-          description: Bad Request
+          description: Validation error or referenced parent category does not exist
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "409":
-          description: Conflict
+          description: A category with this name already exists
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: create a new category
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Create a product category
       tags:
-      - Category
+      - Categories
   /admin/categories/{id}:
     get:
       consumes:
       - application/json
-      description: fetch a category by id
+      description: Retrieves product category details by its UUID.
       parameters:
-      - description: Category ID (UUID)
+      - description: Category UUID
         format: uuid
         in: path
         name: id
@@ -1049,79 +1145,77 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Category details
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/category.AdminCategoryResponse'
+                  $ref: '#/definitions/internal_product_category.AdminCategoryResponse'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Category not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: get a category by id
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Get category details by ID
       tags:
-      - Category
+      - Categories
     patch:
       consumes:
       - application/json
-      description: update category details by id
+      description: Updates specific fields of an existing category (name or parent
+        category ID). Guards against self-referencing and circular tree dependencies.
       parameters:
-      - description: Category ID (UUID)
+      - description: Category UUID
         format: uuid
         in: path
         name: id
         required: true
         type: string
-      - description: Category details
+      - description: Fields to update (name, parent_id)
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/category.UpdateCategoryRequest'
+          $ref: '#/definitions/internal_product_category.UpdateCategoryRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Update confirmation message
           schema:
-            allOf:
-            - $ref: '#/definitions/api.DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/category.AdminCategoryResponse'
-              type: object
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
-          description: Bad Request
+          description: Validation error, circular hierarchy, or parent not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Category not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "409":
-          description: Conflict
+          description: A category with updated name already exists
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: update category details
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Update category details
       tags:
-      - Category
+      - Categories
   /admin/products:
     get:
+      description: Returns a paginated list of all products including draft, published,
+        archived, and soft-deleted records for administrator catalog management.
       parameters:
       - example: 1
         in: query
@@ -1148,70 +1242,76 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Paginated list of all products including deleted
           schema:
             allOf:
-            - $ref: '#/definitions/api.PaginatedResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/product.ProductListItem'
+                    $ref: '#/definitions/internal_product.ProductListItem'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid query parameters
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: list all products including soft-deleted ones (admin)
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: List all products for management (Admin)
       tags:
       - Products
     post:
       consumes:
       - application/json
+      description: Creates a new product in 'draft' status. Products remain in draft
+        state until at least one variant is created and the product is explicitly
+        published.
       parameters:
-      - description: Product Data
+      - description: Product title, description, category ID, optional brand ID and
+          highlights
         in: body
         name: product
         required: true
         schema:
-          $ref: '#/definitions/product.CreateProductRequest'
+          $ref: '#/definitions/internal_product.CreateProductRequest'
       produces:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Created draft product details
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/product.ProductResponse'
+                  $ref: '#/definitions/internal_product.ProductResponse'
               type: object
         "400":
-          description: Bad Request
+          description: Validation error or invalid UUID reference
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "409":
-          description: Conflict
+          description: Product with generated public ID already exists
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: create a new draft product
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Create a new draft product
       tags:
       - Products
   /admin/products/{id}:
     delete:
+      description: Marks a product as soft-deleted (`deleted_at = NOW()`), removing
+        it from active administrative and customer listings.
       parameters:
-      - description: Product ID (UUID)
+      - description: Product UUID
         format: uuid
         in: path
         name: id
@@ -1221,66 +1321,71 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Deletion confirmation message
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
-          description: Bad Request
+          description: Invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Product not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: soft-delete a product
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Soft-delete a product
       tags:
       - Products
     patch:
       consumes:
       - application/json
+      description: Updates specific fields of an existing product such as title, description,
+        category, brand, or publication status.
       parameters:
-      - description: Product ID (UUID)
+      - description: Product UUID
         format: uuid
         in: path
         name: id
         required: true
         type: string
-      - description: Update payload
+      - description: Fields to update (title, description, brand_id, category_id,
+          status, highlights)
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/product.UpdateProductRequest'
+          $ref: '#/definitions/internal_product.UpdateProductRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Update confirmation message
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
-          description: Bad Request
+          description: Validation error or invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Product, brand, or category not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: update product details
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Update product attributes
       tags:
       - Products
   /admin/products/{id}/archive:
     post:
+      description: Transitions a product status to 'archived', hiding it from public
+        store front listings while retaining all historical sales and inventory data.
       parameters:
-      - description: Product ID (UUID)
+      - description: Product UUID
         format: uuid
         in: path
         name: id
@@ -1290,22 +1395,22 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Archival confirmation message
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
-          description: Bad Request
+          description: Invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Product not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: archive a product
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Archive a product
       tags:
       - Products
   /admin/products/{id}/categories:
@@ -1324,26 +1429,26 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/product.PutProductCategoryRequest'
+          $ref: '#/definitions/internal_product.PutProductCategoryRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: update the category of a product
       tags:
       - Products
@@ -1370,19 +1475,19 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/product.ProductMediaResponse'
+                  $ref: '#/definitions/internal_product.ProductMediaResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: upload media file for a product
       tags:
       - Product Media
@@ -1407,19 +1512,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: remove a media attachment from a product
       tags:
       - Product Media
@@ -1439,29 +1544,31 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/product.ReorderMediaRequest'
+          $ref: '#/definitions/internal_product.ReorderMediaRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: batch reorder media items for a product
       tags:
       - Product Media
   /admin/products/{id}/publish:
     post:
+      description: Transitions a product status to 'published' so it becomes visible
+        to customers. Requires the product to have at least one active variant.
       parameters:
-      - description: Product ID (UUID)
+      - description: Product UUID
         format: uuid
         in: path
         name: id
@@ -1471,22 +1578,22 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Publication confirmation message
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
-          description: Bad Request
+          description: Product lacks active variants or invalid UUID
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Product not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: publish a product
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Publish a draft product
       tags:
       - Products
   /admin/products/{id}/tags:
@@ -1505,22 +1612,22 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/product.PutProductTagsRequest'
+          $ref: '#/definitions/internal_product.PutProductTagsRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: replace all tag assignments for a product
       tags:
       - Products
@@ -1540,7 +1647,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/product.CreateProductVariantRequest'
+          $ref: '#/definitions/internal_product.CreateProductVariantRequest'
       produces:
       - application/json
       responses:
@@ -1548,19 +1655,19 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/variant.VariantResponse'
+                  $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_internal_product_variant.VariantResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: create a variant under a product
       tags:
       - Product Variants
@@ -1580,33 +1687,35 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/product.SetDefaultVariantRequest'
+          $ref: '#/definitions/internal_product.SetDefaultVariantRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: set a variant as the default for a product
       tags:
       - Product Variants
   /admin/products/{product_id}/variants:
     get:
+      description: Returns a paginated list of all variants associated with a specific
+        product including soft-deleted records for administrator management.
       parameters:
-      - description: Product ID (UUID)
+      - description: Product UUID
         format: uuid
         in: path
         name: product_id
@@ -1637,77 +1746,81 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Paginated list of all product variants including deleted
           schema:
             allOf:
-            - $ref: '#/definitions/api.PaginatedResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/variant.AdminVariantResponse'
+                    $ref: '#/definitions/internal_product_variant.AdminVariantResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid query parameters or UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: list all variants for a product including soft-deleted ones (admin)
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: List all variants for a product including soft-deleted ones (Admin)
       tags:
-      - Variant
+      - Product Variants
     post:
       consumes:
       - application/json
+      description: Adds a new SKU/variant to an existing product (e.g., specific color,
+        size, price, or custom attributes).
       parameters:
-      - description: Product ID (UUID)
+      - description: Product UUID
         format: uuid
         in: path
         name: product_id
         required: true
         type: string
-      - description: variant payload
+      - description: Variant title, price, crossed-out price, currency, attributes
+          map, and default flag
         in: body
         name: data
         required: true
         schema:
-          $ref: '#/definitions/variant.CreateVariantRequest'
+          $ref: '#/definitions/internal_product_variant.CreateVariantRequest'
       produces:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Created variant details
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/variant.VariantResponse'
+                  $ref: '#/definitions/internal_product_variant.VariantResponse'
               type: object
         "400":
-          description: Bad Request
+          description: Validation error or missing required fields
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-        "409":
-          description: Conflict
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
+        "404":
+          description: Parent product not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: create a product variant
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Create a product variant
       tags:
-      - Variant
+      - Product Variants
   /admin/tags:
     get:
       consumes:
       - application/json
-      description: list all tags including soft-deleted ones for administration
+      description: Returns a paginated list of all product tags including soft-deleted
+        records for administrator management.
       parameters:
       - example: 1
         in: query
@@ -1734,74 +1847,76 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Paginated list of all tags including deleted
           schema:
             allOf:
-            - $ref: '#/definitions/api.PaginatedResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/tag.AdminTagResponse'
+                    $ref: '#/definitions/internal_product_tag.AdminTagResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid query parameters
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: list all tags (admin)
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: List all tags including soft-deleted ones (Admin)
       tags:
-      - Tag
+      - Tags
     post:
       consumes:
       - application/json
-      description: create a new product tag
+      description: Adds a new product classification tag (e.g. 'black-friday', 'best-seller').
+        Tag names must be unique.
       parameters:
-      - description: tag data
+      - description: Tag name payload
         in: body
         name: data
         required: true
         schema:
-          $ref: '#/definitions/tag.CreateTagRequest'
+          $ref: '#/definitions/internal_product_tag.CreateTagRequest'
       produces:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Created tag details
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.TagResponse'
+                  $ref: '#/definitions/internal_product_tag.TagResponse'
               type: object
         "400":
-          description: Bad Request
+          description: Validation error or missing tag name
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "409":
-          description: Conflict
+          description: A tag with this name already exists
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: create a new product tag
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Create a product tag
       tags:
-      - Tag
+      - Tags
   /admin/tags/{id}:
     delete:
       consumes:
       - application/json
-      description: soft-delete a tag by id
+      description: Marks an active product tag as soft-deleted (`deleted_at = NOW()`),
+        removing it from tag selections.
       parameters:
-      - description: Tag ID (UUID)
+      - description: Tag UUID
         format: uuid
         in: path
         name: id
@@ -1811,30 +1926,30 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Deletion confirmation message
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
-          description: Bad Request
+          description: Invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Tag not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: delete a tag
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Soft-delete a tag
       tags:
-      - Tag
+      - Tags
     get:
       consumes:
       - application/json
-      description: get tag by id
+      description: Retrieves active product tag details by its UUID.
       parameters:
-      - description: Tag ID (UUID)
+      - description: Tag UUID
         format: uuid
         in: path
         name: id
@@ -1844,76 +1959,79 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Tag details
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.TagResponse'
+                  $ref: '#/definitions/internal_product_tag.TagResponse'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Tag not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: get tag by id
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Get tag details by ID
       tags:
-      - Tag
+      - Tags
     patch:
       consumes:
       - application/json
-      description: update a tag details by id
+      description: Updates the name of an existing product tag. Tag names must be
+        unique.
       parameters:
-      - description: Tag ID (UUID)
+      - description: Tag UUID
         format: uuid
         in: path
         name: id
         required: true
         type: string
-      - description: tag update payload
+      - description: Fields to update (name)
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/tag.UpdateTagRequest'
+          $ref: '#/definitions/internal_product_tag.UpdateTagRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Update confirmation message
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
-          description: Bad Request
+          description: Validation error or invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Tag not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "409":
-          description: Conflict
+          description: A tag with updated name already exists
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: update a tag
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Update tag details
       tags:
-      - Tag
+      - Tags
   /admin/variants/{id}:
     delete:
+      description: Marks an active product variant as soft-deleted (`deleted_at =
+        NOW()`), removing it from active product options.
       parameters:
-      - description: Variant ID (UUID)
+      - description: Variant UUID
         format: uuid
         in: path
         name: id
@@ -1923,116 +2041,122 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Deletion confirmation message
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
-          description: Bad Request
+          description: Invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Variant not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: soft-delete a product variant
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Soft-delete a product variant
       tags:
-      - Variant
+      - Product Variants
     patch:
       consumes:
       - application/json
+      description: Updates specific fields of an existing variant such as title, price,
+        crossed-out price, currency, attributes, or default status.
       parameters:
-      - description: Variant ID (UUID)
+      - description: Variant UUID
         format: uuid
         in: path
         name: id
         required: true
         type: string
-      - description: variant update payload
+      - description: Fields to update (title, price, crossed_out_price, currency,
+          attributes, is_default)
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/variant.UpdateVariantRequest'
+          $ref: '#/definitions/internal_product_variant.UpdateVariantRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Update confirmation message
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
-          description: Bad Request
+          description: Validation error or invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Variant not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: update a product variant
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Update product variant attributes
       tags:
-      - Variant
+      - Product Variants
   /admin/variants/{id}/media:
     post:
       consumes:
       - application/json
+      description: Links an uploaded storage object (image/video) to a specific product
+        variant with media type and sort order.
       parameters:
-      - description: Variant ID (UUID)
+      - description: Variant UUID
         format: uuid
         in: path
         name: id
         required: true
         type: string
-      - description: media attachment details
+      - description: Storage object ID, media type, and sort order
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/variant.AttachMediaRequest'
+          $ref: '#/definitions/internal_product_variant.AttachMediaRequest'
       produces:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Attached variant media details
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/variant.VariantMediaResponse'
+                  $ref: '#/definitions/internal_product_variant.VariantMediaResponse'
               type: object
         "400":
-          description: Bad Request
+          description: Validation error or invalid UUID reference
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "409":
-          description: Conflict
+          description: Storage object is already attached to this variant
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: attach a storage object to a variant
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Attach a storage object to a variant
       tags:
       - Variant Media
   /admin/variants/{id}/media/{media_id}:
     delete:
+      description: Removes a media attachment relationship from a variant.
       parameters:
-      - description: Variant ID (UUID)
+      - description: Variant UUID
         format: uuid
         in: path
         name: id
         required: true
         type: string
-      - description: Media ID (UUID)
+      - description: Media Attachment UUID
         format: uuid
         in: path
         name: media_id
@@ -2042,57 +2166,59 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Detachment confirmation message
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
-          description: Bad Request
+          description: Invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Media relationship not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: remove a media attachment from a variant
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Remove a media attachment from a variant
       tags:
       - Variant Media
   /admin/variants/{id}/media/reorder:
     patch:
       consumes:
       - application/json
+      description: Reorders attached media items for a variant according to the specified
+        array of media IDs.
       parameters:
-      - description: Variant ID (UUID)
+      - description: Variant UUID
         format: uuid
         in: path
         name: id
         required: true
         type: string
-      - description: ordered media IDs
+      - description: Ordered list of media UUIDs
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/variant.ReorderMediaRequest'
+          $ref: '#/definitions/internal_product_variant.ReorderMediaRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Reorder confirmation message
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
-          description: Bad Request
+          description: Invalid UUID format or empty list
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: batch reorder media items for a variant
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Batch reorder media items for a variant
       tags:
       - Variant Media
   /auth/challenge/resend:
@@ -2107,26 +2233,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.ResendChallengeRequest'
+          $ref: '#/definitions/internal_auth.ResendChallengeRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.BadReqResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadReqResponse'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: Resend an authentication challenge
       tags:
       - Auth
@@ -2142,7 +2268,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.StartChallengeRequest'
+          $ref: '#/definitions/internal_auth.StartChallengeRequest'
       produces:
       - application/json
       responses:
@@ -2150,23 +2276,23 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/auth.StartChallengeResponse'
+                  $ref: '#/definitions/internal_auth.StartChallengeResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.BadReqResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadReqResponse'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: Start an authentication challenge
       tags:
       - Auth
@@ -2182,7 +2308,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.VerifyChallengeRequest'
+          $ref: '#/definitions/internal_auth.VerifyChallengeRequest'
       produces:
       - application/json
       responses:
@@ -2190,27 +2316,27 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/auth.TokensResponse'
+                  $ref: '#/definitions/internal_auth.TokensResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.BadReqResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadReqResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.UnauthorizedResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.UnauthorizedResponse'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: Verify an authentication challenge
       tags:
       - Auth
@@ -2226,15 +2352,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/auth.MeResponse'
+                  $ref: '#/definitions/internal_auth.MeResponse'
               type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: fetch session user data
       tags:
       - Auth
@@ -2249,7 +2375,7 @@ paths:
         name: refresh_token
         required: true
         schema:
-          $ref: '#/definitions/auth.RefreshTokenRequest'
+          $ref: '#/definitions/internal_auth.RefreshTokenRequest'
       produces:
       - application/json
       responses:
@@ -2257,27 +2383,27 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/auth.TokensResponse'
+                  $ref: '#/definitions/internal_auth.TokensResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.BadReqResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadReqResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/api.UnauthorizedResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.UnauthorizedResponse'
         "429":
           description: Too Many Requests
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: Rotate refresh token and issue new access and refresh tokens.
       tags:
       - Auth
@@ -2285,7 +2411,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: list public active brands in pages
+      description: Returns a paginated list of active product brands for customer
+        storefront browsing.
       parameters:
       - example: 1
         in: query
@@ -2312,34 +2439,35 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Paginated list of active brands
           schema:
             allOf:
-            - $ref: '#/definitions/api.PaginatedResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/brand.BrandResponse'
+                    $ref: '#/definitions/internal_product_brand.BrandResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid query parameters
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: list public active brands
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: List active product brands
       tags:
-      - Brand
+      - Brands
   /categories:
     get:
       consumes:
       - application/json
-      description: list all public active categories
+      description: Returns a paginated list of active product categories for customer
+        browsing and navigation.
       parameters:
       - example: 1
         in: query
@@ -2366,31 +2494,33 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Paginated list of active categories
           schema:
             allOf:
-            - $ref: '#/definitions/api.PaginatedResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/category.PublicCategoryListResponse'
+                    $ref: '#/definitions/internal_product_category.PublicCategoryResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid query parameters
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: list all categories
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: List active product categories
       tags:
-      - Category
+      - Categories
   /products:
     get:
+      description: Returns a paginated list of active, published products for customer
+        browsing. Soft-deleted and draft products are hidden.
       parameters:
       - example: 1
         in: query
@@ -2417,33 +2547,34 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Paginated list of active products
           schema:
             allOf:
-            - $ref: '#/definitions/api.PaginatedResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/product.ProductListItem'
+                    $ref: '#/definitions/internal_product.ProductListItem'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid query parameters
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: list active products
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: List active published products
       tags:
       - Products
   /products/{id}:
     get:
+      description: Retrieves full product details by its unique internal UUID.
       parameters:
-      - description: Product ID (UUID)
+      - description: Internal Product UUID
         format: uuid
         in: path
         name: id
@@ -2453,27 +2584,27 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Product details
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/product.ProductResponse'
+                  $ref: '#/definitions/internal_product.ProductResponse'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Product not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: get product by id
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Get product by internal UUID
       tags:
       - Products
   /products/{id}/media:
@@ -2492,21 +2623,21 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/product.ProductMediaResponse'
+                    $ref: '#/definitions/internal_product.ProductMediaResponse'
                   type: array
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: list all media for a product
       tags:
       - Product Media
@@ -2526,30 +2657,32 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/api.PaginatedResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/variant.VariantResponse'
+                    $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_internal_product_variant.VariantResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
       summary: list public variants for a product
       tags:
       - Product Variants
   /products/{product_id}/variants:
     get:
+      description: Returns a paginated list of active variants associated with a specific
+        product for storefront selection.
       parameters:
-      - description: Product ID (UUID)
+      - description: Product UUID
         format: uuid
         in: path
         name: product_id
@@ -2580,33 +2713,35 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Paginated list of active product variants
           schema:
             allOf:
-            - $ref: '#/definitions/api.PaginatedResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/variant.VariantResponse'
+                    $ref: '#/definitions/internal_product_variant.VariantResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid query parameters or UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: list public variants for a product
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: List active variants for a product
       tags:
-      - Variant
+      - Product Variants
   /products/p/:pid:
     get:
+      description: Retrieves full public-facing product details including brand information
+        by its human-readable public ID (slug).
       parameters:
-      - description: Product Public ID
+      - description: Product Public ID (e.g. prod_01h8x9a...)
         in: path
         name: pid
         required: true
@@ -2615,34 +2750,35 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Product and brand details
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/product.ProductDetailsResponse'
+                  $ref: '#/definitions/internal_product.ProductDetailsResponse'
               type: object
         "400":
-          description: Bad Request
+          description: Public ID is required
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Product not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: get product details by public ID
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Get product details by public URL slug / public ID
       tags:
       - Products
   /tags:
     get:
       consumes:
       - application/json
-      description: list public active tags in pages
+      description: Returns a paginated list of active product tags for customer storefront
+        filtering.
       parameters:
       - example: 1
         in: query
@@ -2669,33 +2805,34 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Paginated list of active tags
           schema:
             allOf:
-            - $ref: '#/definitions/api.PaginatedResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/tag.TagResponse'
+                    $ref: '#/definitions/internal_product_tag.TagResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid query parameters
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: list public active tags
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: List active product tags
       tags:
-      - Tag
+      - Tags
   /variants/{id}:
     get:
+      description: Retrieves specific product variant (SKU) details by its UUID.
       parameters:
-      - description: Variant ID (UUID)
+      - description: Variant UUID
         format: uuid
         in: path
         name: id
@@ -2705,33 +2842,35 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Variant details
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/variant.VariantResponse'
+                  $ref: '#/definitions/internal_product_variant.VariantResponse'
               type: object
         "400":
-          description: Bad Request
+          description: Invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "404":
-          description: Not Found
+          description: Variant not found
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: get variant by id
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: Get variant details by ID
       tags:
-      - Variant
+      - Product Variants
   /variants/{id}/media:
     get:
+      description: Returns all attached media items for a specific variant with presigned
+        object URLs.
       parameters:
-      - description: Variant ID (UUID)
+      - description: Variant UUID
         format: uuid
         in: path
         name: id
@@ -2741,25 +2880,25 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: List of variant media items
           schema:
             allOf:
-            - $ref: '#/definitions/api.DataResponse'
+            - $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/variant.VariantMediaResponse'
+                    $ref: '#/definitions/internal_product_variant.VariantMediaResponse'
                   type: array
               type: object
         "400":
-          description: Bad Request
+          description: Invalid UUID format
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: list all media for a variant
+            $ref: '#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse'
+      summary: List all media items for a variant
       tags:
       - Variant Media
 security:
