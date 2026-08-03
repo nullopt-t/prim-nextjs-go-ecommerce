@@ -4,6 +4,7 @@ import { Products } from "@/features/products";
 import { Home } from "@/features/home";
 import { About } from "@/features/about";
 import { Auth, Login, Verify } from "@/features/auth";
+import { NotFound } from "@/app/pages/notFound";
 import {
 	User,
 	Payment,
@@ -40,6 +41,8 @@ function Router() {
 			<Route path="/cart" element={<Cart />} />
 			<Route path="/about" element={<About />} />
 			<Route path="/products" element={<Products />} />
+
+			<Route path="*" element={<NotFound />} />
 		</Routes>
 	);
 }

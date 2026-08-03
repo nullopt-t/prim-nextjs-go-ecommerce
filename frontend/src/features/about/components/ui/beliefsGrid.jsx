@@ -1,5 +1,5 @@
 import { Star, Gauge, ShieldCheck, Smile } from "lucide-react";
-import BeliefCards from "@/features/about/ui/beliefsCards";
+import BeliefCards from "@/features/about/components/ui/beliefsCards";
 
 export default function BeliefsGrid() {
 	const beliefsArr = [

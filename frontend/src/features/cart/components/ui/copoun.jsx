@@ -1,5 +1,5 @@
 import CustomInput from "@/components/ui/input";
-import CustomButton from "@/components/ui/button";
+import { CustomButton } from "@/components/ui";
 import { useTranslation } from "react-i18next";
 
 function Copoun() {

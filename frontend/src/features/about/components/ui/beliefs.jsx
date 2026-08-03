@@ -1,5 +1,5 @@
-import BeliefsGrid from "@/features/about/ui/beliefsGrid";
-import BeliefsDescription from "@/features/about/ui/beliefsDescription";
+import BeliefsGrid from "@/features/about/components/ui/beliefsGrid";
+import BeliefsDescription from "@/features/about/components/ui/beliefsDescription";
 
 export default function Beliefs() {
 	return (

@@ -1,5 +1,5 @@
 import Stars from "@/components/ui/stars";
-import CustomButton from "@/components/ui/button";
+import { CustomButton } from "@/components/ui";
 import { Heart } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
