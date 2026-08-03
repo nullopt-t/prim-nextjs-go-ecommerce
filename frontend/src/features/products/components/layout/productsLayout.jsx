@@ -1,6 +1,6 @@
 import SideBar from "@/features/products/components/ui/sideBar";
 import Content from "@/features/products/components/ui/content";
-import Title from "@/components/ui/title";
+import { Title } from "@/components/ui";
 import Sort from "@/components/ui/sort";
 
 function ProductsLayout() {

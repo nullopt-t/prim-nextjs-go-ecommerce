@@ -1,4 +1,4 @@
-export default function Title({ title, subtitle }) {
+export function Title({ title, subtitle }) {
 	return (
 		<p className="flex flex-col mb-5">
 			<span className="font-medium text-title-lg md:text-title-md lg:text-title-lg text-foreground">

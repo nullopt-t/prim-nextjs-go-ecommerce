@@ -1,4 +1,4 @@
-import CustomButton from "@/components/ui/button";
+import { CustomButton } from "@/components/ui";
 import PaymentMethods from "@/features/cart/components/ui/paymentMethods";
 import { useTranslation } from "react-i18next";
 

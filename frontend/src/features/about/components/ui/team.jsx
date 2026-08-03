@@ -1,8 +1,8 @@
 import AmrImg from "@/assets/imgs/team/Amr.jpeg";
 import MohamedImg from "@/assets/imgs/team/Mohamed.jpg";
 import { FaLinkedinIn, FaGithub } from "react-icons/fa6";
-import Contributors from "@/features/about/ui/contributors";
-import Title from "@/components/ui/title";
+import Contributors from "@/features/about/components/ui/contributors";
+import { Title } from "@/components/ui";
 import { useTranslation } from "react-i18next";
 
 export default function Team() {
