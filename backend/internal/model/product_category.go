@@ -9,11 +9,8 @@ import (
 type ProductCategory struct {
 	ID uuid.UUID
 
-	Name string
-	Slug string
-
-	ParentID          *uuid.UUID
-	PublicationStatus PublicationStatus
+	ParentID *uuid.UUID
+	Name     string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

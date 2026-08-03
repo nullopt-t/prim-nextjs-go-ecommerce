@@ -7,14 +7,25 @@ import (
 )
 
 type ProductVariant struct {
-	ID        uuid.UUID
-	ProductID uuid.UUID
+	ID              uuid.UUID
+	ProductID       uuid.UUID
+	IsDefault       bool
+	Title           string
+	Price           *int64
+	CrossedOutPrice *int64
+	Currency        *string
+	Attributes      map[string]any
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	DeletedAt       *time.Time
+}
 
-	SKU      *string
-	Price    int64
-	Currency string
+type VariantMedia struct {
+	ID              uuid.UUID
+	VariantID       uuid.UUID
+	StorageObjectID uuid.UUID
+	MediaType       string
+	SortOrder       int
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
+	Object *Object
 }

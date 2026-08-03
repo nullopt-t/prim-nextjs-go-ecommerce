@@ -35,5 +35,6 @@ func (r *Router) MapRoutes(
 
 		admin.GET("/:id", r.bh.GetBrandByID)
 		admin.PATCH("/:id", r.bh.UpdateBrand)
+		admin.DELETE("/:id", r.bh.DeleteBrandByID)
 	}
 }

@@ -2,18 +2,20 @@ package category
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
 type Filter struct {
-	ID *uuid.UUID
+	ID   *uuid.UUID
+	Name *string
 }
 
 type CategoryRepository struct {
@@ -28,100 +30,103 @@ func (cr *CategoryRepository) Create(
 	qe database.QueryExecutor,
 	category *model.ProductCategory,
 ) error {
-	_, err := qe.Exec(
-		ctx,
-		`
-		INSERT INTO
-		categories (
+	const query = `
+		INSERT INTO product_categories (
 			id,
-			name,
-			slug,
 			parent_id,
-			publication_status,
+			name,
 			created_at,
 			updated_at
 		)
-		VALUES(
-			$1,
-			$2,
-			$3,
-			$4,
-			$5,
-			$6,
-			$7
-		)
-		`,
+		VALUES ($1, $2, $3, $4, $5)
+	`
+
+	_, err := qe.Exec(
+		ctx,
+		query,
 		category.ID,
-		category.Name,
-		category.Slug,
 		category.ParentID,
-		model.PublicationStatusDraft,
+		category.Name,
 		category.CreatedAt,
 		category.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("create category: %w", err)
 	}
-	return err
-}
 
-func (cr *CategoryRepository) Get(
+	return nil
+}
+func (cr *CategoryRepository) get(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	filter Filter,
 ) (*model.ProductCategory, error) {
-	var category model.ProductCategory
-
-	query :=
-		`
-			SELECT
-				id,
-				name,
-				slug,
-				parent_id,
-				publication_status,
-				created_at,
-				updated_at
-			FROM
-				categories
-			WHERE
-			deleted_at IS NULL
-		`
-
-	args := []any{}
-	argID := 1
-	if filter.ID != nil {
-		query += fmt.Sprintf(" AND id = $%d", argID)
-		args = append(args, *filter.ID)
-		argID++
+	if filter.ID == nil && filter.Name == nil {
+		return nil, errors.New("get category: at least one filter parameter is required")
 	}
 
-	err := qe.QueryRow(
-		ctx,
-		query,
-		args...,
-	).Scan(
+	query := `
+		SELECT
+			id,
+			parent_id,
+			name,
+			created_at,
+			updated_at
+		FROM
+			product_categories
+		WHERE
+			deleted_at IS NULL
+	`
+
+	args := make([]any, 0, 2)
+	argCount := 1
+
+	if filter.ID != nil {
+		query += fmt.Sprintf(" AND id = $%d", argCount)
+		args = append(args, *filter.ID)
+		argCount++
+	}
+
+	if filter.Name != nil {
+		query += fmt.Sprintf(" AND name = $%d", argCount)
+		args = append(args, *filter.Name)
+		argCount++
+	}
+
+	category := new(model.ProductCategory)
+	err := qe.QueryRow(ctx, query, args...).Scan(
 		&category.ID,
-		&category.Name,
-		&category.Slug,
 		&category.ParentID,
-		&category.PublicationStatus,
+		&category.Name,
 		&category.CreatedAt,
 		&category.UpdatedAt,
 	)
-
 	if err != nil {
-		return nil, fmt.Errorf("get category: %w", err)
+		return nil, fmt.Errorf("get product category: %w", err)
 	}
 
-	return &category, nil
+	return category, nil
+}
+
+func (cr *CategoryRepository) GetByID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	id uuid.UUID,
+) (*model.ProductCategory, error) {
+	return cr.get(ctx, qe, Filter{ID: &id})
+}
+
+func (cr *CategoryRepository) GetByName(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	name string,
+) (*model.ProductCategory, error) {
+	return cr.get(ctx, qe, Filter{Name: &name})
 }
 
 type UpdateCategoryFields struct {
-	Name              *string
-	Slug              *string
-	ParentID          *uuid.UUID
-	PublicationStatus *model.PublicationStatus
+	Name     *string
+	ParentID *uuid.UUID
 }
 
 func (cr *CategoryRepository) Update(
@@ -130,361 +135,201 @@ func (cr *CategoryRepository) Update(
 	categoryID uuid.UUID,
 	fields UpdateCategoryFields,
 ) error {
-	query := `
-	UPDATE
-		categories
-	SET
-		name = COALESCE($1, name),
-		slug = COALESCE($2, slug),
-		parent_id = COALESCE($3, parent_id),
-		publication_status = COALESCE($4, publication_status)
-	WHERE
-		id = $5
-	`
-	_, err := qe.Exec(
-		ctx,
-		query,
-		fields.Name,
-		fields.Slug,
-		fields.ParentID,
-		fields.PublicationStatus,
-		categoryID,
-	)
+	setClauses := make([]string, 0, 3)
+	args := make([]any, 0, 3)
+	argIdx := 1
+
+	if fields.Name != nil {
+		setClauses = append(setClauses, fmt.Sprintf("name = $%d", argIdx))
+		args = append(args, *fields.Name)
+		argIdx++
+	}
+
+	if fields.ParentID != nil {
+		setClauses = append(setClauses, fmt.Sprintf("parent_id = $%d", argIdx))
+		args = append(args, fields.ParentID)
+		argIdx++
+	}
+
+	// No fields provided to update; return early to save a DB roundtrip
+	if len(setClauses) == 0 {
+		return nil
+	}
+
+	// Always touch updated_at timestamp
+	setClauses = append(setClauses, "updated_at = now()")
+
+	query := fmt.Sprintf(`
+		UPDATE product_categories
+		SET %s
+		WHERE id = $%d AND deleted_at IS NULL
+	`, strings.Join(setClauses, ", "), argIdx)
+
+	args = append(args, categoryID)
+
+	cmdTag, err := qe.Exec(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("update category: %w", err)
+		return fmt.Errorf("update product category: %w", err)
+	}
+
+	// If no rows were updated (e.g., ID doesn't exist or is soft-deleted),
+	// return pgx.ErrNoRows so the service layer can map it to ErrNotFound.
+	if cmdTag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
 	}
 
 	return nil
 }
 
-func (cr *CategoryRepository) ListProductCategories(
+func (cr *CategoryRepository) GetProductCategory(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	productID uuid.UUID,
-) ([]*model.ProductCategory, error) {
+) (*model.ProductCategory, error) {
 	query := `
-	SELECT
-		c.id,
-		c.name,
-		c.slug,
-		c.parent_id,
-		c.publication_status,
-		c.created_at,
-		c.updated_at
-	FROM
-		product_categories pc
-	JOIN
-		categories c ON pc.category_id = c.id
-	WHERE
-		deleted_at IS NULL AND pc.product_id = $1
-	`
-	rows, err := qe.Query(
-		ctx,
-		query,
-		productID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("list product categories: %w", err)
-	}
-	defer rows.Close()
-
-	var result = make([]*model.ProductCategory, 0)
-	for rows.Next() {
-		var category model.ProductCategory
-		if err := rows.Scan(
-			&category.ID,
-			&category.Name,
-			&category.Slug,
-			&category.ParentID,
-			&category.PublicationStatus,
-			&category.CreatedAt,
-			&category.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("list product categories: %w", err)
-		}
-		result = append(result, &category)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list product categories: %w", err)
-	}
-	return result, nil
-}
-
-func (cr *CategoryRepository) PutProductCategories(
-	ctx context.Context,
-	tx database.QueryExecutor,
-	productID uuid.UUID,
-	categoryIDs []uuid.UUID,
-) error {
-	query := `
-	DELETE FROM
-	product_categories
-	WHERE product_id = $1
-	`
-	if _, err := tx.Exec(
-		ctx,
-		query,
-		productID,
-	); err != nil {
-		return fmt.Errorf(
-			"put product categories: %w",
-			err,
-		)
-	}
-
-	for _, categoryID := range categoryIDs {
-		query := `
-		INSERT INTO
-		product_categories (
-			product_id,
-			category_id
-		)
-		VALUES (
-			$1,
-			$2
-		)
-		`
-		if _, err := tx.Exec(
-			ctx,
-			query,
-			productID,
-			categoryID,
-		); err != nil {
-			return fmt.Errorf(
-				"put product categories: %w",
-				err,
-			)
-		}
-	}
-	return nil
-}
-
-func (cr *CategoryRepository) AdminList(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	q *api.ListQuery,
-) ([]*model.ProductCategory, *api.Page, error) {
-	var query strings.Builder
-	var countQuery strings.Builder
-
-	query.WriteString(`
 		SELECT
-			id,
-			name,
-			slug,
-			parent_id,
-			publication_status,
-			created_at,
-			updated_at
-		FROM categories
-		WHERE 1=1
-		`)
+			c.id,
+			c.parent_id,
+			c.name,
+			c.created_at,
+			c.updated_at
+		FROM products p
+		JOIN product_categories c ON p.category_id = c.id
+		WHERE p.id = $1
+		  AND p.deleted_at IS NULL
+		  AND c.deleted_at IS NULL
+	`
 
-	countQuery.WriteString(`
-		SELECT COUNT(*)
-		FROM categories
-		WHERE 1=1
-		`)
-
-	args := make([]any, 0)
-	argID := 1
-
-	if q.Search != "" {
-		condition := fmt.Sprintf(" AND name ILIKE $%d OR slug ILIKE $%d", argID, +1)
-		query.WriteString(condition)
-		countQuery.WriteString(condition)
-		args = append(args, "%"+q.Search+"%")
-		argID++
-	}
-
-	if len(q.Sort) > 0 {
-		query.WriteString(" ORDER BY ")
-		for i, sort := range q.Sort {
-			field := sort.Field
-			order := sort.Order
-			fmt.Fprintf(&query, "%s %s", field, order)
-			if i < len(q.Sort)-1 {
-				query.WriteString(", ")
-			}
-		}
-	} else {
-		query.WriteString(" ORDER BY created_at DESC")
-	}
-
-	fmt.Fprintf(&query, " LIMIT $%d OFFSET $%d", argID, argID+1)
-
-	var total int
-	err := qe.QueryRow(
-		ctx,
-		countQuery.String(),
-		args...,
-	).Scan(&total)
-	if err != nil {
-		return nil, nil, fmt.Errorf(
-			"admin list categories: %w",
-			err,
-		)
-	}
-
-	queryArgs := append(slices.Clone(args), q.PageSize, (q.Page-1)*q.PageSize)
-	var categories []*model.ProductCategory
-	rows, err := qe.Query(
-		ctx,
-		query.String(),
-		queryArgs...,
+	category := new(model.ProductCategory)
+	err := qe.QueryRow(ctx, query, productID).Scan(
+		&category.ID,
+		&category.ParentID,
+		&category.Name,
+		&category.CreatedAt,
+		&category.UpdatedAt,
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf(
-			"admin list categories: %w",
-			err,
-		)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var category model.ProductCategory
-		err := rows.Scan(
-			&category.ID,
-			&category.Name,
-			&category.Slug,
-			&category.ParentID,
-			&category.PublicationStatus,
-			&category.CreatedAt,
-			&category.UpdatedAt,
-		)
-		if err != nil {
-			return nil, nil, fmt.Errorf(
-				"admin list categories: %w",
-				err,
-			)
-		}
-		categories = append(categories, &category)
+		return nil, fmt.Errorf("get product category: %w", err)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, nil, fmt.Errorf(
-			"admin list categories: %w",
-			err,
-		)
-	}
+	return category, nil
+}
 
-	return categories, &api.Page{
-		Page:        q.Page,
-		PageSize:    q.PageSize,
-		TotalItems:  total,
-		TotalPages:  (total + q.PageSize - 1) / q.PageSize,
-		HasPrevious: q.Page > 1,
-		HasNext:     q.Page < (total+q.PageSize-1)/q.PageSize,
-	}, nil
+var allowedCategorySortFields = map[string]string{
+	"id":         "id",
+	"name":       "name",
+	"created_at": "created_at",
+	"updated_at": "updated_at",
+}
+
+type ListCategoryOptions struct {
+	ListQuery      *api.ListQuery
+	IncludeDeleted bool // set true for admin views
 }
 
 func (cr *CategoryRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	q *api.ListQuery,
-) ([]*model.ProductCategory, *api.Page, error) {
-	var query strings.Builder
-	var countQuery strings.Builder
+	opts ListCategoryOptions,
+) (*api.PagedResult[model.ProductCategory], error) {
+	q := opts.ListQuery
+	if q == nil {
+		q = &api.ListQuery{}
+	}
+	// Guarantee sanitized Page, PageSize, Offset, and Sort
+	q.Process(api.QueryOptions{})
 
-	query.WriteString(`
-		SELECT
-			id,
-			name,
-			slug
-		FROM categories
-		WHERE 1=1
-		`)
-
-	countQuery.WriteString(`
-		SELECT COUNT(*)
-		FROM categories
-		WHERE 1=1
-		`)
-
-	args := make([]any, 0)
+	whereClauses := []string{"1=1"}
+	args := make([]any, 0, 2)
 	argID := 1
 
-	if q.Search != "" {
-		condition := fmt.Sprintf(" AND name ILIKE $%d OR slug ILIKE $%d", argID, +1)
-		query.WriteString(condition)
-		countQuery.WriteString(condition)
-		args = append(args, "%"+q.Search+"%")
+	if !opts.IncludeDeleted {
+		whereClauses = append(whereClauses, "deleted_at IS NULL")
+	}
+
+	search := strings.TrimSpace(q.Search)
+	if search != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("name ILIKE $%d", argID))
+		args = append(args, "%"+search+"%")
 		argID++
 	}
 
-	if len(q.Sort) > 0 {
-		query.WriteString(" ORDER BY ")
-		for i, sort := range q.Sort {
-			field := sort.Field
-			order := sort.Order
-			fmt.Fprintf(&query, "%s %s", field, order)
-			if i < len(q.Sort)-1 {
-				query.WriteString(", ")
-			}
-		}
-	} else {
-		query.WriteString(" ORDER BY created_at DESC")
-	}
+	whereStmt := strings.Join(whereClauses, " AND ")
 
-	fmt.Fprintf(&query, " LIMIT $%d OFFSET $%d", argID, argID+1)
-
+	// 1. Total matching count
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM product_categories WHERE %s", whereStmt)
 	var total int
-	err := qe.QueryRow(
-		ctx,
-		countQuery.String(),
-		args...,
-	).Scan(&total)
-	if err != nil {
-		return nil, nil, fmt.Errorf(
-			"admin list categories: %w",
-			err,
-		)
+	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, fmt.Errorf("list product categories count: %w", err)
 	}
 
-	queryArgs := append(slices.Clone(args), q.PageSize, (q.Page-1)*q.PageSize)
-	var categories []*model.ProductCategory
-	rows, err := qe.Query(
-		ctx,
-		query.String(),
-		queryArgs...,
-	)
+	if total == 0 {
+		return api.NewPagedResult([]*model.ProductCategory{}, api.NewPage(q.Page, q.PageSize, 0)), nil
+	}
+
+	// 2. Build whitelist-guarded ORDER BY clause using q.Sort
+	orderBy := "ORDER BY created_at DESC"
+	if len(q.Sort) > 0 {
+		sortParts := make([]string, 0, len(q.Sort))
+		for _, sort := range q.Sort {
+			dbField, ok := allowedCategorySortFields[strings.ToLower(sort.Field)]
+			if !ok {
+				continue
+			}
+			dir := "ASC"
+			if sort.Order == api.SortDesc {
+				dir = "DESC"
+			}
+			sortParts = append(sortParts, fmt.Sprintf("%s %s", dbField, dir))
+		}
+		if len(sortParts) > 0 {
+			orderBy = "ORDER BY " + strings.Join(sortParts, ", ")
+		}
+	}
+
+	// 3. Fetch Paginated Records
+	selectQuery := fmt.Sprintf(`
+		SELECT
+			id,
+			parent_id,
+			name,
+			created_at,
+			updated_at,
+			deleted_at
+		FROM product_categories
+		WHERE %s
+		%s
+		LIMIT $%d OFFSET $%d
+	`, whereStmt, orderBy, argID, argID+1)
+
+	queryArgs := append(args, q.PageSize, q.Offset)
+
+	rows, err := qe.Query(ctx, selectQuery, queryArgs...)
 	if err != nil {
-		return nil, nil, fmt.Errorf(
-			"admin list categories: %w",
-			err,
-		)
+		return nil, fmt.Errorf("list product categories query: %w", err)
 	}
 	defer rows.Close()
 
+	categories := make([]*model.ProductCategory, 0, q.PageSize)
 	for rows.Next() {
-		var category model.ProductCategory
-		err := rows.Scan(
-			&category.ID,
-			&category.Name,
-			&category.Slug,
-		)
-		if err != nil {
-			return nil, nil, fmt.Errorf(
-				"admin list categories: %w",
-				err,
-			)
+		var cat model.ProductCategory
+		if err := rows.Scan(
+			&cat.ID,
+			&cat.ParentID,
+			&cat.Name,
+			&cat.CreatedAt,
+			&cat.UpdatedAt,
+			&cat.DeletedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan product category row: %w", err)
 		}
-		categories = append(categories, &category)
+		categories = append(categories, &cat)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, nil, fmt.Errorf(
-			"admin list categories: %w",
-			err,
-		)
+		return nil, fmt.Errorf("iterate product category rows: %w", err)
 	}
 
-	return categories, &api.Page{
-		Page:        q.Page,
-		PageSize:    q.PageSize,
-		TotalItems:  total,
-		TotalPages:  (total + q.PageSize - 1) / q.PageSize,
-		HasPrevious: q.Page > 1,
-		HasNext:     q.Page < (total+q.PageSize-1)/q.PageSize,
-	}, nil
+	page := api.NewPage(q.Page, q.PageSize, total)
+	return api.NewPagedResult(categories, page), nil
 }

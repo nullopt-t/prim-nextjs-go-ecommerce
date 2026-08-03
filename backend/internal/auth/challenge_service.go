@@ -79,9 +79,6 @@ func (cs *ChallengeService) Create(
 		if existing.ResendCount >= MaxResendTimes {
 			return nil, security.NewSecureError(
 				http.StatusTooManyRequests,
-				security.CodeRateLimit,
-				"rate limit exceeded",
-				nil,
 			)
 		}
 		existing.OtpHash = otpHash
@@ -150,9 +147,6 @@ func (cs *ChallengeService) Get(
 	if len(val) == 0 {
 		return nil, security.NewSecureError(
 			http.StatusUnauthorized,
-			security.CodeInvalidOrExpired,
-			"invalid or expired challenge, please request a new challenge",
-			nil,
 		)
 	}
 
@@ -213,27 +207,18 @@ func (cs *ChallengeService) Resend(
 	if challenge.ResendCount >= MaxResendTimes {
 		return security.NewSecureError(
 			http.StatusTooManyRequests,
-			security.CodeRateLimit,
-			"rate limit exceeded",
-			nil,
 		)
 	}
 
 	if challenge.Status != "pending" {
 		return security.NewSecureError(
 			http.StatusGone,
-			security.CodeExpired,
-			"challenge expired",
-			nil,
 		)
 	}
 
 	if time.Now().After(challenge.ExpiresAt) {
 		return security.NewSecureError(
 			http.StatusGone,
-			security.CodeExpired,
-			"challenge expired",
-			nil,
 		)
 	}
 
@@ -282,27 +267,18 @@ func (cs *ChallengeService) Verify(
 	if challenge.Status == "verified" {
 		return false, security.NewSecureError(
 			http.StatusConflict,
-			security.CodeConflict,
-			"already verified",
-			nil,
 		)
 	}
 
 	if challenge.Status == "expired" {
 		return false, security.NewSecureError(
 			http.StatusGone,
-			security.CodeExpired,
-			"challenge expired",
-			nil,
 		)
 	}
 
 	if time.Now().After(challenge.ExpiresAt) {
 		return false, security.NewSecureError(
 			http.StatusGone,
-			security.CodeExpired,
-			"challenge expired",
-			nil,
 		)
 	}
 

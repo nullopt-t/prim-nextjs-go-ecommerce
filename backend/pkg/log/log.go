@@ -42,12 +42,9 @@ func NewConsoleLogger() *ConsoleLogger {
 	}
 }
 
-func (l *ConsoleLogger) contextFields() []any {
-	return []any{}
-}
 
 func (l *ConsoleLogger) Info(msg string, meta ...Meta) {
-	logsData := l.contextFields()
+	logsData := []any{}
 	for _, m := range meta {
 		for k, v := range m {
 			logsData = append(logsData, k, v)
@@ -57,7 +54,7 @@ func (l *ConsoleLogger) Info(msg string, meta ...Meta) {
 }
 
 func (l *ConsoleLogger) Error(msg string, meta ...Meta) {
-	logsData := l.contextFields()
+	logsData := []any{}
 	for _, m := range meta {
 		for k, v := range m {
 			logsData = append(logsData, k, v)
@@ -67,7 +64,7 @@ func (l *ConsoleLogger) Error(msg string, meta ...Meta) {
 }
 
 func (l *ConsoleLogger) Warn(msg string, meta ...Meta) {
-	logsData := l.contextFields()
+	logsData := []any{}
 	for _, m := range meta {
 		for k, v := range m {
 			logsData = append(logsData, k, v)
@@ -77,7 +74,7 @@ func (l *ConsoleLogger) Warn(msg string, meta ...Meta) {
 }
 
 func (l *ConsoleLogger) Debug(msg string, meta ...Meta) {
-	logsData := l.contextFields()
+	logsData := []any{}
 	for _, m := range meta {
 		for k, v := range m {
 			logsData = append(logsData, k, v)

@@ -3,8 +3,8 @@ package category
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,7 +12,6 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 )
 
 type CategoryService struct {
@@ -31,120 +30,146 @@ func NewService(
 }
 
 type CreateCategoryInput struct {
-	Name     string
-	Slug     *string
-	ParentID *uuid.UUID
+	Name     string     `json:"name"`
+	ParentID *uuid.UUID `json:"parent_id,omitempty"`
 }
 
 func (cs *CategoryService) CreateCategory(
 	ctx context.Context,
 	in *CreateCategoryInput,
 ) (*model.ProductCategory, error) {
-	var slug string
-	if in.Slug == nil {
-		slug = utils.Slugify(in.Name)
-	} else {
-		slug = *in.Slug
+	if in == nil {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_PAYLOAD").
+			WithMessage("Request body is missing")
+	}
+
+	name := strings.TrimSpace(in.Name)
+	if name == "" {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("VALIDATION_FAILED").
+			WithMessage("Invalid category parameters").
+			WithFields(api.FieldError{
+				Field:   "name",
+				Message: "name is required and cannot be empty",
+			})
 	}
 
 	now := time.Now().UTC()
 	category := &model.ProductCategory{
 		ID:        uuid.New(),
-		Name:      in.Name,
-		Slug:      slug,
 		ParentID:  in.ParentID,
+		Name:      name,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
 
-	err := cs.qexecuter.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			return cs.crepository.Create(
-				ctx,
-				db,
-				category,
-			)
-		},
-	)
-
-	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(
-			mappedErr,
-			database.ErrConflict,
-		):
-			return nil, security.NewSecureError(
-				http.StatusConflict,
-				security.CodeConflict,
-				"resource already exists",
-				err,
-			)
-		default:
-			return nil, security.NewSecureError(
-				http.StatusInternalServerError,
-				security.CodeInternal,
-				"failed to create a new resource",
-				err,
-			)
-		}
-	}
-	return category, err
-}
-
-func (cs *CategoryService) GetCategoryByID(
-	ctx context.Context,
-	categoryID uuid.UUID,
-) (*model.ProductCategory, error) {
-	var category *model.ProductCategory
 	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		c, err := cs.crepository.Get(
-			ctx,
-			db,
-			Filter{
-				ID: &categoryID,
-			},
-		)
-
-		if err != nil {
-			return err
-		}
-
-		category = c
-		return nil
+		return cs.crepository.Create(ctx, db, category)
 	})
 
 	if err != nil {
 		mappedErr := database.MapError(err)
 		switch {
-		case errors.Is(
-			mappedErr,
-			database.ErrNotFound,
-		):
-			return nil, security.NewSecureError(
-				http.StatusNotFound,
-				security.CodeNotFound,
-				"resource not found",
-				err,
-			)
+		case errors.Is(mappedErr, database.ErrConflict):
+			return nil, security.NewSecureError(http.StatusConflict).
+				WithCode("CATEGORY_ALREADY_EXISTS").
+				WithMessage("A category with this name already exists").
+				Wrap(err)
+
+		case errors.Is(mappedErr, database.ErrForeignKeyViolation), errors.Is(mappedErr, database.ErrNotFound):
+			return nil, security.NewSecureError(http.StatusBadRequest).
+				WithCode("PARENT_CATEGORY_NOT_FOUND").
+				WithMessage("The specified parent_id category does not exist").
+				Wrap(err).
+				WithFields(api.FieldError{
+					Field:   "parent_id",
+					Message: "referenced category does not exist",
+				})
+
 		default:
-			return nil, security.NewSecureError(
-				http.StatusInternalServerError,
-				security.CodeInternal,
-				"failed to fetch the resource",
-				err,
-			)
+			// Attach stack trace for internal server errors
+			return nil, security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("An unexpected database error occurred").
+				Wrap(err).
+				WithStack()
 		}
 	}
 
 	return category, nil
 }
 
+func (cs *CategoryService) GetCategoryByID(
+	ctx context.Context,
+	categoryID uuid.UUID,
+) (*model.ProductCategory, error) {
+	if categoryID == uuid.Nil {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Category ID cannot be empty").
+			WithFields(api.FieldError{
+				Field:   "id",
+				Message: "valid UUID is required",
+			})
+	}
+
+	var category *model.ProductCategory
+	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		var repoErr error
+		category, repoErr = cs.crepository.GetByID(ctx, db, categoryID)
+		return repoErr
+	})
+
+	if err != nil {
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return nil, security.NewSecureError(http.StatusNotFound).
+				WithCode("CATEGORY_NOT_FOUND").
+				WithMessage("Category not found").
+				Wrap(err)
+
+		default:
+			return nil, security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to fetch category").
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	return category, nil
+}
+
+func (cs *CategoryService) isDescendant(
+	ctx context.Context,
+	categoryID uuid.UUID,
+	newParentID uuid.UUID,
+) (bool, error) {
+	var isChild bool
+	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		// Traverse up from newParentID
+		currentParent := &newParentID
+		for currentParent != nil && *currentParent != uuid.Nil {
+			if *currentParent == categoryID {
+				isChild = true
+				return nil
+			}
+			parentCategory, err := cs.crepository.GetByID(ctx, db, *currentParent)
+			if err != nil {
+				return err
+			}
+			currentParent = parentCategory.ParentID
+		}
+		return nil
+	})
+	return isChild, err
+}
+
 type UpdateCategoryInput struct {
-	Name              *string
-	ParentID          *uuid.UUID
-	PublicationStatus *string
+	Name     *string
+	ParentID *uuid.UUID
 }
 
 func (cs *CategoryService) UpdateCategory(
@@ -152,162 +177,183 @@ func (cs *CategoryService) UpdateCategory(
 	categoryID uuid.UUID,
 	input *UpdateCategoryInput,
 ) error {
-	var status model.PublicationStatus
-	if input.PublicationStatus != nil {
-		var err error
-		status, err = model.ParsePublicationStatus(*input.PublicationStatus)
-		if err != nil {
-			return err
-		}
+	// 1. Guard against nil IDs or payloads
+	if categoryID == uuid.Nil {
+		return security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Category ID is required")
 	}
 
-	fields := UpdateCategoryFields{
-		Name:              input.Name,
-		ParentID:          input.ParentID,
-		PublicationStatus: &status,
+	if input == nil {
+		return security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_PAYLOAD").
+			WithMessage("Update payload cannot be empty")
 	}
-	err := cs.qexecuter.WithDB(ctx,
-		func(db database.QueryExecutor) error {
-			return cs.crepository.Update(
-				ctx,
-				db,
-				categoryID,
-				fields,
-			)
-		},
-	)
+
+	fields := UpdateCategoryFields{}
+
+	// 2. Validate & sanitize Name if provided
+	if input.Name != nil {
+		trimmedName := strings.TrimSpace(*input.Name)
+		if trimmedName == "" {
+			return security.NewSecureError(http.StatusBadRequest).
+				WithCode("VALIDATION_FAILED").
+				WithMessage("Validation failed").
+				WithFields(api.FieldError{
+					Field:   "name",
+					Message: "category name cannot be empty",
+				})
+		}
+		fields.Name = &trimmedName
+	}
+
+	// 3. Hierarchy & Cycle Validation for ParentID
+	if input.ParentID != nil {
+		parentID := *input.ParentID
+
+		// Guard against direct self-referencing parent
+		if parentID == categoryID {
+			return security.NewSecureError(http.StatusBadRequest).
+				WithCode("INVALID_HIERARCHY").
+				WithMessage("A category cannot be set as its own parent").
+				WithFields(api.FieldError{
+					Field:   "parent_id",
+					Message: "category cannot reference itself as parent",
+				})
+		}
+
+		// Cycle Check: Ensure new parent is not a child/descendant of current category
+		if parentID != uuid.Nil {
+			isDescendant, err := cs.isDescendant(ctx, categoryID, parentID)
+			if err != nil {
+				return security.NewSecureError(http.StatusInternalServerError).
+					WithCode("INTERNAL_ERROR").
+					WithMessage("Failed to validate category hierarchy").
+					Wrap(err).
+					WithStack()
+			}
+			if isDescendant {
+				return security.NewSecureError(http.StatusBadRequest).
+					WithCode("CYCLIC_HIERARCHY").
+					WithMessage("Cannot set a descendant category as parent").
+					WithFields(api.FieldError{
+						Field:   "parent_id",
+						Message: "causes a circular reference in the category tree",
+					})
+			}
+		}
+
+		fields.ParentID = input.ParentID
+	}
+
+	// 4. Execute Update
+	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		return cs.crepository.Update(ctx, db, categoryID, fields)
+	})
+
+	// 5. Comprehensive Error Mapping
 	if err != nil {
 		mappedErr := database.MapError(err)
 		switch {
-		case errors.Is(
-			mappedErr,
-			database.ErrNotFound,
-		):
-			return security.NewSecureError(
-				http.StatusNotFound,
-				security.CodeNotFound,
-				"resource not found",
-				err,
-			)
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return security.NewSecureError(http.StatusNotFound).
+				WithCode("CATEGORY_NOT_FOUND").
+				WithMessage("Category not found").
+				Wrap(err)
+
+		case errors.Is(mappedErr, database.ErrConflict):
+			return security.NewSecureError(http.StatusConflict).
+				WithCode("CATEGORY_ALREADY_EXISTS").
+				WithMessage("A category with this name already exists").
+				Wrap(err)
+
+		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+			return security.NewSecureError(http.StatusBadRequest).
+				WithCode("PARENT_CATEGORY_NOT_FOUND").
+				WithMessage("The specified parent category does not exist").
+				Wrap(err).
+				WithFields(api.FieldError{
+					Field:   "parent_id",
+					Message: "referenced category does not exist",
+				})
+
 		default:
-			return security.NewSecureError(
-				http.StatusInternalServerError,
-				security.CodeInternal,
-				"failed to fetch the resource",
-				err,
-			)
+			return security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to update category").
+				Wrap(err).
+				WithStack()
 		}
 	}
 
 	return nil
 }
 
-func (cs *CategoryService) PutProductCategories(
-	ctx context.Context,
-	productID uuid.UUID,
-	categoryIDs []uuid.UUID,
-) error {
-	err := cs.qexecuter.WithTx(
-		ctx,
-		func(tx database.QueryExecutor) error {
-			return cs.crepository.PutProductCategories(
-				ctx,
-				tx,
-				productID,
-				categoryIDs,
-			)
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("put product categories: %w", err)
-	}
-	return nil
+type ListCategoriesInput struct {
+	Query          *api.ListQuery
+	IncludeDeleted bool // set true for admin caller context
 }
 
-func (cs *CategoryService) ListProductCategories(
+// ListCategories is the consolidated handler for public and admin category queries.
+func (cs *CategoryService) ListCategories(
 	ctx context.Context,
-	productID uuid.UUID,
-) ([]*model.ProductCategory, error) {
-	var res []*model.ProductCategory
+	in ListCategoriesInput,
+) (*api.PagedResult[model.ProductCategory], error) {
+	q := in.Query
+	if q == nil {
+		q = &api.ListQuery{}
+	}
+
+	var result *api.PagedResult[model.ProductCategory]
+
 	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		categories, err := cs.crepository.ListProductCategories(
-			ctx,
-			db,
-			productID,
-		)
-		if err != nil {
-			return err
-		}
-		res = categories
-		return nil
+		var repoErr error
+		result, repoErr = cs.crepository.List(ctx, db, ListCategoryOptions{
+			ListQuery:      q,
+			IncludeDeleted: in.IncludeDeleted,
+		})
+		return repoErr
 	})
+
 	if err != nil {
-		return nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to fetch the product categories",
-			err,
-		)
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrInvalidInput):
+			return nil, security.NewSecureError(http.StatusBadRequest).
+				WithCode("INVALID_QUERY_PARAMETER").
+				WithMessage("Invalid search or sort filter provided").
+				Wrap(err)
+
+		default:
+			return nil, security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to list categories").
+				Wrap(err).
+				WithStack()
+		}
 	}
-	return res, nil
+
+	return result, nil
 }
 
+// Customer-facing list endpoint (Soft-deleted records hidden)
 func (cs *CategoryService) List(
 	ctx context.Context,
 	q *api.ListQuery,
-) ([]*model.ProductCategory, *api.Page, error) {
-	var res []*model.ProductCategory
-	var page *api.Page
-	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		categories, p, err := cs.crepository.List(
-			ctx,
-			db,
-			q,
-		)
-		if err != nil {
-			return err
-		}
-		res = categories
-		page = p
-		return nil
+) (*api.PagedResult[model.ProductCategory], error) {
+	return cs.ListCategories(ctx, ListCategoriesInput{
+		Query:          q,
+		IncludeDeleted: false,
 	})
-	if err != nil {
-		return nil, nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to fetch the categories",
-			err,
-		)
-	}
-	return res, page, nil
 }
 
+// Admin-facing list endpoint (Includes soft-deleted records)
 func (cs *CategoryService) AdminList(
 	ctx context.Context,
 	q *api.ListQuery,
-) ([]*model.ProductCategory, *api.Page, error) {
-	var res []*model.ProductCategory
-	var page *api.Page
-	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		categories, p, err := cs.crepository.AdminList(
-			ctx,
-			db,
-			q,
-		)
-		if err != nil {
-			return err
-		}
-		res = categories
-		page = p
-		return nil
+) (*api.PagedResult[model.ProductCategory], error) {
+	return cs.ListCategories(ctx, ListCategoriesInput{
+		Query:          q,
+		IncludeDeleted: true,
 	})
-	if err != nil {
-		return nil, nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to fetch the categories",
-			err,
-		)
-	}
-	return res, page, nil
 }

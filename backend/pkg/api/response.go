@@ -1,8 +1,9 @@
 package api
 
 type FieldError struct {
-	Field string `json:"field" example:"name"`
-	Tags  string `json:"tags" example:"string"`
+	Field   string `json:"field,omitempty" example:"name"`
+	Tags    string `json:"tags,omitempty" example:"string"`
+	Message string `json:"message,omitempty" example:"x should be integer"`
 }
 
 type MessageResponse struct {

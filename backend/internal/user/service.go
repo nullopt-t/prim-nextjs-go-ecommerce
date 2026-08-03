@@ -54,17 +54,11 @@ func (s *UserService) get(
 		):
 			return nil, security.NewSecureError(
 				http.StatusNotFound,
-				security.CodeNotFound,
-				"user not found",
-				err,
-			)
+			).WithMessage("user not found")
 		default:
 			return nil, security.NewSecureError(
 				http.StatusInternalServerError,
-				security.CodeInternal,
-				"failed to get a user",
-				err,
-			)
+			).WithMessage("failed to get a user").Wrap(err)
 		}
 	}
 	return user, nil
@@ -99,17 +93,11 @@ func (s *UserService) CreateUser(
 				):
 					return security.NewSecureError(
 						http.StatusConflict,
-						security.CodeConflict,
-						"user already exists",
-						err,
-					)
+					).WithMessage("user already exists")
 				default:
 					return security.NewSecureError(
 						http.StatusInternalServerError,
-						security.CodeInternal,
-						"failed to create a new user",
-						err,
-					)
+					).WithMessage("failed to create a new user").Wrap(err)
 				}
 			}
 			u.ID = id
@@ -194,10 +182,7 @@ func (s *UserService) GetAllUsers(
 			if err != nil {
 				return security.NewSecureError(
 					http.StatusInternalServerError,
-					security.CodeInternal,
-					"failed to fetch users",
-					err,
-				)
+				).WithMessage("failed to fetch users").Wrap(err)
 			}
 			return nil
 		},

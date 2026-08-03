@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"net/http"
+
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
@@ -19,15 +21,16 @@ func ErrorHandler(logger log.Logger) gin.HandlerFunc {
 		err := c.Errors.Last().Err
 		if se, ok := err.(*security.SecureError); ok {
 			logger.Error(
-				se.UserMsg,
+				"something went wrong",
 				log.Meta{
-					"Error": se.Internal,
-					"Stack": se.Stack,
+					"error": se.LogValue(),
 				},
 			)
+			// TODO: map the error code to the status
+			// instead of writing it every where
 			c.JSON(se.Status, api.BadReqResponse{
 				Code:    se.Code,
-				Message: se.UserMsg,
+				Message: se.Message,
 				Details: se.Fields,
 			})
 			c.Abort()
@@ -35,11 +38,13 @@ func ErrorHandler(logger log.Logger) gin.HandlerFunc {
 		}
 
 		logger.Error(
-			err.Error(),
-			log.Meta{},
+			"internal error",
+			log.Meta{
+				"error": err,
+			},
 		)
-		c.JSON(500, api.ErrorResponse{
-			Code:    "internal_error",
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{
+			Code:    "INTERNAL_ERROR",
 			Message: "Internal server error",
 		})
 		c.Abort()

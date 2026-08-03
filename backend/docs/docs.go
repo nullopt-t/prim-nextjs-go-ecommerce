@@ -211,6 +211,63 @@ const docTemplate = `{
                     }
                 }
             },
+            "delete": {
+                "description": "update a brand",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brand"
+                ],
+                "summary": "update a brand",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "brand id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "brand input",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/brand.UpdateBrandRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/brand.BrandResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "patch": {
                 "description": "update a brand",
                 "consumes": [
@@ -618,6 +675,122 @@ const docTemplate = `{
                                         },
                                         "meta": {
                                             "$ref": "#/definitions/api.Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/tags/{id}": {
+            "delete": {
+                "description": "update a tag",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tag"
+                ],
+                "summary": "update a tag",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "tag id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "tag input",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/tag.UpdateTagRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "update a tag",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tag"
+                ],
+                "summary": "update a tag",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "tag id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "tag input",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/tag.UpdateTagRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
                                         }
                                     }
                                 }
@@ -1264,7 +1437,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/products/{slug}": {
+        "/products/{pid}": {
             "get": {
                 "description": "Get a product by passing it's slug",
                 "consumes": [
@@ -1280,8 +1453,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Product Slug",
-                        "name": "slug",
+                        "description": "Product public ID",
+                        "name": "pid",
                         "in": "path",
                         "required": true
                     }
@@ -1733,25 +1906,17 @@ const docTemplate = `{
                     "type": "string",
                     "example": "2026-07-01T05:04:38Z"
                 },
+                "deleted_at": {
+                    "type": "string",
+                    "example": "2026-07-01T05:04:38Z"
+                },
                 "id": {
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
-                "logo_alt": {
-                    "type": "string",
-                    "example": "nvidia logo"
-                },
-                "logo_url": {
-                    "type": "string",
-                    "example": "https://pictures.com/nvidia.png"
-                },
                 "name": {
                     "type": "string",
                     "example": "nvidia"
-                },
-                "publication_status": {
-                    "type": "string",
-                    "example": "active"
                 },
                 "updated_at": {
                     "type": "string",
@@ -1870,35 +2035,24 @@ const docTemplate = `{
         "product.CreateProductRequest": {
             "type": "object",
             "required": [
+                "category_id",
                 "description",
-                "short_description",
                 "title"
             ],
             "properties": {
                 "brand_id": {
                     "type": "string"
                 },
+                "category_id": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
-                "short_description": {
-                    "type": "string"
-                },
-                "slug": {
-                    "type": "string"
+                "is_configurable": {
+                    "type": "boolean"
                 },
                 "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "product.ProductBrandResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
                     "type": "string"
                 }
             }
@@ -1906,10 +2060,10 @@ const docTemplate = `{
         "product.ProductResponse": {
             "type": "object",
             "properties": {
-                "brand": {
-                    "$ref": "#/definitions/product.ProductBrandResponse"
-                },
                 "brand_id": {
+                    "type": "string"
+                },
+                "category_id": {
                     "type": "string"
                 },
                 "created_at": {
@@ -1918,16 +2072,25 @@ const docTemplate = `{
                 "created_by": {
                     "type": "string"
                 },
+                "default_variant": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
+                },
+                "highlights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "id": {
                     "type": "string"
                 },
-                "short_description": {
-                    "type": "string"
+                "is_configurable": {
+                    "type": "boolean"
                 },
-                "slug": {
+                "public_id": {
                     "type": "string"
                 },
                 "status": {
@@ -1981,6 +2144,15 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string",
                     "example": "2026-06-30T15:47:19Z"
+                }
+            }
+        },
+        "tag.UpdateTagRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "best seller"
                 }
             }
         }

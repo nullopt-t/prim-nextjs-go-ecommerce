@@ -46,30 +46,34 @@ services:
     command: air -c .air.server.toml
     env_file:
       - .env
-    environment: *app-env
+    environment:
+      <<: *app-env
+      GOMAXPROCS: 4
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
 
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    volumes:
-      - .:/app
-      - go-mod-cache:/go/pkg/mod
-    command: air -c .air.worker.toml
-    env_file:
-      - .env
-    environment: *app-env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
+  # worker:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.dev
+  #   volumes:
+  #     - .:/app
+  #     - go-mod-cache:/go/pkg/mod
+  #   command: air -c .air.worker.toml
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     <<: *app-env
+  #     GOMAXPROCS: 2
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #
   postgres:
     image: postgres:18-alpine
     environment:
@@ -81,7 +85,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U prim -d prim"]
+      test:
+        - "CMD-SHELL"
+        - "pg_isready -U prim -d prim"
       interval: 10s
       timeout: 5s
       retries: 5
@@ -93,7 +99,10 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:
+        - CMD
+        - redis-cli
+        - ping
       interval: 10s
       timeout: 3s
       retries: 5

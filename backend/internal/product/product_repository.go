@@ -2,572 +2,551 @@ package product
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"slices"
+	"strings"
+	"time"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
-
-	"github.com/google/uuid"
 )
 
-type Filter struct {
-	ID   *uuid.UUID
-	Slug *string
+var allowedProductSortFields = map[string]string{
+	"id":         "id",
+	"public_id":  "public_id",
+	"title":      "title",
+	"status":     "status",
+	"created_at": "created_at",
+	"updated_at": "updated_at",
 }
 
-type ProductRepository struct {
+type Filter struct {
+	ID             *uuid.UUID
+	PublicID       *string
+	IncludeDeleted bool
 }
+
+type ProductListItem struct {
+	ID         uuid.UUID               `json:"id"`
+	PublicID   string                  `json:"public_id"`
+	Title      string                  `json:"title"`
+	Status     model.PublicationStatus `json:"status"`
+	CategoryID uuid.UUID               `json:"category_id"`
+	BrandID    *uuid.UUID              `json:"brand_id,omitempty"`
+	CreatedAt  time.Time               `json:"created_at"`
+}
+
+type CreateProductMediaInput struct {
+	ID              uuid.UUID
+	ProductID       uuid.UUID
+	StorageObjectID uuid.UUID
+	MediaType       model.MediaType
+	SortOrder       int
+}
+
+type ProductRepository struct{}
 
 func NewProductRepository() *ProductRepository {
 	return &ProductRepository{}
 }
 
+// --- Product CRUD ---
+
+// Create inserts a new product record into the products table.
 func (r *ProductRepository) Create(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	p *model.Product,
 ) error {
-	_, err := qe.Exec(ctx,
-		`INSERT INTO products (
+	if p.ID == uuid.Nil {
+		p.ID = uuid.New()
+	}
+
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	if p.CreatedAt.IsZero() {
+		p.CreatedAt = now
+	}
+	if p.UpdatedAt.IsZero() {
+		p.UpdatedAt = now
+	}
+
+	query := `
+		INSERT INTO products (
 			id,
+			brand_id,
+			category_id,
+			public_id,
 			title,
-	 		short_description,
 			description,
-			slug,
+			highlights,
 			status,
 			created_at,
 			updated_at
 		)
-		VALUES (
-			$1,
-			$2,
-			$3,
-			$4,
-			$5,
-			$6,
-			$7,
-			$8
-		)
-		`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	`
+
+	_, err := qe.Exec(
+		ctx,
+		query,
 		p.ID,
+		p.BrandID,
+		p.CategoryID,
+		p.PublicID,
 		p.Title,
-		p.ShortDescription,
 		p.Description,
-		p.Slug,
+		p.Highlights,
 		p.Status,
 		p.CreatedAt,
 		p.UpdatedAt,
 	)
 	if err != nil {
-		return fmt.Errorf(
-			"create a product :%w",
-			err,
-		)
+		return fmt.Errorf("create product: %w", err)
 	}
+
 	return nil
 }
 
+// Get fetches a single product matching filter criteria.
 func (r *ProductRepository) Get(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	filter Filter,
 ) (*model.Product, error) {
+	if filter.ID == nil && filter.PublicID == nil {
+		return nil, errors.New("get product: filter ID or PublicID is required")
+	}
 
-	query := `
-	SELECT
-		id,
-		brand_id,
-		title,
-		short_description,
-		description,
-		slug,
-		status,
-		created_at,
-		updated_at
-	FROM products
-	WHERE deleted_at IS NULL`
-
-	args := []any{}
+	whereClauses := make([]string, 0, 3)
+	args := make([]any, 0, 2)
 	argID := 1
+
+	if !filter.IncludeDeleted {
+		whereClauses = append(whereClauses, "deleted_at IS NULL")
+	}
+
 	if filter.ID != nil {
-		query += fmt.Sprintf(" AND id=$%d", argID)
+		whereClauses = append(whereClauses, fmt.Sprintf("id = $%d", argID))
 		args = append(args, *filter.ID)
 		argID++
 	}
 
-	if filter.Slug != nil {
-		query += fmt.Sprintf(" AND slug=$%d", argID)
-		args = append(args, *filter.Slug)
+	if filter.PublicID != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("public_id = $%d", argID))
+		args = append(args, *filter.PublicID)
 	}
 
-	product := &model.Product{}
-	err := qe.QueryRow(ctx,
-		query,
-		args...,
-	).Scan(
-		&product.ID,
-		&product.BrandID,
-		&product.Title,
-		&product.ShortDescription,
-		&product.Description,
-		&product.Slug,
-		&product.Status,
-		&product.CreatedAt,
-		&product.UpdatedAt)
+	query := fmt.Sprintf(`
+		SELECT
+			id,
+			brand_id,
+			category_id,
+			public_id,
+			title,
+			description,
+			highlights,
+			status,
+			created_at,
+			updated_at,
+			deleted_at
+		FROM products
+		WHERE %s
+		LIMIT 1
+	`, strings.Join(whereClauses, " AND "))
+
+	rows, err := qe.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"get a product:%w",
-			err,
-		)
+		return nil, fmt.Errorf("query product: %w", err)
+	}
+
+	product, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByNameLax[model.Product])
+	if err != nil {
+		return nil, fmt.Errorf("scan product: %w", err)
 	}
 
 	return product, nil
 }
 
+// Update modifies core product attributes.
 func (r *ProductRepository) Update(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	product *model.Product,
+	p *model.Product,
 ) error {
+	if p.ID == uuid.Nil {
+		return errors.New("update product: product ID is required")
+	}
+
+	now := time.Now().UTC().Truncate(time.Millisecond)
+
 	query := `
 		UPDATE products
 		SET
-			title = $1,
-			short_description = $2,
-			description = $3,
-			slug = $4,
-			status = $5,
-			updated_at = NOW()
-		WHERE id = $6
+			brand_id = $1,
+			category_id = $2,
+			title = $3,
+			description = $4,
+			highlights = $5,
+			status = $6,
+			updated_at = $7
+		WHERE id = $8 AND deleted_at IS NULL
 	`
-	args := []any{
-		product.Title,
-		product.ShortDescription,
-		product.Description,
-		product.Slug,
-		product.Status,
-		product.ID,
-	}
-	_, err := qe.Exec(ctx, query, args...)
+
+	cmd, err := qe.Exec(
+		ctx,
+		query,
+		p.BrandID,
+		p.CategoryID,
+		p.Title,
+		p.Description,
+		p.Highlights,
+		p.Status,
+		now,
+		p.ID,
+	)
 	if err != nil {
 		return fmt.Errorf("update product: %w", err)
 	}
+
+	if cmd.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
 	return nil
 }
 
-type ProductListItem struct {
-	ID              uuid.UUID `json:"id"`
-	Title           string    `json:"title"`
-	Slug            string    `json:"slug"`
-	Price           int64     `json:"price"`
-	Currency        string    `json:"currency"`
-	ThumbnailBucket *string   `json:"-"`
-	ThumbnailKey    *string   `json:"-"`
-	ThumbnailURL    *string   `json:"thumbnailUrl"`
-}
-
-type ProductList struct {
-	Items []*ProductListItem `json:"items"`
-	Page  *api.Page          `json:"page"`
-}
-
+// List performs paginated searching and listing of products.
 func (r *ProductRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	q *api.ListQuery,
-) (*ProductList, error) {
-	query := `
-	SELECT
-		p.id,
-		p.title,
-		p.slug,
-		dv.price,
-		dv.currency,
-		o.bucket,
-		o.key
-	FROM products p
-	LEFT JOIN product_variants dv
-		ON dv.id = p.default_variant_id
-	LEFT JOIN LATERAL (
-		SELECT vm.object_id
-		FROM variant_media vm
-		WHERE vm.variant_id = dv.id
-		ORDER BY vm.sort_order ASC
-		LIMIT 1
-	) thumb ON true
-	LEFT JOIN objects o
-		ON o.id = thumb.object_id
-		AND o.deleted_at IS NULL
-		AND o.status = 'uploaded'
-	WHERE p.deleted_at IS NULL
-	ORDER BY p.created_at DESC
-	LIMIT $1 OFFSET $2
-	`
-
-	offset := (q.Page - 1) * q.PageSize
-
-	rows, err := qe.Query(
-		ctx,
-		query,
-		q.PageSize,
-		offset,
-	)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"list products: %w",
-			err,
-		)
+	includeDeleted bool,
+) (*api.PagedResult[ProductListItem], error) {
+	if q == nil {
+		q = &api.ListQuery{}
 	}
-	defer rows.Close()
+	q.Process(api.QueryOptions{})
 
-	products := make([]*ProductListItem, 0)
+	whereClauses := make([]string, 0, 2)
+	args := make([]any, 0, 2)
+	argIdx := 1
 
-	for rows.Next() {
-		var p ProductListItem
+	if !includeDeleted {
+		whereClauses = append(whereClauses, "deleted_at IS NULL")
+	}
 
-		var bucket *string
-		var key *string
+	search := strings.TrimSpace(q.Search)
+	if search != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("(title ILIKE $%d OR public_id ILIKE $%d)", argIdx, argIdx))
+		args = append(args, "%"+search+"%")
+		argIdx++
+	}
 
-		err := rows.Scan(
-			&p.ID,
-			&p.Title,
-			&p.Slug,
-			&p.Price,
-			&p.Currency,
-			&bucket,
-			&key,
-		)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"scan product: %w",
-				err,
-			)
+	whereStmt := ""
+	if len(whereClauses) > 0 {
+		whereStmt = "WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	// 1. Total Count
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products %s", whereStmt)
+	var total int
+	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, fmt.Errorf("count products: %w", err)
+	}
+
+	if total == 0 {
+		return api.NewPagedResult([]*ProductListItem{}, api.NewPage(q.Page, q.PageSize, 0)), nil
+	}
+
+	// 2. Sorting
+	orderBy := "ORDER BY created_at DESC"
+	if len(q.Sort) > 0 {
+		sortParts := make([]string, 0, len(q.Sort))
+		for _, sort := range q.Sort {
+			dbField, ok := allowedProductSortFields[strings.ToLower(sort.Field)]
+			if !ok {
+				continue
+			}
+			direction := "ASC"
+			if sort.Order == api.SortDesc {
+				direction = "DESC"
+			}
+			sortParts = append(sortParts, fmt.Sprintf("%s %s", dbField, direction))
 		}
-
-		p.ThumbnailBucket = bucket
-		p.ThumbnailKey = key
-
-		products = append(products, &p)
+		if len(sortParts) > 0 {
+			orderBy = "ORDER BY " + strings.Join(sortParts, ", ")
+		}
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf(
-			"iterate products: %w",
-			err,
-		)
-	}
-
-	var totalItems int
-
-	err = qe.QueryRow(
-		ctx,
-		`
-		SELECT COUNT(*)
+	// 3. Paginated Select
+	selectQuery := fmt.Sprintf(`
+		SELECT
+			id,
+			public_id,
+			title,
+			status,
+			category_id,
+			brand_id,
+			created_at
 		FROM products
-		WHERE deleted_at IS NULL
-		`,
-	).Scan(&totalItems)
+		%s
+		%s
+		LIMIT $%d OFFSET $%d
+	`, whereStmt, orderBy, argIdx, argIdx+1)
+
+	queryArgs := append(slices.Clone(args), q.PageSize, q.Offset)
+
+	rows, err := qe.Query(ctx, selectQuery, queryArgs...)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"count products: %w",
-			err,
-		)
+		return nil, fmt.Errorf("list products select: %w", err)
 	}
 
-	totalPages := 0
-	if totalItems > 0 {
-		totalPages =
-			(totalItems + q.PageSize - 1) /
-				q.PageSize
+	items, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[ProductListItem])
+	if err != nil {
+		return nil, fmt.Errorf("collect products: %w", err)
 	}
 
-	return &ProductList{
-		Items: products,
-		Page: &api.Page{
-			Page:        q.Page,
-			PageSize:    q.PageSize,
-			TotalItems:  totalItems,
-			TotalPages:  totalPages,
-			HasPrevious: q.Page > 1,
-			HasNext:     q.Page < totalPages,
-		},
-	}, nil
+	return api.NewPagedResult(items, api.NewPage(q.Page, q.PageSize, total)), nil
 }
 
+// SoftDelete soft-deletes a product by ID or public_id.
 func (r *ProductRepository) SoftDelete(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	filter Filter,
 ) error {
-	query := `
-	UPDATE products
-	SET deleted_at = NOW()
-	WHERE deleted_at IS NULL`
+	if filter.ID == nil && filter.PublicID == nil {
+		return errors.New("soft delete product: filter ID or PublicID is required")
+	}
 
-	args := []any{}
+	whereClauses := []string{"deleted_at IS NULL"}
+	args := make([]any, 0, 2)
 	argID := 1
+
 	if filter.ID != nil {
-		query += fmt.Sprintf(" AND id=$%d", argID)
+		whereClauses = append(whereClauses, fmt.Sprintf("id = $%d", argID))
 		args = append(args, *filter.ID)
 		argID++
 	}
 
-	if filter.Slug != nil {
-		query += fmt.Sprintf(" AND slug=$%d", argID)
-		args = append(args, *filter.Slug)
+	if filter.PublicID != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("public_id = $%d", argID))
+		args = append(args, *filter.PublicID)
+		argID++
 	}
 
-	_, err := qe.Exec(ctx,
-		query,
-		args...,
-	)
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	query := fmt.Sprintf(`
+		UPDATE products
+		SET deleted_at = $%d, updated_at = $%d
+		WHERE %s
+	`, argID, argID, strings.Join(whereClauses, " AND "))
+
+	args = append(args, now)
+
+	cmd, err := qe.Exec(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf(
-			"soft delete a product:%w",
-			err,
-		)
+		return fmt.Errorf("soft delete product: %w", err)
 	}
+
+	if cmd.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
 	return nil
 }
 
-func (r *ProductRepository) GetVariants(
+// UpdateStatus changes the publication status of a product.
+func (r *ProductRepository) UpdateStatus(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	productID uuid.UUID,
-) ([]*model.ProductVariant, error) {
-	var variants []*model.ProductVariant
-	rows, err := qe.Query(
-		ctx,
-		`
-		SELECT
+	status model.PublicationStatus,
+) error {
+	if productID == uuid.Nil {
+		return errors.New("update product status: productID is required")
+	}
+
+	now := time.Now().UTC().Truncate(time.Millisecond)
+
+	query := `
+		UPDATE products
+		SET status = $2, updated_at = $3
+		WHERE id = $1 AND deleted_at IS NULL
+	`
+
+	cmd, err := qe.Exec(ctx, query, productID, status, now)
+	if err != nil {
+		return fmt.Errorf("update product status: %w", err)
+	}
+
+	if cmd.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
+	return nil
+}
+
+// --- Product Media Operations ---
+
+// AddMedia links a storage object to a product.
+func (r *ProductRepository) AddMedia(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	in CreateProductMediaInput,
+) (*model.ProductMedia, error) {
+	if in.ID == uuid.Nil {
+		in.ID = uuid.New()
+	}
+
+	query := `
+		INSERT INTO product_media (
 			id,
 			product_id,
-			sku,
-			price,
-			currency,
-			created_at,
-			updated_at
-		FROM product_variants
-		WHERE product_id=$1
-		`,
-		productID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"get variants: %w",
-			err,
+			storage_object_id,
+			media_type,
+			sort_order
 		)
-	}
-	for rows.Next() {
-		var variant model.ProductVariant
-		err = rows.Scan(
-			&variant.ID,
-			&variant.ProductID,
-			&variant.SKU,
-			&variant.Price,
-			&variant.Currency,
-			&variant.CreatedAt,
-			&variant.UpdatedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"get variants: %w",
-				err,
-			)
-		}
-		variants = append(variants, &variant)
-	}
+		VALUES ($1, $2, $3, $4, $5)
+	`
 
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf(
-			"get variants: %w",
-			err,
-		)
-	}
-	return variants, nil
-}
-
-func (r *ProductRepository) GetCategories(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	productID uuid.UUID,
-) ([]*model.ProductCategory, error) {
-	var categories []*model.ProductCategory
-	rows, err := qe.Query(
-		ctx,
-		`
-		SELECT
-			c.id,
-			c.name,
-			c.parent_id,
-			c.created_at,
-			c.updated_at,
-			c.deleted_at
-		FROM product_categories pc
-		JOIN categories c ON pc.category_id = c.id
-		JOIN products ps ON pc.product_id = ps.id
-		WHERE ps.id=$1 AND c.deleted_at IS NULL
-		`,
-		productID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"get categories: %w",
-			err,
-		)
-	}
-	for rows.Next() {
-		var category model.ProductCategory
-		err = rows.Scan(
-			&category.ID,
-			&category.Name,
-			&category.ParentID,
-			&category.CreatedAt,
-			&category.UpdatedAt,
-			&category.DeletedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"get categories: %w",
-				err,
-			)
-		}
-		categories = append(categories, &category)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf(
-			"get categories: %w",
-			err,
-		)
-	}
-	return categories, nil
-}
-
-func (r *ProductRepository) GetTags(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	productID uuid.UUID,
-) ([]*model.ProductTag, error) {
-	var tags []*model.ProductTag
-	rows, err := qe.Query(
-		ctx,
-		`
-		SELECT
-			t.id,
-			t.name,
-			t.created_at,
-			t.updated_at
-		FROM product_tags pt
-		JOIN tags t ON pt.tag_id = t.id
-		JOIN products ps ON pt.product_id = ps.id
-		WHERE ps.id=$1 AND t.deleted_at IS NULL
-		`,
-		productID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"get tags: %w",
-			err,
-		)
-	}
-	for rows.Next() {
-		var tag model.ProductTag
-		err = rows.Scan(
-			&tag.ID,
-			&tag.Name,
-			&tag.CreatedAt,
-			&tag.UpdatedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"get tags: %w",
-				err,
-			)
-		}
-		tags = append(tags, &tag)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf(
-			"get tags: %w",
-			err,
-		)
-	}
-	return tags, nil
-}
-
-func (r *ProductRepository) SetDefaultVariant(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	productID uuid.UUID,
-	variantID uuid.UUID,
-) error {
 	_, err := qe.Exec(
 		ctx,
-		`
-		UPDATE products
-		SET default_variant_id = $2
-		WHERE id = $1
-		`,
-		productID,
-		variantID,
+		query,
+		in.ID,
+		in.ProductID,
+		in.StorageObjectID,
+		in.MediaType,
+		in.SortOrder,
 	)
 	if err != nil {
-		return fmt.Errorf(
-			"set default variant: %w",
-			err,
-		)
+		return nil, fmt.Errorf("add product media: %w", err)
 	}
+
+	return &model.ProductMedia{
+		ID:              in.ID,
+		ProductID:       in.ProductID,
+		StorageObjectID: in.StorageObjectID,
+		MediaType:       in.MediaType,
+		SortOrder:       in.SortOrder,
+	}, nil
+}
+
+// ListMediaByProductID fetches all media assigned to a product joined with storage_objects.
+func (r *ProductRepository) ListMediaByProductID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) ([]*model.ProductMedia, error) {
+	if productID == uuid.Nil {
+		return nil, errors.New("list product media: productID is required")
+	}
+
+	query := `
+		SELECT
+			m.id,
+			m.product_id,
+			m.storage_object_id,
+			m.media_type,
+			m.sort_order,
+			so.id,
+			so.bucket,
+			so.object_key,
+			so.content_type,
+			so.file_size,
+			so.status
+		FROM product_media m
+		JOIN storage_objects so ON m.storage_object_id = so.id
+		WHERE m.product_id = $1
+		ORDER BY m.sort_order ASC
+	`
+
+	rows, err := qe.Query(ctx, query, productID)
+	if err != nil {
+		return nil, fmt.Errorf("list product media query: %w", err)
+	}
+	defer rows.Close()
+
+	var result []*model.ProductMedia
+	for rows.Next() {
+		m := &model.ProductMedia{
+			Object: &model.Object{},
+		}
+		if err := rows.Scan(
+			&m.ID,
+			&m.ProductID,
+			&m.StorageObjectID,
+			&m.MediaType,
+			&m.SortOrder,
+			&m.Object.ID,
+			&m.Object.Bucket,
+			&m.Object.Key,
+			&m.Object.ContentType,
+			&m.Object.FileSize,
+			&m.Object.Status,
+		); err != nil {
+			return nil, fmt.Errorf("list product media scan: %w", err)
+		}
+		result = append(result, m)
+	}
+
+	return result, nil
+}
+
+// RemoveMedia unlinks a specific media item from a product.
+func (r *ProductRepository) RemoveMedia(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+	mediaID uuid.UUID,
+) error {
+	if productID == uuid.Nil || mediaID == uuid.Nil {
+		return errors.New("remove product media: productID and mediaID are required")
+	}
+
+	query := `
+		DELETE FROM product_media
+		WHERE id = $1 AND product_id = $2
+	`
+
+	cmd, err := qe.Exec(ctx, query, mediaID, productID)
+	if err != nil {
+		return fmt.Errorf("remove product media: %w", err)
+	}
+
+	if cmd.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
 	return nil
 }
 
-func (r *ProductRepository) PublishProduct(
+// ReorderMedia updates media sort orders for a product in batch.
+func (r *ProductRepository) ReorderMedia(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	productID uuid.UUID,
+	orderedMediaIDs []uuid.UUID,
 ) error {
-	_, err := qe.Exec(
-		ctx,
-		`
-		UPDATE products
-		SET status = 'published'
-		WHERE id = $1
-		`,
-		productID,
-	)
-	if err != nil {
-		return fmt.Errorf(
-			"publish product: %w",
-			err,
-		)
+	if productID == uuid.Nil || len(orderedMediaIDs) == 0 {
+		return nil
 	}
-	return nil
-}
 
-func (r *ProductRepository) ArchiveProduct(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	productID uuid.UUID,
-) error {
-	_, err := qe.Exec(
-		ctx,
-		`
-		UPDATE products
-		SET status = 'archived'
-		WHERE id = $1
-		`,
-		productID,
-	)
-	if err != nil {
-		return fmt.Errorf(
-			"archive product: %w",
-			err,
-		)
+	query := `
+		UPDATE product_media
+		SET sort_order = $1
+		WHERE id = $2 AND product_id = $3
+	`
+
+	for idx, mediaID := range orderedMediaIDs {
+		if _, err := qe.Exec(ctx, query, idx, mediaID, productID); err != nil {
+			return fmt.Errorf("reorder product media item %s: %w", mediaID, err)
+		}
 	}
+
 	return nil
 }

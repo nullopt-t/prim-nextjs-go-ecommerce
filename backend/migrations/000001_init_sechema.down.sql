@@ -1,0 +1,11 @@
+BEGIN;
+DROP TABLE product_media;
+DROP TABLE product_variants;
+DROP TABLE products;
+DROP TYPE publication_status;
+DROP TABLE product_brands;
+DROP TABLE product_tags;
+DROP TABLE product_categories;
+DROP TABLE eobjects;
+DROP TYPE eobject_status;
+COMMIT;

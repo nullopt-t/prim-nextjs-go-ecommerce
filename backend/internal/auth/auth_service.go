@@ -194,9 +194,6 @@ func (s *AuthService) VerifyChallange(
 	if !ok {
 		return nil, security.NewSecureError(
 			http.StatusUnauthorized,
-			security.CodeUnauthorized,
-			"incorrect otp",
-			nil,
 		)
 	}
 

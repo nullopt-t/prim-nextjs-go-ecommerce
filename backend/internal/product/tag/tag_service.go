@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,218 +33,239 @@ type CreateTagInput struct {
 	Name string
 }
 
+type UpdateTagInput struct {
+	Name *string
+}
+
+// CreateTag validates and creates a new product tag.
 func (ts *TagService) CreateTag(
 	ctx context.Context,
-	in CreateTagInput,
+	in *CreateTagInput,
 ) (*model.ProductTag, error) {
+	if in == nil {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_PAYLOAD").
+			WithMessage("Request body is required")
+	}
 
-	now := time.Now()
+	name := strings.TrimSpace(in.Name)
+	if name == "" {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("VALIDATION_FAILED").
+			WithMessage("Validation error").
+			WithFields(api.FieldError{
+				Field:   "name",
+				Message: "tag name cannot be empty",
+			})
+	}
+
+	now := time.Now().UTC().Truncate(time.Millisecond)
 	tag := &model.ProductTag{
 		ID:        uuid.New(),
-		Name:      in.Name,
+		Name:      name,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
 
-	err := ts.qexecuter.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			return ts.trepo.Create(
-				ctx,
-				db,
-				tag,
-			)
-		},
-	)
+	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		return ts.trepo.Create(ctx, db, tag)
+	})
+
 	if err != nil {
 		mappedError := database.MapError(err)
 		switch {
-		case errors.Is(
-			mappedError,
-			database.ErrConflict,
-		):
-			return nil, security.NewSecureError(
-				http.StatusConflict,
-				security.CodeConflict,
-				"resource already existed",
-				err,
-			)
+		case errors.Is(mappedError, database.ErrConflict):
+			return nil, security.NewSecureError(http.StatusConflict).
+				WithCode("TAG_ALREADY_EXISTS").
+				WithMessage("A tag with this name already exists").
+				Wrap(err)
+
 		default:
-			return nil, security.NewSecureError(
-				http.StatusInternalServerError,
-				security.CodeInternal,
-				"internal server error",
-				err,
-			)
+			return nil, security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to create tag").
+				Wrap(err).
+				WithStack()
 		}
 	}
 
 	return tag, nil
 }
 
+// GetTagByID retrieves an active tag by UUID.
 func (ts *TagService) GetTagByID(
 	ctx context.Context,
 	tagID uuid.UUID,
 ) (*model.ProductTag, error) {
+	if tagID == uuid.Nil {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Tag ID is required")
+	}
+
 	var tag *model.ProductTag
-	err := ts.qexecuter.WithDB(ctx,
-		func(db database.QueryExecutor) error {
-			t, err := ts.trepo.Get(
-				ctx,
-				db,
-				&Filter{
-					ID: &tagID,
-				},
-			)
-			if err != nil {
-				return err
-			}
-			tag = t
-			return nil
-		})
+	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		var repoErr error
+		tag, repoErr = ts.trepo.Get(ctx, db, &Filter{ID: &tagID})
+		return repoErr
+	})
+
 	if err != nil {
 		mappedError := database.MapError(err)
 		switch {
-		case errors.Is(
-			mappedError,
-			database.ErrNotFound,
-		):
-			return nil, security.NewSecureError(
-				http.StatusNotFound,
-				security.CodeNotFound,
-				"resource not found",
-				err,
-			)
+		case errors.Is(mappedError, database.ErrNotFound):
+			return nil, security.NewSecureError(http.StatusNotFound).
+				WithCode("TAG_NOT_FOUND").
+				WithMessage("Tag not found").
+				Wrap(err)
+
 		default:
-			return nil, security.NewSecureError(
-				http.StatusInternalServerError,
-				security.CodeInternal,
-				"internal server error",
-				err,
-			)
+			return nil, security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to fetch tag").
+				Wrap(err).
+				WithStack()
 		}
 	}
 
 	return tag, nil
 }
 
-func (ts *TagService) PutProductTags(
+// UpdateByID modifies an active tag.
+func (ts *TagService) UpdateByID(
 	ctx context.Context,
-	productID uuid.UUID,
-	tagsIDs []uuid.UUID,
+	tagID uuid.UUID,
+	input UpdateTagInput,
 ) error {
-	err := ts.qexecuter.WithTx(ctx,
-		func(tx database.QueryExecutor) error {
-			return ts.trepo.PutProductTags(
-				ctx,
-				tx,
-				productID,
-				tagsIDs,
-			)
-		},
-	)
-	if err != nil {
-		return security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"internal server error",
-			err,
-		)
+	if tagID == uuid.Nil {
+		return security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Tag ID is required")
 	}
+
+	fields := UpdateTagFields{}
+	if input.Name != nil {
+		name := strings.TrimSpace(*input.Name)
+		if name == "" {
+			return security.NewSecureError(http.StatusBadRequest).
+				WithCode("VALIDATION_FAILED").
+				WithMessage("Validation error").
+				WithFields(api.FieldError{
+					Field:   "name",
+					Message: "tag name cannot be empty",
+				})
+		}
+		fields.Name = &name
+	}
+
+	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		return ts.trepo.Update(ctx, db, tagID, fields)
+	})
+
+	if err != nil {
+		mappedError := database.MapError(err)
+		switch {
+		case errors.Is(mappedError, database.ErrNotFound):
+			return security.NewSecureError(http.StatusNotFound).
+				WithCode("TAG_NOT_FOUND").
+				WithMessage("Tag not found").
+				Wrap(err)
+
+		case errors.Is(mappedError, database.ErrConflict):
+			return security.NewSecureError(http.StatusConflict).
+				WithCode("TAG_ALREADY_EXISTS").
+				WithMessage("A tag with this name already exists").
+				Wrap(err)
+
+		default:
+			return security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to update tag").
+				Wrap(err).
+				WithStack()
+		}
+	}
+
 	return nil
 }
 
-func (ts *TagService) ListProductTags(
+// DeleteByID soft-deletes an active tag.
+func (ts *TagService) DeleteByID(
 	ctx context.Context,
-	productID uuid.UUID,
-) ([]*model.ProductTag, error) {
-	var tags []*model.ProductTag
-	err := ts.qexecuter.WithDB(ctx,
-		func(db database.QueryExecutor) error {
-			t, err := ts.trepo.ListProductTags(
-				ctx,
-				db,
-				productID,
-			)
-			if err != nil {
-				return err
-			}
-			tags = t
-			return nil
-		})
-	if err != nil {
-		return nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"internal server error",
-			err,
-		)
+	tagID uuid.UUID,
+) error {
+	if tagID == uuid.Nil {
+		return security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Tag ID is required")
 	}
-	return tags, nil
+
+	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		return ts.trepo.Delete(ctx, db, tagID)
+	})
+
+	if err != nil {
+		mappedError := database.MapError(err)
+		switch {
+		case errors.Is(mappedError, database.ErrNotFound):
+			return security.NewSecureError(http.StatusNotFound).
+				WithCode("TAG_NOT_FOUND").
+				WithMessage("Tag not found").
+				Wrap(err)
+
+		default:
+			return security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to delete tag").
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	return nil
+}
+
+// List handles unified paginated list operations for public and admin callers.
+func (ts *TagService) List(
+	ctx context.Context,
+	q *api.ListQuery,
+	includeDeleted bool,
+) (*api.PagedResult[model.ProductTag], error) {
+	if q == nil {
+		q = &api.ListQuery{}
+	}
+
+	var result *api.PagedResult[model.ProductTag]
+	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		var repoErr error
+		result, repoErr = ts.trepo.List(ctx, db, ListTagOptions{
+			Query:          q,
+			IncludeDeleted: includeDeleted,
+		})
+		return repoErr
+	})
+
+	if err != nil {
+		return nil, security.NewSecureError(http.StatusInternalServerError).
+			WithCode("INTERNAL_ERROR").
+			WithMessage("Failed to list tags").
+			Wrap(err).
+			WithStack()
+	}
+
+	return result, nil
 }
 
 func (ts *TagService) ListTags(
 	ctx context.Context,
 	q *api.ListQuery,
-) ([]*model.ProductTag, *api.Page, error) {
-	var tags []*model.ProductTag
-	var page *api.Page
-	err := ts.qexecuter.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			ts, p, err := ts.trepo.List(
-				ctx,
-				db,
-				q,
-			)
-			if err != nil {
-				return err
-			}
-			tags = ts
-			page = p
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to fetch the categories",
-			err,
-		)
-	}
-	return tags, page, nil
+) (*api.PagedResult[model.ProductTag], error) {
+	return ts.List(ctx, q, false)
 }
 
 func (ts *TagService) AdminListTags(
 	ctx context.Context,
 	q *api.ListQuery,
-) ([]*model.ProductTag, *api.Page, error) {
-	var tags []*model.ProductTag
-	var page *api.Page
-	err := ts.qexecuter.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			ts, p, err := ts.trepo.AdminList(
-				ctx,
-				db,
-				q,
-			)
-			if err != nil {
-				return err
-			}
-			tags = ts
-			page = p
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to fetch the categories",
-			err,
-		)
-	}
-	return tags, page, nil
+) (*api.PagedResult[model.ProductTag], error) {
+	return ts.List(ctx, q, true)
 }

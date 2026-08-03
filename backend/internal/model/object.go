@@ -22,7 +22,7 @@ func (o ObjectStatus) String() string {
 type Object struct {
 	ID uuid.UUID
 
-	Size        int64
+	FileSize    int64
 	Status      ObjectStatus
 	ContentType string
 

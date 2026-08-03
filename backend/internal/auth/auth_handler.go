@@ -100,10 +100,7 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 			_ = c.Error(
 				security.NewSecureError(
 					http.StatusBadRequest,
-					security.CodeValidation,
-					"invalid identifier format",
-					err,
-				),
+				).WithMessage("invalid identifier"),
 			)
 			return
 		}
@@ -265,9 +262,6 @@ func (h *Handler) GetMe(c *gin.Context) {
 	if !exists {
 		_ = c.Error(security.NewSecureError(
 			http.StatusUnauthorized,
-			"UNAUTHORIZED",
-			"no session for this user",
-			nil,
 		))
 		return
 	}

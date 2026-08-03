@@ -1,6 +1,7 @@
 package security
 
 import (
+	"log/slog"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -53,57 +54,106 @@ func stack() string {
 }
 
 type SecureError struct {
-	Status   int
-	Code     string
-	UserMsg  string
-	Internal error
-	Fields   []api.FieldError
-	Stack    string
-	MetaData map[string]any
+	// http status code ex(500)
+	Status int `json:"status,omitempty"`
+
+	// http error code ex("INTERNAL_ERROR")
+	Code string `json:"code,omitempty"`
+
+	// public user message
+	Message string `json:"message,omitempty"`
+
+	// internal error
+	Internal error `json:"cause,omitempty"`
+
+	// validation error details
+	Fields []api.FieldError `json:"details,omitempty"`
+
+	// error stack
+	Stack string `json:"stack,omitempty"`
+}
+
+func NewSecureError(
+	status int,
+) *SecureError {
+	return &SecureError{
+		Status: status,
+	}
+}
+
+func (se *SecureError) WithCode(code string) *SecureError {
+	se.Code = code
+	return se
+}
+
+func (se *SecureError) WithMessage(m string) *SecureError {
+	se.Message = m
+	return se
+}
+
+func (se *SecureError) Wrap(err error) *SecureError {
+	se.Internal = err
+	return se
 }
 
 func (se *SecureError) Error() string {
-	return se.UserMsg
+	return se.Message
 }
 
 func (se *SecureError) Unwrap() error {
 	return se.Internal
 }
 
-func NewSecureError(
-	status int,
-	code,
-	public string,
-	internal error,
-) *SecureError {
-	return &SecureError{
-		Status:   status,
-		Code:     code,
-		UserMsg:  public,
-		Internal: internal,
-		Stack:    stack(),
-	}
-}
-
-func (se *SecureError) WithMetaData(
-	meta map[string]any,
-) *SecureError {
-	se.MetaData = meta
-	return se
-}
-
 func (se *SecureError) WithFields(
-	fields []api.FieldError,
+	fields ...api.FieldError,
 ) *SecureError {
-	se.Fields = fields
+	se.Fields = append(se.Fields, fields...)
 	return se
 }
 
-func SecureErrInvalidUUID(err error) error {
+func (se *SecureError) WithStack() *SecureError {
+	se.Stack = stack()
+	return se
+}
+
+func (e *SecureError) LogValue() slog.Value {
+	attrs := make([]slog.Attr, 0, 6)
+
+	if e.Status != 0 {
+		attrs = append(attrs, slog.Int("status", e.Status))
+	}
+
+	if e.Code != "" {
+		attrs = append(attrs, slog.String("code", e.Code))
+	}
+
+	if e.Message != "" {
+		attrs = append(attrs, slog.String("message", e.Message))
+	}
+
+	if e.Internal != nil {
+		attrs = append(attrs, slog.String("internal", e.Internal.Error()))
+	}
+
+	if len(e.Fields) > 0 {
+		attrs = append(attrs, slog.Any("fields", e.Fields))
+	}
+
+	if e.Stack != "" {
+		attrs = append(attrs, slog.String("stack", e.Stack))
+	}
+
+	return slog.GroupValue(attrs...)
+}
+
+func ErrInvalidUUID() *SecureError {
 	return NewSecureError(
 		http.StatusBadRequest,
-		CodeValidation,
-		"invalid uuid",
-		err,
+	)
+}
+
+func ErrInternalError() *SecureError {
+	return NewSecureError(
+		http.StatusInternalServerError,
 	)
 }

@@ -175,14 +175,11 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	)
 
 	variantRepository := variant.NewRepository()
-	mediaRepository := variant.NewMediaRepository()
 	variantService := variant.NewService(
 		app.logger,
 		txRunner,
 		app.minioClient,
 		variantRepository,
-		mediaRepository,
-		objectService,
 		config.MinioCfg,
 	)
 
@@ -191,14 +188,20 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	variantRouter.MapRoutes(v1)
 
 	// product
+	productMediaRepository := product.NewMediaRepository()
 	productRepo := product.NewProductRepository()
 	productService := product.NewService(
 		txRunner,
+		app.logger,
+		app.minioClient,
 		productRepo,
+		productMediaRepository,
+		objectService,
 		brandService,
 		categoryService,
 		tagService,
 		variantService,
+		config.MinioCfg,
 	)
 	productHandler := product.NewHandler(productService)
 	productRouter := product.NewRouter(productHandler)
@@ -274,6 +277,42 @@ func (app *App) Run() error {
 			},
 		)
 		return err
+	}
+
+	exists, err := app.minioClient.BucketExists(
+		context.Background(),
+		"product-media",
+	)
+	if err != nil {
+		app.logger.Error(
+			"minio bucket issue",
+			log.Meta{
+				"Error": err,
+			},
+		)
+		return err
+	}
+	if !exists {
+		err := app.minioClient.MakeBucket(
+			context.Background(),
+			"product-media",
+			minio.MakeBucketOptions{},
+		)
+		if err != nil {
+			app.logger.Error(
+				"minio bucket issue",
+				log.Meta{
+					"Error": err,
+				},
+			)
+			return err
+		}
+		app.logger.Info(
+			"minio bucket created",
+			log.Meta{
+				"Bucket": "product-media",
+			},
+		)
 	}
 
 	app.redisClient = redis.NewClient(&redis.Options{

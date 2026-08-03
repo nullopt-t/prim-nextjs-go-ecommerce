@@ -28,9 +28,6 @@ func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 			_ = c.Error(
 				security.NewSecureError(
 					http.StatusUnauthorized,
-					"INVALID_USER",
-					"invalid user",
-					nil,
 				),
 			)
 			c.Abort()
@@ -40,9 +37,6 @@ func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 			_ = c.Error(
 				security.NewSecureError(
 					http.StatusUnauthorized,
-					"FORBIDDEN",
-					"no permission",
-					nil,
 				),
 			)
 			c.Abort()
@@ -61,9 +55,6 @@ func Authanticate(secrets *config.Secrets) gin.HandlerFunc {
 			_ = c.Error(
 				security.NewSecureError(
 					http.StatusUnauthorized,
-					"MISSING_AUTH_HEADER",
-					"authorization header is required",
-					nil,
 				),
 			)
 			c.Abort()
@@ -74,9 +65,6 @@ func Authanticate(secrets *config.Secrets) gin.HandlerFunc {
 			_ = c.Error(
 				security.NewSecureError(
 					http.StatusUnauthorized,
-					"INVALID_AUTH_FORMAT",
-					"authorization header must use Bearer scheme",
-					nil,
 				),
 			)
 			c.Abort()
@@ -95,9 +83,6 @@ func Authanticate(secrets *config.Secrets) gin.HandlerFunc {
 			_ = c.Error(
 				security.NewSecureError(
 					http.StatusUnauthorized,
-					"INVALID_TOKEN",
-					"invalid or expired token",
-					err,
 				),
 			)
 			c.Abort()

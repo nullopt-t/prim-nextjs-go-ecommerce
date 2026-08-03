@@ -20,18 +20,12 @@ func ValidationError(c *gin.Context, err error) {
 		}
 		_ = c.Error(security.NewSecureError(
 			http.StatusBadRequest,
-			security.CodeValidation,
-			"bad request data",
-			err,
-		).WithFields(fieldErrors))
+		).WithFields(fieldErrors...))
 		return
 	}
 	_ = c.Error(
 		security.NewSecureError(
 			http.StatusBadRequest,
-			security.CodeValidation,
-			"bad request data",
-			err,
-		),
+		).WithMessage("bad request data").Wrap(err),
 	)
 }

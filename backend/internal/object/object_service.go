@@ -40,7 +40,7 @@ func (os *ObjectService) CreateObject(
 	now := time.Now().UTC()
 	object := &model.Object{
 		ID:          uuid.New(),
-		Size:        Size,
+		FileSize:    Size,
 		Status:      status,
 		ContentType: ContentType,
 		Bucket:      Bucket,
@@ -62,10 +62,11 @@ func (os *ObjectService) CreateObject(
 	if err != nil {
 		return nil, security.NewSecureError(
 			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to create a new object",
-			err,
-		)
+		).WithCode("INTERNAL_ERROR").
+			Wrap(err).
+			WithMessage("internal server error").
+			WithStack()
+
 	}
 
 	return object, nil
@@ -82,7 +83,7 @@ func (os *ObjectService) CreateObjectWithTx(
 	now := time.Now().UTC()
 	object := &model.Object{
 		ID:          uuid.New(),
-		Size:        size,
+		FileSize:    size,
 		Status:      status,
 		ContentType: contentType,
 		Bucket:      bucket,

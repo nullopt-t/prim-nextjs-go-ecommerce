@@ -160,20 +160,14 @@ definitions:
       created_at:
         example: "2026-07-01T05:04:38Z"
         type: string
+      deleted_at:
+        example: "2026-07-01T05:04:38Z"
+        type: string
       id:
         example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
         type: string
-      logo_alt:
-        example: nvidia logo
-        type: string
-      logo_url:
-        example: https://pictures.com/nvidia.png
-        type: string
       name:
         example: nvidia
-        type: string
-      publication_status:
-        example: active
         type: string
       updated_at:
         example: "2026-07-01T05:04:38Z"
@@ -259,43 +253,42 @@ definitions:
     properties:
       brand_id:
         type: string
+      category_id:
+        type: string
       description:
         type: string
-      short_description:
-        type: string
-      slug:
-        type: string
+      is_configurable:
+        type: boolean
       title:
         type: string
     required:
+    - category_id
     - description
-    - short_description
     - title
-    type: object
-  product.ProductBrandResponse:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
     type: object
   product.ProductResponse:
     properties:
-      brand:
-        $ref: '#/definitions/product.ProductBrandResponse'
       brand_id:
+        type: string
+      category_id:
         type: string
       created_at:
         type: string
       created_by:
         type: string
+      default_variant:
+        type: string
       description:
         type: string
+      highlights:
+        items:
+          type: string
+        type: array
       id:
         type: string
-      short_description:
-        type: string
-      slug:
+      is_configurable:
+        type: boolean
+      public_id:
         type: string
       status:
         type: string
@@ -332,6 +325,12 @@ definitions:
         type: string
       updated_at:
         example: "2026-06-30T15:47:19Z"
+        type: string
+    type: object
+  tag.UpdateTagRequest:
+    properties:
+      name:
+        example: best seller
         type: string
     type: object
 host: localhost:8080
@@ -431,6 +430,41 @@ paths:
       tags:
       - Brand
   /admin/brands/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: update a brand
+      parameters:
+      - description: brand id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: brand input
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/brand.UpdateBrandRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/brand.BrandResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: update a brand
+      tags:
+      - Brand
     get:
       consumes:
       - application/json
@@ -721,6 +755,77 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: list all tags
+      tags:
+      - Tag
+  /admin/tags/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: update a tag
+      parameters:
+      - description: tag id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: tag input
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/tag.UpdateTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: update a tag
+      tags:
+      - Tag
+    patch:
+      consumes:
+      - application/json
+      description: update a tag
+      parameters:
+      - description: tag id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: tag input
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/tag.UpdateTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: update a tag
       tags:
       - Tag
   /auth/challenge/resend:
@@ -1121,15 +1226,15 @@ paths:
       summary: Get a product by id
       tags:
       - Products
-  /products/{slug}:
+  /products/{pid}:
     get:
       consumes:
       - application/json
       description: Get a product by passing it's slug
       parameters:
-      - description: Product Slug
+      - description: Product public ID
         in: path
-        name: slug
+        name: pid
         required: true
         type: string
       produces:

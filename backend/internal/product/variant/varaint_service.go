@@ -2,45 +2,26 @@ package variant
 
 import (
 	"context"
-	"fmt"
-	"mime/multipart"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
-	fileUtil "github.com/m-mahmoud-alsaid/prim-backend/pkg/file"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 	"github.com/minio/minio-go/v7"
 )
-
-const (
-	variantMediaBucket = "variant-media"
-)
-
-type ObjectService interface {
-	CreateObjectWithTx(
-		ctx context.Context,
-		tx database.QueryExecutor,
-		bucket string,
-		key string,
-		size int64,
-		contentType string,
-		status model.ObjectStatus,
-	) (*model.Object, error)
-}
 
 type VariantService struct {
 	logger      log.Logger
 	dr          database.Runner
 	minioClient *minio.Client
 	vr          *VariantRepository
-	mr          *MediaRepository
-	os          ObjectService
 	minCfg      *config.MinioConfig
 }
 
@@ -49,8 +30,6 @@ func NewService(
 	r database.Runner,
 	minioClient *minio.Client,
 	vr *VariantRepository,
-	mr *MediaRepository,
-	os ObjectService,
 	minCfg *config.MinioConfig,
 ) *VariantService {
 	return &VariantService{
@@ -58,365 +37,461 @@ func NewService(
 		dr:          r,
 		minioClient: minioClient,
 		vr:          vr,
-		mr:          mr,
-		os:          os,
 		minCfg:      minCfg,
 	}
 }
 
-func (vs *VariantService) GenPublicURL(bucket, key string) string {
-	return fmt.Sprintf(
-		"%s/%s/%s",
-		strings.TrimRight(vs.minCfg.PublicURL, "/"),
-		bucket,
-		strings.TrimLeft(key, "/"),
-	)
-}
-
-func (vs *VariantService) GenObjectKey(
-	variantID uuid.UUID,
-	contentType string,
-) string {
-	return fmt.Sprintf(
-		"%s/%s%s",
-		variantID,
-		uuid.NewString(),
-		fileUtil.MimeExtension(contentType),
-	)
-}
-
 type CreateVariantInput struct {
-	ProductID uuid.UUID
-	SKU       *string
-	Price     int64
-	Currency  string
+	ProductID       uuid.UUID
+	Title           string
+	Price           *int64
+	CrossedOutPrice *int64
+	Currency        *string
+	Attributes      map[string]any
+	IsDefault       bool
+}
+
+type UpdateVariantInput struct {
+	Title           *string
+	Price           *int64
+	CrossedOutPrice *int64
+	Currency        *string
+	Attributes      map[string]any
+	IsDefault       *bool
+}
+
+type AttachMediaInput struct {
+	VariantID       uuid.UUID
+	StorageObjectID uuid.UUID
+	MediaType       string
+	SortOrder       int
 }
 
 func (vs *VariantService) CreateVariant(
 	ctx context.Context,
-	in CreateVariantInput,
+	in *CreateVariantInput,
 ) (*model.ProductVariant, error) {
+	if in == nil {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_PAYLOAD").
+			WithMessage("Request body is required")
+	}
 
-	now := time.Now().UTC()
+	if in.ProductID == uuid.Nil {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("VALIDATION_FAILED").
+			WithMessage("Validation error").
+			WithFields(api.FieldError{
+				Field:   "product_id",
+				Message: "product_id is required",
+			})
+	}
+
+	title := strings.TrimSpace(in.Title)
+	if title == "" {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("VALIDATION_FAILED").
+			WithMessage("Validation error").
+			WithFields(api.FieldError{
+				Field:   "title",
+				Message: "title cannot be empty",
+			})
+	}
+
+	now := time.Now().UTC().Truncate(time.Millisecond)
 	variant := &model.ProductVariant{
-		ID:        uuid.New(),
-		ProductID: in.ProductID,
-		SKU:       in.SKU,
-		Price:     in.Price,
-		Currency:  in.Currency,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:              uuid.New(),
+		ProductID:       in.ProductID,
+		Title:           title,
+		Price:           in.Price,
+		CrossedOutPrice: in.CrossedOutPrice,
+		Currency:        in.Currency,
+		Attributes:      in.Attributes,
+		IsDefault:       in.IsDefault,
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}
 
-	err := vs.dr.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			return vs.vr.Create(
-				ctx,
-				db,
-				variant,
-			)
-		},
-	)
-	if err != nil {
-		return nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to create a new variant",
-			err,
-		)
-	}
-	return variant, nil
-}
-
-func (vs *VariantService) AttachMediaObject(
-	ctx context.Context,
-	VariantID uuid.UUID,
-	ObjectID uuid.UUID,
-	MediaType model.MediaType,
-	SortOrder int,
-) (*model.VariantMedia, error) {
-
-	now := time.Now().UTC()
-	media := &model.VariantMedia{
-		ID:        uuid.New(),
-		VariantID: VariantID,
-		ObjectID:  ObjectID,
-		Type:      MediaType,
-		SortOrder: SortOrder,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-
-	err := vs.dr.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			return vs.mr.CreateVariantMedia(
-				ctx,
-				db,
-				media,
-			)
-		},
-	)
-	if err != nil {
-		return nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to create variant media",
-			err,
-		)
-	}
-	return media, nil
-}
-
-func (vs *VariantService) ReorderVariantMedia(
-	ctx context.Context,
-	variantID uuid.UUID,
-	media []uuid.UUID,
-) error {
-	err := vs.dr.WithTx(
-		ctx,
-		func(tx database.QueryExecutor) error {
-			for i, mediaID := range media {
-				err := vs.mr.ReorderVariantMedia(
-					ctx,
-					tx,
-					variantID,
-					mediaID,
-					i,
-				)
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to reorder variant media",
-			err,
-		)
-	}
-	return nil
-}
-
-func (vs *VariantService) AttachMediaObjectWithTx(
-	ctx context.Context,
-	tx database.QueryExecutor,
-	variantID uuid.UUID,
-	objectID uuid.UUID,
-	mediaType model.MediaType,
-	sortOrder int,
-) error {
-	now := time.Now().UTC()
-	media := &model.VariantMedia{
-		ID:        uuid.New(),
-		VariantID: variantID,
-		ObjectID:  objectID,
-		Type:      mediaType,
-		SortOrder: sortOrder,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-
-	err := vs.mr.CreateVariantMedia(
-		ctx,
-		tx,
-		media,
-	)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (vs *VariantService) GetVariantMedia(
-	ctx context.Context,
-	variantID uuid.UUID,
-) ([]*model.VariantMedia, error) {
-	var media []*model.VariantMedia
-	err := vs.dr.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			m, err := vs.mr.GetVariantMedia(
-				ctx,
-				db,
-				variantID,
-			)
-			if err != nil {
+	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		if variant.IsDefault {
+			if err := vs.vr.ClearDefaultFlags(ctx, tx, variant.ProductID); err != nil {
 				return err
 			}
-			media = m
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to create a new variant",
-			err,
-		)
-	}
-
-	for _, m := range media {
-		m.Object.PublicURL = vs.GenPublicURL(
-			m.Object.Bucket,
-			m.Object.Key,
-		)
-	}
-	return media, nil
-}
-
-func (vs *VariantService) GetVariant(
-	ctx context.Context,
-	variantID uuid.UUID,
-) (*model.ProductVariant, error) {
-	var variant *model.ProductVariant
-	err := vs.dr.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			v, err := vs.vr.GetVariant(
-				ctx,
-				db,
-				variantID,
-			)
-			if err != nil {
-				return err
-			}
-			variant = v
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return variant, nil
-}
-
-func (vs *VariantService) UploadVariantMedia(
-	ctx context.Context,
-	variantID uuid.UUID,
-	fileHeader *multipart.FileHeader,
-) error {
-	file, err := fileHeader.Open()
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	detectedContentType, err := fileUtil.DetectContentType(file)
-	if err != nil {
-		return err
-	}
-
-	mediaType, err := model.ParseMediaType(detectedContentType)
-	if err != nil {
-		return security.NewSecureError(
-			http.StatusBadRequest,
-			security.CodeValidation,
-			"invalid media type",
-			err,
-		)
-	}
-
-	vs.logger.Debug("detected content type", log.Meta{
-		"ContentType": detectedContentType,
+		}
+		return vs.vr.Create(ctx, tx, variant)
 	})
 
-	variant, err := vs.GetVariant(ctx, variantID)
 	if err != nil {
-		return err
-	}
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+			return nil, security.NewSecureError(http.StatusBadRequest).
+				WithCode("PRODUCT_NOT_FOUND").
+				WithMessage("Referenced product does not exist").
+				Wrap(err).
+				WithFields(api.FieldError{
+					Field:   "product_id",
+					Message: "product reference is invalid",
+				})
 
-	key := vs.GenObjectKey(variant.ID, detectedContentType)
-	vs.logger.Debug("uploading variant media", log.Meta{
-		"VariantID": variantID.String(),
-		"Key":       key,
-	})
-
-	exists, err := vs.minioClient.BucketExists(ctx, variantMediaBucket)
-	if err != nil {
-		return err
-	}
-
-	if !exists {
-		err := vs.minioClient.MakeBucket(
-			ctx,
-			variantMediaBucket,
-			minio.MakeBucketOptions{},
-		)
-		if err != nil {
-			return err
+		default:
+			return nil, security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to create variant").
+				Wrap(err).
+				WithStack()
 		}
 	}
 
-	cleanCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	info, err := vs.minioClient.PutObject(
-		cleanCtx,
-		variantMediaBucket,
-		key,
-		file,
-		fileHeader.Size,
-		minio.PutObjectOptions{
-			ContentType: detectedContentType,
-		},
-	)
-	if err != nil {
-		return err
+	return variant, nil
+}
+
+func (vs *VariantService) GetVariantByID(
+	ctx context.Context,
+	variantID uuid.UUID,
+) (*model.ProductVariant, error) {
+	if variantID == uuid.Nil {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Variant ID is required")
 	}
 
-	err = vs.dr.WithTx(
-		ctx,
-		func(tx database.QueryExecutor) error {
-			obj, err := vs.os.CreateObjectWithTx(
-				ctx,
-				tx,
-				info.Bucket,
-				key,
-				info.Size,
-				detectedContentType,
-				model.ObjectStatusUploaded,
-			)
-			if err != nil {
-				return err
-			}
+	var variant *model.ProductVariant
+	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var repoErr error
+		variant, repoErr = vs.vr.Get(ctx, db, &Filter{ID: &variantID})
+		return repoErr
+	})
 
-			err = vs.AttachMediaObjectWithTx(
-				ctx,
-				tx,
-				variantID,
-				obj.ID,
-				mediaType,
-				0,
-			)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		},
-	)
 	if err != nil {
-		_ = vs.minioClient.RemoveObject(
-			ctx,
-			info.Bucket,
-			info.Key,
-			minio.RemoveObjectOptions{
-				ForceDelete: false,
-			},
-		)
-		return security.NewSecureError(
-			http.StatusInternalServerError,
-			security.CodeInternal,
-			"failed to upload the media",
-			err,
-		)
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return nil, security.NewSecureError(http.StatusNotFound).
+				WithCode("VARIANT_NOT_FOUND").
+				WithMessage("Variant not found").
+				Wrap(err)
+
+		default:
+			return nil, security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to fetch variant").
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	return variant, nil
+}
+
+func (vs *VariantService) UpdateVariant(
+	ctx context.Context,
+	variantID uuid.UUID,
+	in UpdateVariantInput,
+) error {
+	if variantID == uuid.Nil {
+		return security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Variant ID is required")
+	}
+
+	fields := UpdateVariantFields{
+		Price:           in.Price,
+		CrossedOutPrice: in.CrossedOutPrice,
+		Currency:        in.Currency,
+		Attributes:      in.Attributes,
+		IsDefault:       in.IsDefault,
+	}
+
+	if in.Title != nil {
+		title := strings.TrimSpace(*in.Title)
+		if title == "" {
+			return security.NewSecureError(http.StatusBadRequest).
+				WithCode("VALIDATION_FAILED").
+				WithMessage("Validation error").
+				WithFields(api.FieldError{
+					Field:   "title",
+					Message: "title cannot be empty",
+				})
+		}
+		fields.Title = &title
+	}
+
+	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		if in.IsDefault != nil && *in.IsDefault {
+			existing, err := vs.vr.Get(ctx, tx, &Filter{ID: &variantID})
+			if err != nil {
+				return err
+			}
+			if err := vs.vr.ClearDefaultFlags(ctx, tx, existing.ProductID); err != nil {
+				return err
+			}
+		}
+		return vs.vr.Update(ctx, tx, variantID, fields)
+	})
+
+	if err != nil {
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return security.NewSecureError(http.StatusNotFound).
+				WithCode("VARIANT_NOT_FOUND").
+				WithMessage("Variant not found").
+				Wrap(err)
+
+		default:
+			return security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to update variant").
+				Wrap(err).
+				WithStack()
+		}
 	}
 
 	return nil
+}
+
+func (vs *VariantService) ListVariantsByProductID(
+	ctx context.Context,
+	productID uuid.UUID,
+	q *api.ListQuery,
+	includeDeleted bool,
+) (*api.PagedResult[model.ProductVariant], error) {
+	if productID == uuid.Nil {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Product ID is required")
+	}
+
+	if q == nil {
+		q = &api.ListQuery{}
+	}
+
+	var result *api.PagedResult[model.ProductVariant]
+	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var repoErr error
+		result, repoErr = vs.vr.ListByProductID(ctx, db, ListVariantOptions{
+			ProductID:      productID,
+			Query:          q,
+			IncludeDeleted: includeDeleted,
+		})
+		return repoErr
+	})
+
+	if err != nil {
+		return nil, security.NewSecureError(http.StatusInternalServerError).
+			WithCode("INTERNAL_ERROR").
+			WithMessage("Failed to list variants").
+			Wrap(err).
+			WithStack()
+	}
+
+	return result, nil
+}
+
+func (vs *VariantService) DeleteVariantByID(
+	ctx context.Context,
+	variantID uuid.UUID,
+) error {
+	if variantID == uuid.Nil {
+		return security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Variant ID is required")
+	}
+
+	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		return vs.vr.Delete(ctx, db, variantID)
+	})
+
+	if err != nil {
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return security.NewSecureError(http.StatusNotFound).
+				WithCode("VARIANT_NOT_FOUND").
+				WithMessage("Variant not found").
+				Wrap(err)
+
+		default:
+			return security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to delete variant").
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	return nil
+}
+func (vs *VariantService) AttachMedia(
+	ctx context.Context,
+	in AttachMediaInput,
+) (*model.VariantMedia, error) {
+	if in.VariantID == uuid.Nil || in.StorageObjectID == uuid.Nil {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Variant ID and Storage Object ID are required")
+	}
+
+	mediaType := strings.TrimSpace(in.MediaType)
+	if mediaType == "" {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("VALIDATION_FAILED").
+			WithMessage("Validation error").
+			WithFields(api.FieldError{
+				Field:   "media_type",
+				Message: "media_type is required",
+			})
+	}
+
+	var media *model.VariantMedia
+	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var repoErr error
+		media, repoErr = vs.vr.AddMedia(ctx, db, CreateVariantMediaInput{
+			VariantID:       in.VariantID,
+			StorageObjectID: in.StorageObjectID,
+			MediaType:       mediaType,
+			SortOrder:       in.SortOrder,
+		})
+		return repoErr
+	})
+
+	if err != nil {
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrConflict):
+			return nil, security.NewSecureError(http.StatusConflict).
+				WithCode("MEDIA_ALREADY_ATTACHED").
+				WithMessage("This storage object is already attached to this variant").
+				Wrap(err)
+
+		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+			return nil, security.NewSecureError(http.StatusBadRequest).
+				WithCode("INVALID_REFERENCE").
+				WithMessage("Referenced variant or storage object does not exist").
+				Wrap(err)
+
+		default:
+			return nil, security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to attach media to variant").
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	return media, nil
+}
+
+func (vs *VariantService) DetachMedia(
+	ctx context.Context,
+	variantID uuid.UUID,
+	mediaID uuid.UUID,
+) error {
+	if variantID == uuid.Nil || mediaID == uuid.Nil {
+		return security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Variant ID and Media ID are required")
+	}
+
+	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		return vs.vr.RemoveMedia(ctx, db, variantID, mediaID)
+	})
+
+	if err != nil {
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return security.NewSecureError(http.StatusNotFound).
+				WithCode("MEDIA_NOT_FOUND").
+				WithMessage("Variant media relationship not found").
+				Wrap(err)
+
+		default:
+			return security.NewSecureError(http.StatusInternalServerError).
+				WithCode("INTERNAL_ERROR").
+				WithMessage("Failed to detach media from variant").
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	return nil
+}
+
+func (vs *VariantService) ReorderMedia(
+	ctx context.Context,
+	variantID uuid.UUID,
+	orderedMediaIDs []uuid.UUID,
+) error {
+	if variantID == uuid.Nil {
+		return security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Variant ID is required")
+	}
+
+	if len(orderedMediaIDs) == 0 {
+		return nil
+	}
+
+	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		return vs.vr.ReorderMedia(ctx, tx, variantID, orderedMediaIDs)
+	})
+
+	if err != nil {
+		return security.NewSecureError(http.StatusInternalServerError).
+			WithCode("INTERNAL_ERROR").
+			WithMessage("Failed to reorder variant media").
+			Wrap(err).
+			WithStack()
+	}
+
+	return nil
+}
+func (vs *VariantService) ListVariantMedia(
+	ctx context.Context,
+	variantID uuid.UUID,
+) ([]*model.VariantMedia, error) {
+	if variantID == uuid.Nil {
+		return nil, security.NewSecureError(http.StatusBadRequest).
+			WithCode("INVALID_INPUT").
+			WithMessage("Variant ID is required")
+	}
+
+	var mediaList []*model.VariantMedia
+	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var repoErr error
+		mediaList, repoErr = vs.vr.ListMediaByVariantID(ctx, db, variantID)
+		return repoErr
+	})
+
+	if err != nil {
+		return nil, security.NewSecureError(http.StatusInternalServerError).
+			WithCode("INTERNAL_ERROR").
+			WithMessage("Failed to list variant media").
+			Wrap(err).
+			WithStack()
+	}
+
+	for _, m := range mediaList {
+		if m.Object == nil {
+			continue
+		}
+
+		// Fallback to presigned URL if PublicURL is not set
+		if m.Object.PublicURL == "" && m.Object.Bucket != "" && m.Object.Key != "" {
+			presignedGET, err := vs.minioClient.PresignedGetObject(
+				ctx,
+				m.Object.Bucket,
+				m.Object.Key,
+				1*time.Hour,
+				nil,
+			)
+			if err == nil {
+				m.Object.PublicURL = presignedGET.String()
+			}
+		}
+	}
+
+	return mediaList, nil
 }

@@ -7,15 +7,11 @@ import (
 )
 
 type ProductBrand struct {
-	ID uuid.UUID
-
-	Name              string
-	PublicationStatus PublicationStatus
-
-	LogoURL *string
-	LogoAlt *string
-
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
+	ID                  uuid.UUID
+	Name                string
+	Link                *string
+	LogoStorageObjectID *uuid.UUID
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	DeletedAt           *time.Time
 }

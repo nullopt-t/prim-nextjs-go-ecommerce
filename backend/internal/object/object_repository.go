@@ -24,13 +24,13 @@ func (or *ObjectRepository) Create(
 	_, err := qe.Exec(
 		ctx,
 		`
-		INSERT INTO objects(
+		INSERT INTO eobjects(
 			id,
-			size,
-			status,
+			file_size,
+			eo_status,
 			content_type,
-			key,
-			bucket,
+			okey,
+			obucket,
 			created_at,
 			updated_at
 		)
@@ -46,7 +46,7 @@ func (or *ObjectRepository) Create(
 		)
 		`,
 		object.ID,
-		object.Size,
+		object.FileSize,
 		object.Status,
 		object.ContentType,
 		object.Key,
@@ -73,7 +73,7 @@ func (or *ObjectRepository) UpdateStatus(
 		ctx,
 		`
 		UPDATE
-			objects
+			eobjects
 		SET
 			status = $1
 		WHERE
