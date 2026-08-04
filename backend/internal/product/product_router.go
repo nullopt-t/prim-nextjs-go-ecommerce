@@ -1,21 +1,31 @@
 package product
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
+)
 
 type ProductRouter struct {
-	ph *ProductHandler
+	ph      *ProductHandler
+	secrets *config.Secrets
 }
 
 func NewRouter(
 	ph *ProductHandler,
+	secrets *config.Secrets,
 ) *ProductRouter {
 	return &ProductRouter{
-		ph: ph,
+		ph:      ph,
+		secrets: secrets,
 	}
 }
 
 func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	admin := vgroup.Group("/admin/products")
+	admin.Use(
+		middleware.Authenticate(r.secrets),
+	)
 	{
 		admin.POST("", r.ph.CreateProductAsDraft)
 		admin.GET("", r.ph.AdminGetAllProducts)
@@ -42,11 +52,11 @@ func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	}
 
 	public := vgroup.Group("/products")
+	public.Use(middleware.PublicCache(300))
 	{
 		public.GET("", r.ph.GetAllProducts)
-		public.GET("/p/:pid", r.ph.GetProductByPID)
-		public.GET("/:id", r.ph.GetProductByID)
-		public.GET("/:id/media", r.ph.GetProductMedia)
-		public.GET("/:id/variants", r.ph.GetProductVariants)
+		public.GET("/:pid", r.ph.GetProductByPID)
+		public.GET("/:pid/media", r.ph.GetProductMediaByPID)
+		public.GET("/:pid/variants", r.ph.GetProductVariantsByPID)
 	}
 }

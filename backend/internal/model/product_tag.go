@@ -7,7 +7,8 @@ import (
 )
 
 type ProductTag struct {
-	ID uuid.UUID
+	ID       uuid.UUID
+	PublicID string
 
 	Name string
 

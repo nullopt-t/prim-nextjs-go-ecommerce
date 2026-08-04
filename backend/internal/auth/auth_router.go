@@ -12,8 +12,8 @@ type AuthHandler interface {
 	VerifyChallenge(c *gin.Context)
 	Refresh(c *gin.Context)
 	GetMe(c *gin.Context)
-	// GetSessions(c *gin.Context)
-	// DeleteSessionByID(c *gin.Context)
+	GetSessions(c *gin.Context)
+	DeleteSessionByID(c *gin.Context)
 }
 
 type Router struct {
@@ -40,10 +40,8 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	auth.POST("/refresh", r.authHandler.Refresh)
 
 	// protected
-	auth.Use(middleware.Authanticate(r.secrets))
+	auth.Use(middleware.Authenticate(r.secrets))
 	auth.GET("/me", r.authHandler.GetMe)
-
-	// auth.GET("/email-status", r.authHandler.EmailStatus)
-	// auth.GET("/sessions", r.authHandler.GetSessions)
-	// auth.DELETE("/sessions/:id", r.authHandler.DeleteSessionByID)
+	auth.GET("/sessions", r.authHandler.GetSessions)
+	auth.DELETE("/sessions/:id", r.authHandler.DeleteSessionByID)
 }

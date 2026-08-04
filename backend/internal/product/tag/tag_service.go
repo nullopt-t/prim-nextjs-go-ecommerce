@@ -11,6 +11,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
@@ -37,25 +38,11 @@ func (ts *TagService) CreateTag(
 	ctx context.Context,
 	in *CreateTagInput,
 ) (*model.ProductTag, error) {
-	if in == nil {
-		return nil, apierr.ErrBadRequest("Request body cannot be empty").
-			WithCode(apierr.CodeInvalidPayload)
-	}
-
-	name := strings.TrimSpace(in.Name)
-	if name == "" {
-		return nil, apierr.ErrBadRequest("Validation error").
-			WithCode(apierr.CodeValidationFailed).
-			WithFields(api.FieldError{
-				Field:   "name",
-				Message: "tag name is required and cannot be empty",
-			})
-	}
-
 	now := time.Now().UTC()
 	tag := &model.ProductTag{
 		ID:        uuid.New(),
-		Name:      name,
+		PublicID:  uuid.NewString(),
+		Name:      strings.TrimSpace(in.Name),
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -87,15 +74,10 @@ func (ts *TagService) GetTagByID(
 	ctx context.Context,
 	tagID uuid.UUID,
 ) (*model.ProductTag, error) {
-	if tagID == uuid.Nil {
-		return nil, apierr.ErrBadRequest("Tag ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
 	var tag *model.ProductTag
 	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
-		tag, repoErr = ts.trepo.Get(ctx, db, &Filter{ID: &tagID})
+		tag, repoErr = ts.trepo.GetByID(ctx, db, tagID)
 		return repoErr
 	})
 
@@ -127,16 +109,6 @@ func (ts *TagService) UpdateTagByID(
 	tagID uuid.UUID,
 	in *UpdateTagInput,
 ) error {
-	if tagID == uuid.Nil {
-		return apierr.ErrBadRequest("Tag ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
-	if in == nil {
-		return apierr.ErrBadRequest("Update payload cannot be empty").
-			WithCode(apierr.CodeInvalidPayload)
-	}
-
 	fields := UpdateTagFields{}
 
 	if in.Name != nil {
@@ -181,20 +153,20 @@ func (ts *TagService) UpdateTagByID(
 }
 
 type ListTagsInput struct {
-	Query          *api.ListQuery
+	Query          *pagination.ListQuery
 	IncludeDeleted bool
 }
 
 func (ts *TagService) ListTags(
 	ctx context.Context,
 	in ListTagsInput,
-) (*api.PagedResult[model.ProductTag], error) {
+) (*pagination.PagedResult[model.ProductTag], error) {
 	q := in.Query
 	if q == nil {
-		q = &api.ListQuery{}
+		q = &pagination.ListQuery{}
 	}
 
-	var result *api.PagedResult[model.ProductTag]
+	var result *pagination.PagedResult[model.ProductTag]
 
 	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
@@ -217,8 +189,8 @@ func (ts *TagService) ListTags(
 
 func (ts *TagService) AdminList(
 	ctx context.Context,
-	q *api.ListQuery,
-) (*api.PagedResult[model.ProductTag], error) {
+	q *pagination.ListQuery,
+) (*pagination.PagedResult[model.ProductTag], error) {
 	return ts.ListTags(ctx, ListTagsInput{
 		Query:          q,
 		IncludeDeleted: true,
@@ -279,4 +251,30 @@ func (ts *TagService) ReplaceProductTags(
 	}
 
 	return nil
+}
+
+func (ts *TagService) GetTagsByProductID(
+	ctx context.Context,
+	productID uuid.UUID,
+) ([]*model.ProductTag, error) {
+	if productID == uuid.Nil {
+		return nil, apierr.ErrBadRequest("Product ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	var tags []*model.ProductTag
+	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		tags, err = ts.trepo.GetTagsByProductID(ctx, db, productID)
+		return err
+	})
+
+	if err != nil {
+		return nil, apierr.ErrInternalError("Failed to fetch product tags").
+			WithCode(apierr.CodeInternalError).
+			Wrap(err).
+			WithStack()
+	}
+
+	return tags, nil
 }

@@ -2,6 +2,7 @@ package product
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +12,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/types"
 )
 
@@ -42,46 +44,61 @@ type UpdateProductRequest struct {
 }
 
 type ProductBrandSummary struct {
+	ID   string  `json:"id"`
+	Name string  `json:"name"`
+	Link *string `json:"link,omitempty"`
+}
+
+type ProductCategorySummary struct {
+	ID   string  `json:"id"`
+	Name string  `json:"name"`
+	Slug *string `json:"slug,omitempty"`
+}
+
+type ProductTagSummary struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
 
+type ProductVariantResponse struct {
+	ID              string                 `json:"id"`
+	Title           string                 `json:"title"`
+	Price           *int64                 `json:"price,omitempty"`
+	CrossedOutPrice *int64                 `json:"crossed_out_price,omitempty"`
+	Currency        *string                `json:"currency,omitempty"`
+	Attributes      map[string]any         `json:"attributes"`
+	IsDefault       bool                   `json:"is_default"`
+	Media           []ProductMediaResponse `json:"media"`
+}
+
 type ProductResponse struct {
-	ID          string   `json:"id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
-	BrandID     *string  `json:"brand_id,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	CategoryID  string   `json:"category_id" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
-	PublicID    string   `json:"public_id" example:"prod_abc123"`
+	PublicID    string   `json:"id" example:"prod_abc123"`
 	Title       string   `json:"title" example:"Wireless Headphones"`
 	Description string   `json:"description"`
-	Highlights  []string `json:"highlights,omitempty"`
-	Status      string   `json:"status" example:"draft"`
-	CreatedAt   string   `json:"created_at" example:"2026-08-02T16:00:00Z"`
-	UpdatedAt   string   `json:"updated_at" example:"2026-08-02T16:00:00Z"`
+	Highlights  []string `json:"highlights"`
 }
 
 type ProductDetailsResponse struct {
 	ProductResponse
-	Brand *ProductBrandSummary `json:"brand,omitempty"`
+	Brand    *ProductBrandSummary     `json:"brand,omitempty"`
+	Media    []ProductMediaResponse   `json:"media"`
+	Variants []ProductVariantResponse `json:"variants"`
+	Tags     []ProductTagSummary      `json:"tags"`
 }
 
 // --- DTOs: Media ---
 
 type StorageObjectResponse struct {
-	ID          string `json:"id"`
-	Bucket      string `json:"bucket"`
-	Key         string `json:"key"`
 	ContentType string `json:"content_type,omitempty"`
 	FileSize    int64  `json:"file_size,omitempty"`
 	PublicURL   string `json:"public_url,omitempty"`
 }
 
 type ProductMediaResponse struct {
-	ID              string                 `json:"id" example:"8f123456-e89b-12d3-a456-426614174000"`
-	ProductID       string                 `json:"product_id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
-	StorageObjectID string                 `json:"storage_object_id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	MediaType       string                 `json:"media_type" example:"image"`
-	SortOrder       int                    `json:"sort_order" example:"0"`
-	Object          *StorageObjectResponse `json:"object,omitempty"`
+	ID        string                 `json:"id"`
+	MediaType string                 `json:"media_type" example:"image"`
+	SortOrder int                    `json:"sort_order" example:"0"`
+	Object    *StorageObjectResponse `json:"object,omitempty"`
 }
 
 type ReorderMediaRequest struct {
@@ -114,45 +131,28 @@ type PutProductCategoryRequest struct {
 // --- Mappers ---
 
 func mapProductResponse(p *model.Product) ProductResponse {
-	var brandIDStr *string
-	if p.BrandID != nil {
-		idStr := p.BrandID.String()
-		brandIDStr = &idStr
-	}
-
 	highlights := p.Highlights
 	if highlights == nil {
 		highlights = make([]string, 0)
 	}
 
 	return ProductResponse{
-		ID:          p.ID.String(),
-		BrandID:     brandIDStr,
-		CategoryID:  p.CategoryID.String(),
 		PublicID:    p.PublicID,
 		Title:       p.Title,
 		Description: p.Description,
 		Highlights:  highlights,
-		Status:      p.Status.String(),
-		CreatedAt:   p.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:   p.UpdatedAt.Format(time.RFC3339),
 	}
 }
 
 func mapProductMediaResponse(m *model.ProductMedia) ProductMediaResponse {
 	res := ProductMediaResponse{
-		ID:              m.ID.String(),
-		ProductID:       m.ProductID.String(),
-		StorageObjectID: m.StorageObjectID.String(),
-		MediaType:       m.MediaType.String(),
-		SortOrder:       m.SortOrder,
+		ID:        m.PublicID,
+		MediaType: m.MediaType.String(),
+		SortOrder: m.SortOrder,
 	}
 
 	if m.Object != nil {
 		res.Object = &StorageObjectResponse{
-			ID:          m.Object.ID.String(),
-			Bucket:      m.Object.Bucket,
-			Key:         m.Object.Key,
 			ContentType: m.Object.ContentType,
 			FileSize:    m.Object.FileSize,
 			PublicURL:   m.Object.PublicURL,
@@ -193,8 +193,8 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 	}
 
 	in := CreateProductInput{
-		Title:       body.Title,
-		Description: body.Description,
+		Title:       strings.TrimSpace(body.Title),
+		Description: strings.TrimSpace(body.Description),
 		CategoryID:  categoryID,
 		Highlights:  body.Highlights,
 	}
@@ -227,18 +227,18 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 // @Description Returns a paginated list of active, published products for customer browsing. Soft-deleted and draft products are hidden.
 // @Tags Products
 // @Produce json
-// @Param q query api.ListQuery true "Pagination, search query, and sorting parameters"
+// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]ProductListItem,meta=api.Page} "Paginated list of active products"
+// @Success 200 {object} api.PaginatedResponse{data=[]ProductListItem,meta=pagination.Page} "Paginated list of active products"
 // @Router /products [get]
 func (h *ProductHandler) GetAllProducts(c *gin.Context) {
-	q := &api.ListQuery{}
+	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
-	q.Process(api.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
+	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
 	result, err := h.service.List(c.Request.Context(), q, false)
 	if err != nil {
@@ -257,18 +257,18 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 // @Description Returns a paginated list of all products including draft, published, archived, and soft-deleted records for administrator catalog management.
 // @Tags Products
 // @Produce json
-// @Param q query api.ListQuery true "Pagination, search query, and sorting parameters"
+// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]ProductListItem,meta=api.Page} "Paginated list of all products including deleted"
+// @Success 200 {object} api.PaginatedResponse{data=[]ProductListItem,meta=pagination.Page} "Paginated list of all products including deleted"
 // @Router /admin/products [get]
 func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
-	q := &api.ListQuery{}
+	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
-	q.Process(api.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
+	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
 	result, err := h.service.List(c.Request.Context(), q, true)
 	if err != nil {
@@ -326,7 +326,12 @@ func (h *ProductHandler) GetProductByID(c *gin.Context) {
 // @Success 200 {object} api.DataResponse{data=ProductDetailsResponse} "Product and brand details"
 // @Router /products/p/:pid [get]
 func (h *ProductHandler) GetProductByPID(c *gin.Context) {
-	pid := c.Param("pid")
+	pid := strings.TrimSpace(c.Param("pid"))
+	if pid == "" {
+		_ = c.Error(apierr.ErrBadRequest("Public ID is required").
+			WithCode(apierr.CodeInvalidInput))
+		return
+	}
 
 	details, err := h.service.GetByPID(c.Request.Context(), pid)
 	if err != nil {
@@ -336,13 +341,57 @@ func (h *ProductHandler) GetProductByPID(c *gin.Context) {
 
 	res := ProductDetailsResponse{
 		ProductResponse: mapProductResponse(details.Product),
+		Media:           make([]ProductMediaResponse, 0),
+		Variants:        make([]ProductVariantResponse, 0),
+		Tags:            make([]ProductTagSummary, 0),
 	}
 
 	if details.Brand != nil {
 		res.Brand = &ProductBrandSummary{
-			ID:   details.Brand.ID.String(),
+			ID:   details.Brand.PublicID,
 			Name: details.Brand.Name,
+			Link: details.Brand.Link,
 		}
+	}
+
+	if len(details.Media) > 0 {
+		mediaRes := make([]ProductMediaResponse, 0, len(details.Media))
+		for _, m := range details.Media {
+			mediaRes = append(mediaRes, mapProductMediaResponse(m))
+		}
+		res.Media = mediaRes
+	}
+
+	if len(details.Variants) > 0 {
+		variantRes := make([]ProductVariantResponse, 0, len(details.Variants))
+		for _, v := range details.Variants {
+			attrs := v.Attributes
+			if attrs == nil {
+				attrs = make(map[string]any)
+			}
+			variantRes = append(variantRes, ProductVariantResponse{
+				ID:              v.PublicID,
+				Title:           v.Title,
+				Price:           v.Price,
+				CrossedOutPrice: v.CrossedOutPrice,
+				Currency:        v.Currency,
+				Attributes:      attrs,
+				IsDefault:       v.IsDefault,
+				Media:           make([]ProductMediaResponse, 0),
+			})
+		}
+		res.Variants = variantRes
+	}
+
+	if len(details.Tags) > 0 {
+		tagRes := make([]ProductTagSummary, 0, len(details.Tags))
+		for _, t := range details.Tags {
+			tagRes = append(tagRes, ProductTagSummary{
+				ID:   t.PublicID,
+				Name: t.Name,
+			})
+		}
+		res.Tags = tagRes
 	}
 
 	c.JSON(http.StatusOK, api.DataResponse{
@@ -380,9 +429,21 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	}
 
 	input := UpdateProductInput{
-		Title:       body.Title,
-		Description: body.Description,
-		Highlights:  body.Highlights,
+		Highlights: body.Highlights,
+	}
+
+	if body.Title != nil {
+		cleanTitle := strings.TrimSpace(*body.Title)
+		if cleanTitle == "" {
+			_ = c.Error(apierr.ErrBadRequest("Title cannot be empty").WithCode(apierr.CodeValidationFailed))
+			return
+		}
+		input.Title = &cleanTitle
+	}
+
+	if body.Description != nil {
+		cleanDesc := strings.TrimSpace(*body.Description)
+		input.Description = &cleanDesc
 	}
 
 	if body.BrandID != nil {
@@ -516,9 +577,7 @@ func (h *ProductHandler) SoftDeleteProduct(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.MessageResponse{
-		Message: "deleted successfully",
-	})
+	c.Status(http.StatusNoContent)
 }
 
 // --- Product Media Handlers ---
@@ -571,17 +630,10 @@ func (h *ProductHandler) UploadProductMedia(c *gin.Context) {
 // @Failure 500 {object} api.InternalServerErrorResponse
 // @Success 200 {object} api.DataResponse{data=[]ProductMediaResponse}
 // @Router /products/{id}/media [get]
-func (h *ProductHandler) GetProductMedia(c *gin.Context) {
-	productID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
-			Field:   "id",
-			Message: "invalid product UUID format",
-		}))
-		return
-	}
+func (h *ProductHandler) GetProductMediaByPID(c *gin.Context) {
+	pid := c.Param("pid")
 
-	mediaList, err := h.service.GetProductMedia(c.Request.Context(), productID)
+	mediaList, err := h.service.GetProductMediaByPID(c.Request.Context(), pid)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -632,9 +684,7 @@ func (h *ProductHandler) DetachMedia(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.MessageResponse{
-		Message: "detached successfully",
-	})
+	c.Status(http.StatusNoContent)
 }
 
 // ReorderMedia godoc
@@ -752,48 +802,39 @@ func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 // @Param id path string true "Product ID (UUID)" format(uuid)
 // @Failure 400 {object} api.BadRequestErrorResponse
 // @Failure 500 {object} api.InternalServerErrorResponse
-// @Success 200 {object} api.PaginatedResponse{data=[]variant.VariantResponse,meta=api.Page}
+// @Success 200 {object} api.PaginatedResponse{data=[]variant.VariantResponse,meta=pagination.Page}
 // @Router /products/{id}/variants [get]
-func (h *ProductHandler) GetProductVariants(c *gin.Context) {
-	productID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
-			Field:   "id",
-			Message: "invalid product UUID format",
-		}))
-		return
-	}
+func (h *ProductHandler) GetProductVariantsByPID(c *gin.Context) {
+	pid := c.Param("pid")
 
-	q := &api.ListQuery{}
+	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
-	q.Process(api.QueryOptions{DefaultPageSize: 20, MaxPageSize: 100})
+	q.Process(pagination.QueryOptions{DefaultPageSize: 20, MaxPageSize: 100})
 
-	result, err := h.service.GetProductVariants(c.Request.Context(), productID, q)
+	result, err := h.service.GetProductVariantsByPID(c.Request.Context(), pid, q)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	res := make([]variant.VariantResponse, 0, len(result.Items))
+	res := make([]ProductVariantResponse, 0, len(result.Items))
 	for _, v := range result.Items {
 		attrs := v.Attributes
 		if attrs == nil {
 			attrs = make(map[string]any)
 		}
-		res = append(res, variant.VariantResponse{
-			ID:              v.ID.String(),
-			ProductID:       v.ProductID.String(),
+		res = append(res, ProductVariantResponse{
+			ID:              v.PublicID,
 			Title:           v.Title,
 			Price:           v.Price,
 			CrossedOutPrice: v.CrossedOutPrice,
 			Currency:        v.Currency,
 			Attributes:      attrs,
 			IsDefault:       v.IsDefault,
-			CreatedAt:       v.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:       v.UpdatedAt.Format(time.RFC3339),
+			Media:           make([]ProductMediaResponse, 0),
 		})
 	}
 

@@ -17,8 +17,8 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/tag"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/variant"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	fileUtil "github.com/m-mahmoud-alsaid/prim-backend/pkg/file"
@@ -92,32 +92,25 @@ type CreateProductVariantInput struct {
 }
 
 type ProductDetails struct {
-	Product *model.Product      `json:"product"`
-	Brand   *model.ProductBrand `json:"brand,omitempty"`
+	Product  *model.Product          `json:"product"`
+	Brand    *model.ProductBrand     `json:"brand,omitempty"`
+	Category *model.ProductCategory  `json:"category,omitempty"`
+	Media    []*model.ProductMedia   `json:"media,omitempty"`
+	Variants []*model.ProductVariant `json:"variants,omitempty"`
+	Tags     []*model.ProductTag     `json:"tags,omitempty"`
 }
 
 func (s *ProductService) CreateProductAsDraft(
 	ctx context.Context,
 	input CreateProductInput,
 ) (*model.Product, error) {
-	title := strings.TrimSpace(input.Title)
-	if title == "" {
-		return nil, apierr.ErrBadRequest("Title is required").
-			WithCode(apierr.CodeValidationFailed)
-	}
-
-	if input.CategoryID == uuid.Nil {
-		return nil, apierr.ErrBadRequest("CategoryID is required").
-			WithCode(apierr.CodeValidationFailed)
-	}
-
 	product := &model.Product{
 		ID:          uuid.New(),
 		BrandID:     input.BrandID,
 		CategoryID:  input.CategoryID,
 		PublicID:    uuid.NewString(),
-		Title:       title,
-		Description: strings.TrimSpace(input.Description),
+		Title:       input.Title,
+		Description: input.Description,
 		Highlights:  input.Highlights,
 		Status:      model.PublicationStatusDraft,
 	}
@@ -154,28 +147,18 @@ func (s *ProductService) UpdateProduct(
 	productID uuid.UUID,
 	input UpdateProductInput,
 ) error {
-	if productID == uuid.Nil {
-		return apierr.ErrBadRequest("Product ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
 	err := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		product, err := s.productRepo.Get(ctx, tx, Filter{ID: &productID})
+		product, err := s.productRepo.GetByID(ctx, tx, productID)
 		if err != nil {
 			return err
 		}
 
 		if input.Title != nil {
-			title := strings.TrimSpace(*input.Title)
-			if title == "" {
-				return apierr.ErrBadRequest("Title cannot be empty").
-					WithCode(apierr.CodeValidationFailed)
-			}
-			product.Title = title
+			product.Title = *input.Title
 		}
 
 		if input.Description != nil {
-			product.Description = strings.TrimSpace(*input.Description)
+			product.Description = *input.Description
 		}
 
 		if input.BrandID != nil {
@@ -225,15 +208,10 @@ func (s *ProductService) GetByID(
 	ctx context.Context,
 	productID uuid.UUID,
 ) (*model.Product, error) {
-	if productID == uuid.Nil {
-		return nil, apierr.ErrBadRequest("Product ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
 	var product *model.Product
 	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
-		product, err = s.productRepo.Get(ctx, db, Filter{ID: &productID})
+		product, err = s.productRepo.GetByID(ctx, db, productID)
 		return err
 	})
 
@@ -259,15 +237,9 @@ func (s *ProductService) GetByPID(
 	ctx context.Context,
 	ppid string,
 ) (*ProductDetails, error) {
-	cleanPID := strings.TrimSpace(ppid)
-	if cleanPID == "" {
-		return nil, apierr.ErrBadRequest("Public ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
 	productDetails := &ProductDetails{}
 	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		prod, err := s.productRepo.Get(ctx, db, Filter{PublicID: &cleanPID})
+		prod, err := s.productRepo.GetByPublicID(ctx, db, ppid)
 		if err != nil {
 			return err
 		}
@@ -297,19 +269,37 @@ func (s *ProductService) GetByPID(
 		}
 	}
 
+	if productDetails.Product.CategoryID != uuid.Nil {
+		catObj, err := s.categoryService.GetCategoryByID(ctx, productDetails.Product.CategoryID)
+		if err == nil {
+			productDetails.Category = catObj
+		}
+	}
+
+	mediaList, err := s.GetProductMedia(ctx, productDetails.Product.ID)
+	if err == nil {
+		productDetails.Media = mediaList
+	}
+
+	variantRes, err := s.variantService.ListVariantsByProductID(ctx, productDetails.Product.ID, &pagination.ListQuery{PageSize: 100}, false)
+	if err == nil && variantRes != nil {
+		productDetails.Variants = variantRes.Items
+	}
+
+	tagsList, err := s.tagService.GetTagsByProductID(ctx, productDetails.Product.ID)
+	if err == nil {
+		productDetails.Tags = tagsList
+	}
+
 	return productDetails, nil
 }
 
 func (s *ProductService) List(
 	ctx context.Context,
-	q *api.ListQuery,
+	q *pagination.ListQuery,
 	includeDeleted bool,
-) (*api.PagedResult[ProductListItem], error) {
-	if q == nil {
-		q = &api.ListQuery{}
-	}
-
-	var res *api.PagedResult[ProductListItem]
+) (*pagination.PagedResult[ProductListItem], error) {
+	var res *pagination.PagedResult[ProductListItem]
 	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
 		res, err = s.productRepo.List(ctx, db, q, includeDeleted)
@@ -330,11 +320,6 @@ func (s *ProductService) PublishProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	if productID == uuid.Nil {
-		return apierr.ErrBadRequest("Product ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
 	variants, err := s.variantService.ListVariantsByProductID(ctx, productID, nil, false)
 	if err != nil {
 		return err
@@ -371,11 +356,6 @@ func (s *ProductService) ArchiveProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	if productID == uuid.Nil {
-		return apierr.ErrBadRequest("Product ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
 	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.productRepo.UpdateStatus(ctx, db, productID, model.PublicationStatusArchived)
 	})
@@ -403,13 +383,8 @@ func (s *ProductService) SoftDeleteProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	if productID == uuid.Nil {
-		return apierr.ErrBadRequest("Product ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
 	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return s.productRepo.SoftDelete(ctx, db, Filter{ID: &productID})
+		return s.productRepo.SoftDeleteByID(ctx, db, productID)
 	})
 
 	if err != nil {
@@ -455,8 +430,8 @@ func (s *ProductService) CreateProductVariant(
 func (s *ProductService) GetProductVariants(
 	ctx context.Context,
 	productID uuid.UUID,
-	q *api.ListQuery,
-) (*api.PagedResult[model.ProductVariant], error) {
+	q *pagination.ListQuery,
+) (*pagination.PagedResult[model.ProductVariant], error) {
 	return s.variantService.ListVariantsByProductID(ctx, productID, q, false)
 }
 
@@ -601,6 +576,43 @@ func (ps *ProductService) UploadProductMedia(
 	return media, nil
 }
 
+func (ps *ProductService) GetProductMediaByPID(
+	ctx context.Context,
+	ppid string,
+) ([]*model.ProductMedia, error) {
+	cleanPID := strings.TrimSpace(ppid)
+	if cleanPID == "" {
+		return nil, apierr.ErrBadRequest("Public ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	var productID uuid.UUID
+	err := ps.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		prod, err := ps.productRepo.GetByPublicID(ctx, db, cleanPID)
+		if err != nil {
+			return err
+		}
+		productID = prod.ID
+		return nil
+	})
+
+	if err != nil {
+		mappedError := database.MapError(err)
+		switch {
+		case errors.Is(mappedError, database.ErrNotFound):
+			return nil, apierr.ErrNotFound("Product not found").
+				WithCode(errcode.CodeProductNotFound)
+		default:
+			return nil, apierr.ErrInternalError("Failed to fetch product").
+				WithCode(apierr.CodeInternalError).
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	return ps.GetProductMedia(ctx, productID)
+}
+
 func (ps *ProductService) GetProductMedia(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -727,4 +739,42 @@ func (ps *ProductService) ReorderMedia(
 	}
 
 	return nil
+}
+
+func (ps *ProductService) GetProductVariantsByPID(
+	ctx context.Context,
+	ppid string,
+	q *pagination.ListQuery,
+) (*pagination.PagedResult[model.ProductVariant], error) {
+	cleanPID := strings.TrimSpace(ppid)
+	if cleanPID == "" {
+		return nil, apierr.ErrBadRequest("Public ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	var productID uuid.UUID
+	err := ps.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		prod, err := ps.productRepo.GetByPublicID(ctx, db, cleanPID)
+		if err != nil {
+			return err
+		}
+		productID = prod.ID
+		return nil
+	})
+
+	if err != nil {
+		mappedError := database.MapError(err)
+		switch {
+		case errors.Is(mappedError, database.ErrNotFound):
+			return nil, apierr.ErrNotFound("Product not found").
+				WithCode(errcode.CodeProductNotFound)
+		default:
+			return nil, apierr.ErrInternalError("Failed to fetch product").
+				WithCode(apierr.CodeInternalError).
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	return ps.variantService.ListVariantsByProductID(ctx, productID, q, false)
 }

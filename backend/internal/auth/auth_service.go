@@ -2,7 +2,10 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
@@ -44,6 +47,7 @@ type Notifier interface {
 type Tokens struct {
 	AccessToken  string
 	RefreshToken string
+	SessionID    string
 }
 
 type AuthService struct {
@@ -111,21 +115,14 @@ func (s *AuthService) RotateToken(
 	return accessToken, refreshToken, nil
 }
 
-func (s *AuthService) GetCurrentUser(
+func (s *AuthService) GetUserByID(
 	ctx context.Context,
 	userID uuid.UUID,
 ) (*model.User, error) {
-	user, err := s.userService.GetUserByID(
-		ctx,
-		userID,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return user, nil
+	return s.userService.GetUserByID(ctx, userID)
 }
 
-func (s *AuthService) StartChallange(
+func (s *AuthService) StartChallenge(
 	ctx context.Context,
 	identifier string,
 	identifierType IdentifierType,
@@ -149,7 +146,7 @@ func (s *AuthService) StartChallange(
 	return challenge, nil
 }
 
-func (s *AuthService) ResendChallange(
+func (s *AuthService) ResendChallenge(
 	ctx context.Context,
 	identifier string,
 ) error {
@@ -169,10 +166,12 @@ func (s *AuthService) ResendChallange(
 	return err
 }
 
-func (s *AuthService) VerifyChallange(
+func (s *AuthService) VerifyChallenge(
 	ctx context.Context,
 	identifier,
 	code string,
+	userAgent string,
+	ipAddress string,
 ) (*Tokens, error) {
 	challenge, err := s.challengeService.Get(
 		ctx,
@@ -231,8 +230,111 @@ func (s *AuthService) VerifyChallange(
 		return nil, err
 	}
 
+	sess, sErr := s.CreateSession(ctx, user.ID, userAgent, ipAddress)
+	sessionID := ""
+	if sErr == nil && sess != nil {
+		sessionID = sess.ID
+	}
+
 	return &Tokens{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+		SessionID:    sessionID,
 	}, nil
+}
+
+type UserSession struct {
+	ID         string    `json:"id"`
+	UserID     uuid.UUID `json:"user_id"`
+	UserAgent  string    `json:"user_agent"`
+	IPAddress  string    `json:"ip_address"`
+	CreatedAt  time.Time `json:"created_at"`
+	LastActive time.Time `json:"last_active"`
+}
+
+func (s *AuthService) CreateSession(
+	ctx context.Context,
+	userID uuid.UUID,
+	userAgent string,
+	ipAddress string,
+) (*UserSession, error) {
+	sessionID := fmt.Sprintf("sess_%s", uuid.New().String())
+	now := time.Now().UTC()
+
+	sess := &UserSession{
+		ID:         sessionID,
+		UserID:     userID,
+		UserAgent:  userAgent,
+		IPAddress:  ipAddress,
+		CreatedAt:  now,
+		LastActive: now,
+	}
+
+	data, err := json.Marshal(sess)
+	if err != nil {
+		return nil, err
+	}
+
+	sessKey := fmt.Sprintf("auth:session:%s", sessionID)
+	userSetKey := fmt.Sprintf("auth:user_sessions:%s", userID.String())
+
+	// Store session JSON with 30-day TTL in Redis
+	if err := s.redisClient.Set(ctx, sessKey, data, 30*24*time.Hour).Err(); err != nil {
+		return nil, err
+	}
+
+	// Add session ID to user's Redis session set
+	if err := s.redisClient.SAdd(ctx, userSetKey, sessionID).Err(); err != nil {
+		return nil, err
+	}
+
+	return sess, nil
+}
+
+func (s *AuthService) GetUserSessions(
+	ctx context.Context,
+	userID uuid.UUID,
+) ([]UserSession, error) {
+	userSetKey := fmt.Sprintf("auth:user_sessions:%s", userID.String())
+	sessionIDs, err := s.redisClient.SMembers(ctx, userSetKey).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	sessions := make([]UserSession, 0, len(sessionIDs))
+	for _, sessID := range sessionIDs {
+		sessKey := fmt.Sprintf("auth:session:%s", sessID)
+		val, err := s.redisClient.Get(ctx, sessKey).Result()
+		if err == redis.Nil {
+			// Clean up expired session ID from user set
+			s.redisClient.SRem(ctx, userSetKey, sessID)
+			continue
+		} else if err != nil {
+			continue
+		}
+
+		var sess UserSession
+		if err := json.Unmarshal([]byte(val), &sess); err == nil {
+			sessions = append(sessions, sess)
+		}
+	}
+
+	return sessions, nil
+}
+
+func (s *AuthService) DeleteSessionByID(
+	ctx context.Context,
+	userID uuid.UUID,
+	sessionID string,
+) error {
+	sessKey := fmt.Sprintf("auth:session:%s", sessionID)
+	userSetKey := fmt.Sprintf("auth:user_sessions:%s", userID.String())
+
+	if err := s.redisClient.Del(ctx, sessKey).Err(); err != nil {
+		return err
+	}
+	if err := s.redisClient.SRem(ctx, userSetKey, sessionID).Err(); err != nil {
+		return err
+	}
+	return nil
 }

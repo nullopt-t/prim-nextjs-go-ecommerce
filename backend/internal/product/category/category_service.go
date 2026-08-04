@@ -11,6 +11,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
@@ -56,6 +57,7 @@ func (cs *CategoryService) CreateCategory(
 	now := time.Now().UTC()
 	category := &model.ProductCategory{
 		ID:        uuid.New(),
+		PublicID:  uuid.NewString(),
 		ParentID:  in.ParentID,
 		Name:      name,
 		CreatedAt: now,
@@ -98,15 +100,6 @@ func (cs *CategoryService) GetCategoryByID(
 	ctx context.Context,
 	categoryID uuid.UUID,
 ) (*model.ProductCategory, error) {
-	if categoryID == uuid.Nil {
-		return nil, apierr.ErrBadRequest("Category ID cannot be empty").
-			WithCode(apierr.CodeInvalidInput).
-			WithFields(api.FieldError{
-				Field:   "id",
-				Message: "valid UUID is required",
-			})
-	}
-
 	var category *model.ProductCategory
 	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
@@ -267,20 +260,20 @@ func (cs *CategoryService) UpdateCategory(
 }
 
 type ListCategoriesInput struct {
-	Query          *api.ListQuery
+	Query          *pagination.ListQuery
 	IncludeDeleted bool
 }
 
 func (cs *CategoryService) ListCategories(
 	ctx context.Context,
 	in ListCategoriesInput,
-) (*api.PagedResult[model.ProductCategory], error) {
+) (*pagination.PagedResult[model.ProductCategory], error) {
 	q := in.Query
 	if q == nil {
-		q = &api.ListQuery{}
+		q = &pagination.ListQuery{}
 	}
 
-	var result *api.PagedResult[model.ProductCategory]
+	var result *pagination.PagedResult[model.ProductCategory]
 
 	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
@@ -312,8 +305,8 @@ func (cs *CategoryService) ListCategories(
 
 func (cs *CategoryService) List(
 	ctx context.Context,
-	q *api.ListQuery,
-) (*api.PagedResult[model.ProductCategory], error) {
+	q *pagination.ListQuery,
+) (*pagination.PagedResult[model.ProductCategory], error) {
 	return cs.ListCategories(ctx, ListCategoriesInput{
 		Query:          q,
 		IncludeDeleted: false,
@@ -322,8 +315,8 @@ func (cs *CategoryService) List(
 
 func (cs *CategoryService) AdminList(
 	ctx context.Context,
-	q *api.ListQuery,
-) (*api.PagedResult[model.ProductCategory], error) {
+	q *pagination.ListQuery,
+) (*pagination.PagedResult[model.ProductCategory], error) {
 	return cs.ListCategories(ctx, ListCategoriesInput{
 		Query:          q,
 		IncludeDeleted: true,

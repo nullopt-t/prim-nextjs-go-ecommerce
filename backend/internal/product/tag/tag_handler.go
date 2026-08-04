@@ -9,6 +9,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 )
 
 type TagHandler struct {
@@ -210,9 +211,7 @@ func (th *TagHandler) DeleteTagByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.MessageResponse{
-		Message: "deleted successfully",
-	})
+	c.Status(http.StatusNoContent)
 }
 
 // ListTags godoc
@@ -221,19 +220,19 @@ func (th *TagHandler) DeleteTagByID(c *gin.Context) {
 // @Tags Tags
 // @Accept json
 // @Produce json
-// @Param q query api.ListQuery true "Pagination, search query, and sorting parameters"
+// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
 // @Success 200 {object} api.PaginatedResponse{data=[]TagResponse,meta=api.Page} "Paginated list of active tags"
 // @Router /tags [get]
 func (th *TagHandler) ListTags(c *gin.Context) {
-	q := &api.ListQuery{}
+	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
-	q.Process(api.QueryOptions{
+	q.Process(pagination.QueryOptions{
 		DefaultPageSize: 10,
 		MaxPageSize:     100,
 	})
@@ -272,19 +271,19 @@ func (th *TagHandler) ListTags(c *gin.Context) {
 // @Tags Tags
 // @Accept json
 // @Produce json
-// @Param q query api.ListQuery true "Pagination, search query, and sorting parameters"
+// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
 // @Success 200 {object} api.PaginatedResponse{data=[]AdminTagResponse,meta=api.Page} "Paginated list of all tags including deleted"
 // @Router /admin/tags [get]
 func (th *TagHandler) AdminListTags(c *gin.Context) {
-	q := &api.ListQuery{}
+	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
-	q.Process(api.QueryOptions{
+	q.Process(pagination.QueryOptions{
 		DefaultPageSize: 10,
 		MaxPageSize:     100,
 	})

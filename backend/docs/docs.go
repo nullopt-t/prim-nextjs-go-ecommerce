@@ -75,7 +75,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -83,11 +83,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/internal_product_brand.AdminBrandResponse"
+                                                "$ref": "#/definitions/brand.AdminBrandResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page"
+                                            "$ref": "#/definitions/api.Page"
                                         }
                                     }
                                 }
@@ -97,13 +97,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -127,7 +127,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product_brand.CreateBrandRequest"
+                            "$ref": "#/definitions/brand.CreateBrandRequest"
                         }
                     }
                 ],
@@ -137,13 +137,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_product_brand.BrandResponse"
+                                            "$ref": "#/definitions/brand.BrandResponse"
                                         }
                                     }
                                 }
@@ -153,19 +153,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or missing brand name",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A brand with this name already exists",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -200,13 +200,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_product_brand.BrandResponse"
+                                            "$ref": "#/definitions/brand.BrandResponse"
                                         }
                                     }
                                 }
@@ -216,19 +216,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Brand not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -259,25 +259,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Deletion confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Brand not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -309,7 +309,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product_brand.UpdateBrandRequest"
+                            "$ref": "#/definitions/brand.UpdateBrandRequest"
                         }
                     }
                 ],
@@ -317,31 +317,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Update confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error or referenced logo object not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Brand not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A brand with updated name already exists",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -399,7 +399,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -407,11 +407,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/internal_product_category.AdminCategoryResponse"
+                                                "$ref": "#/definitions/category.AdminCategoryResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page"
+                                            "$ref": "#/definitions/api.Page"
                                         }
                                     }
                                 }
@@ -421,13 +421,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -451,7 +451,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product_category.CreateCategoryRequest"
+                            "$ref": "#/definitions/category.CreateCategoryRequest"
                         }
                     }
                 ],
@@ -461,13 +461,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_product_category.AdminCategoryResponse"
+                                            "$ref": "#/definitions/category.AdminCategoryResponse"
                                         }
                                     }
                                 }
@@ -477,19 +477,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or referenced parent category does not exist",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A category with this name already exists",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -524,13 +524,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_product_category.AdminCategoryResponse"
+                                            "$ref": "#/definitions/category.AdminCategoryResponse"
                                         }
                                     }
                                 }
@@ -540,19 +540,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Category not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -584,7 +584,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product_category.UpdateCategoryRequest"
+                            "$ref": "#/definitions/category.UpdateCategoryRequest"
                         }
                     }
                 ],
@@ -592,31 +592,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Update confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error, circular hierarchy, or parent not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Category not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A category with updated name already exists",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -671,7 +671,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -679,11 +679,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/internal_product.ProductListItem"
+                                                "$ref": "#/definitions/product.ProductListItem"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page"
+                                            "$ref": "#/definitions/api.Page"
                                         }
                                     }
                                 }
@@ -693,13 +693,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -723,7 +723,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product.CreateProductRequest"
+                            "$ref": "#/definitions/product.CreateProductRequest"
                         }
                     }
                 ],
@@ -733,13 +733,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_product.ProductResponse"
+                                            "$ref": "#/definitions/product.ProductResponse"
                                         }
                                     }
                                 }
@@ -749,19 +749,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or invalid UUID reference",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Product with generated public ID already exists",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -791,25 +791,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Deletion confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -841,7 +841,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product.UpdateProductRequest"
+                            "$ref": "#/definitions/product.UpdateProductRequest"
                         }
                     }
                 ],
@@ -849,25 +849,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Update confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error or invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product, brand, or category not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -897,25 +897,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Archival confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -948,7 +948,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product.PutProductCategoryRequest"
+                            "$ref": "#/definitions/product.PutProductCategoryRequest"
                         }
                     }
                 ],
@@ -956,25 +956,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1015,13 +1015,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_product.ProductMediaResponse"
+                                            "$ref": "#/definitions/product.ProductMediaResponse"
                                         }
                                     }
                                 }
@@ -1031,13 +1031,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1070,7 +1070,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product.ReorderMediaRequest"
+                            "$ref": "#/definitions/product.ReorderMediaRequest"
                         }
                     }
                 ],
@@ -1078,19 +1078,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1127,25 +1127,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1175,25 +1175,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Publication confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Product lacks active variants or invalid UUID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1226,7 +1226,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product.PutProductTagsRequest"
+                            "$ref": "#/definitions/product.PutProductTagsRequest"
                         }
                     }
                 ],
@@ -1234,19 +1234,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1279,7 +1279,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product.CreateProductVariantRequest"
+                            "$ref": "#/definitions/product.CreateProductVariantRequest"
                         }
                     }
                 ],
@@ -1289,13 +1289,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_internal_product_variant.VariantResponse"
+                                            "$ref": "#/definitions/variant.VariantResponse"
                                         }
                                     }
                                 }
@@ -1305,13 +1305,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1344,7 +1344,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product.SetDefaultVariantRequest"
+                            "$ref": "#/definitions/product.SetDefaultVariantRequest"
                         }
                     }
                 ],
@@ -1352,25 +1352,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1433,7 +1433,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1441,11 +1441,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/internal_product_variant.AdminVariantResponse"
+                                                "$ref": "#/definitions/variant.AdminVariantResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page"
+                                            "$ref": "#/definitions/api.Page"
                                         }
                                     }
                                 }
@@ -1455,13 +1455,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters or UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1493,7 +1493,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product_variant.CreateVariantRequest"
+                            "$ref": "#/definitions/variant.CreateVariantRequest"
                         }
                     }
                 ],
@@ -1503,13 +1503,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_product_variant.VariantResponse"
+                                            "$ref": "#/definitions/variant.VariantResponse"
                                         }
                                     }
                                 }
@@ -1519,19 +1519,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or missing required fields",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Parent product not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1589,7 +1589,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1597,11 +1597,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/internal_product_tag.AdminTagResponse"
+                                                "$ref": "#/definitions/tag.AdminTagResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page"
+                                            "$ref": "#/definitions/api.Page"
                                         }
                                     }
                                 }
@@ -1611,13 +1611,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1641,7 +1641,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product_tag.CreateTagRequest"
+                            "$ref": "#/definitions/tag.CreateTagRequest"
                         }
                     }
                 ],
@@ -1651,13 +1651,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_product_tag.TagResponse"
+                                            "$ref": "#/definitions/tag.TagResponse"
                                         }
                                     }
                                 }
@@ -1667,19 +1667,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or missing tag name",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A tag with this name already exists",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1714,13 +1714,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_product_tag.TagResponse"
+                                            "$ref": "#/definitions/tag.TagResponse"
                                         }
                                     }
                                 }
@@ -1730,19 +1730,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Tag not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1773,25 +1773,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Deletion confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Tag not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1823,7 +1823,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product_tag.UpdateTagRequest"
+                            "$ref": "#/definitions/tag.UpdateTagRequest"
                         }
                     }
                 ],
@@ -1831,31 +1831,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Update confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error or invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Tag not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A tag with updated name already exists",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1885,25 +1885,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Deletion confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Variant not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1935,7 +1935,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product_variant.UpdateVariantRequest"
+                            "$ref": "#/definitions/variant.UpdateVariantRequest"
                         }
                     }
                 ],
@@ -1943,25 +1943,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Update confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error or invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Variant not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1995,7 +1995,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product_variant.AttachMediaRequest"
+                            "$ref": "#/definitions/variant.AttachMediaRequest"
                         }
                     }
                 ],
@@ -2005,13 +2005,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_product_variant.VariantMediaResponse"
+                                            "$ref": "#/definitions/variant.VariantMediaResponse"
                                         }
                                     }
                                 }
@@ -2021,19 +2021,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or invalid UUID reference",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Storage object is already attached to this variant",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2067,7 +2067,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_product_variant.ReorderMediaRequest"
+                            "$ref": "#/definitions/variant.ReorderMediaRequest"
                         }
                     }
                 ],
@@ -2075,19 +2075,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Reorder confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format or empty list",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2125,25 +2125,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Detachment confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Media relationship not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2169,7 +2169,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_auth.ResendChallengeRequest"
+                            "$ref": "#/definitions/auth.ResendChallengeRequest"
                         }
                     }
                 ],
@@ -2177,25 +2177,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadReqResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ErrorResponse"
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2221,7 +2221,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_auth.StartChallengeRequest"
+                            "$ref": "#/definitions/auth.StartChallengeRequest"
                         }
                     }
                 ],
@@ -2231,13 +2231,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_auth.StartChallengeResponse"
+                                            "$ref": "#/definitions/auth.StartChallengeResponse"
                                         }
                                     }
                                 }
@@ -2247,19 +2247,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadReqResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ErrorResponse"
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2267,72 +2267,7 @@ const docTemplate = `{
         },
         "/auth/challenge/verify": {
             "post": {
-                "description": "Verifies the one-time code sent to the user's email or phone and returns an access token and refresh token.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Verify an authentication challenge",
-                "parameters": [
-                    {
-                        "description": "Challenge Verification Request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_auth.VerifyChallengeRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/internal_auth.TokensResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadReqResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.UnauthorizedResponse"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
-                        }
-                    }
-                }
+                "responses": {}
             }
         },
         "/auth/me": {
@@ -2354,13 +2289,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_auth.MeResponse"
+                                            "$ref": "#/definitions/auth.MeResponse"
                                         }
                                     }
                                 }
@@ -2370,7 +2305,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2394,9 +2329,8 @@ const docTemplate = `{
                         "description": "Refresh Token",
                         "name": "refresh_token",
                         "in": "body",
-                        "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_auth.RefreshTokenRequest"
+                            "$ref": "#/definitions/auth.RefreshTokenRequest"
                         }
                     }
                 ],
@@ -2404,43 +2338,119 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.BadReqResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/sessions": {
+            "get": {
+                "description": "Fetches all active login sessions stored in Redis for the current user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "List active user sessions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_auth.TokensResponse"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/auth.UserSession"
+                                            }
                                         }
                                     }
                                 }
                             ]
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadReqResponse"
-                        }
-                    },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.UnauthorizedResponse"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ErrorResponse"
+                            "$ref": "#/definitions/api.UnauthorizedResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/sessions/{id}": {
+            "delete": {
+                "description": "Revokes and deletes a specific active session from Redis.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Revoke session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID to revoke",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2498,7 +2508,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2506,11 +2516,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/internal_product_brand.BrandResponse"
+                                                "$ref": "#/definitions/brand.BrandResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page"
+                                            "$ref": "#/definitions/api.Page"
                                         }
                                     }
                                 }
@@ -2520,13 +2530,365 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cart": {
+            "get": {
+                "description": "Fetches the current user's or guest session's shopping cart and item details.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Get shopping cart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Guest Session ID",
+                        "name": "X-Session-ID",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cart details",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.Cart"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or missing session",
+                        "schema": {
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Removes all items from the current cart.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Clear cart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Guest Session ID",
+                        "name": "X-Session-ID",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cart cleared",
+                        "schema": {
+                            "$ref": "#/definitions/api.SuccessResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cart/items": {
+            "post": {
+                "description": "Adds a product variant with specified quantity to the shopping cart.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Add item to cart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Guest Session ID",
+                        "name": "X-Session-ID",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Item variant and quantity",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/cart.AddItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated cart",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.Cart"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Variant not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cart/items/{id}": {
+            "delete": {
+                "description": "Removes a single item from the cart by item ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Remove item from cart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cart Item UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Guest Session ID",
+                        "name": "X-Session-ID",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated cart",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.Cart"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid item ID",
+                        "schema": {
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Cart item not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Updates the quantity of a specific item in the cart.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Update cart item quantity",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cart Item UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Guest Session ID",
+                        "name": "X-Session-ID",
+                        "in": "header"
+                    },
+                    {
+                        "description": "New quantity",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/cart.UpdateQuantityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated cart",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.Cart"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error or invalid UUID",
+                        "schema": {
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Cart item not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cart/merge": {
+            "post": {
+                "description": "Merges items from a guest session cart into the authenticated user's cart.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Merge guest cart into user cart",
+                "parameters": [
+                    {
+                        "description": "Guest Session ID to merge",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/cart.MergeCartRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Merged user cart",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.Cart"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Missing user or session ID",
+                        "schema": {
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2584,7 +2946,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2592,11 +2954,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/internal_product_category.PublicCategoryResponse"
+                                                "$ref": "#/definitions/category.PublicCategoryResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page"
+                                            "$ref": "#/definitions/api.Page"
                                         }
                                     }
                                 }
@@ -2606,13 +2968,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2667,7 +3029,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2675,11 +3037,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/internal_product.ProductListItem"
+                                                "$ref": "#/definitions/product.ProductListItem"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page"
+                                            "$ref": "#/definitions/api.Page"
                                         }
                                     }
                                 }
@@ -2689,13 +3051,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2726,13 +3088,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_product.ProductDetailsResponse"
+                                            "$ref": "#/definitions/product.ProductDetailsResponse"
                                         }
                                     }
                                 }
@@ -2742,19 +3104,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Public ID is required",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2786,13 +3148,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_product.ProductResponse"
+                                            "$ref": "#/definitions/product.ProductResponse"
                                         }
                                     }
                                 }
@@ -2802,19 +3164,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2845,7 +3207,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2853,7 +3215,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/internal_product.ProductMediaResponse"
+                                                "$ref": "#/definitions/product.ProductMediaResponse"
                                             }
                                         }
                                     }
@@ -2864,13 +3226,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2901,7 +3263,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2909,11 +3271,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_internal_product_variant.VariantResponse"
+                                                "$ref": "#/definitions/variant.VariantResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page"
+                                            "$ref": "#/definitions/api.Page"
                                         }
                                     }
                                 }
@@ -2923,13 +3285,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2992,7 +3354,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3000,11 +3362,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/internal_product_variant.VariantResponse"
+                                                "$ref": "#/definitions/variant.VariantResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page"
+                                            "$ref": "#/definitions/api.Page"
                                         }
                                     }
                                 }
@@ -3014,13 +3376,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters or UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3078,7 +3440,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3086,11 +3448,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/internal_product_tag.TagResponse"
+                                                "$ref": "#/definitions/tag.TagResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page"
+                                            "$ref": "#/definitions/api.Page"
                                         }
                                     }
                                 }
@@ -3100,13 +3462,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3138,13 +3500,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_product_variant.VariantResponse"
+                                            "$ref": "#/definitions/variant.VariantResponse"
                                         }
                                     }
                                 }
@@ -3154,19 +3516,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Variant not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3198,7 +3560,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3206,7 +3568,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/internal_product_variant.VariantMediaResponse"
+                                                "$ref": "#/definitions/variant.VariantMediaResponse"
                                             }
                                         }
                                     }
@@ -3217,13 +3579,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3231,65 +3593,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_m-mahmoud-alsaid_prim-backend_internal_model.PublicationStatus": {
-            "type": "string",
-            "enum": [
-                "draft",
-                "published",
-                "archived"
-            ],
-            "x-enum-varnames": [
-                "PublicationStatusDraft",
-                "PublicationStatusPublished",
-                "PublicationStatusArchived"
-            ]
-        },
-        "github_com_m-mahmoud-alsaid_prim-backend_internal_product_variant.VariantResponse": {
-            "type": "object",
-            "properties": {
-                "attributes": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "created_at": {
-                    "type": "string",
-                    "example": "2026-08-02T16:00:00Z"
-                },
-                "crossed_out_price": {
-                    "type": "integer",
-                    "example": 3999
-                },
-                "currency": {
-                    "type": "string",
-                    "example": "USD"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
-                },
-                "is_default": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "price": {
-                    "type": "integer",
-                    "example": 2999
-                },
-                "product_id": {
-                    "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Red / XL"
-                },
-                "updated_at": {
-                    "type": "string",
-                    "example": "2026-08-02T16:00:00Z"
-                }
-            }
-        },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadReqResponse": {
+        "api.BadReqResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -3299,7 +3603,7 @@ const docTemplate = `{
                 "details": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError"
+                        "$ref": "#/definitions/api.FieldError"
                     }
                 },
                 "message": {
@@ -3308,7 +3612,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.BadRequestErrorResponse": {
+        "api.BadRequestErrorResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -3318,7 +3622,7 @@ const docTemplate = `{
                 "details": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError"
+                        "$ref": "#/definitions/api.FieldError"
                     }
                 },
                 "message": {
@@ -3327,7 +3631,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ConflictErrorResponse": {
+        "api.ConflictErrorResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -3337,7 +3641,7 @@ const docTemplate = `{
                 "details": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError"
+                        "$ref": "#/definitions/api.FieldError"
                     }
                 },
                 "message": {
@@ -3346,13 +3650,13 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.DataResponse": {
+        "api.DataResponse": {
             "type": "object",
             "properties": {
                 "data": {}
             }
         },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.ErrorResponse": {
+        "api.ErrorResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -3362,7 +3666,7 @@ const docTemplate = `{
                 "details": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError"
+                        "$ref": "#/definitions/api.FieldError"
                     }
                 },
                 "message": {
@@ -3371,7 +3675,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError": {
+        "api.FieldError": {
             "type": "object",
             "properties": {
                 "field": {
@@ -3388,7 +3692,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.InternalServerErrorResponse": {
+        "api.InternalServerErrorResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -3398,7 +3702,7 @@ const docTemplate = `{
                 "details": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError"
+                        "$ref": "#/definitions/api.FieldError"
                     }
                 },
                 "message": {
@@ -3407,7 +3711,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.MessageResponse": {
+        "api.MessageResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -3416,7 +3720,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.NotFoundErrorResponse": {
+        "api.NotFoundErrorResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -3426,7 +3730,7 @@ const docTemplate = `{
                 "details": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.FieldError"
+                        "$ref": "#/definitions/api.FieldError"
                     }
                 },
                 "message": {
@@ -3435,7 +3739,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Page": {
+        "api.Page": {
             "type": "object",
             "properties": {
                 "has_next": {
@@ -3464,14 +3768,14 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.PaginatedResponse": {
+        "api.PaginatedResponse": {
             "type": "object",
             "properties": {
                 "data": {},
                 "meta": {}
             }
         },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.Sort": {
+        "api.Sort": {
             "type": "object",
             "properties": {
                 "field": {
@@ -3481,14 +3785,14 @@ const docTemplate = `{
                 "order": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_pkg_api.SortOrder"
+                            "$ref": "#/definitions/api.SortOrder"
                         }
                     ],
                     "example": "asc"
                 }
             }
         },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.SortOrder": {
+        "api.SortOrder": {
             "type": "string",
             "enum": [
                 "asc",
@@ -3499,7 +3803,17 @@ const docTemplate = `{
                 "SortDesc"
             ]
         },
-        "github_com_m-mahmoud-alsaid_prim-backend_pkg_api.UnauthorizedResponse": {
+        "api.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                },
+                "meta": {}
+            }
+        },
+        "api.UnauthorizedResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -3512,7 +3826,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_auth.MeResponse": {
+        "auth.MeResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -3529,7 +3843,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_auth.RefreshTokenRequest": {
+        "auth.RefreshTokenRequest": {
             "type": "object",
             "required": [
                 "refresh_token"
@@ -3540,7 +3854,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_auth.ResendChallengeRequest": {
+        "auth.ResendChallengeRequest": {
             "type": "object",
             "required": [
                 "identifier"
@@ -3551,7 +3865,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_auth.StartChallengeRequest": {
+        "auth.StartChallengeRequest": {
             "type": "object",
             "required": [
                 "identifier"
@@ -3562,7 +3876,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_auth.StartChallengeResponse": {
+        "auth.StartChallengeResponse": {
             "type": "object",
             "properties": {
                 "duration": {
@@ -3576,7 +3890,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_auth.TokensResponse": {
+        "auth.TokensResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -3584,10 +3898,36 @@ const docTemplate = `{
                 },
                 "refresh_token": {
                     "type": "string"
+                },
+                "session_id": {
+                    "type": "string"
                 }
             }
         },
-        "internal_auth.VerifyChallengeRequest": {
+        "auth.UserSession": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ip_address": {
+                    "type": "string"
+                },
+                "last_active": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.VerifyChallengeRequest": {
             "type": "object",
             "required": [
                 "code",
@@ -3602,7 +3942,328 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product.CreateProductRequest": {
+        "brand.AdminBrandResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-07-01T05:04:38Z"
+                },
+                "deleted_at": {
+                    "type": "string",
+                    "example": "2026-07-01T05:04:38Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "link": {
+                    "type": "string",
+                    "example": "https://nvidia.com"
+                },
+                "logo_storage_object_id": {
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "nvidia"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-07-01T05:04:38Z"
+                }
+            }
+        },
+        "brand.BrandResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-07-01T05:04:38Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "link": {
+                    "type": "string",
+                    "example": "https://nvidia.com"
+                },
+                "logo_storage_object_id": {
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "nvidia"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-07-01T05:04:38Z"
+                }
+            }
+        },
+        "brand.CreateBrandRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "link": {
+                    "type": "string",
+                    "example": "https://apple.com"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "apple"
+                }
+            }
+        },
+        "brand.UpdateBrandRequest": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string",
+                    "example": "https://apple.com"
+                },
+                "logo_storage_object_id": {
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "apple"
+                }
+            }
+        },
+        "cart.AddItemRequest": {
+            "type": "object",
+            "required": [
+                "quantity",
+                "variant_id"
+            ],
+            "properties": {
+                "quantity": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "variant_id": {
+                    "type": "string",
+                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                }
+            }
+        },
+        "cart.MergeCartRequest": {
+            "type": "object",
+            "required": [
+                "session_id"
+            ],
+            "properties": {
+                "session_id": {
+                    "type": "string",
+                    "example": "sess_abc123xyz"
+                }
+            }
+        },
+        "cart.UpdateQuantityRequest": {
+            "type": "object",
+            "required": [
+                "quantity"
+            ],
+            "properties": {
+                "quantity": {
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
+        "category.AdminCategoryResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-06-30T15:47:19Z"
+                },
+                "deleted_at": {
+                    "type": "string",
+                    "example": "2026-07-01T10:00:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Electronics"
+                },
+                "parent_id": {
+                    "type": "string",
+                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-06-30T15:47:19Z"
+                }
+            }
+        },
+        "category.CreateCategoryRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "parent_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "category.PublicCategoryResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Electronics"
+                }
+            }
+        },
+        "category.UpdateCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "Electronics"
+                },
+                "parent_id": {
+                    "type": "string",
+                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                }
+            }
+        },
+        "model.Cart": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CartItem"
+                    }
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CartItem": {
+            "type": "object",
+            "properties": {
+                "cart_id": {
+                    "type": "string"
+                },
+                "carted_at": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "price_at_purchase": {
+                    "type": "integer"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "variant": {
+                    "$ref": "#/definitions/model.ProductVariant"
+                },
+                "variant_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ProductVariant": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "crossedOutPrice": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "productID": {
+                    "type": "string"
+                },
+                "publicID": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.PublicationStatus": {
+            "type": "string",
+            "enum": [
+                "draft",
+                "published",
+                "archived"
+            ],
+            "x-enum-varnames": [
+                "PublicationStatusDraft",
+                "PublicationStatusPublished",
+                "PublicationStatusArchived"
+            ]
+        },
+        "product.CreateProductRequest": {
             "type": "object",
             "required": [
                 "category_id",
@@ -3634,7 +4295,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product.CreateProductVariantRequest": {
+        "product.CreateProductVariantRequest": {
             "type": "object",
             "required": [
                 "title"
@@ -3666,7 +4327,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product.ProductBrandSummary": {
+        "product.ProductBrandSummary": {
             "type": "object",
             "properties": {
                 "id": {
@@ -3677,11 +4338,11 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product.ProductDetailsResponse": {
+        "product.ProductDetailsResponse": {
             "type": "object",
             "properties": {
                 "brand": {
-                    "$ref": "#/definitions/internal_product.ProductBrandSummary"
+                    "$ref": "#/definitions/product.ProductBrandSummary"
                 },
                 "brand_id": {
                     "type": "string",
@@ -3726,7 +4387,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product.ProductListItem": {
+        "product.ProductListItem": {
             "type": "object",
             "properties": {
                 "brand_id": {
@@ -3745,14 +4406,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/github_com_m-mahmoud-alsaid_prim-backend_internal_model.PublicationStatus"
+                    "$ref": "#/definitions/model.PublicationStatus"
                 },
                 "title": {
                     "type": "string"
                 }
             }
         },
-        "internal_product.ProductMediaResponse": {
+        "product.ProductMediaResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -3764,7 +4425,7 @@ const docTemplate = `{
                     "example": "image"
                 },
                 "object": {
-                    "$ref": "#/definitions/internal_product.StorageObjectResponse"
+                    "$ref": "#/definitions/product.StorageObjectResponse"
                 },
                 "product_id": {
                     "type": "string",
@@ -3780,7 +4441,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product.ProductResponse": {
+        "product.ProductResponse": {
             "type": "object",
             "properties": {
                 "brand_id": {
@@ -3826,7 +4487,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product.PutProductCategoryRequest": {
+        "product.PutProductCategoryRequest": {
             "type": "object",
             "required": [
                 "category_id"
@@ -3837,7 +4498,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product.PutProductTagsRequest": {
+        "product.PutProductTagsRequest": {
             "type": "object",
             "required": [
                 "tag_ids"
@@ -3851,7 +4512,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product.ReorderMediaRequest": {
+        "product.ReorderMediaRequest": {
             "type": "object",
             "required": [
                 "ordered_media_ids"
@@ -3865,7 +4526,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product.SetDefaultVariantRequest": {
+        "product.SetDefaultVariantRequest": {
             "type": "object",
             "required": [
                 "variant_id"
@@ -3876,7 +4537,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product.StorageObjectResponse": {
+        "product.StorageObjectResponse": {
             "type": "object",
             "properties": {
                 "bucket": {
@@ -3899,7 +4560,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product.UpdateProductRequest": {
+        "product.UpdateProductRequest": {
             "type": "object",
             "properties": {
                 "brand_id": {
@@ -3925,171 +4586,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product_brand.AdminBrandResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string",
-                    "example": "2026-07-01T05:04:38Z"
-                },
-                "deleted_at": {
-                    "type": "string",
-                    "example": "2026-07-01T05:04:38Z"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
-                },
-                "link": {
-                    "type": "string",
-                    "example": "https://nvidia.com"
-                },
-                "logo_storage_object_id": {
-                    "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "nvidia"
-                },
-                "updated_at": {
-                    "type": "string",
-                    "example": "2026-07-01T05:04:38Z"
-                }
-            }
-        },
-        "internal_product_brand.BrandResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string",
-                    "example": "2026-07-01T05:04:38Z"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
-                },
-                "link": {
-                    "type": "string",
-                    "example": "https://nvidia.com"
-                },
-                "logo_storage_object_id": {
-                    "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "nvidia"
-                },
-                "updated_at": {
-                    "type": "string",
-                    "example": "2026-07-01T05:04:38Z"
-                }
-            }
-        },
-        "internal_product_brand.CreateBrandRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "link": {
-                    "type": "string",
-                    "example": "https://apple.com"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "apple"
-                }
-            }
-        },
-        "internal_product_brand.UpdateBrandRequest": {
-            "type": "object",
-            "properties": {
-                "link": {
-                    "type": "string",
-                    "example": "https://apple.com"
-                },
-                "logo_storage_object_id": {
-                    "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "apple"
-                }
-            }
-        },
-        "internal_product_category.AdminCategoryResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string",
-                    "example": "2026-06-30T15:47:19Z"
-                },
-                "deleted_at": {
-                    "type": "string",
-                    "example": "2026-07-01T10:00:00Z"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Electronics"
-                },
-                "parent_id": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                },
-                "updated_at": {
-                    "type": "string",
-                    "example": "2026-06-30T15:47:19Z"
-                }
-            }
-        },
-        "internal_product_category.CreateCategoryRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "parent_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_product_category.PublicCategoryResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Electronics"
-                }
-            }
-        },
-        "internal_product_category.UpdateCategoryRequest": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "example": "Electronics"
-                },
-                "parent_id": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                }
-            }
-        },
-        "internal_product_tag.AdminTagResponse": {
+        "tag.AdminTagResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -4114,7 +4611,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product_tag.CreateTagRequest": {
+        "tag.CreateTagRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -4126,7 +4623,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product_tag.TagResponse": {
+        "tag.TagResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -4147,7 +4644,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product_tag.UpdateTagRequest": {
+        "tag.UpdateTagRequest": {
             "type": "object",
             "properties": {
                 "name": {
@@ -4156,7 +4653,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product_variant.AdminVariantResponse": {
+        "variant.AdminVariantResponse": {
             "type": "object",
             "properties": {
                 "attributes": {
@@ -4205,7 +4702,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product_variant.AttachMediaRequest": {
+        "variant.AttachMediaRequest": {
             "type": "object",
             "required": [
                 "media_type",
@@ -4226,7 +4723,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product_variant.CreateVariantRequest": {
+        "variant.CreateVariantRequest": {
             "type": "object",
             "required": [
                 "title"
@@ -4258,7 +4755,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product_variant.ReorderMediaRequest": {
+        "variant.ReorderMediaRequest": {
             "type": "object",
             "required": [
                 "ordered_media_ids"
@@ -4272,7 +4769,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product_variant.StorageObjectResponse": {
+        "variant.StorageObjectResponse": {
             "type": "object",
             "properties": {
                 "bucket": {
@@ -4295,7 +4792,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product_variant.UpdateVariantRequest": {
+        "variant.UpdateVariantRequest": {
             "type": "object",
             "properties": {
                 "attributes": {
@@ -4324,7 +4821,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product_variant.VariantMediaResponse": {
+        "variant.VariantMediaResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -4336,7 +4833,7 @@ const docTemplate = `{
                     "example": "image"
                 },
                 "object": {
-                    "$ref": "#/definitions/internal_product_variant.StorageObjectResponse"
+                    "$ref": "#/definitions/variant.StorageObjectResponse"
                 },
                 "sort_order": {
                     "type": "integer",
@@ -4352,7 +4849,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_product_variant.VariantResponse": {
+        "variant.VariantResponse": {
             "type": "object",
             "properties": {
                 "attributes": {

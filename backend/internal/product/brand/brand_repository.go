@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
@@ -22,10 +22,6 @@ var allowedBrandSortFields = map[string]string{
 	"updated_at": "updated_at",
 }
 
-type Filter struct {
-	ID *uuid.UUID
-}
-
 type UpdateBrandFields struct {
 	Name                *string
 	Link                *string
@@ -33,7 +29,7 @@ type UpdateBrandFields struct {
 }
 
 type ListBrandOptions struct {
-	Query          *api.ListQuery
+	Query          *pagination.ListQuery
 	IncludeDeleted bool
 }
 
@@ -61,22 +57,28 @@ func (br *BrandRepository) Create(
 		brand.UpdatedAt = now
 	}
 
+	if brand.PublicID == "" {
+		brand.PublicID = uuid.NewString()
+	}
+
 	query := `
 		INSERT INTO product_brands (
 			id,
+			public_id,
 			name,
 			link,
 			logo_storage_object_id,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`
 
 	_, err := qe.Exec(
 		ctx,
 		query,
 		brand.ID,
+		brand.PublicID,
 		brand.Name,
 		brand.Link,
 		brand.LogoStorageObjectID,
@@ -99,6 +101,7 @@ func (br *BrandRepository) GetByID(
 	query := `
 		SELECT
 			id,
+			public_id,
 			name,
 			link,
 			logo_storage_object_id,
@@ -186,12 +189,12 @@ func (br *BrandRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	opts ListBrandOptions,
-) (*api.PagedResult[model.ProductBrand], error) {
+) (*pagination.PagedResult[model.ProductBrand], error) {
 	q := opts.Query
 	if q == nil {
-		q = &api.ListQuery{}
+		q = &pagination.ListQuery{}
 	}
-	q.Process(api.QueryOptions{})
+	q.Process(pagination.QueryOptions{})
 
 	whereClauses := []string{"1=1"}
 	args := make([]any, 0, 2)
@@ -218,7 +221,7 @@ func (br *BrandRepository) List(
 	}
 
 	if total == 0 {
-		return api.NewPagedResult([]*model.ProductBrand{}, api.NewPage(q.Page, q.PageSize, 0)), nil
+		return pagination.NewPagedResult([]*model.ProductBrand{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
 	}
 
 	// 2. Whitelist-guarded ORDER BY clause
@@ -231,7 +234,7 @@ func (br *BrandRepository) List(
 				continue
 			}
 			direction := "ASC"
-			if sort.Order == api.SortDesc {
+			if sort.Order == pagination.SortDesc {
 				direction = "DESC"
 			}
 			sortParts = append(sortParts, fmt.Sprintf("%s %s", dbField, direction))
@@ -245,6 +248,7 @@ func (br *BrandRepository) List(
 	selectQuery := fmt.Sprintf(`
 		SELECT
 			id,
+			public_id,
 			name,
 			link,
 			logo_storage_object_id,
@@ -269,7 +273,7 @@ func (br *BrandRepository) List(
 		return nil, fmt.Errorf("list brands collect rows: %w", err)
 	}
 
-	return api.NewPagedResult(brands, api.NewPage(q.Page, q.PageSize, total)), nil
+	return pagination.NewPagedResult(brands, pagination.NewPage(q.Page, q.PageSize, total)), nil
 }
 
 // Delete performs a soft-delete on an active brand.

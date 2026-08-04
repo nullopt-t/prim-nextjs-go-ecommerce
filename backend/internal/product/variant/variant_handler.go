@@ -10,6 +10,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 )
 
 type VariantHandler struct {
@@ -295,9 +296,7 @@ func (vh *VariantHandler) DeleteVariantByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.MessageResponse{
-		Message: "deleted successfully",
-	})
+	c.Status(http.StatusNoContent)
 }
 
 // ListVariantsByProductID godoc
@@ -306,10 +305,10 @@ func (vh *VariantHandler) DeleteVariantByID(c *gin.Context) {
 // @Tags Product Variants
 // @Produce json
 // @Param product_id path string true "Product UUID" format(uuid)
-// @Param q query api.ListQuery true "Pagination, search query, and sorting parameters"
+// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters or UUID format"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]VariantResponse,meta=api.Page} "Paginated list of active product variants"
+// @Success 200 {object} api.PaginatedResponse{data=[]VariantResponse,meta=pagination.Page} "Paginated list of active product variants"
 // @Router /products/{product_id}/variants [get]
 func (vh *VariantHandler) ListVariantsByProductID(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("product_id"))
@@ -321,12 +320,12 @@ func (vh *VariantHandler) ListVariantsByProductID(c *gin.Context) {
 		return
 	}
 
-	q := &api.ListQuery{}
+	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
-	q.Process(api.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
+	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
 	result, err := vh.vservice.ListVariantsByProductID(c.Request.Context(), productID, q, false)
 	if err != nil {
@@ -351,10 +350,10 @@ func (vh *VariantHandler) ListVariantsByProductID(c *gin.Context) {
 // @Tags Product Variants
 // @Produce json
 // @Param product_id path string true "Product UUID" format(uuid)
-// @Param q query api.ListQuery true "Pagination, search query, and sorting parameters"
+// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters or UUID format"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]AdminVariantResponse,meta=api.Page} "Paginated list of all product variants including deleted"
+// @Success 200 {object} api.PaginatedResponse{data=[]AdminVariantResponse,meta=pagination.Page} "Paginated list of all product variants including deleted"
 // @Router /admin/products/{product_id}/variants [get]
 func (vh *VariantHandler) AdminListVariantsByProductID(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("product_id"))
@@ -366,12 +365,12 @@ func (vh *VariantHandler) AdminListVariantsByProductID(c *gin.Context) {
 		return
 	}
 
-	q := &api.ListQuery{}
+	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
-	q.Process(api.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
+	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
 	result, err := vh.vservice.ListVariantsByProductID(c.Request.Context(), productID, q, true)
 	if err != nil {
@@ -516,9 +515,7 @@ func (vh *VariantHandler) DetachMedia(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.MessageResponse{
-		Message: "detached successfully",
-	})
+	c.Status(http.StatusNoContent)
 }
 
 // ReorderMedia godoc

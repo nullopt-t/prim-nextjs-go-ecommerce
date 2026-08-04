@@ -2,6 +2,7 @@ package brand
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -9,6 +10,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 )
 
 type BrandHandler struct {
@@ -71,7 +73,7 @@ func (bh *BrandHandler) CreateBrand(c *gin.Context) {
 	}
 
 	in := &CreateBrandInput{
-		Name: req.Name,
+		Name: strings.TrimSpace(req.Name),
 		Link: req.Link,
 	}
 
@@ -227,9 +229,7 @@ func (bh *BrandHandler) DeleteBrandByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.MessageResponse{
-		Message: "deleted successfully",
-	})
+	c.Status(http.StatusNoContent)
 }
 
 // ListBrands godoc
@@ -238,19 +238,19 @@ func (bh *BrandHandler) DeleteBrandByID(c *gin.Context) {
 // @Tags Brands
 // @Accept json
 // @Produce json
-// @Param q query api.ListQuery true "Pagination, search query, and sorting parameters"
+// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
 // @Success 200 {object} api.PaginatedResponse{data=[]BrandResponse,meta=api.Page} "Paginated list of active brands"
 // @Router /brands [get]
 func (bh *BrandHandler) ListBrands(c *gin.Context) {
-	q := &api.ListQuery{}
+	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
-	q.Process(api.QueryOptions{
+	q.Process(pagination.QueryOptions{
 		DefaultPageSize: 10,
 		MaxPageSize:     100,
 	})
@@ -264,7 +264,7 @@ func (bh *BrandHandler) ListBrands(c *gin.Context) {
 	res := make([]*BrandResponse, 0, len(result.Items))
 	for _, brand := range result.Items {
 		res = append(res, &BrandResponse{
-			ID:                  brand.ID.String(),
+			ID:                  brand.PublicID,
 			Name:                brand.Name,
 			Link:                brand.Link,
 			LogoStorageObjectID: brand.LogoStorageObjectID,
@@ -288,19 +288,19 @@ func (bh *BrandHandler) ListBrands(c *gin.Context) {
 // @Tags Brands
 // @Accept json
 // @Produce json
-// @Param q query api.ListQuery true "Pagination, search query, and sorting parameters"
+// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
 // @Success 200 {object} api.PaginatedResponse{data=[]AdminBrandResponse,meta=api.Page} "Paginated list of all brands including deleted"
 // @Router /admin/brands [get]
 func (bh *BrandHandler) ListAdminBrands(c *gin.Context) {
-	q := &api.ListQuery{}
+	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
-	q.Process(api.QueryOptions{
+	q.Process(pagination.QueryOptions{
 		DefaultPageSize: 10,
 		MaxPageSize:     100,
 	})

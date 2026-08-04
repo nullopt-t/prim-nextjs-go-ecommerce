@@ -115,6 +115,7 @@ CREATE UNIQUE INDEX idx_addresses_user_default
 
 CREATE TABLE IF NOT EXISTS product_brands (
     id                        uuid NOT NULL,
+    public_id                 text NOT NULL,
     name                      text NOT NULL,
     link                      text NULL,
     logo_storage_object_id    uuid NULL,
@@ -122,6 +123,7 @@ CREATE TABLE IF NOT EXISTS product_brands (
     updated_at                timestamptz NOT NULL DEFAULT now(),
     deleted_at                timestamptz NULL,
     PRIMARY KEY (id),
+    UNIQUE (public_id),
     FOREIGN KEY (logo_storage_object_id) REFERENCES storage_objects (id)
 );
 
@@ -131,11 +133,13 @@ WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS product_tags (
     id            uuid NOT NULL,
+    public_id     text NOT NULL,
     name          text NOT NULL,
     created_at    timestamptz NOT NULL DEFAULT now(),
     updated_at    timestamptz NOT NULL DEFAULT now(),
     deleted_at    timestamptz NULL,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    UNIQUE (public_id)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_product_tags_active_name
@@ -144,12 +148,14 @@ WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS product_categories (
     id            uuid NOT NULL,
+    public_id     text NOT NULL,
     parent_id     uuid NULL,
     name          text NOT NULL,
     created_at    timestamptz NOT NULL DEFAULT now(),
     updated_at    timestamptz NOT NULL DEFAULT now(),
     deleted_at    timestamptz NULL,
     PRIMARY KEY (id),
+    UNIQUE (public_id),
     FOREIGN KEY (parent_id) REFERENCES product_categories (id)
 );
 
@@ -198,6 +204,7 @@ CREATE TABLE IF NOT EXISTS products (
 
 CREATE TABLE IF NOT EXISTS product_variants (
     id                   uuid NOT NULL,
+    public_id            text NOT NULL,
     product_id           uuid NOT NULL,
     is_default           boolean NOT NULL DEFAULT false,
     title                text NOT NULL,
@@ -209,6 +216,7 @@ CREATE TABLE IF NOT EXISTS product_variants (
     updated_at           timestamptz NOT NULL DEFAULT now(),
     deleted_at           timestamptz NULL,
     PRIMARY KEY (id),
+    UNIQUE (public_id),
     FOREIGN KEY (product_id) REFERENCES products (id)
 );
 
@@ -243,22 +251,26 @@ CREATE TABLE IF NOT EXISTS product_tag_assignments (
 
 CREATE TABLE IF NOT EXISTS product_media (
     id                   uuid NOT NULL,
+    public_id            text NOT NULL,
     product_id           uuid NOT NULL,
     storage_object_id    uuid NOT NULL,
     media_type           text NOT NULL,
     sort_order           int NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
+    UNIQUE (public_id),
     FOREIGN KEY (product_id) REFERENCES products (id),
     FOREIGN KEY (storage_object_id) REFERENCES storage_objects (id)
 );
 
 CREATE TABLE IF NOT EXISTS variant_media (
     id                   uuid NOT NULL,
+    public_id            text NOT NULL,
     variant_id           uuid NOT NULL,
     storage_object_id    uuid NOT NULL,
     media_type           text NOT NULL,
     sort_order           int NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
+    UNIQUE (public_id),
     FOREIGN KEY (variant_id) REFERENCES product_variants (id),
     FOREIGN KEY (storage_object_id) REFERENCES storage_objects (id)
 );

@@ -25,7 +25,7 @@ func ErrorHandler(logger log.Logger) gin.HandlerFunc {
 					"error": ae.LogValue(),
 				},
 			)
-			c.JSON(ae.Status, api.BadReqResponse{
+			c.JSON(ae.Status, api.ErrorResponse{
 				Code:    ae.Code,
 				Message: ae.Error(),
 				Details: ae.Fields,

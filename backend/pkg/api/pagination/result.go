@@ -1,4 +1,4 @@
-package api
+package pagination
 
 type PagedResult[T any] struct {
 	Items []*T  `json:"items"`

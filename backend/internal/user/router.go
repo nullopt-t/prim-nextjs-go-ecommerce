@@ -28,7 +28,7 @@ func NewRouter(handler UserHandler, config *config.Config) *Router {
 func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	users := vgroup.Group("/users")
 	users.Use(
-		middleware.Authanticate(r.config.KeysCfg),
+		middleware.Authenticate(r.config.KeysCfg),
 	)
 
 	users.GET("", r.handler.GetAllUsers)

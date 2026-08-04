@@ -11,6 +11,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
@@ -98,6 +99,7 @@ func (vs *VariantService) CreateVariant(
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	variant := &model.ProductVariant{
 		ID:              uuid.New(),
+		PublicID:        uuid.NewString(),
 		ProductID:       in.ProductID,
 		Title:           title,
 		Price:           in.Price,
@@ -150,15 +152,10 @@ func (vs *VariantService) GetVariantByID(
 	ctx context.Context,
 	variantID uuid.UUID,
 ) (*model.ProductVariant, error) {
-	if variantID == uuid.Nil {
-		return nil, apierr.ErrBadRequest("Variant ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
 	var variant *model.ProductVariant
 	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
-		variant, repoErr = vs.vr.Get(ctx, db, &Filter{ID: &variantID})
+		variant, repoErr = vs.vr.GetByID(ctx, db, variantID)
 		return repoErr
 	})
 
@@ -186,11 +183,6 @@ func (vs *VariantService) UpdateVariant(
 	variantID uuid.UUID,
 	in UpdateVariantInput,
 ) error {
-	if variantID == uuid.Nil {
-		return apierr.ErrBadRequest("Variant ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
 	fields := UpdateVariantFields{
 		Price:           in.Price,
 		CrossedOutPrice: in.CrossedOutPrice,
@@ -214,7 +206,7 @@ func (vs *VariantService) UpdateVariant(
 
 	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
 		if in.IsDefault != nil && *in.IsDefault {
-			existing, err := vs.vr.Get(ctx, tx, &Filter{ID: &variantID})
+			existing, err := vs.vr.GetByID(ctx, tx, variantID)
 			if err != nil {
 				return err
 			}
@@ -247,19 +239,19 @@ func (vs *VariantService) UpdateVariant(
 func (vs *VariantService) ListVariantsByProductID(
 	ctx context.Context,
 	productID uuid.UUID,
-	q *api.ListQuery,
+	q *pagination.ListQuery,
 	includeDeleted bool,
-) (*api.PagedResult[model.ProductVariant], error) {
+) (*pagination.PagedResult[model.ProductVariant], error) {
 	if productID == uuid.Nil {
 		return nil, apierr.ErrBadRequest("Product ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
 	if q == nil {
-		q = &api.ListQuery{}
+		q = &pagination.ListQuery{}
 	}
 
-	var result *api.PagedResult[model.ProductVariant]
+	var result *pagination.PagedResult[model.ProductVariant]
 	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		result, repoErr = vs.vr.ListByProductID(ctx, db, ListVariantOptions{
@@ -484,7 +476,7 @@ func (vs *VariantService) SetDefaultVariant(
 	}
 
 	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		v, err := vs.vr.Get(ctx, tx, &Filter{ID: &variantID})
+		v, err := vs.vr.GetByID(ctx, tx, variantID)
 		if err != nil {
 			return err
 		}

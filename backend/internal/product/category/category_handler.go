@@ -10,6 +10,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 )
 
 type CategoryHandler struct {
@@ -31,8 +32,8 @@ type PublicCategoryListResponse struct {
 }
 
 type PublicCategoryResponse struct {
-	ID   uuid.UUID `json:"id" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
-	Name string    `json:"name" example:"Electronics"`
+	ID   string `json:"id" example:"prod_cat_123"`
+	Name string `json:"name" example:"Electronics"`
 }
 
 type AdminCategoryResponse struct {
@@ -46,7 +47,7 @@ type AdminCategoryResponse struct {
 
 func ToPublicCategoryResponse(c *model.ProductCategory) PublicCategoryResponse {
 	return PublicCategoryResponse{
-		ID:   c.ID,
+		ID:   c.PublicID,
 		Name: c.Name,
 	}
 }
@@ -156,20 +157,20 @@ func (ch *CategoryHandler) GetCategoryByID(c *gin.Context) {
 // @Tags Categories
 // @Accept json
 // @Produce json
-// @Param q query api.ListQuery true "Pagination, search query, and sorting parameters"
+// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
 // @Success 200 {object} api.PaginatedResponse{data=[]PublicCategoryResponse,meta=api.Page} "Paginated list of active categories"
 // @Router /categories [get]
 func (ch *CategoryHandler) ListCategories(c *gin.Context) {
-	q := &api.ListQuery{}
+	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
 	// Consolidate defaults, bounds checks, and sort parsing
-	q.Process(api.QueryOptions{
+	q.Process(pagination.QueryOptions{
 		DefaultPageSize: 10,
 		MaxPageSize:     100,
 	})
@@ -200,20 +201,20 @@ func (ch *CategoryHandler) ListCategories(c *gin.Context) {
 // @Tags Categories
 // @Accept json
 // @Produce json
-// @Param q query api.ListQuery true "Pagination, search query, and sorting parameters"
+// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
 // @Success 200 {object} api.PaginatedResponse{data=[]AdminCategoryResponse,meta=api.Page} "Paginated list of all categories including deleted"
 // @Router /admin/categories [get]
 func (ch *CategoryHandler) ListAdminCategories(c *gin.Context) {
-	q := &api.ListQuery{}
+	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
 	// Consolidate defaults, bounds checks, and sort parsing
-	q.Process(api.QueryOptions{
+	q.Process(pagination.QueryOptions{
 		DefaultPageSize: 10,
 		MaxPageSize:     100,
 	})
