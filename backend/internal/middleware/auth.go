@@ -23,22 +23,14 @@ func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, ok := c.Get("userRole")
 		if !ok {
-			_ = c.Error(
-				apierr.New(
-					http.StatusUnauthorized,
-					"Unauthorized",
-				).WithCode(apierr.CodeUnauthorized),
-			)
+			// No role in context means Authenticate didn't run — treat as unauthenticated
+			_ = c.Error(apierr.New(http.StatusUnauthorized, "Unauthorized").WithCode(apierr.CodeUnauthorized))
 			c.Abort()
 			return
 		}
 		if role.(string) != strings.ToLower(string(requiredRole)) {
-			_ = c.Error(
-				apierr.New(
-					http.StatusUnauthorized,
-					"Unauthorized",
-				).WithCode(apierr.CodeUnauthorized),
-			)
+			// User is authenticated but lacks the required role → 403 Forbidden
+			_ = c.Error(apierr.ErrForbidden("Insufficient permissions").WithCode(apierr.CodeForbidden))
 			c.Abort()
 			return
 		}
@@ -47,53 +39,46 @@ func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 	}
 }
 
-func Authanticate(secrets *config.Secrets) gin.HandlerFunc {
+// Authenticate provides unified authentication middleware for routes.
+// Pass optional=true for public/guest routes that can optionally attach user authentication if present.
+func Authenticate(secrets *config.Secrets, optional ...bool) gin.HandlerFunc {
+	isOptional := len(optional) > 0 && optional[0]
+
 	return func(c *gin.Context) {
+		tokenString := ""
 		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" && strings.HasPrefix(authHeader, prefix) {
+			tokenString = strings.TrimPrefix(authHeader, prefix)
+		} else if cookie, err := c.Cookie("access_token"); err == nil && cookie != "" {
+			tokenString = cookie
+		}
 
-		if authHeader == "" {
-			_ = c.Error(
-				apierr.New(
-					http.StatusUnauthorized,
-					"Unauthorized",
-				).WithCode(apierr.CodeUnauthorized),
-			)
+		if tokenString == "" {
+			if isOptional {
+				c.Next()
+				return
+			}
+			_ = c.Error(apierr.New(http.StatusUnauthorized, "Unauthorized").WithCode(apierr.CodeUnauthorized))
 			c.Abort()
 			return
 		}
 
-		if !strings.HasPrefix(authHeader, prefix) {
-			_ = c.Error(
-				apierr.New(
-					http.StatusUnauthorized,
-					"Unauthorized",
-				).WithCode(apierr.CodeUnauthorized),
-			)
-			c.Abort()
-			return
-		}
-
-		tokenString := strings.TrimPrefix(authHeader, prefix)
-
-		jwt := jwt.NewJWTManager(secrets)
-		claims, err := jwt.VerifyToken(
-			tokenString,
-			secrets.JwtAccessTokenSecretKey,
-		)
-
-		if err != nil {
-			_ = c.Error(
-				apierr.New(
-					http.StatusUnauthorized,
-					"Unauthorized",
-				).WithCode(apierr.CodeUnauthorized),
-			)
+		jwtMgr := jwt.NewJWTManager(secrets)
+		claims, err := jwtMgr.VerifyToken(tokenString, secrets.JwtAccessTokenSecretKey)
+		if err != nil || claims == nil {
+			if isOptional {
+				c.Next()
+				return
+			}
+			_ = c.Error(apierr.New(http.StatusUnauthorized, "Unauthorized").WithCode(apierr.CodeUnauthorized))
 			c.Abort()
 			return
 		}
 
 		c.Set("userID", claims.UserID)
-		c.Set("userRole", claims.UserRole)
+		if claims.UserRole != nil {
+			c.Set("userRole", *claims.UserRole)
+		}
 		c.Next()
 	}
 }

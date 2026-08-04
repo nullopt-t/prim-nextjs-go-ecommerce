@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/auth"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/cart"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/http/swagger"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/notifier"
@@ -52,7 +53,7 @@ type App struct {
 func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	// setup middlewares
 	router.Use(middleware.ErrorHandler(app.logger))
-	router.Use(middleware.CORS())
+	router.Use(middleware.CORS(config.AllowedOrigins...))
 
 	v1 := router.Group("/api/v1")
 	swagger.SetUpDocs(v1)
@@ -105,6 +106,7 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		authService,
 		rateLimiter,
 		app.logger,
+		config.IsProduction,
 	)
 
 	authRouter := auth.NewRouter(
@@ -151,6 +153,7 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	)
 	tagRouter := tag.NewRouter(
 		tagHandler,
+		config.KeysCfg,
 	)
 	tagRouter.MapRoutes(v1)
 
@@ -184,7 +187,7 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	)
 
 	variantHandler := variant.NewHandler(variantService)
-	variantRouter := variant.NewRouter(variantHandler)
+	variantRouter := variant.NewRouter(variantHandler, config.KeysCfg)
 	variantRouter.MapRoutes(v1)
 
 	// product
@@ -202,9 +205,15 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		config.MinioCfg,
 	)
 	productHandler := product.NewHandler(productService)
-	productRouter := product.NewRouter(productHandler)
+	productRouter := product.NewRouter(productHandler, config.KeysCfg)
 	productRouter.MapRoutes(v1)
 
+	// cart
+	cartRepo := cart.NewRepository()
+	cartService := cart.NewService(txRunner, cartRepo, variantService)
+	cartHandler := cart.NewHandler(cartService)
+	cartRouter := cart.NewRouter(cartHandler, config.KeysCfg)
+	cartRouter.MapRoutes(v1)
 }
 
 func (app *App) Shutdown() {

@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
@@ -24,24 +24,20 @@ var allowedProductSortFields = map[string]string{
 	"updated_at": "updated_at",
 }
 
-type Filter struct {
+type productFilter struct {
 	ID             *uuid.UUID
 	PublicID       *string
 	IncludeDeleted bool
 }
 
 type ProductListItem struct {
-	ID         uuid.UUID               `json:"id"`
-	PublicID   string                  `json:"public_id"`
-	Title      string                  `json:"title"`
-	Status     model.PublicationStatus `json:"status"`
-	CategoryID uuid.UUID               `json:"category_id"`
-	BrandID    *uuid.UUID              `json:"brand_id,omitempty"`
-	CreatedAt  time.Time               `json:"created_at"`
+	ID    string `json:"id"`
+	Title string `json:"title"`
 }
 
 type CreateProductMediaInput struct {
 	ID              uuid.UUID
+	PublicID        string
 	ProductID       uuid.UUID
 	StorageObjectID uuid.UUID
 	MediaType       model.MediaType
@@ -111,11 +107,26 @@ func (r *ProductRepository) Create(
 	return nil
 }
 
-// Get fetches a single product matching filter criteria.
-func (r *ProductRepository) Get(
+func (r *ProductRepository) GetByID(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	filter Filter,
+	id uuid.UUID,
+) (*model.Product, error) {
+	return r.get(ctx, qe, productFilter{ID: &id})
+}
+
+func (r *ProductRepository) GetByPublicID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	publicID string,
+) (*model.Product, error) {
+	return r.get(ctx, qe, productFilter{PublicID: &publicID})
+}
+
+func (r *ProductRepository) get(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	filter productFilter,
 ) (*model.Product, error) {
 	if filter.ID == nil && filter.PublicID == nil {
 		return nil, errors.New("get product: filter ID or PublicID is required")
@@ -223,13 +234,13 @@ func (r *ProductRepository) Update(
 func (r *ProductRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	q *api.ListQuery,
+	q *pagination.ListQuery,
 	includeDeleted bool,
-) (*api.PagedResult[ProductListItem], error) {
+) (*pagination.PagedResult[ProductListItem], error) {
 	if q == nil {
-		q = &api.ListQuery{}
+		q = &pagination.ListQuery{}
 	}
-	q.Process(api.QueryOptions{})
+	q.Process(pagination.QueryOptions{})
 
 	whereClauses := make([]string, 0, 2)
 	args := make([]any, 0, 2)
@@ -260,7 +271,7 @@ func (r *ProductRepository) List(
 	}
 
 	if total == 0 {
-		return api.NewPagedResult([]*ProductListItem{}, api.NewPage(q.Page, q.PageSize, 0)), nil
+		return pagination.NewPagedResult([]*ProductListItem{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
 	}
 
 	// 2. Sorting
@@ -273,7 +284,7 @@ func (r *ProductRepository) List(
 				continue
 			}
 			direction := "ASC"
-			if sort.Order == api.SortDesc {
+			if sort.Order == pagination.SortDesc {
 				direction = "DESC"
 			}
 			sortParts = append(sortParts, fmt.Sprintf("%s %s", dbField, direction))
@@ -286,13 +297,8 @@ func (r *ProductRepository) List(
 	// 3. Paginated Select
 	selectQuery := fmt.Sprintf(`
 		SELECT
-			id,
-			public_id,
-			title,
-			status,
-			category_id,
-			brand_id,
-			created_at
+			public_id as id,
+			title
 		FROM products
 		%s
 		%s
@@ -311,14 +317,22 @@ func (r *ProductRepository) List(
 		return nil, fmt.Errorf("collect products: %w", err)
 	}
 
-	return api.NewPagedResult(items, api.NewPage(q.Page, q.PageSize, total)), nil
+	return pagination.NewPagedResult(items, pagination.NewPage(q.Page, q.PageSize, total)), nil
 }
 
-// SoftDelete soft-deletes a product by ID or public_id.
-func (r *ProductRepository) SoftDelete(
+// SoftDeleteByID soft-deletes a product by ID.
+func (r *ProductRepository) SoftDeleteByID(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	filter Filter,
+	id uuid.UUID,
+) error {
+	return r.softDelete(ctx, qe, productFilter{ID: &id})
+}
+
+func (r *ProductRepository) softDelete(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	filter productFilter,
 ) error {
 	if filter.ID == nil && filter.PublicID == nil {
 		return errors.New("soft delete product: filter ID or PublicID is required")
@@ -403,22 +417,27 @@ func (r *ProductRepository) AddMedia(
 	if in.ID == uuid.Nil {
 		in.ID = uuid.New()
 	}
+	if in.PublicID == "" {
+		in.PublicID = uuid.NewString()
+	}
 
 	query := `
 		INSERT INTO product_media (
 			id,
+			public_id,
 			product_id,
 			storage_object_id,
 			media_type,
 			sort_order
 		)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
 	_, err := qe.Exec(
 		ctx,
 		query,
 		in.ID,
+		in.PublicID,
 		in.ProductID,
 		in.StorageObjectID,
 		in.MediaType,
@@ -430,6 +449,7 @@ func (r *ProductRepository) AddMedia(
 
 	return &model.ProductMedia{
 		ID:              in.ID,
+		PublicID:        in.PublicID,
 		ProductID:       in.ProductID,
 		StorageObjectID: in.StorageObjectID,
 		MediaType:       in.MediaType,
@@ -450,6 +470,7 @@ func (r *ProductRepository) ListMediaByProductID(
 	query := `
 		SELECT
 			m.id,
+			m.public_id,
 			m.product_id,
 			m.storage_object_id,
 			m.media_type,
@@ -479,6 +500,7 @@ func (r *ProductRepository) ListMediaByProductID(
 		}
 		if err := rows.Scan(
 			&m.ID,
+			&m.PublicID,
 			&m.ProductID,
 			&m.StorageObjectID,
 			&m.MediaType,

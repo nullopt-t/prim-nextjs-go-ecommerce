@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
@@ -23,7 +23,7 @@ var allowedVariantSortFields = map[string]string{
 	"updated_at": "updated_at",
 }
 
-type Filter struct {
+type variantFilter struct {
 	ID             *uuid.UUID
 	ProductID      *uuid.UUID
 	IncludeDeleted bool
@@ -40,7 +40,7 @@ type UpdateVariantFields struct {
 
 type ListVariantOptions struct {
 	ProductID      uuid.UUID
-	Query          *api.ListQuery
+	Query          *pagination.ListQuery
 	IncludeDeleted bool
 }
 
@@ -81,8 +81,8 @@ func (vr *VariantRepository) Create(
 		variant.UpdatedAt = now
 	}
 
-	if variant.PublicID == uuid.Nil {
-		variant.PublicID = uuid.New()
+	if variant.PublicID == "" {
+		variant.PublicID = uuid.New().String()
 	}
 
 	query := `
@@ -124,10 +124,19 @@ func (vr *VariantRepository) Create(
 	return nil
 }
 
-func (vr *VariantRepository) Get(
+// GetByID fetches a single variant by ID.
+func (vr *VariantRepository) GetByID(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	filter *Filter,
+	id uuid.UUID,
+) (*model.ProductVariant, error) {
+	return vr.get(ctx, qe, &variantFilter{ID: &id})
+}
+
+func (vr *VariantRepository) get(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	filter *variantFilter,
 ) (*model.ProductVariant, error) {
 	if filter == nil || filter.ID == nil {
 		return nil, errors.New("get variant: filter ID is required")
@@ -291,16 +300,16 @@ func (vr *VariantRepository) ListByProductID(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	opts ListVariantOptions,
-) (*api.PagedResult[model.ProductVariant], error) {
+) (*pagination.PagedResult[model.ProductVariant], error) {
 	if opts.ProductID == uuid.Nil {
 		return nil, errors.New("list variants: productID is required")
 	}
 
 	q := opts.Query
 	if q == nil {
-		q = &api.ListQuery{}
+		q = &pagination.ListQuery{}
 	}
-	q.Process(api.QueryOptions{})
+	q.Process(pagination.QueryOptions{})
 
 	whereClauses := []string{"product_id = $1"}
 	args := []any{opts.ProductID}
@@ -326,7 +335,7 @@ func (vr *VariantRepository) ListByProductID(
 	}
 
 	if total == 0 {
-		return api.NewPagedResult([]*model.ProductVariant{}, api.NewPage(q.Page, q.PageSize, 0)), nil
+		return pagination.NewPagedResult([]*model.ProductVariant{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
 	}
 
 	orderBy := "ORDER BY is_default DESC, created_at ASC"
@@ -338,7 +347,7 @@ func (vr *VariantRepository) ListByProductID(
 				continue
 			}
 			direction := "ASC"
-			if sort.Order == api.SortDesc {
+			if sort.Order == pagination.SortDesc {
 				direction = "DESC"
 			}
 			sortParts = append(sortParts, fmt.Sprintf("%s %s", dbField, direction))
@@ -380,7 +389,7 @@ func (vr *VariantRepository) ListByProductID(
 		return nil, fmt.Errorf("list variants collect rows: %w", err)
 	}
 
-	return api.NewPagedResult(variants, api.NewPage(q.Page, q.PageSize, total)), nil
+	return pagination.NewPagedResult(variants, pagination.NewPage(q.Page, q.PageSize, total)), nil
 }
 
 func (vr *VariantRepository) Delete(

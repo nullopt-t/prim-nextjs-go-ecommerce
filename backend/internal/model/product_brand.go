@@ -8,6 +8,7 @@ import (
 
 type ProductBrand struct {
 	ID                  uuid.UUID
+	PublicID            string
 	Name                string
 	Link                *string
 	LogoStorageObjectID *uuid.UUID

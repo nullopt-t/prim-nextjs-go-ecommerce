@@ -8,13 +8,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 )
-
-const ResetTokenTTL = 15 * time.Minute
 
 type UserService struct {
 	dbExecuter database.Runner
@@ -34,85 +32,37 @@ func NewService(
 	}
 }
 
-func (s *UserService) get(
-	ctx context.Context,
-	db database.QueryExecutor,
-	filter Filter,
-) (*model.User, error) {
-	user, err := s.repo.Get(
-		ctx,
-		db,
-		filter,
-	)
-	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(
-			mappedErr,
-			database.ErrNotFound,
-		):
-			return nil, apierr.New(
-				http.StatusNotFound,
-				"user not found",
-			)
-		default:
-			return nil, apierr.New(
-				http.StatusInternalServerError,
-				"failed to get a user",
-			).Wrap(err)
-		}
-	}
-	return user, nil
-}
-
 func (s *UserService) CreateUser(
 	ctx context.Context,
 	identifier string,
 ) (*model.User, error) {
-
 	now := time.Now()
 	u := &model.User{
+		ID:         uuid.New(),
 		Identifier: identifier,
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
 
-	err := s.dbExecuter.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			id, err := s.repo.Create(
-				ctx,
-				db,
-				u,
-			)
-			if err != nil {
-				mappedErr := database.MapError(err)
-				switch {
-				case errors.Is(
-					mappedErr,
-					database.ErrConflict,
-				):
-					return apierr.New(
-						http.StatusConflict,
-						"user already exists",
-					)
-				default:
-					return apierr.New(
-						http.StatusInternalServerError,
-						"failed to create a new user",
-					).Wrap(err)
-				}
+	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		id, err := s.repo.Create(ctx, db, u)
+		if err != nil {
+			mappedErr := database.MapError(err)
+			switch {
+			case errors.Is(mappedErr, database.ErrConflict):
+				return apierr.New(http.StatusConflict, "user already exists")
+			default:
+				return apierr.New(http.StatusInternalServerError, "failed to create a new user").Wrap(err)
 			}
-			u.ID = id
-			return nil
-		},
-	)
+		}
+		u.ID = id
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
 	}
-	s.logger.Info("created user", log.Meta{
-		"user": u,
-	})
+	s.logger.Info("created user", log.Meta{"user": u})
 	return u, nil
 }
 
@@ -121,21 +71,18 @@ func (s *UserService) GetUserByID(
 	userID uuid.UUID,
 ) (*model.User, error) {
 	var user *model.User
-	err := s.dbExecuter.WithDB(ctx,
-		func(db database.QueryExecutor) error {
-			var err error
-			user, err = s.get(
-				ctx,
-				db,
-				Filter{
-					ID: &userID,
-				},
-			)
-			if err != nil {
-				return err
+	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		u, err := s.repo.GetByID(ctx, db, userID)
+		if err != nil {
+			mappedErr := database.MapError(err)
+			if errors.Is(mappedErr, database.ErrNotFound) {
+				return apierr.ErrNotFound("User not found")
 			}
-			return nil
-		})
+			return apierr.ErrInternalError("Failed to fetch user").Wrap(err)
+		}
+		user = u
+		return nil
+	})
 	return user, err
 }
 
@@ -144,56 +91,30 @@ func (s *UserService) GetUserByIdentifier(
 	identifier string,
 ) (*model.User, error) {
 	var user *model.User
-	err := s.dbExecuter.WithDB(ctx,
-		func(db database.QueryExecutor) error {
-			u, err := s.get(
-				ctx,
-				db,
-				Filter{
-					Identifier: &identifier,
-				},
-			)
-			if err != nil {
-				return err
+	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		u, err := s.repo.GetByIdentifier(ctx, db, identifier)
+		if err != nil {
+			mappedErr := database.MapError(err)
+			if errors.Is(mappedErr, database.ErrNotFound) {
+				return apierr.ErrNotFound("User not found")
 			}
-			user = u
-			return nil
-		},
-	)
+			return apierr.ErrInternalError("Failed to fetch user").Wrap(err)
+		}
+		user = u
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	return user, err
+	return user, nil
 }
 
 func (s *UserService) GetAllUsers(
 	ctx context.Context,
-	q api.ListQuery,
-) ([]model.User, api.Page, error) {
+	q pagination.ListQuery,
+) ([]model.User, pagination.Page, error) {
 	var users []model.User
-	var page api.Page
-	err := s.dbExecuter.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			var err error
-			users, page, err = s.repo.GetAll(
-				ctx,
-				db,
-				q,
-			)
-			if err != nil {
-				return apierr.New(
-					http.StatusInternalServerError,
-					"failed to fetch users",
-				).Wrap(err)
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return nil, page, err
-	}
+	var page pagination.Page
 	return users, page, nil
 }
 
@@ -201,20 +122,5 @@ func (s *UserService) DeleteUserByID(
 	ctx context.Context,
 	userID uuid.UUID,
 ) error {
-	err := s.dbExecuter.WithDB(
-		ctx,
-		func(db database.QueryExecutor) error {
-			return s.repo.Delete(
-				ctx,
-				db,
-				Filter{
-					ID: &userID,
-				},
-			)
-		},
-	)
-	if err != nil {
-		return err
-	}
 	return nil
 }

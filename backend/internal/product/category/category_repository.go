@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
@@ -30,21 +30,27 @@ func (cr *CategoryRepository) Create(
 	qe database.QueryExecutor,
 	category *model.ProductCategory,
 ) error {
+	if category.PublicID == "" {
+		category.PublicID = uuid.NewString()
+	}
+
 	const query = `
 		INSERT INTO product_categories (
 			id,
+			public_id,
 			parent_id,
 			name,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
 	_, err := qe.Exec(
 		ctx,
 		query,
 		category.ID,
+		category.PublicID,
 		category.ParentID,
 		category.Name,
 		category.CreatedAt,
@@ -68,6 +74,7 @@ func (cr *CategoryRepository) get(
 	query := `
 		SELECT
 			id,
+			public_id,
 			parent_id,
 			name,
 			created_at,
@@ -223,7 +230,7 @@ var allowedCategorySortFields = map[string]string{
 }
 
 type ListCategoryOptions struct {
-	ListQuery      *api.ListQuery
+	ListQuery      *pagination.ListQuery
 	IncludeDeleted bool // set true for admin views
 }
 
@@ -231,13 +238,13 @@ func (cr *CategoryRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	opts ListCategoryOptions,
-) (*api.PagedResult[model.ProductCategory], error) {
+) (*pagination.PagedResult[model.ProductCategory], error) {
 	q := opts.ListQuery
 	if q == nil {
-		q = &api.ListQuery{}
+		q = &pagination.ListQuery{}
 	}
 	// Guarantee sanitized Page, PageSize, Offset, and Sort
-	q.Process(api.QueryOptions{})
+	q.Process(pagination.QueryOptions{})
 
 	whereClauses := []string{"1=1"}
 	args := make([]any, 0, 2)
@@ -264,7 +271,7 @@ func (cr *CategoryRepository) List(
 	}
 
 	if total == 0 {
-		return api.NewPagedResult([]*model.ProductCategory{}, api.NewPage(q.Page, q.PageSize, 0)), nil
+		return pagination.NewPagedResult([]*model.ProductCategory{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
 	}
 
 	// 2. Build whitelist-guarded ORDER BY clause using q.Sort
@@ -277,7 +284,7 @@ func (cr *CategoryRepository) List(
 				continue
 			}
 			dir := "ASC"
-			if sort.Order == api.SortDesc {
+			if sort.Order == pagination.SortDesc {
 				dir = "DESC"
 			}
 			sortParts = append(sortParts, fmt.Sprintf("%s %s", dbField, dir))
@@ -291,6 +298,7 @@ func (cr *CategoryRepository) List(
 	selectQuery := fmt.Sprintf(`
 		SELECT
 			id,
+			public_id,
 			parent_id,
 			name,
 			created_at,
@@ -315,6 +323,7 @@ func (cr *CategoryRepository) List(
 		var cat model.ProductCategory
 		if err := rows.Scan(
 			&cat.ID,
+			&cat.PublicID,
 			&cat.ParentID,
 			&cat.Name,
 			&cat.CreatedAt,
@@ -330,6 +339,6 @@ func (cr *CategoryRepository) List(
 		return nil, fmt.Errorf("iterate product category rows: %w", err)
 	}
 
-	page := api.NewPage(q.Page, q.PageSize, total)
-	return api.NewPagedResult(categories, page), nil
+	page := pagination.NewPage(q.Page, q.PageSize, total)
+	return pagination.NewPagedResult(categories, page), nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
@@ -44,25 +45,11 @@ func (bs *BrandService) CreateBrand(
 	ctx context.Context,
 	in *CreateBrandInput,
 ) (*model.ProductBrand, error) {
-	if in == nil {
-		return nil, apierr.ErrBadRequest("Request body is required").
-			WithCode(apierr.CodeInvalidPayload)
-	}
-
-	name := strings.TrimSpace(in.Name)
-	if name == "" {
-		return nil, apierr.ErrBadRequest("Validation error").
-			WithCode(apierr.CodeValidationFailed).
-			WithFields(api.FieldError{
-				Field:   "name",
-				Message: "brand name cannot be empty",
-			})
-	}
-
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	brand := &model.ProductBrand{
 		ID:        uuid.New(),
-		Name:      name,
+		PublicID:  uuid.NewString(),
+		Name:      in.Name,
 		Link:      in.Link,
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -104,11 +91,6 @@ func (bs *BrandService) GetBrandByID(
 	ctx context.Context,
 	brandID uuid.UUID,
 ) (*model.ProductBrand, error) {
-	if brandID == uuid.Nil {
-		return nil, apierr.ErrBadRequest("Brand ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
 	var brand *model.ProductBrand
 	err := bs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
@@ -140,11 +122,6 @@ func (bs *BrandService) UpdateBrand(
 	brandID uuid.UUID,
 	in UpdateBrandInput,
 ) error {
-	if brandID == uuid.Nil {
-		return apierr.ErrBadRequest("Brand ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
 	fields := UpdateBrandFields{
 		Link:                in.Link,
 		LogoStorageObjectID: in.LogoStorageObjectID,
@@ -202,14 +179,14 @@ func (bs *BrandService) UpdateBrand(
 
 func (bs *BrandService) ListBrands(
 	ctx context.Context,
-	q *api.ListQuery,
+	q *pagination.ListQuery,
 	includeDeleted bool,
-) (*api.PagedResult[model.ProductBrand], error) {
+) (*pagination.PagedResult[model.ProductBrand], error) {
 	if q == nil {
-		q = &api.ListQuery{}
+		q = &pagination.ListQuery{}
 	}
 
-	var result *api.PagedResult[model.ProductBrand]
+	var result *pagination.PagedResult[model.ProductBrand]
 	err := bs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		result, repoErr = bs.brepo.List(ctx, db, ListBrandOptions{
@@ -231,15 +208,15 @@ func (bs *BrandService) ListBrands(
 
 func (bs *BrandService) List(
 	ctx context.Context,
-	q *api.ListQuery,
-) (*api.PagedResult[model.ProductBrand], error) {
+	q *pagination.ListQuery,
+) (*pagination.PagedResult[model.ProductBrand], error) {
 	return bs.ListBrands(ctx, q, false)
 }
 
 func (bs *BrandService) AdminList(
 	ctx context.Context,
-	q *api.ListQuery,
-) (*api.PagedResult[model.ProductBrand], error) {
+	q *pagination.ListQuery,
+) (*pagination.PagedResult[model.ProductBrand], error) {
 	return bs.ListBrands(ctx, q, true)
 }
 

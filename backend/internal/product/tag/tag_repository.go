@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
@@ -22,7 +22,7 @@ var allowedTagSortFields = map[string]string{
 	"updated_at": "updated_at",
 }
 
-type Filter struct {
+type tagFilter struct {
 	ID             *uuid.UUID
 	Name           *string
 	IncludeDeleted bool
@@ -33,7 +33,7 @@ type UpdateTagFields struct {
 }
 
 type ListTagOptions struct {
-	Query          *api.ListQuery
+	Query          *pagination.ListQuery
 	IncludeDeleted bool
 }
 
@@ -61,20 +61,26 @@ func (tr *TagRepository) Create(
 		tag.UpdatedAt = now
 	}
 
+	if tag.PublicID == "" {
+		tag.PublicID = uuid.NewString()
+	}
+
 	query := `
 		INSERT INTO product_tags (
 			id,
+			public_id,
 			name,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4)
+		VALUES ($1, $2, $3, $4, $5)
 	`
 
 	_, err := qe.Exec(
 		ctx,
 		query,
 		tag.ID,
+		tag.PublicID,
 		tag.Name,
 		tag.CreatedAt,
 		tag.UpdatedAt,
@@ -86,11 +92,28 @@ func (tr *TagRepository) Create(
 	return nil
 }
 
-// Get fetches a single tag by ID or Name (optionally including soft-deleted items).
-func (tr *TagRepository) Get(
+// GetByID fetches a single tag by ID.
+func (tr *TagRepository) GetByID(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	filter *Filter,
+	id uuid.UUID,
+) (*model.ProductTag, error) {
+	return tr.get(ctx, qe, &tagFilter{ID: &id})
+}
+
+// GetByName fetches a single tag by Name.
+func (tr *TagRepository) GetByName(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	name string,
+) (*model.ProductTag, error) {
+	return tr.get(ctx, qe, &tagFilter{Name: &name})
+}
+
+func (tr *TagRepository) get(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	filter *tagFilter,
 ) (*model.ProductTag, error) {
 	if filter == nil || (filter.ID == nil && filter.Name == nil) {
 		return nil, errors.New("get tag: filter ID or Name is required")
@@ -179,12 +202,12 @@ func (tr *TagRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	opts ListTagOptions,
-) (*api.PagedResult[model.ProductTag], error) {
+) (*pagination.PagedResult[model.ProductTag], error) {
 	q := opts.Query
 	if q == nil {
-		q = &api.ListQuery{}
+		q = &pagination.ListQuery{}
 	}
-	q.Process(api.QueryOptions{})
+	q.Process(pagination.QueryOptions{})
 
 	whereClauses := []string{"1=1"}
 	args := make([]any, 0, 2)
@@ -211,7 +234,7 @@ func (tr *TagRepository) List(
 	}
 
 	if total == 0 {
-		return api.NewPagedResult([]*model.ProductTag{}, api.NewPage(q.Page, q.PageSize, 0)), nil
+		return pagination.NewPagedResult([]*model.ProductTag{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
 	}
 
 	// 2. Whitelisted ORDER BY
@@ -224,7 +247,7 @@ func (tr *TagRepository) List(
 				continue
 			}
 			direction := "ASC"
-			if sort.Order == api.SortDesc {
+			if sort.Order == pagination.SortDesc {
 				direction = "DESC"
 			}
 			sortParts = append(sortParts, fmt.Sprintf("%s %s", dbField, direction))
@@ -260,7 +283,7 @@ func (tr *TagRepository) List(
 		return nil, fmt.Errorf("list tags collect rows: %w", err)
 	}
 
-	return api.NewPagedResult(tags, api.NewPage(q.Page, q.PageSize, total)), nil
+	return pagination.NewPagedResult(tags, pagination.NewPage(q.Page, q.PageSize, total)), nil
 }
 
 // Delete performs a soft-delete on an active tag by ID.
@@ -338,4 +361,35 @@ func (tr *TagRepository) ReplaceTagsForProduct(
 	}
 
 	return nil
+}
+
+// GetTagsByProductID fetches all active tags assigned to a product.
+func (tr *TagRepository) GetTagsByProductID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) ([]*model.ProductTag, error) {
+	if productID == uuid.Nil {
+		return nil, errors.New("get product tags: productID is required")
+	}
+
+	query := `
+		SELECT t.id, t.public_id, t.name, t.created_at, t.updated_at, t.deleted_at
+		FROM product_tags t
+		INNER JOIN product_tag_assignments pta ON t.id = pta.tag_id
+		WHERE pta.product_id = $1 AND t.deleted_at IS NULL
+		ORDER BY t.name ASC
+	`
+
+	rows, err := qe.Query(ctx, query, productID)
+	if err != nil {
+		return nil, fmt.Errorf("get product tags query: %w", err)
+	}
+
+	tags, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[model.ProductTag])
+	if err != nil {
+		return nil, fmt.Errorf("get product tags collect: %w", err)
+	}
+
+	return tags, nil
 }

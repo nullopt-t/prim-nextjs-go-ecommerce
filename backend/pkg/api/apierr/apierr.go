@@ -8,6 +8,8 @@ import (
 	"github.com/nullopt-t/errs"
 )
 
+type FieldError = api.FieldError
+
 // Standard API Error Codes (Generic & Infrastructure Concerns)
 const (
 	CodeBadRequest            = "BAD_REQUEST"
@@ -44,7 +46,7 @@ type ApiError struct {
 	Code string `json:"code,omitempty"`
 
 	// Detailed field validation errors
-	Fields []api.FieldError `json:"details,omitempty"`
+	Fields []FieldError `json:"details,omitempty"`
 }
 
 // New constructs a new ApiError requiring HTTP status code and message.
@@ -70,7 +72,7 @@ func (ae *ApiError) Wrap(err error) *ApiError {
 	return ae
 }
 
-func (ae *ApiError) WithFields(fields ...api.FieldError) *ApiError {
+func (ae *ApiError) WithFields(fields ...FieldError) *ApiError {
 	ae.Fields = append(ae.Fields, fields...)
 	return ae
 }

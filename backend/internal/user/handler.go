@@ -7,6 +7,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
@@ -109,7 +110,7 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 }
 
 func (h *Handler) GetAllUsers(c *gin.Context) {
-	var q api.ListQuery
+	var q pagination.ListQuery
 	if err := c.ShouldBindQuery(&q); err != nil {
 		validation.ValidationError(c, err)
 		return

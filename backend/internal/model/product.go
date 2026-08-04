@@ -101,6 +101,7 @@ func ParseMediaType(contentType string) (MediaType, error) {
 
 type ProductMedia struct {
 	ID              uuid.UUID
+	PublicID        string
 	StorageObjectID uuid.UUID
 	ProductID       uuid.UUID
 

@@ -2,30 +2,20 @@ package user
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
-
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
-type IdentifierType string
-
-const (
-	IdentifierTypeEmail IdentifierType = "email"
-	IdentifierTypePhone IdentifierType = "phone"
-)
-
-type Filter struct {
+type userFilter struct {
 	ID         *uuid.UUID
 	Identifier *string
 }
 
-type UserRepository struct {
-}
+type UserRepository struct{}
 
 func NewPostgresRepository() *UserRepository {
 	return &UserRepository{}
@@ -36,48 +26,60 @@ func (r *UserRepository) Create(
 	qe database.QueryExecutor,
 	user *model.User,
 ) (uuid.UUID, error) {
-	var createdUserID uuid.UUID
-	err := qe.QueryRow(
-		ctx,
-		`
-		INSERT INTO users (
-			identifier
-		)
-		VALUES ($1)
-		RETURNING id
-		`,
-		user.Identifier,
-	).Scan(&createdUserID)
+	if user.ID == uuid.Nil {
+		user.ID = uuid.New()
+	}
+	now := time.Now().UTC()
+	if user.CreatedAt.IsZero() {
+		user.CreatedAt = now
+	}
+	if user.UpdatedAt.IsZero() {
+		user.UpdatedAt = now
+	}
+	role := "customer"
+	if user.Role != nil {
+		role = string(*user.Role)
+	}
 
+	query := `
+		INSERT INTO users (id, email, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id
+	`
+	var createdUserID uuid.UUID
+	err := qe.QueryRow(ctx, query, user.ID, user.Identifier, role, user.CreatedAt, user.UpdatedAt).Scan(&createdUserID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create user: %w", err)
 	}
 	return createdUserID, nil
 }
 
-func (r *UserRepository) Get(
+func (r *UserRepository) GetByID(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	filter Filter,
+	id uuid.UUID,
 ) (*model.User, error) {
+	return r.get(ctx, qe, userFilter{ID: &id})
+}
 
+func (r *UserRepository) GetByIdentifier(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	identifier string,
+) (*model.User, error) {
+	return r.get(ctx, qe, userFilter{Identifier: &identifier})
+}
+
+func (r *UserRepository) get(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	filter userFilter,
+) (*model.User, error) {
 	query := `
-		SELECT
-			id,
-			identifier,
-			role,
-			status,
-			last_login_at,
-			last_login_ip,
-			locked_until,
-			suspended_until,
-			deleted_at,
-			created_at,
-			updated_at
+		SELECT id, email, role, created_at, updated_at, deleted_at
 		FROM users
 		WHERE deleted_at IS NULL
 	`
-
 	args := []any{}
 	i := 1
 
@@ -88,147 +90,27 @@ func (r *UserRepository) Get(
 	}
 
 	if filter.Identifier != nil {
-		query += fmt.Sprintf(" AND identifier = $%d", i)
+		query += fmt.Sprintf(" AND lower(email) = lower($%d)", i)
 		args = append(args, *filter.Identifier)
 	}
 
 	var u model.User
+	var roleStr string
 
 	err := qe.QueryRow(ctx, query, args...).Scan(
 		&u.ID,
 		&u.Identifier,
-		&u.Role,
-		&u.Status,
-		&u.LastLoginAt,
-		&u.LastLoginIP,
-		&u.LockedUntil,
-		&u.SuspendedUntil,
-		&u.DeletedAt,
+		&roleStr,
 		&u.CreatedAt,
 		&u.UpdatedAt,
+		&u.DeletedAt,
 	)
-
 	if err != nil {
-		return nil, fmt.Errorf("get user: %w", err)
+		return nil, err
 	}
 
+	rVal := model.UserRole(roleStr)
+	u.Role = &rVal
+	u.Status = model.StatusActive
 	return &u, nil
-}
-func (r *UserRepository) Delete(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	filter Filter,
-) error {
-	query := `UPDATE users SET deleted_at = NOW(), status = 'deleted' WHERE deleted_at IS NULL`
-	args := []interface{}{}
-
-	if filter.ID != nil {
-		query += ` AND id = $1`
-		args = append(args, *filter.ID)
-	}
-	if filter.Identifier != nil {
-		query += ` AND identifier = $2`
-		args = append(args, *filter.Identifier)
-	}
-
-	res, err := qe.Exec(
-		ctx,
-		query,
-		args...,
-	)
-	if err != nil {
-		return fmt.Errorf("delete user by id: %w", err)
-	}
-
-	rows := res.RowsAffected()
-	if rows == 0 {
-		return sql.ErrNoRows
-	}
-
-	return nil
-}
-
-func (r *UserRepository) GetAll(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	q api.ListQuery,
-) ([]model.User, api.Page, error) {
-
-	if q.Page < 1 {
-		q.Page = 1
-	}
-	if q.PageSize <= 0 {
-		q.PageSize = 10
-	}
-
-	offset := (q.Page - 1) * q.PageSize
-
-	var users []model.User
-
-	rows, err := qe.Query(
-		ctx,
-		`SELECT
-			id,
-			identifier,
-			status,
-			last_login_at,
-			last_login_ip,
-			suspended_until,
-			locked_until,
-			deleted_at,
-			created_at,
-			updated_at
-		FROM users
-		WHERE deleted_at IS NULL
-		ORDER BY created_at DESC
-		LIMIT $1 OFFSET $2`,
-		q.PageSize,
-		offset,
-	)
-	if err != nil {
-		return nil, api.Page{}, fmt.Errorf("get all users: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var u model.User
-
-		if err := rows.Scan(
-			&u.ID,
-			&u.Identifier,
-			&u.Status,
-			&u.LastLoginAt,
-			&u.LastLoginIP,
-			&u.SuspendedUntil,
-			&u.LockedUntil,
-			&u.DeletedAt,
-			&u.CreatedAt,
-			&u.UpdatedAt,
-		); err != nil {
-			return nil, api.Page{}, fmt.Errorf("scan user: %w", err)
-		}
-
-		users = append(users, u)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, api.Page{}, fmt.Errorf("iterate users: %w", err)
-	}
-
-	var total int
-	err = qe.QueryRow(
-		ctx,
-		`SELECT COUNT(*) FROM users WHERE deleted_at IS NULL`,
-	).Scan(&total)
-	if err != nil {
-		return nil, api.Page{}, fmt.Errorf("count users: %w", err)
-	}
-
-	page := api.Page{
-		Page:       q.Page,
-		PageSize:   q.PageSize,
-		TotalItems: total,
-	}
-
-	return users, page, nil
 }

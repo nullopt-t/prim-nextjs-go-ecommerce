@@ -5,15 +5,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 )
 
 func ValidationError(c *gin.Context, err error) {
 	if ve, ok := err.(validator.ValidationErrors); ok && ve != nil {
-		fieldErrors := make([]api.FieldError, 0, len(ve))
+		fieldErrors := make([]apierr.FieldError, 0, len(ve))
 		for _, e := range ve {
-			fieldErrors = append(fieldErrors, api.FieldError{
+			fieldErrors = append(fieldErrors, apierr.FieldError{
 				Field: e.Field(),
 				Tags:  e.Tag(),
 			})

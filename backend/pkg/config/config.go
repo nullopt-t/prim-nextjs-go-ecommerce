@@ -1,6 +1,10 @@
 package config
 
-import "github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
+import (
+	"strings"
+
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
+)
 
 type DatabaseConfig struct {
 	DBHost     string
@@ -42,17 +46,25 @@ type MinioConfig struct {
 }
 
 type Config struct {
-	ClientCfg *ClientConfig
-	DBCfg     *DatabaseConfig
-	RedisCfg  *RedisConfig
-	SMTPCfg   *SMTPConfig
-	KeysCfg   *Secrets
-	SvPort    string
-	MinioCfg  *MinioConfig
+	ClientCfg      *ClientConfig
+	DBCfg          *DatabaseConfig
+	RedisCfg       *RedisConfig
+	SMTPCfg        *SMTPConfig
+	KeysCfg        *Secrets
+	SvPort         string
+	MinioCfg       *MinioConfig
+	AllowedOrigins []string // CORS_ALLOWED_ORIGINS comma-separated
+	IsProduction   bool     // APP_ENV=production
 }
 
 func Load() *Config {
+	rawOrigins := utils.GetEnvOrDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
+	allowedOrigins := splitAndTrim(rawOrigins)
+	appEnv := utils.GetEnvOrDefault("APP_ENV", "development")
+
 	return &Config{
+		AllowedOrigins: allowedOrigins,
+		IsProduction:   appEnv == "production",
 		MinioCfg: &MinioConfig{
 			Endpoint:  utils.GetEnvOrDefault("MINIO_ENDPOINT", "minio:9000"),
 			PublicURL: utils.GetEnvOrDefault("MINIO_PUBLIC_URL", "http://localhost:9000"),
@@ -88,4 +100,15 @@ func Load() *Config {
 		},
 		SvPort: utils.GetEnvOrDefault("HTTP_PORT", "8080"),
 	}
+}
+
+func splitAndTrim(s string) []string {
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
 }

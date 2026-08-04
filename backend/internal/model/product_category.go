@@ -7,7 +7,8 @@ import (
 )
 
 type ProductCategory struct {
-	ID uuid.UUID
+	ID       uuid.UUID
+	PublicID string
 
 	ParentID *uuid.UUID
 	Name     string
