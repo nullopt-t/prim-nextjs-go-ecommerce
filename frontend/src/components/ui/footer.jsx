@@ -4,7 +4,9 @@ import {
 	FaSquareXTwitter,
 	FaTiktok,
 } from "react-icons/fa6";
+import { Brand } from "@/components/ui";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 const currentDate = new Date().getFullYear();
 
@@ -20,16 +22,19 @@ export function Footer() {
 					id: "cat_1",
 					slug: "audio",
 					name: "Audio",
+					path: "/home/products/audio",
 				},
 				{
 					id: "cat_2",
 					slug: "wearables",
 					name: "Wearables",
+					path: "/home/products/wearables",
 				},
 				{
 					id: "cat_3",
 					slug: "desk-setup",
 					name: "Desk Setup",
+					path: "/home/products/desk-setup",
 				},
 			],
 		},
@@ -38,28 +43,34 @@ export function Footer() {
 			title: "footer.support",
 			content: [
 				{
-					id: "supp-1",
+					id: "supp_1",
 					name: "footer.contactUs",
+					path: "/home/contact",
 				},
 				{
 					id: "supp_2",
 					name: "footer.faqs",
+					path: "/home/faqs",
 				},
 				{
 					id: "supp_3",
 					name: "footer.shipping",
+					path: "/home/shipping",
 				},
 				{
 					id: "supp_4",
 					name: "footer.returns",
+					path: "/home/returns",
 				},
 				{
 					id: "supp_5",
 					name: "footer.trackOrders",
+					path: "/home/user/orders",
 				},
 				{
 					id: "supp_6",
 					name: "footer.sizeGuide",
+					path: "/home/size-guide",
 				},
 			],
 		},
@@ -68,24 +79,29 @@ export function Footer() {
 			title: "footer.company",
 			content: [
 				{
-					id: "comp-1",
+					id: "comp_1",
 					name: "footer.aboutUs",
+					path: "/about",
 				},
 				{
-					id: "comp-2",
+					id: "comp_2",
 					name: "footer.careers",
+					path: "/home/careers",
 				},
 				{
-					id: "comp-3",
+					id: "comp_3",
 					name: "footer.press",
+					path: "/home/press",
 				},
 				{
-					id: "comp-4",
+					id: "comp_4",
 					name: "footer.sustainability",
+					path: "/home/sustainability",
 				},
 				{
-					id: "comp-5",
+					id: "comp_5",
 					name: "footer.blog",
+					path: "/home/blog",
 				},
 			],
 		},
@@ -114,10 +130,7 @@ export function Footer() {
 		<div className="bg-footer p-2.5 md:p-5 lg:p-10">
 			<div className="mb-5 flex flex-col gap-10 md:flex-row text-white text-txt-sm md:text-txt-md lg:text-txt-lg">
 				<div className="flex-1">
-					<p className="mb-2.5 font-black text-title-sm md:text-title-md">
-						<span className="text-white">PRI</span>
-						<span className="text-accent-brand">M</span>
-					</p>
+					<Brand />
 					<p className="text-muted-foreground">
 						{t("footer.footerDescription")}
 					</p>
@@ -129,12 +142,13 @@ export function Footer() {
 						</p>
 						<p className="flex flex-col gap-2.5">
 							{value.content.map((content) => (
-								<span
+								<Link
+									to={content.path}
 									key={content.id}
 									className="capitalize text-muted-foreground cursor-pointer hover:text-accent-brand"
 								>
 									{t(content.name)}
-								</span>
+								</Link>
 							))}
 						</p>
 					</div>
