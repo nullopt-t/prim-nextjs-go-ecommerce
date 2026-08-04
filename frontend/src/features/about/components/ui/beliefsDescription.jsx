@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import Title from "@/components/ui/title";
+import { Title } from "@/components/ui";
 
 export default function BeliefsDescription() {
 	const { t } = useTranslation("about");

@@ -1,5 +1,5 @@
 import MainLayout from "@/components/layouts/mainLayout";
-import AboutLayout from "@/features/about/layout/aboutLayout";
+import AboutLayout from "@/features/about/components/layout/aboutLayout";
 
 export function About() {
 	return (

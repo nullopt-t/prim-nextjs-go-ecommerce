@@ -1,4 +1,4 @@
-import Button from "@/components/ui/button";
+import { CustomButton } from "@/components/ui";
 import { useTranslation } from "react-i18next";
 
 const currentDate = new Date().getFullYear();
@@ -20,10 +20,10 @@ export default function Hero() {
 			</p>
 			<div className="flex gap-5">
 				<div className="w-32 h-12 bg-accent-brand hover:scale-90 text-white rounded-md">
-					<Button text={t("hero.shopNow")} />
+					<CustomButton text={t("hero.shopNow")} />
 				</div>
 				<div className="bg-secondary text-secondary-foreground hover:scale-90 rounded-md w-32 h-12">
-					<Button text={t("hero.viewDeals")} />
+					<CustomButton text={t("hero.viewDeals")} />
 				</div>
 			</div>
 		</div>

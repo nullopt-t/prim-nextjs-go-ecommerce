@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 320" fill="none">
+  <!-- Left eyebrow -->
+  <path d="M80 70 C120 35 180 35 220 70" stroke="currentColor" stroke-width="16" stroke-linecap="round"></path>
+
+  <!-- Right eyebrow -->
+  <path d="M300 70 C340 35 400 35 440 70" stroke="currentColor" stroke-width="16" stroke-linecap="round"></path>
+
+  <!-- Left eye -->
+  <circle cx="150" cy="180" r="72" stroke="currentColor" stroke-width="12"></circle>
+
+  <!-- Right eye -->
+  <circle cx="370" cy="180" r="72" stroke="currentColor" stroke-width="12"></circle>
+
+  <!-- Left pupil -->
+  <circle cx="170" cy="155" r="22" fill="currentColor"></circle>
+
+  <!-- Right pupil -->
+  <circle cx="390" cy="155" r="22" fill="currentColor"></circle>
+</svg>
