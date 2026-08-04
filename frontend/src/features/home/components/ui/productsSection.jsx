@@ -18,7 +18,7 @@ export default function ProductsSection() {
 			discountPercentage: "37%",
 		},
 		{
-			id: "pfd-1",
+			id: "pfd-2",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
@@ -31,7 +31,7 @@ export default function ProductsSection() {
 			discountPercentage: "37%",
 		},
 		{
-			id: "pfd-1",
+			id: "pfd-3",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
@@ -44,7 +44,7 @@ export default function ProductsSection() {
 			discountPercentage: "37%",
 		},
 		{
-			id: "pfd-1",
+			id: "pfd-4",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
@@ -57,7 +57,7 @@ export default function ProductsSection() {
 			discountPercentage: "37%",
 		},
 		{
-			id: "pfd-1",
+			id: "pfd-5",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
