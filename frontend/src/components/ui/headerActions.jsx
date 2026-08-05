@@ -23,7 +23,7 @@ export function HeaderActions() {
 		{
 			id: 2,
 			icon: Heart,
-			path: "/wishlist",
+			path: "/user/wishlist",
 		},
 		{
 			id: 3,

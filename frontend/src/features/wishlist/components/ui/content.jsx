@@ -1,10 +1,13 @@
-import { ProductsGrid } from "@/components/ui/productsGrid";
+import { Title, ProductsGrid } from "@/components/ui";
 import Image from "@/assets/imgs/placeholders/product.jpeg";
+import { useTranslation } from "react-i18next";
 
 export default function Content() {
-	const products = [
+	const { t } = useTranslation("wishlist");
+
+	const cards = [
 		{
-			id: "pfd-sf1",
+			id: "sgsbsaegsgsdag-1",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
@@ -17,7 +20,7 @@ export default function Content() {
 			discountPercentage: "37%",
 		},
 		{
-			id: "pfd-asfd1",
+			id: "fdgsdagweqtgs-2",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
@@ -30,7 +33,7 @@ export default function Content() {
 			discountPercentage: "37%",
 		},
 		{
-			id: "asfdas-1",
+			id: "sfasgsahtewhrw-3",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
@@ -43,7 +46,7 @@ export default function Content() {
 			discountPercentage: "37%",
 		},
 		{
-			id: "safsafda-1",
+			id: "assaghrqwhehfqsa-4",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
@@ -56,7 +59,7 @@ export default function Content() {
 			discountPercentage: "37%",
 		},
 		{
-			id: "safsdafc-1",
+			id: "afsvasgwer-5",
 			img: Image,
 			product: {
 				en: "iphone 13 pro",
@@ -71,9 +74,16 @@ export default function Content() {
 	];
 
 	return (
-		<ProductsGrid
-			products={products}
-			className="grid-cols-2 lg:grid-cols-4"
-		/>
+		<div className="">
+			<Title
+				title={t("title")}
+				subtitle={t("savedItems", { count: 24 })}
+			/>
+			<ProductsGrid
+				products={cards}
+				className="grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+				isWishlist={true}
+			/>
+		</div>
 	);
 }

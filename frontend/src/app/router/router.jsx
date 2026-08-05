@@ -3,6 +3,7 @@ import { Cart } from "@/features/cart";
 import { Products } from "@/features/products";
 import { Home } from "@/features/home";
 import { About } from "@/features/about";
+import { Wishlist } from "@/features/wishlist";
 import { Auth, Login, Verify } from "@/features/auth";
 import { NotFound } from "@/app/pages/notFound";
 import {
@@ -12,7 +13,6 @@ import {
 	Orders,
 	Reviews,
 	Settings,
-	Wishlist,
 	Address,
 } from "@/features/user";
 

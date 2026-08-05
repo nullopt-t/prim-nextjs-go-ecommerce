@@ -79,7 +79,7 @@ function UserSideBarLinks() {
 					<NavLink
 						to={value.isLogout ? "" : value.path}
 						className={({ isActive }) =>
-							`flex gap-2.5 items-center p-2.5 ${isActive ? "text-sidebar-accent-foreground bg-sidebar-accent" : ""}`
+							`flex gap-2.5 items-center p-2.5 ${isActive ? "text-accent-brand bg-sidebar-accent" : ""}`
 						}
 					>
 						<span>
