@@ -111,7 +111,6 @@ func (s *ProductService) CreateProductAsDraft(
 		PublicID:    uuid.NewString(),
 		Title:       input.Title,
 		Description: input.Description,
-		Highlights:  input.Highlights,
 		Status:      model.PublicationStatusDraft,
 	}
 
@@ -233,6 +232,67 @@ func (s *ProductService) GetByID(
 	return product, nil
 }
 
+func (s *ProductService) GetAdminDetailsByID(
+	ctx context.Context,
+	productID uuid.UUID,
+) (*ProductDetails, error) {
+	productDetails := &ProductDetails{}
+	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		prod, err := s.productRepo.GetByIDWithDeleted(ctx, db, productID)
+		if err != nil {
+			return err
+		}
+		productDetails.Product = prod
+		return nil
+	})
+
+	if err != nil {
+		mappedError := database.MapError(err)
+		switch {
+		case errors.Is(mappedError, database.ErrNotFound):
+			return nil, apierr.ErrNotFound("Product not found").
+				WithCode(errcode.CodeProductNotFound)
+
+		default:
+			return nil, apierr.ErrInternalError("Failed to fetch product").
+				WithCode(apierr.CodeInternalError).
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	if productDetails.Product.BrandID != nil {
+		brandObj, err := s.brandService.GetBrandByID(ctx, *productDetails.Product.BrandID)
+		if err == nil {
+			productDetails.Brand = brandObj
+		}
+	}
+
+	if productDetails.Product.CategoryID != uuid.Nil {
+		catObj, err := s.categoryService.GetCategoryByID(ctx, productDetails.Product.CategoryID)
+		if err == nil {
+			productDetails.Category = catObj
+		}
+	}
+
+	mediaList, err := s.GetProductMedia(ctx, productDetails.Product.ID)
+	if err == nil {
+		productDetails.Media = mediaList
+	}
+
+	variantRes, err := s.variantService.ListVariantsByProductID(ctx, productDetails.Product.ID, &pagination.ListQuery{PageSize: 100}, true)
+	if err == nil && variantRes != nil {
+		productDetails.Variants = variantRes.Items
+	}
+
+	tagsList, err := s.tagService.GetTagsByProductID(ctx, productDetails.Product.ID)
+	if err == nil {
+		productDetails.Tags = tagsList
+	}
+
+	return productDetails, nil
+}
+
 func (s *ProductService) GetByPID(
 	ctx context.Context,
 	ppid string,
@@ -293,13 +353,33 @@ func (s *ProductService) GetByPID(
 
 	return productDetails, nil
 }
+func (s *ProductService) AdminList(
+	ctx context.Context,
+	q *pagination.ListQuery,
+	includeDeleted bool,
+) (*pagination.PagedResult[model.Product], error) {
+	var res *pagination.PagedResult[model.Product]
+	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		res, err = s.productRepo.AdminList(ctx, db, q, includeDeleted)
+		return err
+	})
 
+	if err != nil {
+		return nil, apierr.ErrInternalError("Failed to list products").
+			WithCode(apierr.CodeInternalError).
+			Wrap(err).
+			WithStack()
+	}
+
+	return res, nil
+}
 func (s *ProductService) List(
 	ctx context.Context,
 	q *pagination.ListQuery,
 	includeDeleted bool,
-) (*pagination.PagedResult[ProductListItem], error) {
-	var res *pagination.PagedResult[ProductListItem]
+) (*pagination.PagedResult[PublicProductListReadModel], error) {
+	var res *pagination.PagedResult[PublicProductListReadModel]
 	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
 		res, err = s.productRepo.List(ctx, db, q, includeDeleted)

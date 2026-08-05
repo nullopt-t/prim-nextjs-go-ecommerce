@@ -16,12 +16,12 @@ import (
 )
 
 var allowedProductSortFields = map[string]string{
-	"id":         "id",
-	"public_id":  "public_id",
-	"title":      "title",
-	"status":     "status",
-	"created_at": "created_at",
-	"updated_at": "updated_at",
+	"id":         "p.id",
+	"public_id":  "p.public_id",
+	"title":      "p.title",
+	"status":     "p.status",
+	"created_at": "p.created_at",
+	"updated_at": "p.updated_at",
 }
 
 type productFilter struct {
@@ -30,9 +30,30 @@ type productFilter struct {
 	IncludeDeleted bool
 }
 
-type ProductListItem struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
+type PublicProductBrandReadModel struct {
+	ID       uuid.UUID
+	PublicID string
+	Name     string
+	Link     *string
+}
+
+type PublicProductCategoryReadModel struct {
+	ID       uuid.UUID
+	PublicID string
+	Name     string
+}
+
+type PublicProductListReadModel struct {
+	ID          uuid.UUID
+	PublicID    string
+	Title       string
+	Description string
+	Status      model.PublicationStatus
+	Brand       *PublicProductBrandReadModel
+	Category    *PublicProductCategoryReadModel
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   *time.Time
 }
 
 type CreateProductMediaInput struct {
@@ -78,12 +99,11 @@ func (r *ProductRepository) Create(
 			public_id,
 			title,
 			description,
-			highlights,
 			status,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
 	_, err := qe.Exec(
@@ -95,7 +115,6 @@ func (r *ProductRepository) Create(
 		p.PublicID,
 		p.Title,
 		p.Description,
-		p.Highlights,
 		p.Status,
 		p.CreatedAt,
 		p.UpdatedAt,
@@ -113,6 +132,14 @@ func (r *ProductRepository) GetByID(
 	id uuid.UUID,
 ) (*model.Product, error) {
 	return r.get(ctx, qe, productFilter{ID: &id})
+}
+
+func (r *ProductRepository) GetByIDWithDeleted(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	id uuid.UUID,
+) (*model.Product, error) {
+	return r.get(ctx, qe, productFilter{ID: &id, IncludeDeleted: true})
 }
 
 func (r *ProductRepository) GetByPublicID(
@@ -230,13 +257,13 @@ func (r *ProductRepository) Update(
 	return nil
 }
 
-// List performs paginated searching and listing of products.
+// List performs paginated searching and listing of products for the public storefront.
 func (r *ProductRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	q *pagination.ListQuery,
 	includeDeleted bool,
-) (*pagination.PagedResult[ProductListItem], error) {
+) (*pagination.PagedResult[PublicProductListReadModel], error) {
 	if q == nil {
 		q = &pagination.ListQuery{}
 	}
@@ -247,13 +274,13 @@ func (r *ProductRepository) List(
 	argIdx := 1
 
 	if !includeDeleted {
-		whereClauses = append(whereClauses, "deleted_at IS NULL")
-		whereClauses = append(whereClauses, "status = 'published'")
+		whereClauses = append(whereClauses, "p.deleted_at IS NULL")
+		whereClauses = append(whereClauses, "p.status = 'published'")
 	}
 
 	search := strings.TrimSpace(q.Search)
 	if search != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("(title ILIKE $%d OR public_id ILIKE $%d)", argIdx, argIdx))
+		whereClauses = append(whereClauses, fmt.Sprintf("(p.title ILIKE $%d OR p.public_id ILIKE $%d OR b.name ILIKE $%d OR c.name ILIKE $%d)", argIdx, argIdx, argIdx, argIdx))
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
@@ -264,18 +291,18 @@ func (r *ProductRepository) List(
 	}
 
 	// 1. Total Count
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products %s", whereStmt)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p LEFT JOIN product_brands b ON p.brand_id = b.id LEFT JOIN product_categories c ON p.category_id = c.id %s", whereStmt)
 	var total int
 	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, fmt.Errorf("count products: %w", err)
 	}
 
 	if total == 0 {
-		return pagination.NewPagedResult([]*ProductListItem{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
+		return pagination.NewPagedResult([]*PublicProductListReadModel{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
 	}
 
 	// 2. Sorting
-	orderBy := "ORDER BY created_at DESC"
+	orderBy := "ORDER BY p.created_at DESC"
 	if len(q.Sort) > 0 {
 		sortParts := make([]string, 0, len(q.Sort))
 		for _, sort := range q.Sort {
@@ -297,9 +324,24 @@ func (r *ProductRepository) List(
 	// 3. Paginated Select
 	selectQuery := fmt.Sprintf(`
 		SELECT
-			public_id as id,
-			title
-		FROM products
+			p.id,
+			p.public_id,
+			p.title,
+			p.description,
+			p.status,
+			b.id as brand_id,
+			b.public_id as brand_public_id,
+			b.name as brand_name,
+			b.link as brand_link,
+			c.id as category_id,
+			c.public_id as category_public_id,
+			c.name as category_name,
+			p.created_at,
+			p.updated_at,
+			p.deleted_at
+		FROM products p
+		LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL
+		LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL
 		%s
 		%s
 		LIMIT $%d OFFSET $%d
@@ -311,10 +353,158 @@ func (r *ProductRepository) List(
 	if err != nil {
 		return nil, fmt.Errorf("list products select: %w", err)
 	}
+	defer rows.Close()
 
-	items, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[ProductListItem])
+	items := make([]*PublicProductListReadModel, 0, q.PageSize)
+	for rows.Next() {
+		var (
+			item                                PublicProductListReadModel
+			brandID                             *uuid.UUID
+			brandPublicID, brandName, brandLink *string
+			catID                               *uuid.UUID
+			catPublicID, catName                *string
+		)
+		err := rows.Scan(
+			&item.ID,
+			&item.PublicID,
+			&item.Title,
+			&item.Description,
+			&item.Status,
+			&brandID,
+			&brandPublicID,
+			&brandName,
+			&brandLink,
+			&catID,
+			&catPublicID,
+			&catName,
+			&item.CreatedAt,
+			&item.UpdatedAt,
+			&item.DeletedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan product list item: %w", err)
+		}
+
+		if brandID != nil && brandPublicID != nil && brandName != nil {
+			item.Brand = &PublicProductBrandReadModel{
+				ID:       *brandID,
+				PublicID: *brandPublicID,
+				Name:     *brandName,
+				Link:     brandLink,
+			}
+		}
+
+		if catID != nil && catPublicID != nil && catName != nil {
+			item.Category = &PublicProductCategoryReadModel{
+				ID:       *catID,
+				PublicID: *catPublicID,
+				Name:     *catName,
+			}
+		}
+
+		items = append(items, &item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate product list items: %w", err)
+	}
+
+	return pagination.NewPagedResult(items, pagination.NewPage(q.Page, q.PageSize, total)), nil
+}
+
+// AdminList performs paginated searching and listing of products for administrative management without joining brand/category details.
+func (r *ProductRepository) AdminList(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	q *pagination.ListQuery,
+	includeDeleted bool,
+) (*pagination.PagedResult[model.Product], error) {
+	if q == nil {
+		q = &pagination.ListQuery{}
+	}
+	q.Process(pagination.QueryOptions{})
+
+	whereClauses := make([]string, 0, 2)
+	args := make([]any, 0, 2)
+	argIdx := 1
+
+	if !includeDeleted {
+		whereClauses = append(whereClauses, "p.deleted_at IS NULL")
+	}
+
+	search := strings.TrimSpace(q.Search)
+	if search != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("(p.title ILIKE $%d OR p.public_id ILIKE $%d)", argIdx, argIdx))
+		args = append(args, "%"+search+"%")
+		argIdx++
+	}
+
+	whereStmt := ""
+	if len(whereClauses) > 0 {
+		whereStmt = "WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	// 1. Total Count
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p %s", whereStmt)
+	var total int
+	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, fmt.Errorf("count admin products: %w", err)
+	}
+
+	if total == 0 {
+		return pagination.NewPagedResult([]*model.Product{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
+	}
+
+	// 2. Sorting
+	orderBy := "ORDER BY p.created_at DESC"
+	if len(q.Sort) > 0 {
+		sortParts := make([]string, 0, len(q.Sort))
+		for _, sort := range q.Sort {
+			dbField, ok := allowedProductSortFields[strings.ToLower(sort.Field)]
+			if !ok {
+				continue
+			}
+			direction := "ASC"
+			if sort.Order == pagination.SortDesc {
+				direction = "DESC"
+			}
+			sortParts = append(sortParts, fmt.Sprintf("%s %s", dbField, direction))
+		}
+		if len(sortParts) > 0 {
+			orderBy = "ORDER BY " + strings.Join(sortParts, ", ")
+		}
+	}
+
+	// 3. Paginated Select
+	selectQuery := fmt.Sprintf(`
+		SELECT
+			p.id,
+			p.brand_id,
+			p.category_id,
+			p.public_id,
+			p.title,
+			p.description,
+			p.highlights,
+			p.status,
+			p.created_at,
+			p.updated_at,
+			p.deleted_at
+		FROM products p
+		%s
+		%s
+		LIMIT $%d OFFSET $%d
+	`, whereStmt, orderBy, argIdx, argIdx+1)
+
+	queryArgs := append(slices.Clone(args), q.PageSize, q.Offset)
+
+	rows, err := qe.Query(ctx, selectQuery, queryArgs...)
 	if err != nil {
-		return nil, fmt.Errorf("collect products: %w", err)
+		return nil, fmt.Errorf("list admin products select: %w", err)
+	}
+
+	items, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[model.Product])
+	if err != nil {
+		return nil, fmt.Errorf("collect admin products: %w", err)
 	}
 
 	return pagination.NewPagedResult(items, pagination.NewPage(q.Page, q.PageSize, total)), nil

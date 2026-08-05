@@ -13,7 +13,6 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/types"
 )
 
 type ProductHandler struct {
@@ -24,14 +23,11 @@ func NewHandler(s *ProductService) *ProductHandler {
 	return &ProductHandler{service: s}
 }
 
-// --- DTOs: Products ---
-
 type CreateProductRequest struct {
-	BrandID     *string  `json:"brand_id,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	CategoryID  string   `json:"category_id" binding:"required,uuid" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
-	Title       string   `json:"title" binding:"required" example:"Wireless Noise-Canceling Headphones"`
-	Description string   `json:"description" binding:"required" example:"Premium over-ear Bluetooth headphones with active noise cancellation."`
-	Highlights  []string `json:"highlights,omitempty"`
+	BrandID     *string `json:"brand_id,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	CategoryID  string  `json:"category_id" binding:"required,uuid" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
+	Title       string  `json:"title" binding:"required" example:"Wireless Noise-Canceling Headphones"`
+	Description string  `json:"description" binding:"required" example:"Premium over-ear Bluetooth headphones with active noise cancellation."`
 }
 
 type UpdateProductRequest struct {
@@ -84,6 +80,25 @@ type ProductDetailsResponse struct {
 	Media    []ProductMediaResponse   `json:"media"`
 	Variants []ProductVariantResponse `json:"variants"`
 	Tags     []ProductTagSummary      `json:"tags"`
+}
+
+type AdminProductDetailsResponse struct {
+	ID          string                   `json:"id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	PublicID    string                   `json:"public_id" example:"prod_abc123"`
+	Title       string                   `json:"title" example:"Wireless Headphones"`
+	Description string                   `json:"description"`
+	Highlights  []string                 `json:"highlights"`
+	Status      model.PublicationStatus  `json:"status" example:"draft"`
+	BrandID     *string                  `json:"brand_id,omitempty"`
+	Brand       *ProductBrandSummary     `json:"brand,omitempty"`
+	CategoryID  string                   `json:"category_id"`
+	Category    *ProductCategorySummary  `json:"category,omitempty"`
+	Media       []ProductMediaResponse   `json:"media"`
+	Variants    []ProductVariantResponse `json:"variants"`
+	Tags        []ProductTagSummary      `json:"tags"`
+	CreatedAt   string                   `json:"created_at" example:"2026-08-05T19:00:00Z"`
+	UpdatedAt   string                   `json:"updated_at" example:"2026-08-05T19:00:00Z"`
+	DeletedAt   *string                  `json:"deleted_at,omitempty" example:"2026-08-05T19:30:00Z"`
 }
 
 // --- DTOs: Media ---
@@ -144,6 +159,98 @@ func mapProductResponse(p *model.Product) ProductResponse {
 	}
 }
 
+func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetailsResponse {
+	p := details.Product
+
+	highlights := p.Highlights
+	if highlights == nil {
+		highlights = make([]string, 0)
+	}
+
+	res := AdminProductDetailsResponse{
+		ID:          p.ID.String(),
+		PublicID:    p.PublicID,
+		Title:       p.Title,
+		Description: p.Description,
+		Highlights:  highlights,
+		Status:      p.Status,
+		CategoryID:  p.CategoryID.String(),
+		CreatedAt:   p.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:   p.UpdatedAt.Format(time.RFC3339),
+		Media:       make([]ProductMediaResponse, 0),
+		Variants:    make([]ProductVariantResponse, 0),
+		Tags:        make([]ProductTagSummary, 0),
+	}
+
+	if p.BrandID != nil {
+		brandIDStr := p.BrandID.String()
+		res.BrandID = &brandIDStr
+	}
+
+	if p.DeletedAt != nil {
+		delStr := p.DeletedAt.Format(time.RFC3339)
+		res.DeletedAt = &delStr
+	}
+
+	if details.Brand != nil {
+		res.Brand = &ProductBrandSummary{
+			ID:   details.Brand.PublicID,
+			Name: details.Brand.Name,
+			Link: details.Brand.Link,
+		}
+	}
+
+	if details.Category != nil {
+		res.Category = &ProductCategorySummary{
+			ID:   details.Category.PublicID,
+			Name: details.Category.Name,
+			Slug: &details.Category.Name,
+		}
+	}
+
+	if len(details.Media) > 0 {
+		mediaRes := make([]ProductMediaResponse, 0, len(details.Media))
+		for _, m := range details.Media {
+			mediaRes = append(mediaRes, mapProductMediaResponse(m))
+		}
+		res.Media = mediaRes
+	}
+
+	if len(details.Variants) > 0 {
+		variantRes := make([]ProductVariantResponse, 0, len(details.Variants))
+		for _, v := range details.Variants {
+			attrs := v.Attributes
+			if attrs == nil {
+				attrs = make(map[string]any)
+			}
+			variantRes = append(variantRes, ProductVariantResponse{
+				ID:              v.PublicID,
+				Title:           v.Title,
+				Price:           v.Price,
+				CrossedOutPrice: v.CrossedOutPrice,
+				Currency:        v.Currency,
+				Attributes:      attrs,
+				IsDefault:       v.IsDefault,
+				Media:           make([]ProductMediaResponse, 0),
+			})
+		}
+		res.Variants = variantRes
+	}
+
+	if len(details.Tags) > 0 {
+		tagRes := make([]ProductTagSummary, 0, len(details.Tags))
+		for _, t := range details.Tags {
+			tagRes = append(tagRes, ProductTagSummary{
+				ID:   t.PublicID,
+				Name: t.Name,
+			})
+		}
+		res.Tags = tagRes
+	}
+
+	return res
+}
+
 func mapProductMediaResponse(m *model.ProductMedia) ProductMediaResponse {
 	res := ProductMediaResponse{
 		ID:        m.PublicID,
@@ -174,7 +281,7 @@ func mapProductMediaResponse(m *model.ProductMedia) ProductMediaResponse {
 // @Failure 400 {object} api.BadRequestErrorResponse "Validation error or invalid UUID reference"
 // @Failure 409 {object} api.ConflictErrorResponse "Product with generated public ID already exists"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 201 {object} api.DataResponse{data=ProductResponse} "Created draft product details"
+// @Success 201 {object} api.DataResponse{data=AdminProductDetailsResponse} "Created draft product details"
 // @Router /admin/products [post]
 func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 	var body CreateProductRequest
@@ -196,7 +303,6 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 		Title:       strings.TrimSpace(body.Title),
 		Description: strings.TrimSpace(body.Description),
 		CategoryID:  categoryID,
-		Highlights:  body.Highlights,
 	}
 
 	if body.BrandID != nil {
@@ -208,7 +314,7 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 			}))
 			return
 		}
-		in.BrandID = types.Ptr(brandID)
+		in.BrandID = &brandID
 	}
 
 	product, err := h.service.CreateProductAsDraft(c.Request.Context(), in)
@@ -217,9 +323,54 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 		return
 	}
 
+	details, err := h.service.GetAdminDetailsByID(c.Request.Context(), product.ID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
 	c.JSON(http.StatusCreated, api.DataResponse{
-		Data: mapProductResponse(product),
+		Data: mapAdminProductDetailsResponse(details),
 	})
+}
+
+type ProductListItemResponse struct {
+	ID          string                  `json:"id"`
+	Title       string                  `json:"title"`
+	Description string                  `json:"description"`
+	Status      model.PublicationStatus `json:"status"`
+	Brand       *ProductBrandSummary    `json:"brand,omitempty"`
+	Category    *ProductCategorySummary `json:"category,omitempty"`
+	CreatedAt   string                  `json:"created_at"`
+	UpdatedAt   string                  `json:"updated_at"`
+}
+
+func mapProductListItemResponse(item *PublicProductListReadModel) ProductListItemResponse {
+	res := ProductListItemResponse{
+		ID:          item.PublicID,
+		Title:       item.Title,
+		Description: item.Description,
+		Status:      item.Status,
+		CreatedAt:   item.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:   item.UpdatedAt.Format(time.RFC3339),
+	}
+
+	if item.Brand != nil {
+		res.Brand = &ProductBrandSummary{
+			ID:   item.Brand.PublicID,
+			Name: item.Brand.Name,
+			Link: item.Brand.Link,
+		}
+	}
+
+	if item.Category != nil {
+		res.Category = &ProductCategorySummary{
+			ID:   item.Category.PublicID,
+			Name: item.Category.Name,
+		}
+	}
+
+	return res
 }
 
 // GetAllProducts godoc
@@ -230,7 +381,7 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 // @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]ProductListItem,meta=pagination.Page} "Paginated list of active products"
+// @Success 200 {object} api.PaginatedResponse{data=[]ProductListItemResponse,meta=pagination.Page} "Paginated list of active products"
 // @Router /products [get]
 func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 	q := &pagination.ListQuery{}
@@ -246,8 +397,13 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 		return
 	}
 
+	itemsRes := make([]ProductListItemResponse, 0, len(result.Items))
+	for _, item := range result.Items {
+		itemsRes = append(itemsRes, mapProductListItemResponse(item))
+	}
+
 	c.JSON(http.StatusOK, api.PaginatedResponse{
-		Data: result.Items,
+		Data: itemsRes,
 		Meta: result.Page,
 	})
 }
@@ -260,7 +416,7 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 // @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]ProductListItem,meta=pagination.Page} "Paginated list of all products including deleted"
+// @Success 200 {object} api.PaginatedResponse{data=[]model.Product,meta=pagination.Page} "Paginated list of all products including deleted"
 // @Router /admin/products [get]
 func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
 	q := &pagination.ListQuery{}
@@ -270,7 +426,7 @@ func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
-	result, err := h.service.List(c.Request.Context(), q, true)
+	result, err := h.service.AdminList(c.Request.Context(), q, true)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -291,8 +447,8 @@ func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
 // @Failure 404 {object} api.NotFoundErrorResponse "Product not found"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.DataResponse{data=ProductResponse} "Product details"
-// @Router /products/{id} [get]
+// @Success 200 {object} api.DataResponse{data=AdminProductDetailsResponse} "Product details"
+// @Router /admin/products/{id} [get]
 func (h *ProductHandler) GetProductByID(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -303,14 +459,14 @@ func (h *ProductHandler) GetProductByID(c *gin.Context) {
 		return
 	}
 
-	product, err := h.service.GetByID(c.Request.Context(), productID)
+	details, err := h.service.GetAdminDetailsByID(c.Request.Context(), productID)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
 	c.JSON(http.StatusOK, api.DataResponse{
-		Data: mapProductResponse(product),
+		Data: mapAdminProductDetailsResponse(details),
 	})
 }
 
@@ -410,7 +566,7 @@ func (h *ProductHandler) GetProductByPID(c *gin.Context) {
 // @Failure 400 {object} api.BadRequestErrorResponse "Validation error or invalid UUID format"
 // @Failure 404 {object} api.NotFoundErrorResponse "Product, brand, or category not found"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.MessageResponse "Update confirmation message"
+// @Success 200 {object} api.DataResponse{data=AdminProductDetailsResponse} "Updated product details"
 // @Router /admin/products/{id} [patch]
 func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
@@ -484,8 +640,14 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.MessageResponse{
-		Message: "updated successfully",
+	details, err := h.service.GetAdminDetailsByID(c.Request.Context(), productID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{
+		Data: mapAdminProductDetailsResponse(details),
 	})
 }
 

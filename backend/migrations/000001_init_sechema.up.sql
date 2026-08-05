@@ -115,7 +115,7 @@ CREATE UNIQUE INDEX idx_addresses_user_default
 
 CREATE TABLE IF NOT EXISTS product_brands (
     id                        uuid NOT NULL,
-    public_id                 text NOT NULL,
+    public_id                 uuid NOT NULL,
     name                      text NOT NULL,
     link                      text NULL,
     logo_storage_object_id    uuid NULL,
@@ -133,7 +133,7 @@ WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS product_tags (
     id            uuid NOT NULL,
-    public_id     text NOT NULL,
+    public_id     uuid NOT NULL,
     name          text NOT NULL,
     created_at    timestamptz NOT NULL DEFAULT now(),
     updated_at    timestamptz NOT NULL DEFAULT now(),
@@ -148,7 +148,7 @@ WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS product_categories (
     id            uuid NOT NULL,
-    public_id     text NOT NULL,
+    public_id     uuid NOT NULL,
     parent_id     uuid NULL,
     name          text NOT NULL,
     created_at    timestamptz NOT NULL DEFAULT now(),
@@ -188,7 +188,7 @@ CREATE TABLE IF NOT EXISTS products (
     id             uuid NOT NULL,
     brand_id       uuid NULL,
     category_id    uuid NOT NULL,
-    public_id      text NOT NULL,
+    public_id      uuid NOT NULL,
     title          text NOT NULL,
     description    text NOT NULL,
     highlights     jsonb NULL,
@@ -204,7 +204,7 @@ CREATE TABLE IF NOT EXISTS products (
 
 CREATE TABLE IF NOT EXISTS product_variants (
     id                   uuid NOT NULL,
-    public_id            text NOT NULL,
+    public_id            uuid NOT NULL,
     product_id           uuid NOT NULL,
     is_default           boolean NOT NULL DEFAULT false,
     title                text NOT NULL,
@@ -251,7 +251,7 @@ CREATE TABLE IF NOT EXISTS product_tag_assignments (
 
 CREATE TABLE IF NOT EXISTS product_media (
     id                   uuid NOT NULL,
-    public_id            text NOT NULL,
+    public_id            uuid NOT NULL,
     product_id           uuid NOT NULL,
     storage_object_id    uuid NOT NULL,
     media_type           text NOT NULL,
@@ -264,7 +264,7 @@ CREATE TABLE IF NOT EXISTS product_media (
 
 CREATE TABLE IF NOT EXISTS variant_media (
     id                   uuid NOT NULL,
-    public_id            text NOT NULL,
+    public_id            uuid NOT NULL,
     variant_id           uuid NOT NULL,
     storage_object_id    uuid NOT NULL,
     media_type           text NOT NULL,

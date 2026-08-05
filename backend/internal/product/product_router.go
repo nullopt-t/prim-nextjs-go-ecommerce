@@ -24,7 +24,7 @@ func NewRouter(
 func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	admin := vgroup.Group("/admin/products")
 	admin.Use(
-		middleware.Authenticate(r.secrets),
+		middleware.Authenticate(r.secrets, true),
 	)
 	{
 		admin.POST("", r.ph.CreateProductAsDraft)
