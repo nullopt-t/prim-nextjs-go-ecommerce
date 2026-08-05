@@ -3,7 +3,7 @@ import { CustomButton } from "@/components/ui";
 import { Heart } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-export default function ProductsCard({ cardDetails }) {
+export default function ProductsCard({ cardDetails, isWishlist }) {
 	const { t, i18n } = useTranslation(["home", "common"]);
 
 	return (
@@ -14,8 +14,10 @@ export default function ProductsCard({ cardDetails }) {
 					alt=""
 					className="object-center object-cover w-full h-full"
 				/>
-				<div className="absolute flex items-center justify-center top-2.5 right-2.5 group rounded-full w-8 h-8 bg-background text-foreground hover:bg-accent-brand hover:text-white">
-					<Heart className="" />
+				<div
+					className={`absolute flex items-center justify-center top-2.5 right-2.5 rounded-full w-8 h-8 ${isWishlist ? "bg-accent-brand text-white hover:bg-background hover:text-accent-brand" : "bg-background text-foreground hover:bg-accent-brand hover:text-white"} `}
+				>
+					<Heart className={`fill-white`} />
 				</div>
 			</div>
 			<div className="p-2">
@@ -50,6 +52,14 @@ export default function ProductsCard({ cardDetails }) {
 			<div className="h-10 m-2.5 text-primary-foreground bg-primary rounded-md hover:bg-accent hover:text-accent-foreground">
 				<CustomButton text={t("product.addToCart")} />
 			</div>
+			{isWishlist && (
+				<p
+					className="text-center text-accent-brand font-medium mb-2.5 hover:underline hover:underline-offset-2"
+					onClick={() => console.log("Removed.")}
+				>
+					Remove
+				</p>
+			)}
 		</div>
 	);
 }
