@@ -3,7 +3,6 @@ package product
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"mime/multipart"
 	"strings"
@@ -19,43 +18,35 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	fileUtil "github.com/m-mahmoud-alsaid/prim-backend/pkg/file"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
-	"github.com/minio/minio-go/v7"
 )
 
 type ProductService struct {
 	dr              database.Runner
 	logger          log.Logger
-	minioClient     *minio.Client
 	objectService   *object.ObjectService
 	productRepo     *ProductRepository
 	brandService    *brand.BrandService
 	categoryService *category.CategoryService
 	tagService      *tag.TagService
 	variantService  *variant.VariantService
-	minCfg          *config.MinioConfig
 }
 
 func NewService(
 	r database.Runner,
 	logger log.Logger,
-	minioClient *minio.Client,
 	productRepo *ProductRepository,
 	objectService *object.ObjectService,
 	brandService *brand.BrandService,
 	categoryService *category.CategoryService,
 	tagService *tag.TagService,
 	variantService *variant.VariantService,
-	minCfg *config.MinioConfig,
 ) *ProductService {
 	return &ProductService{
 		dr:              r,
-		minCfg:          minCfg,
 		logger:          logger,
-		minioClient:     minioClient,
 		objectService:   objectService,
 		productRepo:     productRepo,
 		brandService:    brandService,
@@ -531,18 +522,6 @@ func (s *ProductService) ReplaceProductTags(
 	return s.tagService.ReplaceProductTags(ctx, productID, tagIDs)
 }
 
-func (ps *ProductService) GenObjectKey(
-	productID uuid.UUID,
-	contentType string,
-) string {
-	return fmt.Sprintf(
-		"products/%s/%s%s",
-		productID,
-		uuid.NewString(),
-		fileUtil.MimeExtension(contentType),
-	)
-}
-
 func (ps *ProductService) UploadProductMedia(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -587,29 +566,25 @@ func (ps *ProductService) UploadProductMedia(
 			Wrap(err)
 	}
 
-	product, err := ps.GetByID(ctx, productID)
+	_, err = ps.GetByID(ctx, productID)
 	if err != nil {
 		return nil, err
 	}
 
-	objectKey := ps.GenObjectKey(product.ID, detectedContentType)
 	bucket := "product-media"
 
 	cleanCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	info, err := ps.minioClient.PutObject(
+	obj, err := ps.objectService.UploadObject(
 		cleanCtx,
-		bucket,
-		objectKey,
-		file,
+		detectedContentType,
 		fileHeader.Size,
-		minio.PutObjectOptions{
-			ContentType: detectedContentType,
-		},
+		bucket,
+		file,
 	)
 	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to upload file to MinIO").
+		return nil, apierr.ErrInternalError("Failed to upload file to storage").
 			WithCode(apierr.CodeStorageError).
 			Wrap(err).
 			WithStack()
@@ -618,19 +593,6 @@ func (ps *ProductService) UploadProductMedia(
 	var media *model.ProductMedia
 	err = ps.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
 		maxOrder, err := ps.productRepo.GetMaxMediaSortOrder(ctx, tx, productID)
-		if err != nil {
-			return err
-		}
-
-		obj, err := ps.objectService.CreateObjectWithTx(
-			ctx,
-			tx,
-			info.Bucket,
-			objectKey,
-			info.Size,
-			detectedContentType,
-			model.ObjectStatusUploaded,
-		)
 		if err != nil {
 			return err
 		}
@@ -646,7 +608,7 @@ func (ps *ProductService) UploadProductMedia(
 	})
 
 	if err != nil {
-		_ = ps.minioClient.RemoveObject(ctx, bucket, objectKey, minio.RemoveObjectOptions{})
+		_ = ps.objectService.DeleteObject(ctx, obj.Bucket, obj.Key)
 		return nil, apierr.ErrInternalError("Failed to attach media to product").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
@@ -718,15 +680,13 @@ func (ps *ProductService) GetProductMedia(
 
 	for _, m := range mediaList {
 		if m.Object != nil && m.Object.PublicURL == "" && m.Object.Bucket != "" && m.Object.Key != "" {
-			presignedGET, err := ps.minioClient.PresignedGetObject(
+			url := ps.objectService.GetObjectURL(
 				ctx,
 				m.Object.Bucket,
 				m.Object.Key,
-				1*time.Hour,
-				nil,
 			)
-			if err == nil {
-				m.Object.PublicURL = presignedGET.String()
+			if url != "" {
+				m.Object.PublicURL = url
 			}
 		}
 	}
@@ -763,9 +723,8 @@ func (ps *ProductService) DetachMedia(
 		}
 
 		if objectKey != "" {
-			if err := ps.objectService.MarkDeletingByKey(ctx, tx, objectBucket, objectKey); err != nil {
-				ps.logger.Warn("failed to mark storage object for deletion", log.Meta{"key": objectKey, "error": err})
-			}
+			// Instead of marking it deleting here in tx, we just do nothing in tx,
+			// and let objectService.DeleteObject handle marking and deleting outside tx.
 		}
 		return nil
 	})
@@ -787,7 +746,7 @@ func (ps *ProductService) DetachMedia(
 	}
 
 	if objectKey != "" {
-		_ = ps.minioClient.RemoveObject(ctx, objectBucket, objectKey, minio.RemoveObjectOptions{})
+		_ = ps.objectService.DeleteObject(ctx, objectBucket, objectKey)
 	}
 
 	return nil

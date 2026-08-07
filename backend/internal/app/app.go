@@ -188,9 +188,8 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	variantService := variant.NewService(
 		app.logger,
 		txRunner,
-		app.minioClient,
+		objectService,
 		variantRepository,
-		config.MinioCfg,
 	)
 
 	variantHandler := variant.NewHandler(variantService)
@@ -202,14 +201,12 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	productService := product.NewService(
 		txRunner,
 		app.logger,
-		app.minioClient,
 		productRepo,
 		objectService,
 		brandService,
 		categoryService,
 		tagService,
 		variantService,
-		config.MinioCfg,
 	)
 	productHandler := product.NewHandler(productService)
 	productRouter := product.NewRouter(productHandler, config.KeysCfg)
