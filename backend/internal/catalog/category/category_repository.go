@@ -30,10 +30,6 @@ func (cr *CategoryRepository) Create(
 	qe database.QueryExecutor,
 	category *model.ProductCategory,
 ) error {
-	if category.PublicID == "" {
-		category.PublicID = uuid.NewString()
-	}
-
 	const query = `
 		INSERT INTO product_categories (
 			id,

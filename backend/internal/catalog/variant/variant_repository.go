@@ -64,16 +64,8 @@ func (vr *VariantRepository) Create(
 	qe database.QueryExecutor,
 	variant *model.ProductVariant,
 ) error {
-	if variant.ID == uuid.Nil {
-		variant.ID = uuid.New()
-	}
-
 	if variant.Attributes == nil {
 		variant.Attributes = make(map[string]any)
-	}
-
-	if variant.PublicID == "" {
-		variant.PublicID = uuid.New().String()
 	}
 
 	query := `
@@ -411,10 +403,6 @@ func (vr *VariantRepository) AddMedia(
 	qe database.QueryExecutor,
 	in CreateVariantMediaInput,
 ) (*model.VariantMedia, error) {
-	if in.ID == uuid.Nil {
-		in.ID = uuid.New()
-	}
-
 	query := `
 		INSERT INTO variant_media (
 			id,

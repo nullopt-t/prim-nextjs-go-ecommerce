@@ -48,14 +48,6 @@ func (tr *TagRepository) Create(
 	qe database.QueryExecutor,
 	tag *model.ProductTag,
 ) error {
-	if tag.ID == uuid.Nil {
-		tag.ID = uuid.New()
-	}
-
-	if tag.PublicID == "" {
-		tag.PublicID = uuid.NewString()
-	}
-
 	query := `
 		INSERT INTO product_tags (
 			id,

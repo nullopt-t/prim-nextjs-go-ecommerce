@@ -79,10 +79,6 @@ func (r *ProductRepository) Create(
 	qe database.QueryExecutor,
 	p *model.Product,
 ) error {
-	if p.ID == uuid.Nil {
-		p.ID = uuid.New()
-	}
-
 	query := `
 		INSERT INTO products (
 			id,
@@ -587,13 +583,6 @@ func (r *ProductRepository) AddMedia(
 	qe database.QueryExecutor,
 	in CreateProductMediaInput,
 ) (*model.ProductMedia, error) {
-	if in.ID == uuid.Nil {
-		in.ID = uuid.New()
-	}
-	if in.PublicID == "" {
-		in.PublicID = uuid.NewString()
-	}
-
 	query := `
 		INSERT INTO product_media (
 			id,

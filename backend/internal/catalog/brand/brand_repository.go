@@ -44,14 +44,6 @@ func (br *BrandRepository) Create(
 	qe database.QueryExecutor,
 	brand *model.ProductBrand,
 ) error {
-	if brand.ID == uuid.Nil {
-		brand.ID = uuid.New()
-	}
-
-	if brand.PublicID == "" {
-		brand.PublicID = uuid.NewString()
-	}
-
 	query := `
 		INSERT INTO product_brands (
 			id,
