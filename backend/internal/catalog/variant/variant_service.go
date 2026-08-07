@@ -7,9 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/object"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/errcode"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
@@ -17,17 +16,21 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 )
 
+type ObjectProvider interface {
+	GetObjectURL(ctx context.Context, bucket, key string) string
+}
+
 type VariantService struct {
 	logger        log.Logger
 	dr            database.Runner
-	objectService *object.ObjectService
+	objectService ObjectProvider
 	vr            *VariantRepository
 }
 
 func NewService(
 	logger log.Logger,
 	r database.Runner,
-	objectService *object.ObjectService,
+	objectService ObjectProvider,
 	vr *VariantRepository,
 ) *VariantService {
 	return &VariantService{

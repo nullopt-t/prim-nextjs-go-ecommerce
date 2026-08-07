@@ -17,7 +17,6 @@ var (
 	ErrInvalidUserSubject = errors.New("invalid user subject")
 )
 
-
 func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, ok := c.Get("userRole")

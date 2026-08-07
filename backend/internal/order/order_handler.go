@@ -55,8 +55,8 @@ type OrderResponse struct {
 
 func mapOrderResponse(o *model.Order) OrderResponse {
 	res := OrderResponse{
-		ID:              o.ID.String(),
-		CustomerEmail:   o.CustomerEmail,
+		ID:            o.ID.String(),
+		CustomerEmail: o.CustomerEmail,
 		ShippingAddress: AddressResponse{
 			Street:     o.ShippingAddress.Street,
 			City:       o.ShippingAddress.City,
@@ -64,19 +64,19 @@ func mapOrderResponse(o *model.Order) OrderResponse {
 			PostalCode: o.ShippingAddress.PostalCode,
 			Country:    o.ShippingAddress.Country,
 		},
-		BillingAddress:  AddressResponse{
+		BillingAddress: AddressResponse{
 			Street:     o.BillingAddress.Street,
 			City:       o.BillingAddress.City,
 			State:      o.BillingAddress.State,
 			PostalCode: o.BillingAddress.PostalCode,
 			Country:    o.BillingAddress.Country,
 		},
-		Status:          o.Status,
-		DiscountAmount:  o.DiscountAmount,
-		TotalAmount:     o.TotalAmount,
-		Currency:        o.Currency,
-		CreatedAt:       o.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:       o.UpdatedAt.Format(time.RFC3339),
+		Status:         o.Status,
+		DiscountAmount: o.DiscountAmount,
+		TotalAmount:    o.TotalAmount,
+		Currency:       o.Currency,
+		CreatedAt:      o.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:      o.UpdatedAt.Format(time.RFC3339),
 	}
 
 	if o.CustomerID != nil {

@@ -117,7 +117,7 @@ func (os *ObjectService) UploadObject(
 	file io.Reader,
 ) (*model.Object, error) {
 	key := uuid.New().String()
-	
+
 	err := os.sp.Upload(ctx, bucket, key, file, size, contentType)
 	if err != nil {
 		return nil, apierr.New(

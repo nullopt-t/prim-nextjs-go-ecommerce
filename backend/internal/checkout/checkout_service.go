@@ -5,18 +5,26 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/cart"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/order"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 )
 
-type CheckoutService struct {
-	cartService  *cart.CartService
-	orderService *order.OrderService
+type CartProvider interface {
+	GetOrCreateCart(ctx context.Context, userID *uuid.UUID, sessionID *string) (*model.Cart, error)
+	ClearCart(ctx context.Context, userID *uuid.UUID, sessionID *string) error
 }
 
-func NewService(cartService *cart.CartService, orderService *order.OrderService) *CheckoutService {
+type OrderProvider interface {
+	CreateOrder(ctx context.Context, in *order.CreateOrderInput) (*model.Order, error)
+}
+
+type CheckoutService struct {
+	cartService  CartProvider
+	orderService OrderProvider
+}
+
+func NewService(cartService CartProvider, orderService OrderProvider) *CheckoutService {
 	return &CheckoutService{
 		cartService:  cartService,
 		orderService: orderService,

@@ -35,14 +35,14 @@ type MergeCartRequest struct {
 }
 
 type CartItemResponse struct {
-	ID              string                           `json:"id"`
-	CartID          string                           `json:"cart_id"`
-	VariantID       string                           `json:"variant_id"`
-	Quantity        int                              `json:"quantity"`
-	PriceAtPurchase int64                            `json:"price_at_purchase"`
-	Currency        string                           `json:"currency"`
-	CartedAt        string                           `json:"carted_at"`
-	Variant         any                              `json:"variant,omitempty"`
+	ID              string `json:"id"`
+	CartID          string `json:"cart_id"`
+	VariantID       string `json:"variant_id"`
+	Quantity        int    `json:"quantity"`
+	PriceAtPurchase int64  `json:"price_at_purchase"`
+	Currency        string `json:"currency"`
+	CartedAt        string `json:"carted_at"`
+	Variant         any    `json:"variant,omitempty"`
 }
 
 type CartResponse struct {

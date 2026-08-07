@@ -9,13 +9,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/object"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/brand"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/category"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/tag"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/variant"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
@@ -23,10 +22,16 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 )
 
+type ObjectProvider interface {
+	UploadObject(ctx context.Context, contentType string, size int64, bucket string, file io.Reader) (*model.Object, error)
+	DeleteObject(ctx context.Context, bucket, key string) error
+	GetObjectURL(ctx context.Context, bucket, key string) string
+}
+
 type ProductService struct {
 	dr              database.Runner
 	logger          log.Logger
-	objectService   *object.ObjectService
+	objectService   ObjectProvider
 	productRepo     *ProductRepository
 	brandService    *brand.BrandService
 	categoryService *category.CategoryService
@@ -38,7 +43,7 @@ func NewService(
 	r database.Runner,
 	logger log.Logger,
 	productRepo *ProductRepository,
-	objectService *object.ObjectService,
+	objectService ObjectProvider,
 	brandService *brand.BrandService,
 	categoryService *category.CategoryService,
 	tagService *tag.TagService,
