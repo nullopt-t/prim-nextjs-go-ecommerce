@@ -289,13 +289,14 @@ func (s *ProductService) GetAdminDetailsByID(
 	return productDetails, nil
 }
 
-func (s *ProductService) GetByPID(
+func (s *ProductService) GetByPublicID(
 	ctx context.Context,
-	ppid string,
+	publicID string,
 ) (*ProductDetails, error) {
+	cleanPID := strings.TrimSpace(publicID)
 	productDetails := &ProductDetails{}
 	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		prod, err := s.productRepo.GetByPublicID(ctx, db, ppid)
+		prod, err := s.productRepo.GetByPublicID(ctx, db, cleanPID)
 		if err != nil {
 			return err
 		}
@@ -623,42 +624,6 @@ func (ps *ProductService) UploadProductMedia(
 	return media, nil
 }
 
-func (ps *ProductService) GetProductMediaByPID(
-	ctx context.Context,
-	ppid string,
-) ([]*model.ProductMedia, error) {
-	cleanPID := strings.TrimSpace(ppid)
-	if cleanPID == "" {
-		return nil, apierr.ErrBadRequest("Public ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
-	var productID uuid.UUID
-	err := ps.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		prod, err := ps.productRepo.GetByPublicID(ctx, db, cleanPID)
-		if err != nil {
-			return err
-		}
-		productID = prod.ID
-		return nil
-	})
-
-	if err != nil {
-		mappedError := database.MapError(err)
-		switch {
-		case errors.Is(mappedError, database.ErrNotFound):
-			return nil, apierr.ErrNotFound("Product not found").
-				WithCode(errcode.CodeProductNotFound)
-		default:
-			return nil, apierr.ErrInternalError("Failed to fetch product").
-				WithCode(apierr.CodeInternalError).
-				Wrap(err).
-				WithStack()
-		}
-	}
-
-	return ps.GetProductMedia(ctx, productID)
-}
 
 func (ps *ProductService) GetProductMedia(
 	ctx context.Context,
@@ -785,40 +750,3 @@ func (ps *ProductService) ReorderMedia(
 	return nil
 }
 
-func (ps *ProductService) GetProductVariantsByPID(
-	ctx context.Context,
-	ppid string,
-	q *pagination.ListQuery,
-) (*pagination.PagedResult[model.ProductVariant], error) {
-	cleanPID := strings.TrimSpace(ppid)
-	if cleanPID == "" {
-		return nil, apierr.ErrBadRequest("Public ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
-	var productID uuid.UUID
-	err := ps.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		prod, err := ps.productRepo.GetByPublicID(ctx, db, cleanPID)
-		if err != nil {
-			return err
-		}
-		productID = prod.ID
-		return nil
-	})
-
-	if err != nil {
-		mappedError := database.MapError(err)
-		switch {
-		case errors.Is(mappedError, database.ErrNotFound):
-			return nil, apierr.ErrNotFound("Product not found").
-				WithCode(errcode.CodeProductNotFound)
-		default:
-			return nil, apierr.ErrInternalError("Failed to fetch product").
-				WithCode(apierr.CodeInternalError).
-				Wrap(err).
-				WithStack()
-		}
-	}
-
-	return ps.variantService.ListVariantsByProductID(ctx, productID, q, false)
-}

@@ -470,26 +470,26 @@ func (h *ProductHandler) GetProductByID(c *gin.Context) {
 	})
 }
 
-// GetProductByPID godoc
-// @Summary Get product details by public URL slug / public ID
-// @Description Retrieves full public-facing product details including brand information by its human-readable public ID (slug).
+// GetProductByPublicID godoc
+// @Summary Get product details by public ID
+// @Description Retrieves full public-facing product details including brand information by its human-readable public ID.
 // @Tags Products
 // @Produce json
-// @Param pid path string true "Product Public ID (e.g. prod_01h8x9a...)"
+// @Param id path string true "Product Public ID (e.g. prod_01h8x9a...)"
 // @Failure 400 {object} api.BadRequestErrorResponse "Public ID is required"
 // @Failure 404 {object} api.NotFoundErrorResponse "Product not found"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
 // @Success 200 {object} api.DataResponse{data=ProductDetailsResponse} "Product and brand details"
-// @Router /products/p/:pid [get]
-func (h *ProductHandler) GetProductByPID(c *gin.Context) {
-	pid := strings.TrimSpace(c.Param("pid"))
-	if pid == "" {
+// @Router /products/{id} [get]
+func (h *ProductHandler) GetProductByPublicID(c *gin.Context) {
+	publicID := strings.TrimSpace(c.Param("id"))
+	if publicID == "" {
 		_ = c.Error(apierr.ErrBadRequest("Public ID is required").
 			WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
-	details, err := h.service.GetByPID(c.Request.Context(), pid)
+	details, err := h.service.GetByPublicID(c.Request.Context(), publicID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -783,34 +783,6 @@ func (h *ProductHandler) UploadProductMedia(c *gin.Context) {
 	})
 }
 
-// GetProductMedia godoc
-// @Summary list all media for a product
-// @Tags Product Media
-// @Produce json
-// @Param id path string true "Product ID (UUID)" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Success 200 {object} api.DataResponse{data=[]ProductMediaResponse}
-// @Router /products/{id}/media [get]
-func (h *ProductHandler) GetProductMediaByPID(c *gin.Context) {
-	pid := c.Param("pid")
-
-	mediaList, err := h.service.GetProductMediaByPID(c.Request.Context(), pid)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	res := make([]ProductMediaResponse, 0, len(mediaList))
-	for _, m := range mediaList {
-		res = append(res, mapProductMediaResponse(m))
-	}
-
-	c.JSON(http.StatusOK, api.DataResponse{
-		Data: res,
-	})
-}
-
 // DetachMedia godoc
 // @Summary remove a media attachment from a product
 // @Tags Product Media
@@ -954,55 +926,6 @@ func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 			CreatedAt:       v.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:       v.UpdatedAt.Format(time.RFC3339),
 		},
-	})
-}
-
-// GetProductVariants godoc
-// @Summary list public variants for a product
-// @Tags Product Variants
-// @Produce json
-// @Param id path string true "Product ID (UUID)" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Success 200 {object} api.PaginatedResponse{data=[]variant.VariantResponse,meta=pagination.Page}
-// @Router /products/{id}/variants [get]
-func (h *ProductHandler) GetProductVariantsByPID(c *gin.Context) {
-	pid := c.Param("pid")
-
-	q := &pagination.ListQuery{}
-	if err := c.ShouldBindQuery(q); err != nil {
-		validation.ValidationError(c, err)
-		return
-	}
-	q.Process(pagination.QueryOptions{DefaultPageSize: 20, MaxPageSize: 100})
-
-	result, err := h.service.GetProductVariantsByPID(c.Request.Context(), pid, q)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	res := make([]ProductVariantResponse, 0, len(result.Items))
-	for _, v := range result.Items {
-		attrs := v.Attributes
-		if attrs == nil {
-			attrs = make(map[string]any)
-		}
-		res = append(res, ProductVariantResponse{
-			ID:              v.PublicID,
-			Title:           v.Title,
-			Price:           v.Price,
-			CrossedOutPrice: v.CrossedOutPrice,
-			Currency:        v.Currency,
-			Attributes:      attrs,
-			IsDefault:       v.IsDefault,
-			Media:           make([]ProductMediaResponse, 0),
-		})
-	}
-
-	c.JSON(http.StatusOK, api.PaginatedResponse{
-		Data: res,
-		Meta: result.Page,
 	})
 }
 
