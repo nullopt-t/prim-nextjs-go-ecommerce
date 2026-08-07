@@ -92,7 +92,6 @@ func (cr *CategoryRepository) get(
 	if filter.Name != nil {
 		query += fmt.Sprintf(" AND name = $%d", argCount)
 		args = append(args, *filter.Name)
-		argCount++
 	}
 
 	category := new(model.ProductCategory)
@@ -305,9 +304,9 @@ func (cr *CategoryRepository) List(
 		LIMIT $%d OFFSET $%d
 	`, whereStmt, orderBy, argID, argID+1)
 
-	queryArgs := append(args, q.PageSize, q.Offset)
+	args = append(args, q.PageSize, q.Offset)
 
-	rows, err := qe.Query(ctx, selectQuery, queryArgs...)
+	rows, err := qe.Query(ctx, selectQuery, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list product categories query: %w", err)
 	}

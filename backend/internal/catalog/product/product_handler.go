@@ -900,14 +900,7 @@ func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 		return
 	}
 
-	v, err := h.service.CreateProductVariant(c.Request.Context(), productID, CreateProductVariantInput{
-		Title:           body.Title,
-		Price:           body.Price,
-		CrossedOutPrice: body.CrossedOutPrice,
-		Currency:        body.Currency,
-		Attributes:      body.Attributes,
-		IsDefault:       body.IsDefault,
-	})
+	v, err := h.service.CreateProductVariant(c.Request.Context(), productID, CreateProductVariantInput(body))
 	if err != nil {
 		_ = c.Error(err)
 		return

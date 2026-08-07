@@ -35,8 +35,8 @@ const (
 	CodeStorageError         = "STORAGE_ERROR"
 )
 
-// ApiError represents a structured application API error embedding nullopt-t/errs.
-type ApiError struct {
+// APIError represents a structured application API error embedding nullopt-t/errs.
+type APIError struct {
 	*errs.AppError
 
 	// HTTP status code (e.g., 400, 404, 500)
@@ -49,40 +49,40 @@ type ApiError struct {
 	Fields []FieldError `json:"details,omitempty"`
 }
 
-// New constructs a new ApiError requiring HTTP status code and message.
-func New(status int, message string) *ApiError {
-	return &ApiError{
+// New constructs a new APIError requiring HTTP status code and message.
+func New(status int, message string) *APIError {
+	return &APIError{
 		AppError: errs.New(message),
 		Status:   status,
 	}
 }
 
-func (ae *ApiError) WithCode(code string) *ApiError {
+func (ae *APIError) WithCode(code string) *APIError {
 	ae.Code = code
 	return ae
 }
 
-func (ae *ApiError) WithMessage(m string) *ApiError {
+func (ae *APIError) WithMessage(m string) *APIError {
 	ae.AppError = errs.New(m)
 	return ae
 }
 
-func (ae *ApiError) Wrap(err error) *ApiError {
-	ae.AppError.Wrap(err)
+func (ae *APIError) Wrap(err error) *APIError {
+	_ = ae.AppError.Wrap(err)
 	return ae
 }
 
-func (ae *ApiError) WithFields(fields ...FieldError) *ApiError {
+func (ae *APIError) WithFields(fields ...FieldError) *APIError {
 	ae.Fields = append(ae.Fields, fields...)
 	return ae
 }
 
-func (ae *ApiError) WithStack() *ApiError {
-	ae.AppError.WithStack()
+func (ae *APIError) WithStack() *APIError {
+	_ = ae.AppError.WithStack()
 	return ae
 }
 
-func (ae *ApiError) LogValue() slog.Value {
+func (ae *APIError) LogValue() slog.Value {
 	attrs := make([]slog.Attr, 0, 6)
 
 	if ae.Status != 0 {
@@ -115,12 +115,12 @@ func (ae *ApiError) LogValue() slog.Value {
 // --- Predefined API Error Constructors ---
 
 // ErrBadRequest creates a 400 Bad Request error.
-func ErrBadRequest(message string) *ApiError {
+func ErrBadRequest(message string) *APIError {
 	return New(http.StatusBadRequest, message).WithCode(CodeBadRequest)
 }
 
 // BadRequestError creates a 400 Bad Request error with default or custom message.
-func BadRequestError(message ...string) *ApiError {
+func BadRequestError(message ...string) *APIError {
 	msg := "Bad request"
 	if len(message) > 0 && message[0] != "" {
 		msg = message[0]
@@ -129,12 +129,12 @@ func BadRequestError(message ...string) *ApiError {
 }
 
 // ErrNotFound creates a 404 Not Found error.
-func ErrNotFound(message string) *ApiError {
+func ErrNotFound(message string) *APIError {
 	return New(http.StatusNotFound, message).WithCode(CodeNotFound)
 }
 
 // NotFoundError creates a 404 Not Found error with default or custom message.
-func NotFoundError(message ...string) *ApiError {
+func NotFoundError(message ...string) *APIError {
 	msg := "Resource not found"
 	if len(message) > 0 && message[0] != "" {
 		msg = message[0]
@@ -143,12 +143,12 @@ func NotFoundError(message ...string) *ApiError {
 }
 
 // ErrUnauthorized creates a 401 Unauthorized error.
-func ErrUnauthorized(message string) *ApiError {
+func ErrUnauthorized(message string) *APIError {
 	return New(http.StatusUnauthorized, message).WithCode(CodeUnauthorized)
 }
 
 // UnauthorizedError creates a 401 Unauthorized error with default or custom message.
-func UnauthorizedError(message ...string) *ApiError {
+func UnauthorizedError(message ...string) *APIError {
 	msg := "Unauthorized access"
 	if len(message) > 0 && message[0] != "" {
 		msg = message[0]
@@ -157,12 +157,12 @@ func UnauthorizedError(message ...string) *ApiError {
 }
 
 // ErrForbidden creates a 403 Forbidden error.
-func ErrForbidden(message string) *ApiError {
+func ErrForbidden(message string) *APIError {
 	return New(http.StatusForbidden, message).WithCode(CodeForbidden)
 }
 
 // ForbiddenError creates a 403 Forbidden error with default or custom message.
-func ForbiddenError(message ...string) *ApiError {
+func ForbiddenError(message ...string) *APIError {
 	msg := "Access forbidden"
 	if len(message) > 0 && message[0] != "" {
 		msg = message[0]
@@ -171,12 +171,12 @@ func ForbiddenError(message ...string) *ApiError {
 }
 
 // ErrConflict creates a 409 Conflict error.
-func ErrConflict(message string) *ApiError {
+func ErrConflict(message string) *APIError {
 	return New(http.StatusConflict, message).WithCode(CodeResourceConflict)
 }
 
 // ConflictError creates a 409 Conflict error with default or custom message.
-func ConflictError(message ...string) *ApiError {
+func ConflictError(message ...string) *APIError {
 	msg := "Resource conflict"
 	if len(message) > 0 && message[0] != "" {
 		msg = message[0]
@@ -185,7 +185,7 @@ func ConflictError(message ...string) *ApiError {
 }
 
 // ErrInternalError creates a 500 Internal Server Error.
-func ErrInternalError(message ...string) *ApiError {
+func ErrInternalError(message ...string) *APIError {
 	msg := "Internal server error"
 	if len(message) > 0 && message[0] != "" {
 		msg = message[0]
@@ -194,17 +194,17 @@ func ErrInternalError(message ...string) *ApiError {
 }
 
 // InternalServerError creates a 500 Internal Server Error with default or custom message.
-func InternalServerError(message ...string) *ApiError {
+func InternalServerError(message ...string) *APIError {
 	return ErrInternalError(message...)
 }
 
 // ErrInvalidUUID creates a 400 Bad Request error for invalid UUID syntax.
-func ErrInvalidUUID() *ApiError {
+func ErrInvalidUUID() *APIError {
 	return New(http.StatusBadRequest, "Invalid UUID format").WithCode(CodeInvalidInput)
 }
 
 // ErrInvalidPayload creates a 400 Bad Request error for malformed request payloads.
-func ErrInvalidPayload(message ...string) *ApiError {
+func ErrInvalidPayload(message ...string) *APIError {
 	msg := "Invalid request payload"
 	if len(message) > 0 && message[0] != "" {
 		msg = message[0]
@@ -213,7 +213,7 @@ func ErrInvalidPayload(message ...string) *ApiError {
 }
 
 // ErrValidationFailed creates a 400 Bad Request error for field validation failures.
-func ErrValidationFailed(message ...string) *ApiError {
+func ErrValidationFailed(message ...string) *APIError {
 	msg := "Validation failed"
 	if len(message) > 0 && message[0] != "" {
 		msg = message[0]

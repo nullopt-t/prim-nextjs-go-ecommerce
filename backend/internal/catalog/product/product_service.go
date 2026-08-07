@@ -544,7 +544,9 @@ func (ps *ProductService) UploadProductMedia(
 			WithCode(apierr.CodeValidationFailed).
 			Wrap(err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	const maxFileSize = 10 * 1024 * 1024
 	if fileHeader.Size > maxFileSize {
@@ -691,10 +693,6 @@ func (ps *ProductService) DetachMedia(
 			return err
 		}
 
-		if objectKey != "" {
-			// Instead of marking it deleting here in tx, we just do nothing in tx,
-			// and let objectService.DeleteObject handle marking and deleting outside tx.
-		}
 		return nil
 	})
 

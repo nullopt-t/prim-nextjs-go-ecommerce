@@ -18,7 +18,7 @@ func ErrorHandler(logger log.Logger) gin.HandlerFunc {
 		}
 
 		err := c.Errors.Last().Err
-		if ae, ok := err.(*apierr.ApiError); ok {
+		if ae, ok := err.(*apierr.APIError); ok {
 			logger.Error(
 				"something went wrong",
 				log.Meta{

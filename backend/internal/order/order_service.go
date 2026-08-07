@@ -3,7 +3,6 @@ package order
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
@@ -57,7 +56,6 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 	var createdOrder *model.Order
 
 	err := s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
-		now := time.Now().UTC()
 		orderID := uuid.New()
 
 		var totalAmount int64
@@ -95,8 +93,6 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 			TotalAmount:     finalTotal,
 			Currency:        in.Currency,
 			Items:           orderItems,
-			CreatedAt:       now,
-			UpdatedAt:       now,
 		}
 
 		if err := s.orderRepo.CreateOrder(ctx, tx, newOrder); err != nil {

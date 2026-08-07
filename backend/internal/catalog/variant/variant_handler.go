@@ -252,14 +252,7 @@ func (vh *VariantHandler) UpdateVariantByID(c *gin.Context) {
 		return
 	}
 
-	err = vh.vservice.UpdateVariant(c.Request.Context(), variantID, UpdateVariantInput{
-		Title:           body.Title,
-		Price:           body.Price,
-		CrossedOutPrice: body.CrossedOutPrice,
-		Currency:        body.Currency,
-		Attributes:      body.Attributes,
-		IsDefault:       body.IsDefault,
-	})
+	err = vh.vservice.UpdateVariant(c.Request.Context(), variantID, UpdateVariantInput(body))
 	if err != nil {
 		_ = c.Error(err)
 		return

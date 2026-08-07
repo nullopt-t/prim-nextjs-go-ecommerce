@@ -22,9 +22,10 @@ func (r *CartRepository) CreateCart(
 ) error {
 	query := `
 		INSERT INTO carts (id, user_id, session_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES ($1, $2, $3, now(), now())
+		RETURNING created_at, updated_at
 	`
-	_, err := qe.Exec(ctx, query, cart.ID, cart.UserID, cart.SessionID, cart.CreatedAt, cart.UpdatedAt)
+	err := qe.QueryRow(ctx, query, cart.ID, cart.UserID, cart.SessionID).Scan(&cart.CreatedAt, &cart.UpdatedAt)
 	return err
 }
 
@@ -165,9 +166,10 @@ func (r *CartRepository) AddItem(
 ) error {
 	query := `
 		INSERT INTO cart_items (id, cart_id, variant_id, quantity, price_at_purchase, currency, carted_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		VALUES ($1, $2, $3, $4, $5, $6, now())
+		RETURNING carted_at
 	`
-	_, err := qe.Exec(
+	err := qe.QueryRow(
 		ctx,
 		query,
 		item.ID,
@@ -176,8 +178,7 @@ func (r *CartRepository) AddItem(
 		item.Quantity,
 		item.PriceAtPurchase,
 		item.Currency,
-		item.CartedAt,
-	)
+	).Scan(&item.CartedAt)
 	return err
 }
 

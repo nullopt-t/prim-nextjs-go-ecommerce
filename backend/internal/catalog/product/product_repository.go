@@ -525,7 +525,6 @@ func (r *ProductRepository) softDelete(
 	if filter.PublicID != nil {
 		whereClauses = append(whereClauses, fmt.Sprintf("public_id = $%d", argID))
 		args = append(args, *filter.PublicID)
-		argID++
 	}
 
 	query := fmt.Sprintf(`

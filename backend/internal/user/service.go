@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
@@ -36,12 +35,9 @@ func (s *UserService) CreateUser(
 	ctx context.Context,
 	identifier string,
 ) (*model.User, error) {
-	now := time.Now()
 	u := &model.User{
 		ID:         uuid.New(),
 		Identifier: identifier,
-		CreatedAt:  now,
-		UpdatedAt:  now,
 	}
 
 	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {

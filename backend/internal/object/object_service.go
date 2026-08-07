@@ -3,7 +3,6 @@ package object
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"io"
 
@@ -37,22 +36,19 @@ type CreateObjectInput struct {
 
 func (os *ObjectService) CreateObject(
 	ctx context.Context,
-	ContentType string,
-	Size int64,
-	Bucket string,
-	Key string,
+	contentType string,
+	size int64,
+	bucket string,
+	key string,
 	status model.ObjectStatus,
 ) (*model.Object, error) {
-	now := time.Now().UTC()
 	object := &model.Object{
 		ID:          uuid.New(),
-		FileSize:    Size,
+		FileSize:    size,
 		Status:      status,
-		ContentType: ContentType,
-		Bucket:      Bucket,
-		Key:         Key,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ContentType: contentType,
+		Bucket:      bucket,
+		Key:         key,
 	}
 
 	err := os.dr.WithDB(
@@ -85,7 +81,6 @@ func (os *ObjectService) CreateObjectWithTx(
 	contentType string,
 	status model.ObjectStatus,
 ) (*model.Object, error) {
-	now := time.Now().UTC()
 	object := &model.Object{
 		ID:          uuid.New(),
 		FileSize:    size,
@@ -93,8 +88,6 @@ func (os *ObjectService) CreateObjectWithTx(
 		ContentType: contentType,
 		Bucket:      bucket,
 		Key:         key,
-		CreatedAt:   now,
-		UpdatedAt:   now,
 	}
 
 	err := os.or.Create(
@@ -148,11 +141,9 @@ func (os *ObjectService) DeleteObject(
 	}
 
 	// Finally mark as deleted in DB
-	err = os.dr.WithDB(ctx, func(tx database.QueryExecutor) error {
+	return os.dr.WithDB(ctx, func(tx database.QueryExecutor) error {
 		return os.or.MarkDeletedByKey(ctx, tx, bucket, key)
 	})
-
-	return nil
 }
 
 // MarkDeletingByKey marks a storage object as 'deleting' by its bucket and key.
