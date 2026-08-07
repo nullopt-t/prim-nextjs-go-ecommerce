@@ -241,7 +241,7 @@ func (bh *BrandHandler) DeleteBrandByID(c *gin.Context) {
 // @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]BrandResponse,meta=api.Page} "Paginated list of active brands"
+// @Success 200 {object} api.PaginatedResponse{data=[]BrandResponse,meta=pagination.Page} "Paginated list of active brands"
 // @Router /brands [get]
 func (bh *BrandHandler) ListBrands(c *gin.Context) {
 	q := &pagination.ListQuery{}
@@ -291,7 +291,7 @@ func (bh *BrandHandler) ListBrands(c *gin.Context) {
 // @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]AdminBrandResponse,meta=api.Page} "Paginated list of all brands including deleted"
+// @Success 200 {object} api.PaginatedResponse{data=[]AdminBrandResponse,meta=pagination.Page} "Paginated list of all brands including deleted"
 // @Router /admin/brands [get]
 func (bh *BrandHandler) ListAdminBrands(c *gin.Context) {
 	q := &pagination.ListQuery{}

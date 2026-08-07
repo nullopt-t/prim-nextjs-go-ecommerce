@@ -624,7 +624,6 @@ func (ps *ProductService) UploadProductMedia(
 	return media, nil
 }
 
-
 func (ps *ProductService) GetProductMedia(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -749,4 +748,3 @@ func (ps *ProductService) ReorderMedia(
 
 	return nil
 }
-

@@ -160,7 +160,7 @@ func (ch *CategoryHandler) GetCategoryByID(c *gin.Context) {
 // @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]PublicCategoryResponse,meta=api.Page} "Paginated list of active categories"
+// @Success 200 {object} api.PaginatedResponse{data=[]PublicCategoryResponse,meta=pagination.Page} "Paginated list of active categories"
 // @Router /categories [get]
 func (ch *CategoryHandler) ListCategories(c *gin.Context) {
 	q := &pagination.ListQuery{}
@@ -204,7 +204,7 @@ func (ch *CategoryHandler) ListCategories(c *gin.Context) {
 // @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]AdminCategoryResponse,meta=api.Page} "Paginated list of all categories including deleted"
+// @Success 200 {object} api.PaginatedResponse{data=[]AdminCategoryResponse,meta=pagination.Page} "Paginated list of all categories including deleted"
 // @Router /admin/categories [get]
 func (ch *CategoryHandler) ListAdminCategories(c *gin.Context) {
 	q := &pagination.ListQuery{}

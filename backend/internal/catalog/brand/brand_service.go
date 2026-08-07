@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/errcode"
@@ -45,14 +44,11 @@ func (bs *BrandService) CreateBrand(
 	ctx context.Context,
 	in *CreateBrandInput,
 ) (*model.ProductBrand, error) {
-	now := time.Now().UTC().Truncate(time.Millisecond)
 	brand := &model.ProductBrand{
-		ID:        uuid.New(),
-		PublicID:  uuid.NewString(),
-		Name:      in.Name,
-		Link:      in.Link,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:       uuid.New(),
+		PublicID: uuid.NewString(),
+		Name:     in.Name,
+		Link:     in.Link,
 	}
 
 	err := bs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {

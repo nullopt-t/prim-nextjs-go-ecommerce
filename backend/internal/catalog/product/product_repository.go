@@ -83,14 +83,6 @@ func (r *ProductRepository) Create(
 		p.ID = uuid.New()
 	}
 
-	now := time.Now().UTC().Truncate(time.Millisecond)
-	if p.CreatedAt.IsZero() {
-		p.CreatedAt = now
-	}
-	if p.UpdatedAt.IsZero() {
-		p.UpdatedAt = now
-	}
-
 	query := `
 		INSERT INTO products (
 			id,
@@ -103,10 +95,11 @@ func (r *ProductRepository) Create(
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
+		RETURNING created_at, updated_at
 	`
 
-	_, err := qe.Exec(
+	err := qe.QueryRow(
 		ctx,
 		query,
 		p.ID,
@@ -116,9 +109,7 @@ func (r *ProductRepository) Create(
 		p.Title,
 		p.Description,
 		p.Status,
-		p.CreatedAt,
-		p.UpdatedAt,
-	)
+	).Scan(&p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create product: %w", err)
 	}
@@ -219,8 +210,6 @@ func (r *ProductRepository) Update(
 		return errors.New("update product: product ID is required")
 	}
 
-	now := time.Now().UTC().Truncate(time.Millisecond)
-
 	query := `
 		UPDATE products
 		SET
@@ -230,8 +219,8 @@ func (r *ProductRepository) Update(
 			description = $4,
 			highlights = $5,
 			status = $6,
-			updated_at = $7
-		WHERE id = $8 AND deleted_at IS NULL
+			updated_at = now()
+		WHERE id = $7 AND deleted_at IS NULL
 	`
 
 	cmd, err := qe.Exec(
@@ -243,7 +232,6 @@ func (r *ProductRepository) Update(
 		p.Description,
 		p.Highlights,
 		p.Status,
-		now,
 		p.ID,
 	)
 	if err != nil {
@@ -544,14 +532,11 @@ func (r *ProductRepository) softDelete(
 		argID++
 	}
 
-	now := time.Now().UTC().Truncate(time.Millisecond)
 	query := fmt.Sprintf(`
 		UPDATE products
-		SET deleted_at = $%d, updated_at = $%d
+		SET deleted_at = now(), updated_at = now()
 		WHERE %s
-	`, argID, argID+1, strings.Join(whereClauses, " AND "))
-
-	args = append(args, now, now)
+	`, strings.Join(whereClauses, " AND "))
 
 	cmd, err := qe.Exec(ctx, query, args...)
 	if err != nil {
@@ -576,15 +561,13 @@ func (r *ProductRepository) UpdateStatus(
 		return errors.New("update product status: productID is required")
 	}
 
-	now := time.Now().UTC().Truncate(time.Millisecond)
-
 	query := `
 		UPDATE products
-		SET status = $2, updated_at = $3
+		SET status = $2, updated_at = now()
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	cmd, err := qe.Exec(ctx, query, productID, status, now)
+	cmd, err := qe.Exec(ctx, query, productID, status)
 	if err != nil {
 		return fmt.Errorf("update product status: %w", err)
 	}
