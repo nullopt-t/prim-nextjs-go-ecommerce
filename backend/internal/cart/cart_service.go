@@ -12,20 +12,20 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
-type VariantProvider interface {
+type VariantService interface {
 	GetVariantByID(ctx context.Context, variantID uuid.UUID) (*model.ProductVariant, error)
 }
 
 type CartService struct {
 	dr             database.Runner
 	cartRepo       *CartRepository
-	variantService VariantProvider
+	variantService VariantService
 }
 
 func NewService(
 	dr database.Runner,
 	cartRepo *CartRepository,
-	variantService VariantProvider,
+	variantService VariantService,
 ) *CartService {
 	return &CartService{
 		dr:             dr,

@@ -100,56 +100,30 @@ definitions:
         example: The requested resource was not found
         type: string
     type: object
-  api.Page:
-    properties:
-      has_next:
-        example: true
-        type: boolean
-      has_previous:
-        example: false
-        type: boolean
-      page:
-        example: 1
-        type: integer
-      page_size:
-        example: 10
-        type: integer
-      total_items:
-        example: 20
-        type: integer
-      total_pages:
-        example: 2
-        type: integer
-    type: object
   api.PaginatedResponse:
     properties:
       data: {}
       meta: {}
     type: object
-  api.Sort:
-    properties:
-      field:
-        example: name
-        type: string
-      order:
-        allOf:
-        - $ref: '#/definitions/api.SortOrder'
-        example: asc
-    type: object
-  api.SortOrder:
-    enum:
-    - asc
-    - desc
-    type: string
-    x-enum-varnames:
-    - SortAsc
-    - SortDesc
   api.SuccessResponse:
     properties:
       data: {}
       message:
         type: string
       meta: {}
+    type: object
+  api.UnauthorizedErrorResponse:
+    properties:
+      code:
+        example: UNAUTHORIZED
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/api.FieldError'
+        type: array
+      message:
+        example: Authentication token is missing or expired
+        type: string
     type: object
   api.UnauthorizedResponse:
     properties:
@@ -175,8 +149,6 @@ definitions:
     properties:
       refresh_token:
         type: string
-    required:
-    - refresh_token
     type: object
   auth.ResendChallengeRequest:
     properties:
@@ -199,15 +171,6 @@ definitions:
       expires_at:
         type: string
       identifier:
-        type: string
-    type: object
-  auth.TokensResponse:
-    properties:
-      access_token:
-        type: string
-      refresh_token:
-        type: string
-      session_id:
         type: string
     type: object
   auth.UserSession:
@@ -364,7 +327,7 @@ definitions:
   category.PublicCategoryResponse:
     properties:
       id:
-        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        example: prod_cat_123
         type: string
       name:
         example: Electronics
@@ -379,11 +342,51 @@ definitions:
         example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
         type: string
     type: object
+  checkout.AddressRequest:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      postal_code:
+        type: string
+      state:
+        type: string
+      street:
+        type: string
+    required:
+    - city
+    - country
+    - postal_code
+    - street
+    type: object
+  checkout.CheckoutRequest:
+    properties:
+      billing_address:
+        $ref: '#/definitions/checkout.AddressRequest'
+      coupon_id:
+        type: string
+      customer_email:
+        type: string
+      shipping_address:
+        $ref: '#/definitions/checkout.AddressRequest'
+    required:
+    - billing_address
+    - customer_email
+    - shipping_address
+    type: object
+  checkout.CheckoutResponse:
+    properties:
+      order_id:
+        type: string
+      status:
+        type: string
+    type: object
   model.Cart:
     properties:
-      created_at:
+      createdAt:
         type: string
-      deleted_at:
+      deletedAt:
         type: string
       id:
         type: string
@@ -391,32 +394,78 @@ definitions:
         items:
           $ref: '#/definitions/model.CartItem'
         type: array
-      session_id:
+      sessionID:
         type: string
-      updated_at:
+      updatedAt:
         type: string
-      user_id:
+      userID:
         type: string
     type: object
   model.CartItem:
     properties:
-      cart_id:
+      cartID:
         type: string
-      carted_at:
+      cartedAt:
         type: string
       currency:
         type: string
-      deleted_at:
+      deletedAt:
         type: string
       id:
         type: string
-      price_at_purchase:
+      priceAtPurchase:
+        format: int64
         type: integer
       quantity:
         type: integer
       variant:
         $ref: '#/definitions/model.ProductVariant'
-      variant_id:
+      variantID:
+        type: string
+    type: object
+  model.OrderStatus:
+    enum:
+    - pending
+    - paid
+    - processing
+    - shipped
+    - delivered
+    - canceled
+    - refunded
+    type: string
+    x-enum-varnames:
+    - OrderStatusPending
+    - OrderStatusPaid
+    - OrderStatusProcessing
+    - OrderStatusShipped
+    - OrderStatusDelivered
+    - OrderStatusCanceled
+    - OrderStatusRefunded
+  model.Product:
+    properties:
+      brandID:
+        type: string
+      categoryID:
+        type: string
+      createdAt:
+        type: string
+      deletedAt:
+        type: string
+      description:
+        type: string
+      highlights:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      publicID:
+        type: string
+      status:
+        $ref: '#/definitions/model.PublicationStatus'
+      title:
+        type: string
+      updatedAt:
         type: string
     type: object
   model.ProductVariant:
@@ -424,27 +473,27 @@ definitions:
       attributes:
         additionalProperties: {}
         type: object
-      createdAt:
+      created_at:
         type: string
-      crossedOutPrice:
+      crossed_out_price:
         type: integer
       currency:
         type: string
-      deletedAt:
+      deleted_at:
         type: string
       id:
         type: string
-      isDefault:
+      is_default:
         type: boolean
       price:
         type: integer
-      productID:
+      product_id:
         type: string
-      publicID:
+      public_id:
         type: string
       title:
         type: string
-      updatedAt:
+      updated_at:
         type: string
     type: object
   model.PublicationStatus:
@@ -457,6 +506,162 @@ definitions:
     - PublicationStatusDraft
     - PublicationStatusPublished
     - PublicationStatusArchived
+  order.AddressResponse:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      postal_code:
+        type: string
+      state:
+        type: string
+      street:
+        type: string
+    type: object
+  order.OrderItemResponse:
+    properties:
+      id:
+        type: string
+      price_at_purchase:
+        type: integer
+      product_snapshot:
+        type: string
+      quantity:
+        type: integer
+      variant_id:
+        type: string
+    type: object
+  order.OrderResponse:
+    properties:
+      billing_address:
+        $ref: '#/definitions/order.AddressResponse'
+      coupon_id:
+        type: string
+      created_at:
+        type: string
+      currency:
+        type: string
+      customer_email:
+        type: string
+      customer_id:
+        type: string
+      discount_amount:
+        type: integer
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/order.OrderItemResponse'
+        type: array
+      shipping_address:
+        $ref: '#/definitions/order.AddressResponse'
+      status:
+        $ref: '#/definitions/model.OrderStatus'
+      total_amount:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  order.UpdateOrderStatusRequest:
+    properties:
+      notes:
+        type: string
+      status:
+        $ref: '#/definitions/model.OrderStatus'
+    required:
+    - status
+    type: object
+  pagination.Page:
+    properties:
+      has_next:
+        example: true
+        type: boolean
+      has_previous:
+        example: false
+        type: boolean
+      page:
+        example: 1
+        type: integer
+      page_size:
+        example: 10
+        type: integer
+      total_items:
+        example: 20
+        type: integer
+      total_pages:
+        example: 2
+        type: integer
+    type: object
+  pagination.Sort:
+    properties:
+      field:
+        example: name
+        type: string
+      order:
+        allOf:
+        - $ref: '#/definitions/pagination.SortOrder'
+        example: asc
+    type: object
+  pagination.SortOrder:
+    enum:
+    - asc
+    - desc
+    type: string
+    x-enum-varnames:
+    - SortAsc
+    - SortDesc
+  product.AdminProductDetailsResponse:
+    properties:
+      brand:
+        $ref: '#/definitions/product.ProductBrandSummary'
+      brand_id:
+        type: string
+      category:
+        $ref: '#/definitions/product.ProductCategorySummary'
+      category_id:
+        type: string
+      created_at:
+        example: "2026-08-05T19:00:00Z"
+        type: string
+      deleted_at:
+        example: "2026-08-05T19:30:00Z"
+        type: string
+      description:
+        type: string
+      highlights:
+        items:
+          type: string
+        type: array
+      id:
+        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
+        type: string
+      media:
+        items:
+          $ref: '#/definitions/product.ProductMediaResponse'
+        type: array
+      public_id:
+        example: prod_abc123
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/model.PublicationStatus'
+        example: draft
+      tags:
+        items:
+          $ref: '#/definitions/product.ProductTagSummary'
+        type: array
+      title:
+        example: Wireless Headphones
+        type: string
+      updated_at:
+        example: "2026-08-05T19:00:00Z"
+        type: string
+      variants:
+        items:
+          $ref: '#/definitions/product.ProductVariantResponse'
+        type: array
+    type: object
   product.CreateProductRequest:
     properties:
       brand_id:
@@ -468,10 +673,6 @@ definitions:
       description:
         example: Premium over-ear Bluetooth headphones with active noise cancellation.
         type: string
-      highlights:
-        items:
-          type: string
-        type: array
       title:
         example: Wireless Noise-Canceling Headphones
         type: string
@@ -507,22 +708,24 @@ definitions:
     properties:
       id:
         type: string
+      link:
+        type: string
       name:
+        type: string
+    type: object
+  product.ProductCategorySummary:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      slug:
         type: string
     type: object
   product.ProductDetailsResponse:
     properties:
       brand:
         $ref: '#/definitions/product.ProductBrandSummary'
-      brand_id:
-        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
-        type: string
-      category_id:
-        example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
-        type: string
-      created_at:
-        example: "2026-08-02T16:00:00Z"
-        type: string
       description:
         type: string
       highlights:
@@ -530,89 +733,83 @@ definitions:
           type: string
         type: array
       id:
-        example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
-        type: string
-      public_id:
         example: prod_abc123
         type: string
-      status:
-        example: draft
-        type: string
+      media:
+        items:
+          $ref: '#/definitions/product.ProductMediaResponse'
+        type: array
+      tags:
+        items:
+          $ref: '#/definitions/product.ProductTagSummary'
+        type: array
       title:
         example: Wireless Headphones
         type: string
-      updated_at:
-        example: "2026-08-02T16:00:00Z"
-        type: string
+      variants:
+        items:
+          $ref: '#/definitions/product.ProductVariantResponse'
+        type: array
     type: object
-  product.ProductListItem:
+  product.ProductListItemResponse:
     properties:
-      brand_id:
-        type: string
-      category_id:
-        type: string
+      brand:
+        $ref: '#/definitions/product.ProductBrandSummary'
+      category:
+        $ref: '#/definitions/product.ProductCategorySummary'
       created_at:
         type: string
-      id:
+      description:
         type: string
-      public_id:
+      id:
         type: string
       status:
         $ref: '#/definitions/model.PublicationStatus'
       title:
         type: string
+      updated_at:
+        type: string
     type: object
   product.ProductMediaResponse:
     properties:
       id:
-        example: 8f123456-e89b-12d3-a456-426614174000
         type: string
       media_type:
         example: image
         type: string
       object:
         $ref: '#/definitions/product.StorageObjectResponse'
-      product_id:
-        example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
-        type: string
       sort_order:
         example: 0
         type: integer
-      storage_object_id:
-        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
+    type: object
+  product.ProductTagSummary:
+    properties:
+      id:
+        type: string
+      name:
         type: string
     type: object
-  product.ProductResponse:
+  product.ProductVariantResponse:
     properties:
-      brand_id:
-        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
+      attributes:
+        additionalProperties: {}
+        type: object
+      crossed_out_price:
+        type: integer
+      currency:
         type: string
-      category_id:
-        example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
-        type: string
-      created_at:
-        example: "2026-08-02T16:00:00Z"
-        type: string
-      description:
-        type: string
-      highlights:
-        items:
-          type: string
-        type: array
       id:
-        example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
         type: string
-      public_id:
-        example: prod_abc123
-        type: string
-      status:
-        example: draft
-        type: string
+      is_default:
+        type: boolean
+      media:
+        items:
+          $ref: '#/definitions/product.ProductMediaResponse'
+        type: array
+      price:
+        type: integer
       title:
-        example: Wireless Headphones
-        type: string
-      updated_at:
-        example: "2026-08-02T16:00:00Z"
         type: string
     type: object
   product.PutProductCategoryRequest:
@@ -649,16 +846,10 @@ definitions:
     type: object
   product.StorageObjectResponse:
     properties:
-      bucket:
-        type: string
       content_type:
         type: string
       file_size:
         type: integer
-      id:
-        type: string
-      key:
-        type: string
       public_url:
         type: string
     type: object
@@ -953,7 +1144,7 @@ paths:
                     $ref: '#/definitions/brand.AdminBrandResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/pagination.Page'
               type: object
         "400":
           description: Invalid query parameters
@@ -1164,7 +1355,7 @@ paths:
                     $ref: '#/definitions/category.AdminCategoryResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/pagination.Page'
               type: object
         "400":
           description: Invalid query parameters
@@ -1299,6 +1490,46 @@ paths:
       summary: Update category details
       tags:
       - Categories
+  /admin/orders/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Updates the status of an existing order.
+      parameters:
+      - description: Order UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Status update details
+        in: body
+        name: status
+        required: true
+        schema:
+          $ref: '#/definitions/order.UpdateOrderStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Status update confirmation
+          schema:
+            $ref: '#/definitions/api.MessageResponse'
+        "400":
+          description: Validation error or invalid UUID format
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "404":
+          description: Order not found
+          schema:
+            $ref: '#/definitions/api.NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Update order status (Admin)
+      tags:
+      - Orders
   /admin/products:
     get:
       description: Returns a paginated list of all products including draft, published,
@@ -1336,10 +1567,10 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/product.ProductListItem'
+                    $ref: '#/definitions/model.Product'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/pagination.Page'
               type: object
         "400":
           description: Invalid query parameters
@@ -1376,7 +1607,7 @@ paths:
             - $ref: '#/definitions/api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/product.ProductResponse'
+                  $ref: '#/definitions/product.AdminProductDetailsResponse'
               type: object
         "400":
           description: Validation error or invalid UUID reference
@@ -1426,6 +1657,42 @@ paths:
       summary: Soft-delete a product
       tags:
       - Products
+    get:
+      description: Retrieves full product details by its unique internal UUID.
+      parameters:
+      - description: Internal Product UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product details
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/product.AdminProductDetailsResponse'
+              type: object
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "404":
+          description: Product not found
+          schema:
+            $ref: '#/definitions/api.NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Get product by internal UUID
+      tags:
+      - Products
     patch:
       consumes:
       - application/json
@@ -1449,9 +1716,14 @@ paths:
       - application/json
       responses:
         "200":
-          description: Update confirmation message
+          description: Updated product details
           schema:
-            $ref: '#/definitions/api.MessageResponse'
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/product.AdminProductDetailsResponse'
+              type: object
         "400":
           description: Validation error or invalid UUID format
           schema:
@@ -1843,7 +2115,7 @@ paths:
                     $ref: '#/definitions/variant.AdminVariantResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/pagination.Page'
               type: object
         "400":
           description: Invalid query parameters or UUID format
@@ -1944,7 +2216,7 @@ paths:
                     $ref: '#/definitions/tag.AdminTagResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/pagination.Page'
               type: object
         "400":
           description: Invalid query parameters
@@ -2385,7 +2657,43 @@ paths:
       - Auth
   /auth/challenge/verify:
     post:
-      responses: {}
+      consumes:
+      - application/json
+      description: Verifies the one-time code sent to the user's email or phone and
+        sets auth cookies.
+      parameters:
+      - description: Challenge Verification Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.VerifyChallengeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.BadReqResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Verify an authentication challenge
+      tags:
+      - Auth
   /auth/me:
     get:
       consumes:
@@ -2545,7 +2853,7 @@ paths:
                     $ref: '#/definitions/brand.BrandResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/pagination.Page'
               type: object
         "400":
           description: Invalid query parameters
@@ -2569,10 +2877,8 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
+        "204":
           description: Cart cleared
-          schema:
-            $ref: '#/definitions/api.SuccessResponse'
         "500":
           description: Internal server error
           schema:
@@ -2820,7 +3126,7 @@ paths:
                     $ref: '#/definitions/category.PublicCategoryResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/pagination.Page'
               type: object
         "400":
           description: Invalid query parameters
@@ -2833,6 +3139,114 @@ paths:
       summary: List active product categories
       tags:
       - Categories
+  /checkout:
+    post:
+      consumes:
+      - application/json
+      description: Creates an order from the current user's cart and clears the cart.
+      parameters:
+      - description: Checkout Details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/checkout.CheckoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Checkout result
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/checkout.CheckoutResponse'
+              type: object
+        "400":
+          description: Validation error or empty cart
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/api.UnauthorizedErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Perform checkout
+      tags:
+      - Checkout
+  /orders:
+    get:
+      description: Returns a list of orders belonging to the authenticated customer.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of orders
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/order.OrderResponse'
+                  type: array
+              type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/api.UnauthorizedErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: List customer orders
+      tags:
+      - Orders
+  /orders/{id}:
+    get:
+      description: Retrieves full order details by its UUID.
+      parameters:
+      - description: Order UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Order details
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/order.OrderResponse'
+              type: object
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/api.UnauthorizedErrorResponse'
+        "404":
+          description: Order not found
+          schema:
+            $ref: '#/definitions/api.NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Get order by ID
+      tags:
+      - Orders
   /products:
     get:
       description: Returns a paginated list of active, published products for customer
@@ -2870,10 +3284,10 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/product.ProductListItem'
+                    $ref: '#/definitions/product.ProductListItemResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/pagination.Page'
               type: object
         "400":
           description: Invalid query parameters
@@ -2888,10 +3302,10 @@ paths:
       - Products
   /products/{id}:
     get:
-      description: Retrieves full product details by its unique internal UUID.
+      description: Retrieves full public-facing product details including brand information
+        by its human-readable public ID.
       parameters:
-      - description: Internal Product UUID
-        format: uuid
+      - description: Product Public ID (e.g. prod_01h8x9a...)
         in: path
         name: id
         required: true
@@ -2900,16 +3314,16 @@ paths:
       - application/json
       responses:
         "200":
-          description: Product details
+          description: Product and brand details
           schema:
             allOf:
             - $ref: '#/definitions/api.DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/product.ProductResponse'
+                  $ref: '#/definitions/product.ProductDetailsResponse'
               type: object
         "400":
-          description: Invalid UUID format
+          description: Public ID is required
           schema:
             $ref: '#/definitions/api.BadRequestErrorResponse'
         "404":
@@ -2920,79 +3334,9 @@ paths:
           description: Internal server error
           schema:
             $ref: '#/definitions/api.InternalServerErrorResponse'
-      summary: Get product by internal UUID
+      summary: Get product details by public ID
       tags:
       - Products
-  /products/{id}/media:
-    get:
-      parameters:
-      - description: Product ID (UUID)
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.DataResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/product.ProductMediaResponse'
-                  type: array
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.BadRequestErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.InternalServerErrorResponse'
-      summary: list all media for a product
-      tags:
-      - Product Media
-  /products/{id}/variants:
-    get:
-      parameters:
-      - description: Product ID (UUID)
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.PaginatedResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/variant.VariantResponse'
-                  type: array
-                meta:
-                  $ref: '#/definitions/api.Page'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/api.BadRequestErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/api.InternalServerErrorResponse'
-      summary: list public variants for a product
-      tags:
-      - Product Variants
   /products/{product_id}/variants:
     get:
       description: Returns a paginated list of active variants associated with a specific
@@ -3039,7 +3383,7 @@ paths:
                     $ref: '#/definitions/variant.VariantResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/pagination.Page'
               type: object
         "400":
           description: Invalid query parameters or UUID format
@@ -3052,43 +3396,6 @@ paths:
       summary: List active variants for a product
       tags:
       - Product Variants
-  /products/p/:pid:
-    get:
-      description: Retrieves full public-facing product details including brand information
-        by its human-readable public ID (slug).
-      parameters:
-      - description: Product Public ID (e.g. prod_01h8x9a...)
-        in: path
-        name: pid
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Product and brand details
-          schema:
-            allOf:
-            - $ref: '#/definitions/api.DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/product.ProductDetailsResponse'
-              type: object
-        "400":
-          description: Public ID is required
-          schema:
-            $ref: '#/definitions/api.BadRequestErrorResponse'
-        "404":
-          description: Product not found
-          schema:
-            $ref: '#/definitions/api.NotFoundErrorResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/api.InternalServerErrorResponse'
-      summary: Get product details by public URL slug / public ID
-      tags:
-      - Products
   /tags:
     get:
       consumes:
@@ -3131,7 +3438,7 @@ paths:
                     $ref: '#/definitions/tag.TagResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/api.Page'
+                  $ref: '#/definitions/pagination.Page'
               type: object
         "400":
           description: Invalid query parameters

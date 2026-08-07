@@ -15,21 +15,21 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 )
 
-type ObjectProvider interface {
+type ObjectService interface {
 	GetObjectURL(ctx context.Context, bucket, key string) string
 }
 
 type VariantService struct {
 	logger        log.Logger
 	dr            database.Runner
-	objectService ObjectProvider
+	objectService ObjectService
 	vr            *VariantRepository
 }
 
 func NewService(
 	logger log.Logger,
 	r database.Runner,
-	objectService ObjectProvider,
+	objectService ObjectService,
 	vr *VariantRepository,
 ) *VariantService {
 	return &VariantService{

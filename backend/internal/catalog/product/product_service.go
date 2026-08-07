@@ -22,7 +22,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 )
 
-type ObjectProvider interface {
+type ObjectService interface {
 	UploadObject(ctx context.Context, contentType string, size int64, bucket string, file io.Reader) (*model.Object, error)
 	DeleteObject(ctx context.Context, bucket, key string) error
 	GetObjectURL(ctx context.Context, bucket, key string) string
@@ -31,7 +31,7 @@ type ObjectProvider interface {
 type ProductService struct {
 	dr              database.Runner
 	logger          log.Logger
-	objectService   ObjectProvider
+	objectService   ObjectService
 	productRepo     *ProductRepository
 	brandService    *brand.BrandService
 	categoryService *category.CategoryService
@@ -43,7 +43,7 @@ func NewService(
 	r database.Runner,
 	logger log.Logger,
 	productRepo *ProductRepository,
-	objectService ObjectProvider,
+	objectService ObjectService,
 	brandService *brand.BrandService,
 	categoryService *category.CategoryService,
 	tagService *tag.TagService,
