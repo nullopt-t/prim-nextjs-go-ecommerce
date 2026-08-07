@@ -7,23 +7,23 @@ import (
 )
 
 type Cart struct {
-	ID        uuid.UUID  `json:"id"`
-	UserID    *uuid.UUID `json:"user_id,omitempty"`
-	SessionID *string    `json:"session_id,omitempty"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty"`
-	Items     []CartItem `json:"items,omitempty"`
+	ID        uuid.UUID
+	UserID    *uuid.UUID
+	SessionID *string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time
+	Items     []CartItem
 }
 
 type CartItem struct {
-	ID              uuid.UUID       `json:"id"`
-	CartID          uuid.UUID       `json:"cart_id"`
-	VariantID       uuid.UUID       `json:"variant_id"`
-	Quantity        int             `json:"quantity"`
-	PriceAtPurchase int64           `json:"price_at_purchase"`
-	Currency        string          `json:"currency"`
-	CartedAt        time.Time       `json:"carted_at"`
-	DeletedAt       *time.Time      `json:"deleted_at,omitempty"`
-	Variant         *ProductVariant `json:"variant,omitempty"`
+	ID              uuid.UUID
+	CartID          uuid.UUID
+	VariantID       uuid.UUID
+	Quantity        int
+	PriceAtPurchase int64
+	Currency        string
+	CartedAt        time.Time
+	DeletedAt       *time.Time
+	Variant         *ProductVariant
 }

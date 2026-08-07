@@ -80,11 +80,27 @@ func (or *ObjectRepository) MarkDeletingByKey(
 	bucket, key string,
 ) error {
 	_, err := qe.Exec(ctx,
-		`UPDATE storage_objects SET status = 'deleting' WHERE bucket = $1 AND object_key = $2`,
+		`UPDATE storage_objects SET status = 'deleting', updated_at = now() WHERE bucket = $1 AND object_key = $2`,
 		bucket, key,
 	)
 	if err != nil {
 		return fmt.Errorf("mark deleting by key: %w", err)
+	}
+	return nil
+}
+
+// MarkDeletedByKey sets the status of a storage_objects row to 'deleted' by bucket+key.
+func (or *ObjectRepository) MarkDeletedByKey(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	bucket, key string,
+) error {
+	_, err := qe.Exec(ctx,
+		`UPDATE storage_objects SET status = 'deleted', deleted_at = now(), updated_at = now() WHERE bucket = $1 AND object_key = $2`,
+		bucket, key,
+	)
+	if err != nil {
+		return fmt.Errorf("mark deleted by key: %w", err)
 	}
 	return nil
 }

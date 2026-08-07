@@ -55,8 +55,6 @@ func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	public.Use(middleware.PublicCache(300))
 	{
 		public.GET("", r.ph.GetAllProducts)
-		public.GET("/:pid", r.ph.GetProductByPID)
-		public.GET("/:pid/media", r.ph.GetProductMediaByPID)
-		public.GET("/:pid/variants", r.ph.GetProductVariantsByPID)
+		public.GET("/:id", r.ph.GetProductByPublicID)
 	}
 }

@@ -7,38 +7,37 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
-	"github.com/minio/minio-go/v7"
 )
 
+type ObjectProvider interface {
+	GetObjectURL(ctx context.Context, bucket, key string) string
+}
+
 type VariantService struct {
-	logger      log.Logger
-	dr          database.Runner
-	minioClient *minio.Client
-	vr          *VariantRepository
-	minCfg      *config.MinioConfig
+	logger        log.Logger
+	dr            database.Runner
+	objectService ObjectProvider
+	vr            *VariantRepository
 }
 
 func NewService(
 	logger log.Logger,
 	r database.Runner,
-	minioClient *minio.Client,
+	objectService ObjectProvider,
 	vr *VariantRepository,
-	minCfg *config.MinioConfig,
 ) *VariantService {
 	return &VariantService{
-		logger:      logger,
-		dr:          r,
-		minioClient: minioClient,
-		vr:          vr,
-		minCfg:      minCfg,
+		logger:        logger,
+		dr:            r,
+		objectService: objectService,
+		vr:            vr,
 	}
 }
 
@@ -449,15 +448,13 @@ func (vs *VariantService) ListVariantMedia(
 		}
 
 		if m.Object.PublicURL == "" && m.Object.Bucket != "" && m.Object.Key != "" {
-			presignedGET, err := vs.minioClient.PresignedGetObject(
+			url := vs.objectService.GetObjectURL(
 				ctx,
 				m.Object.Bucket,
 				m.Object.Key,
-				1*time.Hour,
-				nil,
 			)
-			if err == nil {
-				m.Object.PublicURL = presignedGET.String()
+			if url != "" {
+				m.Object.PublicURL = url
 			}
 		}
 	}

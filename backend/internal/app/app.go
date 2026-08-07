@@ -3,15 +3,17 @@ package app
 import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/auth"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/cart"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/brand"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/category"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/product"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/tag"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/variant"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/checkout"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/http/swagger"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/notifier"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/object"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/product"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/brand"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/category"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/tag"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/variant"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/order"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
@@ -27,6 +29,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/storage"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -48,6 +51,9 @@ type App struct {
 
 	// minio
 	minioClient *minio.Client
+
+	// storage provider
+	storageProvider storage.StorageProvider
 }
 
 func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
@@ -175,15 +181,15 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	objectService := object.NewService(
 		txRunner,
 		objectRepository,
+		app.storageProvider,
 	)
 
 	variantRepository := variant.NewRepository()
 	variantService := variant.NewService(
 		app.logger,
 		txRunner,
-		app.minioClient,
+		objectService,
 		variantRepository,
-		config.MinioCfg,
 	)
 
 	variantHandler := variant.NewHandler(variantService)
@@ -195,14 +201,12 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	productService := product.NewService(
 		txRunner,
 		app.logger,
-		app.minioClient,
 		productRepo,
 		objectService,
 		brandService,
 		categoryService,
 		tagService,
 		variantService,
-		config.MinioCfg,
 	)
 	productHandler := product.NewHandler(productService)
 	productRouter := product.NewRouter(productHandler, config.KeysCfg)
@@ -214,6 +218,19 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	cartHandler := cart.NewHandler(cartService)
 	cartRouter := cart.NewRouter(cartHandler, config.KeysCfg)
 	cartRouter.MapRoutes(v1)
+
+	// order
+	orderRepo := order.NewRepository()
+	orderService := order.NewService(txRunner, orderRepo, app.logger)
+	orderHandler := order.NewHandler(orderService)
+	orderRouter := order.NewRouter(orderHandler, config.KeysCfg)
+	orderRouter.MapRoutes(v1)
+
+	// checkout
+	checkoutService := checkout.NewService(cartService, orderService)
+	checkoutHandler := checkout.NewHandler(checkoutService)
+	checkoutRouter := checkout.NewRouter(checkoutHandler, config.KeysCfg)
+	checkoutRouter.MapRoutes(v1)
 }
 
 func (app *App) Shutdown() {
@@ -279,6 +296,22 @@ func (app *App) Run() error {
 	if err != nil {
 		app.logger.Error(
 			"minio connection issue",
+			log.Meta{
+				"Error": err,
+			},
+		)
+		return err
+	}
+
+	app.storageProvider, err = storage.NewMinioStorageProvider(
+		cfg.MinioCfg.Endpoint,
+		cfg.MinioCfg.AccessKey,
+		cfg.MinioCfg.SecretKey,
+		cfg.MinioCfg.PublicURL,
+	)
+	if err != nil {
+		app.logger.Error(
+			"storage provider init issue",
 			log.Meta{
 				"Error": err,
 			},

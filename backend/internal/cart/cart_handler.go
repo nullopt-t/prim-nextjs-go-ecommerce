@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 )
@@ -31,6 +32,63 @@ type UpdateQuantityRequest struct {
 
 type MergeCartRequest struct {
 	SessionID string `json:"session_id" binding:"required" example:"sess_abc123xyz"`
+}
+
+type CartItemResponse struct {
+	ID              string `json:"id"`
+	CartID          string `json:"cart_id"`
+	VariantID       string `json:"variant_id"`
+	Quantity        int    `json:"quantity"`
+	PriceAtPurchase int64  `json:"price_at_purchase"`
+	Currency        string `json:"currency"`
+	CartedAt        string `json:"carted_at"`
+	Variant         any    `json:"variant,omitempty"`
+}
+
+type CartResponse struct {
+	ID        string             `json:"id"`
+	UserID    *string            `json:"user_id,omitempty"`
+	SessionID *string            `json:"session_id,omitempty"`
+	CreatedAt string             `json:"created_at"`
+	UpdatedAt string             `json:"updated_at"`
+	Items     []CartItemResponse `json:"items,omitempty"`
+}
+
+func mapCartResponse(cart *model.Cart) CartResponse {
+	if cart == nil {
+		return CartResponse{}
+	}
+
+	res := CartResponse{
+		ID:        cart.ID.String(),
+		CreatedAt: cart.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt: cart.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		Items:     make([]CartItemResponse, 0, len(cart.Items)),
+	}
+
+	if cart.UserID != nil {
+		idStr := cart.UserID.String()
+		res.UserID = &idStr
+	}
+	res.SessionID = cart.SessionID
+
+	for _, item := range cart.Items {
+		itemRes := CartItemResponse{
+			ID:              item.ID.String(),
+			CartID:          item.CartID.String(),
+			VariantID:       item.VariantID.String(),
+			Quantity:        item.Quantity,
+			PriceAtPurchase: item.PriceAtPurchase,
+			Currency:        item.Currency,
+			CartedAt:        item.CartedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+		if item.Variant != nil {
+			itemRes.Variant = item.Variant
+		}
+		res.Items = append(res.Items, itemRes)
+	}
+
+	return res
 }
 
 func (h *CartHandler) extractUserAndSession(c *gin.Context) (*uuid.UUID, *string) {
@@ -80,7 +138,7 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.DataResponse{Data: cart})
+	c.JSON(http.StatusOK, api.DataResponse{Data: mapCartResponse(cart)})
 }
 
 // AddItem godoc
@@ -111,7 +169,7 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.DataResponse{Data: cart})
+	c.JSON(http.StatusOK, api.DataResponse{Data: mapCartResponse(cart)})
 }
 
 // UpdateItemQuantity godoc
@@ -149,7 +207,7 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.DataResponse{Data: cart})
+	c.JSON(http.StatusOK, api.DataResponse{Data: mapCartResponse(cart)})
 }
 
 // RemoveItem godoc
@@ -179,7 +237,7 @@ func (h *CartHandler) RemoveItem(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.DataResponse{Data: cart})
+	c.JSON(http.StatusOK, api.DataResponse{Data: mapCartResponse(cart)})
 }
 
 // ClearCart godoc
@@ -233,5 +291,5 @@ func (h *CartHandler) MergeGuestCart(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.DataResponse{Data: cart})
+	c.JSON(http.StatusOK, api.DataResponse{Data: mapCartResponse(cart)})
 }

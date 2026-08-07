@@ -8,21 +8,24 @@ import (
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/cart/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
+type VariantProvider interface {
+	GetVariantByID(ctx context.Context, variantID uuid.UUID) (*model.ProductVariant, error)
+}
+
 type CartService struct {
 	dr             database.Runner
 	cartRepo       *CartRepository
-	variantService *variant.VariantService
+	variantService VariantProvider
 }
 
 func NewService(
 	dr database.Runner,
 	cartRepo *CartRepository,
-	variantService *variant.VariantService,
+	variantService VariantProvider,
 ) *CartService {
 	return &CartService{
 		dr:             dr,
