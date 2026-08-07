@@ -30,10 +30,6 @@ func (cr *CategoryRepository) Create(
 	qe database.QueryExecutor,
 	category *model.ProductCategory,
 ) error {
-	if category.PublicID == "" {
-		category.PublicID = uuid.NewString()
-	}
-
 	const query = `
 		INSERT INTO product_categories (
 			id,
@@ -43,19 +39,18 @@ func (cr *CategoryRepository) Create(
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		VALUES ($1, $2, $3, $4, now(), now())
+		RETURNING created_at, updated_at
 	`
 
-	_, err := qe.Exec(
+	err := qe.QueryRow(
 		ctx,
 		query,
 		category.ID,
 		category.PublicID,
 		category.ParentID,
 		category.Name,
-		category.CreatedAt,
-		category.UpdatedAt,
-	)
+	).Scan(&category.CreatedAt, &category.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create category: %w", err)
 	}

@@ -32,7 +32,7 @@ func (r *Router) MapRoutes(
 
 	admin := vgroup.Group("/admin/brands")
 	admin.Use(
-		middleware.Authenticate(r.secrets),
+		middleware.Authenticate(r.secrets, true),
 	)
 	{
 		admin.POST("", r.bh.CreateBrand)

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -65,24 +64,8 @@ func (vr *VariantRepository) Create(
 	qe database.QueryExecutor,
 	variant *model.ProductVariant,
 ) error {
-	if variant.ID == uuid.Nil {
-		variant.ID = uuid.New()
-	}
-
 	if variant.Attributes == nil {
 		variant.Attributes = make(map[string]any)
-	}
-
-	now := time.Now().UTC().Truncate(time.Millisecond)
-	if variant.CreatedAt.IsZero() {
-		variant.CreatedAt = now
-	}
-	if variant.UpdatedAt.IsZero() {
-		variant.UpdatedAt = now
-	}
-
-	if variant.PublicID == "" {
-		variant.PublicID = uuid.New().String()
 	}
 
 	query := `
@@ -99,10 +82,11 @@ func (vr *VariantRepository) Create(
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
+		RETURNING created_at, updated_at
 	`
 
-	_, err := qe.Exec(
+	err := qe.QueryRow(
 		ctx,
 		query,
 		variant.ID,
@@ -114,9 +98,7 @@ func (vr *VariantRepository) Create(
 		variant.CrossedOutPrice,
 		variant.Currency,
 		variant.Attributes,
-		variant.CreatedAt,
-		variant.UpdatedAt,
-	)
+	).Scan(&variant.CreatedAt, &variant.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create variant: %w", err)
 	}
@@ -246,10 +228,7 @@ func (vr *VariantRepository) Update(
 		return nil
 	}
 
-	now := time.Now().UTC().Truncate(time.Millisecond)
-	setClauses = append(setClauses, fmt.Sprintf("updated_at = $%d", argIdx))
-	args = append(args, now)
-	argIdx++
+	setClauses = append(setClauses, "updated_at = now()")
 
 	query := fmt.Sprintf(`
 		UPDATE product_variants
@@ -280,15 +259,13 @@ func (vr *VariantRepository) ClearDefaultFlags(
 		return errors.New("clear default flags: productID is required")
 	}
 
-	now := time.Now().UTC().Truncate(time.Millisecond)
-
 	query := `
 		UPDATE product_variants
-		SET is_default = false, updated_at = $1
-		WHERE product_id = $2 AND is_default = true AND deleted_at IS NULL
+		SET is_default = false, updated_at = now()
+		WHERE product_id = $1 AND is_default = true AND deleted_at IS NULL
 	`
 
-	_, err := qe.Exec(ctx, query, now, productID)
+	_, err := qe.Exec(ctx, query, productID)
 	if err != nil {
 		return fmt.Errorf("clear default flags: %w", err)
 	}
@@ -401,15 +378,13 @@ func (vr *VariantRepository) Delete(
 		return errors.New("delete variant: variantID is required")
 	}
 
-	now := time.Now().UTC().Truncate(time.Millisecond)
-
 	query := `
 		UPDATE product_variants
-		SET deleted_at = $1, updated_at = $1
-		WHERE id = $2 AND deleted_at IS NULL
+		SET deleted_at = now(), updated_at = now()
+		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	cmd, err := qe.Exec(ctx, query, now, variantID)
+	cmd, err := qe.Exec(ctx, query, variantID)
 	if err != nil {
 		return fmt.Errorf("delete variant: %w", err)
 	}
@@ -428,10 +403,6 @@ func (vr *VariantRepository) AddMedia(
 	qe database.QueryExecutor,
 	in CreateVariantMediaInput,
 ) (*model.VariantMedia, error) {
-	if in.ID == uuid.Nil {
-		in.ID = uuid.New()
-	}
-
 	query := `
 		INSERT INTO variant_media (
 			id,

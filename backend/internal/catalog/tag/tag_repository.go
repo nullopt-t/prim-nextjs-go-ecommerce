@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -49,22 +48,6 @@ func (tr *TagRepository) Create(
 	qe database.QueryExecutor,
 	tag *model.ProductTag,
 ) error {
-	if tag.ID == uuid.Nil {
-		tag.ID = uuid.New()
-	}
-
-	now := time.Now().UTC().Truncate(time.Millisecond)
-	if tag.CreatedAt.IsZero() {
-		tag.CreatedAt = now
-	}
-	if tag.UpdatedAt.IsZero() {
-		tag.UpdatedAt = now
-	}
-
-	if tag.PublicID == "" {
-		tag.PublicID = uuid.NewString()
-	}
-
 	query := `
 		INSERT INTO product_tags (
 			id,
@@ -73,18 +56,17 @@ func (tr *TagRepository) Create(
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES ($1, $2, $3, now(), now())
+		RETURNING created_at, updated_at
 	`
 
-	_, err := qe.Exec(
+	err := qe.QueryRow(
 		ctx,
 		query,
 		tag.ID,
 		tag.PublicID,
 		tag.Name,
-		tag.CreatedAt,
-		tag.UpdatedAt,
-	)
+	).Scan(&tag.CreatedAt, &tag.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create tag: %w", err)
 	}
@@ -177,15 +159,13 @@ func (tr *TagRepository) Update(
 		return nil // Nothing to update
 	}
 
-	now := time.Now().UTC().Truncate(time.Millisecond)
-
 	query := `
 		UPDATE product_tags
-		SET name = $1, updated_at = $2
-		WHERE id = $3 AND deleted_at IS NULL
+		SET name = $1, updated_at = now()
+		WHERE id = $2 AND deleted_at IS NULL
 	`
 
-	cmd, err := qe.Exec(ctx, query, *fields.Name, now, tagID)
+	cmd, err := qe.Exec(ctx, query, *fields.Name, tagID)
 	if err != nil {
 		return fmt.Errorf("update tag: %w", err)
 	}
@@ -296,15 +276,13 @@ func (tr *TagRepository) Delete(
 		return errors.New("delete tag: tagID is required")
 	}
 
-	now := time.Now().UTC().Truncate(time.Millisecond)
-
 	query := `
 		UPDATE product_tags
-		SET deleted_at = $1, updated_at = $1
-		WHERE id = $2 AND deleted_at IS NULL
+		SET deleted_at = now(), updated_at = now()
+		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	cmd, err := qe.Exec(ctx, query, now, tagID)
+	cmd, err := qe.Exec(ctx, query, tagID)
 	if err != nil {
 		return fmt.Errorf("delete tag: %w", err)
 	}
@@ -342,13 +320,12 @@ func (tr *TagRepository) ReplaceTagsForProduct(
 	}
 
 	// Bulk insert new assignments
-	now := time.Now().UTC().Truncate(time.Millisecond)
-	args := make([]any, 0, len(tagIDs)*3)
+	args := make([]any, 0, len(tagIDs)*2)
 	valueParts := make([]string, 0, len(tagIDs))
 	for i, tagID := range tagIDs {
-		base := i * 3
-		valueParts = append(valueParts, fmt.Sprintf("($%d, $%d, $%d)", base+1, base+2, base+3))
-		args = append(args, productID, tagID, now)
+		base := i * 2
+		valueParts = append(valueParts, fmt.Sprintf("($%d, $%d, now())", base+1, base+2))
+		args = append(args, productID, tagID)
 	}
 
 	insertQuery := fmt.Sprintf(

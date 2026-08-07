@@ -223,7 +223,7 @@ func (th *TagHandler) DeleteTagByID(c *gin.Context) {
 // @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]TagResponse,meta=api.Page} "Paginated list of active tags"
+// @Success 200 {object} api.PaginatedResponse{data=[]TagResponse,meta=pagination.Page} "Paginated list of active tags"
 // @Router /tags [get]
 func (th *TagHandler) ListTags(c *gin.Context) {
 	q := &pagination.ListQuery{}
@@ -274,7 +274,7 @@ func (th *TagHandler) ListTags(c *gin.Context) {
 // @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
 // @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
 // @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]AdminTagResponse,meta=api.Page} "Paginated list of all tags including deleted"
+// @Success 200 {object} api.PaginatedResponse{data=[]AdminTagResponse,meta=pagination.Page} "Paginated list of all tags including deleted"
 // @Router /admin/tags [get]
 func (th *TagHandler) AdminListTags(c *gin.Context) {
 	q := &pagination.ListQuery{}

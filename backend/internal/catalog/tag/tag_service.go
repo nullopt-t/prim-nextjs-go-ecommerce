@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/errcode"
@@ -38,13 +37,10 @@ func (ts *TagService) CreateTag(
 	ctx context.Context,
 	in *CreateTagInput,
 ) (*model.ProductTag, error) {
-	now := time.Now().UTC()
 	tag := &model.ProductTag{
-		ID:        uuid.New(),
-		PublicID:  uuid.NewString(),
-		Name:      strings.TrimSpace(in.Name),
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:       uuid.New(),
+		PublicID: uuid.NewString(),
+		Name:     strings.TrimSpace(in.Name),
 	}
 
 	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {

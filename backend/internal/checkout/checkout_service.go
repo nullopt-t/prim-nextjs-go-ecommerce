@@ -10,21 +10,21 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 )
 
-type CartProvider interface {
+type CartService interface {
 	GetOrCreateCart(ctx context.Context, userID *uuid.UUID, sessionID *string) (*model.Cart, error)
 	ClearCart(ctx context.Context, userID *uuid.UUID, sessionID *string) error
 }
 
-type OrderProvider interface {
+type OrderService interface {
 	CreateOrder(ctx context.Context, in *order.CreateOrderInput) (*model.Order, error)
 }
 
 type CheckoutService struct {
-	cartService  CartProvider
-	orderService OrderProvider
+	cartService  CartService
+	orderService OrderService
 }
 
-func NewService(cartService CartProvider, orderService OrderProvider) *CheckoutService {
+func NewService(cartService CartService, orderService OrderService) *CheckoutService {
 	return &CheckoutService{
 		cartService:  cartService,
 		orderService: orderService,

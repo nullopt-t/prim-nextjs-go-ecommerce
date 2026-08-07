@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/errcode"
@@ -16,21 +15,21 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 )
 
-type ObjectProvider interface {
+type ObjectService interface {
 	GetObjectURL(ctx context.Context, bucket, key string) string
 }
 
 type VariantService struct {
 	logger        log.Logger
 	dr            database.Runner
-	objectService ObjectProvider
+	objectService ObjectService
 	vr            *VariantRepository
 }
 
 func NewService(
 	logger log.Logger,
 	r database.Runner,
-	objectService ObjectProvider,
+	objectService ObjectService,
 	vr *VariantRepository,
 ) *VariantService {
 	return &VariantService{
@@ -95,7 +94,6 @@ func (vs *VariantService) CreateVariant(
 			})
 	}
 
-	now := time.Now().UTC().Truncate(time.Millisecond)
 	variant := &model.ProductVariant{
 		ID:              uuid.New(),
 		PublicID:        uuid.NewString(),
@@ -106,8 +104,6 @@ func (vs *VariantService) CreateVariant(
 		Currency:        in.Currency,
 		Attributes:      in.Attributes,
 		IsDefault:       in.IsDefault,
-		CreatedAt:       now,
-		UpdatedAt:       now,
 	}
 
 	execFunc := vs.dr.WithDB

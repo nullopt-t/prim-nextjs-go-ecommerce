@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/errcode"
@@ -54,14 +53,11 @@ func (cs *CategoryService) CreateCategory(
 			})
 	}
 
-	now := time.Now().UTC()
 	category := &model.ProductCategory{
-		ID:        uuid.New(),
-		PublicID:  uuid.NewString(),
-		ParentID:  in.ParentID,
-		Name:      name,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:       uuid.New(),
+		PublicID: uuid.NewString(),
+		ParentID: in.ParentID,
+		Name:     name,
 	}
 
 	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -45,22 +44,6 @@ func (br *BrandRepository) Create(
 	qe database.QueryExecutor,
 	brand *model.ProductBrand,
 ) error {
-	if brand.ID == uuid.Nil {
-		brand.ID = uuid.New()
-	}
-
-	now := time.Now().UTC().Truncate(time.Millisecond)
-	if brand.CreatedAt.IsZero() {
-		brand.CreatedAt = now
-	}
-	if brand.UpdatedAt.IsZero() {
-		brand.UpdatedAt = now
-	}
-
-	if brand.PublicID == "" {
-		brand.PublicID = uuid.NewString()
-	}
-
 	query := `
 		INSERT INTO product_brands (
 			id,
@@ -71,10 +54,11 @@ func (br *BrandRepository) Create(
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		VALUES ($1, $2, $3, $4, $5, now(), now())
+		RETURNING created_at, updated_at
 	`
 
-	_, err := qe.Exec(
+	err := qe.QueryRow(
 		ctx,
 		query,
 		brand.ID,
@@ -82,9 +66,7 @@ func (br *BrandRepository) Create(
 		brand.Name,
 		brand.Link,
 		brand.LogoStorageObjectID,
-		brand.CreatedAt,
-		brand.UpdatedAt,
-	)
+	).Scan(&brand.CreatedAt, &brand.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create brand: %w", err)
 	}
@@ -286,15 +268,13 @@ func (br *BrandRepository) Delete(
 		return errors.New("delete brand: brandID is required")
 	}
 
-	now := time.Now().UTC().Truncate(time.Millisecond)
-
 	query := `
 		UPDATE product_brands
-		SET deleted_at = $1, updated_at = $1
-		WHERE id = $2 AND deleted_at IS NULL
+		SET deleted_at = now(), updated_at = now()
+		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	cmd, err := qe.Exec(ctx, query, now, brandID)
+	cmd, err := qe.Exec(ctx, query, brandID)
 	if err != nil {
 		return fmt.Errorf("delete brand: %w", err)
 	}

@@ -30,6 +30,12 @@ x-app-env: &app-env # Database
   # Client
   CLIENT_BASE_URL: http://localhost:3000
 
+  # MinIO
+  MINIO_ENDPOINT: minio:9000
+  MINIO_PUBLIC_URL: http://localhost:9000
+  MINIO_ACCESS_KEY: admin
+  MINIO_SECRET_KEY: supersecret
+
   # App
   ENV: development
 
@@ -77,9 +83,9 @@ services:
   postgres:
     image: postgres:18-alpine
     environment:
-      POSTGRES_DB: prim
-      POSTGRES_USER: prim
-      POSTGRES_PASSWORD: prim
+      POSTGRES_DB: ${DB_NAME:-prim}
+      POSTGRES_USER: ${DB_USER:-prim}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-prim}
     ports:
       - "5432:5432"
     volumes:
@@ -87,7 +93,7 @@ services:
     healthcheck:
       test:
         - "CMD-SHELL"
-        - "pg_isready -U prim -d prim"
+        - "pg_isready -U ${DB_USER:-prim} -d ${DB_NAME:-prim}"
       interval: 10s
       timeout: 5s
       retries: 5
@@ -116,7 +122,7 @@ services:
       - -path
       - /migrations
       - -database
-      - postgres://prim:prim@postgres:5432/prim?sslmode=disable
+      - postgres://${DB_USER:-prim}:${DB_PASSWORD:-prim}@postgres:5432/${DB_NAME:-prim}?sslmode=disable
     command: up
     depends_on:
       postgres:
@@ -129,8 +135,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: supersecret
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-supersecret}
     volumes:
       - minio_data:/data
 
