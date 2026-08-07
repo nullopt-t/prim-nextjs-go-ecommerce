@@ -3,10 +3,12 @@ package app
 import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/auth"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/cart"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/checkout"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/http/swagger"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/notifier"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/object"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/order"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/brand"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/product/category"
@@ -214,6 +216,19 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	cartHandler := cart.NewHandler(cartService)
 	cartRouter := cart.NewRouter(cartHandler, config.KeysCfg)
 	cartRouter.MapRoutes(v1)
+
+	// order
+	orderRepo := order.NewRepository()
+	orderService := order.NewService(txRunner, orderRepo, app.logger)
+	orderHandler := order.NewHandler(orderService)
+	orderRouter := order.NewRouter(orderHandler, config.KeysCfg)
+	orderRouter.MapRoutes(v1)
+
+	// checkout
+	checkoutService := checkout.NewService(cartService, orderService)
+	checkoutHandler := checkout.NewHandler(checkoutService)
+	checkoutRouter := checkout.NewRouter(checkoutHandler, config.KeysCfg)
+	checkoutRouter.MapRoutes(v1)
 }
 
 func (app *App) Shutdown() {
