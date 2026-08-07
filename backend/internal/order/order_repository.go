@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -38,9 +37,10 @@ func (r *Repository) CreateOrder(
 		INSERT INTO orders (
 			id, customer_id, customer_email, shipping_address, billing_address,
 			status, coupon_id, discount_amount, total_amount, currency, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
+		RETURNING created_at, updated_at
 	`
-	_, err = qe.Exec(
+	err = qe.QueryRow(
 		ctx,
 		query,
 		o.ID,
@@ -53,9 +53,7 @@ func (r *Repository) CreateOrder(
 		o.DiscountAmount,
 		o.TotalAmount,
 		o.Currency,
-		o.CreatedAt,
-		o.UpdatedAt,
-	)
+	).Scan(&o.CreatedAt, &o.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create order: %w", err)
 	}
@@ -96,9 +94,9 @@ func (r *Repository) AddStatusHistory(
 ) error {
 	query := `
 		INSERT INTO order_status_history (id, order_id, status, notes, created_at)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES ($1, $2, $3, $4, now())
 	`
-	_, err := qe.Exec(ctx, query, uuid.New(), orderID, status, notes, time.Now().UTC())
+	_, err := qe.Exec(ctx, query, uuid.New(), orderID, status, notes)
 	if err != nil {
 		return fmt.Errorf("add status history: %w", err)
 	}

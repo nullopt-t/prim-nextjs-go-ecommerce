@@ -134,7 +134,7 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 
 	cart, err := h.cartService.GetOrCreateCart(c.Request.Context(), userID, sessionID)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -157,7 +157,7 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 func (h *CartHandler) AddItem(c *gin.Context) {
 	var req AddItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(apierr.ErrBadRequest("Invalid input payload").WithCode(apierr.CodeValidationFailed).Wrap(err))
+		_ = c.Error(apierr.ErrBadRequest("Invalid input payload").WithCode(apierr.CodeValidationFailed).Wrap(err))
 		return
 	}
 
@@ -165,7 +165,7 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 
 	cart, err := h.cartService.AddItemToCart(c.Request.Context(), userID, sessionID, req.VariantID, req.Quantity)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -189,13 +189,13 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 	itemID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.Error(apierr.ErrBadRequest("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
+		_ = c.Error(apierr.ErrBadRequest("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
 		return
 	}
 
 	var req UpdateQuantityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(apierr.ErrBadRequest("Invalid input payload").WithCode(apierr.CodeValidationFailed).Wrap(err))
+		_ = c.Error(apierr.ErrBadRequest("Invalid input payload").WithCode(apierr.CodeValidationFailed).Wrap(err))
 		return
 	}
 
@@ -203,7 +203,7 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 
 	cart, err := h.cartService.UpdateCartItemQuantity(c.Request.Context(), userID, sessionID, itemID, req.Quantity)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -225,7 +225,7 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 func (h *CartHandler) RemoveItem(c *gin.Context) {
 	itemID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.Error(apierr.ErrBadRequest("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
+		_ = c.Error(apierr.ErrBadRequest("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
 		return
 	}
 
@@ -233,7 +233,7 @@ func (h *CartHandler) RemoveItem(c *gin.Context) {
 
 	cart, err := h.cartService.RemoveCartItem(c.Request.Context(), userID, sessionID, itemID)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -254,7 +254,7 @@ func (h *CartHandler) ClearCart(c *gin.Context) {
 
 	err := h.cartService.ClearCart(c.Request.Context(), userID, sessionID)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 
@@ -275,19 +275,19 @@ func (h *CartHandler) ClearCart(c *gin.Context) {
 func (h *CartHandler) MergeGuestCart(c *gin.Context) {
 	var req MergeCartRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(apierr.ErrBadRequest("Invalid input payload").WithCode(apierr.CodeValidationFailed).Wrap(err))
+		_ = c.Error(apierr.ErrBadRequest("Invalid input payload").WithCode(apierr.CodeValidationFailed).Wrap(err))
 		return
 	}
 
 	userID, _ := h.extractUserAndSession(c)
 	if userID == nil {
-		c.Error(apierr.ErrBadRequest("User authentication required to merge cart").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.ErrBadRequest("User authentication required to merge cart").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
 	cart, err := h.cartService.MergeGuestCart(c.Request.Context(), req.SessionID, *userID)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 

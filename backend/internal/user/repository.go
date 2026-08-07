@@ -3,7 +3,6 @@ package user
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
@@ -26,16 +25,6 @@ func (r *UserRepository) Create(
 	qe database.QueryExecutor,
 	user *model.User,
 ) (uuid.UUID, error) {
-	if user.ID == uuid.Nil {
-		user.ID = uuid.New()
-	}
-	now := time.Now().UTC()
-	if user.CreatedAt.IsZero() {
-		user.CreatedAt = now
-	}
-	if user.UpdatedAt.IsZero() {
-		user.UpdatedAt = now
-	}
 	role := "customer"
 	if user.Role != nil {
 		role = string(*user.Role)
@@ -43,11 +32,11 @@ func (r *UserRepository) Create(
 
 	query := `
 		INSERT INTO users (id, email, role, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id
+		VALUES ($1, $2, $3, now(), now())
+		RETURNING id, created_at, updated_at
 	`
 	var createdUserID uuid.UUID
-	err := qe.QueryRow(ctx, query, user.ID, user.Identifier, role, user.CreatedAt, user.UpdatedAt).Scan(&createdUserID)
+	err := qe.QueryRow(ctx, query, user.ID, user.Identifier, role).Scan(&createdUserID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create user: %w", err)
 	}

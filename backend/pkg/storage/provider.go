@@ -25,7 +25,7 @@ type MinioStorageProvider struct {
 func NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL string) (*MinioStorageProvider, error) {
 	// Initialize minio client object.
 	useSSL := false // Set true if using HTTPS
-	
+
 	// Quick hack for minio endpoint (strip http://)
 	if len(endpoint) > 7 && endpoint[:7] == "http://" {
 		endpoint = endpoint[7:]

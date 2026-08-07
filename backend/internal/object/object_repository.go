@@ -21,7 +21,7 @@ func (or *ObjectRepository) Create(
 	qe database.QueryExecutor,
 	object *model.Object,
 ) error {
-	_, err := qe.Exec(
+	err := qe.QueryRow(
 		ctx,
 		`
 		INSERT INTO storage_objects (
@@ -34,7 +34,8 @@ func (or *ObjectRepository) Create(
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+		RETURNING created_at, updated_at
 		`,
 		object.ID,
 		object.Bucket,
@@ -42,9 +43,7 @@ func (or *ObjectRepository) Create(
 		object.ContentType,
 		object.FileSize,
 		object.Status,
-		object.CreatedAt,
-		object.UpdatedAt,
-	)
+	).Scan(&object.CreatedAt, &object.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create storage object: %w", err)
 	}

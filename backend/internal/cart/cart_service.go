@@ -3,7 +3,6 @@ package cart
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/cart/errcode"
@@ -43,24 +42,22 @@ func (s *CartService) GetOrCreateCart(
 
 	err := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
 		var err error
-		if userID != nil {
+		switch {
+		case userID != nil:
 			cart, err = s.cartRepo.GetCartByUserID(ctx, tx, *userID)
-		} else if sessionID != nil {
+		case sessionID != nil:
 			cart, err = s.cartRepo.GetCartBySessionID(ctx, tx, *sessionID)
-		} else {
+		default:
 			return apierr.ErrBadRequest("User ID or Session ID is required").
 				WithCode(apierr.CodeInvalidInput)
 		}
 
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				now := time.Now().UTC()
 				newCart := &model.Cart{
 					ID:        uuid.New(),
 					UserID:    userID,
 					SessionID: sessionID,
-					CreatedAt: now,
-					UpdatedAt: now,
 				}
 				if createErr := s.cartRepo.CreateCart(ctx, tx, newCart); createErr != nil {
 					return createErr
@@ -121,24 +118,22 @@ func (s *CartService) AddItemToCart(
 
 	txErr := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
 		var err error
-		if userID != nil {
+		switch {
+		case userID != nil:
 			cart, err = s.cartRepo.GetCartByUserID(ctx, tx, *userID)
-		} else if sessionID != nil {
+		case sessionID != nil:
 			cart, err = s.cartRepo.GetCartBySessionID(ctx, tx, *sessionID)
-		} else {
+		default:
 			return apierr.ErrBadRequest("User ID or Session ID is required").
 				WithCode(apierr.CodeInvalidInput)
 		}
 
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				now := time.Now().UTC()
 				newCart := &model.Cart{
 					ID:        uuid.New(),
 					UserID:    userID,
 					SessionID: sessionID,
-					CreatedAt: now,
-					UpdatedAt: now,
 				}
 				if createErr := s.cartRepo.CreateCart(ctx, tx, newCart); createErr != nil {
 					return createErr
@@ -166,7 +161,6 @@ func (s *CartService) AddItemToCart(
 			Quantity:        quantity,
 			PriceAtPurchase: price,
 			Currency:        currency,
-			CartedAt:        time.Now().UTC(),
 		}
 		return s.cartRepo.AddItem(ctx, tx, newItem)
 	})
@@ -283,12 +277,9 @@ func (s *CartService) MergeGuestCart(
 		userCart, uErr := s.cartRepo.GetCartByUserID(ctx, tx, userID)
 		if uErr != nil {
 			if errors.Is(database.MapError(uErr), database.ErrNotFound) {
-				now := time.Now().UTC()
 				newCart := &model.Cart{
-					ID:        uuid.New(),
-					UserID:    &userID,
-					CreatedAt: now,
-					UpdatedAt: now,
+					ID:     uuid.New(),
+					UserID: &userID,
 				}
 				if cErr := s.cartRepo.CreateCart(ctx, tx, newCart); cErr != nil {
 					return cErr
