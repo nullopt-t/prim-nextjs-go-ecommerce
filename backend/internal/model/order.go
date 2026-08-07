@@ -11,30 +11,42 @@ type OrderStatus string
 const (
 	OrderStatusPending    OrderStatus = "pending"
 	OrderStatusPaid       OrderStatus = "paid"
-	OrderStatusConfirmed  OrderStatus = "confirmed"
 	OrderStatusProcessing OrderStatus = "processing"
 	OrderStatusShipped    OrderStatus = "shipped"
 	OrderStatusDelivered  OrderStatus = "delivered"
-	OrderStatusCancelled  OrderStatus = "cancelled"
-	OrderStatusRefuneded  OrderStatus = "refuneded"
+	OrderStatusCanceled   OrderStatus = "canceled"
+	OrderStatusRefunded   OrderStatus = "refunded"
 )
 
 type OrderItem struct {
-	ProductID     uuid.UUID
-	Quantity      int
-	PurchasePrice int
+	ID              uuid.UUID
+	OrderID         uuid.UUID
+	VariantID       uuid.UUID
+	Quantity        int
+	PriceAtPurchase int64
+	ProductSnapshot string
+}
+
+type Address struct {
+	Street     string
+	City       string
+	State      string
+	PostalCode string
+	Country    string
 }
 
 type Order struct {
-	// order data
-	ID         uuid.UUID
-	Status     OrderStatus
-	TotalPrice int
-
-	// items data
-	Items []OrderItem
-
-	// timestamps
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID              uuid.UUID
+	CustomerID      *uuid.UUID
+	CustomerEmail   string
+	ShippingAddress Address
+	BillingAddress  Address
+	Status          OrderStatus
+	CouponID        *uuid.UUID
+	DiscountAmount  int64
+	TotalAmount     int64
+	Currency        string
+	Items           []OrderItem
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
