@@ -1,4 +1,4 @@
-import { Title, ProductsGrid } from "@/components/ui";
+import { Title, ProductsGrid, CustomButton } from "@/components/ui";
 import Image from "@/assets/imgs/placeholders/product.jpeg";
 import { useTranslation } from "react-i18next";
 
@@ -75,10 +75,15 @@ export default function Content() {
 
 	return (
 		<div className="">
-			<Title
-				title={t("title")}
-				subtitle={t("savedItems", { count: 24 })}
-			/>
+			<div className="flex items-center justify-between">
+				<Title
+					title={t("title")}
+					subtitle={t("savedItems", { count: 24 })}
+				/>
+				<div className="w-44 h-10 bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground font-medium rounded-md">
+					<CustomButton text={t("addToCart")} onClick={() => {}} />
+				</div>
+			</div>
 			<ProductsGrid
 				products={cards}
 				className="grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"

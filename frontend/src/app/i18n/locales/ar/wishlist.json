@@ -1,4 +1,5 @@
 {
 	"title": "المفضلة",
-	"savedItems": "{{count}} عنصر محفوظ"
+	"savedItems": "{{count}} عنصر محفوظ",
+	"addToCart": "أضف الجميع إلى السلة"
 }
