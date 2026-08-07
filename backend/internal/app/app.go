@@ -29,6 +29,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/storage"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -50,6 +51,9 @@ type App struct {
 
 	// minio
 	minioClient *minio.Client
+
+	// storage provider
+	storageProvider storage.StorageProvider
 }
 
 func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
@@ -177,6 +181,7 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	objectService := object.NewService(
 		txRunner,
 		objectRepository,
+		app.storageProvider,
 	)
 
 	variantRepository := variant.NewRepository()
@@ -294,6 +299,22 @@ func (app *App) Run() error {
 	if err != nil {
 		app.logger.Error(
 			"minio connection issue",
+			log.Meta{
+				"Error": err,
+			},
+		)
+		return err
+	}
+
+	app.storageProvider, err = storage.NewMinioStorageProvider(
+		cfg.MinioCfg.Endpoint,
+		cfg.MinioCfg.AccessKey,
+		cfg.MinioCfg.SecretKey,
+		cfg.MinioCfg.PublicURL,
+	)
+	if err != nil {
+		app.logger.Error(
+			"storage provider init issue",
 			log.Meta{
 				"Error": err,
 			},
