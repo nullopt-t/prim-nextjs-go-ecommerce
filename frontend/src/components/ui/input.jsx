@@ -1,12 +1,18 @@
-function CustomInput({ type, placeholder, handle }) {
+export function CustomInput({
+	type,
+	value,
+	isDisabled,
+	placeholder,
+	onChange,
+}) {
 	return (
 		<input
 			type={type}
 			placeholder={placeholder}
-			onClick={handle}
-			className="truncate w-full text-txt-sm md:text-txt-md lg:text-txt-lg text-foreground placeholder:text-muted-foreground"
+			onChange={onChange}
+			value={value}
+			disabled={isDisabled}
+			className="p-2.5 truncate w-full text-txt-sm md:text-txt-md lg:text-txt-lg placeholder:text-muted-foreground disabled:text-muted-foreground"
 		/>
 	);
 }
-
-export default CustomInput;

@@ -4,6 +4,7 @@ import { Products } from "@/features/products";
 import { Home } from "@/features/home";
 import { About } from "@/features/about";
 import { Wishlist } from "@/features/wishlist";
+import { Settings } from "@/features/settings";
 import { Auth, Login, Verify } from "@/features/auth";
 import { NotFound } from "@/app/pages/notFound";
 import {
@@ -12,7 +13,6 @@ import {
 	Overview,
 	Orders,
 	Reviews,
-	Settings,
 	Address,
 } from "@/features/user";
 

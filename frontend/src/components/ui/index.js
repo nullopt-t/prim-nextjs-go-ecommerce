@@ -6,4 +6,6 @@ export * from "@/components/ui/search";
 export * from "@/components/ui/headerActions";
 export * from "@/components/ui/title";
 export * from "@/components/ui/button";
+export * from "@/components/ui/input";
 export * from "@/components/ui/productsGrid";
+export * from "@/components/ui/text";
