@@ -146,6 +146,39 @@ func (os *ObjectService) DeleteObject(
 	})
 }
 
+func (os *ObjectService) DeleteObjectByID(ctx context.Context, id uuid.UUID) error {
+	var obj *model.Object
+	err := os.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		obj, err = os.or.GetByID(ctx, db, id)
+		return err
+	})
+	if err != nil {
+		return apierr.New(http.StatusInternalServerError, "failed to get object by id").Wrap(err)
+	}
+	return os.DeleteObject(ctx, obj.Bucket, obj.Key)
+}
+
+func (os *ObjectService) GetObjectByID(ctx context.Context, id uuid.UUID) (*model.Object, error) {
+	var obj *model.Object
+	err := os.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		obj, err = os.or.GetByID(ctx, db, id)
+		return err
+	})
+	return obj, err
+}
+
+func (os *ObjectService) GetObjectsByIDs(ctx context.Context, ids []uuid.UUID) ([]*model.Object, error) {
+	var objects []*model.Object
+	err := os.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		objects, err = os.or.GetByIDs(ctx, db, ids)
+		return err
+	})
+	return objects, err
+}
+
 // MarkDeletingByKey marks a storage object as 'deleting' by its bucket and key.
 // Safe to call inside a transaction.
 func (os *ObjectService) MarkDeletingByKey(

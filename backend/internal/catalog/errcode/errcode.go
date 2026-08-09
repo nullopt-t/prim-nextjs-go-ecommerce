@@ -8,6 +8,7 @@ const (
 	CodeVariantProductMismatch    = "VARIANT_PRODUCT_MISMATCH"
 	CodeBrandNotFound             = "BRAND_NOT_FOUND"
 	CodeBrandAlreadyExists        = "BRAND_ALREADY_EXISTS"
+	CodeBrandInUse                = "BRAND_IN_USE"
 	CodeLogoStorageObjectNotFound = "LOGO_STORAGE_OBJECT_NOT_FOUND"
 	CodeCategoryNotFound          = "CATEGORY_NOT_FOUND"
 	CodeCategoryAlreadyExists     = "CATEGORY_ALREADY_EXISTS"

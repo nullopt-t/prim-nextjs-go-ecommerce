@@ -135,10 +135,18 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 
 	userRouter.MapRoutes(v1)
 
+	objectRepository := object.NewRepository()
+	objectService := object.NewService(
+		txRunner,
+		objectRepository,
+		app.storageProvider,
+	)
+
 	brandRepo := brand.NewRepository()
 	brandService := brand.NewService(
 		txRunner,
 		brandRepo,
+		objectService,
 	)
 	brandHandler := brand.NewHandler(
 		brandService,
@@ -176,13 +184,6 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		config.KeysCfg,
 	)
 	categoryRouter.MapRoutes(v1)
-
-	objectRepository := object.NewRepository()
-	objectService := object.NewService(
-		txRunner,
-		objectRepository,
-		app.storageProvider,
-	)
 
 	variantRepository := variant.NewRepository()
 	variantService := variant.NewService(
