@@ -118,13 +118,13 @@ CREATE TABLE IF NOT EXISTS product_brands (
     public_id                 uuid NOT NULL,
     name                      text NOT NULL,
     link                      text NULL,
-    logo_storage_object_id    uuid NULL,
+    logo_object_id            uuid NULL,
     created_at                timestamptz NOT NULL DEFAULT now(),
     updated_at                timestamptz NOT NULL DEFAULT now(),
     deleted_at                timestamptz NULL,
     PRIMARY KEY (id),
     UNIQUE (public_id),
-    FOREIGN KEY (logo_storage_object_id) REFERENCES storage_objects (id)
+    FOREIGN KEY (logo_object_id) REFERENCES storage_objects (id)
 );
 
 CREATE UNIQUE INDEX idx_product_brands_active_name
