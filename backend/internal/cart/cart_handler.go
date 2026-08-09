@@ -120,15 +120,16 @@ func (h *CartHandler) extractUserAndSession(c *gin.Context) (*uuid.UUID, *string
 }
 
 // GetCart godoc
-// @Summary Get shopping cart
-// @Description Fetches the current user's or guest session's shopping cart and item details.
-// @Tags Cart
-// @Produce json
-// @Param X-Session-ID header string false "Guest Session ID"
-// @Success 200 {object} api.DataResponse{data=model.Cart} "Cart details"
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid input or missing session"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Router /cart [get]
+//
+//	@Summary		Get shopping cart
+//	@Description	Fetches the current user's or guest session's shopping cart and item details.
+//	@Tags			Cart
+//	@Produce		json
+//	@Param			X-Session-ID	header		string								false	"Guest Session ID"
+//	@Success		200				{object}	api.DataResponse{data=model.Cart}	"Cart details"
+//	@Failure		400				{object}	api.BadRequestErrorResponse			"Invalid input or missing session"
+//	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
+//	@Router			/cart [get]
 func (h *CartHandler) GetCart(c *gin.Context) {
 	userID, sessionID := h.extractUserAndSession(c)
 
@@ -142,18 +143,19 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 }
 
 // AddItem godoc
-// @Summary Add item to cart
-// @Description Adds a product variant with specified quantity to the shopping cart.
-// @Tags Cart
-// @Accept json
-// @Produce json
-// @Param X-Session-ID header string false "Guest Session ID"
-// @Param body body AddItemRequest true "Item variant and quantity"
-// @Success 200 {object} api.DataResponse{data=model.Cart} "Updated cart"
-// @Failure 400 {object} api.BadRequestErrorResponse "Validation error"
-// @Failure 404 {object} api.NotFoundErrorResponse "Variant not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Router /cart/items [post]
+//
+//	@Summary		Add item to cart
+//	@Description	Adds a product variant with specified quantity to the shopping cart.
+//	@Tags			Cart
+//	@Accept			json
+//	@Produce		json
+//	@Param			X-Session-ID	header		string								false	"Guest Session ID"
+//	@Param			body			body		AddItemRequest						true	"Item variant and quantity"
+//	@Success		200				{object}	api.DataResponse{data=model.Cart}	"Updated cart"
+//	@Failure		400				{object}	api.BadRequestErrorResponse			"Validation error"
+//	@Failure		404				{object}	api.NotFoundErrorResponse			"Variant not found"
+//	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
+//	@Router			/cart/items [post]
 func (h *CartHandler) AddItem(c *gin.Context) {
 	var req AddItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -173,19 +175,20 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 }
 
 // UpdateItemQuantity godoc
-// @Summary Update cart item quantity
-// @Description Updates the quantity of a specific item in the cart.
-// @Tags Cart
-// @Accept json
-// @Produce json
-// @Param id path string true "Cart Item UUID"
-// @Param X-Session-ID header string false "Guest Session ID"
-// @Param body body UpdateQuantityRequest true "New quantity"
-// @Success 200 {object} api.DataResponse{data=model.Cart} "Updated cart"
-// @Failure 400 {object} api.BadRequestErrorResponse "Validation error or invalid UUID"
-// @Failure 404 {object} api.NotFoundErrorResponse "Cart item not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Router /cart/items/{id} [patch]
+//
+//	@Summary		Update cart item quantity
+//	@Description	Updates the quantity of a specific item in the cart.
+//	@Tags			Cart
+//	@Accept			json
+//	@Produce		json
+//	@Param			id				path		string								true	"Cart Item UUID"
+//	@Param			X-Session-ID	header		string								false	"Guest Session ID"
+//	@Param			body			body		UpdateQuantityRequest				true	"New quantity"
+//	@Success		200				{object}	api.DataResponse{data=model.Cart}	"Updated cart"
+//	@Failure		400				{object}	api.BadRequestErrorResponse			"Validation error or invalid UUID"
+//	@Failure		404				{object}	api.NotFoundErrorResponse			"Cart item not found"
+//	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
+//	@Router			/cart/items/{id} [patch]
 func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 	itemID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -211,17 +214,18 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 }
 
 // RemoveItem godoc
-// @Summary Remove item from cart
-// @Description Removes a single item from the cart by item ID.
-// @Tags Cart
-// @Produce json
-// @Param id path string true "Cart Item UUID"
-// @Param X-Session-ID header string false "Guest Session ID"
-// @Success 200 {object} api.DataResponse{data=model.Cart} "Updated cart"
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid item ID"
-// @Failure 404 {object} api.NotFoundErrorResponse "Cart item not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Router /cart/items/{id} [delete]
+//
+//	@Summary		Remove item from cart
+//	@Description	Removes a single item from the cart by item ID.
+//	@Tags			Cart
+//	@Produce		json
+//	@Param			id				path		string								true	"Cart Item UUID"
+//	@Param			X-Session-ID	header		string								false	"Guest Session ID"
+//	@Success		200				{object}	api.DataResponse{data=model.Cart}	"Updated cart"
+//	@Failure		400				{object}	api.BadRequestErrorResponse			"Invalid item ID"
+//	@Failure		404				{object}	api.NotFoundErrorResponse			"Cart item not found"
+//	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
+//	@Router			/cart/items/{id} [delete]
 func (h *CartHandler) RemoveItem(c *gin.Context) {
 	itemID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -241,14 +245,15 @@ func (h *CartHandler) RemoveItem(c *gin.Context) {
 }
 
 // ClearCart godoc
-// @Summary Clear cart
-// @Description Removes all items from the current cart.
-// @Tags Cart
-// @Produce json
-// @Param X-Session-ID header string false "Guest Session ID"
-// @Success 204 "Cart cleared"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Router /cart [delete]
+//
+//	@Summary		Clear cart
+//	@Description	Removes all items from the current cart.
+//	@Tags			Cart
+//	@Produce		json
+//	@Param			X-Session-ID	header	string	false	"Guest Session ID"
+//	@Success		204				"Cart cleared"
+//	@Failure		500				{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Router			/cart [delete]
 func (h *CartHandler) ClearCart(c *gin.Context) {
 	userID, sessionID := h.extractUserAndSession(c)
 
@@ -262,16 +267,17 @@ func (h *CartHandler) ClearCart(c *gin.Context) {
 }
 
 // MergeGuestCart godoc
-// @Summary Merge guest cart into user cart
-// @Description Merges items from a guest session cart into the authenticated user's cart.
-// @Tags Cart
-// @Accept json
-// @Produce json
-// @Param body body MergeCartRequest true "Guest Session ID to merge"
-// @Success 200 {object} api.DataResponse{data=model.Cart} "Merged user cart"
-// @Failure 400 {object} api.BadRequestErrorResponse "Missing user or session ID"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Router /cart/merge [post]
+//
+//	@Summary		Merge guest cart into user cart
+//	@Description	Merges items from a guest session cart into the authenticated user's cart.
+//	@Tags			Cart
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		MergeCartRequest					true	"Guest Session ID to merge"
+//	@Success		200		{object}	api.DataResponse{data=model.Cart}	"Merged user cart"
+//	@Failure		400		{object}	api.BadRequestErrorResponse			"Missing user or session ID"
+//	@Failure		500		{object}	api.InternalServerErrorResponse		"Internal server error"
+//	@Router			/cart/merge [post]
 func (h *CartHandler) MergeGuestCart(c *gin.Context) {
 	var req MergeCartRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

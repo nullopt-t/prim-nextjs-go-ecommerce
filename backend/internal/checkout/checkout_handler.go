@@ -40,17 +40,18 @@ func NewHandler(checkoutService *CheckoutService) *CheckoutHandler {
 }
 
 // Checkout godoc
-// @Summary Perform checkout
-// @Description Creates an order from the current user's cart and clears the cart.
-// @Tags Checkout
-// @Accept json
-// @Produce json
-// @Param request body CheckoutRequest true "Checkout Details"
-// @Failure 400 {object} api.BadRequestErrorResponse "Validation error or empty cart"
-// @Failure 401 {object} api.UnauthorizedErrorResponse "Authentication required"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.DataResponse{data=CheckoutResponse} "Checkout result"
-// @Router /checkout [post]
+//
+//	@Summary		Perform checkout
+//	@Description	Creates an order from the current user's cart and clears the cart.
+//	@Tags			Checkout
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		CheckoutRequest							true	"Checkout Details"
+//	@Failure		400		{object}	api.BadRequestErrorResponse				"Validation error or empty cart"
+//	@Failure		401		{object}	api.UnauthorizedErrorResponse			"Authentication required"
+//	@Failure		500		{object}	api.InternalServerErrorResponse			"Internal server error"
+//	@Success		200		{object}	api.DataResponse{data=CheckoutResponse}	"Checkout result"
+//	@Router			/checkout [post]
 func (h *CheckoutHandler) Checkout(c *gin.Context) {
 	userIDVal, exists := c.Get("userID")
 	if !exists {

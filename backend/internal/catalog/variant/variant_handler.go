@@ -142,18 +142,19 @@ func mapVariantMediaResponse(m *model.VariantMedia) VariantMediaResponse {
 }
 
 // CreateVariant godoc
-// @Summary Create a product variant
-// @Description Adds a new SKU/variant to an existing product (e.g., specific color, size, price, or custom attributes).
-// @Tags Product Variants
-// @Accept json
-// @Produce json
-// @Param product_id path string true "Product UUID" format(uuid)
-// @Param data body CreateVariantRequest true "Variant title, price, crossed-out price, currency, attributes map, and default flag"
-// @Failure 400 {object} api.BadRequestErrorResponse "Validation error or missing required fields"
-// @Failure 404 {object} api.NotFoundErrorResponse "Parent product not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 201 {object} api.DataResponse{data=VariantResponse} "Created variant details"
-// @Router /admin/products/{product_id}/variants [post]
+//
+//	@Summary		Create a product variant
+//	@Description	Adds a new SKU/variant to an existing product (e.g., specific color, size, price, or custom attributes).
+//	@Tags			Product Variants
+//	@Accept			json
+//	@Produce		json
+//	@Param			product_id	path		string									true	"Product UUID"	format(uuid)
+//	@Param			data		body		CreateVariantRequest					true	"Variant title, price, crossed-out price, currency, attributes map, and default flag"
+//	@Failure		400			{object}	api.BadRequestErrorResponse				"Validation error or missing required fields"
+//	@Failure		404			{object}	api.NotFoundErrorResponse				"Parent product not found"
+//	@Failure		500			{object}	api.InternalServerErrorResponse			"Internal server error"
+//	@Success		201			{object}	api.DataResponse{data=VariantResponse}	"Created variant details"
+//	@Router			/admin/products/{product_id}/variants [post]
 func (vh *VariantHandler) CreateVariant(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("product_id"))
 	if err != nil {
@@ -192,16 +193,17 @@ func (vh *VariantHandler) CreateVariant(c *gin.Context) {
 }
 
 // GetVariantByID godoc
-// @Summary Get variant details by ID
-// @Description Retrieves specific product variant (SKU) details by its UUID.
-// @Tags Product Variants
-// @Produce json
-// @Param id path string true "Variant UUID" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
-// @Failure 404 {object} api.NotFoundErrorResponse "Variant not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.DataResponse{data=VariantResponse} "Variant details"
-// @Router /variants/{id} [get]
+//
+//	@Summary		Get variant details by ID
+//	@Description	Retrieves specific product variant (SKU) details by its UUID.
+//	@Tags			Product Variants
+//	@Produce		json
+//	@Param			id	path		string									true	"Variant UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse				"Invalid UUID format"
+//	@Failure		404	{object}	api.NotFoundErrorResponse				"Variant not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse			"Internal server error"
+//	@Success		200	{object}	api.DataResponse{data=VariantResponse}	"Variant details"
+//	@Router			/variants/{id} [get]
 func (vh *VariantHandler) GetVariantByID(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -224,18 +226,19 @@ func (vh *VariantHandler) GetVariantByID(c *gin.Context) {
 }
 
 // UpdateVariantByID godoc
-// @Summary Update product variant attributes
-// @Description Updates specific fields of an existing variant such as title, price, crossed-out price, currency, attributes, or default status.
-// @Tags Product Variants
-// @Accept json
-// @Produce json
-// @Param id path string true "Variant UUID" format(uuid)
-// @Param input body UpdateVariantRequest true "Fields to update (title, price, crossed_out_price, currency, attributes, is_default)"
-// @Failure 400 {object} api.BadRequestErrorResponse "Validation error or invalid UUID format"
-// @Failure 404 {object} api.NotFoundErrorResponse "Variant not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.MessageResponse "Update confirmation message"
-// @Router /admin/variants/{id} [patch]
+//
+//	@Summary		Update product variant attributes
+//	@Description	Updates specific fields of an existing variant such as title, price, crossed-out price, currency, attributes, or default status.
+//	@Tags			Product Variants
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string							true	"Variant UUID"	format(uuid)
+//	@Param			input	body		UpdateVariantRequest			true	"Fields to update (title, price, crossed_out_price, currency, attributes, is_default)"
+//	@Failure		400		{object}	api.BadRequestErrorResponse		"Validation error or invalid UUID format"
+//	@Failure		404		{object}	api.NotFoundErrorResponse		"Variant not found"
+//	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200		{object}	api.MessageResponse				"Update confirmation message"
+//	@Router			/admin/variants/{id} [patch]
 func (vh *VariantHandler) UpdateVariantByID(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -264,16 +267,17 @@ func (vh *VariantHandler) UpdateVariantByID(c *gin.Context) {
 }
 
 // DeleteVariantByID godoc
-// @Summary Soft-delete a product variant
-// @Description Marks an active product variant as soft-deleted (`deleted_at = NOW()`), removing it from active product options.
-// @Tags Product Variants
-// @Produce json
-// @Param id path string true "Variant UUID" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
-// @Failure 404 {object} api.NotFoundErrorResponse "Variant not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.MessageResponse "Deletion confirmation message"
-// @Router /admin/variants/{id} [delete]
+//
+//	@Summary		Soft-delete a product variant
+//	@Description	Marks an active product variant as soft-deleted (`deleted_at = NOW()`), removing it from active product options.
+//	@Tags			Product Variants
+//	@Produce		json
+//	@Param			id	path		string							true	"Variant UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
+//	@Failure		404	{object}	api.NotFoundErrorResponse		"Variant not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200	{object}	api.MessageResponse				"Deletion confirmation message"
+//	@Router			/admin/variants/{id} [delete]
 func (vh *VariantHandler) DeleteVariantByID(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -293,16 +297,17 @@ func (vh *VariantHandler) DeleteVariantByID(c *gin.Context) {
 }
 
 // ListVariantsByProductID godoc
-// @Summary List active variants for a product
-// @Description Returns a paginated list of active variants associated with a specific product for storefront selection.
-// @Tags Product Variants
-// @Produce json
-// @Param product_id path string true "Product UUID" format(uuid)
-// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters or UUID format"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]VariantResponse,meta=pagination.Page} "Paginated list of active product variants"
-// @Router /products/{product_id}/variants [get]
+//
+//	@Summary		List active variants for a product
+//	@Description	Returns a paginated list of active variants associated with a specific product for storefront selection.
+//	@Tags			Product Variants
+//	@Produce		json
+//	@Param			product_id	path		string																true	"Product UUID"	format(uuid)
+//	@Param			q			query		pagination.ListQuery												true	"Pagination, search query, and sorting parameters"
+//	@Failure		400			{object}	api.BadRequestErrorResponse											"Invalid query parameters or UUID format"
+//	@Failure		500			{object}	api.InternalServerErrorResponse										"Internal server error"
+//	@Success		200			{object}	api.PaginatedResponse{data=[]VariantResponse,meta=pagination.Page}	"Paginated list of active product variants"
+//	@Router			/products/{product_id}/variants [get]
 func (vh *VariantHandler) ListVariantsByProductID(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("product_id"))
 	if err != nil {
@@ -338,16 +343,17 @@ func (vh *VariantHandler) ListVariantsByProductID(c *gin.Context) {
 }
 
 // AdminListVariantsByProductID godoc
-// @Summary List all variants for a product including soft-deleted ones (Admin)
-// @Description Returns a paginated list of all variants associated with a specific product including soft-deleted records for administrator management.
-// @Tags Product Variants
-// @Produce json
-// @Param product_id path string true "Product UUID" format(uuid)
-// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters or UUID format"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]AdminVariantResponse,meta=pagination.Page} "Paginated list of all product variants including deleted"
-// @Router /admin/products/{product_id}/variants [get]
+//
+//	@Summary		List all variants for a product including soft-deleted ones (Admin)
+//	@Description	Returns a paginated list of all variants associated with a specific product including soft-deleted records for administrator management.
+//	@Tags			Product Variants
+//	@Produce		json
+//	@Param			product_id	path		string																	true	"Product UUID"	format(uuid)
+//	@Param			q			query		pagination.ListQuery													true	"Pagination, search query, and sorting parameters"
+//	@Failure		400			{object}	api.BadRequestErrorResponse												"Invalid query parameters or UUID format"
+//	@Failure		500			{object}	api.InternalServerErrorResponse											"Internal server error"
+//	@Success		200			{object}	api.PaginatedResponse{data=[]AdminVariantResponse,meta=pagination.Page}	"Paginated list of all product variants including deleted"
+//	@Router			/admin/products/{product_id}/variants [get]
 func (vh *VariantHandler) AdminListVariantsByProductID(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("product_id"))
 	if err != nil {
@@ -383,18 +389,19 @@ func (vh *VariantHandler) AdminListVariantsByProductID(c *gin.Context) {
 }
 
 // AttachMedia godoc
-// @Summary Attach a storage object to a variant
-// @Description Links an uploaded storage object (image/video) to a specific product variant with media type and sort order.
-// @Tags Variant Media
-// @Accept json
-// @Produce json
-// @Param id path string true "Variant UUID" format(uuid)
-// @Param body body AttachMediaRequest true "Storage object ID, media type, and sort order"
-// @Failure 400 {object} api.BadRequestErrorResponse "Validation error or invalid UUID reference"
-// @Failure 409 {object} api.ConflictErrorResponse "Storage object is already attached to this variant"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 201 {object} api.DataResponse{data=VariantMediaResponse} "Attached variant media details"
-// @Router /admin/variants/{id}/media [post]
+//
+//	@Summary		Attach a storage object to a variant
+//	@Description	Links an uploaded storage object (image/video) to a specific product variant with media type and sort order.
+//	@Tags			Variant Media
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string										true	"Variant UUID"	format(uuid)
+//	@Param			body	body		AttachMediaRequest							true	"Storage object ID, media type, and sort order"
+//	@Failure		400		{object}	api.BadRequestErrorResponse					"Validation error or invalid UUID reference"
+//	@Failure		409		{object}	api.ConflictErrorResponse					"Storage object is already attached to this variant"
+//	@Failure		500		{object}	api.InternalServerErrorResponse				"Internal server error"
+//	@Success		201		{object}	api.DataResponse{data=VariantMediaResponse}	"Attached variant media details"
+//	@Router			/admin/variants/{id}/media [post]
 func (vh *VariantHandler) AttachMedia(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -437,15 +444,16 @@ func (vh *VariantHandler) AttachMedia(c *gin.Context) {
 }
 
 // ListVariantMedia godoc
-// @Summary List all media items for a variant
-// @Description Returns all attached media items for a specific variant with presigned object URLs.
-// @Tags Variant Media
-// @Produce json
-// @Param id path string true "Variant UUID" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.DataResponse{data=[]VariantMediaResponse} "List of variant media items"
-// @Router /variants/{id}/media [get]
+//
+//	@Summary		List all media items for a variant
+//	@Description	Returns all attached media items for a specific variant with presigned object URLs.
+//	@Tags			Variant Media
+//	@Produce		json
+//	@Param			id	path		string											true	"Variant UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse						"Invalid UUID format"
+//	@Failure		500	{object}	api.InternalServerErrorResponse					"Internal server error"
+//	@Success		200	{object}	api.DataResponse{data=[]VariantMediaResponse}	"List of variant media items"
+//	@Router			/variants/{id}/media [get]
 func (vh *VariantHandler) ListVariantMedia(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -473,17 +481,18 @@ func (vh *VariantHandler) ListVariantMedia(c *gin.Context) {
 }
 
 // DetachMedia godoc
-// @Summary Remove a media attachment from a variant
-// @Description Removes a media attachment relationship from a variant.
-// @Tags Variant Media
-// @Produce json
-// @Param id path string true "Variant UUID" format(uuid)
-// @Param media_id path string true "Media Attachment UUID" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
-// @Failure 404 {object} api.NotFoundErrorResponse "Media relationship not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.MessageResponse "Detachment confirmation message"
-// @Router /admin/variants/{id}/media/{media_id} [delete]
+//
+//	@Summary		Remove a media attachment from a variant
+//	@Description	Removes a media attachment relationship from a variant.
+//	@Tags			Variant Media
+//	@Produce		json
+//	@Param			id			path		string							true	"Variant UUID"			format(uuid)
+//	@Param			media_id	path		string							true	"Media Attachment UUID"	format(uuid)
+//	@Failure		400			{object}	api.BadRequestErrorResponse		"Invalid UUID format"
+//	@Failure		404			{object}	api.NotFoundErrorResponse		"Media relationship not found"
+//	@Failure		500			{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200			{object}	api.MessageResponse				"Detachment confirmation message"
+//	@Router			/admin/variants/{id}/media/{media_id} [delete]
 func (vh *VariantHandler) DetachMedia(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -512,17 +521,18 @@ func (vh *VariantHandler) DetachMedia(c *gin.Context) {
 }
 
 // ReorderMedia godoc
-// @Summary Batch reorder media items for a variant
-// @Description Reorders attached media items for a variant according to the specified array of media IDs.
-// @Tags Variant Media
-// @Accept json
-// @Produce json
-// @Param id path string true "Variant UUID" format(uuid)
-// @Param body body ReorderMediaRequest true "Ordered list of media UUIDs"
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format or empty list"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.MessageResponse "Reorder confirmation message"
-// @Router /admin/variants/{id}/media/reorder [patch]
+//
+//	@Summary		Batch reorder media items for a variant
+//	@Description	Reorders attached media items for a variant according to the specified array of media IDs.
+//	@Tags			Variant Media
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string							true	"Variant UUID"	format(uuid)
+//	@Param			body	body		ReorderMediaRequest				true	"Ordered list of media UUIDs"
+//	@Failure		400		{object}	api.BadRequestErrorResponse		"Invalid UUID format or empty list"
+//	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200		{object}	api.MessageResponse				"Reorder confirmation message"
+//	@Router			/admin/variants/{id}/media/reorder [patch]
 func (vh *VariantHandler) ReorderMedia(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
 	if err != nil {

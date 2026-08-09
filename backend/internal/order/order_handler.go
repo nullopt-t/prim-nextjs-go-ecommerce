@@ -117,14 +117,15 @@ func NewHandler(orderService *OrderService) *OrderHandler {
 }
 
 // GetOrders godoc
-// @Summary List customer orders
-// @Description Returns a list of orders belonging to the authenticated customer.
-// @Tags Orders
-// @Produce json
-// @Failure 401 {object} api.UnauthorizedErrorResponse "Authentication required"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.DataResponse{data=[]OrderResponse} "List of orders"
-// @Router /orders [get]
+//
+//	@Summary		List customer orders
+//	@Description	Returns a list of orders belonging to the authenticated customer.
+//	@Tags			Orders
+//	@Produce		json
+//	@Failure		401	{object}	api.UnauthorizedErrorResponse			"Authentication required"
+//	@Failure		500	{object}	api.InternalServerErrorResponse			"Internal server error"
+//	@Success		200	{object}	api.DataResponse{data=[]OrderResponse}	"List of orders"
+//	@Router			/orders [get]
 func (h *OrderHandler) GetOrders(c *gin.Context) {
 	userIDVal, exists := c.Get("userID")
 	if !exists {
@@ -155,17 +156,18 @@ func (h *OrderHandler) GetOrders(c *gin.Context) {
 }
 
 // GetOrderByID godoc
-// @Summary Get order by ID
-// @Description Retrieves full order details by its UUID.
-// @Tags Orders
-// @Produce json
-// @Param id path string true "Order UUID" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
-// @Failure 401 {object} api.UnauthorizedErrorResponse "Authentication required"
-// @Failure 404 {object} api.NotFoundErrorResponse "Order not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.DataResponse{data=OrderResponse} "Order details"
-// @Router /orders/{id} [get]
+//
+//	@Summary		Get order by ID
+//	@Description	Retrieves full order details by its UUID.
+//	@Tags			Orders
+//	@Produce		json
+//	@Param			id	path		string									true	"Order UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse				"Invalid UUID format"
+//	@Failure		401	{object}	api.UnauthorizedErrorResponse			"Authentication required"
+//	@Failure		404	{object}	api.NotFoundErrorResponse				"Order not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse			"Internal server error"
+//	@Success		200	{object}	api.DataResponse{data=OrderResponse}	"Order details"
+//	@Router			/orders/{id} [get]
 func (h *OrderHandler) GetOrderByID(c *gin.Context) {
 	idParam := c.Param("id")
 	orderID, err := uuid.Parse(idParam)
@@ -189,18 +191,19 @@ func (h *OrderHandler) GetOrderByID(c *gin.Context) {
 }
 
 // UpdateOrderStatus godoc
-// @Summary Update order status (Admin)
-// @Description Updates the status of an existing order.
-// @Tags Orders
-// @Accept json
-// @Produce json
-// @Param id path string true "Order UUID" format(uuid)
-// @Param status body UpdateOrderStatusRequest true "Status update details"
-// @Failure 400 {object} api.BadRequestErrorResponse "Validation error or invalid UUID format"
-// @Failure 404 {object} api.NotFoundErrorResponse "Order not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.MessageResponse "Status update confirmation"
-// @Router /admin/orders/{id}/status [patch]
+//
+//	@Summary		Update order status (Admin)
+//	@Description	Updates the status of an existing order.
+//	@Tags			Orders
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string							true	"Order UUID"	format(uuid)
+//	@Param			status	body		UpdateOrderStatusRequest		true	"Status update details"
+//	@Failure		400		{object}	api.BadRequestErrorResponse		"Validation error or invalid UUID format"
+//	@Failure		404		{object}	api.NotFoundErrorResponse		"Order not found"
+//	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200		{object}	api.MessageResponse				"Status update confirmation"
+//	@Router			/admin/orders/{id}/status [patch]
 func (h *OrderHandler) UpdateOrderStatus(c *gin.Context) {
 	orderID, err := uuid.Parse(c.Param("id"))
 	if err != nil {

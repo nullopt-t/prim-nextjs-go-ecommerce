@@ -73,17 +73,18 @@ type VerifyChallengeRequest struct {
 }
 
 // StartChallenge godoc
-// @Summary Start an authentication challenge
-// @Description Starts an authentication challenge by sending a verification code to the provided email or phone number.
-// @Tags Auth
-// @Accept json
-// @Produce json
-// @Param request body StartChallengeRequest true "Challenge Request"
-// @Success 200 {object} api.DataResponse{data=StartChallengeResponse}
-// @Failure 400 {object} api.BadReqResponse
-// @Failure 429 {object} api.ErrorResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Router /auth/challenge/start [post]
+//
+//	@Summary		Start an authentication challenge
+//	@Description	Starts an authentication challenge by sending a verification code to the provided email or phone number.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		StartChallengeRequest	true	"Challenge Request"
+//	@Success		200		{object}	api.DataResponse{data=StartChallengeResponse}
+//	@Failure		400		{object}	api.BadReqResponse
+//	@Failure		429		{object}	api.ErrorResponse
+//	@Failure		500		{object}	api.InternalServerErrorResponse
+//	@Router			/auth/challenge/start [post]
 func (h *Handler) StartChallenge(c *gin.Context) {
 	var req StartChallengeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -146,18 +147,19 @@ func (h *Handler) setAuthCookies(c *gin.Context, accessToken, refreshToken, sess
 }
 
 // VerifyChallenge godoc
-// @Summary Verify an authentication challenge
-// @Description Verifies the one-time code sent to the user's email or phone and sets auth cookies.
-// @Tags Auth
-// @Accept json
-// @Produce json
-// @Param request body VerifyChallengeRequest true "Challenge Verification Request"
-// @Success 200 {object} api.SuccessResponse
-// @Failure 400 {object} api.BadReqResponse
-// @Failure 401 {object} api.UnauthorizedResponse
-// @Failure 429 {object} api.ErrorResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Router /auth/challenge/verify [post]
+//
+//	@Summary		Verify an authentication challenge
+//	@Description	Verifies the one-time code sent to the user's email or phone and sets auth cookies.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		VerifyChallengeRequest	true	"Challenge Verification Request"
+//	@Success		200		{object}	api.SuccessResponse
+//	@Failure		400		{object}	api.BadReqResponse
+//	@Failure		401		{object}	api.UnauthorizedResponse
+//	@Failure		429		{object}	api.ErrorResponse
+//	@Failure		500		{object}	api.InternalServerErrorResponse
+//	@Router			/auth/challenge/verify [post]
 func (h *Handler) VerifyChallenge(c *gin.Context) {
 	var req VerifyChallengeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -191,17 +193,18 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 }
 
 // ResendChallenge godoc
-// @Summary Resend an authentication challenge
-// @Description Resends a new verification code to the provided email or phone number if allowed by the challenge policy.
-// @Tags Auth
-// @Accept json
-// @Produce json
-// @Param request body ResendChallengeRequest true "Resend Challenge Request"
-// @Success 200 {object} api.MessageResponse
-// @Failure 400 {object} api.BadReqResponse
-// @Failure 429 {object} api.ErrorResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Router /auth/challenge/resend [post]
+//
+//	@Summary		Resend an authentication challenge
+//	@Description	Resends a new verification code to the provided email or phone number if allowed by the challenge policy.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		ResendChallengeRequest	true	"Resend Challenge Request"
+//	@Success		200		{object}	api.MessageResponse
+//	@Failure		400		{object}	api.BadReqResponse
+//	@Failure		429		{object}	api.ErrorResponse
+//	@Failure		500		{object}	api.InternalServerErrorResponse
+//	@Router			/auth/challenge/resend [post]
 func (h *Handler) ResendChallenge(c *gin.Context) {
 	var req ResendChallengeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -225,18 +228,19 @@ func (h *Handler) ResendChallenge(c *gin.Context) {
 }
 
 // Refresh godoc
-// @Summary Rotate refresh token and issue new access and refresh tokens.
-// @Description Rotate refresh token and issue new access and refresh tokens.
-// @Tags Auth
-// @Accept json
-// @Produce json
-// @Param refresh_token body RefreshTokenRequest false "Refresh Token"
-// @Success 200 {object} api.SuccessResponse
-// @Failure 400 {object} api.BadReqResponse
-// @Failure 401 {object} api.UnauthorizedResponse
-// @Failure 429 {object} api.ErrorResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Router /auth/refresh [post]
+//
+//	@Summary		Rotate refresh token and issue new access and refresh tokens.
+//	@Description	Rotate refresh token and issue new access and refresh tokens.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			refresh_token	body		RefreshTokenRequest	false	"Refresh Token"
+//	@Success		200				{object}	api.SuccessResponse
+//	@Failure		400				{object}	api.BadReqResponse
+//	@Failure		401				{object}	api.UnauthorizedResponse
+//	@Failure		429				{object}	api.ErrorResponse
+//	@Failure		500				{object}	api.InternalServerErrorResponse
+//	@Router			/auth/refresh [post]
 func (h *Handler) Refresh(c *gin.Context) {
 	refreshToken := ""
 	var req RefreshTokenRequest
@@ -271,14 +275,15 @@ func (h *Handler) Refresh(c *gin.Context) {
 }
 
 // GetMe godoc
-// @Summary fetch session user data
-// @Description fetch session user data
-// @Tags Auth
-// @Accept json
-// @Produce json
-// @Success 200 {object} api.DataResponse{data=MeResponse}
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Router /auth/me [get]
+//
+//	@Summary		fetch session user data
+//	@Description	fetch session user data
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	api.DataResponse{data=MeResponse}
+//	@Failure		500	{object}	api.InternalServerErrorResponse
+//	@Router			/auth/me [get]
 func (h *Handler) GetMe(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
 
@@ -301,14 +306,15 @@ func (h *Handler) GetMe(c *gin.Context) {
 }
 
 // GetSessions godoc
-// @Summary List active user sessions
-// @Description Fetches all active login sessions stored in Redis for the current user.
-// @Tags Auth
-// @Produce json
-// @Success 200 {object} api.DataResponse{data=[]UserSession}
-// @Failure 401 {object} api.UnauthorizedResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Router /auth/sessions [get]
+//
+//	@Summary		List active user sessions
+//	@Description	Fetches all active login sessions stored in Redis for the current user.
+//	@Tags			Auth
+//	@Produce		json
+//	@Success		200	{object}	api.DataResponse{data=[]UserSession}
+//	@Failure		401	{object}	api.UnauthorizedResponse
+//	@Failure		500	{object}	api.InternalServerErrorResponse
+//	@Router			/auth/sessions [get]
 func (h *Handler) GetSessions(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
 
@@ -322,15 +328,16 @@ func (h *Handler) GetSessions(c *gin.Context) {
 }
 
 // DeleteSessionByID godoc
-// @Summary Revoke session
-// @Description Revokes and deletes a specific active session from Redis.
-// @Tags Auth
-// @Produce json
-// @Param id path string true "Session ID to revoke"
-// @Success 200 {object} api.MessageResponse
-// @Failure 401 {object} api.UnauthorizedResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Router /auth/sessions/{id} [delete]
+//
+//	@Summary		Revoke session
+//	@Description	Revokes and deletes a specific active session from Redis.
+//	@Tags			Auth
+//	@Produce		json
+//	@Param			id	path		string	true	"Session ID to revoke"
+//	@Success		200	{object}	api.MessageResponse
+//	@Failure		401	{object}	api.UnauthorizedResponse
+//	@Failure		500	{object}	api.InternalServerErrorResponse
+//	@Router			/auth/sessions/{id} [delete]
 func (h *Handler) DeleteSessionByID(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
 	sessionID := c.Param("id")
