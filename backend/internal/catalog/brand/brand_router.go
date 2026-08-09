@@ -37,6 +37,7 @@ func (r *Router) MapRoutes(
 	{
 		admin.POST("", r.bh.CreateBrand)
 		admin.GET("", r.bh.ListAdminBrands)
+		admin.POST("/:id/logo", r.bh.UploadBrandLogo)
 
 		admin.GET("/:id", r.bh.GetBrandByID)
 		admin.PATCH("/:id", r.bh.UpdateBrand)
