@@ -143,7 +143,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/BrandResponse"
+                                            "$ref": "#/definitions/AdminBrandResponse"
                                         }
                                     }
                                 }
@@ -206,7 +206,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/BrandResponse"
+                                            "$ref": "#/definitions/AdminBrandResponse"
                                         }
                                     }
                                 }
@@ -304,7 +304,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Fields to update (name, link, logo_storage_object_id)",
+                        "description": "Fields to update (name, link, logo_id)",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -336,6 +336,58 @@ const docTemplate = `{
                         "description": "A brand with updated name already exists",
                         "schema": {
                             "$ref": "#/definitions/ConflictErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/brands/{id}/logo": {
+            "put": {
+                "description": "Uploads an image file to be used as the brand's logo",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brands"
+                ],
+                "summary": "Upload brand logo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Brand UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Logo image file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Upload confirmation message",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format or missing file",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
@@ -3850,6 +3902,7 @@ const docTemplate = `{
                     "example": "2026-07-01T05:04:38Z"
                 },
                 "id": {
+                    "description": "Internal ID of the brand",
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
@@ -3857,13 +3910,18 @@ const docTemplate = `{
                     "type": "string",
                     "example": "https://nvidia.com"
                 },
-                "logo_storage_object_id": {
+                "logo_object_id": {
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
                 "name": {
                     "type": "string",
                     "example": "nvidia"
+                },
+                "public_id": {
+                    "description": "Public ID of the brand",
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
                 "updated_at": {
                     "type": "string",
@@ -4112,11 +4170,8 @@ const docTemplate = `{
         "BrandResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
-                    "type": "string",
-                    "example": "2026-07-01T05:04:38Z"
-                },
                 "id": {
+                    "description": "Public ID of the brand",
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
@@ -4124,17 +4179,13 @@ const docTemplate = `{
                     "type": "string",
                     "example": "https://nvidia.com"
                 },
-                "logo_storage_object_id": {
+                "logo_url": {
                     "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                    "example": "https://example.com/logo.png"
                 },
                 "name": {
                     "type": "string",
                     "example": "nvidia"
-                },
-                "updated_at": {
-                    "type": "string",
-                    "example": "2026-07-01T05:04:38Z"
                 }
             }
         },
@@ -5113,7 +5164,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "https://apple.com"
                 },
-                "logo_storage_object_id": {
+                "logo_object_id": {
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },

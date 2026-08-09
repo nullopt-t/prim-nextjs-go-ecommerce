@@ -52,16 +52,21 @@ definitions:
         example: "2026-07-01T05:04:38Z"
         type: string
       id:
+        description: Internal ID of the brand
         example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
         type: string
       link:
         example: https://nvidia.com
         type: string
-      logo_storage_object_id:
+      logo_object_id:
         example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
         type: string
       name:
         example: nvidia
+        type: string
+      public_id:
+        description: Public ID of the brand
+        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
         type: string
       updated_at:
         example: "2026-07-01T05:04:38Z"
@@ -236,23 +241,18 @@ definitions:
     type: object
   BrandResponse:
     properties:
-      created_at:
-        example: "2026-07-01T05:04:38Z"
-        type: string
       id:
+        description: Public ID of the brand
         example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
         type: string
       link:
         example: https://nvidia.com
         type: string
-      logo_storage_object_id:
-        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
+      logo_url:
+        example: https://example.com/logo.png
         type: string
       name:
         example: nvidia
-        type: string
-      updated_at:
-        example: "2026-07-01T05:04:38Z"
         type: string
     type: object
   Cart:
@@ -916,7 +916,7 @@ definitions:
       link:
         example: https://apple.com
         type: string
-      logo_storage_object_id:
+      logo_object_id:
         example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
         type: string
       name:
@@ -1161,7 +1161,7 @@ paths:
             - $ref: '#/definitions/DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/BrandResponse'
+                  $ref: '#/definitions/AdminBrandResponse'
               type: object
         "400":
           description: Validation error or missing brand name
@@ -1234,7 +1234,7 @@ paths:
             - $ref: '#/definitions/DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/BrandResponse'
+                  $ref: '#/definitions/AdminBrandResponse'
               type: object
         "400":
           description: Invalid UUID format
@@ -1263,7 +1263,7 @@ paths:
         name: id
         required: true
         type: string
-      - description: Fields to update (name, link, logo_storage_object_id)
+      - description: Fields to update (name, link, logo_id)
         in: body
         name: input
         required: true
@@ -1293,6 +1293,41 @@ paths:
           schema:
             $ref: '#/definitions/InternalServerErrorResponse'
       summary: Update brand details
+      tags:
+      - Brands
+  /admin/brands/{id}/logo:
+    put:
+      consumes:
+      - multipart/form-data
+      description: Uploads an image file to be used as the brand's logo
+      parameters:
+      - description: Brand UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Logo image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Upload confirmation message
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Invalid UUID format or missing file
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Upload brand logo
       tags:
       - Brands
   /admin/categories:
