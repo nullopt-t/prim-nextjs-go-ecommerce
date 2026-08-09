@@ -327,7 +327,7 @@ func (bh *BrandHandler) ListAdminBrands(c *gin.Context) {
 //	@Failure		400		{object}	api.BadRequestErrorResponse	"Invalid UUID format or missing file"
 //	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
 //	@Success		200		{object}	api.MessageResponse			"Upload confirmation message"
-//	@Router			/admin/brands/{id}/logo [post]
+//	@Router			/admin/brands/{id}/logo [put]
 func (bh *BrandHandler) UploadBrandLogo(c *gin.Context) {
 	brandID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
