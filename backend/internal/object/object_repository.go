@@ -103,3 +103,58 @@ func (or *ObjectRepository) MarkDeletedByKey(
 	}
 	return nil
 }
+
+func (or *ObjectRepository) GetByID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	id uuid.UUID,
+) (*model.Object, error) {
+	obj := &model.Object{}
+	err := qe.QueryRow(ctx, `
+		SELECT id, bucket, object_key, content_type, file_size, status, created_at, updated_at, deleted_at
+		FROM storage_objects
+		WHERE id = $1
+	`, id).Scan(
+		&obj.ID, &obj.Bucket, &obj.Key, &obj.ContentType,
+		&obj.FileSize, &obj.Status, &obj.CreatedAt, &obj.UpdatedAt, &obj.DeletedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get object by id: %w", err)
+	}
+	return obj, nil
+}
+
+func (or *ObjectRepository) GetByIDs(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	ids []uuid.UUID,
+) ([]*model.Object, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	query := `
+		SELECT id, bucket, object_key, content_type, file_size, status, created_at, updated_at, deleted_at
+		FROM storage_objects
+		WHERE id = ANY($1)
+	`
+	rows, err := qe.Query(ctx, query, ids)
+	if err != nil {
+		return nil, fmt.Errorf("get objects by ids query: %w", err)
+	}
+	defer rows.Close()
+
+	var objects []*model.Object
+	for rows.Next() {
+		obj := &model.Object{}
+		err := rows.Scan(
+			&obj.ID, &obj.Bucket, &obj.Key, &obj.ContentType,
+			&obj.FileSize, &obj.Status, &obj.CreatedAt, &obj.UpdatedAt, &obj.DeletedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan object: %w", err)
+		}
+		objects = append(objects, obj)
+	}
+	return objects, nil
+}
