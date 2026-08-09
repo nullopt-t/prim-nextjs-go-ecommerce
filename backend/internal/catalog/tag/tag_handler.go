@@ -43,17 +43,18 @@ type AdminTagResponse struct {
 }
 
 // CreateTag godoc
-// @Summary Create a product tag
-// @Description Adds a new product classification tag (e.g. 'black-friday', 'best-seller'). Tag names must be unique.
-// @Tags Tags
-// @Accept json
-// @Produce json
-// @Param data body CreateTagRequest true "Tag name payload"
-// @Failure 400 {object} api.BadRequestErrorResponse "Validation error or missing tag name"
-// @Failure 409 {object} api.ConflictErrorResponse "A tag with this name already exists"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 201 {object} api.DataResponse{data=TagResponse} "Created tag details"
-// @Router /admin/tags [post]
+//
+//	@Summary		Create a product tag
+//	@Description	Adds a new product classification tag (e.g. 'black-friday', 'best-seller'). Tag names must be unique.
+//	@Tags			Tags
+//	@Accept			json
+//	@Produce		json
+//	@Param			data	body		CreateTagRequest					true	"Tag name payload"
+//	@Failure		400		{object}	api.BadRequestErrorResponse			"Validation error or missing tag name"
+//	@Failure		409		{object}	api.ConflictErrorResponse			"A tag with this name already exists"
+//	@Failure		500		{object}	api.InternalServerErrorResponse		"Internal server error"
+//	@Success		201		{object}	api.DataResponse{data=TagResponse}	"Created tag details"
+//	@Router			/admin/tags [post]
 func (th *TagHandler) CreateTag(c *gin.Context) {
 	var body CreateTagRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -85,17 +86,18 @@ func (th *TagHandler) CreateTag(c *gin.Context) {
 }
 
 // GetTagByID godoc
-// @Summary Get tag details by ID
-// @Description Retrieves active product tag details by its UUID.
-// @Tags Tags
-// @Accept json
-// @Produce json
-// @Param id path string true "Tag UUID" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
-// @Failure 404 {object} api.NotFoundErrorResponse "Tag not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.DataResponse{data=TagResponse} "Tag details"
-// @Router /admin/tags/{id} [get]
+//
+//	@Summary		Get tag details by ID
+//	@Description	Retrieves active product tag details by its UUID.
+//	@Tags			Tags
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		string								true	"Tag UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse			"Invalid UUID format"
+//	@Failure		404	{object}	api.NotFoundErrorResponse			"Tag not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse		"Internal server error"
+//	@Success		200	{object}	api.DataResponse{data=TagResponse}	"Tag details"
+//	@Router			/admin/tags/{id} [get]
 func (th *TagHandler) GetTagByID(c *gin.Context) {
 	tagID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -130,19 +132,20 @@ func (th *TagHandler) GetTagByID(c *gin.Context) {
 }
 
 // UpdateTagByID godoc
-// @Summary Update tag details
-// @Description Updates the name of an existing product tag. Tag names must be unique.
-// @Tags Tags
-// @Accept json
-// @Produce json
-// @Param id path string true "Tag UUID" format(uuid)
-// @Param input body UpdateTagRequest true "Fields to update (name)"
-// @Failure 400 {object} api.BadRequestErrorResponse "Validation error or invalid UUID format"
-// @Failure 404 {object} api.NotFoundErrorResponse "Tag not found"
-// @Failure 409 {object} api.ConflictErrorResponse "A tag with updated name already exists"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.MessageResponse "Update confirmation message"
-// @Router /admin/tags/{id} [patch]
+//
+//	@Summary		Update tag details
+//	@Description	Updates the name of an existing product tag. Tag names must be unique.
+//	@Tags			Tags
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string							true	"Tag UUID"	format(uuid)
+//	@Param			input	body		UpdateTagRequest				true	"Fields to update (name)"
+//	@Failure		400		{object}	api.BadRequestErrorResponse		"Validation error or invalid UUID format"
+//	@Failure		404		{object}	api.NotFoundErrorResponse		"Tag not found"
+//	@Failure		409		{object}	api.ConflictErrorResponse		"A tag with updated name already exists"
+//	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200		{object}	api.MessageResponse				"Update confirmation message"
+//	@Router			/admin/tags/{id} [patch]
 func (th *TagHandler) UpdateTagByID(c *gin.Context) {
 	tagID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -181,17 +184,18 @@ func (th *TagHandler) UpdateTagByID(c *gin.Context) {
 }
 
 // DeleteTagByID godoc
-// @Summary Soft-delete a tag
-// @Description Marks an active product tag as soft-deleted (`deleted_at = NOW()`), removing it from tag selections.
-// @Tags Tags
-// @Accept json
-// @Produce json
-// @Param id path string true "Tag UUID" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
-// @Failure 404 {object} api.NotFoundErrorResponse "Tag not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.MessageResponse "Deletion confirmation message"
-// @Router /admin/tags/{id} [delete]
+//
+//	@Summary		Soft-delete a tag
+//	@Description	Marks an active product tag as soft-deleted (`deleted_at = NOW()`), removing it from tag selections.
+//	@Tags			Tags
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		string							true	"Tag UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
+//	@Failure		404	{object}	api.NotFoundErrorResponse		"Tag not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200	{object}	api.MessageResponse				"Deletion confirmation message"
+//	@Router			/admin/tags/{id} [delete]
 func (th *TagHandler) DeleteTagByID(c *gin.Context) {
 	tagID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -215,16 +219,17 @@ func (th *TagHandler) DeleteTagByID(c *gin.Context) {
 }
 
 // ListTags godoc
-// @Summary List active product tags
-// @Description Returns a paginated list of active product tags for customer storefront filtering.
-// @Tags Tags
-// @Accept json
-// @Produce json
-// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]TagResponse,meta=pagination.Page} "Paginated list of active tags"
-// @Router /tags [get]
+//
+//	@Summary		List active product tags
+//	@Description	Returns a paginated list of active product tags for customer storefront filtering.
+//	@Tags			Tags
+//	@Accept			json
+//	@Produce		json
+//	@Param			q	query		pagination.ListQuery											true	"Pagination, search query, and sorting parameters"
+//	@Failure		400	{object}	api.BadRequestErrorResponse										"Invalid query parameters"
+//	@Failure		500	{object}	api.InternalServerErrorResponse									"Internal server error"
+//	@Success		200	{object}	api.PaginatedResponse{data=[]TagResponse,meta=pagination.Page}	"Paginated list of active tags"
+//	@Router			/tags [get]
 func (th *TagHandler) ListTags(c *gin.Context) {
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
@@ -266,16 +271,17 @@ func (th *TagHandler) ListTags(c *gin.Context) {
 }
 
 // AdminListTags godoc
-// @Summary List all tags including soft-deleted ones (Admin)
-// @Description Returns a paginated list of all product tags including soft-deleted records for administrator management.
-// @Tags Tags
-// @Accept json
-// @Produce json
-// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]AdminTagResponse,meta=pagination.Page} "Paginated list of all tags including deleted"
-// @Router /admin/tags [get]
+//
+//	@Summary		List all tags including soft-deleted ones (Admin)
+//	@Description	Returns a paginated list of all product tags including soft-deleted records for administrator management.
+//	@Tags			Tags
+//	@Accept			json
+//	@Produce		json
+//	@Param			q	query		pagination.ListQuery												true	"Pagination, search query, and sorting parameters"
+//	@Failure		400	{object}	api.BadRequestErrorResponse											"Invalid query parameters"
+//	@Failure		500	{object}	api.InternalServerErrorResponse										"Internal server error"
+//	@Success		200	{object}	api.PaginatedResponse{data=[]AdminTagResponse,meta=pagination.Page}	"Paginated list of all tags including deleted"
+//	@Router			/admin/tags [get]
 func (th *TagHandler) AdminListTags(c *gin.Context) {
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {

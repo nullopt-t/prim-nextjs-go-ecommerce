@@ -272,17 +272,18 @@ func mapProductMediaResponse(m *model.ProductMedia) ProductMediaResponse {
 // --- Product Handlers ---
 
 // CreateProductAsDraft godoc
-// @Summary Create a new draft product
-// @Description Creates a new product in 'draft' status. Products remain in draft state until at least one variant is created and the product is explicitly published.
-// @Tags Products
-// @Accept json
-// @Produce json
-// @Param product body CreateProductRequest true "Product title, description, category ID, optional brand ID and highlights"
-// @Failure 400 {object} api.BadRequestErrorResponse "Validation error or invalid UUID reference"
-// @Failure 409 {object} api.ConflictErrorResponse "Product with generated public ID already exists"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 201 {object} api.DataResponse{data=AdminProductDetailsResponse} "Created draft product details"
-// @Router /admin/products [post]
+//
+//	@Summary		Create a new draft product
+//	@Description	Creates a new product in 'draft' status. Products remain in draft state until at least one variant is created and the product is explicitly published.
+//	@Tags			Products
+//	@Accept			json
+//	@Produce		json
+//	@Param			product	body		CreateProductRequest								true	"Product title, description, category ID, optional brand ID and highlights"
+//	@Failure		400		{object}	api.BadRequestErrorResponse							"Validation error or invalid UUID reference"
+//	@Failure		409		{object}	api.ConflictErrorResponse							"Product with generated public ID already exists"
+//	@Failure		500		{object}	api.InternalServerErrorResponse						"Internal server error"
+//	@Success		201		{object}	api.DataResponse{data=AdminProductDetailsResponse}	"Created draft product details"
+//	@Router			/admin/products [post]
 func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 	var body CreateProductRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -374,15 +375,16 @@ func mapProductListItemResponse(item *PublicProductListReadModel) ProductListIte
 }
 
 // GetAllProducts godoc
-// @Summary List active published products
-// @Description Returns a paginated list of active, published products for customer browsing. Soft-deleted and draft products are hidden.
-// @Tags Products
-// @Produce json
-// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]ProductListItemResponse,meta=pagination.Page} "Paginated list of active products"
-// @Router /products [get]
+//
+//	@Summary		List active published products
+//	@Description	Returns a paginated list of active, published products for customer browsing. Soft-deleted and draft products are hidden.
+//	@Tags			Products
+//	@Produce		json
+//	@Param			q	query		pagination.ListQuery														true	"Pagination, search query, and sorting parameters"
+//	@Failure		400	{object}	api.BadRequestErrorResponse													"Invalid query parameters"
+//	@Failure		500	{object}	api.InternalServerErrorResponse												"Internal server error"
+//	@Success		200	{object}	api.PaginatedResponse{data=[]ProductListItemResponse,meta=pagination.Page}	"Paginated list of active products"
+//	@Router			/products [get]
 func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
@@ -409,15 +411,16 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 }
 
 // AdminGetAllProducts godoc
-// @Summary List all products for management (Admin)
-// @Description Returns a paginated list of all products including draft, published, archived, and soft-deleted records for administrator catalog management.
-// @Tags Products
-// @Produce json
-// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]model.Product,meta=pagination.Page} "Paginated list of all products including deleted"
-// @Router /admin/products [get]
+//
+//	@Summary		List all products for management (Admin)
+//	@Description	Returns a paginated list of all products including draft, published, archived, and soft-deleted records for administrator catalog management.
+//	@Tags			Products
+//	@Produce		json
+//	@Param			q	query		pagination.ListQuery												true	"Pagination, search query, and sorting parameters"
+//	@Failure		400	{object}	api.BadRequestErrorResponse											"Invalid query parameters"
+//	@Failure		500	{object}	api.InternalServerErrorResponse										"Internal server error"
+//	@Success		200	{object}	api.PaginatedResponse{data=[]model.Product,meta=pagination.Page}	"Paginated list of all products including deleted"
+//	@Router			/admin/products [get]
 func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
@@ -439,16 +442,17 @@ func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
 }
 
 // GetProductByID godoc
-// @Summary Get product by internal UUID
-// @Description Retrieves full product details by its unique internal UUID.
-// @Tags Products
-// @Produce json
-// @Param id path string true "Internal Product UUID" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
-// @Failure 404 {object} api.NotFoundErrorResponse "Product not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.DataResponse{data=AdminProductDetailsResponse} "Product details"
-// @Router /admin/products/{id} [get]
+//
+//	@Summary		Get product by internal UUID
+//	@Description	Retrieves full product details by its unique internal UUID.
+//	@Tags			Products
+//	@Produce		json
+//	@Param			id	path		string												true	"Internal Product UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse							"Invalid UUID format"
+//	@Failure		404	{object}	api.NotFoundErrorResponse							"Product not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse						"Internal server error"
+//	@Success		200	{object}	api.DataResponse{data=AdminProductDetailsResponse}	"Product details"
+//	@Router			/admin/products/{id} [get]
 func (h *ProductHandler) GetProductByID(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -471,16 +475,17 @@ func (h *ProductHandler) GetProductByID(c *gin.Context) {
 }
 
 // GetProductByPublicID godoc
-// @Summary Get product details by public ID
-// @Description Retrieves full public-facing product details including brand information by its human-readable public ID.
-// @Tags Products
-// @Produce json
-// @Param id path string true "Product Public ID (e.g. prod_01h8x9a...)"
-// @Failure 400 {object} api.BadRequestErrorResponse "Public ID is required"
-// @Failure 404 {object} api.NotFoundErrorResponse "Product not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.DataResponse{data=ProductDetailsResponse} "Product and brand details"
-// @Router /products/{id} [get]
+//
+//	@Summary		Get product details by public ID
+//	@Description	Retrieves full public-facing product details including brand information by its human-readable public ID.
+//	@Tags			Products
+//	@Produce		json
+//	@Param			id	path		string											true	"Product Public ID (e.g. prod_01h8x9a...)"
+//	@Failure		400	{object}	api.BadRequestErrorResponse						"Public ID is required"
+//	@Failure		404	{object}	api.NotFoundErrorResponse						"Product not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse					"Internal server error"
+//	@Success		200	{object}	api.DataResponse{data=ProductDetailsResponse}	"Product and brand details"
+//	@Router			/products/{id} [get]
 func (h *ProductHandler) GetProductByPublicID(c *gin.Context) {
 	publicID := strings.TrimSpace(c.Param("id"))
 	if publicID == "" {
@@ -556,18 +561,19 @@ func (h *ProductHandler) GetProductByPublicID(c *gin.Context) {
 }
 
 // UpdateProduct godoc
-// @Summary Update product attributes
-// @Description Updates specific fields of an existing product such as title, description, category, brand, or publication status.
-// @Tags Products
-// @Accept json
-// @Produce json
-// @Param id path string true "Product UUID" format(uuid)
-// @Param body body UpdateProductRequest true "Fields to update (title, description, brand_id, category_id, status, highlights)"
-// @Failure 400 {object} api.BadRequestErrorResponse "Validation error or invalid UUID format"
-// @Failure 404 {object} api.NotFoundErrorResponse "Product, brand, or category not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.DataResponse{data=AdminProductDetailsResponse} "Updated product details"
-// @Router /admin/products/{id} [patch]
+//
+//	@Summary		Update product attributes
+//	@Description	Updates specific fields of an existing product such as title, description, category, brand, or publication status.
+//	@Tags			Products
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string												true	"Product UUID"	format(uuid)
+//	@Param			body	body		UpdateProductRequest								true	"Fields to update (title, description, brand_id, category_id, status, highlights)"
+//	@Failure		400		{object}	api.BadRequestErrorResponse							"Validation error or invalid UUID format"
+//	@Failure		404		{object}	api.NotFoundErrorResponse							"Product, brand, or category not found"
+//	@Failure		500		{object}	api.InternalServerErrorResponse						"Internal server error"
+//	@Success		200		{object}	api.DataResponse{data=AdminProductDetailsResponse}	"Updated product details"
+//	@Router			/admin/products/{id} [patch]
 func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -652,16 +658,17 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 }
 
 // PublishProduct godoc
-// @Summary Publish a draft product
-// @Description Transitions a product status to 'published' so it becomes visible to customers. Requires the product to have at least one active variant.
-// @Tags Products
-// @Produce json
-// @Param id path string true "Product UUID" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse "Product lacks active variants or invalid UUID"
-// @Failure 404 {object} api.NotFoundErrorResponse "Product not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.MessageResponse "Publication confirmation message"
-// @Router /admin/products/{id}/publish [post]
+//
+//	@Summary		Publish a draft product
+//	@Description	Transitions a product status to 'published' so it becomes visible to customers. Requires the product to have at least one active variant.
+//	@Tags			Products
+//	@Produce		json
+//	@Param			id	path		string							true	"Product UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse		"Product lacks active variants or invalid UUID"
+//	@Failure		404	{object}	api.NotFoundErrorResponse		"Product not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200	{object}	api.MessageResponse				"Publication confirmation message"
+//	@Router			/admin/products/{id}/publish [post]
 func (h *ProductHandler) PublishProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -683,16 +690,17 @@ func (h *ProductHandler) PublishProduct(c *gin.Context) {
 }
 
 // ArchiveProduct godoc
-// @Summary Archive a product
-// @Description Transitions a product status to 'archived', hiding it from public store front listings while retaining all historical sales and inventory data.
-// @Tags Products
-// @Produce json
-// @Param id path string true "Product UUID" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
-// @Failure 404 {object} api.NotFoundErrorResponse "Product not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.MessageResponse "Archival confirmation message"
-// @Router /admin/products/{id}/archive [post]
+//
+//	@Summary		Archive a product
+//	@Description	Transitions a product status to 'archived', hiding it from public store front listings while retaining all historical sales and inventory data.
+//	@Tags			Products
+//	@Produce		json
+//	@Param			id	path		string							true	"Product UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
+//	@Failure		404	{object}	api.NotFoundErrorResponse		"Product not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200	{object}	api.MessageResponse				"Archival confirmation message"
+//	@Router			/admin/products/{id}/archive [post]
 func (h *ProductHandler) ArchiveProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -714,16 +722,17 @@ func (h *ProductHandler) ArchiveProduct(c *gin.Context) {
 }
 
 // SoftDeleteProduct godoc
-// @Summary Soft-delete a product
-// @Description Marks a product as soft-deleted (`deleted_at = NOW()`), removing it from active administrative and customer listings.
-// @Tags Products
-// @Produce json
-// @Param id path string true "Product UUID" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
-// @Failure 404 {object} api.NotFoundErrorResponse "Product not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.MessageResponse "Deletion confirmation message"
-// @Router /admin/products/{id} [delete]
+//
+//	@Summary		Soft-delete a product
+//	@Description	Marks a product as soft-deleted (`deleted_at = NOW()`), removing it from active administrative and customer listings.
+//	@Tags			Products
+//	@Produce		json
+//	@Param			id	path		string							true	"Product UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
+//	@Failure		404	{object}	api.NotFoundErrorResponse		"Product not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200	{object}	api.MessageResponse				"Deletion confirmation message"
+//	@Router			/admin/products/{id} [delete]
 func (h *ProductHandler) SoftDeleteProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -745,16 +754,17 @@ func (h *ProductHandler) SoftDeleteProduct(c *gin.Context) {
 // --- Product Media Handlers ---
 
 // UploadProductMedia godoc
-// @Summary upload media file for a product
-// @Tags Product Media
-// @Accept multipart/form-data
-// @Produce json
-// @Param id path string true "Product ID (UUID)" format(uuid)
-// @Param file formData file true "Media File"
-// @Failure 400 {object} api.BadRequestErrorResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Success 201 {object} api.DataResponse{data=ProductMediaResponse}
-// @Router /admin/products/{id}/media [post]
+//
+//	@Summary	upload media file for a product
+//	@Tags		Product Media
+//	@Accept		multipart/form-data
+//	@Produce	json
+//	@Param		id		path		string	true	"Product ID (UUID)"	format(uuid)
+//	@Param		file	formData	file	true	"Media File"
+//	@Failure	400		{object}	api.BadRequestErrorResponse
+//	@Failure	500		{object}	api.InternalServerErrorResponse
+//	@Success	201		{object}	api.DataResponse{data=ProductMediaResponse}
+//	@Router		/admin/products/{id}/media [post]
 func (h *ProductHandler) UploadProductMedia(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -784,16 +794,17 @@ func (h *ProductHandler) UploadProductMedia(c *gin.Context) {
 }
 
 // DetachMedia godoc
-// @Summary remove a media attachment from a product
-// @Tags Product Media
-// @Produce json
-// @Param id path string true "Product ID (UUID)" format(uuid)
-// @Param media_id path string true "Media ID (UUID)" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse
-// @Failure 404 {object} api.NotFoundErrorResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Success 200 {object} api.MessageResponse
-// @Router /admin/products/{id}/media/{media_id} [delete]
+//
+//	@Summary	remove a media attachment from a product
+//	@Tags		Product Media
+//	@Produce	json
+//	@Param		id			path		string	true	"Product ID (UUID)"	format(uuid)
+//	@Param		media_id	path		string	true	"Media ID (UUID)"	format(uuid)
+//	@Failure	400			{object}	api.BadRequestErrorResponse
+//	@Failure	404			{object}	api.NotFoundErrorResponse
+//	@Failure	500			{object}	api.InternalServerErrorResponse
+//	@Success	200			{object}	api.MessageResponse
+//	@Router		/admin/products/{id}/media/{media_id} [delete]
 func (h *ProductHandler) DetachMedia(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -822,16 +833,17 @@ func (h *ProductHandler) DetachMedia(c *gin.Context) {
 }
 
 // ReorderMedia godoc
-// @Summary batch reorder media items for a product
-// @Tags Product Media
-// @Accept json
-// @Produce json
-// @Param id path string true "Product ID (UUID)" format(uuid)
-// @Param body body ReorderMediaRequest true "ordered media IDs"
-// @Failure 400 {object} api.BadRequestErrorResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Success 200 {object} api.MessageResponse
-// @Router /admin/products/{id}/media/reorder [patch]
+//
+//	@Summary	batch reorder media items for a product
+//	@Tags		Product Media
+//	@Accept		json
+//	@Produce	json
+//	@Param		id		path		string				true	"Product ID (UUID)"	format(uuid)
+//	@Param		body	body		ReorderMediaRequest	true	"ordered media IDs"
+//	@Failure	400		{object}	api.BadRequestErrorResponse
+//	@Failure	500		{object}	api.InternalServerErrorResponse
+//	@Success	200		{object}	api.MessageResponse
+//	@Router		/admin/products/{id}/media/reorder [patch]
 func (h *ProductHandler) ReorderMedia(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -874,16 +886,17 @@ func (h *ProductHandler) ReorderMedia(c *gin.Context) {
 // --- Cross-Domain Delegate Handlers ---
 
 // CreateProductVariant godoc
-// @Summary create a variant under a product
-// @Tags Product Variants
-// @Accept json
-// @Produce json
-// @Param id path string true "Product ID (UUID)" format(uuid)
-// @Param body body CreateProductVariantRequest true "Variant Payload"
-// @Failure 400 {object} api.BadRequestErrorResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Success 201 {object} api.DataResponse{data=variant.VariantResponse}
-// @Router /admin/products/{id}/variants [post]
+//
+//	@Summary	create a variant under a product
+//	@Tags		Product Variants
+//	@Accept		json
+//	@Produce	json
+//	@Param		id		path		string						true	"Product ID (UUID)"	format(uuid)
+//	@Param		body	body		CreateProductVariantRequest	true	"Variant Payload"
+//	@Failure	400		{object}	api.BadRequestErrorResponse
+//	@Failure	500		{object}	api.InternalServerErrorResponse
+//	@Success	201		{object}	api.DataResponse{data=variant.VariantResponse}
+//	@Router		/admin/products/{id}/variants [post]
 func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -923,17 +936,18 @@ func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 }
 
 // SetDefaultVariant godoc
-// @Summary set a variant as the default for a product
-// @Tags Product Variants
-// @Accept json
-// @Produce json
-// @Param id path string true "Product ID (UUID)" format(uuid)
-// @Param body body SetDefaultVariantRequest true "Variant to set as default"
-// @Failure 400 {object} api.BadRequestErrorResponse
-// @Failure 404 {object} api.NotFoundErrorResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Success 200 {object} api.MessageResponse
-// @Router /admin/products/{id}/variants/default [post]
+//
+//	@Summary	set a variant as the default for a product
+//	@Tags		Product Variants
+//	@Accept		json
+//	@Produce	json
+//	@Param		id		path		string						true	"Product ID (UUID)"	format(uuid)
+//	@Param		body	body		SetDefaultVariantRequest	true	"Variant to set as default"
+//	@Failure	400		{object}	api.BadRequestErrorResponse
+//	@Failure	404		{object}	api.NotFoundErrorResponse
+//	@Failure	500		{object}	api.InternalServerErrorResponse
+//	@Success	200		{object}	api.MessageResponse
+//	@Router		/admin/products/{id}/variants/default [post]
 func (h *ProductHandler) SetDefaultVariant(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -970,16 +984,17 @@ func (h *ProductHandler) SetDefaultVariant(c *gin.Context) {
 }
 
 // PutProductTags godoc
-// @Summary replace all tag assignments for a product
-// @Tags Products
-// @Accept json
-// @Produce json
-// @Param id path string true "Product ID (UUID)" format(uuid)
-// @Param body body PutProductTagsRequest true "Tag IDs to assign"
-// @Failure 400 {object} api.BadRequestErrorResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Success 200 {object} api.MessageResponse
-// @Router /admin/products/{id}/tags [put]
+//
+//	@Summary	replace all tag assignments for a product
+//	@Tags		Products
+//	@Accept		json
+//	@Produce	json
+//	@Param		id		path		string					true	"Product ID (UUID)"	format(uuid)
+//	@Param		body	body		PutProductTagsRequest	true	"Tag IDs to assign"
+//	@Failure	400		{object}	api.BadRequestErrorResponse
+//	@Failure	500		{object}	api.InternalServerErrorResponse
+//	@Success	200		{object}	api.MessageResponse
+//	@Router		/admin/products/{id}/tags [put]
 func (h *ProductHandler) PutProductTags(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -1020,17 +1035,18 @@ func (h *ProductHandler) PutProductTags(c *gin.Context) {
 }
 
 // PutProductCategories godoc
-// @Summary update the category of a product
-// @Tags Products
-// @Accept json
-// @Produce json
-// @Param id path string true "Product ID (UUID)" format(uuid)
-// @Param body body PutProductCategoryRequest true "Category ID to assign"
-// @Failure 400 {object} api.BadRequestErrorResponse
-// @Failure 404 {object} api.NotFoundErrorResponse
-// @Failure 500 {object} api.InternalServerErrorResponse
-// @Success 200 {object} api.MessageResponse
-// @Router /admin/products/{id}/categories [put]
+//
+//	@Summary	update the category of a product
+//	@Tags		Products
+//	@Accept		json
+//	@Produce	json
+//	@Param		id		path		string						true	"Product ID (UUID)"	format(uuid)
+//	@Param		body	body		PutProductCategoryRequest	true	"Category ID to assign"
+//	@Failure	400		{object}	api.BadRequestErrorResponse
+//	@Failure	404		{object}	api.NotFoundErrorResponse
+//	@Failure	500		{object}	api.InternalServerErrorResponse
+//	@Success	200		{object}	api.MessageResponse
+//	@Router		/admin/products/{id}/categories [put]
 func (h *ProductHandler) PutProductCategories(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {

@@ -72,17 +72,18 @@ type CreateCategoryRequest struct {
 }
 
 // CreateCategory godoc
-// @Summary Create a product category
-// @Description Creates a new product category in the taxonomy tree. Can optionally be assigned a parent category ID for hierarchical nesting.
-// @Tags Categories
-// @Accept json
-// @Produce json
-// @Param body body CreateCategoryRequest true "Category name and optional parent category UUID"
-// @Failure 400 {object} api.BadRequestErrorResponse "Validation error or referenced parent category does not exist"
-// @Failure 409 {object} api.ConflictErrorResponse "A category with this name already exists"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 201 {object} api.DataResponse{data=AdminCategoryResponse} "Created category details"
-// @Router /admin/categories [post]
+//
+//	@Summary		Create a product category
+//	@Description	Creates a new product category in the taxonomy tree. Can optionally be assigned a parent category ID for hierarchical nesting.
+//	@Tags			Categories
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		CreateCategoryRequest							true	"Category name and optional parent category UUID"
+//	@Failure		400		{object}	api.BadRequestErrorResponse						"Validation error or referenced parent category does not exist"
+//	@Failure		409		{object}	api.ConflictErrorResponse						"A category with this name already exists"
+//	@Failure		500		{object}	api.InternalServerErrorResponse					"Internal server error"
+//	@Success		201		{object}	api.DataResponse{data=AdminCategoryResponse}	"Created category details"
+//	@Router			/admin/categories [post]
 func (ch *CategoryHandler) CreateCategory(c *gin.Context) {
 	var body CreateCategoryRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -111,17 +112,18 @@ func (ch *CategoryHandler) CreateCategory(c *gin.Context) {
 }
 
 // GetCategoryByID godoc
-// @Summary Get category details by ID
-// @Description Retrieves product category details by its UUID.
-// @Tags Categories
-// @Accept json
-// @Produce json
-// @Param id path string true "Category UUID" format(uuid)
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid UUID format"
-// @Failure 404 {object} api.NotFoundErrorResponse "Category not found"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.DataResponse{data=AdminCategoryResponse} "Category details"
-// @Router /admin/categories/{id} [get]
+//
+//	@Summary		Get category details by ID
+//	@Description	Retrieves product category details by its UUID.
+//	@Tags			Categories
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		string											true	"Category UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse						"Invalid UUID format"
+//	@Failure		404	{object}	api.NotFoundErrorResponse						"Category not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse					"Internal server error"
+//	@Success		200	{object}	api.DataResponse{data=AdminCategoryResponse}	"Category details"
+//	@Router			/admin/categories/{id} [get]
 func (ch *CategoryHandler) GetCategoryByID(c *gin.Context) {
 	categoryID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -152,16 +154,17 @@ func (ch *CategoryHandler) GetCategoryByID(c *gin.Context) {
 }
 
 // ListCategories godoc
-// @Summary List active product categories
-// @Description Returns a paginated list of active product categories for customer browsing and navigation.
-// @Tags Categories
-// @Accept json
-// @Produce json
-// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]PublicCategoryResponse,meta=pagination.Page} "Paginated list of active categories"
-// @Router /categories [get]
+//
+//	@Summary		List active product categories
+//	@Description	Returns a paginated list of active product categories for customer browsing and navigation.
+//	@Tags			Categories
+//	@Accept			json
+//	@Produce		json
+//	@Param			q	query		pagination.ListQuery														true	"Pagination, search query, and sorting parameters"
+//	@Failure		400	{object}	api.BadRequestErrorResponse													"Invalid query parameters"
+//	@Failure		500	{object}	api.InternalServerErrorResponse												"Internal server error"
+//	@Success		200	{object}	api.PaginatedResponse{data=[]PublicCategoryResponse,meta=pagination.Page}	"Paginated list of active categories"
+//	@Router			/categories [get]
 func (ch *CategoryHandler) ListCategories(c *gin.Context) {
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
@@ -196,16 +199,17 @@ func (ch *CategoryHandler) ListCategories(c *gin.Context) {
 }
 
 // ListAdminCategories godoc
-// @Summary List all categories including soft-deleted ones (Admin)
-// @Description Returns a paginated list of all product categories including soft-deleted records for administrator taxonomy management.
-// @Tags Categories
-// @Accept json
-// @Produce json
-// @Param q query pagination.ListQuery true "Pagination, search query, and sorting parameters"
-// @Failure 400 {object} api.BadRequestErrorResponse "Invalid query parameters"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.PaginatedResponse{data=[]AdminCategoryResponse,meta=pagination.Page} "Paginated list of all categories including deleted"
-// @Router /admin/categories [get]
+//
+//	@Summary		List all categories including soft-deleted ones (Admin)
+//	@Description	Returns a paginated list of all product categories including soft-deleted records for administrator taxonomy management.
+//	@Tags			Categories
+//	@Accept			json
+//	@Produce		json
+//	@Param			q	query		pagination.ListQuery														true	"Pagination, search query, and sorting parameters"
+//	@Failure		400	{object}	api.BadRequestErrorResponse													"Invalid query parameters"
+//	@Failure		500	{object}	api.InternalServerErrorResponse												"Internal server error"
+//	@Success		200	{object}	api.PaginatedResponse{data=[]AdminCategoryResponse,meta=pagination.Page}	"Paginated list of all categories including deleted"
+//	@Router			/admin/categories [get]
 func (ch *CategoryHandler) ListAdminCategories(c *gin.Context) {
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
@@ -245,19 +249,20 @@ type UpdateCategoryRequest struct {
 }
 
 // UpdateCategory godoc
-// @Summary Update category details
-// @Description Updates specific fields of an existing category (name or parent category ID). Guards against self-referencing and circular tree dependencies.
-// @Tags Categories
-// @Accept json
-// @Produce json
-// @Param id path string true "Category UUID" format(uuid)
-// @Param body body UpdateCategoryRequest true "Fields to update (name, parent_id)"
-// @Failure 400 {object} api.BadRequestErrorResponse "Validation error, circular hierarchy, or parent not found"
-// @Failure 404 {object} api.NotFoundErrorResponse "Category not found"
-// @Failure 409 {object} api.ConflictErrorResponse "A category with updated name already exists"
-// @Failure 500 {object} api.InternalServerErrorResponse "Internal server error"
-// @Success 200 {object} api.MessageResponse "Update confirmation message"
-// @Router /admin/categories/{id} [patch]
+//
+//	@Summary		Update category details
+//	@Description	Updates specific fields of an existing category (name or parent category ID). Guards against self-referencing and circular tree dependencies.
+//	@Tags			Categories
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string							true	"Category UUID"	format(uuid)
+//	@Param			body	body		UpdateCategoryRequest			true	"Fields to update (name, parent_id)"
+//	@Failure		400		{object}	api.BadRequestErrorResponse		"Validation error, circular hierarchy, or parent not found"
+//	@Failure		404		{object}	api.NotFoundErrorResponse		"Category not found"
+//	@Failure		409		{object}	api.ConflictErrorResponse		"A category with updated name already exists"
+//	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200		{object}	api.MessageResponse				"Update confirmation message"
+//	@Router			/admin/categories/{id} [patch]
 func (ch *CategoryHandler) UpdateCategory(c *gin.Context) {
 	categoryID, err := uuid.Parse(c.Param("id"))
 	if err != nil {

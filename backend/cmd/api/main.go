@@ -1,22 +1,22 @@
-// @title Prim API
-// @version 1.0
-// @description This is the Prim API
-// @termsOfService http://swagger.io/terms/
+//	@title			Prim API
+//	@version		1.0
+//	@description	This is the Prim API
+//	@termsOfService	http://swagger.io/terms/
 
-// @contact.name API Support
-// @contact.email support@swagger.io
+//	@contact.name	API Support
+//	@contact.email	support@swagger.io
 
-// @license.name Apache 2.0
-// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+//	@license.name	Apache 2.0
+//	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-// @securityDefinitions.apikey BearerAuth
-// @in header
-// @name Authorization
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
 
-// @security BearerAuth
+//	@security	BearerAuth
 
-// @host localhost:8080
-// @BasePath /api/v1
+// @host		localhost:8080
+// @BasePath	/api/v1
 package main
 
 import (
