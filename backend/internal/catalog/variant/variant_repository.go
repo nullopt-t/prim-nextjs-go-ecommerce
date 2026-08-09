@@ -24,6 +24,7 @@ var allowedVariantSortFields = map[string]string{
 
 type variantFilter struct {
 	ID             *uuid.UUID
+	PublicID       *string
 	ProductID      *uuid.UUID
 	IncludeDeleted bool
 }
@@ -115,13 +116,22 @@ func (vr *VariantRepository) GetByID(
 	return vr.get(ctx, qe, &variantFilter{ID: &id})
 }
 
+// GetByPublicID fetches a single variant by its public ID.
+func (vr *VariantRepository) GetByPublicID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	publicID string,
+) (*model.ProductVariant, error) {
+	return vr.get(ctx, qe, &variantFilter{PublicID: &publicID})
+}
+
 func (vr *VariantRepository) get(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	filter *variantFilter,
 ) (*model.ProductVariant, error) {
-	if filter == nil || filter.ID == nil {
-		return nil, errors.New("get variant: filter ID is required")
+	if filter == nil || (filter.ID == nil && filter.PublicID == nil && filter.ProductID == nil) {
+		return nil, errors.New("get variant: filter requires at least one condition")
 	}
 
 	whereClauses := make([]string, 0, 3)
@@ -135,6 +145,12 @@ func (vr *VariantRepository) get(
 	if filter.ID != nil {
 		whereClauses = append(whereClauses, fmt.Sprintf("id = $%d", argIdx))
 		args = append(args, *filter.ID)
+		argIdx++
+	}
+	
+	if filter.PublicID != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("public_id = $%d", argIdx))
+		args = append(args, *filter.PublicID)
 		argIdx++
 	}
 
@@ -454,10 +470,9 @@ func (vr *VariantRepository) ListMediaByVariantID(
 			m.sort_order,
 			so.id,
 			so.bucket,
-			so.key,
+			so.object_key as key,
 			so.content_type,
 			so.file_size,
-			so.public_url,
 			so.status
 		FROM variant_media m
 		JOIN storage_objects so ON m.storage_object_id = so.id
@@ -487,7 +502,6 @@ func (vr *VariantRepository) ListMediaByVariantID(
 			&m.Object.Key,
 			&m.Object.ContentType,
 			&m.Object.FileSize,
-			&m.Object.PublicURL,
 			&m.Object.Status,
 		); err != nil {
 			return nil, fmt.Errorf("list variant media scan: %w", err)

@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
@@ -41,9 +41,51 @@ func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 // Pass optional=true for public/guest routes that can optionally attach user authentication if present.
 func Authenticate(secrets *config.Secrets, optional ...bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// TEMP: Turn off auth for testing
-		c.Set("userID", uuid.MustParse("00000000-0000-0000-0000-000000000001"))
-		c.Set("userRole", "admin")
+		isOptional := len(optional) > 0 && optional[0]
+
+		authHeader := c.GetHeader("Authorization")
+		var tokenString string
+
+		if authHeader != "" {
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenString = parts[1]
+			}
+		}
+
+		if tokenString == "" {
+			cookie, err := c.Cookie("access_token")
+			if err == nil && cookie != "" {
+				tokenString = cookie
+			}
+		}
+
+		if tokenString == "" {
+			if isOptional {
+				c.Next()
+				return
+			}
+			_ = c.Error(apierr.New(http.StatusUnauthorized, "Unauthorized").WithCode(apierr.CodeUnauthorized))
+			c.Abort()
+			return
+		}
+
+		jwtManager := jwt.NewJWTManager(secrets)
+		claims, err := jwtManager.VerifyToken(tokenString, secrets.JwtAccessTokenSecretKey)
+		if err != nil {
+			if isOptional {
+				c.Next()
+				return
+			}
+			_ = c.Error(apierr.New(http.StatusUnauthorized, "Invalid token").WithCode(apierr.CodeUnauthorized))
+			c.Abort()
+			return
+		}
+
+		c.Set("userID", claims.UserID)
+		if claims.UserRole != nil {
+			c.Set("userRole", *claims.UserRole)
+		}
 		c.Next()
 	}
 }

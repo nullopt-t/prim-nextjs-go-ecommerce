@@ -48,6 +48,7 @@ type Tokens struct {
 	AccessToken  string
 	RefreshToken string
 	SessionID    string
+	UserID       uuid.UUID
 }
 
 type AuthService struct {
@@ -230,7 +231,7 @@ func (s *AuthService) VerifyChallenge(
 		return nil, err
 	}
 
-	sess, sErr := s.CreateSession(ctx, user.ID, userAgent, ipAddress)
+	sess, sErr := s.CreateSession(ctx, user.ID, SessionTypeAuthenticated, userAgent, ipAddress)
 	sessionID := ""
 	if sErr == nil && sess != nil {
 		sessionID = sess.ID
@@ -240,21 +241,31 @@ func (s *AuthService) VerifyChallenge(
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		SessionID:    sessionID,
+		UserID:       user.ID,
 	}, nil
 }
 
+type SessionType string
+
+const (
+	SessionTypeGuest         SessionType = "guest"
+	SessionTypeAuthenticated SessionType = "authenticated"
+)
+
 type UserSession struct {
-	ID         string    `json:"id"`
-	UserID     uuid.UUID `json:"user_id"`
-	UserAgent  string    `json:"user_agent"`
-	IPAddress  string    `json:"ip_address"`
-	CreatedAt  time.Time `json:"created_at"`
-	LastActive time.Time `json:"last_active"`
+	ID         string      `json:"id"`
+	UserID     uuid.UUID   `json:"user_id"`
+	Type       SessionType `json:"type"`
+	UserAgent  string      `json:"user_agent"`
+	IPAddress  string      `json:"ip_address"`
+	CreatedAt  time.Time   `json:"created_at"`
+	LastActive time.Time   `json:"last_active"`
 }
 
 func (s *AuthService) CreateSession(
 	ctx context.Context,
 	userID uuid.UUID,
+	sessionType SessionType,
 	userAgent string,
 	ipAddress string,
 ) (*UserSession, error) {
@@ -264,6 +275,7 @@ func (s *AuthService) CreateSession(
 	sess := &UserSession{
 		ID:         sessionID,
 		UserID:     userID,
+		Type:       sessionType,
 		UserAgent:  userAgent,
 		IPAddress:  ipAddress,
 		CreatedAt:  now,

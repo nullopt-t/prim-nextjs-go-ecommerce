@@ -14,20 +14,20 @@ import (
 )
 
 type ObjectService struct {
-	dr database.Runner
-	or *ObjectRepository
-	sp storage.StorageProvider
+	dbRunner        database.Runner
+	objectRepo      *ObjectRepository
+	storageProvider storage.StorageProvider
 }
 
 func NewService(
-	dr database.Runner,
-	or *ObjectRepository,
-	sp storage.StorageProvider,
+	dbRunner database.Runner,
+	objectRepo *ObjectRepository,
+	storageProvider storage.StorageProvider,
 ) *ObjectService {
 	return &ObjectService{
-		dr: dr,
-		or: or,
-		sp: sp,
+		dbRunner:        dbRunner,
+		objectRepo:      objectRepo,
+		storageProvider: storageProvider,
 	}
 }
 
@@ -51,10 +51,10 @@ func (os *ObjectService) CreateObject(
 		Key:         key,
 	}
 
-	err := os.dr.WithDB(
+	err := os.dbRunner.WithDB(
 		ctx,
 		func(db database.QueryExecutor) error {
-			return os.or.Create(
+			return os.objectRepo.Create(
 				ctx,
 				db,
 				object,
@@ -90,7 +90,7 @@ func (os *ObjectService) CreateObjectWithTx(
 		Key:         key,
 	}
 
-	err := os.or.Create(
+	err := os.objectRepo.Create(
 		ctx,
 		tx,
 		object,
@@ -111,7 +111,7 @@ func (os *ObjectService) UploadObject(
 ) (*model.Object, error) {
 	key := uuid.New().String()
 
-	err := os.sp.Upload(ctx, bucket, key, file, size, contentType)
+	err := os.storageProvider.Upload(ctx, bucket, key, file, size, contentType)
 	if err != nil {
 		return nil, apierr.New(
 			http.StatusInternalServerError,
@@ -127,30 +127,30 @@ func (os *ObjectService) DeleteObject(
 	bucket, key string,
 ) error {
 	// First mark as deleting in DB
-	err := os.dr.WithDB(ctx, func(tx database.QueryExecutor) error {
-		return os.or.MarkDeletingByKey(ctx, tx, bucket, key)
+	err := os.dbRunner.WithDB(ctx, func(tx database.QueryExecutor) error {
+		return os.objectRepo.MarkDeletingByKey(ctx, tx, bucket, key)
 	})
 	if err != nil {
 		return apierr.New(http.StatusInternalServerError, "failed to mark object as deleting").Wrap(err)
 	}
 
 	// Delete from storage
-	err = os.sp.Delete(ctx, bucket, key)
+	err = os.storageProvider.Delete(ctx, bucket, key)
 	if err != nil {
 		return apierr.New(http.StatusInternalServerError, "failed to delete object from storage").Wrap(err)
 	}
 
 	// Finally mark as deleted in DB
-	return os.dr.WithDB(ctx, func(tx database.QueryExecutor) error {
-		return os.or.MarkDeletedByKey(ctx, tx, bucket, key)
+	return os.dbRunner.WithDB(ctx, func(tx database.QueryExecutor) error {
+		return os.objectRepo.MarkDeletedByKey(ctx, tx, bucket, key)
 	})
 }
 
 func (os *ObjectService) DeleteObjectByID(ctx context.Context, id uuid.UUID) error {
 	var obj *model.Object
-	err := os.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := os.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
-		obj, err = os.or.GetByID(ctx, db, id)
+		obj, err = os.objectRepo.GetByID(ctx, db, id)
 		return err
 	})
 	if err != nil {
@@ -161,9 +161,9 @@ func (os *ObjectService) DeleteObjectByID(ctx context.Context, id uuid.UUID) err
 
 func (os *ObjectService) GetObjectByID(ctx context.Context, id uuid.UUID) (*model.Object, error) {
 	var obj *model.Object
-	err := os.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := os.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
-		obj, err = os.or.GetByID(ctx, db, id)
+		obj, err = os.objectRepo.GetByID(ctx, db, id)
 		return err
 	})
 	return obj, err
@@ -171,9 +171,9 @@ func (os *ObjectService) GetObjectByID(ctx context.Context, id uuid.UUID) (*mode
 
 func (os *ObjectService) GetObjectsByIDs(ctx context.Context, ids []uuid.UUID) ([]*model.Object, error) {
 	var objects []*model.Object
-	err := os.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := os.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
-		objects, err = os.or.GetByIDs(ctx, db, ids)
+		objects, err = os.objectRepo.GetByIDs(ctx, db, ids)
 		return err
 	})
 	return objects, err
@@ -186,12 +186,12 @@ func (os *ObjectService) MarkDeletingByKey(
 	tx database.QueryExecutor,
 	bucket, key string,
 ) error {
-	return os.or.MarkDeletingByKey(ctx, tx, bucket, key)
+	return os.objectRepo.MarkDeletingByKey(ctx, tx, bucket, key)
 }
 
 func (os *ObjectService) GetObjectURL(
 	ctx context.Context,
 	bucket, key string,
 ) string {
-	return os.sp.GetPublicURL(bucket, key)
+	return os.storageProvider.GetPublicURL(bucket, key)
 }

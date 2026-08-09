@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/cart/errcode"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/cart/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
@@ -13,23 +13,32 @@ import (
 
 type VariantService interface {
 	GetVariantByID(ctx context.Context, variantID uuid.UUID) (*model.ProductVariant, error)
+	GetVariantByPublicID(ctx context.Context, publicID string) (*model.ProductVariant, error)
+	ListVariantMedia(ctx context.Context, variantID uuid.UUID) ([]*model.VariantMedia, error)
+}
+
+type ProductService interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error)
 }
 
 type CartService struct {
 	dr             database.Runner
 	cartRepo       *CartRepository
 	variantService VariantService
+	productService ProductService
 }
 
 func NewService(
 	dr database.Runner,
 	cartRepo *CartRepository,
 	variantService VariantService,
+	productService ProductService,
 ) *CartService {
 	return &CartService{
 		dr:             dr,
 		cartRepo:       cartRepo,
 		variantService: variantService,
+		productService: productService,
 	}
 }
 
@@ -77,6 +86,18 @@ func (s *CartService) GetOrCreateCart(
 			v, vErr := s.variantService.GetVariantByID(ctx, items[i].VariantID)
 			if vErr == nil {
 				items[i].Variant = v
+				
+				// Fetch the associated product
+				p, pErr := s.productService.GetByID(ctx, v.ProductID)
+				if pErr == nil {
+					items[i].Product = p
+				}
+
+				// Fetch variant media for the thumbnail
+				media, mediaErr := s.variantService.ListVariantMedia(ctx, v.ID)
+				if mediaErr == nil && len(media) > 0 && media[0].Object != nil {
+					items[i].ThumbnailURL = media[0].Object.PublicURL
+				}
 			}
 		}
 
@@ -91,14 +112,14 @@ func (s *CartService) GetOrCreateCart(
 	return cart, nil
 }
 
-func (s *CartService) AddItemToCart(
+func (s *CartService) AddItem(
 	ctx context.Context,
 	userID *uuid.UUID,
 	sessionID *string,
-	variantID uuid.UUID,
+	variantPublicID string,
 	quantity int,
 ) (*model.Cart, error) {
-	v, err := s.variantService.GetVariantByID(ctx, variantID)
+	v, err := s.variantService.GetVariantByPublicID(ctx, variantPublicID)
 	if err != nil {
 		return nil, apierr.ErrNotFound("Variant not found").
 			WithCode(errcode.CodeVariantNotFound).
@@ -144,20 +165,19 @@ func (s *CartService) AddItemToCart(
 			}
 		}
 
-		existingItem, getErr := s.cartRepo.GetItemByVariantID(ctx, tx, cart.ID, variantID)
-		if getErr != nil && !errors.Is(database.MapError(getErr), database.ErrNotFound) {
+		existingItem, getErr := s.cartRepo.GetItemByVariantID(ctx, tx, cart.ID, v.ID)
+		if getErr == nil {
+			// Item exists, update quantity
+			err = s.cartRepo.UpdateItemQuantity(ctx, tx, cart.ID, existingItem.ID, existingItem.Quantity+quantity)
+			return err
+		} else if !errors.Is(database.MapError(getErr), database.ErrNotFound) {
 			return getErr
-		}
-
-		if existingItem != nil {
-			newQty := existingItem.Quantity + quantity
-			return s.cartRepo.UpdateItemQuantity(ctx, tx, cart.ID, existingItem.ID, newQty)
 		}
 
 		newItem := &model.CartItem{
 			ID:              uuid.New(),
 			CartID:          cart.ID,
-			VariantID:       variantID,
+			VariantID:       v.ID,
 			Quantity:        quantity,
 			PriceAtPurchase: price,
 			Currency:        currency,
@@ -179,16 +199,27 @@ func (s *CartService) UpdateCartItemQuantity(
 	ctx context.Context,
 	userID *uuid.UUID,
 	sessionID *string,
-	itemID uuid.UUID,
+	variantPublicID string,
 	quantity int,
 ) (*model.Cart, error) {
+	v, err := s.variantService.GetVariantByPublicID(ctx, variantPublicID)
+	if err != nil {
+		return nil, apierr.ErrNotFound("Variant not found").
+			WithCode(errcode.CodeVariantNotFound).
+			Wrap(err)
+	}
+
 	cart, err := s.GetOrCreateCart(ctx, userID, sessionID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return s.cartRepo.UpdateItemQuantity(ctx, db, cart.ID, itemID, quantity)
+	err = s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		item, getErr := s.cartRepo.GetItemByVariantID(ctx, tx, cart.ID, v.ID)
+		if getErr != nil {
+			return getErr
+		}
+		return s.cartRepo.UpdateItemQuantity(ctx, tx, cart.ID, item.ID, quantity)
 	})
 
 	if err != nil {
@@ -210,15 +241,26 @@ func (s *CartService) RemoveCartItem(
 	ctx context.Context,
 	userID *uuid.UUID,
 	sessionID *string,
-	itemID uuid.UUID,
+	variantPublicID string,
 ) (*model.Cart, error) {
+	v, err := s.variantService.GetVariantByPublicID(ctx, variantPublicID)
+	if err != nil {
+		return nil, apierr.ErrNotFound("Variant not found").
+			WithCode(errcode.CodeVariantNotFound).
+			Wrap(err)
+	}
+
 	cart, err := s.GetOrCreateCart(ctx, userID, sessionID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return s.cartRepo.RemoveItem(ctx, db, cart.ID, itemID)
+	err = s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		item, getErr := s.cartRepo.GetItemByVariantID(ctx, tx, cart.ID, v.ID)
+		if getErr != nil {
+			return getErr
+		}
+		return s.cartRepo.RemoveItem(ctx, tx, cart.ID, item.ID)
 	})
 
 	if err != nil {

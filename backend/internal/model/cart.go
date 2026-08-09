@@ -26,4 +26,6 @@ type CartItem struct {
 	CartedAt        time.Time
 	DeletedAt       *time.Time
 	Variant         *ProductVariant
+	Product         *Product
+	ThumbnailURL    string
 }

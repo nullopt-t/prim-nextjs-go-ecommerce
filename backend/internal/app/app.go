@@ -2,8 +2,8 @@ package app
 
 import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/auth"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/cart"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/brand"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/cart"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/category"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/product"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/tag"
@@ -108,33 +108,6 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		config.KeysCfg,
 	)
 
-	authHandler := auth.NewAuthHandler(
-		authService,
-		rateLimiter,
-		app.logger,
-		config.IsProduction,
-	)
-
-	authRouter := auth.NewRouter(
-		authHandler,
-		config.KeysCfg,
-	)
-	authRouter.MapRoutes(v1)
-
-	userHandler := user.NewHandler(
-		userService,
-		rateLimiter,
-		config.KeysCfg,
-		app.logger,
-	)
-
-	userRouter := user.NewRouter(
-		userHandler,
-		config,
-	)
-
-	userRouter.MapRoutes(v1)
-
 	objectRepository := object.NewRepository()
 	objectService := object.NewService(
 		txRunner,
@@ -215,10 +188,38 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 
 	// cart
 	cartRepo := cart.NewRepository()
-	cartService := cart.NewService(txRunner, cartRepo, variantService)
+	cartService := cart.NewService(txRunner, cartRepo, variantService, productService)
 	cartHandler := cart.NewHandler(cartService)
 	cartRouter := cart.NewRouter(cartHandler, config.KeysCfg)
 	cartRouter.MapRoutes(v1)
+
+	authHandler := auth.NewAuthHandler(
+		authService,
+		rateLimiter,
+		app.logger,
+		config.IsProduction,
+		cartService,
+	)
+
+	authRouter := auth.NewRouter(
+		authHandler,
+		config.KeysCfg,
+	)
+	authRouter.MapRoutes(v1)
+
+	userHandler := user.NewHandler(
+		userService,
+		rateLimiter,
+		config.KeysCfg,
+		app.logger,
+	)
+
+	userRouter := user.NewRouter(
+		userHandler,
+		config,
+	)
+
+	userRouter.MapRoutes(v1)
 
 	// order
 	orderRepo := order.NewRepository()

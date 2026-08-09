@@ -1,11 +1,13 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
@@ -37,6 +39,11 @@ type Handler struct {
 	limiter      *security.RateLimiter
 	logger       log.Logger
 	isProduction bool
+	cartMerger   CartMerger
+}
+
+type CartMerger interface {
+	MergeGuestCart(ctx context.Context, sessionID string, userID uuid.UUID) (*model.Cart, error)
 }
 
 func NewAuthHandler(
@@ -44,12 +51,14 @@ func NewAuthHandler(
 	limiter *security.RateLimiter,
 	logger log.Logger,
 	isProduction bool,
+	cartMerger CartMerger,
 ) *Handler {
 	return &Handler{
 		authService:  authService,
 		limiter:      limiter,
 		logger:       logger,
 		isProduction: isProduction,
+		cartMerger:   cartMerger,
 	}
 }
 
@@ -133,16 +142,22 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 	})
 }
 
+const (
+	AccessTokenCookieMaxAge  = 900            // 15 minutes
+	RefreshTokenCookieMaxAge = 30 * 24 * 3600 // 30 days
+	SessionCookieMaxAge      = 30 * 24 * 3600 // 30 days
+)
+
 func (h *Handler) setAuthCookies(c *gin.Context, accessToken, refreshToken, sessionID string) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	if accessToken != "" {
-		c.SetCookie("access_token", accessToken, 900, "/", "", h.isProduction, true)
+		c.SetCookie("access_token", accessToken, AccessTokenCookieMaxAge, "/", "", h.isProduction, true)
 	}
 	if refreshToken != "" {
-		c.SetCookie("refresh_token", refreshToken, 30*24*3600, "/", "", h.isProduction, true)
+		c.SetCookie("refresh_token", refreshToken, RefreshTokenCookieMaxAge, "/", "", h.isProduction, true)
 	}
 	if sessionID != "" {
-		c.SetCookie("session_id", sessionID, 30*24*3600, "/", "", h.isProduction, true)
+		c.SetCookie("session_id", sessionID, SessionCookieMaxAge, "/", "", h.isProduction, true)
 	}
 }
 
@@ -180,6 +195,15 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 	if err != nil {
 		_ = c.Error(err)
 		return
+	}
+
+	// Merge guest cart if a session cookie is present
+	guestSessionID, err := c.Cookie("session_id")
+	if err == nil && guestSessionID != "" && h.cartMerger != nil {
+		_, mergeErr := h.cartMerger.MergeGuestCart(c.Request.Context(), guestSessionID, tokens.UserID)
+		if mergeErr != nil {
+			h.logger.Error("Failed to merge guest cart", log.Meta{"error": mergeErr, "session_id": guestSessionID, "user_id": tokens.UserID})
+		}
 	}
 
 	h.setAuthCookies(c, tokens.AccessToken, tokens.RefreshToken, tokens.SessionID)
