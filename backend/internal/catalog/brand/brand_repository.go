@@ -22,9 +22,9 @@ var allowedBrandSortFields = map[string]string{
 }
 
 type UpdateBrandFields struct {
-	Name                *string
-	Link                *string
-	LogoStorageObjectID *uuid.UUID
+	Name         *string
+	Link         *string
+	LogoObjectID *uuid.UUID
 }
 
 type ListBrandOptions struct {
@@ -50,7 +50,7 @@ func (br *BrandRepository) Create(
 			public_id,
 			name,
 			link,
-			logo_storage_object_id,
+			logo_object_id,
 			created_at,
 			updated_at
 		)
@@ -65,7 +65,7 @@ func (br *BrandRepository) Create(
 		brand.PublicID,
 		brand.Name,
 		brand.Link,
-		brand.LogoStorageObjectID,
+		brand.LogoObjectID,
 	).Scan(&brand.CreatedAt, &brand.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create brand: %w", err)
@@ -74,27 +74,28 @@ func (br *BrandRepository) Create(
 	return nil
 }
 
-// Get fetches an active brand by ID.
-func (br *BrandRepository) GetByID(
+// get is a private helper to fetch a brand by a custom where clause.
+func (br *BrandRepository) get(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	id uuid.UUID,
+	whereClause string,
+	args ...any,
 ) (*model.ProductBrand, error) {
-	query := `
+	query := fmt.Sprintf(`
 		SELECT
 			id,
 			public_id,
 			name,
 			link,
-			logo_storage_object_id,
+			logo_object_id,
 			created_at,
 			updated_at,
 			deleted_at
 		FROM product_brands
-		WHERE id = $1 AND deleted_at IS NULL
-	`
+		WHERE %s AND deleted_at IS NULL
+	`, whereClause)
 
-	rows, err := qe.Query(ctx, query, id)
+	rows, err := qe.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("get brand query: %w", err)
 	}
@@ -107,6 +108,24 @@ func (br *BrandRepository) GetByID(
 	return brand, nil
 }
 
+// GetByID fetches an active brand by ID.
+func (br *BrandRepository) GetByID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	id uuid.UUID,
+) (*model.ProductBrand, error) {
+	return br.get(ctx, qe, "id = $1", id)
+}
+
+// GetByName fetches an active brand by Name.
+func (br *BrandRepository) GetByName(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	name string,
+) (*model.ProductBrand, error) {
+	return br.get(ctx, qe, "name = $1", name)
+}
+
 // Update dynamically updates present fields on active records.
 func (br *BrandRepository) Update(
 	ctx context.Context,
@@ -115,7 +134,7 @@ func (br *BrandRepository) Update(
 	fields UpdateBrandFields,
 ) error {
 	if brandID == uuid.Nil {
-		return errors.New("update brand: brandID is required")
+		panic("update brand: brandID is required")
 	}
 
 	setClauses := make([]string, 0, 4)
@@ -134,9 +153,9 @@ func (br *BrandRepository) Update(
 		argIdx++
 	}
 
-	if fields.LogoStorageObjectID != nil {
-		setClauses = append(setClauses, fmt.Sprintf("logo_storage_object_id = $%d", argIdx))
-		args = append(args, fields.LogoStorageObjectID)
+	if fields.LogoObjectID != nil {
+		setClauses = append(setClauses, fmt.Sprintf("logo_object_id = $%d", argIdx))
+		args = append(args, fields.LogoObjectID)
 		argIdx++
 	}
 
@@ -172,10 +191,10 @@ func (br *BrandRepository) List(
 	qe database.QueryExecutor,
 	opts ListBrandOptions,
 ) (*pagination.PagedResult[model.ProductBrand], error) {
-	q := opts.Query
-	if q == nil {
-		q = &pagination.ListQuery{}
+	if opts.Query == nil {
+		panic("list brands: opts.Query is required")
 	}
+	q := opts.Query
 	q.Process(pagination.QueryOptions{})
 
 	whereClauses := []string{"1=1"}
@@ -233,7 +252,7 @@ func (br *BrandRepository) List(
 			public_id,
 			name,
 			link,
-			logo_storage_object_id,
+			logo_object_id,
 			created_at,
 			updated_at,
 			deleted_at
@@ -258,23 +277,40 @@ func (br *BrandRepository) List(
 	return pagination.NewPagedResult(brands, pagination.NewPage(q.Page, q.PageSize, total)), nil
 }
 
-// Delete performs a soft-delete on an active brand.
-func (br *BrandRepository) Delete(
+// delete is a private helper to soft-delete by a custom where clause.
+func (br *BrandRepository) delete(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	brandID uuid.UUID,
+	whereClause string,
+	args ...any,
 ) error {
-	if brandID == uuid.Nil {
-		return errors.New("delete brand: brandID is required")
+	// First find the ID so we can check if it's used
+	var brandID uuid.UUID
+	selectQuery := fmt.Sprintf("SELECT id FROM product_brands WHERE %s AND deleted_at IS NULL", whereClause)
+	if err := qe.QueryRow(ctx, selectQuery, args...).Scan(&brandID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return pgx.ErrNoRows
+		}
+		return fmt.Errorf("delete brand select: %w", err)
 	}
 
-	query := `
+	// Check if any products are still using this brand
+	var used bool
+	checkQuery := "SELECT EXISTS(SELECT 1 FROM products WHERE brand_id = $1 AND deleted_at IS NULL)"
+	if err := qe.QueryRow(ctx, checkQuery, brandID).Scan(&used); err != nil {
+		return fmt.Errorf("delete brand check usage: %w", err)
+	}
+	if used {
+		return database.ErrConflict
+	}
+
+	query := fmt.Sprintf(`
 		UPDATE product_brands
 		SET deleted_at = now(), updated_at = now()
-		WHERE id = $1 AND deleted_at IS NULL
-	`
+		WHERE %s AND deleted_at IS NULL
+	`, whereClause)
 
-	cmd, err := qe.Exec(ctx, query, brandID)
+	cmd, err := qe.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("delete brand: %w", err)
 	}
@@ -284,4 +320,40 @@ func (br *BrandRepository) Delete(
 	}
 
 	return nil
+}
+
+// DeleteByID performs a soft-delete on an active brand by ID.
+func (br *BrandRepository) DeleteByID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	brandID uuid.UUID,
+) error {
+	if brandID == uuid.Nil {
+		panic("delete brand: brandID is required")
+	}
+	return br.delete(ctx, qe, "id = $1", brandID)
+}
+
+// DeleteByName performs a soft-delete on an active brand by name.
+func (br *BrandRepository) DeleteByName(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	name string,
+) error {
+	if name == "" {
+		panic("delete brand: name is required")
+	}
+	return br.delete(ctx, qe, "name = $1", name)
+}
+
+// Delete performs a soft-delete on an active brand given the model instance.
+func (br *BrandRepository) Delete(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	brand *model.ProductBrand,
+) error {
+	if brand == nil || brand.ID == uuid.Nil {
+		panic("delete brand: valid brand instance is required")
+	}
+	return br.delete(ctx, qe, "id = $1", brand.ID)
 }
