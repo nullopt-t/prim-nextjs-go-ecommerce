@@ -13,6 +13,8 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 )
 
+//TODO(ai): names need to be descriptive
+// and response maping should be private
 type CategoryHandler struct {
 	cservice *CategoryService
 }
@@ -28,6 +30,7 @@ func NewHandler(
 type PublicCategoryListResponse struct {
 	ID   uuid.UUID `json:"id,omitempty" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
 	Name string    `json:"name,omitempty" example:"Electronic"`
+	// TODO(ai): we don't user slugs we have public ids instead
 	Slug string    `json:"slug,omitempty" example:"electronic"`
 }
 
@@ -44,6 +47,9 @@ type AdminCategoryResponse struct {
 	UpdatedAt string     `json:"updated_at" example:"2026-06-30T15:47:19Z"`
 	DeletedAt *string    `json:"deleted_at,omitempty" example:"2026-07-01T10:00:00Z"`
 }
+
+
+// TODO(ai): make sure the public user have the right response and the internal too
 
 func ToPublicCategoryResponse(c *model.ProductCategory) PublicCategoryResponse {
 	return PublicCategoryResponse{
@@ -91,6 +97,7 @@ func (ch *CategoryHandler) CreateCategory(c *gin.Context) {
 		return
 	}
 
+	// TOOD(ai): shouldn't be optional
 	in := &CreateCategoryInput{
 		Name:     body.Name,
 		ParentID: body.ParentID,
@@ -184,6 +191,7 @@ func (ch *CategoryHandler) ListCategories(c *gin.Context) {
 		return
 	}
 
+	// TODO(ai): if that 's repeatable separate it in a private function
 	res := make([]PublicCategoryResponse, 0, len(result.Items))
 	for _, cat := range result.Items {
 		res = append(res, ToPublicCategoryResponse(cat))

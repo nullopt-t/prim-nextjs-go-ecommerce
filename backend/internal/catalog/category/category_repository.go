@@ -13,6 +13,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
+// TODO(ai): get redi of this and use where clauses
 type Filter struct {
 	ID   *uuid.UUID
 	Name *string
@@ -57,6 +58,8 @@ func (cr *CategoryRepository) Create(
 
 	return nil
 }
+
+
 func (cr *CategoryRepository) get(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -233,6 +236,7 @@ func (cr *CategoryRepository) List(
 	qe database.QueryExecutor,
 	opts ListCategoryOptions,
 ) (*pagination.PagedResult[model.ProductCategory], error) {
+	// TODO(ai): this should be assertion or panic
 	q := opts.ListQuery
 	if q == nil {
 		q = &pagination.ListQuery{}

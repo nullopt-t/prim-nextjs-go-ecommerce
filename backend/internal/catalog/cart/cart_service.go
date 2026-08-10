@@ -199,27 +199,16 @@ func (s *CartService) UpdateCartItemQuantity(
 	ctx context.Context,
 	userID *uuid.UUID,
 	sessionID *string,
-	variantPublicID string,
+	itemID uuid.UUID,
 	quantity int,
 ) (*model.Cart, error) {
-	v, err := s.variantService.GetVariantByPublicID(ctx, variantPublicID)
-	if err != nil {
-		return nil, apierr.ErrNotFound("Variant not found").
-			WithCode(errcode.CodeVariantNotFound).
-			Wrap(err)
-	}
-
 	cart, err := s.GetOrCreateCart(ctx, userID, sessionID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		item, getErr := s.cartRepo.GetItemByVariantID(ctx, tx, cart.ID, v.ID)
-		if getErr != nil {
-			return getErr
-		}
-		return s.cartRepo.UpdateItemQuantity(ctx, tx, cart.ID, item.ID, quantity)
+	err = s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		return s.cartRepo.UpdateItemQuantity(ctx, db, cart.ID, itemID, quantity)
 	})
 
 	if err != nil {
@@ -241,26 +230,15 @@ func (s *CartService) RemoveCartItem(
 	ctx context.Context,
 	userID *uuid.UUID,
 	sessionID *string,
-	variantPublicID string,
+	itemID uuid.UUID,
 ) (*model.Cart, error) {
-	v, err := s.variantService.GetVariantByPublicID(ctx, variantPublicID)
-	if err != nil {
-		return nil, apierr.ErrNotFound("Variant not found").
-			WithCode(errcode.CodeVariantNotFound).
-			Wrap(err)
-	}
-
 	cart, err := s.GetOrCreateCart(ctx, userID, sessionID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		item, getErr := s.cartRepo.GetItemByVariantID(ctx, tx, cart.ID, v.ID)
-		if getErr != nil {
-			return getErr
-		}
-		return s.cartRepo.RemoveItem(ctx, tx, cart.ID, item.ID)
+	err = s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		return s.cartRepo.RemoveItem(ctx, db, cart.ID, itemID)
 	})
 
 	if err != nil {

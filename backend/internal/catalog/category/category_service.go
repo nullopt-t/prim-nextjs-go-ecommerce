@@ -14,6 +14,9 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
+// TODO(ai): create handlerError method for the errors
+
+// TODO(ai): make the names descriptive
 type CategoryService struct {
 	crepository *CategoryRepository
 	qexecuter   database.Runner
@@ -29,6 +32,7 @@ func NewService(
 	}
 }
 
+// TODO(ai): service should know nothing about respresentaion
 type CreateCategoryInput struct {
 	Name     string     `json:"name"`
 	ParentID *uuid.UUID `json:"parent_id,omitempty"`
@@ -158,6 +162,7 @@ type UpdateCategoryInput struct {
 func (cs *CategoryService) UpdateCategory(
 	ctx context.Context,
 	categoryID uuid.UUID,
+	// TODO(ai): this shouldn't be optional
 	input *UpdateCategoryInput,
 ) error {
 	if categoryID == uuid.Nil {
@@ -264,6 +269,7 @@ func (cs *CategoryService) ListCategories(
 	ctx context.Context,
 	in ListCategoriesInput,
 ) (*pagination.PagedResult[model.ProductCategory], error) {
+	// TODO(ai): query shouldn't be optional by all meaning it could contain defaults but not nil by itself
 	q := in.Query
 	if q == nil {
 		q = &pagination.ListQuery{}

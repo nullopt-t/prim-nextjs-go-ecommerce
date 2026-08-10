@@ -23,10 +23,7 @@ func (r *CartRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	cartGroup.Use(middleware.Authenticate(r.secrets, true))
 	{
 		cartGroup.GET("", r.handler.GetCart)
-		// Note: this isn't a real delete, it's a clear cart
-		// it removes all items from the cart, leaving it empty
 		cartGroup.DELETE("", r.handler.ClearCart)
-
 		cartGroup.POST("/items", r.handler.AddItem)
 		cartGroup.PATCH("/items/:id", r.handler.UpdateItemQuantity)
 		cartGroup.DELETE("/items/:id", r.handler.RemoveItem)

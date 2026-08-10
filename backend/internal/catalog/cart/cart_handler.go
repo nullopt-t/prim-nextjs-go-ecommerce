@@ -231,9 +231,9 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 //	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
 //	@Router			/cart/items/{id} [patch]
 func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
-	variantPublicID := c.Param("id")
-	if variantPublicID == "" {
-		_ = c.Error(apierr.ErrBadRequest("Variant ID is required").WithCode(apierr.CodeInvalidInput))
+	itemID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.ErrBadRequest("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
 		return
 	}
 
@@ -245,7 +245,7 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 
 	userID, sessionID := h.extractUserAndSession(c)
 
-	cart, err := h.cartService.UpdateCartItemQuantity(c.Request.Context(), userID, sessionID, variantPublicID, req.Quantity)
+	cart, err := h.cartService.UpdateCartItemQuantity(c.Request.Context(), userID, sessionID, itemID, req.Quantity)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -268,15 +268,15 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 //	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
 //	@Router			/cart/items/{id} [delete]
 func (h *CartHandler) RemoveItem(c *gin.Context) {
-	variantPublicID := c.Param("id")
-	if variantPublicID == "" {
-		_ = c.Error(apierr.ErrBadRequest("Variant ID is required").WithCode(apierr.CodeInvalidInput))
+	itemID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.ErrBadRequest("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
 		return
 	}
 
 	userID, sessionID := h.extractUserAndSession(c)
 
-	cart, err := h.cartService.RemoveCartItem(c.Request.Context(), userID, sessionID, variantPublicID)
+	cart, err := h.cartService.RemoveCartItem(c.Request.Context(), userID, sessionID, itemID)
 	if err != nil {
 		_ = c.Error(err)
 		return
