@@ -1,0 +1,25 @@
+{
+    "settings": {
+        "title": "الإعدادات",
+        "description": "إدارة تفضيلات حسابك.",
+        "personalInformation": "المعلومات الشخصية",
+        "firstName": "الاسم الأول",
+        "lastName": "اسم العائلة",
+        "email": "البريد الإلكتروني",
+        "phone": "رقم الهاتف",
+        "placeholders": {
+            "firstName": "أدخل اسمك الأول",
+            "lastName": "أدخل اسم عائلتك",
+            "email": "أدخل بريدك الإلكتروني",
+            "phone": "أدخل رقم هاتفك"
+        },
+        "saveChanges": "حفظ التغييرات",
+        "preferences": "التفضيلات",
+        "language": "اللغة",
+        "darkMode": "الوضع الداكن",
+        "emailNotifications": "إشعارات البريد الإلكتروني",
+        "dangerZone": "منطقة الخطر",
+        "logout": "تسجيل الخروج",
+        "deleteAccount": "حذف الحساب"
+    }
+}

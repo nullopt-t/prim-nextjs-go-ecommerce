@@ -1,0 +1,25 @@
+{
+    "settings": {
+        "title": "Settings",
+        "description": "Manage your account preferences.",
+        "personalInformation": "Personal Information",
+        "firstName": "First Name",
+        "lastName": "Last Name",
+        "email": "Email",
+        "phone": "Phone",
+        "placeholders": {
+            "firstName": "Enter your first name",
+            "lastName": "Enter your last name",
+            "email": "Enter your email",
+            "phone": "Enter your phone number"
+        },
+        "saveChanges": "Save Changes",
+        "preferences": "Preferences",
+        "language": "Language",
+        "darkMode": "Dark Mode",
+        "emailNotifications": "Email notifications",
+        "dangerZone": "Danger Zone",
+        "logout": "Logout",
+        "deleteAccount": "Delete Account"
+    }
+}

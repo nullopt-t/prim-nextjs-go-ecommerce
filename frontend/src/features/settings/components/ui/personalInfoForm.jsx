@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CustomInput, CustomButton, Text } from "@/components/ui";
+import { useTranslation } from "react-i18next";
 
 export default function PersonalInfoForm() {
 	const [form, setForm] = useState({
@@ -8,14 +9,15 @@ export default function PersonalInfoForm() {
 		email: "m.mahmoud.alsaid.official@gmail.com",
 		phone: "+20123456789",
 	});
+	const { t } = useTranslation("settings");
 
 	const infoFields = [
 		{
 			id: "first-name-1",
-			labelTitle: "First Name",
+			labelTitle: "firstName",
 			input: {
 				type: "text",
-				placeholder: "Enter your first name",
+				placeholder: "placeholders.firstName",
 				value: form.firstName,
 				isDisabled: false,
 				onChange: (e) => {
@@ -25,10 +27,10 @@ export default function PersonalInfoForm() {
 		},
 		{
 			id: "last-name-1",
-			labelTitle: "Last Name",
+			labelTitle: "lastName",
 			input: {
 				type: "text",
-				placeholder: "Enter your last name",
+				placeholder: "placeholders.lastName",
 				value: form.lastName,
 				isDisabled: false,
 				onChange: (e) => {
@@ -38,10 +40,10 @@ export default function PersonalInfoForm() {
 		},
 		{
 			id: "email-1",
-			labelTitle: "Email",
+			labelTitle: "email",
 			input: {
 				type: "email",
-				placeholder: "Enter your email",
+				placeholder: "placeholders.email",
 				value: form.email,
 				isDisabled: true,
 				onChange: (e) => {
@@ -51,10 +53,10 @@ export default function PersonalInfoForm() {
 		},
 		{
 			id: "phone-1",
-			labelTitle: "Phone",
+			labelTitle: "phone",
 			input: {
 				type: "text",
-				placeholder: "Enter your phone",
+				placeholder: "placeholders.phone",
 				value: form.phone,
 				isDisabled: true,
 				onChange: (e) => {
@@ -75,12 +77,14 @@ export default function PersonalInfoForm() {
 					className="flex flex-col lg:flex-row lg:gap-5 lg:justify-between lg:items-center"
 				>
 					<div className="whitespace-nowrap mb-0.5">
-						<Text text={info.labelTitle} />
+						<Text text={t(`settings.${info.labelTitle}`)} />
 					</div>
 					<div className="lg:w-64 bg-input-background rounded-sm">
 						<CustomInput
 							type={info.input.type}
-							placeholder={info.input.placeholder}
+							placeholder={t(
+								`settings.${info.input.placeholder}`,
+							)}
 							value={info.input.value}
 							isDisabled={info.input.isDisabled}
 							onChange={info.input.onChange}
@@ -89,7 +93,7 @@ export default function PersonalInfoForm() {
 				</label>
 			))}
 			<div className="ml-auto flex justify-center bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground rounded-md">
-				<CustomButton text="Save Changes" />
+				<CustomButton text={t("settings.saveChanges")} />
 			</div>
 		</form>
 	);

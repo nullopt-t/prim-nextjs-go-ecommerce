@@ -1,14 +1,17 @@
 import { CustomButton } from "@/components/ui";
+import { useTranslation } from "react-i18next";
 
 export default function DangerZone() {
+	const { t } = useTranslation("settings");
+
 	const dangerActions = [
 		{
 			id: "danger-logout",
-			buttonText: "Logout",
+			buttonText: "logout",
 		},
 		{
 			id: "danger-delete-acc",
-			buttonText: "Delete Account",
+			buttonText: "deleteAccount",
 		},
 	];
 
@@ -19,7 +22,7 @@ export default function DangerZone() {
 					key={action.id}
 					className="mr-auto bg-destructive text-destructive-foreground rounded-md hover:scale-90 w-fit"
 				>
-					<CustomButton text={action.buttonText} />
+					<CustomButton text={t(`settings.${action.buttonText}`)} />
 				</div>
 			))}
 		</div>
