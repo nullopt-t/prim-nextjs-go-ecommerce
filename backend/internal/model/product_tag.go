@@ -8,7 +8,7 @@ import (
 
 type ProductTag struct {
 	ID       uuid.UUID
-	PublicID string
+	PublicID uuid.UUID
 
 	Name string
 

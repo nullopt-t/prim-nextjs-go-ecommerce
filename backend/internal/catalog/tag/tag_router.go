@@ -21,7 +21,7 @@ func NewRouter(h *TagHandler, secrets *config.Secrets) *TagRouter {
 func (tr *TagRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	admin := vgroup.Group("/admin/tags")
 	admin.Use(
-		middleware.Authenticate(tr.secrets),
+		middleware.Authenticate(tr.secrets, true),
 	)
 	{
 		admin.GET("", tr.th.AdminListTags)
@@ -29,5 +29,10 @@ func (tr *TagRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.POST("", tr.th.CreateTag)
 		admin.PATCH("/:id", tr.th.UpdateTagByID)
 		admin.DELETE("/:id", tr.th.DeleteTagByID)
+	}
+
+	public := vgroup.Group("/tags")
+	{
+		public.GET("", tr.th.ListTags)
 	}
 }

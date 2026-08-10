@@ -75,7 +75,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -83,11 +83,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/AdminBrandResponse"
+                                                "$ref": "#/definitions/brand.AdminBrandResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/Page"
+                                            "$ref": "#/definitions/pagination.Page"
                                         }
                                     }
                                 }
@@ -97,13 +97,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -127,7 +127,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/CreateBrandRequest"
+                            "$ref": "#/definitions/brand.CreateBrandRequest"
                         }
                     }
                 ],
@@ -137,13 +137,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/AdminBrandResponse"
+                                            "$ref": "#/definitions/brand.AdminBrandResponse"
                                         }
                                     }
                                 }
@@ -153,19 +153,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or missing brand name",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A brand with this name already exists",
                         "schema": {
-                            "$ref": "#/definitions/ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -200,13 +200,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/AdminBrandResponse"
+                                            "$ref": "#/definitions/brand.AdminBrandResponse"
                                         }
                                     }
                                 }
@@ -216,19 +216,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Brand not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -259,25 +259,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Deletion confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Brand not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -309,7 +309,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/UpdateBrandRequest"
+                            "$ref": "#/definitions/brand.UpdateBrandRequest"
                         }
                     }
                 ],
@@ -317,31 +317,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Update confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error or referenced logo object not found",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Brand not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A brand with updated name already exists",
                         "schema": {
-                            "$ref": "#/definitions/ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -381,19 +381,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Upload confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format or missing file",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -451,7 +451,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -459,11 +459,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/AdminCategoryResponse"
+                                                "$ref": "#/definitions/category.AdminCategoryResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/Page"
+                                            "$ref": "#/definitions/pagination.Page"
                                         }
                                     }
                                 }
@@ -473,13 +473,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -503,7 +503,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/CreateCategoryRequest"
+                            "$ref": "#/definitions/category.CreateCategoryRequest"
                         }
                     }
                 ],
@@ -513,13 +513,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/AdminCategoryResponse"
+                                            "$ref": "#/definitions/category.AdminCategoryResponse"
                                         }
                                     }
                                 }
@@ -529,19 +529,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or referenced parent category does not exist",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A category with this name already exists",
                         "schema": {
-                            "$ref": "#/definitions/ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -576,13 +576,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/AdminCategoryResponse"
+                                            "$ref": "#/definitions/category.AdminCategoryResponse"
                                         }
                                     }
                                 }
@@ -592,19 +592,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Category not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -636,7 +636,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/UpdateCategoryRequest"
+                            "$ref": "#/definitions/category.UpdateCategoryRequest"
                         }
                     }
                 ],
@@ -644,31 +644,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Update confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error, circular hierarchy, or parent not found",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Category not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A category with updated name already exists",
                         "schema": {
-                            "$ref": "#/definitions/ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -702,7 +702,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/UpdateOrderStatusRequest"
+                            "$ref": "#/definitions/order.UpdateOrderStatusRequest"
                         }
                     }
                 ],
@@ -710,25 +710,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Status update confirmation",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error or invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Order not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -783,7 +783,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -791,11 +791,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/Product"
+                                                "$ref": "#/definitions/model.Product"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/Page"
+                                            "$ref": "#/definitions/pagination.Page"
                                         }
                                     }
                                 }
@@ -805,13 +805,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -835,7 +835,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/CreateProductRequest"
+                            "$ref": "#/definitions/product.CreateProductRequest"
                         }
                     }
                 ],
@@ -845,13 +845,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/AdminProductDetailsResponse"
+                                            "$ref": "#/definitions/product.AdminProductDetailsResponse"
                                         }
                                     }
                                 }
@@ -861,19 +861,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or invalid UUID reference",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Product with generated public ID already exists",
                         "schema": {
-                            "$ref": "#/definitions/ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -905,13 +905,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/AdminProductDetailsResponse"
+                                            "$ref": "#/definitions/product.AdminProductDetailsResponse"
                                         }
                                     }
                                 }
@@ -921,19 +921,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -961,25 +961,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Deletion confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1011,7 +1011,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/UpdateProductRequest"
+                            "$ref": "#/definitions/product.UpdateProductRequest"
                         }
                     }
                 ],
@@ -1021,13 +1021,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/AdminProductDetailsResponse"
+                                            "$ref": "#/definitions/product.AdminProductDetailsResponse"
                                         }
                                     }
                                 }
@@ -1037,19 +1037,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product, brand, or category not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1079,25 +1079,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Archival confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1130,7 +1130,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/PutProductCategoryRequest"
+                            "$ref": "#/definitions/product.PutProductCategoryRequest"
                         }
                     }
                 ],
@@ -1138,25 +1138,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1197,13 +1197,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/ProductMediaResponse"
+                                            "$ref": "#/definitions/product.ProductMediaResponse"
                                         }
                                     }
                                 }
@@ -1213,13 +1213,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1252,7 +1252,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/ReorderMediaRequest"
+                            "$ref": "#/definitions/product.ReorderMediaRequest"
                         }
                     }
                 ],
@@ -1260,19 +1260,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1309,25 +1309,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1357,25 +1357,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Publication confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Product lacks active variants or invalid UUID",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1408,7 +1408,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/PutProductTagsRequest"
+                            "$ref": "#/definitions/product.PutProductTagsRequest"
                         }
                     }
                 ],
@@ -1416,19 +1416,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1461,7 +1461,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/CreateProductVariantRequest"
+                            "$ref": "#/definitions/product.CreateProductVariantRequest"
                         }
                     }
                 ],
@@ -1471,13 +1471,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/VariantResponse"
+                                            "$ref": "#/definitions/variant.VariantResponse"
                                         }
                                     }
                                 }
@@ -1487,13 +1487,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1526,7 +1526,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/SetDefaultVariantRequest"
+                            "$ref": "#/definitions/product.SetDefaultVariantRequest"
                         }
                     }
                 ],
@@ -1534,25 +1534,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1615,7 +1615,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1623,11 +1623,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/AdminVariantResponse"
+                                                "$ref": "#/definitions/variant.AdminVariantResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/Page"
+                                            "$ref": "#/definitions/pagination.Page"
                                         }
                                     }
                                 }
@@ -1637,13 +1637,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters or UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1675,7 +1675,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/CreateVariantRequest"
+                            "$ref": "#/definitions/variant.CreateVariantRequest"
                         }
                     }
                 ],
@@ -1685,13 +1685,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/VariantResponse"
+                                            "$ref": "#/definitions/variant.VariantResponse"
                                         }
                                     }
                                 }
@@ -1701,19 +1701,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or missing required fields",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Parent product not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1771,7 +1771,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1779,11 +1779,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/AdminTagResponse"
+                                                "$ref": "#/definitions/tag.AdminTagResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/Page"
+                                            "$ref": "#/definitions/pagination.Page"
                                         }
                                     }
                                 }
@@ -1793,13 +1793,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1823,7 +1823,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/CreateTagRequest"
+                            "$ref": "#/definitions/tag.CreateTagRequest"
                         }
                     }
                 ],
@@ -1833,13 +1833,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/TagResponse"
+                                            "$ref": "#/definitions/tag.TagResponse"
                                         }
                                     }
                                 }
@@ -1849,19 +1849,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or missing tag name",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A tag with this name already exists",
                         "schema": {
-                            "$ref": "#/definitions/ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1896,13 +1896,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/TagResponse"
+                                            "$ref": "#/definitions/tag.TagResponse"
                                         }
                                     }
                                 }
@@ -1912,19 +1912,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Tag not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1955,25 +1955,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Deletion confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Tag not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2005,7 +2005,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/UpdateTagRequest"
+                            "$ref": "#/definitions/tag.UpdateTagRequest"
                         }
                     }
                 ],
@@ -2013,31 +2013,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Update confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error or invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Tag not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A tag with updated name already exists",
                         "schema": {
-                            "$ref": "#/definitions/ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2067,25 +2067,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Deletion confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Variant not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2117,7 +2117,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/UpdateVariantRequest"
+                            "$ref": "#/definitions/variant.UpdateVariantRequest"
                         }
                     }
                 ],
@@ -2125,25 +2125,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Update confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error or invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Variant not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2177,7 +2177,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/AttachMediaRequest"
+                            "$ref": "#/definitions/variant.AttachMediaRequest"
                         }
                     }
                 ],
@@ -2187,13 +2187,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/VariantMediaResponse"
+                                            "$ref": "#/definitions/variant.VariantMediaResponse"
                                         }
                                     }
                                 }
@@ -2203,19 +2203,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or invalid UUID reference",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Storage object is already attached to this variant",
                         "schema": {
-                            "$ref": "#/definitions/ConflictErrorResponse"
+                            "$ref": "#/definitions/api.ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2249,7 +2249,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/ReorderMediaRequest"
+                            "$ref": "#/definitions/variant.ReorderMediaRequest"
                         }
                     }
                 ],
@@ -2257,19 +2257,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Reorder confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format or empty list",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2307,25 +2307,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Detachment confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Media relationship not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2351,7 +2351,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/ResendChallengeRequest"
+                            "$ref": "#/definitions/auth.ResendChallengeRequest"
                         }
                     }
                 ],
@@ -2359,25 +2359,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2403,7 +2403,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/StartChallengeRequest"
+                            "$ref": "#/definitions/auth.StartChallengeRequest"
                         }
                     }
                 ],
@@ -2413,13 +2413,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/StartChallengeResponse"
+                                            "$ref": "#/definitions/auth.StartChallengeResponse"
                                         }
                                     }
                                 }
@@ -2429,19 +2429,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2467,7 +2467,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/VerifyChallengeRequest"
+                            "$ref": "#/definitions/auth.VerifyChallengeRequest"
                         }
                     }
                 ],
@@ -2475,31 +2475,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/SuccessResponse"
+                            "$ref": "#/definitions/api.SuccessResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/UnauthorizedResponse"
+                            "$ref": "#/definitions/api.UnauthorizedResponse"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2524,13 +2524,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/MeResponse"
+                                            "$ref": "#/definitions/auth.MeResponse"
                                         }
                                     }
                                 }
@@ -2540,7 +2540,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2565,7 +2565,7 @@ const docTemplate = `{
                         "name": "refresh_token",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/RefreshTokenRequest"
+                            "$ref": "#/definitions/auth.RefreshTokenRequest"
                         }
                     }
                 ],
@@ -2573,31 +2573,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/SuccessResponse"
+                            "$ref": "#/definitions/api.SuccessResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
+                            "$ref": "#/definitions/api.BadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/UnauthorizedResponse"
+                            "$ref": "#/definitions/api.UnauthorizedResponse"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
+                            "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2619,7 +2619,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2627,7 +2627,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/UserSession"
+                                                "$ref": "#/definitions/auth.UserSession"
                                             }
                                         }
                                     }
@@ -2638,13 +2638,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/UnauthorizedResponse"
+                            "$ref": "#/definitions/api.UnauthorizedResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2673,19 +2673,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/MessageResponse"
+                            "$ref": "#/definitions/api.MessageResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/UnauthorizedResponse"
+                            "$ref": "#/definitions/api.UnauthorizedResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2743,7 +2743,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2751,11 +2751,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/BrandResponse"
+                                                "$ref": "#/definitions/brand.BrandResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/Page"
+                                            "$ref": "#/definitions/pagination.Page"
                                         }
                                     }
                                 }
@@ -2765,13 +2765,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2801,13 +2801,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/Cart"
+                                            "$ref": "#/definitions/model.Cart"
                                         }
                                     }
                                 }
@@ -2817,13 +2817,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid input or missing session",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2852,7 +2852,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2884,7 +2884,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/AddItemRequest"
+                            "$ref": "#/definitions/cart.AddItemRequest"
                         }
                     }
                 ],
@@ -2894,13 +2894,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/Cart"
+                                            "$ref": "#/definitions/model.Cart"
                                         }
                                     }
                                 }
@@ -2910,19 +2910,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Variant not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2959,13 +2959,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/Cart"
+                                            "$ref": "#/definitions/model.Cart"
                                         }
                                     }
                                 }
@@ -2975,19 +2975,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid item ID",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Cart item not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3024,7 +3024,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/UpdateQuantityRequest"
+                            "$ref": "#/definitions/cart.UpdateQuantityRequest"
                         }
                     }
                 ],
@@ -3034,13 +3034,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/Cart"
+                                            "$ref": "#/definitions/model.Cart"
                                         }
                                     }
                                 }
@@ -3050,77 +3050,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or invalid UUID",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Cart item not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/cart/merge": {
-            "post": {
-                "description": "Merges items from a guest session cart into the authenticated user's cart.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Cart"
-                ],
-                "summary": "Merge guest cart into user cart",
-                "parameters": [
-                    {
-                        "description": "Guest Session ID to merge",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/MergeCartRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Merged user cart",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/Cart"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Missing user or session ID",
-                        "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3178,7 +3120,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3186,11 +3128,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/PublicCategoryResponse"
+                                                "$ref": "#/definitions/category.PublicCategoryResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/Page"
+                                            "$ref": "#/definitions/pagination.Page"
                                         }
                                     }
                                 }
@@ -3200,13 +3142,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3232,7 +3174,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/CheckoutRequest"
+                            "$ref": "#/definitions/checkout.CheckoutRequest"
                         }
                     }
                 ],
@@ -3242,13 +3184,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/CheckoutResponse"
+                                            "$ref": "#/definitions/checkout.CheckoutResponse"
                                         }
                                     }
                                 }
@@ -3258,19 +3200,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or empty cart",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                            "$ref": "#/definitions/api.UnauthorizedErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3292,7 +3234,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3300,7 +3242,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/OrderResponse"
+                                                "$ref": "#/definitions/order.OrderResponse"
                                             }
                                         }
                                     }
@@ -3311,13 +3253,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                            "$ref": "#/definitions/api.UnauthorizedErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3349,13 +3291,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/OrderResponse"
+                                            "$ref": "#/definitions/order.OrderResponse"
                                         }
                                     }
                                 }
@@ -3365,25 +3307,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                            "$ref": "#/definitions/api.UnauthorizedErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Order not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3438,7 +3380,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3446,11 +3388,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/ProductListItemResponse"
+                                                "$ref": "#/definitions/product.ProductListItemResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/Page"
+                                            "$ref": "#/definitions/pagination.Page"
                                         }
                                     }
                                 }
@@ -3460,13 +3402,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3497,13 +3439,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/ProductDetailsResponse"
+                                            "$ref": "#/definitions/product.ProductDetailsResponse"
                                         }
                                     }
                                 }
@@ -3513,19 +3455,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Public ID is required",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3588,7 +3530,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3596,11 +3538,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/VariantResponse"
+                                                "$ref": "#/definitions/variant.VariantResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/Page"
+                                            "$ref": "#/definitions/pagination.Page"
                                         }
                                     }
                                 }
@@ -3610,13 +3552,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters or UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3674,7 +3616,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/PaginatedResponse"
+                                    "$ref": "#/definitions/api.PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3682,11 +3624,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/TagResponse"
+                                                "$ref": "#/definitions/tag.TagResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/Page"
+                                            "$ref": "#/definitions/pagination.Page"
                                         }
                                     }
                                 }
@@ -3696,13 +3638,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3734,13 +3676,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/VariantResponse"
+                                            "$ref": "#/definitions/variant.VariantResponse"
                                         }
                                     }
                                 }
@@ -3750,19 +3692,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Variant not found",
                         "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3794,7 +3736,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/DataResponse"
+                                    "$ref": "#/definitions/api.DataResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3802,7 +3744,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/VariantMediaResponse"
+                                                "$ref": "#/definitions/variant.VariantMediaResponse"
                                             }
                                         }
                                     }
@@ -3813,13 +3755,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/BadRequestErrorResponse"
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3827,70 +3769,315 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "AddItemRequest": {
+        "api.BadReqResponse": {
             "type": "object",
-            "required": [
-                "quantity",
-                "variant_id"
-            ],
             "properties": {
-                "quantity": {
-                    "type": "integer",
-                    "example": 2
-                },
-                "variant_id": {
+                "code": {
                     "type": "string",
-                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                    "example": "VALIDATION_FAILED"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.FieldError"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Invalid input or payload parameters"
                 }
             }
         },
-        "AddressRequest": {
+        "api.BadRequestErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "VALIDATION_FAILED"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.FieldError"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Invalid request input or malformed payload"
+                }
+            }
+        },
+        "api.ConflictErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "ALREADY_EXISTS"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.FieldError"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "A resource with this identifier or name already exists"
+                }
+            }
+        },
+        "api.DataResponse": {
+            "type": "object",
+            "properties": {
+                "data": {}
+            }
+        },
+        "api.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "INTERNAL_ERROR"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.FieldError"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "An unexpected internal server error occurred"
+                }
+            }
+        },
+        "api.FieldError": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string",
+                    "example": "name"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "name is required and cannot be empty"
+                },
+                "tags": {
+                    "type": "string",
+                    "example": "string"
+                }
+            }
+        },
+        "api.InternalServerErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "INTERNAL_ERROR"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.FieldError"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "An unexpected internal server error occurred"
+                }
+            }
+        },
+        "api.MessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Operation completed successfully"
+                }
+            }
+        },
+        "api.NotFoundErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "NOT_FOUND"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.FieldError"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "The requested resource was not found"
+                }
+            }
+        },
+        "api.PaginatedResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "meta": {}
+            }
+        },
+        "api.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                },
+                "meta": {}
+            }
+        },
+        "api.UnauthorizedErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "UNAUTHORIZED"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.FieldError"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Authentication token is missing or expired"
+                }
+            }
+        },
+        "api.UnauthorizedResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "UNAUTHORIZED"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Authentication token is missing or invalid"
+                }
+            }
+        },
+        "auth.MeResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.RefreshTokenRequest": {
+            "type": "object",
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.ResendChallengeRequest": {
             "type": "object",
             "required": [
-                "city",
-                "country",
-                "postal_code",
-                "street"
+                "identifier"
             ],
             "properties": {
-                "city": {
-                    "type": "string"
-                },
-                "country": {
-                    "type": "string"
-                },
-                "postal_code": {
-                    "type": "string"
-                },
-                "state": {
-                    "type": "string"
-                },
-                "street": {
+                "identifier": {
                     "type": "string"
                 }
             }
         },
-        "AddressResponse": {
+        "auth.SessionType": {
+            "type": "string",
+            "enum": [
+                "guest",
+                "authenticated"
+            ],
+            "x-enum-varnames": [
+                "SessionTypeGuest",
+                "SessionTypeAuthenticated"
+            ]
+        },
+        "auth.StartChallengeRequest": {
+            "type": "object",
+            "required": [
+                "identifier"
+            ],
+            "properties": {
+                "identifier": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.StartChallengeResponse": {
             "type": "object",
             "properties": {
-                "city": {
+                "duration": {
+                    "type": "integer"
+                },
+                "expires_at": {
                     "type": "string"
                 },
-                "country": {
-                    "type": "string"
-                },
-                "postal_code": {
-                    "type": "string"
-                },
-                "state": {
-                    "type": "string"
-                },
-                "street": {
+                "identifier": {
                     "type": "string"
                 }
             }
         },
-        "AdminBrandResponse": {
+        "auth.UserSession": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ip_address": {
+                    "type": "string"
+                },
+                "last_active": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/auth.SessionType"
+                },
+                "user_agent": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.VerifyChallengeRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "identifier"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "identifier": {
+                    "type": "string"
+                }
+            }
+        },
+        "brand.AdminBrandResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -3929,7 +4116,91 @@ const docTemplate = `{
                 }
             }
         },
-        "AdminCategoryResponse": {
+        "brand.BrandResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Public ID of the brand",
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "link": {
+                    "type": "string",
+                    "example": "https://nvidia.com"
+                },
+                "logo_url": {
+                    "type": "string",
+                    "example": "https://example.com/logo.png"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "nvidia"
+                }
+            }
+        },
+        "brand.CreateBrandRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "link": {
+                    "type": "string",
+                    "example": "https://apple.com"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "apple"
+                }
+            }
+        },
+        "brand.UpdateBrandRequest": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string",
+                    "example": "https://apple.com"
+                },
+                "logo_object_id": {
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "apple"
+                }
+            }
+        },
+        "cart.AddItemRequest": {
+            "type": "object",
+            "required": [
+                "quantity",
+                "variant_id"
+            ],
+            "properties": {
+                "quantity": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "variant_id": {
+                    "type": "string",
+                    "example": "nano_id_string"
+                }
+            }
+        },
+        "cart.UpdateQuantityRequest": {
+            "type": "object",
+            "required": [
+                "quantity"
+            ],
+            "properties": {
+                "quantity": {
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
+        "category.AdminCategoryResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -3958,17 +4229,459 @@ const docTemplate = `{
                 }
             }
         },
-        "AdminProductDetailsResponse": {
+        "category.CreateCategoryRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "parent_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "category.PublicCategoryResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "prod_cat_123"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Electronics"
+                }
+            }
+        },
+        "category.UpdateCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "Electronics"
+                },
+                "parent_id": {
+                    "type": "string",
+                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                }
+            }
+        },
+        "checkout.AddressRequest": {
+            "type": "object",
+            "required": [
+                "city",
+                "country",
+                "postal_code",
+                "street"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "postal_code": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "street": {
+                    "type": "string"
+                }
+            }
+        },
+        "checkout.CheckoutRequest": {
+            "type": "object",
+            "required": [
+                "billing_address",
+                "customer_email",
+                "shipping_address"
+            ],
+            "properties": {
+                "billing_address": {
+                    "$ref": "#/definitions/checkout.AddressRequest"
+                },
+                "coupon_id": {
+                    "type": "string"
+                },
+                "customer_email": {
+                    "type": "string"
+                },
+                "shipping_address": {
+                    "$ref": "#/definitions/checkout.AddressRequest"
+                }
+            }
+        },
+        "checkout.CheckoutResponse": {
+            "type": "object",
+            "properties": {
+                "order_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Cart": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CartItem"
+                    }
+                },
+                "sessionID": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userID": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CartItem": {
+            "type": "object",
+            "properties": {
+                "cartID": {
+                    "type": "string"
+                },
+                "cartedAt": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "priceAtPurchase": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "product": {
+                    "$ref": "#/definitions/model.Product"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "thumbnailURL": {
+                    "type": "string"
+                },
+                "variant": {
+                    "$ref": "#/definitions/model.ProductVariant"
+                },
+                "variantID": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.OrderStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "paid",
+                "processing",
+                "shipped",
+                "delivered",
+                "canceled",
+                "refunded"
+            ],
+            "x-enum-varnames": [
+                "OrderStatusPending",
+                "OrderStatusPaid",
+                "OrderStatusProcessing",
+                "OrderStatusShipped",
+                "OrderStatusDelivered",
+                "OrderStatusCanceled",
+                "OrderStatusRefunded"
+            ]
+        },
+        "model.Product": {
+            "type": "object",
+            "properties": {
+                "brandID": {
+                    "type": "string"
+                },
+                "categoryID": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "highlights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "publicID": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.PublicationStatus"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ProductVariant": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "crossed_out_price": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_default": {
+                    "type": "boolean"
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "public_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.PublicationStatus": {
+            "type": "string",
+            "enum": [
+                "draft",
+                "published",
+                "archived"
+            ],
+            "x-enum-varnames": [
+                "PublicationStatusDraft",
+                "PublicationStatusPublished",
+                "PublicationStatusArchived"
+            ]
+        },
+        "order.AddressResponse": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "postal_code": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "street": {
+                    "type": "string"
+                }
+            }
+        },
+        "order.OrderItemResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "price_at_purchase": {
+                    "type": "integer"
+                },
+                "product_snapshot": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "variant_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "order.OrderResponse": {
+            "type": "object",
+            "properties": {
+                "billing_address": {
+                    "$ref": "#/definitions/order.AddressResponse"
+                },
+                "coupon_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "customer_email": {
+                    "type": "string"
+                },
+                "customer_id": {
+                    "type": "string"
+                },
+                "discount_amount": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/order.OrderItemResponse"
+                    }
+                },
+                "shipping_address": {
+                    "$ref": "#/definitions/order.AddressResponse"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.OrderStatus"
+                },
+                "total_amount": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "order.UpdateOrderStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "notes": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.OrderStatus"
+                }
+            }
+        },
+        "pagination.Page": {
+            "type": "object",
+            "properties": {
+                "has_next": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "has_previous": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "total_items": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "example": 2
+                }
+            }
+        },
+        "pagination.Sort": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string",
+                    "example": "name"
+                },
+                "order": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/pagination.SortOrder"
+                        }
+                    ],
+                    "example": "asc"
+                }
+            }
+        },
+        "pagination.SortOrder": {
+            "type": "string",
+            "enum": [
+                "asc",
+                "desc"
+            ],
+            "x-enum-varnames": [
+                "SortAsc",
+                "SortDesc"
+            ]
+        },
+        "product.AdminProductDetailsResponse": {
             "type": "object",
             "properties": {
                 "brand": {
-                    "$ref": "#/definitions/ProductBrandSummary"
+                    "$ref": "#/definitions/product.ProductBrandSummary"
                 },
                 "brand_id": {
                     "type": "string"
                 },
                 "category": {
-                    "$ref": "#/definitions/ProductCategorySummary"
+                    "$ref": "#/definitions/product.ProductCategorySummary"
                 },
                 "category_id": {
                     "type": "string"
@@ -3997,7 +4710,7 @@ const docTemplate = `{
                 "media": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/ProductMediaResponse"
+                        "$ref": "#/definitions/product.ProductMediaResponse"
                     }
                 },
                 "public_id": {
@@ -4007,7 +4720,7 @@ const docTemplate = `{
                 "status": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/PublicationStatus"
+                            "$ref": "#/definitions/model.PublicationStatus"
                         }
                     ],
                     "example": "draft"
@@ -4015,7 +4728,7 @@ const docTemplate = `{
                 "tags": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/ProductTagSummary"
+                        "$ref": "#/definitions/product.ProductTagSummary"
                     }
                 },
                 "title": {
@@ -4029,12 +4742,323 @@ const docTemplate = `{
                 "variants": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/ProductVariantResponse"
+                        "$ref": "#/definitions/product.ProductVariantResponse"
                     }
                 }
             }
         },
-        "AdminTagResponse": {
+        "product.CreateProductRequest": {
+            "type": "object",
+            "required": [
+                "category_id",
+                "description",
+                "title"
+            ],
+            "properties": {
+                "brand_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                },
+                "category_id": {
+                    "type": "string",
+                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Premium over-ear Bluetooth headphones with active noise cancellation."
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Wireless Noise-Canceling Headphones"
+                }
+            }
+        },
+        "product.CreateProductVariantRequest": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossed_out_price": {
+                    "type": "integer",
+                    "example": 3999
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "USD"
+                },
+                "is_default": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "price": {
+                    "type": "integer",
+                    "example": 2999
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Black / XL"
+                }
+            }
+        },
+        "product.ProductBrandSummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "link": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "product.ProductCategorySummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "product.ProductDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "brand": {
+                    "$ref": "#/definitions/product.ProductBrandSummary"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "highlights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string",
+                    "example": "prod_abc123"
+                },
+                "media": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/product.ProductMediaResponse"
+                    }
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/product.ProductTagSummary"
+                    }
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Wireless Headphones"
+                },
+                "variants": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/product.ProductVariantResponse"
+                    }
+                }
+            }
+        },
+        "product.ProductListItemResponse": {
+            "type": "object",
+            "properties": {
+                "brand": {
+                    "$ref": "#/definitions/product.ProductBrandSummary"
+                },
+                "category": {
+                    "$ref": "#/definitions/product.ProductCategorySummary"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.PublicationStatus"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "product.ProductMediaResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "media_type": {
+                    "type": "string",
+                    "example": "image"
+                },
+                "object": {
+                    "$ref": "#/definitions/product.StorageObjectResponse"
+                },
+                "sort_order": {
+                    "type": "integer",
+                    "example": 0
+                }
+            }
+        },
+        "product.ProductTagSummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "product.ProductVariantResponse": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossed_out_price": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_default": {
+                    "type": "boolean"
+                },
+                "media": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/product.ProductMediaResponse"
+                    }
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "product.PutProductCategoryRequest": {
+            "type": "object",
+            "required": [
+                "category_id"
+            ],
+            "properties": {
+                "category_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "product.PutProductTagsRequest": {
+            "type": "object",
+            "required": [
+                "tag_ids"
+            ],
+            "properties": {
+                "tag_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "product.ReorderMediaRequest": {
+            "type": "object",
+            "required": [
+                "ordered_media_ids"
+            ],
+            "properties": {
+                "ordered_media_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "product.SetDefaultVariantRequest": {
+            "type": "object",
+            "required": [
+                "variant_id"
+            ],
+            "properties": {
+                "variant_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "product.StorageObjectResponse": {
+            "type": "object",
+            "properties": {
+                "content_type": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
+                "public_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "product.UpdateProductRequest": {
+            "type": "object",
+            "properties": {
+                "brand_id": {
+                    "type": "string"
+                },
+                "category_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "highlights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "tag.AdminTagResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -4059,7 +5083,49 @@ const docTemplate = `{
                 }
             }
         },
-        "AdminVariantResponse": {
+        "tag.CreateTagRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "black-friday"
+                }
+            }
+        },
+        "tag.TagResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-06-30T15:47:19Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "black-friday"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-06-30T15:47:19Z"
+                }
+            }
+        },
+        "tag.UpdateTagRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "best-seller"
+                }
+            }
+        },
+        "variant.AdminVariantResponse": {
             "type": "object",
             "properties": {
                 "attributes": {
@@ -4108,7 +5174,7 @@ const docTemplate = `{
                 }
             }
         },
-        "AttachMediaRequest": {
+        "variant.AttachMediaRequest": {
             "type": "object",
             "required": [
                 "media_type",
@@ -4129,281 +5195,7 @@ const docTemplate = `{
                 }
             }
         },
-        "BadReqResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "VALIDATION_FAILED"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "Invalid input or payload parameters"
-                }
-            }
-        },
-        "BadRequestErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "VALIDATION_FAILED"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "Invalid request input or malformed payload"
-                }
-            }
-        },
-        "BrandResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "description": "Public ID of the brand",
-                    "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
-                },
-                "link": {
-                    "type": "string",
-                    "example": "https://nvidia.com"
-                },
-                "logo_url": {
-                    "type": "string",
-                    "example": "https://example.com/logo.png"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "nvidia"
-                }
-            }
-        },
-        "Cart": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/CartItem"
-                    }
-                },
-                "sessionID": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "userID": {
-                    "type": "string"
-                }
-            }
-        },
-        "CartItem": {
-            "type": "object",
-            "properties": {
-                "cartID": {
-                    "type": "string"
-                },
-                "cartedAt": {
-                    "type": "string"
-                },
-                "currency": {
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "priceAtPurchase": {
-                    "type": "integer",
-                    "format": "int64"
-                },
-                "quantity": {
-                    "type": "integer"
-                },
-                "variant": {
-                    "$ref": "#/definitions/ProductVariant"
-                },
-                "variantID": {
-                    "type": "string"
-                }
-            }
-        },
-        "CheckoutRequest": {
-            "type": "object",
-            "required": [
-                "billing_address",
-                "customer_email",
-                "shipping_address"
-            ],
-            "properties": {
-                "billing_address": {
-                    "$ref": "#/definitions/AddressRequest"
-                },
-                "coupon_id": {
-                    "type": "string"
-                },
-                "customer_email": {
-                    "type": "string"
-                },
-                "shipping_address": {
-                    "$ref": "#/definitions/AddressRequest"
-                }
-            }
-        },
-        "CheckoutResponse": {
-            "type": "object",
-            "properties": {
-                "order_id": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "ConflictErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "ALREADY_EXISTS"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "A resource with this identifier or name already exists"
-                }
-            }
-        },
-        "CreateBrandRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "link": {
-                    "type": "string",
-                    "example": "https://apple.com"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "apple"
-                }
-            }
-        },
-        "CreateCategoryRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "parent_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "CreateProductRequest": {
-            "type": "object",
-            "required": [
-                "category_id",
-                "description",
-                "title"
-            ],
-            "properties": {
-                "brand_id": {
-                    "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
-                },
-                "category_id": {
-                    "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
-                },
-                "description": {
-                    "type": "string",
-                    "example": "Premium over-ear Bluetooth headphones with active noise cancellation."
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Wireless Noise-Canceling Headphones"
-                }
-            }
-        },
-        "CreateProductVariantRequest": {
-            "type": "object",
-            "required": [
-                "title"
-            ],
-            "properties": {
-                "attributes": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "crossed_out_price": {
-                    "type": "integer",
-                    "example": 3999
-                },
-                "currency": {
-                    "type": "string",
-                    "example": "USD"
-                },
-                "is_default": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "price": {
-                    "type": "integer",
-                    "example": 2999
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Black / XL"
-                }
-            }
-        },
-        "CreateTagRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "example": "black-friday"
-                }
-            }
-        },
-        "CreateVariantRequest": {
+        "variant.CreateVariantRequest": {
             "type": "object",
             "required": [
                 "title"
@@ -4435,554 +5227,7 @@ const docTemplate = `{
                 }
             }
         },
-        "DataResponse": {
-            "type": "object",
-            "properties": {
-                "data": {}
-            }
-        },
-        "ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "INTERNAL_ERROR"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "An unexpected internal server error occurred"
-                }
-            }
-        },
-        "FieldError": {
-            "type": "object",
-            "properties": {
-                "field": {
-                    "type": "string",
-                    "example": "name"
-                },
-                "message": {
-                    "type": "string",
-                    "example": "name is required and cannot be empty"
-                },
-                "tags": {
-                    "type": "string",
-                    "example": "string"
-                }
-            }
-        },
-        "InternalServerErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "INTERNAL_ERROR"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "An unexpected internal server error occurred"
-                }
-            }
-        },
-        "MeResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "MergeCartRequest": {
-            "type": "object",
-            "required": [
-                "session_id"
-            ],
-            "properties": {
-                "session_id": {
-                    "type": "string",
-                    "example": "sess_abc123xyz"
-                }
-            }
-        },
-        "MessageResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "Operation completed successfully"
-                }
-            }
-        },
-        "NotFoundErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "NOT_FOUND"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "The requested resource was not found"
-                }
-            }
-        },
-        "OrderItemResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "price_at_purchase": {
-                    "type": "integer"
-                },
-                "product_snapshot": {
-                    "type": "string"
-                },
-                "quantity": {
-                    "type": "integer"
-                },
-                "variant_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "OrderResponse": {
-            "type": "object",
-            "properties": {
-                "billing_address": {
-                    "$ref": "#/definitions/AddressResponse"
-                },
-                "coupon_id": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "currency": {
-                    "type": "string"
-                },
-                "customer_email": {
-                    "type": "string"
-                },
-                "customer_id": {
-                    "type": "string"
-                },
-                "discount_amount": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/OrderItemResponse"
-                    }
-                },
-                "shipping_address": {
-                    "$ref": "#/definitions/AddressResponse"
-                },
-                "status": {
-                    "$ref": "#/definitions/OrderStatus"
-                },
-                "total_amount": {
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "OrderStatus": {
-            "type": "string",
-            "enum": [
-                "pending",
-                "paid",
-                "processing",
-                "shipped",
-                "delivered",
-                "canceled",
-                "refunded"
-            ],
-            "x-enum-varnames": [
-                "OrderStatusPending",
-                "OrderStatusPaid",
-                "OrderStatusProcessing",
-                "OrderStatusShipped",
-                "OrderStatusDelivered",
-                "OrderStatusCanceled",
-                "OrderStatusRefunded"
-            ]
-        },
-        "Page": {
-            "type": "object",
-            "properties": {
-                "has_next": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "has_previous": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "page": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "page_size": {
-                    "type": "integer",
-                    "example": 10
-                },
-                "total_items": {
-                    "type": "integer",
-                    "example": 20
-                },
-                "total_pages": {
-                    "type": "integer",
-                    "example": 2
-                }
-            }
-        },
-        "PaginatedResponse": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "meta": {}
-            }
-        },
-        "Product": {
-            "type": "object",
-            "properties": {
-                "brandID": {
-                    "type": "string"
-                },
-                "categoryID": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "highlights": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "publicID": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/PublicationStatus"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "ProductBrandSummary": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "link": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "ProductCategorySummary": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "slug": {
-                    "type": "string"
-                }
-            }
-        },
-        "ProductDetailsResponse": {
-            "type": "object",
-            "properties": {
-                "brand": {
-                    "$ref": "#/definitions/ProductBrandSummary"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "highlights": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string",
-                    "example": "prod_abc123"
-                },
-                "media": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/ProductMediaResponse"
-                    }
-                },
-                "tags": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/ProductTagSummary"
-                    }
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Wireless Headphones"
-                },
-                "variants": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/ProductVariantResponse"
-                    }
-                }
-            }
-        },
-        "ProductListItemResponse": {
-            "type": "object",
-            "properties": {
-                "brand": {
-                    "$ref": "#/definitions/ProductBrandSummary"
-                },
-                "category": {
-                    "$ref": "#/definitions/ProductCategorySummary"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/PublicationStatus"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "ProductMediaResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "media_type": {
-                    "type": "string",
-                    "example": "image"
-                },
-                "object": {
-                    "$ref": "#/definitions/StorageObjectResponse"
-                },
-                "sort_order": {
-                    "type": "integer",
-                    "example": 0
-                }
-            }
-        },
-        "ProductTagSummary": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "ProductVariant": {
-            "type": "object",
-            "properties": {
-                "attributes": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "crossed_out_price": {
-                    "type": "integer"
-                },
-                "currency": {
-                    "type": "string"
-                },
-                "deleted_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_default": {
-                    "type": "boolean"
-                },
-                "price": {
-                    "type": "integer"
-                },
-                "product_id": {
-                    "type": "string"
-                },
-                "public_id": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "ProductVariantResponse": {
-            "type": "object",
-            "properties": {
-                "attributes": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "crossed_out_price": {
-                    "type": "integer"
-                },
-                "currency": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_default": {
-                    "type": "boolean"
-                },
-                "media": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/ProductMediaResponse"
-                    }
-                },
-                "price": {
-                    "type": "integer"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "PublicCategoryResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string",
-                    "example": "prod_cat_123"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Electronics"
-                }
-            }
-        },
-        "PublicationStatus": {
-            "type": "string",
-            "enum": [
-                "draft",
-                "published",
-                "archived"
-            ],
-            "x-enum-varnames": [
-                "PublicationStatusDraft",
-                "PublicationStatusPublished",
-                "PublicationStatusArchived"
-            ]
-        },
-        "PutProductCategoryRequest": {
-            "type": "object",
-            "required": [
-                "category_id"
-            ],
-            "properties": {
-                "category_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "PutProductTagsRequest": {
-            "type": "object",
-            "required": [
-                "tag_ids"
-            ],
-            "properties": {
-                "tag_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "RefreshTokenRequest": {
-            "type": "object",
-            "properties": {
-                "refresh_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "ReorderMediaRequest": {
+        "variant.ReorderMediaRequest": {
             "type": "object",
             "required": [
                 "ordered_media_ids"
@@ -4996,82 +5241,7 @@ const docTemplate = `{
                 }
             }
         },
-        "ResendChallengeRequest": {
-            "type": "object",
-            "required": [
-                "identifier"
-            ],
-            "properties": {
-                "identifier": {
-                    "type": "string"
-                }
-            }
-        },
-        "SetDefaultVariantRequest": {
-            "type": "object",
-            "required": [
-                "variant_id"
-            ],
-            "properties": {
-                "variant_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "Sort": {
-            "type": "object",
-            "properties": {
-                "field": {
-                    "type": "string",
-                    "example": "name"
-                },
-                "order": {
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/SortOrder"
-                        }
-                    ],
-                    "example": "asc"
-                }
-            }
-        },
-        "SortOrder": {
-            "type": "string",
-            "enum": [
-                "asc",
-                "desc"
-            ],
-            "x-enum-varnames": [
-                "SortAsc",
-                "SortDesc"
-            ]
-        },
-        "StartChallengeRequest": {
-            "type": "object",
-            "required": [
-                "identifier"
-            ],
-            "properties": {
-                "identifier": {
-                    "type": "string"
-                }
-            }
-        },
-        "StartChallengeResponse": {
-            "type": "object",
-            "properties": {
-                "duration": {
-                    "type": "integer"
-                },
-                "expires_at": {
-                    "type": "string"
-                },
-                "identifier": {
-                    "type": "string"
-                }
-            }
-        },
-        "StorageObjectResponse": {
+        "variant.StorageObjectResponse": {
             "type": "object",
             "properties": {
                 "bucket": {
@@ -5094,161 +5264,7 @@ const docTemplate = `{
                 }
             }
         },
-        "SuccessResponse": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "message": {
-                    "type": "string"
-                },
-                "meta": {}
-            }
-        },
-        "TagResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string",
-                    "example": "2026-06-30T15:47:19Z"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "black-friday"
-                },
-                "updated_at": {
-                    "type": "string",
-                    "example": "2026-06-30T15:47:19Z"
-                }
-            }
-        },
-        "UnauthorizedErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "UNAUTHORIZED"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "Authentication token is missing or expired"
-                }
-            }
-        },
-        "UnauthorizedResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "UNAUTHORIZED"
-                },
-                "message": {
-                    "type": "string",
-                    "example": "Authentication token is missing or invalid"
-                }
-            }
-        },
-        "UpdateBrandRequest": {
-            "type": "object",
-            "properties": {
-                "link": {
-                    "type": "string",
-                    "example": "https://apple.com"
-                },
-                "logo_object_id": {
-                    "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "apple"
-                }
-            }
-        },
-        "UpdateCategoryRequest": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "example": "Electronics"
-                },
-                "parent_id": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                }
-            }
-        },
-        "UpdateOrderStatusRequest": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "notes": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/OrderStatus"
-                }
-            }
-        },
-        "UpdateProductRequest": {
-            "type": "object",
-            "properties": {
-                "brand_id": {
-                    "type": "string"
-                },
-                "category_id": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "highlights": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "status": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "UpdateQuantityRequest": {
-            "type": "object",
-            "required": [
-                "quantity"
-            ],
-            "properties": {
-                "quantity": {
-                    "type": "integer",
-                    "example": 5
-                }
-            }
-        },
-        "UpdateTagRequest": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "example": "best-seller"
-                }
-            }
-        },
-        "UpdateVariantRequest": {
+        "variant.UpdateVariantRequest": {
             "type": "object",
             "properties": {
                 "attributes": {
@@ -5277,30 +5293,7 @@ const docTemplate = `{
                 }
             }
         },
-        "UserSession": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "ip_address": {
-                    "type": "string"
-                },
-                "last_active": {
-                    "type": "string"
-                },
-                "user_agent": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "VariantMediaResponse": {
+        "variant.VariantMediaResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -5312,7 +5305,7 @@ const docTemplate = `{
                     "example": "image"
                 },
                 "object": {
-                    "$ref": "#/definitions/StorageObjectResponse"
+                    "$ref": "#/definitions/variant.StorageObjectResponse"
                 },
                 "sort_order": {
                     "type": "integer",
@@ -5328,7 +5321,7 @@ const docTemplate = `{
                 }
             }
         },
-        "VariantResponse": {
+        "variant.VariantResponse": {
             "type": "object",
             "properties": {
                 "attributes": {
@@ -5370,21 +5363,6 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string",
                     "example": "2026-08-02T16:00:00Z"
-                }
-            }
-        },
-        "VerifyChallengeRequest": {
-            "type": "object",
-            "required": [
-                "code",
-                "identifier"
-            ],
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "identifier": {
-                    "type": "string"
                 }
             }
         }

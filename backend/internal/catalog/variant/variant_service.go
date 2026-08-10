@@ -3,6 +3,7 @@ package variant
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -168,6 +169,28 @@ func (vs *VariantService) GetVariantByID(
 				Wrap(err).
 				WithStack()
 		}
+	}
+
+	return variant, nil
+}
+
+func (vs *VariantService) GetVariantByPublicID(
+	ctx context.Context,
+	publicID string,
+) (*model.ProductVariant, error) {
+	var variant *model.ProductVariant
+
+	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		v, err := vs.vr.GetByPublicID(ctx, db, publicID)
+		if err != nil {
+			return err
+		}
+		variant = v
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("get variant by public id: %w", err)
 	}
 
 	return variant, nil

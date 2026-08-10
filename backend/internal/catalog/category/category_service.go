@@ -15,34 +15,29 @@ import (
 )
 
 type CategoryService struct {
-	crepository *CategoryRepository
-	qexecuter   database.Runner
+	repo *CategoryRepository
+	dr   database.Runner
 }
 
 func NewService(
-	qexecuter database.Runner,
-	r *CategoryRepository,
+	dr database.Runner,
+	repo *CategoryRepository,
 ) *CategoryService {
 	return &CategoryService{
-		crepository: r,
-		qexecuter:   qexecuter,
+		repo: repo,
+		dr:   dr,
 	}
 }
 
 type CreateCategoryInput struct {
-	Name     string     `json:"name"`
-	ParentID *uuid.UUID `json:"parent_id,omitempty"`
+	Name     string
+	ParentID *uuid.UUID
 }
 
 func (cs *CategoryService) CreateCategory(
 	ctx context.Context,
-	in *CreateCategoryInput,
+	in CreateCategoryInput,
 ) (*model.ProductCategory, error) {
-	if in == nil {
-		return nil, apierr.ErrBadRequest("Request body is missing").
-			WithCode(apierr.CodeInvalidPayload)
-	}
-
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
 		return nil, apierr.ErrBadRequest("Invalid category parameters").
@@ -60,33 +55,12 @@ func (cs *CategoryService) CreateCategory(
 		Name:     name,
 	}
 
-	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		return cs.crepository.Create(ctx, db, category)
+	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		return cs.repo.Create(ctx, db, category)
 	})
 
 	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(mappedErr, database.ErrConflict):
-			return nil, apierr.ErrConflict("A category with this name already exists").
-				WithCode(errcode.CodeCategoryAlreadyExists).
-				Wrap(err)
-
-		case errors.Is(mappedErr, database.ErrForeignKeyViolation), errors.Is(mappedErr, database.ErrNotFound):
-			return nil, apierr.ErrBadRequest("The specified parent_id category does not exist").
-				WithCode(errcode.CodeParentCategoryNotFound).
-				Wrap(err).
-				WithFields(api.FieldError{
-					Field:   "parent_id",
-					Message: "referenced category does not exist",
-				})
-
-		default:
-			return nil, apierr.ErrInternalError("An unexpected database error occurred").
-				WithCode(apierr.CodeInternalError).
-				Wrap(err).
-				WithStack()
-		}
+		return nil, cs.handleError(err, "An unexpected database error occurred")
 	}
 
 	return category, nil
@@ -97,26 +71,14 @@ func (cs *CategoryService) GetCategoryByID(
 	categoryID uuid.UUID,
 ) (*model.ProductCategory, error) {
 	var category *model.ProductCategory
-	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
-		category, repoErr = cs.crepository.GetByID(ctx, db, categoryID)
+		category, repoErr = cs.repo.GetByID(ctx, db, categoryID)
 		return repoErr
 	})
 
 	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(mappedErr, database.ErrNotFound):
-			return nil, apierr.ErrNotFound("Category not found").
-				WithCode(errcode.CodeCategoryNotFound).
-				Wrap(err)
-
-		default:
-			return nil, apierr.ErrInternalError("Failed to fetch category").
-				WithCode(apierr.CodeInternalError).
-				Wrap(err).
-				WithStack()
-		}
+		return nil, cs.handleError(err, "Failed to fetch category")
 	}
 
 	return category, nil
@@ -128,14 +90,14 @@ func (cs *CategoryService) isDescendant(
 	newParentID uuid.UUID,
 ) (bool, error) {
 	var isChild bool
-	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		currentParent := &newParentID
 		for currentParent != nil && *currentParent != uuid.Nil {
 			if *currentParent == categoryID {
 				isChild = true
 				return nil
 			}
-			parentCategory, err := cs.crepository.GetByID(ctx, db, *currentParent)
+			parentCategory, err := cs.repo.GetByID(ctx, db, *currentParent)
 			if err != nil {
 				mappedErr := database.MapError(err)
 				if errors.Is(mappedErr, database.ErrNotFound) {
@@ -158,16 +120,11 @@ type UpdateCategoryInput struct {
 func (cs *CategoryService) UpdateCategory(
 	ctx context.Context,
 	categoryID uuid.UUID,
-	input *UpdateCategoryInput,
+	input UpdateCategoryInput,
 ) error {
 	if categoryID == uuid.Nil {
 		return apierr.ErrBadRequest("Category ID is required").
 			WithCode(apierr.CodeInvalidInput)
-	}
-
-	if input == nil {
-		return apierr.ErrBadRequest("Update payload cannot be empty").
-			WithCode(apierr.CodeInvalidPayload)
 	}
 
 	fields := UpdateCategoryFields{}
@@ -218,38 +175,12 @@ func (cs *CategoryService) UpdateCategory(
 		fields.ParentID = input.ParentID
 	}
 
-	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		return cs.crepository.Update(ctx, db, categoryID, fields)
+	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		return cs.repo.Update(ctx, db, categoryID, fields)
 	})
 
 	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(mappedErr, database.ErrNotFound):
-			return apierr.ErrNotFound("Category not found").
-				WithCode(errcode.CodeCategoryNotFound).
-				Wrap(err)
-
-		case errors.Is(mappedErr, database.ErrConflict):
-			return apierr.ErrConflict("A category with this name already exists").
-				WithCode(errcode.CodeCategoryAlreadyExists).
-				Wrap(err)
-
-		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
-			return apierr.ErrBadRequest("The specified parent category does not exist").
-				WithCode(errcode.CodeParentCategoryNotFound).
-				Wrap(err).
-				WithFields(api.FieldError{
-					Field:   "parent_id",
-					Message: "referenced category does not exist",
-				})
-
-		default:
-			return apierr.ErrInternalError("Failed to update category").
-				WithCode(apierr.CodeInternalError).
-				Wrap(err).
-				WithStack()
-		}
+		return cs.handleError(err, "Failed to update category")
 	}
 
 	return nil
@@ -271,9 +202,9 @@ func (cs *CategoryService) ListCategories(
 
 	var result *pagination.PagedResult[model.ProductCategory]
 
-	err := cs.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
-		result, repoErr = cs.crepository.List(ctx, db, ListCategoryOptions{
+		result, repoErr = cs.repo.List(ctx, db, ListCategoryOptions{
 			ListQuery:      q,
 			IncludeDeleted: in.IncludeDeleted,
 		})
@@ -281,19 +212,7 @@ func (cs *CategoryService) ListCategories(
 	})
 
 	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(mappedErr, database.ErrInvalidInput):
-			return nil, apierr.ErrBadRequest("Invalid search or sort filter provided").
-				WithCode(apierr.CodeInvalidQueryParameter).
-				Wrap(err)
-
-		default:
-			return nil, apierr.ErrInternalError("Failed to list categories").
-				WithCode(apierr.CodeInternalError).
-				Wrap(err).
-				WithStack()
-		}
+		return nil, cs.handleError(err, "Failed to list categories")
 	}
 
 	return result, nil
@@ -313,8 +232,45 @@ func (cs *CategoryService) AdminList(
 	ctx context.Context,
 	q *pagination.ListQuery,
 ) (*pagination.PagedResult[model.ProductCategory], error) {
+	if q == nil {
+		q = &pagination.ListQuery{}
+	}
 	return cs.ListCategories(ctx, ListCategoriesInput{
 		Query:          q,
 		IncludeDeleted: true,
 	})
+}
+
+func (cs *CategoryService) handleError(err error, defaultMsg string) error {
+	if err == nil {
+		return nil
+	}
+	mappedErr := database.MapError(err)
+	switch {
+	case errors.Is(mappedErr, database.ErrNotFound):
+		return apierr.ErrNotFound("Category not found").
+			WithCode(errcode.CodeCategoryNotFound).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrConflict):
+		return apierr.ErrConflict("Category already exists").
+			WithCode(errcode.CodeCategoryAlreadyExists).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+		return apierr.ErrBadRequest("The specified parent category does not exist").
+			WithCode(errcode.CodeParentCategoryNotFound).
+			Wrap(err).
+			WithFields(api.FieldError{
+				Field:   "parent_id",
+				Message: "referenced category does not exist",
+			})
+	case errors.Is(mappedErr, database.ErrInvalidInput):
+		return apierr.ErrBadRequest("Invalid input provided").
+			WithCode(apierr.CodeInvalidInput).
+			Wrap(err)
+	default:
+		return apierr.ErrInternalError(defaultMsg).
+			WithCode(apierr.CodeInternalError).
+			Wrap(err).
+			WithStack()
+	}
 }

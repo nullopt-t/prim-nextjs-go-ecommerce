@@ -2,7 +2,6 @@ package category
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -12,11 +11,6 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
-
-type Filter struct {
-	ID   *uuid.UUID
-	Name *string
-}
 
 type CategoryRepository struct {
 }
@@ -57,46 +51,23 @@ func (cr *CategoryRepository) Create(
 
 	return nil
 }
+
 func (cr *CategoryRepository) get(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	filter Filter,
+	whereClause string,
+	args ...any,
 ) (*model.ProductCategory, error) {
-	if filter.ID == nil && filter.Name == nil {
-		return nil, errors.New("get category: at least one filter parameter is required")
-	}
-
-	query := `
-		SELECT
-			id,
-			public_id,
-			parent_id,
-			name,
-			created_at,
-			updated_at
-		FROM
-			product_categories
-		WHERE
-			deleted_at IS NULL
-	`
-
-	args := make([]any, 0, 2)
-	argCount := 1
-
-	if filter.ID != nil {
-		query += fmt.Sprintf(" AND id = $%d", argCount)
-		args = append(args, *filter.ID)
-		argCount++
-	}
-
-	if filter.Name != nil {
-		query += fmt.Sprintf(" AND name = $%d", argCount)
-		args = append(args, *filter.Name)
-	}
+	query := fmt.Sprintf(`
+		SELECT id, public_id, parent_id, name, created_at, updated_at
+		FROM product_categories
+		WHERE %s
+	`, whereClause)
 
 	category := new(model.ProductCategory)
 	err := qe.QueryRow(ctx, query, args...).Scan(
 		&category.ID,
+		&category.PublicID,
 		&category.ParentID,
 		&category.Name,
 		&category.CreatedAt,
@@ -105,7 +76,6 @@ func (cr *CategoryRepository) get(
 	if err != nil {
 		return nil, fmt.Errorf("get product category: %w", err)
 	}
-
 	return category, nil
 }
 
@@ -114,7 +84,7 @@ func (cr *CategoryRepository) GetByID(
 	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (*model.ProductCategory, error) {
-	return cr.get(ctx, qe, Filter{ID: &id})
+	return cr.get(ctx, qe, "deleted_at IS NULL AND id = $1", id)
 }
 
 func (cr *CategoryRepository) GetByName(
@@ -122,7 +92,7 @@ func (cr *CategoryRepository) GetByName(
 	qe database.QueryExecutor,
 	name string,
 ) (*model.ProductCategory, error) {
-	return cr.get(ctx, qe, Filter{Name: &name})
+	return cr.get(ctx, qe, "deleted_at IS NULL AND name = $1", name)
 }
 
 type UpdateCategoryFields struct {
@@ -233,10 +203,10 @@ func (cr *CategoryRepository) List(
 	qe database.QueryExecutor,
 	opts ListCategoryOptions,
 ) (*pagination.PagedResult[model.ProductCategory], error) {
-	q := opts.ListQuery
-	if q == nil {
-		q = &pagination.ListQuery{}
+	if opts.ListQuery == nil {
+		panic("list categories: ListQuery is required and cannot be nil")
 	}
+	q := opts.ListQuery
 	// Guarantee sanitized Page, PageSize, Offset, and Sort
 	q.Process(pagination.QueryOptions{})
 

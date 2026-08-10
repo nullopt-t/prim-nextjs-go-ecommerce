@@ -14,21 +14,15 @@ import (
 )
 
 type CategoryHandler struct {
-	cservice *CategoryService
+	categoryService *CategoryService
 }
 
 func NewHandler(
 	s *CategoryService,
 ) *CategoryHandler {
 	return &CategoryHandler{
-		cservice: s,
+		categoryService: s,
 	}
-}
-
-type PublicCategoryListResponse struct {
-	ID   uuid.UUID `json:"id,omitempty" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
-	Name string    `json:"name,omitempty" example:"Electronic"`
-	Slug string    `json:"slug,omitempty" example:"electronic"`
 }
 
 type PublicCategoryResponse struct {
@@ -45,14 +39,14 @@ type AdminCategoryResponse struct {
 	DeletedAt *string    `json:"deleted_at,omitempty" example:"2026-07-01T10:00:00Z"`
 }
 
-func ToPublicCategoryResponse(c *model.ProductCategory) PublicCategoryResponse {
+func toPublicCategoryResponse(c *model.ProductCategory) PublicCategoryResponse {
 	return PublicCategoryResponse{
 		ID:   c.PublicID,
 		Name: c.Name,
 	}
 }
 
-func ToAdminCategoryResponse(c *model.ProductCategory) AdminCategoryResponse {
+func toAdminCategoryResponse(c *model.ProductCategory) AdminCategoryResponse {
 	res := AdminCategoryResponse{
 		ID:        c.ID,
 		Name:      c.Name,
@@ -62,6 +56,22 @@ func ToAdminCategoryResponse(c *model.ProductCategory) AdminCategoryResponse {
 	if c.DeletedAt != nil {
 		deletedStr := c.DeletedAt.Format(time.RFC3339)
 		res.DeletedAt = &deletedStr
+	}
+	return res
+}
+
+func toPublicCategoryResponseList(categories []*model.ProductCategory) []PublicCategoryResponse {
+	res := make([]PublicCategoryResponse, 0, len(categories))
+	for _, cat := range categories {
+		res = append(res, toPublicCategoryResponse(cat))
+	}
+	return res
+}
+
+func toAdminCategoryResponseList(categories []*model.ProductCategory) []AdminCategoryResponse {
+	res := make([]AdminCategoryResponse, 0, len(categories))
+	for _, cat := range categories {
+		res = append(res, toAdminCategoryResponse(cat))
 	}
 	return res
 }
@@ -84,20 +94,20 @@ type CreateCategoryRequest struct {
 //	@Failure		500		{object}	api.InternalServerErrorResponse					"Internal server error"
 //	@Success		201		{object}	api.DataResponse{data=AdminCategoryResponse}	"Created category details"
 //	@Router			/admin/categories [post]
-func (ch *CategoryHandler) CreateCategory(c *gin.Context) {
+func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 	var body CreateCategoryRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
-	in := &CreateCategoryInput{
+	in := CreateCategoryInput{
 		Name:     body.Name,
 		ParentID: body.ParentID,
 	}
 
 	ctx := c.Request.Context()
-	category, err := ch.cservice.CreateCategory(ctx, in)
+	category, err := h.categoryService.CreateCategory(ctx, in)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -106,7 +116,7 @@ func (ch *CategoryHandler) CreateCategory(c *gin.Context) {
 	c.JSON(
 		http.StatusCreated,
 		api.DataResponse{
-			Data: ToAdminCategoryResponse(category),
+			Data: toAdminCategoryResponse(category),
 		},
 	)
 }
@@ -124,7 +134,7 @@ func (ch *CategoryHandler) CreateCategory(c *gin.Context) {
 //	@Failure		500	{object}	api.InternalServerErrorResponse					"Internal server error"
 //	@Success		200	{object}	api.DataResponse{data=AdminCategoryResponse}	"Category details"
 //	@Router			/admin/categories/{id} [get]
-func (ch *CategoryHandler) GetCategoryByID(c *gin.Context) {
+func (h *CategoryHandler) GetCategoryByID(c *gin.Context) {
 	categoryID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(apierr.ErrInvalidUUID().
@@ -136,7 +146,7 @@ func (ch *CategoryHandler) GetCategoryByID(c *gin.Context) {
 		return
 	}
 
-	category, err := ch.cservice.GetCategoryByID(
+	category, err := h.categoryService.GetCategoryByID(
 		c.Request.Context(),
 		categoryID,
 	)
@@ -148,7 +158,7 @@ func (ch *CategoryHandler) GetCategoryByID(c *gin.Context) {
 	c.JSON(
 		http.StatusOK,
 		api.DataResponse{
-			Data: ToAdminCategoryResponse(category),
+			Data: toAdminCategoryResponse(category),
 		},
 	)
 }
@@ -165,7 +175,7 @@ func (ch *CategoryHandler) GetCategoryByID(c *gin.Context) {
 //	@Failure		500	{object}	api.InternalServerErrorResponse												"Internal server error"
 //	@Success		200	{object}	api.PaginatedResponse{data=[]PublicCategoryResponse,meta=pagination.Page}	"Paginated list of active categories"
 //	@Router			/categories [get]
-func (ch *CategoryHandler) ListCategories(c *gin.Context) {
+func (h *CategoryHandler) ListCategories(c *gin.Context) {
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
@@ -178,21 +188,16 @@ func (ch *CategoryHandler) ListCategories(c *gin.Context) {
 		MaxPageSize:     100,
 	})
 
-	result, err := ch.cservice.List(c.Request.Context(), q)
+	result, err := h.categoryService.List(c.Request.Context(), q)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	res := make([]PublicCategoryResponse, 0, len(result.Items))
-	for _, cat := range result.Items {
-		res = append(res, ToPublicCategoryResponse(cat))
-	}
-
 	c.JSON(
 		http.StatusOK,
 		api.PaginatedResponse{
-			Data: res,
+			Data: toPublicCategoryResponseList(result.Items),
 			Meta: result.Page,
 		},
 	)
@@ -210,7 +215,7 @@ func (ch *CategoryHandler) ListCategories(c *gin.Context) {
 //	@Failure		500	{object}	api.InternalServerErrorResponse												"Internal server error"
 //	@Success		200	{object}	api.PaginatedResponse{data=[]AdminCategoryResponse,meta=pagination.Page}	"Paginated list of all categories including deleted"
 //	@Router			/admin/categories [get]
-func (ch *CategoryHandler) ListAdminCategories(c *gin.Context) {
+func (h *CategoryHandler) ListAdminCategories(c *gin.Context) {
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		validation.ValidationError(c, err)
@@ -223,21 +228,16 @@ func (ch *CategoryHandler) ListAdminCategories(c *gin.Context) {
 		MaxPageSize:     100,
 	})
 
-	result, err := ch.cservice.AdminList(c.Request.Context(), q)
+	result, err := h.categoryService.AdminList(c.Request.Context(), q)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	res := make([]AdminCategoryResponse, 0, len(result.Items))
-	for _, cat := range result.Items {
-		res = append(res, ToAdminCategoryResponse(cat))
-	}
-
 	c.JSON(
 		http.StatusOK,
 		api.PaginatedResponse{
-			Data: res,
+			Data: toAdminCategoryResponseList(result.Items),
 			Meta: result.Page,
 		},
 	)
@@ -263,7 +263,7 @@ type UpdateCategoryRequest struct {
 //	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
 //	@Success		200		{object}	api.MessageResponse				"Update confirmation message"
 //	@Router			/admin/categories/{id} [patch]
-func (ch *CategoryHandler) UpdateCategory(c *gin.Context) {
+func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 	categoryID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(apierr.ErrInvalidUUID().
@@ -281,25 +281,25 @@ func (ch *CategoryHandler) UpdateCategory(c *gin.Context) {
 		return
 	}
 
-	in := &UpdateCategoryInput{
+	in := UpdateCategoryInput{
 		Name:     body.Name,
 		ParentID: body.ParentID,
 	}
 
 	ctx := c.Request.Context()
-	if err := ch.cservice.UpdateCategory(ctx, categoryID, in); err != nil {
+	if err := h.categoryService.UpdateCategory(ctx, categoryID, in); err != nil {
 		_ = c.Error(err)
 		return
 	}
 
 	// Retrieve fresh state from DB to guarantee accurate updated_at and sanitized values
-	updatedCategory, err := ch.cservice.GetCategoryByID(ctx, categoryID)
+	updatedCategory, err := h.categoryService.GetCategoryByID(ctx, categoryID)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
 	c.JSON(http.StatusOK, api.DataResponse{
-		Data: ToAdminCategoryResponse(updatedCategory),
+		Data: toAdminCategoryResponse(updatedCategory),
 	})
 }

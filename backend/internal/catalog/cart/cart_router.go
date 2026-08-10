@@ -27,6 +27,5 @@ func (r *CartRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		cartGroup.POST("/items", r.handler.AddItem)
 		cartGroup.PATCH("/items/:id", r.handler.UpdateItemQuantity)
 		cartGroup.DELETE("/items/:id", r.handler.RemoveItem)
-		cartGroup.POST("/merge", r.handler.MergeGuestCart)
 	}
 }

@@ -241,7 +241,7 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 		tagRes := make([]ProductTagSummary, 0, len(details.Tags))
 		for _, t := range details.Tags {
 			tagRes = append(tagRes, ProductTagSummary{
-				ID:   t.PublicID,
+				ID:   t.PublicID.String(),
 				Name: t.Name,
 			})
 		}
@@ -548,7 +548,7 @@ func (h *ProductHandler) GetProductByPublicID(c *gin.Context) {
 		tagRes := make([]ProductTagSummary, 0, len(details.Tags))
 		for _, t := range details.Tags {
 			tagRes = append(tagRes, ProductTagSummary{
-				ID:   t.PublicID,
+				ID:   t.PublicID.String(),
 				Name: t.Name,
 			})
 		}
