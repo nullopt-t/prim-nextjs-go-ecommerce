@@ -193,6 +193,7 @@ CREATE TABLE IF NOT EXISTS products (
     description    text NOT NULL,
     highlights     jsonb NULL,
     status         publication_status NOT NULL,
+    has_variant_list boolean NOT NULL DEFAULT false,
     created_at     timestamptz NOT NULL DEFAULT now(),
     updated_at     timestamptz NOT NULL DEFAULT now(),
     deleted_at     timestamptz NULL,

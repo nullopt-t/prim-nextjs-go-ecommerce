@@ -64,18 +64,20 @@ func NewService(
 type CreateProductInput struct {
 	BrandID     *uuid.UUID
 	CategoryID  uuid.UUID
-	Title       string
-	Description string
-	Highlights  []string
+	Title          string
+	Description    string
+	Highlights     []string
+	HasVariantList bool
 }
 
 type UpdateProductInput struct {
 	BrandID     *uuid.UUID
 	CategoryID  *uuid.UUID
-	Title       *string
-	Description *string
-	Highlights  []string
-	Status      *model.PublicationStatus
+	Title          *string
+	Description    *string
+	Highlights     []string
+	Status         *model.PublicationStatus
+	HasVariantList *bool
 }
 
 type CreateProductVariantInput struct {
@@ -105,9 +107,10 @@ func (s *ProductService) CreateProductAsDraft(
 		BrandID:     input.BrandID,
 		CategoryID:  input.CategoryID,
 		PublicID:    uuid.NewString(),
-		Title:       input.Title,
-		Description: input.Description,
-		Status:      model.PublicationStatusDraft,
+		Title:          input.Title,
+		Description:    input.Description,
+		Status:         model.PublicationStatusDraft,
+		HasVariantList: input.HasVariantList,
 	}
 
 	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
@@ -170,6 +173,10 @@ func (s *ProductService) UpdateProduct(
 
 		if input.Status != nil {
 			product.Status = *input.Status
+		}
+
+		if input.HasVariantList != nil {
+			product.HasVariantList = *input.HasVariantList
 		}
 
 		return s.productRepo.Update(ctx, tx, product)

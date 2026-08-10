@@ -50,13 +50,21 @@ type VariantResponse struct {
 	Currency        *string        `json:"currency,omitempty" example:"USD"`
 	Attributes      map[string]any `json:"attributes"`
 	IsDefault       bool           `json:"is_default" example:"false"`
-	CreatedAt       string         `json:"created_at" example:"2026-08-02T16:00:00Z"`
-	UpdatedAt       string         `json:"updated_at" example:"2026-08-02T16:00:00Z"`
 }
 
 type AdminVariantResponse struct {
-	VariantResponse
-	DeletedAt *string `json:"deleted_at,omitempty" example:"2026-08-02T16:15:00Z"`
+	ID              string         `json:"id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
+	PublicID        string         `json:"public_id" example:"prod_var_123"`
+	ProductID       string         `json:"product_id" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
+	Title           string         `json:"title" example:"Red / XL"`
+	Price           *int64         `json:"price,omitempty" example:"2999"`
+	CrossedOutPrice *int64         `json:"crossed_out_price,omitempty" example:"3999"`
+	Currency        *string        `json:"currency,omitempty" example:"USD"`
+	Attributes      map[string]any `json:"attributes"`
+	IsDefault       bool           `json:"is_default" example:"false"`
+	CreatedAt       string         `json:"created_at" example:"2026-08-02T16:00:00Z"`
+	UpdatedAt       string         `json:"updated_at" example:"2026-08-02T16:00:00Z"`
+	DeletedAt       *string        `json:"deleted_at,omitempty" example:"2026-08-02T16:15:00Z"`
 }
 
 type AttachMediaRequest struct {
@@ -94,7 +102,26 @@ func mapVariantResponse(v *model.ProductVariant) VariantResponse {
 	}
 
 	return VariantResponse{
+		ID:              v.PublicID,
+		ProductID:       v.ProductID.String(),
+		Title:           v.Title,
+		Price:           v.Price,
+		CrossedOutPrice: v.CrossedOutPrice,
+		Currency:        v.Currency,
+		Attributes:      attrs,
+		IsDefault:       v.IsDefault,
+	}
+}
+
+func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
+	attrs := v.Attributes
+	if attrs == nil {
+		attrs = make(map[string]any)
+	}
+
+	res := AdminVariantResponse{
 		ID:              v.ID.String(),
+		PublicID:        v.PublicID,
 		ProductID:       v.ProductID.String(),
 		Title:           v.Title,
 		Price:           v.Price,
@@ -104,12 +131,6 @@ func mapVariantResponse(v *model.ProductVariant) VariantResponse {
 		IsDefault:       v.IsDefault,
 		CreatedAt:       v.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:       v.UpdatedAt.Format(time.RFC3339),
-	}
-}
-
-func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
-	res := AdminVariantResponse{
-		VariantResponse: mapVariantResponse(v),
 	}
 	if v.DeletedAt != nil {
 		del := v.DeletedAt.Format(time.RFC3339)
