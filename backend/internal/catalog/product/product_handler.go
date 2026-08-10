@@ -50,7 +50,6 @@ type ProductBrandSummary struct {
 type ProductCategorySummary struct {
 	ID   string  `json:"id"`
 	Name string  `json:"name"`
-	Slug *string `json:"slug,omitempty"`
 }
 
 type ProductTagSummary struct {
@@ -80,6 +79,7 @@ type ProductResponse struct {
 type ProductDetailsResponse struct {
 	ProductResponse
 	Brand    *ProductBrandSummary     `json:"brand,omitempty"`
+	Category *ProductCategorySummary  `json:"category,omitempty"`
 	Media    []ProductMediaResponse   `json:"media"`
 	Variants []ProductVariantResponse `json:"variants"`
 	Tags     []ProductTagSummary      `json:"tags"`
@@ -210,7 +210,6 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 		res.Category = &ProductCategorySummary{
 			ID:   details.Category.PublicID,
 			Name: details.Category.Name,
-			Slug: &details.Category.Name,
 		}
 	}
 
@@ -513,6 +512,13 @@ func (h *ProductHandler) GetProductByPublicID(c *gin.Context) {
 			ID:   details.Brand.PublicID,
 			Name: details.Brand.Name,
 			Link: details.Brand.Link,
+		}
+	}
+
+	if details.Category != nil {
+		res.Category = &ProductCategorySummary{
+			ID:   details.Category.PublicID,
+			Name: details.Category.Name,
 		}
 	}
 
