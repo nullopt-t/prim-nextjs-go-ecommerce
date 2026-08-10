@@ -32,10 +32,8 @@ type UpdateTagRequest struct {
 }
 
 type TagResponse struct {
-	ID        string `json:"id" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
-	Name      string `json:"name" example:"black-friday"`
-	CreatedAt string `json:"created_at" example:"2026-06-30T15:47:19Z"`
-	UpdatedAt string `json:"updated_at" example:"2026-06-30T15:47:19Z"`
+	ID   string `json:"id" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	Name string `json:"name" example:"black-friday"`
 }
 
 type AdminTagResponse struct {
@@ -49,10 +47,8 @@ type AdminTagResponse struct {
 
 func toPublicTagResponse(t *model.ProductTag) TagResponse {
 	return TagResponse{
-		ID:        t.PublicID.String(),
-		Name:      t.Name,
-		CreatedAt: t.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: t.UpdatedAt.Format(time.RFC3339),
+		ID:   t.PublicID.String(),
+		Name: t.Name,
 	}
 }
 
