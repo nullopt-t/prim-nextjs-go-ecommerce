@@ -1,0 +1,9 @@
+{
+	"reviews": {
+		"title": "Your Reviews",
+		"description": "Reviews you've written about your purchases.",
+		"commented": "Commented",
+		"editReview": "Edit Review",
+		"delete": "Delete"
+	}
+}
