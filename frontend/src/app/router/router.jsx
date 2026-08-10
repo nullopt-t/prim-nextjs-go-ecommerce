@@ -5,16 +5,10 @@ import { Home } from "@/features/home";
 import { About } from "@/features/about";
 import { Wishlist } from "@/features/wishlist";
 import { Settings } from "@/features/settings";
+import { Reviews } from "@/features/reviews";
 import { Auth, Login, Verify } from "@/features/auth";
 import { NotFound } from "@/app/pages/notFound";
-import {
-	User,
-	Payment,
-	Overview,
-	Orders,
-	Reviews,
-	Address,
-} from "@/features/user";
+import { User, Payment, Overview, Orders, Address } from "@/features/user";
 
 function Router() {
 	return (

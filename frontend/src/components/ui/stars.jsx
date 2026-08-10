@@ -1,6 +1,6 @@
 import { Star } from "lucide-react";
 
-export default function Stars({ starsNum = 0 }) {
+export function Stars({ starsNum = 0 }) {
 	return (
 		<span className="flex">
 			{Array.from({ length: 5 }).map((_, index) => {

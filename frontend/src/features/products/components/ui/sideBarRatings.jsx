@@ -1,4 +1,4 @@
-import Stars from "@/components/ui/stars";
+import { Stars } from "@/components/ui/stars";
 import SideBarTitle from "@/features/products/components/ui/sideBarTitle";
 
 function SideBarRatings() {
