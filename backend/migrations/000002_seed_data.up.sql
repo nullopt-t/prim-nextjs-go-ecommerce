@@ -38,11 +38,11 @@ INSERT INTO product_tags (id, public_id, name, created_at, updated_at) VALUES
 ON CONFLICT DO NOTHING;
 
 -- Products
-INSERT INTO products (id, brand_id, category_id, public_id, title, description, highlights, status, has_variant_list, created_at, updated_at) VALUES
-('60000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000005', '60000000-0000-0000-0000-000000000002', 'MacBook Pro 16"', 'Supercharged by M3 Pro or M3 Max.', '["16-inch Liquid Retina XDR display", "Up to 22 hours battery life"]'::jsonb, 'published', true, now(), now()),
-('60000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000003', '40000000-0000-0000-0000-000000000007', '60000000-0000-0000-0000-000000000004', 'Galaxy S24 Ultra', 'Welcome to the era of mobile AI.', '["Titanium exterior", "Built-in S Pen", "200MP camera"]'::jsonb, 'published', true, now(), now()),
-('60000000-0000-0000-0000-000000000005', '30000000-0000-0000-0000-000000000005', '40000000-0000-0000-0000-000000000009', '60000000-0000-0000-0000-000000000006', 'Nike Air Force 1', 'The radiance lives on in the Nike Air Force 1.', '["Classic style", "Crisp leather", "All-day comfort"]'::jsonb, 'published', true, now(), now()),
-('60000000-0000-0000-0000-000000000007', '30000000-0000-0000-0000-000000000007', '40000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000008', 'Sony WH-1000XM5', 'Industry-leading noise canceling headphones.', '["30-hour battery life", "Multipoint connection"]'::jsonb, 'published', false, now(), now())
+INSERT INTO products (id, brand_id, category_id, public_id, title, description, highlights, status, product_type, created_at, updated_at) VALUES
+('60000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000005', '60000000-0000-0000-0000-000000000002', 'MacBook Pro 16"', 'Supercharged by M3 Pro or M3 Max.', '["16-inch Liquid Retina XDR display", "Up to 22 hours battery life"]'::jsonb, 'published', 'variable', now(), now()),
+('60000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000003', '40000000-0000-0000-0000-000000000007', '60000000-0000-0000-0000-000000000004', 'Galaxy S24 Ultra', 'Welcome to the era of mobile AI.', '["Titanium exterior", "Built-in S Pen", "200MP camera"]'::jsonb, 'published', 'variable', now(), now()),
+('60000000-0000-0000-0000-000000000005', '30000000-0000-0000-0000-000000000005', '40000000-0000-0000-0000-000000000013', '60000000-0000-0000-0000-000000000006', 'Nike Air Force 1', 'Radiance lives on in the Nike Air Force 1.', '["Classic style", "Durable leather", "Air cushioning"]'::jsonb, 'published', 'variable', now(), now()),
+('60000000-0000-0000-0000-000000000007', '30000000-0000-0000-0000-000000000007', '40000000-0000-0000-0000-000000000015', '60000000-0000-0000-0000-000000000008', 'Sony WH-1000XM5', 'Industry-leading noise canceling headphones.', '["Auto NC Optimizer", "Up to 30-hour battery"]'::jsonb, 'published', 'simple', now(), now())
 ON CONFLICT DO NOTHING;
 
 -- Variants
