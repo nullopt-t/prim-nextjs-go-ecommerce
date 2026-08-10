@@ -346,11 +346,8 @@ type ProductListItemResponse struct {
 	ID          string                  `json:"id"`
 	Title       string                  `json:"title"`
 	Description string                  `json:"description"`
-	Status      model.PublicationStatus `json:"status"`
 	Brand       *ProductBrandSummary    `json:"brand,omitempty"`
 	Category    *ProductCategorySummary `json:"category,omitempty"`
-	CreatedAt   string                  `json:"created_at"`
-	UpdatedAt   string                  `json:"updated_at"`
 }
 
 func mapProductListItemResponse(item *PublicProductListReadModel) ProductListItemResponse {
@@ -358,9 +355,6 @@ func mapProductListItemResponse(item *PublicProductListReadModel) ProductListIte
 		ID:          item.PublicID,
 		Title:       item.Title,
 		Description: item.Description,
-		Status:      item.Status,
-		CreatedAt:   item.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:   item.UpdatedAt.Format(time.RFC3339),
 	}
 
 	if item.Brand != nil {
