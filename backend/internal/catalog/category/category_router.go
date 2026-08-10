@@ -32,7 +32,7 @@ func (cr *CategoryRouter) MapRoutes(
 
 	admin := vgroup.Group("/admin/categories")
 	admin.Use(
-		middleware.Authenticate(cr.secrets),
+		middleware.Authenticate(cr.secrets, true),
 	)
 	{
 		admin.GET("", cr.chandler.ListAdminCategories)
