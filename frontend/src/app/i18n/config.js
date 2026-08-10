@@ -11,6 +11,7 @@ import cartEn from "./locales/en/cart.json";
 import notFoundEn from "./locales/en/notFound.json";
 import wishlistEn from "./locales/en/wishlist.json";
 import settingsEn from "./locales/en/settings.json";
+import reviewsEn from "./locales/en/reviews.json";
 
 // Arabic
 import commonAr from "./locales/ar/common.json";
@@ -21,6 +22,7 @@ import cartAr from "./locales/ar/cart.json";
 import notFoundAr from "./locales/ar/notFound.json";
 import wishlistAr from "./locales/ar/wishlist.json";
 import settingsAr from "./locales/ar/settings.json";
+import reviewsAr from "./locales/ar/reviews.json";
 
 i18n.use(LanguageDetector)
 	.use(initReactI18next)
@@ -35,6 +37,7 @@ i18n.use(LanguageDetector)
 				notFound: notFoundEn,
 				wishlist: wishlistEn,
 				settings: settingsEn,
+				reviews: reviewsEn,
 			},
 			ar: {
 				common: commonAr,
@@ -45,6 +48,7 @@ i18n.use(LanguageDetector)
 				notFound: notFoundAr,
 				wishlist: wishlistAr,
 				settings: settingsAr,
+				reviews: reviewsAr,
 			},
 		},
 
@@ -64,6 +68,7 @@ i18n.use(LanguageDetector)
 			"notFound",
 			"wishlist",
 			"settings",
+			"reviews",
 		],
 
 		// Language detection settings
