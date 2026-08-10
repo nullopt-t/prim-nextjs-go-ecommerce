@@ -10,3 +10,4 @@ export * from "@/components/ui/input";
 export * from "@/components/ui/productsGrid";
 export * from "@/components/ui/text";
 export * from "@/components/ui/Toggle";
+export * from "@/components/ui/stars";
