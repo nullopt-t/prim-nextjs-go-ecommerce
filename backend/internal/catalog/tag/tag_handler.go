@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
@@ -38,8 +39,36 @@ type TagResponse struct {
 }
 
 type AdminTagResponse struct {
-	TagResponse
+	ID        string  `json:"id" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	PublicID  string  `json:"public_id" example:"a43ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	Name      string  `json:"name" example:"black-friday"`
+	CreatedAt string  `json:"created_at" example:"2026-06-30T15:47:19Z"`
+	UpdatedAt string  `json:"updated_at" example:"2026-06-30T15:47:19Z"`
 	DeletedAt *string `json:"deleted_at,omitempty" example:"2026-06-30T15:47:19Z"`
+}
+
+func toPublicTagResponse(t *model.ProductTag) TagResponse {
+	return TagResponse{
+		ID:        t.PublicID.String(),
+		Name:      t.Name,
+		CreatedAt: t.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: t.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+func toAdminTagResponse(t *model.ProductTag) AdminTagResponse {
+	res := AdminTagResponse{
+		ID:        t.ID.String(),
+		PublicID:  t.PublicID.String(),
+		Name:      t.Name,
+		CreatedAt: t.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: t.UpdatedAt.Format(time.RFC3339),
+	}
+	if t.DeletedAt != nil {
+		deletedStr := t.DeletedAt.Format(time.RFC3339)
+		res.DeletedAt = &deletedStr
+	}
+	return res
 }
 
 // CreateTag godoc
@@ -53,7 +82,7 @@ type AdminTagResponse struct {
 //	@Failure		400		{object}	api.BadRequestErrorResponse			"Validation error or missing tag name"
 //	@Failure		409		{object}	api.ConflictErrorResponse			"A tag with this name already exists"
 //	@Failure		500		{object}	api.InternalServerErrorResponse		"Internal server error"
-//	@Success		201		{object}	api.DataResponse{data=TagResponse}	"Created tag details"
+//	@Success		201		{object}	api.DataResponse{data=AdminTagResponse}	"Created tag details"
 //	@Router			/admin/tags [post]
 func (th *TagHandler) CreateTag(c *gin.Context) {
 	var body CreateTagRequest
@@ -62,7 +91,7 @@ func (th *TagHandler) CreateTag(c *gin.Context) {
 		return
 	}
 
-	in := &CreateTagInput{
+	in := CreateTagInput{
 		Name: body.Name,
 	}
 
@@ -75,12 +104,7 @@ func (th *TagHandler) CreateTag(c *gin.Context) {
 	c.JSON(
 		http.StatusCreated,
 		api.DataResponse{
-			Data: TagResponse{
-				ID:        tag.ID.String(),
-				Name:      tag.Name,
-				CreatedAt: tag.CreatedAt.Format(time.RFC3339),
-				UpdatedAt: tag.UpdatedAt.Format(time.RFC3339),
-			},
+			Data: toAdminTagResponse(tag),
 		},
 	)
 }
@@ -96,7 +120,7 @@ func (th *TagHandler) CreateTag(c *gin.Context) {
 //	@Failure		400	{object}	api.BadRequestErrorResponse			"Invalid UUID format"
 //	@Failure		404	{object}	api.NotFoundErrorResponse			"Tag not found"
 //	@Failure		500	{object}	api.InternalServerErrorResponse		"Internal server error"
-//	@Success		200	{object}	api.DataResponse{data=TagResponse}	"Tag details"
+//	@Success		200	{object}	api.DataResponse{data=AdminTagResponse}	"Tag details"
 //	@Router			/admin/tags/{id} [get]
 func (th *TagHandler) GetTagByID(c *gin.Context) {
 	tagID, err := uuid.Parse(c.Param("id"))
@@ -121,12 +145,7 @@ func (th *TagHandler) GetTagByID(c *gin.Context) {
 	c.JSON(
 		http.StatusOK,
 		api.DataResponse{
-			Data: TagResponse{
-				ID:        tag.ID.String(),
-				Name:      tag.Name,
-				CreatedAt: tag.CreatedAt.Format(time.RFC3339),
-				UpdatedAt: tag.UpdatedAt.Format(time.RFC3339),
-			},
+			Data: toAdminTagResponse(tag),
 		},
 	)
 }
@@ -166,10 +185,10 @@ func (th *TagHandler) UpdateTagByID(c *gin.Context) {
 		return
 	}
 
-	err = th.tservice.UpdateTagByID(
+	err = th.tservice.UpdateTag(
 		c.Request.Context(),
 		tagID,
-		&UpdateTagInput{
+		UpdateTagInput{
 			Name: body.Name,
 		},
 	)
@@ -231,8 +250,8 @@ func (th *TagHandler) DeleteTagByID(c *gin.Context) {
 //	@Success		200	{object}	api.PaginatedResponse{data=[]TagResponse,meta=pagination.Page}	"Paginated list of active tags"
 //	@Router			/tags [get]
 func (th *TagHandler) ListTags(c *gin.Context) {
-	q := &pagination.ListQuery{}
-	if err := c.ShouldBindQuery(q); err != nil {
+	var q pagination.ListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
@@ -251,14 +270,9 @@ func (th *TagHandler) ListTags(c *gin.Context) {
 		return
 	}
 
-	res := make([]*TagResponse, 0, len(result.Items))
+	res := make([]TagResponse, 0, len(result.Items))
 	for _, tag := range result.Items {
-		res = append(res, &TagResponse{
-			ID:        tag.ID.String(),
-			Name:      tag.Name,
-			CreatedAt: tag.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: tag.UpdatedAt.Format(time.RFC3339),
-		})
+		res = append(res, toPublicTagResponse(tag))
 	}
 
 	c.JSON(
@@ -283,8 +297,8 @@ func (th *TagHandler) ListTags(c *gin.Context) {
 //	@Success		200	{object}	api.PaginatedResponse{data=[]AdminTagResponse,meta=pagination.Page}	"Paginated list of all tags including deleted"
 //	@Router			/admin/tags [get]
 func (th *TagHandler) AdminListTags(c *gin.Context) {
-	q := &pagination.ListQuery{}
-	if err := c.ShouldBindQuery(q); err != nil {
+	var q pagination.ListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
@@ -300,21 +314,9 @@ func (th *TagHandler) AdminListTags(c *gin.Context) {
 		return
 	}
 
-	res := make([]*AdminTagResponse, 0, len(result.Items))
+	res := make([]AdminTagResponse, 0, len(result.Items))
 	for _, tag := range result.Items {
-		item := &AdminTagResponse{
-			TagResponse: TagResponse{
-				ID:        tag.ID.String(),
-				Name:      tag.Name,
-				CreatedAt: tag.CreatedAt.Format(time.RFC3339),
-				UpdatedAt: tag.UpdatedAt.Format(time.RFC3339),
-			},
-		}
-		if tag.DeletedAt != nil {
-			deletedStr := tag.DeletedAt.Format(time.RFC3339)
-			item.DeletedAt = &deletedStr
-		}
-		res = append(res, item)
+		res = append(res, toAdminTagResponse(tag))
 	}
 
 	c.JSON(

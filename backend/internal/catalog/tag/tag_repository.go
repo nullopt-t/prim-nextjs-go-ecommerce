@@ -123,6 +123,7 @@ func (tr *TagRepository) get(
 	query := fmt.Sprintf(`
 		SELECT
 			id,
+			public_id,
 			name,
 			created_at,
 			updated_at,
@@ -241,6 +242,7 @@ func (tr *TagRepository) List(
 	selectQuery := fmt.Sprintf(`
 		SELECT
 			id,
+			public_id,
 			name,
 			created_at,
 			updated_at,

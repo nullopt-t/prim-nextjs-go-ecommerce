@@ -13,54 +13,41 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
-
 type TagService struct {
-	qexecuter database.Runner
-	trepo     *TagRepository
+	dr   database.Runner
+	repo *TagRepository
 }
 
 func NewService(
-	qexecuter database.Runner,
-	r *TagRepository,
+	dr database.Runner,
+	repo *TagRepository,
 ) *TagService {
 	return &TagService{
-		qexecuter: qexecuter,
-		trepo:     r,
+		dr:   dr,
+		repo: repo,
 	}
 }
 
 type CreateTagInput struct {
-	Name string `json:"name"`
+	Name string
 }
 
 func (ts *TagService) CreateTag(
 	ctx context.Context,
-	in *CreateTagInput,
+	in CreateTagInput,
 ) (*model.ProductTag, error) {
 	tag := &model.ProductTag{
 		ID:       uuid.New(),
-		PublicID: uuid.NewString(),
+		PublicID: uuid.New(),
 		Name:     strings.TrimSpace(in.Name),
 	}
 
-	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		return ts.trepo.Create(ctx, db, tag)
+	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		return ts.repo.Create(ctx, db, tag)
 	})
 
 	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(mappedErr, database.ErrConflict):
-			return nil, apierr.ErrConflict("A tag with this name already exists").
-				WithCode(errcode.CodeTagAlreadyExists).
-				Wrap(err)
-
-		default:
-			return nil, apierr.ErrInternalError("Failed to create product tag").
-				WithCode(apierr.CodeInternalError).
-				Wrap(err).
-				WithStack()
-		}
+		return nil, ts.handleError(err, "Failed to create product tag")
 	}
 
 	return tag, nil
@@ -71,9 +58,9 @@ func (ts *TagService) GetTagByID(
 	tagID uuid.UUID,
 ) (*model.ProductTag, error) {
 	var tag *model.ProductTag
-	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
-		tag, repoErr = ts.trepo.GetByID(ctx, db, tagID)
+		tag, repoErr = ts.repo.GetByID(ctx, db, tagID)
 		return repoErr
 	})
 
@@ -100,10 +87,10 @@ type UpdateTagInput struct {
 	Name *string
 }
 
-func (ts *TagService) UpdateTagByID(
+func (ts *TagService) UpdateTag(
 	ctx context.Context,
 	tagID uuid.UUID,
-	in *UpdateTagInput,
+	in UpdateTagInput,
 ) error {
 	fields := UpdateTagFields{}
 
@@ -120,36 +107,19 @@ func (ts *TagService) UpdateTagByID(
 		fields.Name = &name
 	}
 
-	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		return ts.trepo.Update(ctx, db, tagID, fields)
+	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		return ts.repo.Update(ctx, db, tagID, fields)
 	})
 
 	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(mappedErr, database.ErrNotFound):
-			return apierr.ErrNotFound("Product tag not found").
-				WithCode(errcode.CodeTagNotFound).
-				Wrap(err)
-
-		case errors.Is(mappedErr, database.ErrConflict):
-			return apierr.ErrConflict("A tag with this name already exists").
-				WithCode(errcode.CodeTagAlreadyExists).
-				Wrap(err)
-
-		default:
-			return apierr.ErrInternalError("Failed to update product tag").
-				WithCode(apierr.CodeInternalError).
-				Wrap(err).
-				WithStack()
-		}
+		return ts.handleError(err, "Failed to update product tag")
 	}
 
 	return nil
 }
 
 type ListTagsInput struct {
-	Query          *pagination.ListQuery
+	Query          pagination.ListQuery
 	IncludeDeleted bool
 }
 
@@ -158,16 +128,13 @@ func (ts *TagService) ListTags(
 	in ListTagsInput,
 ) (*pagination.PagedResult[model.ProductTag], error) {
 	q := in.Query
-	if q == nil {
-		q = &pagination.ListQuery{}
-	}
 
 	var result *pagination.PagedResult[model.ProductTag]
 
-	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
-		result, repoErr = ts.trepo.List(ctx, db, ListTagOptions{
-			Query:          q,
+		result, repoErr = ts.repo.List(ctx, db, ListTagOptions{
+			Query:          &q,
 			IncludeDeleted: in.IncludeDeleted,
 		})
 		return repoErr
@@ -185,7 +152,7 @@ func (ts *TagService) ListTags(
 
 func (ts *TagService) AdminList(
 	ctx context.Context,
-	q *pagination.ListQuery,
+	q pagination.ListQuery,
 ) (*pagination.PagedResult[model.ProductTag], error) {
 	return ts.ListTags(ctx, ListTagsInput{
 		Query:          q,
@@ -202,24 +169,12 @@ func (ts *TagService) DeleteTagByID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		return ts.trepo.Delete(ctx, db, tagID)
+	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		return ts.repo.Delete(ctx, db, tagID)
 	})
 
 	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(mappedErr, database.ErrNotFound):
-			return apierr.ErrNotFound("Product tag not found").
-				WithCode(errcode.CodeTagNotFound).
-				Wrap(err)
-
-		default:
-			return apierr.ErrInternalError("Failed to delete product tag").
-				WithCode(apierr.CodeInternalError).
-				Wrap(err).
-				WithStack()
-		}
+		return ts.handleError(err, "Failed to delete product tag")
 	}
 
 	return nil
@@ -235,15 +190,12 @@ func (ts *TagService) ReplaceProductTags(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := ts.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
-		return ts.trepo.ReplaceTagsForProduct(ctx, tx, productID, tagIDs)
+	err := ts.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		return ts.repo.ReplaceTagsForProduct(ctx, tx, productID, tagIDs)
 	})
 
 	if err != nil {
-		return apierr.ErrInternalError("Failed to update product tags").
-			WithCode(apierr.CodeInternalError).
-			Wrap(err).
-			WithStack()
+		return ts.handleError(err, "Failed to update product tags")
 	}
 
 	return nil
@@ -259,18 +211,41 @@ func (ts *TagService) GetTagsByProductID(
 	}
 
 	var tags []*model.ProductTag
-	err := ts.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
-		tags, err = ts.trepo.GetTagsByProductID(ctx, db, productID)
+		tags, err = ts.repo.GetTagsByProductID(ctx, db, productID)
 		return err
 	})
 
 	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to fetch product tags").
+		return nil, ts.handleError(err, "Failed to fetch product tags")
+	}
+
+	return tags, nil
+}
+
+func (ts *TagService) handleError(err error, defaultMsg string) error {
+	if err == nil {
+		return nil
+	}
+	mappedErr := database.MapError(err)
+	switch {
+	case errors.Is(mappedErr, database.ErrNotFound):
+		return apierr.ErrNotFound("Product tag not found").
+			WithCode(errcode.CodeTagNotFound).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrConflict):
+		return apierr.ErrConflict("A tag with this name already exists").
+			WithCode(errcode.CodeTagAlreadyExists).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrInvalidInput):
+		return apierr.ErrBadRequest("Invalid input provided").
+			WithCode(apierr.CodeInvalidInput).
+			Wrap(err)
+	default:
+		return apierr.ErrInternalError(defaultMsg).
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
 	}
-
-	return tags, nil
 }
