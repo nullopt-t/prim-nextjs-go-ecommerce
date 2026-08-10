@@ -20,6 +20,30 @@ const (
 
 var ErrInvalidPublicationStatus = errors.New("invalid publication status")
 
+type ProductType string
+
+const (
+	ProductTypeSimple   ProductType = "simple"
+	ProductTypeVariable ProductType = "variable"
+)
+
+var ErrInvalidProductType = errors.New("invalid product type")
+
+func ParseProductType(s string) (ProductType, error) {
+	switch s {
+	case "simple":
+		return ProductTypeSimple, nil
+	case "variable":
+		return ProductTypeVariable, nil
+	default:
+		return "", ErrInvalidProductType
+	}
+}
+
+func (p ProductType) String() string {
+	return string(p)
+}
+
 func ParsePublicationStatus(s string) (PublicationStatus, error) {
 	switch s {
 	case "draft":
@@ -47,7 +71,7 @@ type Product struct {
 	Description string            `db:"description"`
 	Highlights  []string          `db:"highlights"`
 	Status      PublicationStatus `db:"status"`
-	HasVariantList bool           `db:"has_variant_list"`
+	ProductType ProductType       `db:"product_type"`
 
 	CreatedAt time.Time  `db:"created_at"`
 	UpdatedAt time.Time  `db:"updated_at"`

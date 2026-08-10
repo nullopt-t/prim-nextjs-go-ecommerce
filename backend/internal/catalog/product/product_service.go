@@ -67,7 +67,7 @@ type CreateProductInput struct {
 	Title          string
 	Description    string
 	Highlights     []string
-	HasVariantList bool
+	ProductType    string
 }
 
 type UpdateProductInput struct {
@@ -77,7 +77,7 @@ type UpdateProductInput struct {
 	Description    *string
 	Highlights     []string
 	Status         *model.PublicationStatus
-	HasVariantList *bool
+	ProductType *string
 }
 
 type CreateProductVariantInput struct {
@@ -102,6 +102,13 @@ func (s *ProductService) CreateProductAsDraft(
 	ctx context.Context,
 	input CreateProductInput,
 ) (*model.Product, error) {
+	pt, err := model.ParseProductType(input.ProductType)
+	if err != nil {
+		return nil, apierr.ErrBadRequest("Invalid product type").
+			WithCode(apierr.CodeInvalidInput).
+			Wrap(err)
+	}
+
 	product := &model.Product{
 		ID:          uuid.New(),
 		BrandID:     input.BrandID,
@@ -110,10 +117,10 @@ func (s *ProductService) CreateProductAsDraft(
 		Title:          input.Title,
 		Description:    input.Description,
 		Status:         model.PublicationStatusDraft,
-		HasVariantList: input.HasVariantList,
+		ProductType:    pt,
 	}
 
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err = s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.productRepo.Create(ctx, db, product)
 	})
 	if err != nil {
@@ -175,8 +182,14 @@ func (s *ProductService) UpdateProduct(
 			product.Status = *input.Status
 		}
 
-		if input.HasVariantList != nil {
-			product.HasVariantList = *input.HasVariantList
+		if input.ProductType != nil {
+			pt, err := model.ParseProductType(*input.ProductType)
+			if err != nil {
+				return apierr.ErrBadRequest("Invalid product type").
+					WithCode(apierr.CodeInvalidInput).
+					Wrap(err)
+			}
+			product.ProductType = pt
 		}
 
 		return s.productRepo.Update(ctx, tx, product)

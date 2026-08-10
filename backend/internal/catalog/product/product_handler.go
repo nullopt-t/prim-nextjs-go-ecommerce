@@ -28,7 +28,7 @@ type CreateProductRequest struct {
 	CategoryID  string  `json:"category_id" binding:"required,uuid" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
 	Title          string  `json:"title" binding:"required" example:"Wireless Noise-Canceling Headphones"`
 	Description    string  `json:"description" binding:"required" example:"Premium over-ear Bluetooth headphones with active noise cancellation."`
-	HasVariantList bool    `json:"has_variant_list"`
+	ProductType string  `json:"product_type" example:"simple"`
 }
 
 type UpdateProductRequest struct {
@@ -38,7 +38,7 @@ type UpdateProductRequest struct {
 	Description *string  `json:"description,omitempty"`
 	Highlights     []string `json:"highlights,omitempty"`
 	Status         *string  `json:"status,omitempty"`
-	HasVariantList *bool    `json:"has_variant_list,omitempty"`
+	ProductType *string `json:"product_type,omitempty" example:"simple"`
 }
 
 type ProductBrandSummary struct {
@@ -73,7 +73,7 @@ type ProductResponse struct {
 	Title          string   `json:"title" example:"Wireless Headphones"`
 	Description    string   `json:"description"`
 	Highlights     []string `json:"highlights"`
-	HasVariantList bool     `json:"has_variant_list"`
+	ProductType    string   `json:"product_type"`
 }
 
 type ProductDetailsResponse struct {
@@ -92,7 +92,7 @@ type AdminProductDetailsResponse struct {
 	Description    string                   `json:"description"`
 	Highlights     []string                 `json:"highlights"`
 	Status         model.PublicationStatus  `json:"status" example:"draft"`
-	HasVariantList bool                     `json:"has_variant_list"`
+	ProductType    string                   `json:"product_type"`
 	BrandID     *string                  `json:"brand_id,omitempty"`
 	Brand       *ProductBrandSummary     `json:"brand,omitempty"`
 	CategoryID  string                   `json:"category_id"`
@@ -160,7 +160,7 @@ func mapProductResponse(p *model.Product) ProductResponse {
 		Title:          p.Title,
 		Description:    p.Description,
 		Highlights:     highlights,
-		HasVariantList: p.HasVariantList,
+		ProductType:    p.ProductType.String(),
 	}
 }
 
@@ -179,7 +179,7 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 		Description:    p.Description,
 		Highlights:     highlights,
 		Status:         p.Status,
-		HasVariantList: p.HasVariantList,
+		ProductType:    p.ProductType.String(),
 		CategoryID:     p.CategoryID.String(),
 		CreatedAt:   p.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:   p.UpdatedAt.Format(time.RFC3339),
@@ -309,7 +309,7 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 		Title:          strings.TrimSpace(body.Title),
 		Description:    strings.TrimSpace(body.Description),
 		CategoryID:     categoryID,
-		HasVariantList: body.HasVariantList,
+		ProductType:    body.ProductType,
 	}
 
 	if body.BrandID != nil {
@@ -599,7 +599,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 
 	input := UpdateProductInput{
 		Highlights:     body.Highlights,
-		HasVariantList: body.HasVariantList,
+		ProductType:    body.ProductType,
 	}
 
 	if body.Title != nil {

@@ -17,6 +17,9 @@ BEGIN
     IF to_regtype('publication_status') IS NULL THEN
         CREATE TYPE publication_status AS ENUM ('draft', 'published', 'archived');
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_type') THEN
+        CREATE TYPE product_type AS ENUM ('simple', 'variable');
+    END IF;
     IF to_regtype('user_role') IS NULL THEN
         CREATE TYPE user_role AS ENUM ('customer', 'admin', 'support');
     END IF;
@@ -193,7 +196,7 @@ CREATE TABLE IF NOT EXISTS products (
     description    text NOT NULL,
     highlights     jsonb NULL,
     status         publication_status NOT NULL,
-    has_variant_list boolean NOT NULL DEFAULT false,
+    product_type   product_type NOT NULL DEFAULT 'simple',
     created_at     timestamptz NOT NULL DEFAULT now(),
     updated_at     timestamptz NOT NULL DEFAULT now(),
     deleted_at     timestamptz NULL,

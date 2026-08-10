@@ -51,7 +51,7 @@ type PublicProductListReadModel struct {
 	Status      model.PublicationStatus
 	Brand          *PublicProductBrandReadModel
 	Category       *PublicProductCategoryReadModel
-	HasVariantList bool
+	ProductType    model.ProductType
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      *time.Time
@@ -89,7 +89,7 @@ func (r *ProductRepository) Create(
 			title,
 			description,
 			status,
-			has_variant_list,
+			product_type,
 			created_at,
 			updated_at
 		)
@@ -107,7 +107,7 @@ func (r *ProductRepository) Create(
 		p.Title,
 		p.Description,
 		p.Status,
-		p.HasVariantList,
+		p.ProductType,
 	).Scan(&p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create product: %w", err)
@@ -178,7 +178,7 @@ func (r *ProductRepository) get(
 			description,
 			highlights,
 			status,
-			has_variant_list,
+			product_type,
 			created_at,
 			updated_at,
 			deleted_at
@@ -219,7 +219,7 @@ func (r *ProductRepository) Update(
 			description = $4,
 			highlights = $5,
 			status = $6,
-			has_variant_list = $7,
+			product_type = $7,
 			updated_at = now()
 		WHERE id = $8 AND deleted_at IS NULL
 	`
@@ -233,7 +233,7 @@ func (r *ProductRepository) Update(
 		p.Description,
 		p.Highlights,
 		p.Status,
-		p.HasVariantList,
+		p.ProductType,
 		p.ID,
 	)
 	if err != nil {
@@ -319,7 +319,7 @@ func (r *ProductRepository) List(
 			p.title,
 			p.description,
 			p.status,
-			p.has_variant_list,
+			p.product_type,
 			b.id as brand_id,
 			b.public_id as brand_public_id,
 			b.name as brand_name,
@@ -361,7 +361,7 @@ func (r *ProductRepository) List(
 			&item.Title,
 			&item.Description,
 			&item.Status,
-			&item.HasVariantList,
+			&item.ProductType,
 			&brandID,
 			&brandPublicID,
 			&brandName,
@@ -478,7 +478,7 @@ func (r *ProductRepository) AdminList(
 			p.description,
 			p.highlights,
 			p.status,
-			p.has_variant_list,
+			p.product_type,
 			p.created_at,
 			p.updated_at,
 			p.deleted_at
