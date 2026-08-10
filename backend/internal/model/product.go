@@ -47,6 +47,7 @@ type Product struct {
 	Description string            `db:"description"`
 	Highlights  []string          `db:"highlights"`
 	Status      PublicationStatus `db:"status"`
+	HasVariantList bool           `db:"has_variant_list"`
 
 	CreatedAt time.Time  `db:"created_at"`
 	UpdatedAt time.Time  `db:"updated_at"`

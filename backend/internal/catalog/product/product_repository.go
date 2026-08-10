@@ -49,11 +49,12 @@ type PublicProductListReadModel struct {
 	Title       string
 	Description string
 	Status      model.PublicationStatus
-	Brand       *PublicProductBrandReadModel
-	Category    *PublicProductCategoryReadModel
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DeletedAt   *time.Time
+	Brand          *PublicProductBrandReadModel
+	Category       *PublicProductCategoryReadModel
+	HasVariantList bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeletedAt      *time.Time
 }
 
 type CreateProductMediaInput struct {
@@ -88,10 +89,11 @@ func (r *ProductRepository) Create(
 			title,
 			description,
 			status,
+			has_variant_list,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
 		RETURNING created_at, updated_at
 	`
 
@@ -105,6 +107,7 @@ func (r *ProductRepository) Create(
 		p.Title,
 		p.Description,
 		p.Status,
+		p.HasVariantList,
 	).Scan(&p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create product: %w", err)
@@ -175,6 +178,7 @@ func (r *ProductRepository) get(
 			description,
 			highlights,
 			status,
+			has_variant_list,
 			created_at,
 			updated_at,
 			deleted_at
@@ -215,8 +219,9 @@ func (r *ProductRepository) Update(
 			description = $4,
 			highlights = $5,
 			status = $6,
+			has_variant_list = $7,
 			updated_at = now()
-		WHERE id = $7 AND deleted_at IS NULL
+		WHERE id = $8 AND deleted_at IS NULL
 	`
 
 	cmd, err := qe.Exec(
@@ -228,6 +233,7 @@ func (r *ProductRepository) Update(
 		p.Description,
 		p.Highlights,
 		p.Status,
+		p.HasVariantList,
 		p.ID,
 	)
 	if err != nil {
@@ -313,6 +319,7 @@ func (r *ProductRepository) List(
 			p.title,
 			p.description,
 			p.status,
+			p.has_variant_list,
 			b.id as brand_id,
 			b.public_id as brand_public_id,
 			b.name as brand_name,
@@ -354,6 +361,7 @@ func (r *ProductRepository) List(
 			&item.Title,
 			&item.Description,
 			&item.Status,
+			&item.HasVariantList,
 			&brandID,
 			&brandPublicID,
 			&brandName,
@@ -470,6 +478,7 @@ func (r *ProductRepository) AdminList(
 			p.description,
 			p.highlights,
 			p.status,
+			p.has_variant_list,
 			p.created_at,
 			p.updated_at,
 			p.deleted_at

@@ -26,8 +26,9 @@ func NewHandler(s *ProductService) *ProductHandler {
 type CreateProductRequest struct {
 	BrandID     *string `json:"brand_id,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
 	CategoryID  string  `json:"category_id" binding:"required,uuid" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
-	Title       string  `json:"title" binding:"required" example:"Wireless Noise-Canceling Headphones"`
-	Description string  `json:"description" binding:"required" example:"Premium over-ear Bluetooth headphones with active noise cancellation."`
+	Title          string  `json:"title" binding:"required" example:"Wireless Noise-Canceling Headphones"`
+	Description    string  `json:"description" binding:"required" example:"Premium over-ear Bluetooth headphones with active noise cancellation."`
+	HasVariantList bool    `json:"has_variant_list"`
 }
 
 type UpdateProductRequest struct {
@@ -35,8 +36,9 @@ type UpdateProductRequest struct {
 	CategoryID  *string  `json:"category_id,omitempty"`
 	Title       *string  `json:"title,omitempty"`
 	Description *string  `json:"description,omitempty"`
-	Highlights  []string `json:"highlights,omitempty"`
-	Status      *string  `json:"status,omitempty"`
+	Highlights     []string `json:"highlights,omitempty"`
+	Status         *string  `json:"status,omitempty"`
+	HasVariantList *bool    `json:"has_variant_list,omitempty"`
 }
 
 type ProductBrandSummary struct {
@@ -69,9 +71,10 @@ type ProductVariantResponse struct {
 
 type ProductResponse struct {
 	PublicID    string   `json:"id" example:"prod_abc123"`
-	Title       string   `json:"title" example:"Wireless Headphones"`
-	Description string   `json:"description"`
-	Highlights  []string `json:"highlights"`
+	Title          string   `json:"title" example:"Wireless Headphones"`
+	Description    string   `json:"description"`
+	Highlights     []string `json:"highlights"`
+	HasVariantList bool     `json:"has_variant_list"`
 }
 
 type ProductDetailsResponse struct {
@@ -86,9 +89,10 @@ type AdminProductDetailsResponse struct {
 	ID          string                   `json:"id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
 	PublicID    string                   `json:"public_id" example:"prod_abc123"`
 	Title       string                   `json:"title" example:"Wireless Headphones"`
-	Description string                   `json:"description"`
-	Highlights  []string                 `json:"highlights"`
-	Status      model.PublicationStatus  `json:"status" example:"draft"`
+	Description    string                   `json:"description"`
+	Highlights     []string                 `json:"highlights"`
+	Status         model.PublicationStatus  `json:"status" example:"draft"`
+	HasVariantList bool                     `json:"has_variant_list"`
 	BrandID     *string                  `json:"brand_id,omitempty"`
 	Brand       *ProductBrandSummary     `json:"brand,omitempty"`
 	CategoryID  string                   `json:"category_id"`
@@ -152,10 +156,11 @@ func mapProductResponse(p *model.Product) ProductResponse {
 	}
 
 	return ProductResponse{
-		PublicID:    p.PublicID,
-		Title:       p.Title,
-		Description: p.Description,
-		Highlights:  highlights,
+		PublicID:       p.PublicID,
+		Title:          p.Title,
+		Description:    p.Description,
+		Highlights:     highlights,
+		HasVariantList: p.HasVariantList,
 	}
 }
 
@@ -169,12 +174,13 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 
 	res := AdminProductDetailsResponse{
 		ID:          p.ID.String(),
-		PublicID:    p.PublicID,
-		Title:       p.Title,
-		Description: p.Description,
-		Highlights:  highlights,
-		Status:      p.Status,
-		CategoryID:  p.CategoryID.String(),
+		PublicID:       p.PublicID,
+		Title:          p.Title,
+		Description:    p.Description,
+		Highlights:     highlights,
+		Status:         p.Status,
+		HasVariantList: p.HasVariantList,
+		CategoryID:     p.CategoryID.String(),
 		CreatedAt:   p.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:   p.UpdatedAt.Format(time.RFC3339),
 		Media:       make([]ProductMediaResponse, 0),
@@ -301,9 +307,10 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 	}
 
 	in := CreateProductInput{
-		Title:       strings.TrimSpace(body.Title),
-		Description: strings.TrimSpace(body.Description),
-		CategoryID:  categoryID,
+		Title:          strings.TrimSpace(body.Title),
+		Description:    strings.TrimSpace(body.Description),
+		CategoryID:     categoryID,
+		HasVariantList: body.HasVariantList,
 	}
 
 	if body.BrandID != nil {
@@ -591,7 +598,8 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	}
 
 	input := UpdateProductInput{
-		Highlights: body.Highlights,
+		Highlights:     body.Highlights,
+		HasVariantList: body.HasVariantList,
 	}
 
 	if body.Title != nil {
@@ -895,7 +903,7 @@ func (h *ProductHandler) ReorderMedia(c *gin.Context) {
 //	@Param		body	body		CreateProductVariantRequest	true	"Variant Payload"
 //	@Failure	400		{object}	api.BadRequestErrorResponse
 //	@Failure	500		{object}	api.InternalServerErrorResponse
-//	@Success	201		{object}	api.DataResponse{data=variant.VariantResponse}
+//	@Success	201		{object}	api.DataResponse{data=variant.AdminVariantResponse}
 //	@Router		/admin/products/{id}/variants [post]
 func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
@@ -920,8 +928,9 @@ func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, api.DataResponse{
-		Data: variant.VariantResponse{
+		Data: variant.AdminVariantResponse{
 			ID:              v.ID.String(),
+			PublicID:        v.PublicID,
 			ProductID:       v.ProductID.String(),
 			Title:           v.Title,
 			Price:           v.Price,
