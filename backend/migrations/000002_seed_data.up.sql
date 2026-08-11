@@ -31,10 +31,10 @@ INSERT INTO product_categories (id, public_id, parent_id, name, created_at, upda
 ON CONFLICT DO NOTHING;
 
 -- Tags
-INSERT INTO product_tags (id, public_id, name, created_at, updated_at) VALUES
-('50000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000002', 'Featured', now(), now()),
-('50000000-0000-0000-0000-000000000003', '50000000-0000-0000-0000-000000000004', 'Sale', now(), now()),
-('50000000-0000-0000-0000-000000000005', '50000000-0000-0000-0000-000000000006', 'New Arrival', now(), now())
+INSERT INTO product_tags (id, name, created_at, updated_at) VALUES
+('50000000-0000-0000-0000-000000000001', 'Featured', now(), now()),
+('50000000-0000-0000-0000-000000000003', 'Sale', now(), now()),
+('50000000-0000-0000-0000-000000000005', 'New Arrival', now(), now())
 ON CONFLICT DO NOTHING;
 
 -- Storage Objects (Thumbnails)

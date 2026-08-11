@@ -37,9 +37,8 @@ func (ts *TagService) CreateTag(
 	in CreateTagInput,
 ) (*model.ProductTag, error) {
 	tag := &model.ProductTag{
-		ID:       uuid.New(),
-		PublicID: uuid.New(),
-		Name:     strings.TrimSpace(in.Name),
+		ID:   uuid.New(),
+		Name: strings.TrimSpace(in.Name),
 	}
 
 	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {

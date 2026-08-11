@@ -136,13 +136,11 @@ WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS product_tags (
     id            uuid NOT NULL,
-    public_id     uuid NOT NULL,
     name          text NOT NULL,
     created_at    timestamptz NOT NULL DEFAULT now(),
     updated_at    timestamptz NOT NULL DEFAULT now(),
     deleted_at    timestamptz NULL,
-    PRIMARY KEY (id),
-    UNIQUE (public_id)
+    PRIMARY KEY (id)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_product_tags_active_name
