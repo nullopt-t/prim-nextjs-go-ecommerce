@@ -24,46 +24,43 @@ var allowedProductSortFields = map[string]string{
 	"updated_at": "p.updated_at",
 }
 
-type productFilter struct {
-	ID             *uuid.UUID
-	PublicID       *string
-	IncludeDeleted bool
-}
-
 type PublicProductBrandReadModel struct {
-	ID       uuid.UUID
-	PublicID string
-	Name     string
-	Link     *string
+	ID   uuid.UUID
+	Name string
+	Link *string
 }
 
 type PublicProductCategoryReadModel struct {
-	ID       uuid.UUID
-	PublicID string
-	Name     string
+	ID   uuid.UUID
+	Name string
 }
 
-type PublicProductListReadModel struct {
-	ID          uuid.UUID
-	PublicID    string
-	Title       string
-	Description string
-	Status      model.PublicationStatus
-	Brand          *PublicProductBrandReadModel
-	Category       *PublicProductCategoryReadModel
-	ProductType    model.ProductType
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	DeletedAt      *time.Time
+
+type ProductCardReadModel struct {
+	ID              uuid.UUID
+	Slug            string
+	Title           string
+	Description     *string
+	Status          model.PublicationStatus
+	Brand           *PublicProductBrandReadModel
+	Category        *PublicProductCategoryReadModel
+	ProductType     model.ProductType
+	Thumbnail       *model.Object
+	Price           *int64
+	CrossedOutPrice *int64
+	Currency        *string
+	TagsRaw         []byte
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	DeletedAt       *time.Time
 }
 
 type CreateProductMediaInput struct {
-	ID              uuid.UUID
-	PublicID        string
-	ProductID       uuid.UUID
-	StorageObjectID uuid.UUID
-	MediaType       model.MediaType
-	SortOrder       int
+	ID        uuid.UUID
+	ProductID uuid.UUID
+	ObjectID  uuid.UUID
+	MediaType model.MediaType
+	SortOrder int
 }
 
 type ProductRepository struct{}
@@ -71,8 +68,6 @@ type ProductRepository struct{}
 func NewProductRepository() *ProductRepository {
 	return &ProductRepository{}
 }
-
-// --- Product CRUD ---
 
 // Create inserts a new product record into the products table.
 func (r *ProductRepository) Create(
@@ -85,15 +80,14 @@ func (r *ProductRepository) Create(
 			id,
 			brand_id,
 			category_id,
-			public_id,
+			slug,
 			title,
-			description,
 			status,
 			product_type,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
 		RETURNING created_at, updated_at
 	`
 
@@ -103,9 +97,8 @@ func (r *ProductRepository) Create(
 		p.ID,
 		p.BrandID,
 		p.CategoryID,
-		p.PublicID,
+		p.Slug,
 		p.Title,
-		p.Description,
 		p.Status,
 		p.ProductType,
 	).Scan(&p.CreatedAt, &p.UpdatedAt)
@@ -121,7 +114,7 @@ func (r *ProductRepository) GetByID(
 	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (*model.Product, error) {
-	return r.get(ctx, qe, productFilter{ID: &id})
+	return r.get(ctx, qe, "id = $1 AND deleted_at IS NULL", id)
 }
 
 func (r *ProductRepository) GetByIDWithDeleted(
@@ -129,43 +122,25 @@ func (r *ProductRepository) GetByIDWithDeleted(
 	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (*model.Product, error) {
-	return r.get(ctx, qe, productFilter{ID: &id, IncludeDeleted: true})
+	return r.get(ctx, qe, "id = $1", id)
 }
 
-func (r *ProductRepository) GetByPublicID(
+func (r *ProductRepository) GetBySlug(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	publicID string,
+	slug string,
 ) (*model.Product, error) {
-	return r.get(ctx, qe, productFilter{PublicID: &publicID})
+	return r.get(ctx, qe, "slug = $1 AND deleted_at IS NULL", slug)
 }
 
 func (r *ProductRepository) get(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	filter productFilter,
+	whereClause string,
+	args ...any,
 ) (*model.Product, error) {
-	if filter.ID == nil && filter.PublicID == nil {
-		return nil, errors.New("get product: filter ID or PublicID is required")
-	}
-
-	whereClauses := make([]string, 0, 3)
-	args := make([]any, 0, 2)
-	argID := 1
-
-	if !filter.IncludeDeleted {
-		whereClauses = append(whereClauses, "deleted_at IS NULL")
-	}
-
-	if filter.ID != nil {
-		whereClauses = append(whereClauses, fmt.Sprintf("id = $%d", argID))
-		args = append(args, *filter.ID)
-		argID++
-	}
-
-	if filter.PublicID != nil {
-		whereClauses = append(whereClauses, fmt.Sprintf("public_id = $%d", argID))
-		args = append(args, *filter.PublicID)
+	if whereClause == "" {
+		return nil, errors.New("get product: whereClause is required")
 	}
 
 	query := fmt.Sprintf(`
@@ -173,19 +148,20 @@ func (r *ProductRepository) get(
 			id,
 			brand_id,
 			category_id,
-			public_id,
+			slug,
 			title,
 			description,
 			highlights,
 			status,
 			product_type,
+			thumbnail_object_id,
 			created_at,
 			updated_at,
 			deleted_at
 		FROM products
 		WHERE %s
 		LIMIT 1
-	`, strings.Join(whereClauses, " AND "))
+	`, whereClause)
 
 	rows, err := qe.Query(ctx, query, args...)
 	if err != nil {
@@ -215,13 +191,15 @@ func (r *ProductRepository) Update(
 		SET
 			brand_id = $1,
 			category_id = $2,
-			title = $3,
-			description = $4,
-			highlights = $5,
-			status = $6,
-			product_type = $7,
+			slug = $3,
+			title = $4,
+			description = $5,
+			highlights = $6,
+			status = $7,
+			product_type = $8,
+			thumbnail_object_id = $9,
 			updated_at = now()
-		WHERE id = $8 AND deleted_at IS NULL
+		WHERE id = $10 AND deleted_at IS NULL
 	`
 
 	cmd, err := qe.Exec(
@@ -229,11 +207,13 @@ func (r *ProductRepository) Update(
 		query,
 		p.BrandID,
 		p.CategoryID,
+		p.Slug,
 		p.Title,
 		p.Description,
 		p.Highlights,
 		p.Status,
 		p.ProductType,
+		p.ThumbnailObjectID,
 		p.ID,
 	)
 	if err != nil {
@@ -253,7 +233,7 @@ func (r *ProductRepository) List(
 	qe database.QueryExecutor,
 	q *pagination.ListQuery,
 	includeDeleted bool,
-) (*pagination.PagedResult[PublicProductListReadModel], error) {
+) (*pagination.PagedResult[ProductCardReadModel], error) {
 	if q == nil {
 		q = &pagination.ListQuery{}
 	}
@@ -288,7 +268,7 @@ func (r *ProductRepository) List(
 	}
 
 	if total == 0 {
-		return pagination.NewPagedResult([]*PublicProductListReadModel{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
+		return pagination.NewPagedResult([]*ProductCardReadModel{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
 	}
 
 	// 2. Sorting
@@ -315,24 +295,38 @@ func (r *ProductRepository) List(
 	selectQuery := fmt.Sprintf(`
 		SELECT
 			p.id,
-			p.public_id,
+			p.slug,
 			p.title,
 			p.description,
 			p.status,
 			p.product_type,
-			b.id as brand_id,
-			b.public_id as brand_public_id,
-			b.name as brand_name,
-			b.link as brand_link,
-			c.id as category_id,
-			c.public_id as category_public_id,
-			c.name as category_name,
+			b.id AS brand_id,
+			b.name AS brand_name,
+			b.link AS brand_link,
+			c.id AS category_id,
+			c.name AS category_name,
+			so.id as so_id,
+			so.bucket as so_bucket,
+			so.object_key as so_object_key,
+			so.content_type as so_content_type,
+			so.file_size as so_file_size,
+			pv.price as price,
+			pv.crossed_out_price as crossed_out_price,
+			pv.currency as currency,
+			(
+				SELECT coalesce(json_agg(json_build_object('id', pt.public_id, 'name', pt.name)), '[]'::json)
+				FROM product_tag_assignments pta
+				JOIN product_tags pt ON pta.tag_id = pt.id
+				WHERE pta.product_id = p.id
+			) as tags_raw,
 			p.created_at,
 			p.updated_at,
 			p.deleted_at
 		FROM products p
 		LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL
 		LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL
+		LEFT JOIN storage_objects so ON p.thumbnail_object_id = so.id
+		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_default = true AND pv.deleted_at IS NULL
 		%s
 		%s
 		LIMIT $%d OFFSET $%d
@@ -346,29 +340,37 @@ func (r *ProductRepository) List(
 	}
 	defer rows.Close()
 
-	items := make([]*PublicProductListReadModel, 0, q.PageSize)
+	items := make([]*ProductCardReadModel, 0, q.PageSize)
 	for rows.Next() {
 		var (
-			item                                PublicProductListReadModel
-			brandID                             *uuid.UUID
-			brandPublicID, brandName, brandLink *string
-			catID                               *uuid.UUID
-			catPublicID, catName                *string
+			item                           ProductCardReadModel
+			brandID, catID                 *uuid.UUID
+			brandName, brandLink, catName  *string
+			soID                           *uuid.UUID
+			soBucket, soKey, soContentType *string
+			soFileSize                     *int64
 		)
 		err := rows.Scan(
 			&item.ID,
-			&item.PublicID,
+			&item.Slug,
 			&item.Title,
 			&item.Description,
 			&item.Status,
 			&item.ProductType,
 			&brandID,
-			&brandPublicID,
 			&brandName,
 			&brandLink,
 			&catID,
-			&catPublicID,
 			&catName,
+			&soID,
+			&soBucket,
+			&soKey,
+			&soContentType,
+			&soFileSize,
+			&item.Price,
+			&item.CrossedOutPrice,
+			&item.Currency,
+			&item.TagsRaw,
 			&item.CreatedAt,
 			&item.UpdatedAt,
 			&item.DeletedAt,
@@ -377,20 +379,28 @@ func (r *ProductRepository) List(
 			return nil, fmt.Errorf("scan product list item: %w", err)
 		}
 
-		if brandID != nil && brandPublicID != nil && brandName != nil {
+		if brandID != nil && brandName != nil {
 			item.Brand = &PublicProductBrandReadModel{
-				ID:       *brandID,
-				PublicID: *brandPublicID,
-				Name:     *brandName,
-				Link:     brandLink,
+				ID:   *brandID,
+				Name: *brandName,
+				Link: brandLink,
 			}
 		}
 
-		if catID != nil && catPublicID != nil && catName != nil {
+		if catID != nil && catName != nil {
 			item.Category = &PublicProductCategoryReadModel{
-				ID:       *catID,
-				PublicID: *catPublicID,
-				Name:     *catName,
+				ID:   *catID,
+				Name: *catName,
+			}
+		}
+
+		if soID != nil {
+			item.Thumbnail = &model.Object{
+				ID:          *soID,
+				Bucket:      *soBucket,
+				Key:         *soKey,
+				ContentType: *soContentType,
+				FileSize:    *soFileSize,
 			}
 		}
 
@@ -426,7 +436,7 @@ func (r *ProductRepository) AdminList(
 
 	search := strings.TrimSpace(q.Search)
 	if search != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("(p.title ILIKE $%d OR p.public_id ILIKE $%d)", argIdx, argIdx))
+		whereClauses = append(whereClauses, fmt.Sprintf("(p.title ILIKE $%d OR p.slug ILIKE $%d)", argIdx, argIdx))
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
@@ -473,12 +483,13 @@ func (r *ProductRepository) AdminList(
 			p.id,
 			p.brand_id,
 			p.category_id,
-			p.public_id,
+			p.slug,
 			p.title,
 			p.description,
 			p.highlights,
 			p.status,
 			p.product_type,
+			p.thumbnail_object_id,
 			p.created_at,
 			p.updated_at,
 			p.deleted_at
@@ -509,38 +520,24 @@ func (r *ProductRepository) SoftDeleteByID(
 	qe database.QueryExecutor,
 	id uuid.UUID,
 ) error {
-	return r.softDelete(ctx, qe, productFilter{ID: &id})
+	return r.softDelete(ctx, qe, "id = $1", id)
 }
 
 func (r *ProductRepository) softDelete(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	filter productFilter,
+	whereClause string,
+	args ...any,
 ) error {
-	if filter.ID == nil && filter.PublicID == nil {
-		return errors.New("soft delete product: filter ID or PublicID is required")
-	}
-
-	whereClauses := []string{"deleted_at IS NULL"}
-	args := make([]any, 0, 2)
-	argID := 1
-
-	if filter.ID != nil {
-		whereClauses = append(whereClauses, fmt.Sprintf("id = $%d", argID))
-		args = append(args, *filter.ID)
-		argID++
-	}
-
-	if filter.PublicID != nil {
-		whereClauses = append(whereClauses, fmt.Sprintf("public_id = $%d", argID))
-		args = append(args, *filter.PublicID)
+	if whereClause == "" {
+		return errors.New("soft delete product: whereClause is required")
 	}
 
 	query := fmt.Sprintf(`
 		UPDATE products
 		SET deleted_at = now(), updated_at = now()
 		WHERE %s
-	`, strings.Join(whereClauses, " AND "))
+	`, whereClause)
 
 	cmd, err := qe.Exec(ctx, query, args...)
 	if err != nil {
@@ -581,183 +578,4 @@ func (r *ProductRepository) UpdateStatus(
 	}
 
 	return nil
-}
-
-// --- Product Media Operations ---
-
-// AddMedia links a storage object to a product.
-func (r *ProductRepository) AddMedia(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	in CreateProductMediaInput,
-) (*model.ProductMedia, error) {
-	query := `
-		INSERT INTO product_media (
-			id,
-			public_id,
-			product_id,
-			storage_object_id,
-			media_type,
-			sort_order
-		)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`
-
-	_, err := qe.Exec(
-		ctx,
-		query,
-		in.ID,
-		in.PublicID,
-		in.ProductID,
-		in.StorageObjectID,
-		in.MediaType,
-		in.SortOrder,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("add product media: %w", err)
-	}
-
-	return &model.ProductMedia{
-		ID:              in.ID,
-		PublicID:        in.PublicID,
-		ProductID:       in.ProductID,
-		StorageObjectID: in.StorageObjectID,
-		MediaType:       in.MediaType,
-		SortOrder:       in.SortOrder,
-	}, nil
-}
-
-// ListMediaByProductID fetches all media assigned to a product joined with storage_objects.
-func (r *ProductRepository) ListMediaByProductID(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	productID uuid.UUID,
-) ([]*model.ProductMedia, error) {
-	if productID == uuid.Nil {
-		return nil, errors.New("list product media: productID is required")
-	}
-
-	query := `
-		SELECT
-			m.id,
-			m.public_id,
-			m.product_id,
-			m.storage_object_id,
-			m.media_type,
-			m.sort_order,
-			so.id,
-			so.bucket,
-			so.object_key,
-			so.content_type,
-			so.file_size,
-			so.status
-		FROM product_media m
-		JOIN storage_objects so ON m.storage_object_id = so.id
-		WHERE m.product_id = $1
-		ORDER BY m.sort_order ASC
-	`
-
-	rows, err := qe.Query(ctx, query, productID)
-	if err != nil {
-		return nil, fmt.Errorf("list product media query: %w", err)
-	}
-	defer rows.Close()
-
-	var result []*model.ProductMedia
-	for rows.Next() {
-		m := &model.ProductMedia{
-			Object: &model.Object{},
-		}
-		if err := rows.Scan(
-			&m.ID,
-			&m.PublicID,
-			&m.ProductID,
-			&m.StorageObjectID,
-			&m.MediaType,
-			&m.SortOrder,
-			&m.Object.ID,
-			&m.Object.Bucket,
-			&m.Object.Key,
-			&m.Object.ContentType,
-			&m.Object.FileSize,
-			&m.Object.Status,
-		); err != nil {
-			return nil, fmt.Errorf("list product media scan: %w", err)
-		}
-		result = append(result, m)
-	}
-
-	return result, nil
-}
-
-// RemoveMedia unlinks a specific media item from a product.
-func (r *ProductRepository) RemoveMedia(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	productID uuid.UUID,
-	mediaID uuid.UUID,
-) error {
-	if productID == uuid.Nil || mediaID == uuid.Nil {
-		return errors.New("remove product media: productID and mediaID are required")
-	}
-
-	query := `
-		DELETE FROM product_media
-		WHERE id = $1 AND product_id = $2
-	`
-
-	cmd, err := qe.Exec(ctx, query, mediaID, productID)
-	if err != nil {
-		return fmt.Errorf("remove product media: %w", err)
-	}
-
-	if cmd.RowsAffected() == 0 {
-		return pgx.ErrNoRows
-	}
-
-	return nil
-}
-
-// ReorderMedia updates media sort orders for a product in batch.
-func (r *ProductRepository) ReorderMedia(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	productID uuid.UUID,
-	orderedMediaIDs []uuid.UUID,
-) error {
-	if productID == uuid.Nil || len(orderedMediaIDs) == 0 {
-		return nil
-	}
-
-	query := `
-		UPDATE product_media
-		SET sort_order = $1
-		WHERE id = $2 AND product_id = $3
-	`
-
-	for idx, mediaID := range orderedMediaIDs {
-		if _, err := qe.Exec(ctx, query, idx, mediaID, productID); err != nil {
-			return fmt.Errorf("reorder product media item %s: %w", mediaID, err)
-		}
-	}
-
-	return nil
-}
-
-// GetMaxMediaSortOrder returns the current highest sort_order for a product's media.
-// Returns -1 if no media exists (so the first item gets sort_order 0).
-func (r *ProductRepository) GetMaxMediaSortOrder(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	productID uuid.UUID,
-) (int, error) {
-	var max int
-	err := qe.QueryRow(ctx,
-		`SELECT COALESCE(MAX(sort_order), -1) FROM product_media WHERE product_id = $1`,
-		productID,
-	).Scan(&max)
-	if err != nil {
-		return 0, fmt.Errorf("get max media sort_order: %w", err)
-	}
-	return max, nil
 }

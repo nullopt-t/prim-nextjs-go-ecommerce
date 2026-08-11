@@ -22,8 +22,8 @@ func NewHandler(cartService *CartService) *CartHandler {
 }
 
 type AddItemRequest struct {
-	VariantID string `json:"variant_id" binding:"required" example:"nano_id_string"`
-	Quantity  int    `json:"quantity" binding:"required,gt=0" example:"2"`
+	VariantID uuid.UUID `json:"variant_id" binding:"required" example:"nano_id_string"`
+	Quantity  int       `json:"quantity" binding:"required,gt=0" example:"2"`
 }
 
 type UpdateQuantityRequest struct {
@@ -92,12 +92,12 @@ func mapCartResponse(cart *model.Cart) CartResponse {
 		}
 
 		if item.Variant != nil {
-			itemRes.VariantID = item.Variant.PublicID
+			itemRes.VariantID = item.Variant.SKU
 			itemRes.Title = item.Variant.Title
 		}
 
 		if item.Product != nil {
-			itemRes.ProductID = item.Product.PublicID
+			itemRes.ProductID = item.Product.ID.String()
 			if itemRes.Title == "" {
 				itemRes.Title = item.Product.Title
 			} else {
@@ -115,8 +115,8 @@ func mapCartResponse(cart *model.Cart) CartResponse {
 	res.Summary = CartSummaryResponse{
 		Subtotal: subtotal,
 		Discount: 0,
-		Shipping: 0, // Placeholder
-		Tax:      0, // Placeholder
+		Shipping: 0,        // Placeholder
+		Tax:      0,        // Placeholder
 		Total:    subtotal, // Assuming no tax/shipping yet
 	}
 
