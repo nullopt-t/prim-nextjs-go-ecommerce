@@ -69,7 +69,6 @@ func NewProductRepository() *ProductRepository {
 	return &ProductRepository{}
 }
 
-// Create inserts a new product record into the products table.
 func (r *ProductRepository) Create(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -176,7 +175,6 @@ func (r *ProductRepository) get(
 	return product, nil
 }
 
-// Update modifies core product attributes.
 func (r *ProductRepository) Update(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -227,7 +225,6 @@ func (r *ProductRepository) Update(
 	return nil
 }
 
-// List performs paginated searching and listing of products for the public storefront.
 func (r *ProductRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -414,7 +411,6 @@ func (r *ProductRepository) List(
 	return pagination.NewPagedResult(items, pagination.NewPage(q.Page, q.PageSize, total)), nil
 }
 
-// AdminList performs paginated searching and listing of products for administrative management without joining brand/category details.
 func (r *ProductRepository) AdminList(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -514,7 +510,6 @@ func (r *ProductRepository) AdminList(
 	return pagination.NewPagedResult(items, pagination.NewPage(q.Page, q.PageSize, total)), nil
 }
 
-// SoftDeleteByID soft-deletes a product by ID.
 func (r *ProductRepository) SoftDeleteByID(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -551,7 +546,6 @@ func (r *ProductRepository) softDelete(
 	return nil
 }
 
-// UpdateStatus changes the publication status of a product.
 func (r *ProductRepository) UpdateStatus(
 	ctx context.Context,
 	qe database.QueryExecutor,
