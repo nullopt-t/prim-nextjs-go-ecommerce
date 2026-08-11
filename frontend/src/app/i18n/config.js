@@ -10,6 +10,8 @@ import aboutEn from "./locales/en/about.json";
 import cartEn from "./locales/en/cart.json";
 import notFoundEn from "./locales/en/notFound.json";
 import wishlistEn from "./locales/en/wishlist.json";
+import settingsEn from "./locales/en/settings.json";
+import reviewsEn from "./locales/en/reviews.json";
 
 // Arabic
 import commonAr from "./locales/ar/common.json";
@@ -19,6 +21,8 @@ import aboutAr from "./locales/ar/about.json";
 import cartAr from "./locales/ar/cart.json";
 import notFoundAr from "./locales/ar/notFound.json";
 import wishlistAr from "./locales/ar/wishlist.json";
+import settingsAr from "./locales/ar/settings.json";
+import reviewsAr from "./locales/ar/reviews.json";
 
 i18n.use(LanguageDetector)
 	.use(initReactI18next)
@@ -32,6 +36,8 @@ i18n.use(LanguageDetector)
 				cart: cartEn,
 				notFound: notFoundEn,
 				wishlist: wishlistEn,
+				settings: settingsEn,
+				reviews: reviewsEn,
 			},
 			ar: {
 				common: commonAr,
@@ -41,6 +47,8 @@ i18n.use(LanguageDetector)
 				cart: cartAr,
 				notFound: notFoundAr,
 				wishlist: wishlistAr,
+				settings: settingsAr,
+				reviews: reviewsAr,
 			},
 		},
 
@@ -51,7 +59,17 @@ i18n.use(LanguageDetector)
 		defaultNS: "common",
 
 		// Register all namespaces
-		ns: ["common", "home", "auth", "about", "cart", "notFound", "wishlist"],
+		ns: [
+			"common",
+			"home",
+			"auth",
+			"about",
+			"cart",
+			"notFound",
+			"wishlist",
+			"settings",
+			"reviews",
+		],
 
 		// Language detection settings
 		detection: {

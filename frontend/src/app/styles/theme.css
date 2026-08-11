@@ -55,6 +55,9 @@
 	--btn-destructive-bg: #d4183d;
 	/* Use for the text color layered inside the delete/destructive button (class="text-destructive-foreground") */
 	--btn-destructive-text: #ffffff;
+	/* Use for the hover state of destructive buttons */
+	--btn-destructive-hover-bg: #b91534;
+	--btn-destructive-hover-text: #ffffff;
 
 	/* REUSABLE ACCENTS, INPUTS & HOVER STATES */
 	/* Use for dividing lines, thin borders, and card outlines (class="border-border") */
@@ -166,6 +169,8 @@
 	--color-secondary-foreground: var(--btn-secondary-text);
 	--color-destructive: var(--btn-destructive-bg);
 	--color-destructive-foreground: var(--btn-destructive-text);
+	--color-destructive-hover: var(--btn-destructive-hover-bg);
+	--color-destructive-foreground-hover: var(--btn-destructive-hover-text);
 
 	/* Input Elements Config */
 	--color-input: var(--input-raw);
