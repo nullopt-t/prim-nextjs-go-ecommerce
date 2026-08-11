@@ -14,8 +14,8 @@ BEGIN
     IF to_regtype('storage_object_status') IS NULL THEN
         CREATE TYPE storage_object_status AS ENUM ('uploaded', 'uploading', 'deleting', 'deleted');
     END IF;
-    IF to_regtype('publication_status') IS NULL THEN
-        CREATE TYPE publication_status AS ENUM ('draft', 'published', 'archived');
+    IF to_regtype('product_status') IS NULL THEN
+        CREATE TYPE product_status AS ENUM ('draft', 'published', 'archived');
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_type') THEN
         CREATE TYPE product_type AS ENUM ('simple', 'variable');
@@ -191,24 +191,26 @@ CREATE TABLE IF NOT EXISTS products (
     id             uuid NOT NULL,
     brand_id       uuid NULL,
     category_id    uuid NOT NULL,
-    public_id      uuid NOT NULL,
+    slug           text NOT NULL,
     title          text NOT NULL,
-    description    text NOT NULL,
+    description    text,
     highlights     jsonb NULL,
-    status         publication_status NOT NULL,
+    status         product_status NOT NULL,
     product_type   product_type NOT NULL DEFAULT 'simple',
+    thumbnail_object_id uuid NULL,
     created_at     timestamptz NOT NULL DEFAULT now(),
     updated_at     timestamptz NOT NULL DEFAULT now(),
     deleted_at     timestamptz NULL,
     PRIMARY KEY (id),
-    UNIQUE (public_id),
+    UNIQUE (slug),
     FOREIGN KEY (brand_id) REFERENCES product_brands (id),
-    FOREIGN KEY (category_id) REFERENCES product_categories (id)
+    FOREIGN KEY (category_id) REFERENCES product_categories (id),
+    FOREIGN KEY (thumbnail_object_id) REFERENCES storage_objects (id)
 );
 
 CREATE TABLE IF NOT EXISTS product_variants (
     id                   uuid NOT NULL,
-    public_id            uuid NOT NULL,
+    sku                  text NOT NULL,
     product_id           uuid NOT NULL,
     is_default           boolean NOT NULL DEFAULT false,
     title                text NOT NULL,
@@ -216,12 +218,14 @@ CREATE TABLE IF NOT EXISTS product_variants (
     crossed_out_price    bigint NULL,
     currency             text NULL,
     attributes           jsonb NOT NULL DEFAULT '{}'::jsonb,
+    thumbnail_object_id  uuid NULL,
     created_at           timestamptz NOT NULL DEFAULT now(),
     updated_at           timestamptz NOT NULL DEFAULT now(),
     deleted_at           timestamptz NULL,
     PRIMARY KEY (id),
-    UNIQUE (public_id),
-    FOREIGN KEY (product_id) REFERENCES products (id)
+    UNIQUE (sku),
+    FOREIGN KEY (product_id) REFERENCES products (id),
+    FOREIGN KEY (thumbnail_object_id) REFERENCES storage_objects (id)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_product_variants_default
@@ -253,33 +257,19 @@ CREATE TABLE IF NOT EXISTS product_tag_assignments (
 -- CATALOG: MEDIA
 -- =====================================================================
 
-CREATE TABLE IF NOT EXISTS product_media (
-    id                   uuid NOT NULL,
-    public_id            uuid NOT NULL,
-    product_id           uuid NOT NULL,
-    storage_object_id    uuid NOT NULL,
-    media_type           text NOT NULL,
-    sort_order           int NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    UNIQUE (public_id),
-    FOREIGN KEY (product_id) REFERENCES products (id),
-    FOREIGN KEY (storage_object_id) REFERENCES storage_objects (id)
-);
-
 CREATE TABLE IF NOT EXISTS variant_media (
     id                   uuid NOT NULL,
     public_id            uuid NOT NULL,
     variant_id           uuid NOT NULL,
-    storage_object_id    uuid NOT NULL,
+    object_id    uuid NOT NULL,
     media_type           text NOT NULL,
     sort_order           int NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     UNIQUE (public_id),
     FOREIGN KEY (variant_id) REFERENCES product_variants (id),
-    FOREIGN KEY (storage_object_id) REFERENCES storage_objects (id)
+    FOREIGN KEY (object_id) REFERENCES storage_objects (id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_product_media_product_id ON product_media (product_id);
 CREATE INDEX IF NOT EXISTS idx_variant_media_variant_id ON variant_media (variant_id);
 
 

@@ -54,7 +54,7 @@ type VariantResponse struct {
 
 type AdminVariantResponse struct {
 	ID              string         `json:"id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
-	PublicID        string         `json:"public_id" example:"prod_var_123"`
+	SKU        string         `json:"sku" example:"prod_var_123"`
 	ProductID       string         `json:"product_id" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
 	Title           string         `json:"title" example:"Red / XL"`
 	Price           *int64         `json:"price,omitempty" example:"2999"`
@@ -89,7 +89,7 @@ type StorageObjectResponse struct {
 type VariantMediaResponse struct {
 	ID              string                 `json:"id" example:"8f123456-e89b-12d3-a456-426614174000"`
 	VariantID       string                 `json:"variant_id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
-	StorageObjectID string                 `json:"storage_object_id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	ThumbnailObjectID string                 `json:"thumbnail_object_id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
 	MediaType       string                 `json:"media_type" example:"image"`
 	SortOrder       int                    `json:"sort_order" example:"0"`
 	Object          *StorageObjectResponse `json:"object,omitempty"`
@@ -102,7 +102,7 @@ func mapVariantResponse(v *model.ProductVariant) VariantResponse {
 	}
 
 	return VariantResponse{
-		ID:              v.PublicID,
+		ID:              v.SKU,
 		ProductID:       v.ProductID.String(),
 		Title:           v.Title,
 		Price:           v.Price,
@@ -121,7 +121,7 @@ func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
 
 	res := AdminVariantResponse{
 		ID:              v.ID.String(),
-		PublicID:        v.PublicID,
+		SKU:        v.SKU,
 		ProductID:       v.ProductID.String(),
 		Title:           v.Title,
 		Price:           v.Price,
@@ -141,11 +141,11 @@ func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
 
 func mapVariantMediaResponse(m *model.VariantMedia) VariantMediaResponse {
 	res := VariantMediaResponse{
-		ID:              m.ID.String(),
-		VariantID:       m.VariantID.String(),
-		StorageObjectID: m.StorageObjectID.String(),
-		MediaType:       m.MediaType,
-		SortOrder:       m.SortOrder,
+		ID:                m.ID.String(),
+		VariantID:         m.VariantID.String(),
+		ThumbnailObjectID: m.ThumbnailObjectID.String(),
+		MediaType:         m.MediaType,
+		SortOrder:         m.SortOrder,
 	}
 
 	if m.Object != nil {

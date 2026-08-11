@@ -42,10 +42,8 @@ func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.POST("/:id/variants/default", r.ph.SetDefaultVariant)
 
 		// Media Operations
-		admin.POST("/:id/media", r.ph.UploadProductMedia)
-		admin.DELETE("/:id/media/:media_id", r.ph.DetachMedia)
-		admin.PATCH("/:id/media/reorder", r.ph.ReorderMedia)
-
+		admin.POST("/:id/thumbnail", r.ph.UploadProductThumbnail)
+	
 		// Tags & Category
 		admin.PUT("/:id/categories", r.ph.PutProductCategories)
 		admin.PUT("/:id/tags", r.ph.PutProductTags)
@@ -55,6 +53,6 @@ func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	public.Use(middleware.PublicCache(300))
 	{
 		public.GET("", r.ph.GetAllProducts)
-		public.GET("/:id", r.ph.GetProductByPublicID)
+		public.GET("/:slug", r.ph.GetProductBySlug)
 	}
 }

@@ -20,16 +20,37 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	fileUtil "github.com/m-mahmoud-alsaid/prim-backend/pkg/file"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 )
 
 type ObjectService interface {
 	UploadObject(ctx context.Context, contentType string, size int64, bucket string, file io.Reader) (*model.Object, error)
+	GetObjectByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
 	DeleteObject(ctx context.Context, bucket, key string) error
 	GetObjectURL(ctx context.Context, bucket, key string) string
 }
 
+func (s *ProductService) handleError(err error, defaultMsg string) error {
+	if err == nil {
+		return nil
+	}
+	mappedErr := database.MapError(err)
+	switch {
+	case errors.Is(mappedErr, database.ErrNotFound):
+		return apierr.ErrNotFound(defaultMsg + " not found").Wrap(err)
+	case errors.Is(mappedErr, database.ErrConflict):
+		return apierr.ErrConflict(defaultMsg + " conflict").Wrap(err)
+	case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+		return apierr.ErrBadRequest("Invalid reference for " + defaultMsg).Wrap(err)
+	default:
+		s.logger.Error("internal server error in product service", log.Meta{"error": err.Error()})
+		return apierr.ErrInternalError("Failed to " + defaultMsg).Wrap(err).WithStack()
+	}
+} 
+
+
 type ProductService struct {
-	dr              database.Runner
+	dbRunner        database.Runner
 	logger          log.Logger
 	objectService   ObjectService
 	productRepo     *ProductRepository
@@ -50,7 +71,7 @@ func NewService(
 	variantService *variant.VariantService,
 ) *ProductService {
 	return &ProductService{
-		dr:              r,
+		dbRunner:        r,
 		logger:          logger,
 		objectService:   objectService,
 		productRepo:     productRepo,
@@ -64,19 +85,17 @@ func NewService(
 type CreateProductInput struct {
 	BrandID     *uuid.UUID
 	CategoryID  uuid.UUID
-	Title          string
-	Description    string
-	Highlights     []string
-	ProductType    string
+	Title       string
+	Description *string
+	ProductType string
 }
 
 type UpdateProductInput struct {
 	BrandID     *uuid.UUID
 	CategoryID  *uuid.UUID
-	Title          *string
-	Description    *string
-	Highlights     []string
-	Status         *model.PublicationStatus
+	Title       *string
+	Description *string
+	Highlights  []string
 	ProductType *string
 }
 
@@ -93,7 +112,6 @@ type ProductDetails struct {
 	Product  *model.Product          `json:"product"`
 	Brand    *model.ProductBrand     `json:"brand,omitempty"`
 	Category *model.ProductCategory  `json:"category,omitempty"`
-	Media    []*model.ProductMedia   `json:"media,omitempty"`
 	Variants []*model.ProductVariant `json:"variants,omitempty"`
 	Tags     []*model.ProductTag     `json:"tags,omitempty"`
 }
@@ -111,37 +129,20 @@ func (s *ProductService) CreateProductAsDraft(
 
 	product := &model.Product{
 		ID:          uuid.New(),
+		Slug:        utils.Slugify(input.Title),
 		BrandID:     input.BrandID,
 		CategoryID:  input.CategoryID,
-		PublicID:    uuid.NewString(),
-		Title:          input.Title,
-		Description:    input.Description,
-		Status:         model.PublicationStatusDraft,
-		ProductType:    pt,
+		Title:       input.Title,
+		Description: input.Description,
+		Status:      model.PublicationStatusDraft,
+		ProductType: pt,
 	}
 
-	err = s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.productRepo.Create(ctx, db, product)
 	})
 	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(mappedErr, database.ErrConflict):
-			return nil, apierr.ErrConflict("Product with this public_id already exists").
-				WithCode(errcode.CodeProductAlreadyExists).
-				Wrap(err)
-
-		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
-			return nil, apierr.ErrBadRequest("Invalid brand or category reference").
-				WithCode(apierr.CodeInvalidReference).
-				Wrap(err)
-
-		default:
-			return nil, apierr.ErrInternalError("Failed to create product").
-				WithCode(apierr.CodeInternalError).
-				Wrap(err).
-				WithStack()
-		}
+		return nil, s.handleError(err, "create product")
 	}
 
 	return product, nil
@@ -152,7 +153,7 @@ func (s *ProductService) UpdateProduct(
 	productID uuid.UUID,
 	input UpdateProductInput,
 ) error {
-	err := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
 		product, err := s.productRepo.GetByID(ctx, tx, productID)
 		if err != nil {
 			return err
@@ -163,23 +164,23 @@ func (s *ProductService) UpdateProduct(
 		}
 
 		if input.Description != nil {
-			product.Description = *input.Description
+			product.Description = input.Description
 		}
 
 		if input.BrandID != nil {
 			product.BrandID = input.BrandID
 		}
 
-		if input.CategoryID != nil && *input.CategoryID != uuid.Nil {
+		if input.CategoryID != nil {
 			product.CategoryID = *input.CategoryID
+		}
+
+		if input.Title != nil {
+			product.Title = *input.Title
 		}
 
 		if input.Highlights != nil {
 			product.Highlights = input.Highlights
-		}
-
-		if input.Status != nil {
-			product.Status = *input.Status
 		}
 
 		if input.ProductType != nil {
@@ -224,7 +225,7 @@ func (s *ProductService) GetByID(
 	productID uuid.UUID,
 ) (*model.Product, error) {
 	var product *model.Product
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
 		product, err = s.productRepo.GetByID(ctx, db, productID)
 		return err
@@ -253,7 +254,7 @@ func (s *ProductService) GetAdminDetailsByID(
 	productID uuid.UUID,
 ) (*ProductDetails, error) {
 	productDetails := &ProductDetails{}
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		prod, err := s.productRepo.GetByIDWithDeleted(ctx, db, productID)
 		if err != nil {
 			return err
@@ -284,16 +285,19 @@ func (s *ProductService) GetAdminDetailsByID(
 		}
 	}
 
+	if productDetails.Product.ThumbnailObjectID != nil {
+		thumbObj, err := s.objectService.GetObjectByID(ctx, *productDetails.Product.ThumbnailObjectID)
+		if err == nil {
+			thumbObj.PublicURL = s.objectService.GetObjectURL(ctx, thumbObj.Bucket, thumbObj.Key)
+			productDetails.Product.Thumbnail = thumbObj
+		}
+	}
+
 	if productDetails.Product.CategoryID != uuid.Nil {
 		catObj, err := s.categoryService.GetCategoryByID(ctx, productDetails.Product.CategoryID)
 		if err == nil {
 			productDetails.Category = catObj
 		}
-	}
-
-	mediaList, err := s.GetProductMedia(ctx, productDetails.Product.ID)
-	if err == nil {
-		productDetails.Media = mediaList
 	}
 
 	variantRes, err := s.variantService.ListVariantsByProductID(ctx, productDetails.Product.ID, &pagination.ListQuery{PageSize: 100}, true)
@@ -309,14 +313,14 @@ func (s *ProductService) GetAdminDetailsByID(
 	return productDetails, nil
 }
 
-func (s *ProductService) GetByPublicID(
+func (s *ProductService) GetBySlug(
 	ctx context.Context,
-	publicID string,
+	slug string,
 ) (*ProductDetails, error) {
-	cleanPID := strings.TrimSpace(publicID)
+	cleanSlug := strings.TrimSpace(slug)
 	productDetails := &ProductDetails{}
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		prod, err := s.productRepo.GetByPublicID(ctx, db, cleanPID)
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		prod, err := s.productRepo.GetBySlug(ctx, db, cleanSlug)
 		if err != nil {
 			return err
 		}
@@ -346,16 +350,19 @@ func (s *ProductService) GetByPublicID(
 		}
 	}
 
+	if productDetails.Product.ThumbnailObjectID != nil {
+		thumbObj, err := s.objectService.GetObjectByID(ctx, *productDetails.Product.ThumbnailObjectID)
+		if err == nil {
+			thumbObj.PublicURL = s.objectService.GetObjectURL(ctx, thumbObj.Bucket, thumbObj.Key)
+			productDetails.Product.Thumbnail = thumbObj
+		}
+	}
+
 	if productDetails.Product.CategoryID != uuid.Nil {
 		catObj, err := s.categoryService.GetCategoryByID(ctx, productDetails.Product.CategoryID)
 		if err == nil {
 			productDetails.Category = catObj
 		}
-	}
-
-	mediaList, err := s.GetProductMedia(ctx, productDetails.Product.ID)
-	if err == nil {
-		productDetails.Media = mediaList
 	}
 
 	variantRes, err := s.variantService.ListVariantsByProductID(ctx, productDetails.Product.ID, &pagination.ListQuery{PageSize: 100}, false)
@@ -376,7 +383,7 @@ func (s *ProductService) AdminList(
 	includeDeleted bool,
 ) (*pagination.PagedResult[model.Product], error) {
 	var res *pagination.PagedResult[model.Product]
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
 		res, err = s.productRepo.AdminList(ctx, db, q, includeDeleted)
 		return err
@@ -389,15 +396,22 @@ func (s *ProductService) AdminList(
 			WithStack()
 	}
 
+	for i := range res.Items {
+		item := res.Items[i]
+		if item != nil && item.Thumbnail != nil {
+			item.Thumbnail.PublicURL = s.objectService.GetObjectURL(ctx, item.Thumbnail.Bucket, item.Thumbnail.Key)
+		}
+	}
+
 	return res, nil
 }
 func (s *ProductService) List(
 	ctx context.Context,
 	q *pagination.ListQuery,
 	includeDeleted bool,
-) (*pagination.PagedResult[PublicProductListReadModel], error) {
-	var res *pagination.PagedResult[PublicProductListReadModel]
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+) (*pagination.PagedResult[ProductCardReadModel], error) {
+	var res *pagination.PagedResult[ProductCardReadModel]
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
 		res, err = s.productRepo.List(ctx, db, q, includeDeleted)
 		return err
@@ -408,6 +422,13 @@ func (s *ProductService) List(
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
+	}
+
+	for i := range res.Items {
+		item := res.Items[i]
+		if item != nil && item.Thumbnail != nil {
+			item.Thumbnail.PublicURL = s.objectService.GetObjectURL(ctx, item.Thumbnail.Bucket, item.Thumbnail.Key)
+		}
 	}
 
 	return res, nil
@@ -426,7 +447,7 @@ func (s *ProductService) PublishProduct(
 			WithCode(errcode.CodePublishFailed)
 	}
 
-	err = s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.productRepo.UpdateStatus(ctx, db, productID, model.PublicationStatusPublished)
 	})
 
@@ -453,7 +474,7 @@ func (s *ProductService) ArchiveProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.productRepo.UpdateStatus(ctx, db, productID, model.PublicationStatusArchived)
 	})
 
@@ -480,7 +501,7 @@ func (s *ProductService) SoftDeleteProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.productRepo.SoftDeleteByID(ctx, db, productID)
 	})
 
@@ -548,11 +569,11 @@ func (s *ProductService) ReplaceProductTags(
 	return s.tagService.ReplaceProductTags(ctx, productID, tagIDs)
 }
 
-func (ps *ProductService) UploadProductMedia(
+func (ps *ProductService) UploadProductThumbnail(
 	ctx context.Context,
 	productID uuid.UUID,
 	fileHeader *multipart.FileHeader,
-) (*model.ProductMedia, error) {
+) (*model.Object, error) {
 	if productID == uuid.Nil {
 		return nil, apierr.ErrBadRequest("Product ID is required").
 			WithCode(apierr.CodeInvalidInput)
@@ -587,19 +608,12 @@ func (ps *ProductService) UploadProductMedia(
 			Wrap(err)
 	}
 
-	mediaType, err := model.ParseMediaType(detectedContentType)
-	if err != nil {
-		return nil, apierr.ErrBadRequest("Unsupported media format").
-			WithCode(apierr.CodeUnsupportedMediaType).
-			Wrap(err)
-	}
-
-	_, err = ps.GetByID(ctx, productID)
+	product, err := ps.GetByID(ctx, productID)
 	if err != nil {
 		return nil, err
 	}
 
-	bucket := "product-media"
+	bucket := "product-thumbnails"
 
 	cleanCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -618,151 +632,19 @@ func (ps *ProductService) UploadProductMedia(
 			WithStack()
 	}
 
-	var media *model.ProductMedia
-	err = ps.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		maxOrder, err := ps.productRepo.GetMaxMediaSortOrder(ctx, tx, productID)
-		if err != nil {
-			return err
-		}
-
-		var repoErr error
-		media, repoErr = ps.productRepo.AddMedia(ctx, tx, CreateProductMediaInput{
-			ProductID:       productID,
-			StorageObjectID: obj.ID,
-			MediaType:       mediaType,
-			SortOrder:       maxOrder + 1,
-		})
-		return repoErr
+	product.ThumbnailObjectID = &obj.ID
+	err = ps.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+		return ps.productRepo.Update(ctx, tx, product)
 	})
 
 	if err != nil {
 		_ = ps.objectService.DeleteObject(ctx, obj.Bucket, obj.Key)
-		return nil, apierr.ErrInternalError("Failed to attach media to product").
+		return nil, apierr.ErrInternalError("Failed to attach thumbnail to product").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
 	}
 
-	return media, nil
-}
-
-func (ps *ProductService) GetProductMedia(
-	ctx context.Context,
-	productID uuid.UUID,
-) ([]*model.ProductMedia, error) {
-	if productID == uuid.Nil {
-		return nil, apierr.ErrBadRequest("Product ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
-	var mediaList []*model.ProductMedia
-	err := ps.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		var err error
-		mediaList, err = ps.productRepo.ListMediaByProductID(ctx, db, productID)
-		return err
-	})
-
-	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to fetch product media").
-			WithCode(apierr.CodeInternalError).
-			Wrap(err).
-			WithStack()
-	}
-
-	for _, m := range mediaList {
-		if m.Object != nil && m.Object.PublicURL == "" && m.Object.Bucket != "" && m.Object.Key != "" {
-			url := ps.objectService.GetObjectURL(
-				ctx,
-				m.Object.Bucket,
-				m.Object.Key,
-			)
-			if url != "" {
-				m.Object.PublicURL = url
-			}
-		}
-	}
-
-	return mediaList, nil
-}
-
-func (ps *ProductService) DetachMedia(
-	ctx context.Context,
-	productID uuid.UUID,
-	mediaID uuid.UUID,
-) error {
-	if productID == uuid.Nil || mediaID == uuid.Nil {
-		return apierr.ErrBadRequest("Product ID and Media ID are required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
-	var objectBucket, objectKey string
-	err := ps.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		mediaList, err := ps.productRepo.ListMediaByProductID(ctx, tx, productID)
-		if err != nil {
-			return err
-		}
-		for _, m := range mediaList {
-			if m.ID == mediaID && m.Object != nil {
-				objectBucket = m.Object.Bucket
-				objectKey = m.Object.Key
-				break
-			}
-		}
-
-		if err := ps.productRepo.RemoveMedia(ctx, tx, productID, mediaID); err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(mappedErr, database.ErrNotFound):
-			return apierr.ErrNotFound("Product media relationship not found").
-				WithCode(errcode.CodeMediaNotFound).
-				Wrap(err)
-
-		default:
-			return apierr.ErrInternalError("Failed to detach media").
-				WithCode(apierr.CodeInternalError).
-				Wrap(err).
-				WithStack()
-		}
-	}
-
-	if objectKey != "" {
-		_ = ps.objectService.DeleteObject(ctx, objectBucket, objectKey)
-	}
-
-	return nil
-}
-
-func (ps *ProductService) ReorderMedia(
-	ctx context.Context,
-	productID uuid.UUID,
-	orderedMediaIDs []uuid.UUID,
-) error {
-	if productID == uuid.Nil {
-		return apierr.ErrBadRequest("Product ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
-	if len(orderedMediaIDs) == 0 {
-		return nil
-	}
-
-	err := ps.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		return ps.productRepo.ReorderMedia(ctx, tx, productID, orderedMediaIDs)
-	})
-
-	if err != nil {
-		return apierr.ErrInternalError("Failed to reorder product media").
-			WithCode(apierr.CodeInternalError).
-			Wrap(err).
-			WithStack()
-	}
-
-	return nil
+	obj.PublicURL = ps.objectService.GetObjectURL(ctx, obj.Bucket, obj.Key)
+	return obj, nil
 }

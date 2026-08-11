@@ -24,7 +24,7 @@ var allowedVariantSortFields = map[string]string{
 
 type variantFilter struct {
 	ID             *uuid.UUID
-	PublicID       *string
+	SKU       *string
 	ProductID      *uuid.UUID
 	IncludeDeleted bool
 }
@@ -47,7 +47,7 @@ type ListVariantOptions struct {
 type CreateVariantMediaInput struct {
 	ID              uuid.UUID
 	VariantID       uuid.UUID
-	StorageObjectID uuid.UUID
+	ThumbnailObjectID uuid.UUID
 	MediaType       string
 	SortOrder       int
 }
@@ -72,7 +72,7 @@ func (vr *VariantRepository) Create(
 	query := `
 		INSERT INTO product_variants (
 			id,
-			public_id,
+			sku,
 			product_id,
 			is_default,
 			title,
@@ -80,10 +80,11 @@ func (vr *VariantRepository) Create(
 			crossed_out_price,
 			currency,
 			attributes,
+			thumbnail_object_id,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
 		RETURNING created_at, updated_at
 	`
 
@@ -91,7 +92,7 @@ func (vr *VariantRepository) Create(
 		ctx,
 		query,
 		variant.ID,
-		variant.PublicID,
+		variant.SKU,
 		variant.ProductID,
 		variant.IsDefault,
 		variant.Title,
@@ -99,6 +100,7 @@ func (vr *VariantRepository) Create(
 		variant.CrossedOutPrice,
 		variant.Currency,
 		variant.Attributes,
+		variant.ThumbnailObjectID,
 	).Scan(&variant.CreatedAt, &variant.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create variant: %w", err)
@@ -116,13 +118,13 @@ func (vr *VariantRepository) GetByID(
 	return vr.get(ctx, qe, &variantFilter{ID: &id})
 }
 
-// GetByPublicID fetches a single variant by its public ID.
-func (vr *VariantRepository) GetByPublicID(
+// GetBySKU fetches a single variant by its public ID.
+func (vr *VariantRepository) GetBySKU(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	publicID string,
+	sku string,
 ) (*model.ProductVariant, error) {
-	return vr.get(ctx, qe, &variantFilter{PublicID: &publicID})
+	return vr.get(ctx, qe, &variantFilter{SKU: &sku})
 }
 
 func (vr *VariantRepository) get(
@@ -130,7 +132,7 @@ func (vr *VariantRepository) get(
 	qe database.QueryExecutor,
 	filter *variantFilter,
 ) (*model.ProductVariant, error) {
-	if filter == nil || (filter.ID == nil && filter.PublicID == nil && filter.ProductID == nil) {
+	if filter == nil || (filter.ID == nil && filter.SKU == nil && filter.ProductID == nil) {
 		return nil, errors.New("get variant: filter requires at least one condition")
 	}
 
@@ -148,9 +150,9 @@ func (vr *VariantRepository) get(
 		argIdx++
 	}
 	
-	if filter.PublicID != nil {
-		whereClauses = append(whereClauses, fmt.Sprintf("public_id = $%d", argIdx))
-		args = append(args, *filter.PublicID)
+	if filter.SKU != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("sku = $%d", argIdx))
+		args = append(args, *filter.SKU)
 		argIdx++
 	}
 
@@ -162,7 +164,7 @@ func (vr *VariantRepository) get(
 	query := fmt.Sprintf(`
 		SELECT
 			id,
-			public_id,
+			sku,
 			product_id,
 			is_default,
 			title,
@@ -170,6 +172,7 @@ func (vr *VariantRepository) get(
 			crossed_out_price,
 			currency,
 			attributes,
+			thumbnail_object_id,
 			created_at,
 			updated_at,
 			deleted_at
@@ -353,7 +356,7 @@ func (vr *VariantRepository) ListByProductID(
 	selectQuery := fmt.Sprintf(`
 		SELECT
 			id,
-			public_id,
+			sku,
 			product_id,
 			is_default,
 			title,
@@ -423,7 +426,7 @@ func (vr *VariantRepository) AddMedia(
 		INSERT INTO variant_media (
 			id,
 			variant_id,
-			storage_object_id,
+			thumbnail_object_id,
 			media_type,
 			sort_order
 		)
@@ -435,7 +438,7 @@ func (vr *VariantRepository) AddMedia(
 		query,
 		in.ID,
 		in.VariantID,
-		in.StorageObjectID,
+		in.ThumbnailObjectID,
 		in.MediaType,
 		in.SortOrder,
 	)
@@ -446,7 +449,7 @@ func (vr *VariantRepository) AddMedia(
 	return &model.VariantMedia{
 		ID:              in.ID,
 		VariantID:       in.VariantID,
-		StorageObjectID: in.StorageObjectID,
+		ThumbnailObjectID: in.ThumbnailObjectID,
 		MediaType:       in.MediaType,
 		SortOrder:       in.SortOrder,
 	}, nil
@@ -465,7 +468,7 @@ func (vr *VariantRepository) ListMediaByVariantID(
 		SELECT
 			m.id,
 			m.variant_id,
-			m.storage_object_id,
+			m.thumbnail_object_id,
 			m.media_type,
 			m.sort_order,
 			so.id,
@@ -475,7 +478,7 @@ func (vr *VariantRepository) ListMediaByVariantID(
 			so.file_size,
 			so.status
 		FROM variant_media m
-		JOIN storage_objects so ON m.storage_object_id = so.id
+		JOIN storage_objects so ON m.thumbnail_object_id = so.id
 		WHERE m.variant_id = $1
 		ORDER BY m.sort_order ASC
 	`
@@ -494,7 +497,7 @@ func (vr *VariantRepository) ListMediaByVariantID(
 		if err := rows.Scan(
 			&m.ID,
 			&m.VariantID,
-			&m.StorageObjectID,
+			&m.ThumbnailObjectID,
 			&m.MediaType,
 			&m.SortOrder,
 			&m.Object.ID,

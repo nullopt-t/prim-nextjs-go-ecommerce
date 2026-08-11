@@ -2,7 +2,6 @@ BEGIN;
 
 -- Drop dependent / join / child tables first
 DROP TABLE IF EXISTS variant_media CASCADE;
-DROP TABLE IF EXISTS product_media CASCADE;
 DROP TABLE IF EXISTS product_tag_assignments CASCADE;
 DROP TABLE IF EXISTS category_attributes CASCADE;
 

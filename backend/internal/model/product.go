@@ -66,16 +66,21 @@ type Product struct {
 	BrandID    *uuid.UUID `db:"brand_id"`
 	CategoryID uuid.UUID  `db:"category_id"`
 
-	PublicID    string            `db:"public_id"`
-	Title       string            `db:"title"`
-	Description string            `db:"description"`
-	Highlights  []string          `db:"highlights"`
-	Status      PublicationStatus `db:"status"`
-	ProductType ProductType       `db:"product_type"`
+	Slug              string            `db:"slug"`
+	Title             string            `db:"title"`
+	Description       *string           `db:"description"`
+	Highlights        []string          `db:"highlights"`
+	Status            PublicationStatus `db:"status"`
+	ProductType       ProductType       `db:"product_type"`
+	ThumbnailObjectID *uuid.UUID        `db:"thumbnail_object_id"`
 
 	CreatedAt time.Time  `db:"created_at"`
 	UpdatedAt time.Time  `db:"updated_at"`
 	DeletedAt *time.Time `db:"deleted_at"`
+
+	Brand     *ProductBrand    `db:"-"`
+	Category  *ProductCategory `db:"-"`
+	Thumbnail *Object          `db:"-"`
 }
 
 type MediaType string
@@ -125,10 +130,9 @@ func ParseMediaType(contentType string) (MediaType, error) {
 }
 
 type ProductMedia struct {
-	ID              uuid.UUID
-	PublicID        string
-	StorageObjectID uuid.UUID
-	ProductID       uuid.UUID
+	ID        uuid.UUID
+	ObjectID  uuid.UUID
+	ProductID uuid.UUID
 
 	MediaType MediaType
 	SortOrder int

@@ -97,7 +97,7 @@ func (vs *VariantService) CreateVariant(
 
 	variant := &model.ProductVariant{
 		ID:              uuid.New(),
-		PublicID:        uuid.NewString(),
+		SKU:        uuid.NewString(),
 		ProductID:       in.ProductID,
 		Title:           title,
 		Price:           in.Price,
@@ -174,14 +174,14 @@ func (vs *VariantService) GetVariantByID(
 	return variant, nil
 }
 
-func (vs *VariantService) GetVariantByPublicID(
+func (vs *VariantService) GetVariantBySKU(
 	ctx context.Context,
-	publicID string,
+	sku string,
 ) (*model.ProductVariant, error) {
 	var variant *model.ProductVariant
 
 	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		v, err := vs.vr.GetByPublicID(ctx, db, publicID)
+		v, err := vs.vr.GetBySKU(ctx, db, sku)
 		if err != nil {
 			return err
 		}
@@ -346,7 +346,7 @@ func (vs *VariantService) AttachMedia(
 		var repoErr error
 		media, repoErr = vs.vr.AddMedia(ctx, db, CreateVariantMediaInput{
 			VariantID:       in.VariantID,
-			StorageObjectID: in.StorageObjectID,
+			ThumbnailObjectID: in.StorageObjectID,
 			MediaType:       mediaType,
 			SortOrder:       in.SortOrder,
 		})

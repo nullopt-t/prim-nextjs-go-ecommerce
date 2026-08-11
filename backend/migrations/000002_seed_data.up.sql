@@ -37,27 +37,35 @@ INSERT INTO product_tags (id, public_id, name, created_at, updated_at) VALUES
 ('50000000-0000-0000-0000-000000000005', '50000000-0000-0000-0000-000000000006', 'New Arrival', now(), now())
 ON CONFLICT DO NOTHING;
 
+-- Storage Objects (Thumbnails)
+INSERT INTO storage_objects (id, bucket, object_key, content_type, file_size, status, created_at, updated_at) VALUES
+('80000000-0000-0000-0000-000000000001', 'products', 'macbook-pro.jpg', 'image/jpeg', 102400, 'uploaded', now(), now()),
+('80000000-0000-0000-0000-000000000002', 'products', 's24-ultra.jpg', 'image/jpeg', 153600, 'uploaded', now(), now()),
+('80000000-0000-0000-0000-000000000003', 'products', 'af1.jpg', 'image/jpeg', 204800, 'uploaded', now(), now()),
+('80000000-0000-0000-0000-000000000004', 'products', 'sony-wh1000xm5.jpg', 'image/jpeg', 102400, 'uploaded', now(), now())
+ON CONFLICT DO NOTHING;
+
 -- Products
-INSERT INTO products (id, brand_id, category_id, public_id, title, description, highlights, status, product_type, created_at, updated_at) VALUES
-('60000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000005', '60000000-0000-0000-0000-000000000002', 'MacBook Pro 16"', 'Supercharged by M3 Pro or M3 Max.', '["16-inch Liquid Retina XDR display", "Up to 22 hours battery life"]'::jsonb, 'published', 'variable', now(), now()),
-('60000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000003', '40000000-0000-0000-0000-000000000007', '60000000-0000-0000-0000-000000000004', 'Galaxy S24 Ultra', 'Welcome to the era of mobile AI.', '["Titanium exterior", "Built-in S Pen", "200MP camera"]'::jsonb, 'published', 'variable', now(), now()),
-('60000000-0000-0000-0000-000000000005', '30000000-0000-0000-0000-000000000005', '40000000-0000-0000-0000-000000000009', '60000000-0000-0000-0000-000000000006', 'Nike Air Force 1', 'Radiance lives on in the Nike Air Force 1.', '["Classic style", "Durable leather", "Air cushioning"]'::jsonb, 'published', 'variable', now(), now()),
-('60000000-0000-0000-0000-000000000007', '30000000-0000-0000-0000-000000000007', '40000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000008', 'Sony WH-1000XM5', 'Industry-leading noise canceling headphones.', '["Auto NC Optimizer", "Up to 30-hour battery"]'::jsonb, 'published', 'simple', now(), now())
+INSERT INTO products (id, brand_id, category_id, slug, title, description, highlights, status, product_type, thumbnail_object_id, created_at, updated_at) VALUES
+('60000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000005', 'macbook-pro-16', 'MacBook Pro 16"', 'Supercharged by M3 Pro or M3 Max.', '["16-inch Liquid Retina XDR display", "Up to 22 hours battery life"]'::jsonb, 'published', 'variable', '80000000-0000-0000-0000-000000000001', now(), now()),
+('60000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000003', '40000000-0000-0000-0000-000000000007', 'galaxy-s24-ultra', 'Galaxy S24 Ultra', 'Welcome to the era of mobile AI.', '["Titanium exterior", "Built-in S Pen", "200MP camera"]'::jsonb, 'published', 'variable', '80000000-0000-0000-0000-000000000002', now(), now()),
+('60000000-0000-0000-0000-000000000005', '30000000-0000-0000-0000-000000000005', '40000000-0000-0000-0000-000000000009', 'nike-air-force-1', 'Nike Air Force 1', 'Radiance lives on in the Nike Air Force 1.', '["Classic style", "Durable leather", "Air cushioning"]'::jsonb, 'published', 'variable', '80000000-0000-0000-0000-000000000003', now(), now()),
+('60000000-0000-0000-0000-000000000007', '30000000-0000-0000-0000-000000000007', '40000000-0000-0000-0000-000000000001', 'sony-wh-1000xm5', 'Sony WH-1000XM5', 'Industry-leading noise canceling headphones.', '["Auto NC Optimizer", "Up to 30-hour battery"]'::jsonb, 'published', 'simple', '80000000-0000-0000-0000-000000000004', now(), now())
 ON CONFLICT DO NOTHING;
 
 -- Variants
-INSERT INTO product_variants (id, public_id, product_id, is_default, title, price, currency, attributes, created_at, updated_at) VALUES
+INSERT INTO product_variants (id, sku, product_id, is_default, title, price, currency, attributes, created_at, updated_at) VALUES
 -- MacBook Pro Variants
-('70000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000001', true, 'Space Black, 18GB RAM, 512GB SSD', 249900, 'USD', '{"color": "Space Black", "ram": "18GB", "storage": "512GB"}'::jsonb, now(), now()),
-('70000000-0000-0000-0000-000000000003', '70000000-0000-0000-0000-000000000004', '60000000-0000-0000-0000-000000000001', false, 'Silver, 36GB RAM, 1TB SSD', 309900, 'USD', '{"color": "Silver", "ram": "36GB", "storage": "1TB"}'::jsonb, now(), now()),
+('70000000-0000-0000-0000-000000000001', 'MAC-PRO-16-BLK-18', '60000000-0000-0000-0000-000000000001', true, 'Space Black, 18GB RAM, 512GB SSD', 249900, 'USD', '{"color": "Space Black", "ram": "18GB", "storage": "512GB"}'::jsonb, now(), now()),
+('70000000-0000-0000-0000-000000000003', 'MAC-PRO-16-SLV-36', '60000000-0000-0000-0000-000000000001', false, 'Silver, 36GB RAM, 1TB SSD', 309900, 'USD', '{"color": "Silver", "ram": "36GB", "storage": "1TB"}'::jsonb, now(), now()),
 -- Galaxy S24 Variants
-('70000000-0000-0000-0000-000000000005', '70000000-0000-0000-0000-000000000006', '60000000-0000-0000-0000-000000000003', true, 'Titanium Gray, 256GB', 129999, 'USD', '{"color": "Titanium Gray", "storage": "256GB"}'::jsonb, now(), now()),
-('70000000-0000-0000-0000-000000000007', '70000000-0000-0000-0000-000000000008', '60000000-0000-0000-0000-000000000003', false, 'Titanium Black, 512GB', 141999, 'USD', '{"color": "Titanium Black", "storage": "512GB"}'::jsonb, now(), now()),
+('70000000-0000-0000-0000-000000000005', 'S24-ULTRA-GRY-256', '60000000-0000-0000-0000-000000000003', true, 'Titanium Gray, 256GB', 129999, 'USD', '{"color": "Titanium Gray", "storage": "256GB"}'::jsonb, now(), now()),
+('70000000-0000-0000-0000-000000000007', 'S24-ULTRA-BLK-512', '60000000-0000-0000-0000-000000000003', false, 'Titanium Black, 512GB', 141999, 'USD', '{"color": "Titanium Black", "storage": "512GB"}'::jsonb, now(), now()),
 -- Nike Air Force 1 Variants
-('70000000-0000-0000-0000-000000000009', '70000000-0000-0000-0000-000000000010', '60000000-0000-0000-0000-000000000005', true, 'White, Size 10', 11500, 'USD', '{"color": "White", "size": "10"}'::jsonb, now(), now()),
-('70000000-0000-0000-0000-000000000011', '70000000-0000-0000-0000-000000000012', '60000000-0000-0000-0000-000000000005', false, 'Black, Size 10.5', 11500, 'USD', '{"color": "Black", "size": "10.5"}'::jsonb, now(), now()),
+('70000000-0000-0000-0000-000000000009', 'AF1-WHT-100', '60000000-0000-0000-0000-000000000005', true, 'White, Size 10', 11500, 'USD', '{"color": "White", "size": "10"}'::jsonb, now(), now()),
+('70000000-0000-0000-0000-000000000011', 'AF1-BLK-105', '60000000-0000-0000-0000-000000000005', false, 'Black, Size 10.5', 11500, 'USD', '{"color": "Black", "size": "10.5"}'::jsonb, now(), now()),
 -- Sony WH-1000XM5
-('70000000-0000-0000-0000-000000000013', '70000000-0000-0000-0000-000000000014', '60000000-0000-0000-0000-000000000007', true, 'Silver', 39800, 'USD', '{"color": "Silver"}'::jsonb, now(), now())
+('70000000-0000-0000-0000-000000000013', 'SONY-WH1000XM5-SLV', '60000000-0000-0000-0000-000000000007', true, 'Silver', 39800, 'USD', '{"color": "Silver"}'::jsonb, now(), now())
 ON CONFLICT DO NOTHING;
 
 -- Tag Assignments

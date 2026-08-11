@@ -13,7 +13,6 @@ import (
 
 type VariantService interface {
 	GetVariantByID(ctx context.Context, variantID uuid.UUID) (*model.ProductVariant, error)
-	GetVariantByPublicID(ctx context.Context, publicID string) (*model.ProductVariant, error)
 	ListVariantMedia(ctx context.Context, variantID uuid.UUID) ([]*model.VariantMedia, error)
 }
 
@@ -116,10 +115,10 @@ func (s *CartService) AddItem(
 	ctx context.Context,
 	userID *uuid.UUID,
 	sessionID *string,
-	variantPublicID string,
+	variantPublicID uuid.UUID,
 	quantity int,
 ) (*model.Cart, error) {
-	v, err := s.variantService.GetVariantByPublicID(ctx, variantPublicID)
+	v, err := s.variantService.GetVariantByID(ctx, variantPublicID)
 	if err != nil {
 		return nil, apierr.ErrNotFound("Variant not found").
 			WithCode(errcode.CodeVariantNotFound).
