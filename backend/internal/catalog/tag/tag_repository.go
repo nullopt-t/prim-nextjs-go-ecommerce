@@ -51,12 +51,11 @@ func (tr *TagRepository) Create(
 	query := `
 		INSERT INTO product_tags (
 			id,
-			public_id,
 			name,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, now(), now())
+		VALUES ($1, $2, now(), now())
 		RETURNING created_at, updated_at
 	`
 
@@ -64,7 +63,6 @@ func (tr *TagRepository) Create(
 		ctx,
 		query,
 		tag.ID,
-		tag.PublicID,
 		tag.Name,
 	).Scan(&tag.CreatedAt, &tag.UpdatedAt)
 	if err != nil {
@@ -123,7 +121,6 @@ func (tr *TagRepository) get(
 	query := fmt.Sprintf(`
 		SELECT
 			id,
-			public_id,
 			name,
 			created_at,
 			updated_at,
@@ -242,7 +239,6 @@ func (tr *TagRepository) List(
 	selectQuery := fmt.Sprintf(`
 		SELECT
 			id,
-			public_id,
 			name,
 			created_at,
 			updated_at,
@@ -353,7 +349,7 @@ func (tr *TagRepository) GetTagsByProductID(
 	}
 
 	query := `
-		SELECT t.id, t.public_id, t.name, t.created_at, t.updated_at, t.deleted_at
+		SELECT t.id, t.name, t.created_at, t.updated_at, t.deleted_at
 		FROM product_tags t
 		INNER JOIN product_tag_assignments pta ON t.id = pta.tag_id
 		WHERE pta.product_id = $1 AND t.deleted_at IS NULL
