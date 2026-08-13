@@ -12,6 +12,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/brand"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/category"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/errcode"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/review"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/tag"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
@@ -58,6 +59,7 @@ type ProductService struct {
 	categoryService *category.CategoryService
 	tagService      *tag.TagService
 	variantService  *variant.VariantService
+	reviewService   *review.ReviewService
 }
 
 func NewService(
@@ -69,6 +71,7 @@ func NewService(
 	categoryService *category.CategoryService,
 	tagService *tag.TagService,
 	variantService *variant.VariantService,
+	reviewService *review.ReviewService,
 ) *ProductService {
 	return &ProductService{
 		dbRunner:        r,
@@ -79,6 +82,7 @@ func NewService(
 		categoryService: categoryService,
 		tagService:      tagService,
 		variantService:  variantService,
+		reviewService:   reviewService,
 	}
 }
 

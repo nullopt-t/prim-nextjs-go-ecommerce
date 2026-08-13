@@ -108,6 +108,19 @@ type AdminProductDetailsResponse struct {
 	DeletedAt   *string                  `json:"deleted_at,omitempty" example:"2026-08-05T19:30:00Z"`
 }
 
+type ProductReviewResponse struct {
+	ID          string    `json:"id"`
+	ProductID   string    `json:"product_id"`
+	UserID      string    `json:"user_id"`
+	OrderItemID string    `json:"order_item_id"`
+	Rating      int16     `json:"rating"`
+	Title       *string   `json:"title,omitempty"`
+	Body        *string   `json:"body,omitempty"`
+	Status      string    `json:"status"`
+	CreatedAt   string    `json:"created_at"`
+	UpdatedAt   string    `json:"updated_at"`
+}
+
 // --- DTOs: Media ---
 
 type StorageObjectResponse struct {
@@ -444,6 +457,69 @@ func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.PaginatedResponse{
 		Data: result.Items,
+		Meta: result.Page,
+	})
+}
+
+// ListProductReviews godoc
+//
+//	@Summary		List reviews for a specific product
+//	@Description	Returns a paginated list of approved reviews for a given product.
+//	@Tags			Products
+//	@Produce		json
+//	@Param			slug	path		string	true	"Product Slug"
+//	@Param			q	query		pagination.ListQuery												true	"Pagination, search query, and sorting parameters"
+//	@Failure		400	{object}	api.BadRequestErrorResponse											"Invalid query parameters"
+//	@Failure		500	{object}	api.InternalServerErrorResponse										"Internal server error"
+//	@Success		200	{object}	api.PaginatedResponse{data=[]ProductReviewResponse,meta=pagination.Page}	"Paginated list of product reviews"
+//	@Router			/products/{slug}/reviews [get]
+func (h *ProductHandler) ListProductReviews(c *gin.Context) {
+	slug := c.Param("slug")
+	if slug == "" {
+		_ = c.Error(apierr.ErrValidationFailed("slug is required"))
+		return
+	}
+
+	details, err := h.service.GetBySlug(c.Request.Context(), slug)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	productID := details.Product.ID
+
+	q := &pagination.ListQuery{}
+	if err := c.ShouldBindQuery(q); err != nil {
+		_ = c.Error(apierr.ErrValidationFailed("invalid query parameters"))
+		return
+	}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
+
+	status := model.ReviewStatusApproved
+
+	result, err := h.service.reviewService.ListReviews(c.Request.Context(), q, &productID, nil, &status)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	var responses []ProductReviewResponse
+	for _, rv := range result.Items {
+		responses = append(responses, ProductReviewResponse{
+			ID:          rv.ID.String(),
+			ProductID:   rv.ProductID.String(),
+			UserID:      rv.UserID.String(),
+			OrderItemID: rv.OrderItemID.String(),
+			Rating:      rv.Rating,
+			Title:       rv.Title,
+			Body:        rv.Body,
+			Status:      rv.Status.String(),
+			CreatedAt:   rv.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:   rv.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+
+	c.JSON(http.StatusOK, api.PaginatedResponse{
+		Data: responses,
 		Meta: result.Page,
 	})
 }

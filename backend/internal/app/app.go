@@ -6,6 +6,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/cart"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/category"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/product"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/review"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/tag"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/checkout"
@@ -170,6 +171,13 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	variantRouter := variant.NewRouter(variantHandler, config.KeysCfg)
 	variantRouter.MapRoutes(v1)
 
+	// review
+	reviewRepo := review.NewReviewRepository()
+	reviewService := review.NewService(txRunner, reviewRepo)
+	reviewHandler := review.NewHandler(reviewService)
+	reviewRouter := review.NewRouter(reviewHandler, config.KeysCfg)
+	reviewRouter.MapRoutes(v1)
+
 	// product
 	productRepo := product.NewProductRepository()
 	productService := product.NewService(
@@ -181,6 +189,7 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		categoryService,
 		tagService,
 		variantService,
+		reviewService,
 	)
 	productHandler := product.NewHandler(productService)
 	productRouter := product.NewRouter(productHandler, config.KeysCfg)
