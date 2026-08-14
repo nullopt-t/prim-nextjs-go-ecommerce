@@ -332,18 +332,19 @@ func (cs *ChallengeService) MarkVerified(
 		markVerifiedScript,
 		[]string{key(challenge.Identifier)},
 	).Result()
-	
+
 	if err != nil {
 		return fmt.Errorf("mark challenge verified: eval script: %w", err)
 	}
-	
+
 	resNum, _ := result.(int64)
-	if resNum == -1 {
+	switch resNum {
+	case -1:
 		return apierr.New(http.StatusConflict, "Challenge already verified").WithCode(apierr.CodeResourceConflict)
-	} else if resNum == -2 {
+	case -2:
 		return apierr.New(http.StatusGone, "Challenge expired or invalid").WithCode(apierr.CodeExpired)
 	}
-	
+
 	return nil
 }
 

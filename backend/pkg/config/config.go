@@ -51,6 +51,15 @@ type AuthConfig struct {
 	SessionTTL   time.Duration
 }
 
+type RateLimitConfig struct {
+	AuthStartRequests  int64
+	AuthStartWindow    time.Duration
+	AuthResendRequests int64
+	AuthResendWindow   time.Duration
+	AuthVerifyRequests int64
+	AuthVerifyWindow   time.Duration
+}
+
 type Config struct {
 	ClientCfg      *ClientConfig
 	DBCfg          *DatabaseConfig
@@ -60,6 +69,7 @@ type Config struct {
 	SvPort         string
 	MinioCfg       *MinioConfig
 	AuthCfg        *AuthConfig
+	RateLimitCfg   *RateLimitConfig
 	AllowedOrigins []string // CORS_ALLOWED_ORIGINS comma-separated
 	IsProduction   bool     // APP_ENV=production
 }
@@ -108,6 +118,14 @@ func Load() *Config {
 		AuthCfg: &AuthConfig{
 			ChallengeTTL: time.Duration(utils.GetEnvAsInt("AUTH_CHALLENGE_TTL_MINUTES", 5)) * time.Minute,
 			SessionTTL:   time.Duration(utils.GetEnvAsInt("AUTH_SESSION_TTL_DAYS", 30)) * 24 * time.Hour,
+		},
+		RateLimitCfg: &RateLimitConfig{
+			AuthStartRequests:  int64(utils.GetEnvAsInt("RL_AUTH_START_REQ", 5)),
+			AuthStartWindow:    time.Duration(utils.GetEnvAsInt("RL_AUTH_START_MIN", 1)) * time.Minute,
+			AuthResendRequests: int64(utils.GetEnvAsInt("RL_AUTH_RESEND_REQ", 3)),
+			AuthResendWindow:   time.Duration(utils.GetEnvAsInt("RL_AUTH_RESEND_MIN", 1)) * time.Minute,
+			AuthVerifyRequests: int64(utils.GetEnvAsInt("RL_AUTH_VERIFY_REQ", 10)),
+			AuthVerifyWindow:   time.Duration(utils.GetEnvAsInt("RL_AUTH_VERIFY_MIN", 1)) * time.Minute,
 		},
 		SvPort: utils.GetEnvOrDefault("HTTP_PORT", "8080"),
 	}

@@ -224,6 +224,7 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		rateLimiter,
 		app.logger,
 		app.redisClient,
+		config.RateLimitCfg,
 	)
 	authRouter.MapRoutes(v1)
 

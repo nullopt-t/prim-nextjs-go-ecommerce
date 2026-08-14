@@ -148,23 +148,14 @@ func (s *AuthService) GetUserByID(
 	return s.userService.GetUserByID(ctx, userID)
 }
 
-// TODO(ai): we have decided to use only emails for auth 
 func (s *AuthService) StartChallenge(
 	ctx context.Context,
 	identifier string,
-	identifierType IdentifierType,
 ) (*model.Challenge, error) {
-	var channel string
-	switch identifierType {
-	case Email:
-		channel = "email"
-	case Phone:
-		channel = "sms"
-	}
 	challenge, err := s.challengeService.Create(
 		ctx,
 		identifier,
-		channel,
+		"email",
 	)
 	if err != nil {
 		return nil, err
@@ -173,7 +164,6 @@ func (s *AuthService) StartChallenge(
 	return challenge, nil
 }
 
-// TODO(ai): we have decided to use only emails for auth 
 func (s *AuthService) ResendChallenge(
 	ctx context.Context,
 	identifier string,
@@ -194,7 +184,6 @@ func (s *AuthService) ResendChallenge(
 	return err
 }
 
-// TODO(ai): we have decided to use only emails for auth 
 func (s *AuthService) VerifyChallenge(
 	ctx context.Context,
 	identifier,

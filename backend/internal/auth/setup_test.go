@@ -148,7 +148,21 @@ func (s *AuthTestSuite) SetupSuite() {
 	// Wait, VerifyChallenge might use CartMerger. Let's look at auth_handler.go.
 	authHandler := auth.NewAuthHandler(authService, sessionService, logger, false, nil, challengeTTL)
 	rateLimiter := security.NewRateLimiter(s.redisClient)
-	authRouter := auth.NewRouter(authHandler, secrets, rateLimiter, logger, s.redisClient)
+	authRouter := auth.NewRouter(
+		authHandler,
+		secrets,
+		rateLimiter,
+		logger,
+		s.redisClient,
+		&config.RateLimitConfig{
+			AuthStartRequests:  5,
+			AuthStartWindow:    time.Minute,
+			AuthResendRequests: 3,
+			AuthResendWindow:   time.Minute,
+			AuthVerifyRequests: 10,
+			AuthVerifyWindow:   time.Minute,
+		},
+	)
 
 	v1 := s.router.Group("/api/v1")
 	authRouter.MapRoutes(v1)

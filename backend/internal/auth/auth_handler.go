@@ -15,13 +15,6 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 )
 
-type IdentifierType string
-
-const (
-	Email IdentifierType = "email"
-	Phone IdentifierType = "phone"
-)
-
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
@@ -113,7 +106,6 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 	challenge, err := h.authService.StartChallenge(
 		ctx,
 		email,
-		Email,
 	)
 	if err != nil {
 		_ = c.Error(err)
