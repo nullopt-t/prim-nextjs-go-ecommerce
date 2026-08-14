@@ -19,12 +19,12 @@ func ErrorHandler(logger log.Logger) gin.HandlerFunc {
 
 		err := c.Errors.Last().Err
 		if ae, ok := err.(*apierr.APIError); ok {
-			logger.Error(
-				"something went wrong",
-				log.Meta{
-					"error": ae.LogValue(),
-				},
-			)
+			meta := log.Meta{"error": ae.LogValue()}
+			if ae.Status >= 500 {
+				logger.Error("internal server error", meta)
+			} else {
+				logger.Warn("client error", meta)
+			}
 			c.JSON(ae.Status, api.ErrorResponse{
 				Code:    ae.Code,
 				Message: ae.Error(),

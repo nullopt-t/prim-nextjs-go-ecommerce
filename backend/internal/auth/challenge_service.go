@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	ChallengeTTL   = 5 * time.Minute
-	MaxResendTimes = 3
+	MaxResendTimes    = 3
+	MaxVerifyAttempts = 5
 )
 
 type CreateChallengeRequest struct {
@@ -24,23 +24,23 @@ type CreateChallengeRequest struct {
 }
 
 type ChallengeService struct {
-	redisClient *redis.Client
-	otpGen      *OTPGenerator
-	notifier    Notifier
-	logger      log.Logger
+	redisClient  *redis.Client
+	notifier     Notifier
+	logger       log.Logger
+	challengeTTL time.Duration
 }
 
 func NewChallengeService(
 	rdc *redis.Client,
-	otpGen *OTPGenerator,
 	notifier Notifier,
 	logger log.Logger,
+	challengeTTL time.Duration,
 ) *ChallengeService {
 	return &ChallengeService{
-		redisClient: rdc,
-		notifier:    notifier,
-		otpGen:      otpGen,
-		logger:      logger,
+		redisClient:  rdc,
+		notifier:     notifier,
+		logger:       logger,
+		challengeTTL: challengeTTL,
 	}
 }
 
@@ -53,7 +53,7 @@ func (cs *ChallengeService) Create(
 	identifier string,
 	channel string,
 ) (*model.Challenge, error) {
-	otp, err := cs.otpGen.GenerateOTP()
+	otp, err := GenerateOTP()
 	if err != nil {
 		return nil, fmt.Errorf("create challenge: %w", err)
 	}
@@ -72,7 +72,7 @@ func (cs *ChallengeService) Create(
 	switch {
 	case err != nil:
 		// No existing challenge.
-		challenge = model.NewChallenge(identifier, channel, otpHash, ChallengeTTL)
+		challenge = model.NewChallenge(identifier, channel, otpHash, cs.challengeTTL)
 		isNew = true
 
 	case existing.Status == "pending":
@@ -87,7 +87,7 @@ func (cs *ChallengeService) Create(
 		challenge = existing
 
 	case existing.Status == "verified" || existing.Status == "expired":
-		challenge = model.NewChallenge(identifier, channel, otpHash, ChallengeTTL)
+		challenge = model.NewChallenge(identifier, channel, otpHash, cs.challengeTTL)
 		isNew = true
 
 	default:
@@ -109,7 +109,7 @@ func (cs *ChallengeService) Create(
 		"expires_at":   challenge.ExpiresAt,
 		"created_at":   challenge.CreatedAt,
 	})
-	pipe.Expire(ctx, k, ChallengeTTL)
+	pipe.Expire(ctx, k, cs.challengeTTL)
 	if _, err := pipe.Exec(ctx); err != nil {
 		return nil, fmt.Errorf("create challenge: persist: %w", err)
 	}
@@ -187,13 +187,13 @@ func (cs *ChallengeService) updateOTP(
 		key(identifier),
 		map[string]any{
 			"otp_hash":   otpHash,
-			"expires_at": time.Now().Add(ChallengeTTL),
+			"expires_at": time.Now().Add(cs.challengeTTL),
 		},
 	)
 	pipe.Expire(
 		ctx,
 		key(identifier),
-		ChallengeTTL,
+		cs.challengeTTL,
 	)
 	_, err = pipe.Exec(ctx)
 	if err != nil {
@@ -227,12 +227,12 @@ func (cs *ChallengeService) Resend(
 		).WithCode(apierr.CodeExpired)
 	}
 
-	newOtp, err := cs.otpGen.GenerateOTP()
+	newOtp, err := GenerateOTP()
 	if err != nil {
 		return fmt.Errorf("resend challenge:%w", err)
 	}
 
-	if err := cs.updateOTP(ctx, challenge.ID, newOtp); err != nil {
+	if err := cs.updateOTP(ctx, challenge.Identifier, newOtp); err != nil {
 		return err
 	}
 
@@ -290,35 +290,61 @@ func (cs *ChallengeService) Verify(
 		).WithCode(apierr.CodeExpired)
 	}
 
+	if challenge.Attempts >= MaxVerifyAttempts {
+		return false, apierr.New(
+			http.StatusTooManyRequests,
+			"Too many verification attempts",
+		).WithCode(apierr.CodeRateLimitExceeded)
+	}
+
 	ok, err := crypto.Equal(challenge.OtpHash, otp)
 	if err != nil {
 		return false, fmt.Errorf("challenge verify:%w", err)
 	}
 
 	if !ok {
+		// Increment attempts asynchronously
+		cs.redisClient.HIncrBy(ctx, key(challenge.Identifier), "attempts", 1)
 		return false, nil
 	}
 
 	return true, nil
 }
 
+const markVerifiedScript = `
+local status = redis.call("HGET", KEYS[1], "status")
+if status == "verified" then
+    return -1
+end
+if status ~= "pending" then
+    return -2
+end
+redis.call("HSET", KEYS[1], "status", "verified")
+return 1
+`
+
 func (cs *ChallengeService) MarkVerified(
 	ctx context.Context,
 	challenge *model.Challenge,
 ) error {
-	err := cs.redisClient.HSet(
+	result, err := cs.redisClient.Eval(
 		ctx,
-		key(challenge.Identifier),
-		"status",
-		"verified",
-	).Err()
+		markVerifiedScript,
+		[]string{key(challenge.Identifier)},
+	).Result()
+	
 	if err != nil {
-		return fmt.Errorf(
-			"mark challenge verified :%w",
-			err,
-		)
+		return fmt.Errorf("mark challenge verified: eval script: %w", err)
 	}
-	return err
+	
+	resNum, _ := result.(int64)
+	if resNum == -1 {
+		return apierr.New(http.StatusConflict, "Challenge already verified").WithCode(apierr.CodeResourceConflict)
+	} else if resNum == -2 {
+		return apierr.New(http.StatusGone, "Challenge expired or invalid").WithCode(apierr.CodeExpired)
+	}
+	
+	return nil
 }
 
 func (cs *ChallengeService) Expire(
@@ -333,7 +359,7 @@ func (cs *ChallengeService) Expire(
 	).Err()
 	if err != nil {
 		return fmt.Errorf(
-			"mark challenge verified :%w",
+			"mark challenge expired :%w",
 			err,
 		)
 	}

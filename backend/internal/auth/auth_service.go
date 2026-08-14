@@ -2,8 +2,6 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -55,6 +53,7 @@ type AuthService struct {
 	jwtService       *jwt.JWTManager
 	challengeService *ChallengeService
 	userService      UserService
+	sessionService   *SessionService
 	logger           log.Logger
 	redisClient      *redis.Client
 	notifier         Notifier
@@ -65,6 +64,7 @@ func NewAuthService(
 	logger log.Logger,
 	challengeService *ChallengeService,
 	userService UserService,
+	sessionService *SessionService,
 	jwtService *jwt.JWTManager,
 	redisClient *redis.Client,
 	notifier Notifier,
@@ -74,6 +74,7 @@ func NewAuthService(
 		jwtService:       jwtService,
 		challengeService: challengeService,
 		userService:      userService,
+		sessionService:   sessionService,
 		logger:           logger,
 		redisClient:      redisClient,
 		notifier:         notifier,
@@ -90,7 +91,7 @@ func (s *AuthService) RotateToken(
 		s.secrets.JwtRefreshTokenSecretKey,
 	)
 	if err != nil {
-		return "", "", err
+		return "", "", apierr.New(http.StatusUnauthorized, "Invalid refresh token").WithCode(apierr.CodeUnauthorized)
 	}
 
 	user, err := s.userService.GetUserByID(
@@ -101,19 +102,43 @@ func (s *AuthService) RotateToken(
 		return "", "", err
 	}
 
-	newClaims := &jwt.UserClaims{
-		UserID:   user.ID,
-		UserRole: (*string)(user.Role),
+	if claims.SessionID != "" {
+		session, err := s.sessionService.GetSessionByID(ctx, claims.SessionID)
+		if err != nil {
+			return "", "", apierr.New(http.StatusUnauthorized, "Session expired or revoked").WithCode(apierr.CodeUnauthorized)
+		}
+		
+		if session.CurrentRefreshJTI != claims.ID {
+			// Replay detected! Delete session to protect user.
+			_ = s.sessionService.DeleteSessionByID(ctx, user.ID, claims.SessionID)
+			s.logger.Warn("refresh token replay detected, session revoked", log.Meta{"user_id": user.ID.String(), "session_id": claims.SessionID})
+			return "", "", apierr.New(http.StatusUnauthorized, "Invalid token replay detected").WithCode(apierr.CodeUnauthorized)
+		}
 	}
 
-	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
+	newClaims := &jwt.UserClaims{
+		UserID:    user.ID,
+		UserRole:  (*string)(user.Role),
+		SessionID: claims.SessionID,
+	}
+
+	accessToken, newRefreshToken, err := s.jwtService.GenerateTokenPair(
 		newClaims,
 	)
 	if err != nil {
+		s.logger.Error("failed to generate token pair during rotation", log.Meta{"error": err})
 		return "", "", err
 	}
 
-	return accessToken, refreshToken, nil
+	if claims.SessionID != "" {
+		if err := s.sessionService.UpdateRefreshJTI(ctx, claims.SessionID, newClaims.ID); err != nil {
+			s.logger.Error("failed to update session JTI", log.Meta{"error": err, "session_id": claims.SessionID})
+		}
+	}
+
+	s.logger.Info("token rotated successfully", log.Meta{"user_id": user.ID.String()})
+
+	return accessToken, newRefreshToken, nil
 }
 
 func (s *AuthService) GetUserByID(
@@ -123,6 +148,7 @@ func (s *AuthService) GetUserByID(
 	return s.userService.GetUserByID(ctx, userID)
 }
 
+// TODO(ai): we have decided to use only emails for auth 
 func (s *AuthService) StartChallenge(
 	ctx context.Context,
 	identifier string,
@@ -147,6 +173,7 @@ func (s *AuthService) StartChallenge(
 	return challenge, nil
 }
 
+// TODO(ai): we have decided to use only emails for auth 
 func (s *AuthService) ResendChallenge(
 	ctx context.Context,
 	identifier string,
@@ -167,6 +194,7 @@ func (s *AuthService) ResendChallenge(
 	return err
 }
 
+// TODO(ai): we have decided to use only emails for auth 
 func (s *AuthService) VerifyChallenge(
 	ctx context.Context,
 	identifier,
@@ -192,6 +220,7 @@ func (s *AuthService) VerifyChallenge(
 	}
 
 	if !ok {
+		s.logger.Warn("invalid challenge verification attempt", log.Meta{"identifier": identifier, "ip_address": ipAddress})
 		return nil, apierr.New(
 			http.StatusUnauthorized,
 			"Unauthorized",
@@ -212,6 +241,20 @@ func (s *AuthService) VerifyChallenge(
 		}
 	}
 
+	if user.Status == model.StatusDeleted || user.Status == model.StatusInactive {
+		return nil, apierr.New(http.StatusForbidden, "Account is inactive").WithCode(apierr.CodeForbidden)
+	}
+
+	if user.Status == model.StatusSuspended {
+		if user.SuspendedUntil == nil || time.Now().Before(*user.SuspendedUntil) {
+			return nil, apierr.New(http.StatusForbidden, "Account is suspended").WithCode(apierr.CodeForbidden)
+		}
+	}
+
+	if user.LockedUntil != nil && time.Now().Before(*user.LockedUntil) {
+		return nil, apierr.New(http.StatusForbidden, "Account is temporarily locked").WithCode(apierr.CodeForbidden)
+	}
+
 	if err := s.challengeService.MarkVerified(
 		ctx,
 		challenge,
@@ -219,9 +262,18 @@ func (s *AuthService) VerifyChallenge(
 		return nil, err
 	}
 
+	sess, sErr := s.sessionService.CreateSession(ctx, user.ID, SessionTypeAuthenticated, userAgent, ipAddress)
+	sessionID := ""
+	if sErr == nil && sess != nil {
+		sessionID = sess.ID
+	} else if sErr != nil {
+		s.logger.Error("failed to create session", log.Meta{"error": sErr, "user_id": user.ID.String()})
+	}
+
 	claims := &jwt.UserClaims{
-		UserID:   user.ID,
-		UserRole: (*string)(user.Role),
+		UserID:    user.ID,
+		UserRole:  (*string)(user.Role),
+		SessionID: sessionID,
 	}
 
 	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
@@ -231,11 +283,17 @@ func (s *AuthService) VerifyChallenge(
 		return nil, err
 	}
 
-	sess, sErr := s.CreateSession(ctx, user.ID, SessionTypeAuthenticated, userAgent, ipAddress)
-	sessionID := ""
-	if sErr == nil && sess != nil {
-		sessionID = sess.ID
+	if sessionID != "" {
+		if err := s.sessionService.UpdateRefreshJTI(ctx, sessionID, claims.ID); err != nil {
+			s.logger.Error("failed to update session JTI", log.Meta{"error": err, "session_id": sessionID})
+		}
 	}
+
+	s.logger.Info("user successfully authenticated", log.Meta{
+		"user_id":    user.ID.String(),
+		"ip_address": ipAddress,
+		"session_id": sessionID,
+	})
 
 	return &Tokens{
 		AccessToken:  accessToken,
@@ -243,110 +301,4 @@ func (s *AuthService) VerifyChallenge(
 		SessionID:    sessionID,
 		UserID:       user.ID,
 	}, nil
-}
-
-type SessionType string
-
-const (
-	SessionTypeGuest         SessionType = "guest"
-	SessionTypeAuthenticated SessionType = "authenticated"
-)
-
-type UserSession struct {
-	ID         string      `json:"id"`
-	UserID     uuid.UUID   `json:"user_id"`
-	Type       SessionType `json:"type"`
-	UserAgent  string      `json:"user_agent"`
-	IPAddress  string      `json:"ip_address"`
-	CreatedAt  time.Time   `json:"created_at"`
-	LastActive time.Time   `json:"last_active"`
-}
-
-func (s *AuthService) CreateSession(
-	ctx context.Context,
-	userID uuid.UUID,
-	sessionType SessionType,
-	userAgent string,
-	ipAddress string,
-) (*UserSession, error) {
-	sessionID := fmt.Sprintf("sess_%s", uuid.New().String())
-	now := time.Now().UTC()
-
-	sess := &UserSession{
-		ID:         sessionID,
-		UserID:     userID,
-		Type:       sessionType,
-		UserAgent:  userAgent,
-		IPAddress:  ipAddress,
-		CreatedAt:  now,
-		LastActive: now,
-	}
-
-	data, err := json.Marshal(sess)
-	if err != nil {
-		return nil, err
-	}
-
-	sessKey := fmt.Sprintf("auth:session:%s", sessionID)
-	userSetKey := fmt.Sprintf("auth:user_sessions:%s", userID.String())
-
-	// Store session JSON with 30-day TTL in Redis
-	if err := s.redisClient.Set(ctx, sessKey, data, 30*24*time.Hour).Err(); err != nil {
-		return nil, err
-	}
-
-	// Add session ID to user's Redis session set
-	if err := s.redisClient.SAdd(ctx, userSetKey, sessionID).Err(); err != nil {
-		return nil, err
-	}
-
-	return sess, nil
-}
-
-func (s *AuthService) GetUserSessions(
-	ctx context.Context,
-	userID uuid.UUID,
-) ([]UserSession, error) {
-	userSetKey := fmt.Sprintf("auth:user_sessions:%s", userID.String())
-	sessionIDs, err := s.redisClient.SMembers(ctx, userSetKey).Result()
-	if err != nil {
-		return nil, err
-	}
-
-	sessions := make([]UserSession, 0, len(sessionIDs))
-	for _, sessID := range sessionIDs {
-		sessKey := fmt.Sprintf("auth:session:%s", sessID)
-		val, err := s.redisClient.Get(ctx, sessKey).Result()
-		if err == redis.Nil {
-			// Clean up expired session ID from user set
-			s.redisClient.SRem(ctx, userSetKey, sessID)
-			continue
-		} else if err != nil {
-			continue
-		}
-
-		var sess UserSession
-		if err := json.Unmarshal([]byte(val), &sess); err == nil {
-			sessions = append(sessions, sess)
-		}
-	}
-
-	return sessions, nil
-}
-
-func (s *AuthService) DeleteSessionByID(
-	ctx context.Context,
-	userID uuid.UUID,
-	sessionID string,
-) error {
-	sessKey := fmt.Sprintf("auth:session:%s", sessionID)
-	userSetKey := fmt.Sprintf("auth:user_sessions:%s", userID.String())
-
-	if err := s.redisClient.Del(ctx, sessKey).Err(); err != nil {
-		return err
-	}
-	if err := s.redisClient.SRem(ctx, userSetKey, sessionID).Err(); err != nil {
-		return err
-	}
-	return nil
 }

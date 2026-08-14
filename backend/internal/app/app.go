@@ -94,15 +94,22 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 
 	challengeService := auth.NewChallengeService(
 		app.redisClient,
-		auth.NewOTPGenerator(),
 		notifier,
 		app.logger,
+		config.AuthCfg.ChallengeTTL,
+	)
+
+	sessionService := auth.NewSessionService(
+		app.redisClient,
+		app.logger,
+		config.AuthCfg.SessionTTL,
 	)
 
 	authService := auth.NewAuthService(
 		app.logger,
 		challengeService,
 		userService,
+		sessionService,
 		jwtService,
 		app.redisClient,
 		notifier,
@@ -204,15 +211,19 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 
 	authHandler := auth.NewAuthHandler(
 		authService,
-		rateLimiter,
+		sessionService,
 		app.logger,
 		config.IsProduction,
 		cartService,
+		config.AuthCfg.ChallengeTTL,
 	)
 
 	authRouter := auth.NewRouter(
 		authHandler,
 		config.KeysCfg,
+		rateLimiter,
+		app.logger,
+		app.redisClient,
 	)
 	authRouter.MapRoutes(v1)
 

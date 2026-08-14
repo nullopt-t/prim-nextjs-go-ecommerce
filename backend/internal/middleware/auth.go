@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
+	"github.com/redis/go-redis/v9"
 )
 
 var (
@@ -21,18 +23,15 @@ func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, ok := c.Get("userRole")
 		if !ok {
-			// No role in context means Authenticate didn't run — treat as unauthenticated
 			_ = c.Error(apierr.New(http.StatusUnauthorized, "Unauthorized").WithCode(apierr.CodeUnauthorized))
 			c.Abort()
 			return
 		}
 		if role.(string) != strings.ToLower(string(requiredRole)) {
-			// User is authenticated but lacks the required role → 403 Forbidden
 			_ = c.Error(apierr.ErrForbidden("Insufficient permissions").WithCode(apierr.CodeForbidden))
 			c.Abort()
 			return
 		}
-
 		c.Next()
 	}
 }
@@ -83,9 +82,34 @@ func Authenticate(secrets *config.Secrets, optional ...bool) gin.HandlerFunc {
 		}
 
 		c.Set("userID", claims.UserID)
+		if claims.SessionID != "" {
+			c.Set("sessionID", claims.SessionID)
+		}
 		if claims.UserRole != nil {
 			c.Set("userRole", *claims.UserRole)
 		}
+		c.Next()
+	}
+}
+
+// StrictSessionCheck ensures the session ID from the token still exists in Redis.
+// It must be placed AFTER Authenticate.
+func StrictSessionCheck(redisClient *redis.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sessionID, exists := c.Get("sessionID")
+		if !exists || sessionID == "" {
+			c.Next()
+			return
+		}
+
+		sessKey := fmt.Sprintf("auth:session:%s", sessionID)
+		res, err := redisClient.Exists(c.Request.Context(), sessKey).Result()
+		if err != nil || res == 0 {
+			_ = c.Error(apierr.New(http.StatusUnauthorized, "Session expired or revoked").WithCode(apierr.CodeUnauthorized))
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }

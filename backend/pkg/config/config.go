@@ -2,6 +2,7 @@ package config
 
 import (
 	"strings"
+	"time"
 
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 )
@@ -45,6 +46,11 @@ type MinioConfig struct {
 	PublicURL string
 }
 
+type AuthConfig struct {
+	ChallengeTTL time.Duration
+	SessionTTL   time.Duration
+}
+
 type Config struct {
 	ClientCfg      *ClientConfig
 	DBCfg          *DatabaseConfig
@@ -53,6 +59,7 @@ type Config struct {
 	KeysCfg        *Secrets
 	SvPort         string
 	MinioCfg       *MinioConfig
+	AuthCfg        *AuthConfig
 	AllowedOrigins []string // CORS_ALLOWED_ORIGINS comma-separated
 	IsProduction   bool     // APP_ENV=production
 }
@@ -97,6 +104,10 @@ func Load() *Config {
 			JwtAccessTokenSecretKey:    utils.GetEnvOrDefault("JWT_ACCESS_SECRET", "jwt-access-secret-key"),
 			JwtRefreshTokenSecretKey:   utils.GetEnvOrDefault("JWT_REFRESH_SECRET", "jwt-refresh-secret-key"),
 			JwtResetPassTokenSecretKey: utils.GetEnvOrDefault("JWT_RESET_PASS_SECRET", "jwt-reset-pass-secret-key"),
+		},
+		AuthCfg: &AuthConfig{
+			ChallengeTTL: time.Duration(utils.GetEnvAsInt("AUTH_CHALLENGE_TTL_MINUTES", 5)) * time.Minute,
+			SessionTTL:   time.Duration(utils.GetEnvAsInt("AUTH_SESSION_TTL_DAYS", 30)) * 24 * time.Hour,
 		},
 		SvPort: utils.GetEnvOrDefault("HTTP_PORT", "8080"),
 	}

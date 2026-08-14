@@ -65,7 +65,7 @@ func (r *UserRepository) get(
 	filter userFilter,
 ) (*model.User, error) {
 	query := `
-		SELECT id, email, role, created_at, updated_at, deleted_at
+		SELECT id, email, role, status, suspended_until, locked_until, created_at, updated_at, deleted_at
 		FROM users
 		WHERE deleted_at IS NULL
 	`
@@ -85,11 +85,15 @@ func (r *UserRepository) get(
 
 	var u model.User
 	var roleStr string
+	var statusStr string
 
 	err := qe.QueryRow(ctx, query, args...).Scan(
 		&u.ID,
 		&u.Identifier,
 		&roleStr,
+		&statusStr,
+		&u.SuspendedUntil,
+		&u.LockedUntil,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 		&u.DeletedAt,
@@ -100,6 +104,6 @@ func (r *UserRepository) get(
 
 	rVal := model.UserRole(roleStr)
 	u.Role = &rVal
-	u.Status = model.StatusActive
+	u.Status = model.AccountStatus(statusStr)
 	return &u, nil
 }
