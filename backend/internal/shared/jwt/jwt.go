@@ -12,8 +12,9 @@ import (
 )
 
 type UserClaims struct {
-	UserID   uuid.UUID `json:"user_id"`
-	UserRole *string   `json:"user_role,omitempty"`
+	UserID    uuid.UUID `json:"user_id"`
+	SessionID string    `json:"session_id"`
+	UserRole  *string   `json:"user_role,omitempty"`
 	Type     string    `json:"type"`
 	_jwt.RegisteredClaims
 }
@@ -48,6 +49,7 @@ func RandomToken() (string, error) {
 func (s *JWTManager) GenerateAccessToken(claims *UserClaims) (string, error) {
 	claims.Type = "access_token"
 	claims.RegisteredClaims = _jwt.RegisteredClaims{
+		ID:        uuid.New().String(),
 		Subject:   claims.UserID.String(),
 		IssuedAt:  _jwt.NewNumericDate(time.Now()),
 		ExpiresAt: _jwt.NewNumericDate(time.Now().Add(AccessTokenExpiration)),
@@ -63,6 +65,7 @@ func (s *JWTManager) GenerateAccessToken(claims *UserClaims) (string, error) {
 func (s *JWTManager) GenerateRefreshToken(claims *UserClaims) (string, error) {
 	claims.Type = "refresh_token"
 	claims.RegisteredClaims = _jwt.RegisteredClaims{
+		ID:        uuid.New().String(),
 		Subject:   claims.UserID.String(),
 		IssuedAt:  _jwt.NewNumericDate(time.Now()),
 		ExpiresAt: _jwt.NewNumericDate(time.Now().Add(RefreshTokenExpiration)),

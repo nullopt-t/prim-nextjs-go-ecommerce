@@ -11,16 +11,8 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
-)
-
-type IdentifierType string
-
-const (
-	Email IdentifierType = "email"
-	Phone IdentifierType = "phone"
 )
 
 type RefreshTokenRequest struct {
@@ -35,11 +27,12 @@ type MeResponse struct {
 }
 
 type Handler struct {
-	authService  *AuthService
-	limiter      *security.RateLimiter
-	logger       log.Logger
-	isProduction bool
-	cartMerger   CartMerger
+	authService    *AuthService
+	sessionService *SessionService
+	logger         log.Logger
+	isProduction   bool
+	cartMerger     CartMerger
+	challengeTTL   time.Duration
 }
 
 type CartMerger interface {
@@ -48,37 +41,39 @@ type CartMerger interface {
 
 func NewAuthHandler(
 	authService *AuthService,
-	limiter *security.RateLimiter,
+	sessionService *SessionService,
 	logger log.Logger,
 	isProduction bool,
 	cartMerger CartMerger,
+	challengeTTL time.Duration,
 ) *Handler {
 	return &Handler{
-		authService:  authService,
-		limiter:      limiter,
-		logger:       logger,
-		isProduction: isProduction,
-		cartMerger:   cartMerger,
+		authService:    authService,
+		sessionService: sessionService,
+		logger:         logger,
+		isProduction:   isProduction,
+		cartMerger:     cartMerger,
+		challengeTTL:   challengeTTL,
 	}
 }
 
 type StartChallengeRequest struct {
-	Identifier string `json:"identifier" binding:"required"`
+	Email string `json:"email" binding:"required,email"`
 }
 
 type StartChallengeResponse struct {
-	Identifier string `json:"identifier"`
-	ExpiresAt  string `json:"expires_at"`
-	Duration   int64  `json:"duration"`
+	Email     string `json:"email"`
+	ExpiresAt string `json:"expires_at"`
+	Duration  int64  `json:"duration"`
 }
 
 type ResendChallengeRequest struct {
-	Identifier string `json:"identifier" binding:"required"`
+	Email string `json:"email" binding:"required,email"`
 }
 
 type VerifyChallengeRequest struct {
-	Identifier string `json:"identifier" binding:"required"`
-	Code       string `json:"code" binding:"required,len=6,numeric"`
+	Email string `json:"email" binding:"required,email"`
+	Code  string `json:"code" binding:"required,len=6,numeric"`
 }
 
 // StartChallenge godoc
@@ -101,32 +96,16 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 		return
 	}
 
-	var identifierType IdentifierType
-	phone, err := utils.IsValidPhone(req.Identifier)
+	email, err := utils.IsValidEmail(req.Email)
 	if err != nil {
-		email, err := utils.IsValidEmail(req.Identifier)
-		if err != nil {
-			_ = c.Error(
-				apierr.New(
-					http.StatusBadRequest,
-					"invalid identifier",
-				),
-			)
-			return
-		}
-
-		req.Identifier = email
-		identifierType = Email
-	} else {
-		identifierType = Phone
-		req.Identifier = phone
+		_ = c.Error(apierr.BadRequestError("invalid email"),)
+		return
 	}
 
 	ctx := c.Request.Context()
 	challenge, err := h.authService.StartChallenge(
 		ctx,
-		req.Identifier,
-		identifierType,
+		email,
 	)
 	if err != nil {
 		_ = c.Error(err)
@@ -135,9 +114,9 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.DataResponse{
 		Data: StartChallengeResponse{
-			Identifier: req.Identifier,
-			ExpiresAt:  challenge.ExpiresAt.UTC().Format(time.RFC3339),
-			Duration:   ChallengeTTL.Milliseconds(),
+			Email:     email,
+			ExpiresAt: challenge.ExpiresAt.UTC().Format(time.RFC3339),
+			Duration:  h.challengeTTL.Milliseconds(),
 		},
 	})
 }
@@ -161,6 +140,13 @@ func (h *Handler) setAuthCookies(c *gin.Context, accessToken, refreshToken, sess
 	}
 }
 
+func (h *Handler) clearAuthCookies(c *gin.Context) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("access_token", "", -1, "/", "", h.isProduction, true)
+	c.SetCookie("refresh_token", "", -1, "/", "", h.isProduction, true)
+	c.SetCookie("session_id", "", -1, "/", "", h.isProduction, true)
+}
+
 // VerifyChallenge godoc
 //
 //	@Summary		Verify an authentication challenge
@@ -169,7 +155,7 @@ func (h *Handler) setAuthCookies(c *gin.Context, accessToken, refreshToken, sess
 //	@Accept			json
 //	@Produce		json
 //	@Param			request	body		VerifyChallengeRequest	true	"Challenge Verification Request"
-//	@Success		200		{object}	api.SuccessResponse
+//	@Success		204		"No Content"
 //	@Failure		400		{object}	api.BadReqResponse
 //	@Failure		401		{object}	api.UnauthorizedResponse
 //	@Failure		429		{object}	api.ErrorResponse
@@ -187,7 +173,7 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 	ipAddress := c.ClientIP()
 	tokens, err := h.authService.VerifyChallenge(
 		ctx,
-		req.Identifier,
+		req.Email,
 		req.Code,
 		userAgent,
 		ipAddress,
@@ -208,12 +194,7 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 
 	h.setAuthCookies(c, tokens.AccessToken, tokens.RefreshToken, tokens.SessionID)
 
-	c.JSON(
-		http.StatusOK,
-		api.SuccessResponse{
-			Message: "Verification successful",
-		},
-	)
+	c.Status(http.StatusNoContent)
 }
 
 // ResendChallenge godoc
@@ -239,7 +220,7 @@ func (h *Handler) ResendChallenge(c *gin.Context) {
 	ctx := c.Request.Context()
 	err := h.authService.ResendChallenge(
 		ctx,
-		req.Identifier,
+		req.Email,
 	)
 	if err != nil {
 		_ = c.Error(err)
@@ -342,7 +323,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 func (h *Handler) GetSessions(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
 
-	sessions, err := h.authService.GetUserSessions(c.Request.Context(), userID)
+	sessions, err := h.sessionService.GetUserSessions(c.Request.Context(), userID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -366,11 +347,37 @@ func (h *Handler) DeleteSessionByID(c *gin.Context) {
 	userID := c.MustGet("userID").(uuid.UUID)
 	sessionID := c.Param("id")
 
-	err := h.authService.DeleteSessionByID(c.Request.Context(), userID, sessionID)
+	err := h.sessionService.DeleteSessionByID(c.Request.Context(), userID, sessionID)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
+	c.Status(http.StatusNoContent)
+}
+
+// Logout godoc
+//
+//	@Summary		Logout
+//	@Description	Revokes the current session and clears auth cookies.
+//	@Tags			Auth
+//	@Produce		json
+//	@Success		204	"No Content"
+//	@Failure		401	{object}	api.UnauthorizedResponse
+//	@Failure		500	{object}	api.InternalServerErrorResponse
+//	@Router			/auth/logout [post]
+func (h *Handler) Logout(c *gin.Context) {
+	userID := c.MustGet("userID").(uuid.UUID)
+	
+	sessionID := ""
+	if sid, exists := c.Get("sessionID"); exists && sid != "" {
+		sessionID = sid.(string)
+	}
+
+	if sessionID != "" {
+		_ = h.sessionService.DeleteSessionByID(c.Request.Context(), userID, sessionID)
+	}
+
+	h.clearAuthCookies(c)
 	c.Status(http.StatusNoContent)
 }

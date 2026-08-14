@@ -6,6 +6,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/cart"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/category"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/product"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/review"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/tag"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/checkout"
@@ -93,15 +94,22 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 
 	challengeService := auth.NewChallengeService(
 		app.redisClient,
-		auth.NewOTPGenerator(),
 		notifier,
 		app.logger,
+		config.AuthCfg.ChallengeTTL,
+	)
+
+	sessionService := auth.NewSessionService(
+		app.redisClient,
+		app.logger,
+		config.AuthCfg.SessionTTL,
 	)
 
 	authService := auth.NewAuthService(
 		app.logger,
 		challengeService,
 		userService,
+		sessionService,
 		jwtService,
 		app.redisClient,
 		notifier,
@@ -170,6 +178,13 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	variantRouter := variant.NewRouter(variantHandler, config.KeysCfg)
 	variantRouter.MapRoutes(v1)
 
+	// review
+	reviewRepo := review.NewReviewRepository()
+	reviewService := review.NewService(txRunner, reviewRepo)
+	reviewHandler := review.NewHandler(reviewService)
+	reviewRouter := review.NewRouter(reviewHandler, config.KeysCfg)
+	reviewRouter.MapRoutes(v1)
+
 	// product
 	productRepo := product.NewProductRepository()
 	productService := product.NewService(
@@ -181,6 +196,7 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		categoryService,
 		tagService,
 		variantService,
+		reviewService,
 	)
 	productHandler := product.NewHandler(productService)
 	productRouter := product.NewRouter(productHandler, config.KeysCfg)
@@ -195,15 +211,20 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 
 	authHandler := auth.NewAuthHandler(
 		authService,
-		rateLimiter,
+		sessionService,
 		app.logger,
 		config.IsProduction,
 		cartService,
+		config.AuthCfg.ChallengeTTL,
 	)
 
 	authRouter := auth.NewRouter(
 		authHandler,
 		config.KeysCfg,
+		rateLimiter,
+		app.logger,
+		app.redisClient,
+		config.RateLimitCfg,
 	)
 	authRouter.MapRoutes(v1)
 

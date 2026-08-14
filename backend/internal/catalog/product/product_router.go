@@ -54,5 +54,6 @@ func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	{
 		public.GET("", r.ph.GetAllProducts)
 		public.GET("/:slug", r.ph.GetProductBySlug)
+		public.GET("/:slug/reviews", r.ph.ListProductReviews)
 	}
 }
