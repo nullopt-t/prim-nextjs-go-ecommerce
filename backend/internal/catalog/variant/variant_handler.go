@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/inventory"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
@@ -24,47 +25,61 @@ func NewHandler(s *VariantService) *VariantHandler {
 }
 
 type CreateVariantRequest struct {
-	Title           string         `json:"title" binding:"required" example:"Red / XL"`
-	Price           *int64         `json:"price,omitempty" example:"2999"`
-	CrossedOutPrice *int64         `json:"crossed_out_price,omitempty" example:"3999"`
-	Currency        *string        `json:"currency,omitempty" example:"USD"`
-	Attributes      map[string]any `json:"attributes,omitempty"`
-	IsDefault       bool           `json:"is_default" example:"false"`
+	Title             string         `json:"title" binding:"required" example:"Red / XL"`
+	Price             *int64         `json:"price,omitempty" example:"2999"`
+	CrossedOutPrice   *int64         `json:"crossed_out_price,omitempty" example:"3999"`
+	Currency          *string        `json:"currency,omitempty" example:"USD"`
+	Attributes        map[string]any `json:"attributes,omitempty"`
+	IsDefault         bool           `json:"is_default" example:"false"`
+	ThumbnailObjectID *string        `json:"thumbnail_object_id,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
 }
 
 type UpdateVariantRequest struct {
-	Title           *string        `json:"title,omitempty" example:"Red / XXL"`
-	Price           *int64         `json:"price,omitempty" example:"3499"`
-	CrossedOutPrice *int64         `json:"crossed_out_price,omitempty" example:"4499"`
-	Currency        *string        `json:"currency,omitempty" example:"USD"`
-	Attributes      map[string]any `json:"attributes,omitempty"`
-	IsDefault       *bool          `json:"is_default,omitempty" example:"true"`
+	Title             *string        `json:"title,omitempty" example:"Red / XXL"`
+	Price             *int64         `json:"price,omitempty" example:"3499"`
+	CrossedOutPrice   *int64         `json:"crossed_out_price,omitempty" example:"4499"`
+	Currency          *string        `json:"currency,omitempty" example:"USD"`
+	Attributes        map[string]any `json:"attributes,omitempty"`
+	IsDefault         *bool          `json:"is_default,omitempty" example:"true"`
+	ThumbnailObjectID *string        `json:"thumbnail_object_id,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+}
+
+type VariantMediaSummary struct {
+	ID        string `json:"id"`
+	MediaType string `json:"media_type"`
+	SortOrder int    `json:"sort_order"`
+	URL       string `json:"url"`
 }
 
 type VariantResponse struct {
-	ID              string         `json:"id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
-	ProductID       string         `json:"product_id" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
-	Title           string         `json:"title" example:"Red / XL"`
-	Price           *int64         `json:"price,omitempty" example:"2999"`
-	CrossedOutPrice *int64         `json:"crossed_out_price,omitempty" example:"3999"`
-	Currency        *string        `json:"currency,omitempty" example:"USD"`
-	Attributes      map[string]any `json:"attributes"`
-	IsDefault       bool           `json:"is_default" example:"false"`
+	ID              string                `json:"id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
+	SKU             string                `json:"sku,omitempty"`
+	ProductID       string                `json:"product_id" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
+	Title           string                `json:"title" example:"Red / XL"`
+	Price           *int64                `json:"price,omitempty" example:"2999"`
+	CrossedOutPrice *int64                `json:"crossed_out_price,omitempty" example:"3999"`
+	Currency        *string               `json:"currency,omitempty" example:"USD"`
+	Thumbnail       *string               `json:"thumbnail,omitempty"`
+	Media           []VariantMediaSummary `json:"media"`
+	Attributes      map[string]any        `json:"attributes"`
+	IsDefault       bool                  `json:"is_default" example:"false"`
 }
 
 type AdminVariantResponse struct {
-	ID              string         `json:"id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
-	SKU        string         `json:"sku" example:"prod_var_123"`
-	ProductID       string         `json:"product_id" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
-	Title           string         `json:"title" example:"Red / XL"`
-	Price           *int64         `json:"price,omitempty" example:"2999"`
-	CrossedOutPrice *int64         `json:"crossed_out_price,omitempty" example:"3999"`
-	Currency        *string        `json:"currency,omitempty" example:"USD"`
-	Attributes      map[string]any `json:"attributes"`
-	IsDefault       bool           `json:"is_default" example:"false"`
-	CreatedAt       string         `json:"created_at" example:"2026-08-02T16:00:00Z"`
-	UpdatedAt       string         `json:"updated_at" example:"2026-08-02T16:00:00Z"`
-	DeletedAt       *string        `json:"deleted_at,omitempty" example:"2026-08-02T16:15:00Z"`
+	ID              string                 `json:"id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
+	SKU             string                 `json:"sku" example:"prod_var_123"`
+	ProductID       string                 `json:"product_id" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
+	Title           string                 `json:"title" example:"Red / XL"`
+	Price           *int64                 `json:"price,omitempty" example:"2999"`
+	CrossedOutPrice *int64                 `json:"crossed_out_price,omitempty" example:"3999"`
+	Currency        *string                `json:"currency,omitempty" example:"USD"`
+	Thumbnail       *StorageObjectResponse `json:"thumbnail,omitempty"`
+	Media           []VariantMediaSummary  `json:"media"`
+	Attributes      map[string]any         `json:"attributes"`
+	IsDefault       bool                   `json:"is_default" example:"false"`
+	CreatedAt       string                 `json:"created_at" example:"2026-08-02T16:00:00Z"`
+	UpdatedAt       string                 `json:"updated_at" example:"2026-08-02T16:00:00Z"`
+	DeletedAt       *string                `json:"deleted_at,omitempty" example:"2026-08-02T16:15:00Z"`
 }
 
 type AttachMediaRequest struct {
@@ -87,12 +102,13 @@ type StorageObjectResponse struct {
 }
 
 type VariantMediaResponse struct {
-	ID              string                 `json:"id" example:"8f123456-e89b-12d3-a456-426614174000"`
-	VariantID       string                 `json:"variant_id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
-	ThumbnailObjectID string                 `json:"thumbnail_object_id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	MediaType       string                 `json:"media_type" example:"image"`
-	SortOrder       int                    `json:"sort_order" example:"0"`
-	Object          *StorageObjectResponse `json:"object,omitempty"`
+	ID        string                 `json:"id" example:"8f123456-e89b-12d3-a456-426614174000"`
+	PublicID  string                 `json:"public_id" example:"8f123456-e89b-12d3-a456-426614174000"`
+	VariantID string                 `json:"variant_id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
+	ObjectID  string                 `json:"object_id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	MediaType string                 `json:"media_type" example:"image"`
+	SortOrder int                    `json:"sort_order" example:"0"`
+	Object    *StorageObjectResponse `json:"object,omitempty"`
 }
 
 func mapVariantResponse(v *model.ProductVariant) VariantResponse {
@@ -101,13 +117,33 @@ func mapVariantResponse(v *model.ProductVariant) VariantResponse {
 		attrs = make(map[string]any)
 	}
 
+	mediaSummaries := make([]VariantMediaSummary, 0)
+	for _, m := range v.Media {
+		if m != nil && m.Object != nil {
+			mediaSummaries = append(mediaSummaries, VariantMediaSummary{
+				ID:        m.ID.String(),
+				MediaType: m.MediaType,
+				SortOrder: m.SortOrder,
+				URL:       m.Object.PublicURL,
+			})
+		}
+	}
+
+	var thumbnailURL *string
+	if v.Thumbnail != nil && v.Thumbnail.PublicURL != "" {
+		thumbnailURL = &v.Thumbnail.PublicURL
+	}
+
 	return VariantResponse{
-		ID:              v.SKU,
+		ID:              v.ID.String(),
+		SKU:             v.SKU,
 		ProductID:       v.ProductID.String(),
 		Title:           v.Title,
 		Price:           v.Price,
 		CrossedOutPrice: v.CrossedOutPrice,
 		Currency:        v.Currency,
+		Thumbnail:       thumbnailURL,
+		Media:           mediaSummaries,
 		Attributes:      attrs,
 		IsDefault:       v.IsDefault,
 	}
@@ -119,19 +155,44 @@ func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
 		attrs = make(map[string]any)
 	}
 
+	mediaSummaries := make([]VariantMediaSummary, 0)
+	for _, m := range v.Media {
+		if m != nil && m.Object != nil {
+			mediaSummaries = append(mediaSummaries, VariantMediaSummary{
+				ID:        m.ID.String(),
+				MediaType: m.MediaType,
+				SortOrder: m.SortOrder,
+				URL:       m.Object.PublicURL,
+			})
+		}
+	}
+
 	res := AdminVariantResponse{
 		ID:              v.ID.String(),
-		SKU:        v.SKU,
+		SKU:             v.SKU,
 		ProductID:       v.ProductID.String(),
 		Title:           v.Title,
 		Price:           v.Price,
 		CrossedOutPrice: v.CrossedOutPrice,
 		Currency:        v.Currency,
+		Media:           mediaSummaries,
 		Attributes:      attrs,
 		IsDefault:       v.IsDefault,
 		CreatedAt:       v.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:       v.UpdatedAt.Format(time.RFC3339),
 	}
+
+	if v.Thumbnail != nil {
+		res.Thumbnail = &StorageObjectResponse{
+			ID:          v.Thumbnail.ID.String(),
+			Bucket:      v.Thumbnail.Bucket,
+			Key:         v.Thumbnail.Key,
+			ContentType: v.Thumbnail.ContentType,
+			FileSize:    v.Thumbnail.FileSize,
+			PublicURL:   v.Thumbnail.PublicURL,
+		}
+	}
+
 	if v.DeletedAt != nil {
 		del := v.DeletedAt.Format(time.RFC3339)
 		res.DeletedAt = &del
@@ -141,11 +202,12 @@ func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
 
 func mapVariantMediaResponse(m *model.VariantMedia) VariantMediaResponse {
 	res := VariantMediaResponse{
-		ID:                m.ID.String(),
-		VariantID:         m.VariantID.String(),
-		ThumbnailObjectID: m.ThumbnailObjectID.String(),
-		MediaType:         m.MediaType,
-		SortOrder:         m.SortOrder,
+		ID:        m.ID.String(),
+		PublicID:  m.PublicID.String(),
+		VariantID: m.VariantID.String(),
+		ObjectID:  m.ObjectID.String(),
+		MediaType: m.MediaType,
+		SortOrder: m.SortOrder,
 	}
 
 	if m.Object != nil {
@@ -192,14 +254,28 @@ func (vh *VariantHandler) CreateVariant(c *gin.Context) {
 		return
 	}
 
+	var thumbID *uuid.UUID
+	if body.ThumbnailObjectID != nil {
+		id, err := uuid.Parse(*body.ThumbnailObjectID)
+		if err != nil {
+			_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+				Field:   "thumbnail_object_id",
+				Message: "invalid thumbnail UUID format",
+			}))
+			return
+		}
+		thumbID = &id
+	}
+
 	in := &CreateVariantInput{
-		ProductID:       productID,
-		Title:           body.Title,
-		Price:           body.Price,
-		CrossedOutPrice: body.CrossedOutPrice,
-		Currency:        body.Currency,
-		Attributes:      body.Attributes,
-		IsDefault:       body.IsDefault,
+		ProductID:         productID,
+		Title:             body.Title,
+		Price:             body.Price,
+		CrossedOutPrice:   body.CrossedOutPrice,
+		Currency:          body.Currency,
+		Attributes:        body.Attributes,
+		IsDefault:         body.IsDefault,
+		ThumbnailObjectID: thumbID,
 	}
 
 	variant, err := vh.vservice.CreateVariant(c.Request.Context(), in)
@@ -276,7 +352,28 @@ func (vh *VariantHandler) UpdateVariantByID(c *gin.Context) {
 		return
 	}
 
-	err = vh.vservice.UpdateVariant(c.Request.Context(), variantID, UpdateVariantInput(body))
+	var thumbID *uuid.UUID
+	if body.ThumbnailObjectID != nil {
+		id, err := uuid.Parse(*body.ThumbnailObjectID)
+		if err != nil {
+			_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+				Field:   "thumbnail_object_id",
+				Message: "invalid thumbnail UUID format",
+			}))
+			return
+		}
+		thumbID = &id
+	}
+
+	err = vh.vservice.UpdateVariant(c.Request.Context(), variantID, UpdateVariantInput{
+		Title:             body.Title,
+		Price:             body.Price,
+		CrossedOutPrice:   body.CrossedOutPrice,
+		Currency:          body.Currency,
+		Attributes:        body.Attributes,
+		IsDefault:         body.IsDefault,
+		ThumbnailObjectID: thumbID,
+	})
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -590,5 +687,213 @@ func (vh *VariantHandler) ReorderMedia(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.MessageResponse{
 		Message: "reordered successfully",
+	})
+}
+
+type AdjustStockRequest struct {
+	Quantity    int     `json:"quantity" binding:"required" example:"50"`
+	Reason      string  `json:"reason" binding:"required,oneof=restock sale return adjustment reservation_release" example:"restock"`
+	ReferenceID *string `json:"reference_id,omitempty" example:"PO-10492"`
+}
+
+type PublicStockResponse struct {
+	AvailableQuantity int  `json:"available_quantity" example:"45"`
+	IsInStock         bool `json:"is_in_stock" example:"true"`
+}
+
+type InventoryStockResponse struct {
+	VariantID         string `json:"variant_id" example:"70000000-0000-0000-0000-000000000001"`
+	OnHandQuantity    int    `json:"on_hand_quantity" example:"50"`
+	ReservedQuantity  int    `json:"reserved_quantity" example:"5"`
+	AvailableQuantity int    `json:"available_quantity" example:"45"`
+	IsInStock         bool   `json:"is_in_stock" example:"true"`
+}
+
+type InventoryLedgerResponse struct {
+	ID          string  `json:"id" example:"80000000-0000-0000-0000-000000000001"`
+	VariantID   string  `json:"variant_id" example:"70000000-0000-0000-0000-000000000001"`
+	Quantity    int     `json:"quantity" example:"50"`
+	Reason      string  `json:"reason" example:"restock"`
+	ReferenceID *string `json:"reference_id,omitempty" example:"PO-10492"`
+	CreatedAt   string  `json:"created_at" example:"2026-08-15T12:00:00Z"`
+}
+
+func mapStockResponse(stock *model.InventoryStock) InventoryStockResponse {
+	return InventoryStockResponse{
+		VariantID:         stock.VariantID.String(),
+		OnHandQuantity:    stock.OnHandQuantity,
+		ReservedQuantity:  stock.ReservedQuantity,
+		AvailableQuantity: stock.AvailableQuantity,
+		IsInStock:         stock.IsInStock,
+	}
+}
+
+func mapLedgerResponse(l *model.InventoryLedger) InventoryLedgerResponse {
+	return InventoryLedgerResponse{
+		ID:          l.ID.String(),
+		VariantID:   l.VariantID.String(),
+		Quantity:    l.Quantity,
+		Reason:      l.Reason.String(),
+		ReferenceID: l.ReferenceID,
+		CreatedAt:   l.CreatedAt.Format(time.RFC3339),
+	}
+}
+
+// AdjustStock godoc
+//
+//	@Summary		Adjust variant inventory stock
+//	@Description	Records a new inventory ledger transaction (restock, adjustment, sale, return) to increment or decrement the variant's stock.
+//	@Tags			Variant Inventory
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string								true	"Variant UUID"	format(uuid)
+//	@Param			body	body		AdjustStockRequest					true	"Stock adjustment details"
+//	@Failure		400		{object}	api.BadRequestErrorResponse			"Validation error or insufficient inventory"
+//	@Failure		404		{object}	api.NotFoundErrorResponse			"Variant not found"
+//	@Failure		500		{object}	api.InternalServerErrorResponse		"Internal server error"
+//	@Success		200		{object}	api.DataResponse{data=InventoryStockResponse}	"Updated stock levels"
+//	@Router			/admin/variants/{id}/inventory/adjust [post]
+func (vh *VariantHandler) AdjustStock(c *gin.Context) {
+	variantID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid variant UUID format",
+		}))
+		return
+	}
+
+	var body AdjustStockRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	stock, err := vh.vservice.AdjustStock(c.Request.Context(), inventory.AdjustStockInput{
+		VariantID:   variantID,
+		Quantity:    body.Quantity,
+		Reason:      body.Reason,
+		ReferenceID: body.ReferenceID,
+	})
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{
+		Data: mapStockResponse(stock),
+	})
+}
+
+// GetVariantStockPublic godoc
+//
+//	@Summary		Get current available stock for a variant (Public)
+//	@Description	Retrieves available quantity and in-stock status for a variant for customer storefront.
+//	@Tags			Variant Inventory
+//	@Produce		json
+//	@Param			id	path		string									true	"Variant UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse				"Invalid UUID format"
+//	@Failure		500	{object}	api.InternalServerErrorResponse			"Internal server error"
+//	@Success		200	{object}	api.DataResponse{data=PublicStockResponse}	"Public stock availability"
+//	@Router			/variants/{id}/inventory [get]
+func (vh *VariantHandler) GetVariantStockPublic(c *gin.Context) {
+	variantID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid variant UUID format",
+		}))
+		return
+	}
+
+	stock, err := vh.vservice.GetStockByVariantID(c.Request.Context(), variantID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{
+		Data: PublicStockResponse{
+			AvailableQuantity: stock.AvailableQuantity,
+			IsInStock:         stock.IsInStock,
+		},
+	})
+}
+
+// GetVariantStockAdmin godoc
+//
+//	@Summary		Get detailed stock levels for a variant (Admin)
+//	@Description	Retrieves on-hand, reserved, available quantities and in-stock status for a variant.
+//	@Tags			Variant Inventory
+//	@Produce		json
+//	@Param			id	path		string								true	"Variant UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse			"Invalid UUID format"
+//	@Failure		500	{object}	api.InternalServerErrorResponse		"Internal server error"
+//	@Success		200	{object}	api.DataResponse{data=InventoryStockResponse}	"Variant stock summary"
+//	@Router			/admin/variants/{id}/inventory [get]
+func (vh *VariantHandler) GetVariantStockAdmin(c *gin.Context) {
+	variantID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid variant UUID format",
+		}))
+		return
+	}
+
+	stock, err := vh.vservice.GetStockByVariantID(c.Request.Context(), variantID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{
+		Data: mapStockResponse(stock),
+	})
+}
+
+// ListVariantLedgers godoc
+//
+//	@Summary		List inventory audit ledgers for a variant
+//	@Description	Returns a paginated list of inventory audit ledger transactions for a specific variant.
+//	@Tags			Variant Inventory
+//	@Produce		json
+//	@Param			id	path		string													true	"Variant UUID"	format(uuid)
+//	@Param			q	query		pagination.ListQuery									true	"Pagination query"
+//	@Failure		400	{object}	api.BadRequestErrorResponse								"Invalid query parameters or UUID format"
+//	@Failure		500	{object}	api.InternalServerErrorResponse							"Internal server error"
+//	@Success		200	{object}	api.PaginatedResponse{data=[]InventoryLedgerResponse,meta=pagination.Page}	"Paginated inventory audit history"
+//	@Router			/admin/variants/{id}/inventory/ledgers [get]
+func (vh *VariantHandler) ListVariantLedgers(c *gin.Context) {
+	variantID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid variant UUID format",
+		}))
+		return
+	}
+
+	q := &pagination.ListQuery{}
+	if err := c.ShouldBindQuery(q); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 20, MaxPageSize: 100})
+
+	result, err := vh.vservice.ListLedgers(c.Request.Context(), variantID, q)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	res := make([]InventoryLedgerResponse, 0, len(result.Items))
+	for _, l := range result.Items {
+		res = append(res, mapLedgerResponse(l))
+	}
+
+	c.JSON(http.StatusOK, api.PaginatedResponse{
+		Data: res,
+		Meta: result.Page,
 	})
 }

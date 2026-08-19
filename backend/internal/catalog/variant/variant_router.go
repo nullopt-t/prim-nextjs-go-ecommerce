@@ -8,10 +8,10 @@ import (
 
 type VariantRouter struct {
 	vh      *VariantHandler
-	secrets *config.Secrets
+	secrets config.Secrets
 }
 
-func NewRouter(vh *VariantHandler, secrets *config.Secrets) *VariantRouter {
+func NewRouter(vh *VariantHandler, secrets config.Secrets) *VariantRouter {
 	return &VariantRouter{
 		vh:      vh,
 		secrets: secrets,
@@ -27,6 +27,12 @@ func (vr *VariantRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		public.GET("/variants/:id/media", vr.vh.ListVariantMedia)
 	}
 
+	publicInventory := vgroup.Group("/variants/:id/inventory")
+	publicInventory.Use(middleware.PublicCache(60))
+	{
+		publicInventory.GET("", vr.vh.GetVariantStockPublic)
+	}
+
 	// Admin routes
 	admin := vgroup.Group("/admin")
 	admin.Use(
@@ -39,5 +45,9 @@ func (vr *VariantRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.POST("/variants/:id/media", vr.vh.AttachMedia)
 		admin.DELETE("/variants/:id/media/:media_id", vr.vh.DetachMedia)
 		admin.PATCH("/variants/:id/media/reorder", vr.vh.ReorderMedia)
+
+		admin.POST("/variants/:id/inventory/adjust", vr.vh.AdjustStock)
+		admin.GET("/variants/:id/inventory", vr.vh.GetVariantStockAdmin)
+		admin.GET("/variants/:id/inventory/ledgers", vr.vh.ListVariantLedgers)
 	}
 }

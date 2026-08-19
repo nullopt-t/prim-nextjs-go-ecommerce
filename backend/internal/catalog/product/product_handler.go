@@ -59,14 +59,51 @@ type ProductTagSummary struct {
 	Name string `json:"name"`
 }
 
+type PublicStockSummary struct {
+	AvailableQuantity int  `json:"available_quantity"`
+	IsInStock         bool `json:"is_in_stock"`
+}
+
+type AdminStockSummary struct {
+	OnHandQuantity    int  `json:"on_hand_quantity"`
+	ReservedQuantity  int  `json:"reserved_quantity"`
+	AvailableQuantity int  `json:"available_quantity"`
+	IsInStock         bool `json:"is_in_stock"`
+}
+
+type VariantMediaSummary struct {
+	ID        string `json:"id"`
+	MediaType string `json:"media_type"`
+	SortOrder int    `json:"sort_order"`
+	URL       string `json:"url"`
+}
+
 type ProductVariantResponse struct {
 	ID              string                 `json:"id"`
+	SKU             string                 `json:"sku,omitempty"`
 	Title           string                 `json:"title"`
 	Price           *int64                 `json:"price,omitempty"`
 	CrossedOutPrice *int64                 `json:"crossed_out_price,omitempty"`
 	Currency        *string                `json:"currency,omitempty"`
+	Thumbnail       *string                `json:"thumbnail,omitempty"`
+	Media           []VariantMediaSummary  `json:"media"`
 	Attributes      map[string]any         `json:"attributes"`
 	IsDefault       bool                   `json:"is_default"`
+	Stock           *PublicStockSummary    `json:"stock,omitempty"`
+}
+
+type AdminProductVariantResponse struct {
+	ID              string                 `json:"id"`
+	SKU             string                 `json:"sku,omitempty"`
+	Title           string                 `json:"title"`
+	Price           *int64                 `json:"price,omitempty"`
+	CrossedOutPrice *int64                 `json:"crossed_out_price,omitempty"`
+	Currency        *string                `json:"currency,omitempty"`
+	Thumbnail       *StorageObjectResponse `json:"thumbnail,omitempty"`
+	Media           []VariantMediaSummary  `json:"media"`
+	Attributes      map[string]any         `json:"attributes"`
+	IsDefault       bool                   `json:"is_default"`
+	Stock           *AdminStockSummary     `json:"stock,omitempty"`
 }
 
 type ProductResponse struct {
@@ -89,23 +126,23 @@ type ProductDetailsResponse struct {
 }
 
 type AdminProductDetailsResponse struct {
-	ID          string                   `json:"id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	Slug        string                   `json:"slug"`
-	Title       string                   `json:"title" example:"Wireless Headphones"`
-	Description *string                  `json:"description,omitempty"`
-	Highlights  []string                 `json:"highlights"`
-	Status      model.PublicationStatus  `json:"status" example:"draft"`
-	ProductType string                   `json:"product_type"`
-	Thumbnail   *StorageObjectResponse   `json:"thumbnail,omitempty"`
-	BrandID     *string                  `json:"brand_id,omitempty"`
-	Brand       *ProductBrandSummary     `json:"brand,omitempty"`
-	CategoryID  string                   `json:"category_id"`
-	Category    *ProductCategorySummary  `json:"category,omitempty"`
-	Variants    []ProductVariantResponse `json:"variants"`
-	Tags        []ProductTagSummary      `json:"tags"`
-	CreatedAt   string                   `json:"created_at" example:"2026-08-05T19:00:00Z"`
-	UpdatedAt   string                   `json:"updated_at" example:"2026-08-05T19:00:00Z"`
-	DeletedAt   *string                  `json:"deleted_at,omitempty" example:"2026-08-05T19:30:00Z"`
+	ID          string                        `json:"id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	Slug        string                        `json:"slug"`
+	Title       string                        `json:"title" example:"Wireless Headphones"`
+	Description *string                       `json:"description,omitempty"`
+	Highlights  []string                      `json:"highlights"`
+	Status      model.PublicationStatus       `json:"status" example:"draft"`
+	ProductType string                        `json:"product_type"`
+	Thumbnail   *StorageObjectResponse        `json:"thumbnail,omitempty"`
+	BrandID     *string                       `json:"brand_id,omitempty"`
+	Brand       *ProductBrandSummary          `json:"brand,omitempty"`
+	CategoryID  string                        `json:"category_id"`
+	Category    *ProductCategorySummary       `json:"category,omitempty"`
+	Variants    []AdminProductVariantResponse `json:"variants"`
+	Tags        []ProductTagSummary           `json:"tags"`
+	CreatedAt   string                        `json:"created_at" example:"2026-08-05T19:00:00Z"`
+	UpdatedAt   string                        `json:"updated_at" example:"2026-08-05T19:00:00Z"`
+	DeletedAt   *string                       `json:"deleted_at,omitempty" example:"2026-08-05T19:30:00Z"`
 }
 
 type ProductReviewResponse struct {
@@ -142,6 +179,7 @@ type CreateProductVariantRequest struct {
 	Currency        *string        `json:"currency,omitempty" example:"USD"`
 	Attributes      map[string]any `json:"attributes,omitempty"`
 	IsDefault       bool           `json:"is_default" example:"false"`
+	InitialStock    *int           `json:"initial_stock,omitempty" example:"100"`
 }
 
 type SetDefaultVariantRequest struct {
@@ -198,7 +236,7 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 		CategoryID:  p.CategoryID.String(),
 		CreatedAt:   p.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:   p.UpdatedAt.Format(time.RFC3339),
-		Variants:    make([]ProductVariantResponse, 0),
+		Variants:    make([]AdminProductVariantResponse, 0),
 		Tags:        make([]ProductTagSummary, 0),
 	}
 
@@ -237,21 +275,52 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 
 
 	if len(details.Variants) > 0 {
-		variantRes := make([]ProductVariantResponse, 0, len(details.Variants))
+		variantRes := make([]AdminProductVariantResponse, 0, len(details.Variants))
 		for _, v := range details.Variants {
 			attrs := v.Attributes
 			if attrs == nil {
 				attrs = make(map[string]any)
 			}
-			variantRes = append(variantRes, ProductVariantResponse{
-				ID:              v.SKU,
+			mediaSummaries := make([]VariantMediaSummary, 0)
+			for _, m := range v.Media {
+				if m != nil && m.Object != nil {
+					mediaSummaries = append(mediaSummaries, VariantMediaSummary{
+						ID:        m.ID.String(),
+						MediaType: m.MediaType,
+						SortOrder: m.SortOrder,
+						URL:       m.Object.PublicURL,
+					})
+				}
+			}
+			vr := AdminProductVariantResponse{
+				ID:              v.ID.String(),
+				SKU:             v.SKU,
 				Title:           v.Title,
 				Price:           v.Price,
 				CrossedOutPrice: v.CrossedOutPrice,
 				Currency:        v.Currency,
+				Media:           mediaSummaries,
 				Attributes:      attrs,
 				IsDefault:       v.IsDefault,
-			})
+			}
+			if v.Thumbnail != nil {
+				vr.Thumbnail = &StorageObjectResponse{
+					ContentType: v.Thumbnail.ContentType,
+					FileSize:    v.Thumbnail.FileSize,
+					PublicURL:   v.Thumbnail.PublicURL,
+				}
+			}
+			if details.Stock != nil {
+				if s, ok := details.Stock[v.ID]; ok && s != nil {
+					vr.Stock = &AdminStockSummary{
+						OnHandQuantity:    s.OnHandQuantity,
+						ReservedQuantity:  s.ReservedQuantity,
+						AvailableQuantity: s.AvailableQuantity,
+						IsInStock:         s.IsInStock,
+					}
+				}
+			}
+			variantRes = append(variantRes, vr)
 		}
 		res.Variants = variantRes
 	}
@@ -613,15 +682,42 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 			if attrs == nil {
 				attrs = make(map[string]any)
 			}
-			variantRes = append(variantRes, ProductVariantResponse{
-				ID:              v.SKU,
+			mediaSummaries := make([]VariantMediaSummary, 0)
+			for _, m := range v.Media {
+				if m != nil && m.Object != nil {
+					mediaSummaries = append(mediaSummaries, VariantMediaSummary{
+						ID:        m.ID.String(),
+						MediaType: m.MediaType,
+						SortOrder: m.SortOrder,
+						URL:       m.Object.PublicURL,
+					})
+				}
+			}
+			var thumbnailURL *string
+			if v.Thumbnail != nil && v.Thumbnail.PublicURL != "" {
+				thumbnailURL = &v.Thumbnail.PublicURL
+			}
+			vr := ProductVariantResponse{
+				ID:              v.ID.String(),
+				SKU:             v.SKU,
 				Title:           v.Title,
 				Price:           v.Price,
 				CrossedOutPrice: v.CrossedOutPrice,
 				Currency:        v.Currency,
+				Thumbnail:       thumbnailURL,
+				Media:           mediaSummaries,
 				Attributes:      attrs,
 				IsDefault:       v.IsDefault,
-			})
+			}
+			if details.Stock != nil {
+				if s, ok := details.Stock[v.ID]; ok && s != nil {
+					vr.Stock = &PublicStockSummary{
+						AvailableQuantity: s.AvailableQuantity,
+						IsInStock:         s.IsInStock,
+					}
+				}
+			}
+			variantRes = append(variantRes, vr)
 		}
 		res.Variants = variantRes
 	}

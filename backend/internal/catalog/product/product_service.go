@@ -12,6 +12,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/brand"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/category"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/errcode"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/inventory"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/review"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/tag"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/variant"
@@ -51,15 +52,16 @@ func (s *ProductService) handleError(err error, defaultMsg string) error {
 
 
 type ProductService struct {
-	dbRunner        database.Runner
-	logger          log.Logger
-	objectService   ObjectService
-	productRepo     *ProductRepository
-	brandService    *brand.BrandService
-	categoryService *category.CategoryService
-	tagService      *tag.TagService
-	variantService  *variant.VariantService
-	reviewService   *review.ReviewService
+	dbRunner         database.Runner
+	logger           log.Logger
+	objectService    ObjectService
+	productRepo      *ProductRepository
+	brandService     *brand.BrandService
+	categoryService  *category.CategoryService
+	tagService       *tag.TagService
+	variantService   *variant.VariantService
+	inventoryService *inventory.InventoryService
+	reviewService    *review.ReviewService
 }
 
 func NewService(
@@ -71,18 +73,20 @@ func NewService(
 	categoryService *category.CategoryService,
 	tagService *tag.TagService,
 	variantService *variant.VariantService,
+	inventoryService *inventory.InventoryService,
 	reviewService *review.ReviewService,
 ) *ProductService {
 	return &ProductService{
-		dbRunner:        r,
-		logger:          logger,
-		objectService:   objectService,
-		productRepo:     productRepo,
-		brandService:    brandService,
-		categoryService: categoryService,
-		tagService:      tagService,
-		variantService:  variantService,
-		reviewService:   reviewService,
+		dbRunner:         r,
+		logger:           logger,
+		objectService:    objectService,
+		productRepo:      productRepo,
+		brandService:     brandService,
+		categoryService:  categoryService,
+		tagService:       tagService,
+		variantService:   variantService,
+		inventoryService: inventoryService,
+		reviewService:    reviewService,
 	}
 }
 
@@ -110,14 +114,16 @@ type CreateProductVariantInput struct {
 	Currency        *string
 	Attributes      map[string]any
 	IsDefault       bool
+	InitialStock    *int
 }
 
 type ProductDetails struct {
-	Product  *model.Product          `json:"product"`
-	Brand    *model.ProductBrand     `json:"brand,omitempty"`
-	Category *model.ProductCategory  `json:"category,omitempty"`
-	Variants []*model.ProductVariant `json:"variants,omitempty"`
-	Tags     []*model.ProductTag     `json:"tags,omitempty"`
+	Product  *model.Product                      `json:"product"`
+	Brand    *model.ProductBrand                 `json:"brand,omitempty"`
+	Category *model.ProductCategory              `json:"category,omitempty"`
+	Variants []*model.ProductVariant             `json:"variants,omitempty"`
+	Stock    map[uuid.UUID]*model.InventoryStock `json:"stock,omitempty"`
+	Tags     []*model.ProductTag                 `json:"tags,omitempty"`
 }
 
 func (s *ProductService) CreateProductAsDraft(
@@ -307,6 +313,16 @@ func (s *ProductService) GetAdminDetailsByID(
 	variantRes, err := s.variantService.ListVariantsByProductID(ctx, productDetails.Product.ID, &pagination.ListQuery{PageSize: 100}, true)
 	if err == nil && variantRes != nil {
 		productDetails.Variants = variantRes.Items
+		if len(productDetails.Variants) > 0 && s.inventoryService != nil {
+			vIDs := make([]uuid.UUID, 0, len(productDetails.Variants))
+			for _, v := range productDetails.Variants {
+				vIDs = append(vIDs, v.ID)
+			}
+			stocks, err := s.inventoryService.GetStockForVariants(ctx, vIDs)
+			if err == nil {
+				productDetails.Stock = stocks
+			}
+		}
 	}
 
 	tagsList, err := s.tagService.GetTagsByProductID(ctx, productDetails.Product.ID)
@@ -372,6 +388,16 @@ func (s *ProductService) GetBySlug(
 	variantRes, err := s.variantService.ListVariantsByProductID(ctx, productDetails.Product.ID, &pagination.ListQuery{PageSize: 100}, false)
 	if err == nil && variantRes != nil {
 		productDetails.Variants = variantRes.Items
+		if len(productDetails.Variants) > 0 && s.inventoryService != nil {
+			vIDs := make([]uuid.UUID, 0, len(productDetails.Variants))
+			for _, v := range productDetails.Variants {
+				vIDs = append(vIDs, v.ID)
+			}
+			stocks, err := s.inventoryService.GetStockForVariants(ctx, vIDs)
+			if err == nil {
+				productDetails.Stock = stocks
+			}
+		}
 	}
 
 	tagsList, err := s.tagService.GetTagsByProductID(ctx, productDetails.Product.ID)
@@ -538,7 +564,7 @@ func (s *ProductService) CreateProductVariant(
 		return nil, err
 	}
 
-	return s.variantService.CreateVariant(ctx, &variant.CreateVariantInput{
+	createdVariant, err := s.variantService.CreateVariant(ctx, &variant.CreateVariantInput{
 		ProductID:       product.ID,
 		Title:           input.Title,
 		Price:           input.Price,
@@ -547,6 +573,21 @@ func (s *ProductService) CreateProductVariant(
 		Attributes:      input.Attributes,
 		IsDefault:       input.IsDefault,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	if input.InitialStock != nil && *input.InitialStock > 0 && s.inventoryService != nil {
+		ref := "initial-stock"
+		_, _ = s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
+			VariantID:   createdVariant.ID,
+			Quantity:    *input.InitialStock,
+			Reason:      string(model.InventoryReasonRestock),
+			ReferenceID: &ref,
+		})
+	}
+
+	return createdVariant, nil
 }
 
 func (s *ProductService) GetProductVariants(
