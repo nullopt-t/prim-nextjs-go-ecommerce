@@ -20,4 +20,8 @@ const (
 	CodeMediaNotFound             = "MEDIA_NOT_FOUND"
 	CodeMediaAlreadyAttached      = "MEDIA_ALREADY_ATTACHED"
 	CodePublishFailed             = "PUBLISH_FAILED"
+	CodeInsufficientInventory     = "INSUFFICIENT_INVENTORY"
+	CodeInvalidInventoryReason    = "INVALID_INVENTORY_REASON"
+	CodeReservationNotFound       = "INVENTORY_RESERVATION_NOT_FOUND"
+	CodeReservationExpired        = "INVENTORY_RESERVATION_EXPIRED"
 )
