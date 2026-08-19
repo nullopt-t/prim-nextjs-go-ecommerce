@@ -21,7 +21,7 @@ type DB struct {
 	Pool *pgxpool.Pool
 }
 
-func ConnectDB(ctx context.Context, cfg *config.Config) (*DB, error) {
+func ConnectDB(ctx context.Context, cfg config.Config) (*DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		cfg.DBCfg.DBHost,

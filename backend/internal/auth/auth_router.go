@@ -10,20 +10,20 @@ import (
 
 type Router struct {
 	authHandler  *Handler
-	secrets      *config.Secrets
+	secrets      config.Secrets
 	limiter      middleware.RateLimiter
 	logger       log.Logger
 	redisClient  *redis.Client
-	rateLimitCfg *config.RateLimitConfig
+	rateLimitCfg config.RateLimitConfig
 }
 
 func NewRouter(
 	ah *Handler,
-	secrets *config.Secrets,
+	secrets config.Secrets,
 	limiter middleware.RateLimiter,
 	logger log.Logger,
 	redisClient *redis.Client,
-	rateLimitCfg *config.RateLimitConfig,
+	rateLimitCfg config.RateLimitConfig,
 ) *Router {
 	return &Router{
 		authHandler:  ah,

@@ -13,14 +13,14 @@ type Worker struct {
 	queue      JobQueue
 	dispatcher *MessageDispatcher
 	logger     log.Logger
-	clientCfg  *config.ClientConfig
+	clientCfg  config.ClientConfig
 }
 
 func NewNotifierWorker(
 	queue JobQueue,
 	dispatcher *MessageDispatcher,
 	logger log.Logger,
-	clientCfg *config.ClientConfig,
+	clientCfg config.ClientConfig,
 ) *Worker {
 	return &Worker{
 		queue:      queue,

@@ -38,7 +38,7 @@ func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 
 // Authenticate provides unified authentication middleware for routes.
 // Pass optional=true for public/guest routes that can optionally attach user authentication if present.
-func Authenticate(secrets *config.Secrets, optional ...bool) gin.HandlerFunc {
+func Authenticate(secrets config.Secrets, optional ...bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		isOptional := len(optional) > 0 && optional[0]
 

@@ -8,12 +8,12 @@ import (
 
 type Router struct {
 	bh      *BrandHandler
-	secrets *config.Secrets
+	secrets config.Secrets
 }
 
 func NewRouter(
 	h *BrandHandler,
-	secrets *config.Secrets,
+	secrets config.Secrets,
 ) *Router {
 	return &Router{
 		bh:      h,

@@ -20,11 +20,11 @@ type UserClaims struct {
 }
 
 type JWTManager struct {
-	secrets *config.Secrets
+	secrets config.Secrets
 }
 
 func NewJWTManager(
-	secrets *config.Secrets,
+	secrets config.Secrets,
 ) *JWTManager {
 	return &JWTManager{
 		secrets: secrets,

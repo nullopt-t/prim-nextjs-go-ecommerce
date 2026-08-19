@@ -8,12 +8,12 @@ import (
 
 type ProductRouter struct {
 	ph      *ProductHandler
-	secrets *config.Secrets
+	secrets config.Secrets
 }
 
 func NewRouter(
 	ph *ProductHandler,
-	secrets *config.Secrets,
+	secrets config.Secrets,
 ) *ProductRouter {
 	return &ProductRouter{
 		ph:      ph,

@@ -8,10 +8,10 @@ import (
 
 type CartRouter struct {
 	handler *CartHandler
-	secrets *config.Secrets
+	secrets config.Secrets
 }
 
-func NewRouter(handler *CartHandler, secrets *config.Secrets) *CartRouter {
+func NewRouter(handler *CartHandler, secrets config.Secrets) *CartRouter {
 	return &CartRouter{
 		handler: handler,
 		secrets: secrets,
