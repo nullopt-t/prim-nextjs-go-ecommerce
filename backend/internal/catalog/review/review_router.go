@@ -8,12 +8,12 @@ import (
 
 type ReviewRouter struct {
 	rh      *ReviewHandler
-	secrets *config.Secrets
+	secrets config.Secrets
 }
 
 func NewRouter(
 	rh *ReviewHandler,
-	secrets *config.Secrets,
+	secrets config.Secrets,
 ) *ReviewRouter {
 	return &ReviewRouter{
 		rh:      rh,

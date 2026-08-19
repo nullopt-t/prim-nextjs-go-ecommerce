@@ -71,8 +71,8 @@ func (s *AuthTestSuite) SetupSuite() {
 	port, err := pgContainer.MappedPort(ctx, "5432")
 	require.NoError(s.T(), err)
 
-	db, err := database.ConnectDB(ctx, &config.Config{
-		DBCfg: &config.DatabaseConfig{
+	db, err := database.ConnectDB(ctx, config.Config{
+		DBCfg: config.DatabaseConfig{
 			DBHost:     host,
 			DBPort:     port.Port(),
 			DBUser:     "testuser",
@@ -120,7 +120,7 @@ func (s *AuthTestSuite) SetupSuite() {
 	userRepo := user.NewPostgresRepository()
 	userService := user.NewService(txRunner, userRepo, logger)
 
-	secrets := &config.Secrets{
+	secrets := config.Secrets{
 		JwtAccessTokenSecretKey:  "access",
 		JwtRefreshTokenSecretKey: "refresh",
 	}
@@ -154,7 +154,7 @@ func (s *AuthTestSuite) SetupSuite() {
 		rateLimiter,
 		logger,
 		s.redisClient,
-		&config.RateLimitConfig{
+		config.RateLimitConfig{
 			AuthStartRequests:  5,
 			AuthStartWindow:    time.Minute,
 			AuthResendRequests: 3,

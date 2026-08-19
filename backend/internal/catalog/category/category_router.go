@@ -8,12 +8,12 @@ import (
 
 type CategoryRouter struct {
 	chandler *CategoryHandler
-	secrets  *config.Secrets
+	secrets  config.Secrets
 }
 
 func NewRouter(
 	h *CategoryHandler,
-	secrets *config.Secrets,
+	secrets config.Secrets,
 ) *CategoryRouter {
 	return &CategoryRouter{
 		chandler: h,

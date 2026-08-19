@@ -62,14 +62,14 @@ func ToUserListResponse(users []model.User) UsersResponse {
 type Handler struct {
 	userService *UserService
 	limiter     *security.RateLimiter
-	secrets     *config.Secrets
+	secrets     config.Secrets
 	logger      log.Logger
 }
 
 func NewHandler(
 	userService *UserService,
 	limiter *security.RateLimiter,
-	secrets *config.Secrets,
+	secrets config.Secrets,
 	logger log.Logger,
 ) *Handler {
 	return &Handler{

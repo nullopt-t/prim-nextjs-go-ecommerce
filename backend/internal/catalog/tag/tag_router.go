@@ -8,10 +8,10 @@ import (
 
 type TagRouter struct {
 	th      *TagHandler
-	secrets *config.Secrets
+	secrets config.Secrets
 }
 
-func NewRouter(h *TagHandler, secrets *config.Secrets) *TagRouter {
+func NewRouter(h *TagHandler, secrets config.Secrets) *TagRouter {
 	return &TagRouter{
 		th:      h,
 		secrets: secrets,

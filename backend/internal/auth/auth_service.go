@@ -57,7 +57,7 @@ type AuthService struct {
 	logger           log.Logger
 	redisClient      *redis.Client
 	notifier         Notifier
-	secrets          *config.Secrets
+	secrets          config.Secrets
 }
 
 func NewAuthService(
@@ -68,7 +68,7 @@ func NewAuthService(
 	jwtService *jwt.JWTManager,
 	redisClient *redis.Client,
 	notifier Notifier,
-	secrets *config.Secrets,
+	secrets config.Secrets,
 ) *AuthService {
 	return &AuthService{
 		jwtService:       jwtService,

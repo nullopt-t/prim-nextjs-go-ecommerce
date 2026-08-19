@@ -8,10 +8,10 @@ import (
 
 type CheckoutRouter struct {
 	handler *CheckoutHandler
-	secrets *config.Secrets
+	secrets config.Secrets
 }
 
-func NewRouter(handler *CheckoutHandler, secrets *config.Secrets) *CheckoutRouter {
+func NewRouter(handler *CheckoutHandler, secrets config.Secrets) *CheckoutRouter {
 	return &CheckoutRouter{
 		handler: handler,
 		secrets: secrets,

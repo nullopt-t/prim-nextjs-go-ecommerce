@@ -5,6 +5,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/brand"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/cart"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/category"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/inventory"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/product"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/review"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/tag"
@@ -57,7 +58,7 @@ type App struct {
 	storageProvider storage.StorageProvider
 }
 
-func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
+func (app *App) setupRoutes(config config.Config, router *gin.Engine) {
 	// setup middlewares
 	router.Use(middleware.ErrorHandler(app.logger))
 	router.Use(middleware.CORS(config.AllowedOrigins...))
@@ -166,12 +167,21 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 	)
 	categoryRouter.MapRoutes(v1)
 
+	// inventory
+	inventoryRepo := inventory.NewRepository()
+	inventoryService := inventory.NewService(
+		app.logger,
+		txRunner,
+		inventoryRepo,
+	)
+
 	variantRepository := variant.NewRepository()
 	variantService := variant.NewService(
 		app.logger,
 		txRunner,
 		objectService,
 		variantRepository,
+		inventoryService,
 	)
 
 	variantHandler := variant.NewHandler(variantService)
@@ -196,6 +206,7 @@ func (app *App) setupRoutes(config *config.Config, router *gin.Engine) {
 		categoryService,
 		tagService,
 		variantService,
+		inventoryService,
 		reviewService,
 	)
 	productHandler := product.NewHandler(productService)

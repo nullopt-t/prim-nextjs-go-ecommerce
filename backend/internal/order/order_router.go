@@ -9,10 +9,10 @@ import (
 
 type OrderRouter struct {
 	handler *OrderHandler
-	secrets *config.Secrets
+	secrets config.Secrets
 }
 
-func NewRouter(handler *OrderHandler, secrets *config.Secrets) *OrderRouter {
+func NewRouter(handler *OrderHandler, secrets config.Secrets) *OrderRouter {
 	return &OrderRouter{
 		handler: handler,
 		secrets: secrets,

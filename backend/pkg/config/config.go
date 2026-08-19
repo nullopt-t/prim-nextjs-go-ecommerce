@@ -61,65 +61,65 @@ type RateLimitConfig struct {
 }
 
 type Config struct {
-	ClientCfg      *ClientConfig
-	DBCfg          *DatabaseConfig
-	RedisCfg       *RedisConfig
-	SMTPCfg        *SMTPConfig
-	KeysCfg        *Secrets
+	ClientCfg      ClientConfig
+	DBCfg          DatabaseConfig
+	RedisCfg       RedisConfig
+	SMTPCfg        SMTPConfig
+	KeysCfg        Secrets
 	SvPort         string
-	MinioCfg       *MinioConfig
-	AuthCfg        *AuthConfig
-	RateLimitCfg   *RateLimitConfig
+	MinioCfg       MinioConfig
+	AuthCfg        AuthConfig
+	RateLimitCfg   RateLimitConfig
 	AllowedOrigins []string // CORS_ALLOWED_ORIGINS comma-separated
 	IsProduction   bool     // APP_ENV=production
 }
 
-func Load() *Config {
+func Load() Config {
 	rawOrigins := utils.GetEnvOrDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
 	allowedOrigins := splitAndTrim(rawOrigins)
 	appEnv := utils.GetEnvOrDefault("APP_ENV", "development")
 
-	return &Config{
+	return Config{
 		AllowedOrigins: allowedOrigins,
 		IsProduction:   appEnv == "production",
-		MinioCfg: &MinioConfig{
+		MinioCfg: MinioConfig{
 			Endpoint:  utils.GetEnvOrDefault("MINIO_ENDPOINT", "minio:9000"),
 			PublicURL: utils.GetEnvOrDefault("MINIO_PUBLIC_URL", "http://localhost:9000"),
 			AccessKey: utils.GetEnvOrDefault("MINIO_ACCESS_KEY", "admin"),
 			SecretKey: utils.GetEnvOrDefault("MINIO_SECRET_KEY", "supersecret"),
 		},
-		ClientCfg: &ClientConfig{
+		ClientCfg: ClientConfig{
 			BaseURL: utils.GetEnvOrDefault("CLIENT_BASE_URL", "http://localhost:8080"),
 		},
-		DBCfg: &DatabaseConfig{
+		DBCfg: DatabaseConfig{
 			DBHost:     utils.GetEnvOrDefault("DB_HOST", "localhost"),
 			DBPort:     utils.GetEnvOrDefault("DB_PORT", "5432"),
 			DBUser:     utils.GetEnvOrDefault("DB_USER", "prim"),
 			DBPassword: utils.GetEnvOrDefault("DB_PASSWORD", "prim"),
 			DBName:     utils.GetEnvOrDefault("DB_NAME", "prim"),
 		},
-		RedisCfg: &RedisConfig{
+		RedisCfg: RedisConfig{
 			Host:     utils.GetEnvOrDefault("REDIS_HOST", "localhost"),
 			Port:     utils.GetEnvAsInt("REDIS_PORT", 6379),
 			Password: utils.GetEnvOrDefault("REDIS_PASSWORD", ""),
 			DB:       utils.GetEnvAsInt("REDIS_DB", 0),
 		},
-		SMTPCfg: &SMTPConfig{
+		SMTPCfg: SMTPConfig{
 			Host:     utils.GetEnvOrDefault("SMTP_HOST", ""),
 			Port:     utils.GetEnvAsInt("SMTP_PORT", 0),
 			Username: utils.GetEnvOrDefault("SMTP_USERNAME", ""),
 			Password: utils.GetEnvOrDefault("SMTP_PASSWORD", ""),
 		},
-		KeysCfg: &Secrets{
+		KeysCfg: Secrets{
 			JwtAccessTokenSecretKey:    utils.GetEnvOrDefault("JWT_ACCESS_SECRET", "jwt-access-secret-key"),
 			JwtRefreshTokenSecretKey:   utils.GetEnvOrDefault("JWT_REFRESH_SECRET", "jwt-refresh-secret-key"),
 			JwtResetPassTokenSecretKey: utils.GetEnvOrDefault("JWT_RESET_PASS_SECRET", "jwt-reset-pass-secret-key"),
 		},
-		AuthCfg: &AuthConfig{
+		AuthCfg: AuthConfig{
 			ChallengeTTL: time.Duration(utils.GetEnvAsInt("AUTH_CHALLENGE_TTL_MINUTES", 5)) * time.Minute,
 			SessionTTL:   time.Duration(utils.GetEnvAsInt("AUTH_SESSION_TTL_DAYS", 30)) * 24 * time.Hour,
 		},
-		RateLimitCfg: &RateLimitConfig{
+		RateLimitCfg: RateLimitConfig{
 			AuthStartRequests:  int64(utils.GetEnvAsInt("RL_AUTH_START_REQ", 5)),
 			AuthStartWindow:    time.Duration(utils.GetEnvAsInt("RL_AUTH_START_MIN", 1)) * time.Minute,
 			AuthResendRequests: int64(utils.GetEnvAsInt("RL_AUTH_RESEND_REQ", 3)),

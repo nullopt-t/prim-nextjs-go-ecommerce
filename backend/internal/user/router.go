@@ -15,10 +15,10 @@ type UserHandler interface {
 
 type Router struct {
 	handler UserHandler
-	config  *config.Config
+	config  config.Config
 }
 
-func NewRouter(handler UserHandler, config *config.Config) *Router {
+func NewRouter(handler UserHandler, config config.Config) *Router {
 	return &Router{
 		handler: handler,
 		config:  config,
