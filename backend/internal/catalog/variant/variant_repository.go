@@ -15,27 +15,28 @@ import (
 )
 
 var allowedVariantSortFields = map[string]string{
-	"id":         "id",
-	"title":      "title",
-	"price":      "price",
-	"created_at": "created_at",
-	"updated_at": "updated_at",
+	"id":         "pv.id",
+	"title":      "pv.title",
+	"price":      "pv.price",
+	"created_at": "pv.created_at",
+	"updated_at": "pv.updated_at",
 }
 
 type variantFilter struct {
 	ID             *uuid.UUID
-	SKU       *string
+	SKU            *string
 	ProductID      *uuid.UUID
 	IncludeDeleted bool
 }
 
 type UpdateVariantFields struct {
-	Title           *string
-	Price           *int64
-	CrossedOutPrice *int64
-	Currency        *string
-	Attributes      map[string]any
-	IsDefault       *bool
+	Title             *string
+	Price             *int64
+	CrossedOutPrice   *int64
+	Currency          *string
+	Attributes        map[string]any
+	IsDefault         *bool
+	ThumbnailObjectID *uuid.UUID
 }
 
 type ListVariantOptions struct {
@@ -45,11 +46,12 @@ type ListVariantOptions struct {
 }
 
 type CreateVariantMediaInput struct {
-	ID              uuid.UUID
-	VariantID       uuid.UUID
-	ThumbnailObjectID uuid.UUID
-	MediaType       string
-	SortOrder       int
+	ID        uuid.UUID
+	PublicID  uuid.UUID
+	VariantID uuid.UUID
+	ObjectID  uuid.UUID
+	MediaType string
+	SortOrder int
 }
 
 type VariantRepository struct{}
@@ -118,7 +120,7 @@ func (vr *VariantRepository) GetByID(
 	return vr.get(ctx, qe, &variantFilter{ID: &id})
 }
 
-// GetBySKU fetches a single variant by its public ID.
+// GetBySKU fetches a single variant by its SKU.
 func (vr *VariantRepository) GetBySKU(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -141,56 +143,103 @@ func (vr *VariantRepository) get(
 	argIdx := 1
 
 	if !filter.IncludeDeleted {
-		whereClauses = append(whereClauses, "deleted_at IS NULL")
+		whereClauses = append(whereClauses, "pv.deleted_at IS NULL")
 	}
 
 	if filter.ID != nil {
-		whereClauses = append(whereClauses, fmt.Sprintf("id = $%d", argIdx))
+		whereClauses = append(whereClauses, fmt.Sprintf("pv.id = $%d", argIdx))
 		args = append(args, *filter.ID)
 		argIdx++
 	}
-	
+
 	if filter.SKU != nil {
-		whereClauses = append(whereClauses, fmt.Sprintf("sku = $%d", argIdx))
+		whereClauses = append(whereClauses, fmt.Sprintf("pv.sku = $%d", argIdx))
 		args = append(args, *filter.SKU)
 		argIdx++
 	}
 
 	if filter.ProductID != nil {
-		whereClauses = append(whereClauses, fmt.Sprintf("product_id = $%d", argIdx))
+		whereClauses = append(whereClauses, fmt.Sprintf("pv.product_id = $%d", argIdx))
 		args = append(args, *filter.ProductID)
 	}
 
 	query := fmt.Sprintf(`
 		SELECT
-			id,
-			sku,
-			product_id,
-			is_default,
-			title,
-			price,
-			crossed_out_price,
-			currency,
-			attributes,
-			thumbnail_object_id,
-			created_at,
-			updated_at,
-			deleted_at
-		FROM product_variants
+			pv.id,
+			pv.sku,
+			pv.product_id,
+			pv.is_default,
+			pv.title,
+			pv.price,
+			pv.crossed_out_price,
+			pv.currency,
+			pv.attributes,
+			pv.thumbnail_object_id,
+			pv.created_at,
+			pv.updated_at,
+			pv.deleted_at,
+			so.id as so_id,
+			so.bucket as so_bucket,
+			so.object_key as so_object_key,
+			so.content_type as so_content_type,
+			so.file_size as so_file_size
+		FROM product_variants pv
+		LEFT JOIN storage_objects so ON pv.thumbnail_object_id = so.id
 		WHERE %s
+		LIMIT 1
 	`, strings.Join(whereClauses, " AND "))
 
 	rows, err := qe.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("get variant query: %w", err)
 	}
+	defer rows.Close()
 
-	variant, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByNameLax[model.ProductVariant])
+	if !rows.Next() {
+		return nil, pgx.ErrNoRows
+	}
+
+	var (
+		v                              model.ProductVariant
+		soID                           *uuid.UUID
+		soBucket, soKey, soContentType *string
+		soFileSize                     *int64
+	)
+	err = rows.Scan(
+		&v.ID,
+		&v.SKU,
+		&v.ProductID,
+		&v.IsDefault,
+		&v.Title,
+		&v.Price,
+		&v.CrossedOutPrice,
+		&v.Currency,
+		&v.Attributes,
+		&v.ThumbnailObjectID,
+		&v.CreatedAt,
+		&v.UpdatedAt,
+		&v.DeletedAt,
+		&soID,
+		&soBucket,
+		&soKey,
+		&soContentType,
+		&soFileSize,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("get variant scan: %w", err)
 	}
 
-	return variant, nil
+	if soID != nil && soBucket != nil && soKey != nil {
+		v.Thumbnail = &model.Object{
+			ID:          *soID,
+			Bucket:      *soBucket,
+			Key:         *soKey,
+			ContentType: *soContentType,
+			FileSize:    *soFileSize,
+		}
+	}
+
+	return &v, nil
 }
 
 func (vr *VariantRepository) Update(
@@ -240,6 +289,12 @@ func (vr *VariantRepository) Update(
 	if fields.IsDefault != nil {
 		setClauses = append(setClauses, fmt.Sprintf("is_default = $%d", argIdx))
 		args = append(args, *fields.IsDefault)
+		argIdx++
+	}
+
+	if fields.ThumbnailObjectID != nil {
+		setClauses = append(setClauses, fmt.Sprintf("thumbnail_object_id = $%d", argIdx))
+		args = append(args, fields.ThumbnailObjectID)
 		argIdx++
 	}
 
@@ -307,24 +362,24 @@ func (vr *VariantRepository) ListByProductID(
 	}
 	q.Process(pagination.QueryOptions{})
 
-	whereClauses := []string{"product_id = $1"}
+	whereClauses := []string{"pv.product_id = $1"}
 	args := []any{opts.ProductID}
 	argIdx := 2
 
 	if !opts.IncludeDeleted {
-		whereClauses = append(whereClauses, "deleted_at IS NULL")
+		whereClauses = append(whereClauses, "pv.deleted_at IS NULL")
 	}
 
 	search := strings.TrimSpace(q.Search)
 	if search != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("title ILIKE $%d", argIdx))
+		whereClauses = append(whereClauses, fmt.Sprintf("pv.title ILIKE $%d", argIdx))
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
 
 	whereStmt := strings.Join(whereClauses, " AND ")
 
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM product_variants WHERE %s", whereStmt)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM product_variants pv WHERE %s", whereStmt)
 	var total int
 	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, fmt.Errorf("list variants count: %w", err)
@@ -334,7 +389,7 @@ func (vr *VariantRepository) ListByProductID(
 		return pagination.NewPagedResult([]*model.ProductVariant{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
 	}
 
-	orderBy := "ORDER BY is_default DESC, created_at ASC"
+	orderBy := "ORDER BY pv.is_default DESC, pv.created_at ASC"
 	if len(q.Sort) > 0 {
 		sortParts := make([]string, 0, len(q.Sort))
 		for _, sort := range q.Sort {
@@ -355,19 +410,26 @@ func (vr *VariantRepository) ListByProductID(
 
 	selectQuery := fmt.Sprintf(`
 		SELECT
-			id,
-			sku,
-			product_id,
-			is_default,
-			title,
-			price,
-			crossed_out_price,
-			currency,
-			attributes,
-			created_at,
-			updated_at,
-			deleted_at
-		FROM product_variants
+			pv.id,
+			pv.sku,
+			pv.product_id,
+			pv.is_default,
+			pv.title,
+			pv.price,
+			pv.crossed_out_price,
+			pv.currency,
+			pv.attributes,
+			pv.thumbnail_object_id,
+			pv.created_at,
+			pv.updated_at,
+			pv.deleted_at,
+			so.id as so_id,
+			so.bucket as so_bucket,
+			so.object_key as so_object_key,
+			so.content_type as so_content_type,
+			so.file_size as so_file_size
+		FROM product_variants pv
+		LEFT JOIN storage_objects so ON pv.thumbnail_object_id = so.id
 		WHERE %s
 		%s
 		LIMIT $%d OFFSET $%d
@@ -379,10 +441,53 @@ func (vr *VariantRepository) ListByProductID(
 	if err != nil {
 		return nil, fmt.Errorf("list variants select: %w", err)
 	}
+	defer rows.Close()
 
-	variants, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[model.ProductVariant])
-	if err != nil {
-		return nil, fmt.Errorf("list variants collect rows: %w", err)
+	variants := make([]*model.ProductVariant, 0, q.PageSize)
+	for rows.Next() {
+		var (
+			v                              model.ProductVariant
+			soID                           *uuid.UUID
+			soBucket, soKey, soContentType *string
+			soFileSize                     *int64
+		)
+		err = rows.Scan(
+			&v.ID,
+			&v.SKU,
+			&v.ProductID,
+			&v.IsDefault,
+			&v.Title,
+			&v.Price,
+			&v.CrossedOutPrice,
+			&v.Currency,
+			&v.Attributes,
+			&v.ThumbnailObjectID,
+			&v.CreatedAt,
+			&v.UpdatedAt,
+			&v.DeletedAt,
+			&soID,
+			&soBucket,
+			&soKey,
+			&soContentType,
+			&soFileSize,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("list variants scan: %w", err)
+		}
+		if soID != nil && soBucket != nil && soKey != nil {
+			v.Thumbnail = &model.Object{
+				ID:          *soID,
+				Bucket:      *soBucket,
+				Key:         *soKey,
+				ContentType: *soContentType,
+				FileSize:    *soFileSize,
+			}
+		}
+		variants = append(variants, &v)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list variants iterate: %w", err)
 	}
 
 	return pagination.NewPagedResult(variants, pagination.NewPage(q.Page, q.PageSize, total)), nil
@@ -425,20 +530,22 @@ func (vr *VariantRepository) AddMedia(
 	query := `
 		INSERT INTO variant_media (
 			id,
+			public_id,
 			variant_id,
-			thumbnail_object_id,
+			object_id,
 			media_type,
 			sort_order
 		)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
 	_, err := qe.Exec(
 		ctx,
 		query,
 		in.ID,
+		in.PublicID,
 		in.VariantID,
-		in.ThumbnailObjectID,
+		in.ObjectID,
 		in.MediaType,
 		in.SortOrder,
 	)
@@ -447,11 +554,12 @@ func (vr *VariantRepository) AddMedia(
 	}
 
 	return &model.VariantMedia{
-		ID:              in.ID,
-		VariantID:       in.VariantID,
-		ThumbnailObjectID: in.ThumbnailObjectID,
-		MediaType:       in.MediaType,
-		SortOrder:       in.SortOrder,
+		ID:        in.ID,
+		PublicID:  in.PublicID,
+		VariantID: in.VariantID,
+		ObjectID:  in.ObjectID,
+		MediaType: in.MediaType,
+		SortOrder: in.SortOrder,
 	}, nil
 }
 
@@ -467,8 +575,9 @@ func (vr *VariantRepository) ListMediaByVariantID(
 	query := `
 		SELECT
 			m.id,
+			m.public_id,
 			m.variant_id,
-			m.thumbnail_object_id,
+			m.object_id,
 			m.media_type,
 			m.sort_order,
 			so.id,
@@ -478,7 +587,7 @@ func (vr *VariantRepository) ListMediaByVariantID(
 			so.file_size,
 			so.status
 		FROM variant_media m
-		JOIN storage_objects so ON m.thumbnail_object_id = so.id
+		JOIN storage_objects so ON m.object_id = so.id
 		WHERE m.variant_id = $1
 		ORDER BY m.sort_order ASC
 	`
@@ -496,8 +605,9 @@ func (vr *VariantRepository) ListMediaByVariantID(
 		}
 		if err := rows.Scan(
 			&m.ID,
+			&m.PublicID,
 			&m.VariantID,
-			&m.ThumbnailObjectID,
+			&m.ObjectID,
 			&m.MediaType,
 			&m.SortOrder,
 			&m.Object.ID,
@@ -510,6 +620,76 @@ func (vr *VariantRepository) ListMediaByVariantID(
 			return nil, fmt.Errorf("list variant media scan: %w", err)
 		}
 		result = append(result, m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list variant media iterate: %w", err)
+	}
+
+	return result, nil
+}
+
+func (vr *VariantRepository) ListMediaByVariantIDs(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	variantIDs []uuid.UUID,
+) (map[uuid.UUID][]*model.VariantMedia, error) {
+	result := make(map[uuid.UUID][]*model.VariantMedia, len(variantIDs))
+	if len(variantIDs) == 0 {
+		return result, nil
+	}
+
+	query := `
+		SELECT
+			m.id,
+			m.public_id,
+			m.variant_id,
+			m.object_id,
+			m.media_type,
+			m.sort_order,
+			so.id,
+			so.bucket,
+			so.object_key as key,
+			so.content_type,
+			so.file_size,
+			so.status
+		FROM variant_media m
+		JOIN storage_objects so ON m.object_id = so.id
+		WHERE m.variant_id = ANY($1)
+		ORDER BY m.sort_order ASC
+	`
+
+	rows, err := qe.Query(ctx, query, variantIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list media by variant IDs: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		m := &model.VariantMedia{
+			Object: &model.Object{},
+		}
+		if err := rows.Scan(
+			&m.ID,
+			&m.PublicID,
+			&m.VariantID,
+			&m.ObjectID,
+			&m.MediaType,
+			&m.SortOrder,
+			&m.Object.ID,
+			&m.Object.Bucket,
+			&m.Object.Key,
+			&m.Object.ContentType,
+			&m.Object.FileSize,
+			&m.Object.Status,
+		); err != nil {
+			return nil, fmt.Errorf("scan variant media: %w", err)
+		}
+		result[m.VariantID] = append(result[m.VariantID], m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list media by variant IDs iterate: %w", err)
 	}
 
 	return result, nil

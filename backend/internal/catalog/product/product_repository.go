@@ -17,7 +17,7 @@ import (
 
 var allowedProductSortFields = map[string]string{
 	"id":         "p.id",
-	"public_id":  "p.public_id",
+	"slug":       "p.slug",
 	"title":      "p.title",
 	"status":     "p.status",
 	"created_at": "p.created_at",
@@ -247,7 +247,7 @@ func (r *ProductRepository) List(
 
 	search := strings.TrimSpace(q.Search)
 	if search != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("(p.title ILIKE $%d OR p.public_id ILIKE $%d OR b.name ILIKE $%d OR c.name ILIKE $%d)", argIdx, argIdx, argIdx, argIdx))
+		whereClauses = append(whereClauses, fmt.Sprintf("(p.title ILIKE $%d OR p.slug ILIKE $%d OR b.name ILIKE $%d OR c.name ILIKE $%d)", argIdx, argIdx, argIdx, argIdx))
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}
@@ -311,7 +311,7 @@ func (r *ProductRepository) List(
 			pv.crossed_out_price as crossed_out_price,
 			pv.currency as currency,
 			(
-				SELECT coalesce(json_agg(json_build_object('id', pt.public_id, 'name', pt.name)), '[]'::json)
+				SELECT coalesce(json_agg(json_build_object('id', pt.id, 'name', pt.name)), '[]'::json)
 				FROM product_tag_assignments pta
 				JOIN product_tags pt ON pta.tag_id = pt.id
 				WHERE pta.product_id = p.id

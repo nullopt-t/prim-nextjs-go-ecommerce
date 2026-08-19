@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/errcode"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/inventory"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
@@ -21,10 +22,11 @@ type ObjectService interface {
 }
 
 type VariantService struct {
-	logger        log.Logger
-	dr            database.Runner
-	objectService ObjectService
-	vr            *VariantRepository
+	logger           log.Logger
+	dr               database.Runner
+	objectService    ObjectService
+	vr               *VariantRepository
+	inventoryService *inventory.InventoryService
 }
 
 func NewService(
@@ -32,32 +34,36 @@ func NewService(
 	r database.Runner,
 	objectService ObjectService,
 	vr *VariantRepository,
+	inventoryService *inventory.InventoryService,
 ) *VariantService {
 	return &VariantService{
-		logger:        logger,
-		dr:            r,
-		objectService: objectService,
-		vr:            vr,
+		logger:           logger,
+		dr:               r,
+		objectService:    objectService,
+		vr:               vr,
+		inventoryService: inventoryService,
 	}
 }
 
 type CreateVariantInput struct {
-	ProductID       uuid.UUID
-	Title           string
-	Price           *int64
-	CrossedOutPrice *int64
-	Currency        *string
-	Attributes      map[string]any
-	IsDefault       bool
+	ProductID         uuid.UUID
+	Title             string
+	Price             *int64
+	CrossedOutPrice   *int64
+	Currency          *string
+	Attributes        map[string]any
+	IsDefault         bool
+	ThumbnailObjectID *uuid.UUID
 }
 
 type UpdateVariantInput struct {
-	Title           *string
-	Price           *int64
-	CrossedOutPrice *int64
-	Currency        *string
-	Attributes      map[string]any
-	IsDefault       *bool
+	Title             *string
+	Price             *int64
+	CrossedOutPrice   *int64
+	Currency          *string
+	Attributes        map[string]any
+	IsDefault         *bool
+	ThumbnailObjectID *uuid.UUID
 }
 
 type AttachMediaInput struct {
@@ -96,15 +102,16 @@ func (vs *VariantService) CreateVariant(
 	}
 
 	variant := &model.ProductVariant{
-		ID:              uuid.New(),
-		SKU:        uuid.NewString(),
-		ProductID:       in.ProductID,
-		Title:           title,
-		Price:           in.Price,
-		CrossedOutPrice: in.CrossedOutPrice,
-		Currency:        in.Currency,
-		Attributes:      in.Attributes,
-		IsDefault:       in.IsDefault,
+		ID:                uuid.New(),
+		SKU:               uuid.NewString(),
+		ProductID:         in.ProductID,
+		Title:             title,
+		Price:             in.Price,
+		CrossedOutPrice:   in.CrossedOutPrice,
+		Currency:          in.Currency,
+		Attributes:        in.Attributes,
+		IsDefault:         in.IsDefault,
+		ThumbnailObjectID: in.ThumbnailObjectID,
 	}
 
 	execFunc := vs.dr.WithDB
@@ -125,7 +132,7 @@ func (vs *VariantService) CreateVariant(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
-			return nil, apierr.ErrBadRequest("Referenced product does not exist").
+			return nil, apierr.ErrBadRequest("Referenced product or storage object does not exist").
 				WithCode(errcode.CodeProductNotFound).
 				Wrap(err).
 				WithFields(api.FieldError{
@@ -171,6 +178,19 @@ func (vs *VariantService) GetVariantByID(
 		}
 	}
 
+	if variant.Thumbnail != nil && vs.objectService != nil {
+		variant.Thumbnail.PublicURL = vs.objectService.GetObjectURL(
+			ctx,
+			variant.Thumbnail.Bucket,
+			variant.Thumbnail.Key,
+		)
+	}
+
+	mediaList, err := vs.ListVariantMedia(ctx, variantID)
+	if err == nil {
+		variant.Media = mediaList
+	}
+
 	return variant, nil
 }
 
@@ -190,7 +210,20 @@ func (vs *VariantService) GetVariantBySKU(
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("get variant by public id: %w", err)
+		return nil, fmt.Errorf("get variant by sku: %w", err)
+	}
+
+	if variant.Thumbnail != nil && vs.objectService != nil {
+		variant.Thumbnail.PublicURL = vs.objectService.GetObjectURL(
+			ctx,
+			variant.Thumbnail.Bucket,
+			variant.Thumbnail.Key,
+		)
+	}
+
+	mediaList, err := vs.ListVariantMedia(ctx, variant.ID)
+	if err == nil {
+		variant.Media = mediaList
 	}
 
 	return variant, nil
@@ -202,11 +235,12 @@ func (vs *VariantService) UpdateVariant(
 	in UpdateVariantInput,
 ) error {
 	fields := UpdateVariantFields{
-		Price:           in.Price,
-		CrossedOutPrice: in.CrossedOutPrice,
-		Currency:        in.Currency,
-		Attributes:      in.Attributes,
-		IsDefault:       in.IsDefault,
+		Price:             in.Price,
+		CrossedOutPrice:   in.CrossedOutPrice,
+		Currency:          in.Currency,
+		Attributes:        in.Attributes,
+		IsDefault:         in.IsDefault,
+		ThumbnailObjectID: in.ThumbnailObjectID,
 	}
 
 	if in.Title != nil {
@@ -270,6 +304,8 @@ func (vs *VariantService) ListVariantsByProductID(
 	}
 
 	var result *pagination.PagedResult[model.ProductVariant]
+	var mediaMap map[uuid.UUID][]*model.VariantMedia
+
 	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		result, repoErr = vs.vr.ListByProductID(ctx, db, ListVariantOptions{
@@ -277,7 +313,24 @@ func (vs *VariantService) ListVariantsByProductID(
 			Query:          q,
 			IncludeDeleted: includeDeleted,
 		})
-		return repoErr
+		if repoErr != nil {
+			return repoErr
+		}
+
+		if len(result.Items) > 0 {
+			variantIDs := make([]uuid.UUID, 0, len(result.Items))
+			for _, item := range result.Items {
+				if item != nil {
+					variantIDs = append(variantIDs, item.ID)
+				}
+			}
+			mediaMap, repoErr = vs.vr.ListMediaByVariantIDs(ctx, db, variantIDs)
+			if repoErr != nil {
+				return repoErr
+			}
+		}
+
+		return nil
 	})
 
 	if err != nil {
@@ -285,6 +338,35 @@ func (vs *VariantService) ListVariantsByProductID(
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
+	}
+
+	for _, v := range result.Items {
+		if v == nil {
+			continue
+		}
+
+		if v.Thumbnail != nil && vs.objectService != nil {
+			v.Thumbnail.PublicURL = vs.objectService.GetObjectURL(
+				ctx,
+				v.Thumbnail.Bucket,
+				v.Thumbnail.Key,
+			)
+		}
+
+		if mediaMap != nil {
+			if list, ok := mediaMap[v.ID]; ok {
+				for _, m := range list {
+					if m.Object != nil && vs.objectService != nil {
+						m.Object.PublicURL = vs.objectService.GetObjectURL(
+							ctx,
+							m.Object.Bucket,
+							m.Object.Key,
+						)
+					}
+				}
+				v.Media = list
+			}
+		}
 	}
 
 	return result, nil
@@ -331,24 +413,23 @@ func (vs *VariantService) AttachMedia(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	mediaType := strings.TrimSpace(in.MediaType)
-	if mediaType == "" {
-		return nil, apierr.ErrBadRequest("Validation error").
-			WithCode(apierr.CodeValidationFailed).
-			WithFields(api.FieldError{
-				Field:   "media_type",
-				Message: "media_type is required",
-			})
+	in.MediaType = strings.TrimSpace(in.MediaType)
+	if in.MediaType == "" {
+		in.MediaType = "image"
 	}
 
-	var media *model.VariantMedia
-	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	mediaID := uuid.New()
+	var createdMedia *model.VariantMedia
+
+	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
 		var repoErr error
-		media, repoErr = vs.vr.AddMedia(ctx, db, CreateVariantMediaInput{
-			VariantID:       in.VariantID,
-			ThumbnailObjectID: in.StorageObjectID,
-			MediaType:       mediaType,
-			SortOrder:       in.SortOrder,
+		createdMedia, repoErr = vs.vr.AddMedia(ctx, tx, CreateVariantMediaInput{
+			ID:        mediaID,
+			PublicID:  uuid.New(),
+			VariantID: in.VariantID,
+			ObjectID:  in.StorageObjectID,
+			MediaType: in.MediaType,
+			SortOrder: in.SortOrder,
 		})
 		return repoErr
 	})
@@ -356,28 +437,23 @@ func (vs *VariantService) AttachMedia(
 	if err != nil {
 		mappedErr := database.MapError(err)
 		switch {
-		case errors.Is(mappedErr, database.ErrConflict):
-			return nil, apierr.ErrConflict("This storage object is already attached to this variant").
-				WithCode(errcode.CodeMediaAlreadyAttached).
-				Wrap(err)
-
 		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
 			return nil, apierr.ErrBadRequest("Referenced variant or storage object does not exist").
-				WithCode(apierr.CodeInvalidReference).
+				WithCode(errcode.CodeVariantNotFound).
 				Wrap(err)
 
 		default:
-			return nil, apierr.ErrInternalError("Failed to attach media to variant").
+			return nil, apierr.ErrInternalError("Failed to attach media").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
 		}
 	}
 
-	return media, nil
+	return createdMedia, nil
 }
 
-func (vs *VariantService) DetachMedia(
+func (vs *VariantService) RemoveMedia(
 	ctx context.Context,
 	variantID uuid.UUID,
 	mediaID uuid.UUID,
@@ -395,12 +471,12 @@ func (vs *VariantService) DetachMedia(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return apierr.ErrNotFound("Variant media relationship not found").
+			return apierr.ErrNotFound("Variant media not found").
 				WithCode(errcode.CodeMediaNotFound).
 				Wrap(err)
 
 		default:
-			return apierr.ErrInternalError("Failed to detach media from variant").
+			return apierr.ErrInternalError("Failed to remove variant media").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
@@ -408,6 +484,14 @@ func (vs *VariantService) DetachMedia(
 	}
 
 	return nil
+}
+
+func (vs *VariantService) DetachMedia(
+	ctx context.Context,
+	variantID uuid.UUID,
+	mediaID uuid.UUID,
+) error {
+	return vs.RemoveMedia(ctx, variantID, mediaID)
 }
 
 func (vs *VariantService) ReorderMedia(
@@ -421,7 +505,8 @@ func (vs *VariantService) ReorderMedia(
 	}
 
 	if len(orderedMediaIDs) == 0 {
-		return nil
+		return apierr.ErrBadRequest("Ordered media IDs cannot be empty").
+			WithCode(apierr.CodeInvalidInput)
 	}
 
 	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
@@ -429,7 +514,7 @@ func (vs *VariantService) ReorderMedia(
 	})
 
 	if err != nil {
-		return apierr.ErrInternalError("Failed to reorder variant media").
+		return apierr.ErrInternalError("Failed to reorder media").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
@@ -466,7 +551,7 @@ func (vs *VariantService) ListVariantMedia(
 			continue
 		}
 
-		if m.Object.PublicURL == "" && m.Object.Bucket != "" && m.Object.Key != "" {
+		if m.Object.PublicURL == "" && m.Object.Bucket != "" && m.Object.Key != "" && vs.objectService != nil {
 			url := vs.objectService.GetObjectURL(
 				ctx,
 				m.Object.Bucket,
@@ -521,4 +606,35 @@ func (vs *VariantService) SetDefaultVariant(
 	}
 
 	return nil
+}
+
+func (vs *VariantService) AdjustStock(
+	ctx context.Context,
+	in inventory.AdjustStockInput,
+) (*model.InventoryStock, error) {
+	if vs.inventoryService == nil {
+		return nil, apierr.ErrInternalError("inventory service is not configured")
+	}
+	return vs.inventoryService.AdjustStock(ctx, in)
+}
+
+func (vs *VariantService) GetStockByVariantID(
+	ctx context.Context,
+	variantID uuid.UUID,
+) (*model.InventoryStock, error) {
+	if vs.inventoryService == nil {
+		return nil, apierr.ErrInternalError("inventory service is not configured")
+	}
+	return vs.inventoryService.GetStockByVariantID(ctx, variantID)
+}
+
+func (vs *VariantService) ListLedgers(
+	ctx context.Context,
+	variantID uuid.UUID,
+	q *pagination.ListQuery,
+) (*pagination.PagedResult[model.InventoryLedger], error) {
+	if vs.inventoryService == nil {
+		return nil, apierr.ErrInternalError("inventory service is not configured")
+	}
+	return vs.inventoryService.ListLedgers(ctx, variantID, q)
 }
