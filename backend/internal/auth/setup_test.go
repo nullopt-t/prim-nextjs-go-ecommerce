@@ -50,7 +50,7 @@ func (s *AuthTestSuite) SetupSuite() {
 
 	// 1. Start Postgres Container
 	pgContainer, err := postgres.Run(ctx,
-		"postgres:15-alpine",
+		"postgres:18-alpine",
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("testuser"),
 		postgres.WithPassword("testpass"),

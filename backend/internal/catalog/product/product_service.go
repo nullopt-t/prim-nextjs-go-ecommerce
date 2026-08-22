@@ -578,12 +578,10 @@ func (s *ProductService) CreateProductVariant(
 	}
 
 	if input.InitialStock != nil && *input.InitialStock > 0 && s.inventoryService != nil {
-		ref := "initial-stock"
 		_, _ = s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
-			VariantID:   createdVariant.ID,
-			Quantity:    *input.InitialStock,
-			Reason:      string(model.InventoryReasonRestock),
-			ReferenceID: &ref,
+			VariantID: createdVariant.ID,
+			Quantity:  *input.InitialStock,
+			Reason:    string(model.InventoryReasonRestock),
 		})
 	}
 

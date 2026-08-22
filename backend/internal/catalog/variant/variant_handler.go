@@ -691,9 +691,8 @@ func (vh *VariantHandler) ReorderMedia(c *gin.Context) {
 }
 
 type AdjustStockRequest struct {
-	Quantity    int     `json:"quantity" binding:"required" example:"50"`
-	Reason      string  `json:"reason" binding:"required,oneof=restock sale return adjustment reservation_release" example:"restock"`
-	ReferenceID *string `json:"reference_id,omitempty" example:"PO-10492"`
+	Quantity int    `json:"quantity" binding:"required" example:"50"`
+	Reason   string `json:"reason" binding:"required,oneof=restock sale return adjustment reservation_release" example:"restock"`
 }
 
 type PublicStockResponse struct {
@@ -710,12 +709,11 @@ type InventoryStockResponse struct {
 }
 
 type InventoryLedgerResponse struct {
-	ID          string  `json:"id" example:"80000000-0000-0000-0000-000000000001"`
-	VariantID   string  `json:"variant_id" example:"70000000-0000-0000-0000-000000000001"`
-	Quantity    int     `json:"quantity" example:"50"`
-	Reason      string  `json:"reason" example:"restock"`
-	ReferenceID *string `json:"reference_id,omitempty" example:"PO-10492"`
-	CreatedAt   string  `json:"created_at" example:"2026-08-15T12:00:00Z"`
+	ID        string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
+	VariantID string `json:"variant_id" example:"70000000-0000-0000-0000-000000000001"`
+	Quantity  int    `json:"quantity" example:"50"`
+	Reason    string `json:"reason" example:"restock"`
+	CreatedAt string `json:"created_at" example:"2026-08-15T12:00:00Z"`
 }
 
 func mapStockResponse(stock *model.InventoryStock) InventoryStockResponse {
@@ -730,12 +728,11 @@ func mapStockResponse(stock *model.InventoryStock) InventoryStockResponse {
 
 func mapLedgerResponse(l *model.InventoryLedger) InventoryLedgerResponse {
 	return InventoryLedgerResponse{
-		ID:          l.ID.String(),
-		VariantID:   l.VariantID.String(),
-		Quantity:    l.Quantity,
-		Reason:      l.Reason.String(),
-		ReferenceID: l.ReferenceID,
-		CreatedAt:   l.CreatedAt.Format(time.RFC3339),
+		ID:        l.ID.String(),
+		VariantID: l.VariantID.String(),
+		Quantity:  l.Quantity,
+		Reason:    l.Reason.String(),
+		CreatedAt: l.CreatedAt.Format(time.RFC3339),
 	}
 }
 
@@ -770,10 +767,9 @@ func (vh *VariantHandler) AdjustStock(c *gin.Context) {
 	}
 
 	stock, err := vh.vservice.AdjustStock(c.Request.Context(), inventory.AdjustStockInput{
-		VariantID:   variantID,
-		Quantity:    body.Quantity,
-		Reason:      body.Reason,
-		ReferenceID: body.ReferenceID,
+		VariantID: variantID,
+		Quantity:  body.Quantity,
+		Reason:    body.Reason,
 	})
 	if err != nil {
 		_ = c.Error(err)
