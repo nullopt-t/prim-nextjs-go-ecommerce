@@ -70,8 +70,9 @@ func (s *InventoryService) AdjustStock(
 	var updatedStock *model.InventoryStock
 
 	txErr := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		// TODO: what errors can occur here?
-		_ = s.repo.LockVariantForUpdate(ctx, tx, in.VariantID)
+		if err := s.repo.LockVariantForUpdate(ctx, tx, in.VariantID); err != nil {
+			return err
+		}
 
 		currentStock, err := s.repo.GetStock(ctx, tx, in.VariantID)
 		if err != nil {
@@ -100,9 +101,13 @@ func (s *InventoryService) AdjustStock(
 	})
 
 	if txErr != nil {
+		var apiErr *apierr.APIError
+		if errors.As(txErr, &apiErr) {
+			return nil, apiErr
+		}
 		mappedErr := database.MapError(txErr)
 		switch {
-		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+		case errors.Is(mappedErr, database.ErrForeignKeyViolation), errors.Is(mappedErr, database.ErrNotFound):
 			return nil, apierr.ErrBadRequest("Referenced variant does not exist").
 				WithCode(errcode.CodeVariantNotFound).
 				Wrap(txErr)
@@ -168,7 +173,7 @@ func (s *InventoryService) GetStockForVariants(
 	return stocks, nil
 }
 
-func (s *InventoryService) ListLedgers(
+func (s *InventoryService) ListVariantLedgers(
 	ctx context.Context,
 	variantID uuid.UUID,
 	q *pagination.ListQuery,
@@ -181,7 +186,7 @@ func (s *InventoryService) ListLedgers(
 	var result *pagination.PagedResult[model.InventoryLedger]
 	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
-		result, repoErr = s.repo.ListLedgers(ctx, db, variantID, q)
+		result, repoErr = s.repo.ListVariantLedgers(ctx, db, variantID, q)
 		return repoErr
 	})
 
@@ -193,6 +198,14 @@ func (s *InventoryService) ListLedgers(
 	}
 
 	return result, nil
+}
+
+func (s *InventoryService) ListLedgers(
+	ctx context.Context,
+	variantID uuid.UUID,
+	q *pagination.ListQuery,
+) (*pagination.PagedResult[model.InventoryLedger], error) {
+	return s.ListVariantLedgers(ctx, variantID, q)
 }
 
 func (s *InventoryService) ReserveStock(
@@ -266,9 +279,13 @@ func (s *InventoryService) ReserveStock(
 	})
 
 	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return nil, apiErr
+		}
 		mappedErr := database.MapError(err)
 		switch {
-		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+		case errors.Is(mappedErr, database.ErrForeignKeyViolation), errors.Is(mappedErr, database.ErrNotFound):
 			return nil, apierr.ErrBadRequest("Referenced variant does not exist").
 				WithCode(errcode.CodeVariantNotFound).
 				Wrap(err)
@@ -397,6 +414,10 @@ func (s *InventoryService) CommitReservation(
 	})
 
 	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return apiErr
+		}
 		return apierr.ErrInternalError("Failed to commit reservation").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).

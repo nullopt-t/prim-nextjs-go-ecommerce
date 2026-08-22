@@ -40,30 +40,28 @@ func (r InventoryReason) String() string {
 	return string(r)
 }
 
-// TODO: domain models shouldn't know about the representation mechanics
-
 type InventoryLedger struct {
-	ID        uuid.UUID       `db:"id" json:"id"`
-	VariantID uuid.UUID       `db:"variant_id" json:"variant_id"`
-	Quantity  int             `db:"quantity" json:"quantity"`
-	Reason    InventoryReason `db:"reason" json:"reason"`
-	CreatedAt time.Time       `db:"created_at" json:"created_at"`
+	ID        uuid.UUID
+	VariantID uuid.UUID
+	Quantity  int
+	Reason    InventoryReason
+	CreatedAt time.Time
 }
 
 type InventoryReservation struct {
-	ID         uuid.UUID  `db:"id" json:"id"`
-	VariantID  uuid.UUID  `db:"variant_id" json:"variant_id"`
-	CartID     *uuid.UUID `db:"cart_id" json:"cart_id,omitempty"`
-	Quantity   int        `db:"quantity" json:"quantity"`
-	ExpiresAt  time.Time  `db:"expires_at" json:"expires_at"`
-	CreatedAt  time.Time  `db:"created_at" json:"created_at"`
-	ReleasedAt *time.Time `db:"released_at" json:"released_at,omitempty"`
+	ID         uuid.UUID
+	VariantID  uuid.UUID
+	CartID     *uuid.UUID
+	Quantity   int
+	ExpiresAt  time.Time
+	CreatedAt  time.Time
+	ReleasedAt *time.Time
 }
 
 type InventoryStock struct {
-	VariantID         uuid.UUID `json:"variant_id"`
-	OnHandQuantity    int       `json:"on_hand_quantity"`
-	ReservedQuantity  int       `json:"reserved_quantity"`
-	AvailableQuantity int       `json:"available_quantity"`
-	IsInStock         bool      `json:"is_in_stock"`
+	VariantID         uuid.UUID
+	OnHandQuantity    int
+	ReservedQuantity  int
+	AvailableQuantity int
+	IsInStock         bool
 }

@@ -185,6 +185,8 @@ definitions:
     properties:
       created_at:
         type: string
+      current_refresh_jti:
+        type: string
       id:
         type: string
       ip_address:
@@ -583,12 +585,18 @@ definitions:
         type: string
       isDefault:
         type: boolean
+      media:
+        items:
+          $ref: '#/definitions/model.VariantMedia'
+        type: array
       price:
         type: integer
       productID:
         type: string
       sku:
         type: string
+      thumbnail:
+        $ref: '#/definitions/model.Object'
       thumbnailObjectID:
         type: string
       title:
@@ -606,6 +614,23 @@ definitions:
     - PublicationStatusDraft
     - PublicationStatusPublished
     - PublicationStatusArchived
+  model.VariantMedia:
+    properties:
+      id:
+        type: string
+      mediaType:
+        type: string
+      object:
+        $ref: '#/definitions/model.Object'
+      objectID:
+        type: string
+      publicID:
+        type: string
+      sortOrder:
+        type: integer
+      variantID:
+        type: string
+    type: object
   order.AddressResponse:
     properties:
       city:
@@ -758,8 +783,47 @@ definitions:
         type: string
       variants:
         items:
-          $ref: '#/definitions/product.ProductVariantResponse'
+          $ref: '#/definitions/product.AdminProductVariantResponse'
         type: array
+    type: object
+  product.AdminProductVariantResponse:
+    properties:
+      attributes:
+        additionalProperties: {}
+        type: object
+      crossed_out_price:
+        type: integer
+      currency:
+        type: string
+      id:
+        type: string
+      is_default:
+        type: boolean
+      media:
+        items:
+          $ref: '#/definitions/product.VariantMediaSummary'
+        type: array
+      price:
+        type: integer
+      sku:
+        type: string
+      stock:
+        $ref: '#/definitions/product.AdminStockSummary'
+      thumbnail:
+        $ref: '#/definitions/product.StorageObjectResponse'
+      title:
+        type: string
+    type: object
+  product.AdminStockSummary:
+    properties:
+      available_quantity:
+        type: integer
+      is_in_stock:
+        type: boolean
+      on_hand_quantity:
+        type: integer
+      reserved_quantity:
+        type: integer
     type: object
   product.CreateProductRequest:
     properties:
@@ -797,6 +861,9 @@ definitions:
       currency:
         example: USD
         type: string
+      initial_stock:
+        example: 100
+        type: integer
       is_default:
         example: false
         type: boolean
@@ -829,22 +896,14 @@ definitions:
     properties:
       brand:
         type: string
-      category:
-        type: string
       crossed_out_price:
         type: integer
       currency:
-        type: string
-      id:
         type: string
       price:
         type: integer
       slug:
         type: string
-      tags:
-        items:
-          type: string
-        type: array
       thumbnail:
         type: string
       title:
@@ -852,6 +911,8 @@ definitions:
     type: object
   product.ProductResponse:
     properties:
+      crossed_out_price:
+        type: integer
       currency:
         type: string
       description:
@@ -904,24 +965,6 @@ definitions:
       name:
         type: string
     type: object
-  product.ProductVariantResponse:
-    properties:
-      attributes:
-        additionalProperties: {}
-        type: object
-      crossed_out_price:
-        type: integer
-      currency:
-        type: string
-      id:
-        type: string
-      is_default:
-        type: boolean
-      price:
-        type: integer
-      title:
-        type: string
-    type: object
   product.PutProductCategoryRequest:
     properties:
       category_id:
@@ -972,6 +1015,17 @@ definitions:
       title:
         type: string
     type: object
+  product.VariantMediaSummary:
+    properties:
+      id:
+        type: string
+      media_type:
+        type: string
+      sort_order:
+        type: integer
+      url:
+        type: string
+    type: object
   tag.AdminTagResponse:
     properties:
       created_at:
@@ -1013,6 +1067,24 @@ definitions:
         example: best-seller
         type: string
     type: object
+  variant.AdjustStockRequest:
+    properties:
+      quantity:
+        example: 50
+        type: integer
+      reason:
+        enum:
+        - restock
+        - sale
+        - return
+        - adjustment
+        - reservation_release
+        example: restock
+        type: string
+    required:
+    - quantity
+    - reason
+    type: object
   variant.AdminVariantResponse:
     properties:
       attributes:
@@ -1036,6 +1108,10 @@ definitions:
       is_default:
         example: false
         type: boolean
+      media:
+        items:
+          $ref: '#/definitions/variant.VariantMediaSummary'
+        type: array
       price:
         example: 2999
         type: integer
@@ -1045,6 +1121,8 @@ definitions:
       sku:
         example: prod_var_123
         type: string
+      thumbnail:
+        $ref: '#/definitions/variant.StorageObjectResponse'
       title:
         example: Red / XL
         type: string
@@ -1084,11 +1162,59 @@ definitions:
       price:
         example: 2999
         type: integer
+      thumbnail_object_id:
+        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
+        type: string
       title:
         example: Red / XL
         type: string
     required:
     - title
+    type: object
+  variant.InventoryLedgerResponse:
+    properties:
+      created_at:
+        example: "2026-08-15T12:00:00Z"
+        type: string
+      id:
+        example: 80000000-0000-0000-0000-000000000001
+        type: string
+      quantity:
+        example: 50
+        type: integer
+      reason:
+        example: restock
+        type: string
+      variant_id:
+        example: 70000000-0000-0000-0000-000000000001
+        type: string
+    type: object
+  variant.InventoryStockResponse:
+    properties:
+      available_quantity:
+        example: 45
+        type: integer
+      is_in_stock:
+        example: true
+        type: boolean
+      on_hand_quantity:
+        example: 50
+        type: integer
+      reserved_quantity:
+        example: 5
+        type: integer
+      variant_id:
+        example: 70000000-0000-0000-0000-000000000001
+        type: string
+    type: object
+  variant.PublicStockResponse:
+    properties:
+      available_quantity:
+        example: 45
+        type: integer
+      is_in_stock:
+        example: true
+        type: boolean
     type: object
   variant.ReorderMediaRequest:
     properties:
@@ -1131,6 +1257,9 @@ definitions:
       price:
         example: 3499
         type: integer
+      thumbnail_object_id:
+        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
+        type: string
       title:
         example: Red / XXL
         type: string
@@ -1145,14 +1274,28 @@ definitions:
         type: string
       object:
         $ref: '#/definitions/variant.StorageObjectResponse'
+      object_id:
+        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
+        type: string
+      public_id:
+        example: 8f123456-e89b-12d3-a456-426614174000
+        type: string
       sort_order:
         example: 0
         type: integer
-      thumbnail_object_id:
-        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
-        type: string
       variant_id:
         example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
+        type: string
+    type: object
+  variant.VariantMediaSummary:
+    properties:
+      id:
+        type: string
+      media_type:
+        type: string
+      sort_order:
+        type: integer
+      url:
         type: string
     type: object
   variant.VariantResponse:
@@ -1172,11 +1315,19 @@ definitions:
       is_default:
         example: false
         type: boolean
+      media:
+        items:
+          $ref: '#/definitions/variant.VariantMediaSummary'
+        type: array
       price:
         example: 2999
         type: integer
       product_id:
         example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
+        type: string
+      sku:
+        type: string
+      thumbnail:
         type: string
       title:
         example: Red / XL
@@ -2515,6 +2666,145 @@ paths:
       summary: Update product variant attributes
       tags:
       - Product Variants
+  /admin/variants/{id}/inventory:
+    get:
+      description: Retrieves on-hand, reserved, available quantities and in-stock
+        status for a variant.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variant stock summary
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/variant.InventoryStockResponse'
+              type: object
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Get detailed stock levels for a variant (Admin)
+      tags:
+      - Variant Inventory
+  /admin/variants/{id}/inventory/adjust:
+    post:
+      consumes:
+      - application/json
+      description: Records a new inventory ledger transaction (restock, adjustment,
+        sale, return) to increment or decrement the variant's stock.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stock adjustment details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/variant.AdjustStockRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated stock levels
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/variant.InventoryStockResponse'
+              type: object
+        "400":
+          description: Validation error or insufficient inventory
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "404":
+          description: Variant not found
+          schema:
+            $ref: '#/definitions/api.NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Adjust variant inventory stock
+      tags:
+      - Variant Inventory
+  /admin/variants/{id}/inventory/ledgers:
+    get:
+      description: Returns a paginated list of inventory audit ledger transactions
+        for a specific variant.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -created_at
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Paginated inventory audit history
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/variant.InventoryLedgerResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/pagination.Page'
+              type: object
+        "400":
+          description: Invalid query parameters or UUID format
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: List inventory audit ledgers for a variant
+      tags:
+      - Variant Inventory
   /admin/variants/{id}/media:
     post:
       consumes:
@@ -2746,6 +3036,25 @@ paths:
           schema:
             $ref: '#/definitions/api.InternalServerErrorResponse'
       summary: Verify an authentication challenge
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      description: Revokes the current session and clears auth cookies.
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Logout
       tags:
       - Auth
   /auth/me:
@@ -3556,6 +3865,40 @@ paths:
       summary: Get variant details by ID
       tags:
       - Product Variants
+  /variants/{id}/inventory:
+    get:
+      description: Retrieves available quantity and in-stock status for a variant
+        for customer storefront.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Public stock availability
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/variant.PublicStockResponse'
+              type: object
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Get current available stock for a variant (Public)
+      tags:
+      - Variant Inventory
   /variants/{id}/media:
     get:
       description: Returns all attached media items for a specific variant with presigned

@@ -1,7 +1,6 @@
 package product
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -107,20 +106,20 @@ type AdminProductVariantResponse struct {
 }
 
 type ProductResponse struct {
-	ID          string                 `json:"id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	Slug        string                 `json:"slug" example:"wireless-headphones"`
-	Title       string                 `json:"title" example:"Wireless Headphones"`
-	Description *string                `json:"description,omitempty"`
-	Highlights  []string               `json:"highlights"`
-	ProductType string                 `json:"product_type"`
-	Price       *int64                 `json:"price,omitempty"`
-	Currency    *string                `json:"currency,omitempty"`
+	ID              string   `json:"id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	Slug            string   `json:"slug" example:"wireless-headphones"`
+	Title           string   `json:"title" example:"Wireless Headphones"`
+	Description     *string  `json:"description,omitempty"`
+	Highlights      []string `json:"highlights"`
+	ProductType     string   `json:"product_type"`
+	Price           *int64   `json:"price,omitempty"`
+	CrossedOutPrice *int64   `json:"crossed_out_price,omitempty"`
+	Currency        *string  `json:"currency,omitempty"`
 }
 
 type ProductDetailsResponse struct {
 	ProductResponse
 	Brand    *ProductBrandSummary     `json:"brand,omitempty"`
-	Category *ProductCategorySummary  `json:"category,omitempty"`
 	Variants []ProductVariantResponse `json:"variants"`
 	Tags     []ProductTagSummary      `json:"tags"`
 }
@@ -408,57 +407,31 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 }
 
 type ProductListItemResponse struct {
-	ID              string                  `json:"id"`
-	Slug            string                  `json:"slug"`
-	Title           string                  `json:"title"`
-	Brand           *string                 `json:"brand,omitempty"`
-	Category        *string                 `json:"category,omitempty"`
-	Thumbnail       *string                 `json:"thumbnail,omitempty"`
-	Price           *int64                  `json:"price,omitempty"`
-	CrossedOutPrice *int64                  `json:"crossed_out_price,omitempty"`
-	Currency        *string                 `json:"currency,omitempty"`
-	Tags            []string                `json:"tags"`
+	Slug            string  `json:"slug"`
+	Title           string  `json:"title"`
+	Brand           *string `json:"brand,omitempty"`
+	Thumbnail       *string `json:"thumbnail,omitempty"`
+	Price           *int64  `json:"price,omitempty"`
+	CrossedOutPrice *int64  `json:"crossed_out_price,omitempty"`
+	Currency        *string `json:"currency,omitempty"`
 }
 
 func mapProductListItemResponse(item *ProductCardReadModel) ProductListItemResponse {
-	var tags []string
-	var rawTags []ProductTagSummary
-	if len(item.TagsRaw) > 0 {
-		_ = json.Unmarshal(item.TagsRaw, &rawTags)
-	}
-	for _, t := range rawTags {
-		if t.Name != "" {
-			tags = append(tags, t.Name)
-		}
-	}
-	if tags == nil {
-		tags = make([]string, 0)
-	}
-
 	res := ProductListItemResponse{
-		ID:              item.ID.String(),
 		Slug:            item.Slug,
 		Title:           item.Title,
 		Price:           item.Price,
 		CrossedOutPrice: item.CrossedOutPrice,
 		Currency:        item.Currency,
-		Tags:            tags,
 	}
 
 	if item.Brand != nil {
 		res.Brand = &item.Brand.Name
 	}
 
-	if item.Category != nil {
-		res.Category = &item.Category.Name
-	}
-
 	if item.Thumbnail != nil {
 		res.Thumbnail = &item.Thumbnail.PublicURL
 	}
-
-	res.Price = item.Price
-	res.Currency = item.Currency
 
 	return res
 }
@@ -664,13 +637,6 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 			ID:   details.Brand.ID.String(),
 			Name: details.Brand.Name,
 			Link: details.Brand.Link,
-		}
-	}
-
-	if details.Category != nil {
-		res.Category = &ProductCategorySummary{
-			ID:   details.Category.ID.String(),
-			Name: details.Category.Name,
 		}
 	}
 
