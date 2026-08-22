@@ -117,11 +117,18 @@ type ProductResponse struct {
 	Currency        *string  `json:"currency,omitempty"`
 }
 
+type ProductRatingSummaryResponse struct {
+	AverageRating float64       `json:"averageRating" example:"4.5"`
+	ReviewCount   int           `json:"reviewCount" example:"24"`
+	Distribution  map[int16]int `json:"distribution"`
+}
+
 type ProductDetailsResponse struct {
 	ProductResponse
-	Brand    *ProductBrandSummary     `json:"brand,omitempty"`
-	Variants []ProductVariantResponse `json:"variants"`
-	Tags     []ProductTagSummary      `json:"tags"`
+	Brand    *ProductBrandSummary          `json:"brand,omitempty"`
+	Variants []ProductVariantResponse      `json:"variants"`
+	Tags     []ProductTagSummary           `json:"tags"`
+	Rating   *ProductRatingSummaryResponse `json:"rating,omitempty"`
 }
 
 type AdminProductDetailsResponse struct {
@@ -407,13 +414,14 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 }
 
 type ProductListItemResponse struct {
-	Slug            string  `json:"slug"`
-	Title           string  `json:"title"`
-	Brand           *string `json:"brand,omitempty"`
-	Thumbnail       *string `json:"thumbnail,omitempty"`
-	Price           *int64  `json:"price,omitempty"`
-	CrossedOutPrice *int64  `json:"crossedOutPrice,omitempty"`
-	Currency        *string `json:"currency,omitempty"`
+	Slug            string                        `json:"slug"`
+	Title           string                        `json:"title"`
+	Brand           *string                       `json:"brand,omitempty"`
+	Thumbnail       *string                       `json:"thumbnail,omitempty"`
+	Price           *int64                        `json:"price,omitempty"`
+	CrossedOutPrice *int64                        `json:"crossedOutPrice,omitempty"`
+	Currency        *string                       `json:"currency,omitempty"`
+	Rating          *ProductRatingSummaryResponse `json:"rating,omitempty"`
 }
 
 func mapProductListItemResponse(item *ProductCardReadModel) ProductListItemResponse {
@@ -431,6 +439,14 @@ func mapProductListItemResponse(item *ProductCardReadModel) ProductListItemRespo
 
 	if item.Thumbnail != nil {
 		res.Thumbnail = &item.Thumbnail.PublicURL
+	}
+
+	if item.Rating != nil {
+		res.Rating = &ProductRatingSummaryResponse{
+			AverageRating: item.Rating.AverageRating,
+			ReviewCount:   item.Rating.ReviewCount,
+			Distribution:  item.Rating.Distribution,
+		}
 	}
 
 	return res
@@ -566,6 +582,46 @@ func (h *ProductHandler) ListProductReviews(c *gin.Context) {
 	})
 }
 
+// GetProductRatingSummary godoc
+//
+//	@Summary		Get rating summary for a product
+//	@Description	Returns average rating, total review count, and star distribution for approved reviews.
+//	@Tags			Products
+//	@Produce		json
+//	@Param			slug	path		string													true	"Product Slug"
+//	@Success		200		{object}	api.DataResponse{data=ProductRatingSummaryResponse}	"Product rating summary"
+//	@Failure		400		{object}	api.BadRequestErrorResponse								"Invalid slug"
+//	@Failure		404		{object}	api.NotFoundErrorResponse								"Product not found"
+//	@Failure		500		{object}	api.InternalServerErrorResponse							"Internal server error"
+//	@Router			/products/{slug}/reviews/summary [get]
+func (h *ProductHandler) GetProductRatingSummary(c *gin.Context) {
+	slug := c.Param("slug")
+	if slug == "" {
+		_ = c.Error(apierr.ErrValidationFailed("slug is required"))
+		return
+	}
+
+	details, err := h.service.GetBySlug(c.Request.Context(), slug)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	summary, err := h.service.reviewService.GetRatingSummary(c.Request.Context(), details.Product.ID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	res := ProductRatingSummaryResponse{
+		AverageRating: summary.AverageRating,
+		ReviewCount:   summary.ReviewCount,
+		Distribution:  summary.Distribution,
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{Data: res})
+}
+
 // GetProductByID godoc
 //
 //	@Summary		Get product by internal UUID
@@ -697,6 +753,15 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 			})
 		}
 		res.Tags = tagRes
+	}
+
+	summary, err := h.service.reviewService.GetRatingSummary(c.Request.Context(), details.Product.ID)
+	if err == nil && summary != nil {
+		res.Rating = &ProductRatingSummaryResponse{
+			AverageRating: summary.AverageRating,
+			ReviewCount:   summary.ReviewCount,
+			Distribution:  summary.Distribution,
+		}
 	}
 
 	c.JSON(http.StatusOK, api.DataResponse{

@@ -22,18 +22,24 @@ func NewRouter(
 }
 
 func (r *ReviewRouter) MapRoutes(vgroup *gin.RouterGroup) {
-	// User endpoints (Create review)
+	// User endpoints (Authenticated customer)
 	user := vgroup.Group("/reviews")
 	user.Use(middleware.Authenticate(r.secrets, false))
 	{
 		user.POST("", r.rh.CreateReview)
+		user.GET("/me", r.rh.GetMyReviews)
+		user.GET("/:id", r.rh.GetReviewByID)
+		user.PATCH("/:id", r.rh.UpdateReview)
+		user.DELETE("/:id", r.rh.DeleteReview)
 	}
 
-	// Admin endpoints
+	// Admin endpoints (Moderation)
 	admin := vgroup.Group("/admin/reviews")
-	admin.Use(middleware.Authenticate(r.secrets, true))
+	admin.Use(middleware.Authenticate(r.secrets, false))
 	{
 		admin.GET("", r.rh.AdminListReviews)
+		admin.GET("/:id", r.rh.AdminGetReviewByID)
 		admin.PATCH("/:id/status", r.rh.UpdateReviewStatus)
+		admin.DELETE("/:id", r.rh.AdminDeleteReview)
 	}
 }

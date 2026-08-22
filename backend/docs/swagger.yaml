@@ -902,12 +902,27 @@ definitions:
         type: string
       price:
         type: integer
+      rating:
+        $ref: '#/definitions/product.ProductRatingSummaryResponse'
       slug:
         type: string
       thumbnail:
         type: string
       title:
         type: string
+    type: object
+  product.ProductRatingSummaryResponse:
+    properties:
+      averageRating:
+        example: 4.5
+        type: number
+      distribution:
+        additionalProperties:
+          type: integer
+        type: object
+      reviewCount:
+        example: 24
+        type: integer
     type: object
   product.ProductResponse:
     properties:
@@ -1025,6 +1040,89 @@ definitions:
         type: integer
       url:
         type: string
+    type: object
+  review.CreateReviewRequest:
+    properties:
+      body:
+        example: The sound quality and active noise cancellation are top notch.
+        type: string
+      orderItemId:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+      productId:
+        example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
+        type: string
+      rating:
+        example: 5
+        maximum: 5
+        minimum: 1
+        type: integer
+      title:
+        example: Amazing headphones!
+        type: string
+    required:
+    - orderItemId
+    - productId
+    - rating
+    type: object
+  review.ReviewResponse:
+    properties:
+      body:
+        example: The sound quality is top notch.
+        type: string
+      createdAt:
+        example: "2026-08-10T15:00:00Z"
+        type: string
+      id:
+        example: 8f123456-e89b-12d3-a456-426614174000
+        type: string
+      orderItemId:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+      productId:
+        example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
+        type: string
+      rating:
+        example: 5
+        type: integer
+      status:
+        example: pending
+        type: string
+      title:
+        example: Amazing headphones!
+        type: string
+      updatedAt:
+        example: "2026-08-10T15:00:00Z"
+        type: string
+      userId:
+        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
+        type: string
+    type: object
+  review.UpdateReviewRequest:
+    properties:
+      body:
+        example: Updated review body.
+        type: string
+      rating:
+        example: 4
+        maximum: 5
+        minimum: 1
+        type: integer
+      title:
+        example: Updated title
+        type: string
+    type: object
+  review.UpdateReviewStatusRequest:
+    properties:
+      status:
+        enum:
+        - pending
+        - approved
+        - rejected
+        example: approved
+        type: string
+    required:
+    - status
     type: object
   tag.AdminTagResponse:
     properties:
@@ -2381,6 +2479,204 @@ paths:
       summary: Create a product variant
       tags:
       - Product Variants
+  /admin/reviews:
+    get:
+      description: Returns a paginated list of reviews with optional filters for product,
+        user, and status.
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -created_at
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      - description: Filter by Product ID (UUID)
+        in: query
+        name: productId
+        type: string
+      - description: Filter by User ID (UUID)
+        in: query
+        name: userId
+        type: string
+      - description: Filter by Review Status (pending, approved, rejected)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Paginated list of reviews
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/review.ReviewResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/pagination.Page'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: List reviews (Admin)
+      tags:
+      - Reviews
+  /admin/reviews/{id}:
+    delete:
+      description: Permanently deletes a review.
+      parameters:
+      - description: Review ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Review deleted successfully
+          schema:
+            $ref: '#/definitions/api.MessageResponse'
+        "400":
+          description: Invalid review ID
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Review not found
+          schema:
+            $ref: '#/definitions/api.NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Delete review (Admin)
+      tags:
+      - Reviews
+    get:
+      description: Retrieves full details of a review for moderation.
+      parameters:
+      - description: Review ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Review details
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/review.ReviewResponse'
+              type: object
+        "400":
+          description: Invalid review ID
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Review not found
+          schema:
+            $ref: '#/definitions/api.NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Get review details (Admin)
+      tags:
+      - Reviews
+  /admin/reviews/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Updates a review's moderation status (pending, approved, rejected).
+      parameters:
+      - description: Review ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New status payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/review.UpdateReviewStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Status updated successfully
+          schema:
+            $ref: '#/definitions/api.MessageResponse'
+        "400":
+          description: Invalid input or status
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Review not found
+          schema:
+            $ref: '#/definitions/api.NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Moderate review status (Admin)
+      tags:
+      - Reviews
   /admin/tags:
     get:
       consumes:
@@ -3773,6 +4069,270 @@ paths:
       summary: List reviews for a specific product
       tags:
       - Products
+  /products/{slug}/reviews/summary:
+    get:
+      description: Returns average rating, total review count, and star distribution
+        for approved reviews.
+      parameters:
+      - description: Product Slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product rating summary
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/product.ProductRatingSummaryResponse'
+              type: object
+        "400":
+          description: Invalid slug
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "404":
+          description: Product not found
+          schema:
+            $ref: '#/definitions/api.NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Get rating summary for a product
+      tags:
+      - Products
+  /reviews:
+    post:
+      consumes:
+      - application/json
+      description: Allows a customer to review a product they purchased via a specific
+        order item.
+      parameters:
+      - description: Review creation payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/review.CreateReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Review submitted successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/review.ReviewResponse'
+              type: object
+        "400":
+          description: Invalid input or unverified purchase
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedResponse'
+        "403":
+          description: Forbidden - not your purchase
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Item already reviewed
+          schema:
+            $ref: '#/definitions/api.ConflictErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Submit a product review
+      tags:
+      - Reviews
+  /reviews/{id}:
+    delete:
+      description: Deletes a review written by the authenticated user.
+      parameters:
+      - description: Review ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Review deleted successfully
+          schema:
+            $ref: '#/definitions/api.MessageResponse'
+        "400":
+          description: Invalid review ID
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Review not found
+          schema:
+            $ref: '#/definitions/api.NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Delete user's review
+      tags:
+      - Reviews
+    get:
+      description: Retrieves a review by its unique identifier.
+      parameters:
+      - description: Review ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Review details
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/review.ReviewResponse'
+              type: object
+        "400":
+          description: Invalid review ID format
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "404":
+          description: Review not found
+          schema:
+            $ref: '#/definitions/api.NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Get review by ID
+      tags:
+      - Reviews
+    patch:
+      consumes:
+      - application/json
+      description: Updates rating, title, or body of a review written by the authenticated
+        user. Resets status to pending for re-moderation.
+      parameters:
+      - description: Review ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Review update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/review.UpdateReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Review updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/review.ReviewResponse'
+              type: object
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/api.BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Review not found
+          schema:
+            $ref: '#/definitions/api.NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: Update user's review
+      tags:
+      - Reviews
+  /reviews/me:
+    get:
+      description: Returns a paginated list of all reviews written by the authenticated
+        user.
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -created_at
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User's reviews
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/review.ReviewResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/pagination.Page'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/api.InternalServerErrorResponse'
+      summary: List current user's reviews
+      tags:
+      - Reviews
   /tags:
     get:
       consumes:

@@ -72,25 +72,26 @@ async function seed() {
 
   console.log("Seeding Products & Variants...");
   for (let i = 1; i <= 5; i++) {
-    const brand_id = brands[randomInt(0, brands.length - 1)];
-    const category_id = categories[randomInt(0, categories.length - 1)];
+    const brandId = brands[randomInt(0, brands.length - 1)];
+    const categoryId = categories[randomInt(0, categories.length - 1)];
     const body = {
-      brand_id,
-      category_id,
+      brandId,
+      categoryId,
       title: `Awesome Product ${i}`,
+      slug: `awesome-product-${i}-${Date.now()}`,
       description: `Detailed description for product ${i}`,
       highlights: ["High quality", "Durable", "Eco-friendly"]
     };
     const prod = await req("/admin/products", "POST", body);
     if (prod && prod.id) {
-        console.log(`Created draft product: ${body.title} (public_id: ${prod.id})`);
+        console.log(`Created draft product: ${body.title} (publicId: ${prod.id})`);
 
         // Get internal UUID via admin GET
         const adminProdsRes = await fetch(API_URL + "/admin/products", {
           headers: { "Authorization": `Bearer ${TOKEN}` }
         });
         const adminProdsData = await adminProdsRes.json();
-        const fullProd = (adminProdsData.data || []).find(p => p.public_id === prod.id);
+        const fullProd = (adminProdsData.data || []).find(p => p.publicId === prod.id || p.id === prod.id);
 
         if (fullProd && fullProd.id) {
             // Create a variant first
@@ -98,10 +99,10 @@ async function seed() {
             await req(`/admin/products/${fullProd.id}/variants`, "POST", {
               title: "Standard Variant",
               price: vPrice,
-              crossed_out_price: vPrice + 1000,
+              crossedOutPrice: vPrice + 1000,
               currency: "USD",
               attributes: { color: "Blue" },
-              is_default: true
+              isDefault: true
             });
             console.log(`Created variant for product ${fullProd.id}`);
 

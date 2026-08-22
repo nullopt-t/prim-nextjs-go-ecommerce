@@ -49,6 +49,7 @@ type ProductCardReadModel struct {
 	Price           *int64
 	CrossedOutPrice *int64
 	Currency        *string
+	Rating          *model.RatingSummary
 	TagsRaw         []byte
 	CreatedAt       time.Time
 	UpdatedAt       time.Time

@@ -461,6 +461,26 @@ func (s *ProductService) List(
 		}
 	}
 
+	if len(res.Items) > 0 {
+		productIDs := make([]uuid.UUID, 0, len(res.Items))
+		for _, item := range res.Items {
+			if item != nil {
+				productIDs = append(productIDs, item.ID)
+			}
+		}
+
+		ratingsMap, err := s.reviewService.GetRatingSummariesByProductIDs(ctx, productIDs)
+		if err == nil && ratingsMap != nil {
+			for _, item := range res.Items {
+				if item != nil {
+					if rating, ok := ratingsMap[item.ID]; ok {
+						item.Rating = rating
+					}
+				}
+			}
+		}
+	}
+
 	return res, nil
 }
 
