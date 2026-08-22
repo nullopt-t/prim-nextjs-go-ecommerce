@@ -22,13 +22,13 @@ const (
 
 type UserSession struct {
 	ID                string      `json:"id"`
-	UserID            uuid.UUID   `json:"user_id"`
+	UserID            uuid.UUID   `json:"userId"`
 	Type              SessionType `json:"type"`
-	CurrentRefreshJTI string      `json:"current_refresh_jti"`
-	UserAgent         string      `json:"user_agent"`
-	IPAddress         string      `json:"ip_address"`
-	CreatedAt         time.Time   `json:"created_at"`
-	LastActive        time.Time   `json:"last_active"`
+	CurrentRefreshJTI string      `json:"currentRefreshJti"`
+	UserAgent         string      `json:"userAgent"`
+	IPAddress         string      `json:"ipAddress"`
+	CreatedAt         time.Time   `json:"createdAt"`
+	LastActive        time.Time   `json:"lastActive"`
 }
 
 type SessionService struct {

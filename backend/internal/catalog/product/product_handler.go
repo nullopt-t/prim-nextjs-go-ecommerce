@@ -25,21 +25,21 @@ func NewHandler(s *ProductService) *ProductHandler {
 }
 
 type CreateProductRequest struct {
-	BrandID     *string `json:"brand_id,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	CategoryID  string  `json:"category_id" binding:"required,uuid" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
+	BrandID     *string `json:"brandId,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	CategoryID  string  `json:"categoryId" binding:"required,uuid" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
 	Slug        string  `json:"slug" binding:"required" example:"wireless-noise-canceling-headphones"`
 	Title       string  `json:"title" binding:"required" example:"Wireless Noise-Canceling Headphones"`
 	Description *string `json:"description,omitempty" example:"Premium over-ear Bluetooth headphones with active noise cancellation."`
-	ProductType string  `json:"product_type" example:"simple"`
+	ProductType string  `json:"productType" example:"simple"`
 }
 
 type UpdateProductRequest struct {
-	BrandID     *string  `json:"brand_id,omitempty"`
-	CategoryID  *string  `json:"category_id,omitempty"`
+	BrandID     *string  `json:"brandId,omitempty"`
+	CategoryID  *string  `json:"categoryId,omitempty"`
 	Title       *string  `json:"title,omitempty"`
 	Description *string  `json:"description,omitempty"`
 	Highlights  []string `json:"highlights,omitempty"`
-	ProductType *string  `json:"product_type,omitempty" example:"simple"`
+	ProductType *string  `json:"productType,omitempty" example:"simple"`
 }
 
 type ProductBrandSummary struct {
@@ -59,21 +59,21 @@ type ProductTagSummary struct {
 }
 
 type PublicStockSummary struct {
-	AvailableQuantity int  `json:"available_quantity"`
-	IsInStock         bool `json:"is_in_stock"`
+	AvailableQuantity int  `json:"availableQuantity"`
+	IsInStock         bool `json:"isInStock"`
 }
 
 type AdminStockSummary struct {
-	OnHandQuantity    int  `json:"on_hand_quantity"`
-	ReservedQuantity  int  `json:"reserved_quantity"`
-	AvailableQuantity int  `json:"available_quantity"`
-	IsInStock         bool `json:"is_in_stock"`
+	OnHandQuantity    int  `json:"onHandQuantity"`
+	ReservedQuantity  int  `json:"reservedQuantity"`
+	AvailableQuantity int  `json:"availableQuantity"`
+	IsInStock         bool `json:"isInStock"`
 }
 
 type VariantMediaSummary struct {
 	ID        string `json:"id"`
-	MediaType string `json:"media_type"`
-	SortOrder int    `json:"sort_order"`
+	MediaType string `json:"mediaType"`
+	SortOrder int    `json:"sortOrder"`
 	URL       string `json:"url"`
 }
 
@@ -82,12 +82,12 @@ type ProductVariantResponse struct {
 	SKU             string                 `json:"sku,omitempty"`
 	Title           string                 `json:"title"`
 	Price           *int64                 `json:"price,omitempty"`
-	CrossedOutPrice *int64                 `json:"crossed_out_price,omitempty"`
+	CrossedOutPrice *int64                 `json:"crossedOutPrice,omitempty"`
 	Currency        *string                `json:"currency,omitempty"`
 	Thumbnail       *string                `json:"thumbnail,omitempty"`
 	Media           []VariantMediaSummary  `json:"media"`
 	Attributes      map[string]any         `json:"attributes"`
-	IsDefault       bool                   `json:"is_default"`
+	IsDefault       bool                   `json:"isDefault"`
 	Stock           *PublicStockSummary    `json:"stock,omitempty"`
 }
 
@@ -96,12 +96,12 @@ type AdminProductVariantResponse struct {
 	SKU             string                 `json:"sku,omitempty"`
 	Title           string                 `json:"title"`
 	Price           *int64                 `json:"price,omitempty"`
-	CrossedOutPrice *int64                 `json:"crossed_out_price,omitempty"`
+	CrossedOutPrice *int64                 `json:"crossedOutPrice,omitempty"`
 	Currency        *string                `json:"currency,omitempty"`
 	Thumbnail       *StorageObjectResponse `json:"thumbnail,omitempty"`
 	Media           []VariantMediaSummary  `json:"media"`
 	Attributes      map[string]any         `json:"attributes"`
-	IsDefault       bool                   `json:"is_default"`
+	IsDefault       bool                   `json:"isDefault"`
 	Stock           *AdminStockSummary     `json:"stock,omitempty"`
 }
 
@@ -111,9 +111,9 @@ type ProductResponse struct {
 	Title           string   `json:"title" example:"Wireless Headphones"`
 	Description     *string  `json:"description,omitempty"`
 	Highlights      []string `json:"highlights"`
-	ProductType     string   `json:"product_type"`
+	ProductType     string   `json:"productType"`
 	Price           *int64   `json:"price,omitempty"`
-	CrossedOutPrice *int64   `json:"crossed_out_price,omitempty"`
+	CrossedOutPrice *int64   `json:"crossedOutPrice,omitempty"`
 	Currency        *string  `json:"currency,omitempty"`
 }
 
@@ -131,42 +131,42 @@ type AdminProductDetailsResponse struct {
 	Description *string                       `json:"description,omitempty"`
 	Highlights  []string                      `json:"highlights"`
 	Status      model.PublicationStatus       `json:"status" example:"draft"`
-	ProductType string                        `json:"product_type"`
+	ProductType string                        `json:"productType"`
 	Thumbnail   *StorageObjectResponse        `json:"thumbnail,omitempty"`
-	BrandID     *string                       `json:"brand_id,omitempty"`
+	BrandID     *string                       `json:"brandId,omitempty"`
 	Brand       *ProductBrandSummary          `json:"brand,omitempty"`
-	CategoryID  string                        `json:"category_id"`
+	CategoryID  string                        `json:"categoryId"`
 	Category    *ProductCategorySummary       `json:"category,omitempty"`
 	Variants    []AdminProductVariantResponse `json:"variants"`
 	Tags        []ProductTagSummary           `json:"tags"`
-	CreatedAt   string                        `json:"created_at" example:"2026-08-05T19:00:00Z"`
-	UpdatedAt   string                        `json:"updated_at" example:"2026-08-05T19:00:00Z"`
-	DeletedAt   *string                       `json:"deleted_at,omitempty" example:"2026-08-05T19:30:00Z"`
+	CreatedAt   string                        `json:"createdAt" example:"2026-08-05T19:00:00Z"`
+	UpdatedAt   string                        `json:"updatedAt" example:"2026-08-05T19:00:00Z"`
+	DeletedAt   *string                       `json:"deletedAt,omitempty" example:"2026-08-05T19:30:00Z"`
 }
 
 type ProductReviewResponse struct {
 	ID          string    `json:"id"`
-	ProductID   string    `json:"product_id"`
-	UserID      string    `json:"user_id"`
-	OrderItemID string    `json:"order_item_id"`
+	ProductID   string    `json:"productId"`
+	UserID      string    `json:"userId"`
+	OrderItemID string    `json:"orderItemId"`
 	Rating      int16     `json:"rating"`
 	Title       *string   `json:"title,omitempty"`
 	Body        *string   `json:"body,omitempty"`
 	Status      string    `json:"status"`
-	CreatedAt   string    `json:"created_at"`
-	UpdatedAt   string    `json:"updated_at"`
+	CreatedAt   string    `json:"createdAt"`
+	UpdatedAt   string    `json:"updatedAt"`
 }
 
 // --- DTOs: Media ---
 
 type StorageObjectResponse struct {
-	ContentType string `json:"content_type,omitempty"`
-	FileSize    int64  `json:"file_size,omitempty"`
+	ContentType string `json:"contentType,omitempty"`
+	FileSize    int64  `json:"fileSize,omitempty"`
 	PublicURL   string `json:"url,omitempty"`
 }
 
 type ReorderMediaRequest struct {
-	OrderedMediaIDs []string `json:"ordered_media_ids" binding:"required,gt=0,dive,uuid"`
+	OrderedMediaIDs []string `json:"orderedMediaIds" binding:"required,gt=0,dive,uuid"`
 }
 
 // --- DTOs: Variants ---
@@ -174,23 +174,23 @@ type ReorderMediaRequest struct {
 type CreateProductVariantRequest struct {
 	Title           string         `json:"title" binding:"required" example:"Black / XL"`
 	Price           *int64         `json:"price,omitempty" example:"2999"`
-	CrossedOutPrice *int64         `json:"crossed_out_price,omitempty" example:"3999"`
+	CrossedOutPrice *int64         `json:"crossedOutPrice,omitempty" example:"3999"`
 	Currency        *string        `json:"currency,omitempty" example:"USD"`
 	Attributes      map[string]any `json:"attributes,omitempty"`
-	IsDefault       bool           `json:"is_default" example:"false"`
-	InitialStock    *int           `json:"initial_stock,omitempty" example:"100"`
+	IsDefault       bool           `json:"isDefault" example:"false"`
+	InitialStock    *int           `json:"initialStock,omitempty" example:"100"`
 }
 
 type SetDefaultVariantRequest struct {
-	VariantID string `json:"variant_id" binding:"required,uuid"`
+	VariantID string `json:"variantId" binding:"required,uuid"`
 }
 
 type PutProductTagsRequest struct {
-	TagIDs []string `json:"tag_ids" binding:"required,dive,uuid"`
+	TagIDs []string `json:"tagIds" binding:"required,dive,uuid"`
 }
 
 type PutProductCategoryRequest struct {
-	CategoryID string `json:"category_id" binding:"required,uuid"`
+	CategoryID string `json:"categoryId" binding:"required,uuid"`
 }
 
 // --- Mappers ---
@@ -412,7 +412,7 @@ type ProductListItemResponse struct {
 	Brand           *string `json:"brand,omitempty"`
 	Thumbnail       *string `json:"thumbnail,omitempty"`
 	Price           *int64  `json:"price,omitempty"`
-	CrossedOutPrice *int64  `json:"crossed_out_price,omitempty"`
+	CrossedOutPrice *int64  `json:"crossedOutPrice,omitempty"`
 	Currency        *string `json:"currency,omitempty"`
 }
 

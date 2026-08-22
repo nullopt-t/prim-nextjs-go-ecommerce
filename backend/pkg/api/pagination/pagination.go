@@ -9,11 +9,11 @@ const (
 
 type Page struct {
 	Page        int  `json:"page" example:"1"`
-	PageSize    int  `json:"page_size" example:"10"`
-	TotalItems  int  `json:"total_items" example:"20"`
-	TotalPages  int  `json:"total_pages" example:"2"`
-	HasPrevious bool `json:"has_previous" example:"false"`
-	HasNext     bool `json:"has_next" example:"true"`
+	PageSize    int  `json:"pageSize" example:"10"`
+	TotalItems  int  `json:"totalItems" example:"20"`
+	TotalPages  int  `json:"totalPages" example:"2"`
+	HasPrevious bool `json:"hasPrevious" example:"false"`
+	HasNext     bool `json:"hasNext" example:"true"`
 }
 
 func NewPage(page, pageSize, totalItems int) *Page {

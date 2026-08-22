@@ -33,10 +33,10 @@ type UserResponse struct {
 	Email          string     `json:"email,omitempty"`
 	Phone          *string    `json:"phone,omitempty"`
 	Status         string     `json:"status,omitempty"`
-	SuspendedUntil *time.Time `json:"suspended_until,omitempty"`
-	LockedUntil    *time.Time `json:"locked_unitl,omitzero"`
-	CreatedAt      time.Time  `json:"created_at,omitzero"`
-	UpdatedAt      time.Time  `json:"updated_at,omitzero"`
+	SuspendedUntil *time.Time `json:"suspendedUntil,omitempty"`
+	LockedUntil    *time.Time `json:"lockedUntil,omitzero"`
+	CreatedAt      time.Time  `json:"createdAt,omitzero"`
+	UpdatedAt      time.Time  `json:"updatedAt,omitzero"`
 }
 
 func ToUserResponse(user model.User) UserResponse {

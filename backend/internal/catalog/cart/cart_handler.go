@@ -22,7 +22,7 @@ func NewHandler(cartService *CartService) *CartHandler {
 }
 
 type AddItemRequest struct {
-	VariantID uuid.UUID `json:"variant_id" binding:"required" example:"nano_id_string"`
+	VariantID uuid.UUID `json:"variantId" binding:"required" example:"nano_id_string"`
 	Quantity  int       `json:"quantity" binding:"required,gt=0" example:"2"`
 }
 
@@ -40,14 +40,14 @@ type CartSummaryResponse struct {
 
 type CartItemResponse struct {
 	ID           string `json:"id"`
-	ProductID    string `json:"product_id"`
-	VariantID    string `json:"variant_id"`
+	ProductID    string `json:"productId"`
+	VariantID    string `json:"variantId"`
 	Title        string `json:"title"`
-	ThumbnailURL string `json:"thumbnail_url"`
+	ThumbnailURL string `json:"thumbnailUrl"`
 	Quantity     int    `json:"quantity"`
-	UnitPrice    int64  `json:"unit_price"`
+	UnitPrice    int64  `json:"unitPrice"`
 	Subtotal     int64  `json:"subtotal"`
-	InStock      bool   `json:"in_stock"`
+	InStock      bool   `json:"inStock"`
 }
 
 type CartResponse struct {
@@ -55,8 +55,8 @@ type CartResponse struct {
 	Currency  string              `json:"currency"`
 	Items     []CartItemResponse  `json:"items"`
 	Summary   CartSummaryResponse `json:"summary"`
-	ItemCount int                 `json:"item_count"`
-	UpdatedAt string              `json:"updated_at"`
+	ItemCount int                 `json:"itemCount"`
+	UpdatedAt string              `json:"updatedAt"`
 }
 
 func mapCartResponse(cart *model.Cart) CartResponse {

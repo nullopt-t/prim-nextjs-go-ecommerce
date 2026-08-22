@@ -37,7 +37,7 @@ func (s *AuthTestSuite) TestStartChallenge_HappyPath() {
 
 	data := resp["data"].(map[string]interface{})
 	s.Require().Equal("test@example.com", data["email"])
-	s.Require().Contains(data, "expires_at")
+	s.Require().Contains(data, "expiresAt")
 }
 
 func (s *AuthTestSuite) TestStartChallenge_InvalidEmail() {

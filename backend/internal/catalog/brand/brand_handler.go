@@ -32,25 +32,25 @@ type CreateBrandRequest struct {
 type UpdateBrandRequest struct {
 	Name         *string    `json:"name,omitempty" example:"apple"`
 	Link         *string    `json:"link,omitempty" example:"https://apple.com"`
-	LogoObjectID *uuid.UUID `json:"logo_object_id,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
+	LogoObjectID *uuid.UUID `json:"logoObjectId,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
 }
 
 type BrandResponse struct {
 	ID      string  `json:"id" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"` // Public ID of the brand
 	Name    string  `json:"name" example:"nvidia"`
 	Link    *string `json:"link,omitempty" example:"https://nvidia.com"`
-	LogoURL *string `json:"logo_url,omitempty" example:"https://example.com/logo.png"`
+	LogoURL *string `json:"logoUrl,omitempty" example:"https://example.com/logo.png"`
 }
 
 type AdminBrandResponse struct {
 	ID           string     `json:"id" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`        // Internal ID of the brand
-	PublicID     string     `json:"public_id" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"` // Public ID of the brand
+	PublicID     string     `json:"publicId" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`  // Public ID of the brand
 	Name         string     `json:"name" example:"nvidia"`
 	Link         *string    `json:"link,omitempty" example:"https://nvidia.com"`
-	LogoObjectID *uuid.UUID `json:"logo_object_id,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
-	CreatedAt    string     `json:"created_at" example:"2026-07-01T05:04:38Z"`
-	UpdatedAt    string     `json:"updated_at" example:"2026-07-01T05:04:38Z"`
-	DeletedAt    *string    `json:"deleted_at,omitempty" example:"2026-07-01T05:04:38Z"`
+	LogoObjectID *uuid.UUID `json:"logoObjectId,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
+	CreatedAt    string     `json:"createdAt" example:"2026-07-01T05:04:38Z"`
+	UpdatedAt    string     `json:"updatedAt" example:"2026-07-01T05:04:38Z"`
+	DeletedAt    *string    `json:"deletedAt,omitempty" example:"2026-07-01T05:04:38Z"`
 }
 
 // CreateBrand godoc

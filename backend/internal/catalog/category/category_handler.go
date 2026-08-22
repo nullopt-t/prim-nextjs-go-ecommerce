@@ -32,11 +32,11 @@ type PublicCategoryResponse struct {
 
 type AdminCategoryResponse struct {
 	ID        uuid.UUID  `json:"id" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
-	ParentID  *uuid.UUID `json:"parent_id,omitempty" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	ParentID  *uuid.UUID `json:"parentId,omitempty" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
 	Name      string     `json:"name" example:"Electronics"`
-	CreatedAt string     `json:"created_at" example:"2026-06-30T15:47:19Z"`
-	UpdatedAt string     `json:"updated_at" example:"2026-06-30T15:47:19Z"`
-	DeletedAt *string    `json:"deleted_at,omitempty" example:"2026-07-01T10:00:00Z"`
+	CreatedAt string     `json:"createdAt" example:"2026-06-30T15:47:19Z"`
+	UpdatedAt string     `json:"updatedAt" example:"2026-06-30T15:47:19Z"`
+	DeletedAt *string    `json:"deletedAt,omitempty" example:"2026-07-01T10:00:00Z"`
 }
 
 func toPublicCategoryResponse(c *model.ProductCategory) PublicCategoryResponse {
@@ -78,7 +78,7 @@ func toAdminCategoryResponseList(categories []*model.ProductCategory) []AdminCat
 
 type CreateCategoryRequest struct {
 	Name     string     `json:"name" binding:"required"`
-	ParentID *uuid.UUID `json:"parent_id,omitempty"`
+	ParentID *uuid.UUID `json:"parentId,omitempty"`
 }
 
 // CreateCategory godoc
@@ -245,7 +245,7 @@ func (h *CategoryHandler) ListAdminCategories(c *gin.Context) {
 
 type UpdateCategoryRequest struct {
 	Name     *string    `json:"name,omitempty" example:"Electronics"`
-	ParentID *uuid.UUID `json:"parent_id,omitempty" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
+	ParentID *uuid.UUID `json:"parentId,omitempty" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
 }
 
 // UpdateCategory godoc

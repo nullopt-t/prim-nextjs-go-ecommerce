@@ -15,19 +15,19 @@ type AddressRequest struct {
 	Street     string `json:"street" binding:"required"`
 	City       string `json:"city" binding:"required"`
 	State      string `json:"state"`
-	PostalCode string `json:"postal_code" binding:"required"`
+	PostalCode string `json:"postalCode" binding:"required"`
 	Country    string `json:"country" binding:"required"`
 }
 
 type CheckoutRequest struct {
-	CustomerEmail   string         `json:"customer_email" binding:"required,email"`
-	ShippingAddress AddressRequest `json:"shipping_address" binding:"required"`
-	BillingAddress  AddressRequest `json:"billing_address" binding:"required"`
-	CouponID        *uuid.UUID     `json:"coupon_id,omitempty"`
+	CustomerEmail   string         `json:"customerEmail" binding:"required,email"`
+	ShippingAddress AddressRequest `json:"shippingAddress" binding:"required"`
+	BillingAddress  AddressRequest `json:"billingAddress" binding:"required"`
+	CouponID        *uuid.UUID     `json:"couponId,omitempty"`
 }
 
 type CheckoutResponse struct {
-	OrderID string `json:"order_id"`
+	OrderID string `json:"orderId"`
 	Status  string `json:"status"`
 }
 

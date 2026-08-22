@@ -4234,7 +4234,7 @@ const docTemplate = `{
         "auth.MeResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "createdAt": {
                     "type": "string"
                 },
                 "id": {
@@ -4251,7 +4251,7 @@ const docTemplate = `{
         "auth.RefreshTokenRequest": {
             "type": "object",
             "properties": {
-                "refresh_token": {
+                "refreshToken": {
                     "type": "string"
                 }
             }
@@ -4298,7 +4298,7 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
-                "expires_at": {
+                "expiresAt": {
                     "type": "string"
                 }
             }
@@ -4306,28 +4306,28 @@ const docTemplate = `{
         "auth.UserSession": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "createdAt": {
                     "type": "string"
                 },
-                "current_refresh_jti": {
+                "currentRefreshJti": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
-                "ip_address": {
+                "ipAddress": {
                     "type": "string"
                 },
-                "last_active": {
+                "lastActive": {
                     "type": "string"
                 },
                 "type": {
                     "$ref": "#/definitions/auth.SessionType"
                 },
-                "user_agent": {
+                "userAgent": {
                     "type": "string"
                 },
-                "user_id": {
+                "userId": {
                     "type": "string"
                 }
             }
@@ -4350,11 +4350,11 @@ const docTemplate = `{
         "brand.AdminBrandResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "createdAt": {
                     "type": "string",
                     "example": "2026-07-01T05:04:38Z"
                 },
-                "deleted_at": {
+                "deletedAt": {
                     "type": "string",
                     "example": "2026-07-01T05:04:38Z"
                 },
@@ -4367,7 +4367,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "https://nvidia.com"
                 },
-                "logo_object_id": {
+                "logoObjectId": {
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
@@ -4375,12 +4375,12 @@ const docTemplate = `{
                     "type": "string",
                     "example": "nvidia"
                 },
-                "public_id": {
+                "publicId": {
                     "description": "Public ID of the brand",
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
-                "updated_at": {
+                "updatedAt": {
                     "type": "string",
                     "example": "2026-07-01T05:04:38Z"
                 }
@@ -4398,7 +4398,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "https://nvidia.com"
                 },
-                "logo_url": {
+                "logoUrl": {
                     "type": "string",
                     "example": "https://example.com/logo.png"
                 },
@@ -4431,7 +4431,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "https://apple.com"
                 },
-                "logo_object_id": {
+                "logoObjectId": {
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
@@ -4445,14 +4445,14 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "quantity",
-                "variant_id"
+                "variantId"
             ],
             "properties": {
                 "quantity": {
                     "type": "integer",
                     "example": 2
                 },
-                "variant_id": {
+                "variantId": {
                     "type": "string",
                     "example": "nano_id_string"
                 }
@@ -4473,11 +4473,11 @@ const docTemplate = `{
         "category.AdminCategoryResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "createdAt": {
                     "type": "string",
                     "example": "2026-06-30T15:47:19Z"
                 },
-                "deleted_at": {
+                "deletedAt": {
                     "type": "string",
                     "example": "2026-07-01T10:00:00Z"
                 },
@@ -4489,11 +4489,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Electronics"
                 },
-                "parent_id": {
+                "parentId": {
                     "type": "string",
                     "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
                 },
-                "updated_at": {
+                "updatedAt": {
                     "type": "string",
                     "example": "2026-06-30T15:47:19Z"
                 }
@@ -4508,7 +4508,7 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "parent_id": {
+                "parentId": {
                     "type": "string"
                 }
             }
@@ -4533,7 +4533,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Electronics"
                 },
-                "parent_id": {
+                "parentId": {
                     "type": "string",
                     "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
                 }
@@ -4544,7 +4544,7 @@ const docTemplate = `{
             "required": [
                 "city",
                 "country",
-                "postal_code",
+                "postalCode",
                 "street"
             ],
             "properties": {
@@ -4554,7 +4554,7 @@ const docTemplate = `{
                 "country": {
                     "type": "string"
                 },
-                "postal_code": {
+                "postalCode": {
                     "type": "string"
                 },
                 "state": {
@@ -4568,21 +4568,21 @@ const docTemplate = `{
         "checkout.CheckoutRequest": {
             "type": "object",
             "required": [
-                "billing_address",
-                "customer_email",
-                "shipping_address"
+                "billingAddress",
+                "customerEmail",
+                "shippingAddress"
             ],
             "properties": {
-                "billing_address": {
+                "billingAddress": {
                     "$ref": "#/definitions/checkout.AddressRequest"
                 },
-                "coupon_id": {
+                "couponId": {
                     "type": "string"
                 },
-                "customer_email": {
+                "customerEmail": {
                     "type": "string"
                 },
-                "shipping_address": {
+                "shippingAddress": {
                     "$ref": "#/definitions/checkout.AddressRequest"
                 }
             }
@@ -4590,7 +4590,7 @@ const docTemplate = `{
         "checkout.CheckoutResponse": {
             "type": "object",
             "properties": {
-                "order_id": {
+                "orderId": {
                     "type": "string"
                 },
                 "status": {
@@ -4965,7 +4965,7 @@ const docTemplate = `{
                 "country": {
                     "type": "string"
                 },
-                "postal_code": {
+                "postalCode": {
                     "type": "string"
                 },
                 "state": {
@@ -4982,16 +4982,16 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "price_at_purchase": {
+                "priceAtPurchase": {
                     "type": "integer"
                 },
-                "product_snapshot": {
+                "productSnapshot": {
                     "type": "string"
                 },
                 "quantity": {
                     "type": "integer"
                 },
-                "variant_id": {
+                "variantId": {
                     "type": "string"
                 }
             }
@@ -4999,25 +4999,25 @@ const docTemplate = `{
         "order.OrderResponse": {
             "type": "object",
             "properties": {
-                "billing_address": {
+                "billingAddress": {
                     "$ref": "#/definitions/order.AddressResponse"
                 },
-                "coupon_id": {
+                "couponId": {
                     "type": "string"
                 },
-                "created_at": {
+                "createdAt": {
                     "type": "string"
                 },
                 "currency": {
                     "type": "string"
                 },
-                "customer_email": {
+                "customerEmail": {
                     "type": "string"
                 },
-                "customer_id": {
+                "customerId": {
                     "type": "string"
                 },
-                "discount_amount": {
+                "discountAmount": {
                     "type": "integer"
                 },
                 "id": {
@@ -5029,16 +5029,16 @@ const docTemplate = `{
                         "$ref": "#/definitions/order.OrderItemResponse"
                     }
                 },
-                "shipping_address": {
+                "shippingAddress": {
                     "$ref": "#/definitions/order.AddressResponse"
                 },
                 "status": {
                     "$ref": "#/definitions/model.OrderStatus"
                 },
-                "total_amount": {
+                "totalAmount": {
                     "type": "integer"
                 },
-                "updated_at": {
+                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -5060,11 +5060,11 @@ const docTemplate = `{
         "pagination.Page": {
             "type": "object",
             "properties": {
-                "has_next": {
+                "hasNext": {
                     "type": "boolean",
                     "example": true
                 },
-                "has_previous": {
+                "hasPrevious": {
                     "type": "boolean",
                     "example": false
                 },
@@ -5072,15 +5072,15 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
-                "page_size": {
+                "pageSize": {
                     "type": "integer",
                     "example": 10
                 },
-                "total_items": {
+                "totalItems": {
                     "type": "integer",
                     "example": 20
                 },
-                "total_pages": {
+                "totalPages": {
                     "type": "integer",
                     "example": 2
                 }
@@ -5120,20 +5120,20 @@ const docTemplate = `{
                 "brand": {
                     "$ref": "#/definitions/product.ProductBrandSummary"
                 },
-                "brand_id": {
+                "brandId": {
                     "type": "string"
                 },
                 "category": {
                     "$ref": "#/definitions/product.ProductCategorySummary"
                 },
-                "category_id": {
+                "categoryId": {
                     "type": "string"
                 },
-                "created_at": {
+                "createdAt": {
                     "type": "string",
                     "example": "2026-08-05T19:00:00Z"
                 },
-                "deleted_at": {
+                "deletedAt": {
                     "type": "string",
                     "example": "2026-08-05T19:30:00Z"
                 },
@@ -5150,7 +5150,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
                 },
-                "product_type": {
+                "productType": {
                     "type": "string"
                 },
                 "slug": {
@@ -5177,7 +5177,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Wireless Headphones"
                 },
-                "updated_at": {
+                "updatedAt": {
                     "type": "string",
                     "example": "2026-08-05T19:00:00Z"
                 },
@@ -5196,7 +5196,7 @@ const docTemplate = `{
                     "type": "object",
                     "additionalProperties": {}
                 },
-                "crossed_out_price": {
+                "crossedOutPrice": {
                     "type": "integer"
                 },
                 "currency": {
@@ -5205,7 +5205,7 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "is_default": {
+                "isDefault": {
                     "type": "boolean"
                 },
                 "media": {
@@ -5234,16 +5234,16 @@ const docTemplate = `{
         "product.AdminStockSummary": {
             "type": "object",
             "properties": {
-                "available_quantity": {
+                "availableQuantity": {
                     "type": "integer"
                 },
-                "is_in_stock": {
+                "isInStock": {
                     "type": "boolean"
                 },
-                "on_hand_quantity": {
+                "onHandQuantity": {
                     "type": "integer"
                 },
-                "reserved_quantity": {
+                "reservedQuantity": {
                     "type": "integer"
                 }
             }
@@ -5251,16 +5251,16 @@ const docTemplate = `{
         "product.CreateProductRequest": {
             "type": "object",
             "required": [
-                "category_id",
+                "categoryId",
                 "slug",
                 "title"
             ],
             "properties": {
-                "brand_id": {
+                "brandId": {
                     "type": "string",
                     "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
                 },
-                "category_id": {
+                "categoryId": {
                     "type": "string",
                     "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
                 },
@@ -5268,7 +5268,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Premium over-ear Bluetooth headphones with active noise cancellation."
                 },
-                "product_type": {
+                "productType": {
                     "type": "string",
                     "example": "simple"
                 },
@@ -5292,7 +5292,7 @@ const docTemplate = `{
                     "type": "object",
                     "additionalProperties": {}
                 },
-                "crossed_out_price": {
+                "crossedOutPrice": {
                     "type": "integer",
                     "example": 3999
                 },
@@ -5300,11 +5300,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "USD"
                 },
-                "initial_stock": {
+                "initialStock": {
                     "type": "integer",
                     "example": 100
                 },
-                "is_default": {
+                "isDefault": {
                     "type": "boolean",
                     "example": false
                 },
@@ -5349,7 +5349,7 @@ const docTemplate = `{
                 "brand": {
                     "type": "string"
                 },
-                "crossed_out_price": {
+                "crossedOutPrice": {
                     "type": "integer"
                 },
                 "currency": {
@@ -5372,7 +5372,7 @@ const docTemplate = `{
         "product.ProductResponse": {
             "type": "object",
             "properties": {
-                "crossed_out_price": {
+                "crossedOutPrice": {
                     "type": "integer"
                 },
                 "currency": {
@@ -5394,7 +5394,7 @@ const docTemplate = `{
                 "price": {
                     "type": "integer"
                 },
-                "product_type": {
+                "productType": {
                     "type": "string"
                 },
                 "slug": {
@@ -5413,16 +5413,16 @@ const docTemplate = `{
                 "body": {
                     "type": "string"
                 },
-                "created_at": {
+                "createdAt": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
-                "order_item_id": {
+                "orderItemId": {
                     "type": "string"
                 },
-                "product_id": {
+                "productId": {
                     "type": "string"
                 },
                 "rating": {
@@ -5434,10 +5434,10 @@ const docTemplate = `{
                 "title": {
                     "type": "string"
                 },
-                "updated_at": {
+                "updatedAt": {
                     "type": "string"
                 },
-                "user_id": {
+                "userId": {
                     "type": "string"
                 }
             }
@@ -5456,10 +5456,10 @@ const docTemplate = `{
         "product.PutProductCategoryRequest": {
             "type": "object",
             "required": [
-                "category_id"
+                "categoryId"
             ],
             "properties": {
-                "category_id": {
+                "categoryId": {
                     "type": "string"
                 }
             }
@@ -5467,10 +5467,10 @@ const docTemplate = `{
         "product.PutProductTagsRequest": {
             "type": "object",
             "required": [
-                "tag_ids"
+                "tagIds"
             ],
             "properties": {
-                "tag_ids": {
+                "tagIds": {
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -5481,10 +5481,10 @@ const docTemplate = `{
         "product.SetDefaultVariantRequest": {
             "type": "object",
             "required": [
-                "variant_id"
+                "variantId"
             ],
             "properties": {
-                "variant_id": {
+                "variantId": {
                     "type": "string"
                 }
             }
@@ -5492,10 +5492,10 @@ const docTemplate = `{
         "product.StorageObjectResponse": {
             "type": "object",
             "properties": {
-                "content_type": {
+                "contentType": {
                     "type": "string"
                 },
-                "file_size": {
+                "fileSize": {
                     "type": "integer"
                 },
                 "url": {
@@ -5506,10 +5506,10 @@ const docTemplate = `{
         "product.UpdateProductRequest": {
             "type": "object",
             "properties": {
-                "brand_id": {
+                "brandId": {
                     "type": "string"
                 },
-                "category_id": {
+                "categoryId": {
                     "type": "string"
                 },
                 "description": {
@@ -5521,7 +5521,7 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
-                "product_type": {
+                "productType": {
                     "type": "string",
                     "example": "simple"
                 },
@@ -5536,10 +5536,10 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "media_type": {
+                "mediaType": {
                     "type": "string"
                 },
-                "sort_order": {
+                "sortOrder": {
                     "type": "integer"
                 },
                 "url": {
@@ -5550,11 +5550,11 @@ const docTemplate = `{
         "tag.AdminTagResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "createdAt": {
                     "type": "string",
                     "example": "2026-06-30T15:47:19Z"
                 },
-                "deleted_at": {
+                "deletedAt": {
                     "type": "string",
                     "example": "2026-06-30T15:47:19Z"
                 },
@@ -5566,7 +5566,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "black-friday"
                 },
-                "updated_at": {
+                "updatedAt": {
                     "type": "string",
                     "example": "2026-06-30T15:47:19Z"
                 }
@@ -5637,11 +5637,11 @@ const docTemplate = `{
                     "type": "object",
                     "additionalProperties": {}
                 },
-                "created_at": {
+                "createdAt": {
                     "type": "string",
                     "example": "2026-08-02T16:00:00Z"
                 },
-                "crossed_out_price": {
+                "crossedOutPrice": {
                     "type": "integer",
                     "example": 3999
                 },
@@ -5649,7 +5649,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "USD"
                 },
-                "deleted_at": {
+                "deletedAt": {
                     "type": "string",
                     "example": "2026-08-02T16:15:00Z"
                 },
@@ -5657,7 +5657,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
                 },
-                "is_default": {
+                "isDefault": {
                     "type": "boolean",
                     "example": false
                 },
@@ -5671,7 +5671,7 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 2999
                 },
-                "product_id": {
+                "productId": {
                     "type": "string",
                     "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
                 },
@@ -5686,7 +5686,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Red / XL"
                 },
-                "updated_at": {
+                "updatedAt": {
                     "type": "string",
                     "example": "2026-08-02T16:00:00Z"
                 }
@@ -5695,19 +5695,19 @@ const docTemplate = `{
         "variant.AttachMediaRequest": {
             "type": "object",
             "required": [
-                "media_type",
-                "storage_object_id"
+                "mediaType",
+                "storageObjectId"
             ],
             "properties": {
-                "media_type": {
+                "mediaType": {
                     "type": "string",
                     "example": "image"
                 },
-                "sort_order": {
+                "sortOrder": {
                     "type": "integer",
                     "example": 0
                 },
-                "storage_object_id": {
+                "storageObjectId": {
                     "type": "string",
                     "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
                 }
@@ -5723,7 +5723,7 @@ const docTemplate = `{
                     "type": "object",
                     "additionalProperties": {}
                 },
-                "crossed_out_price": {
+                "crossedOutPrice": {
                     "type": "integer",
                     "example": 3999
                 },
@@ -5731,7 +5731,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "USD"
                 },
-                "is_default": {
+                "isDefault": {
                     "type": "boolean",
                     "example": false
                 },
@@ -5739,7 +5739,7 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 2999
                 },
-                "thumbnail_object_id": {
+                "thumbnailObjectId": {
                     "type": "string",
                     "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
                 },
@@ -5752,7 +5752,7 @@ const docTemplate = `{
         "variant.InventoryLedgerResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "createdAt": {
                     "type": "string",
                     "example": "2026-08-15T12:00:00Z"
                 },
@@ -5768,7 +5768,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "restock"
                 },
-                "variant_id": {
+                "variantId": {
                     "type": "string",
                     "example": "70000000-0000-0000-0000-000000000001"
                 }
@@ -5777,23 +5777,23 @@ const docTemplate = `{
         "variant.InventoryStockResponse": {
             "type": "object",
             "properties": {
-                "available_quantity": {
+                "availableQuantity": {
                     "type": "integer",
                     "example": 45
                 },
-                "is_in_stock": {
+                "isInStock": {
                     "type": "boolean",
                     "example": true
                 },
-                "on_hand_quantity": {
+                "onHandQuantity": {
                     "type": "integer",
                     "example": 50
                 },
-                "reserved_quantity": {
+                "reservedQuantity": {
                     "type": "integer",
                     "example": 5
                 },
-                "variant_id": {
+                "variantId": {
                     "type": "string",
                     "example": "70000000-0000-0000-0000-000000000001"
                 }
@@ -5802,11 +5802,11 @@ const docTemplate = `{
         "variant.PublicStockResponse": {
             "type": "object",
             "properties": {
-                "available_quantity": {
+                "availableQuantity": {
                     "type": "integer",
                     "example": 45
                 },
-                "is_in_stock": {
+                "isInStock": {
                     "type": "boolean",
                     "example": true
                 }
@@ -5815,10 +5815,10 @@ const docTemplate = `{
         "variant.ReorderMediaRequest": {
             "type": "object",
             "required": [
-                "ordered_media_ids"
+                "orderedMediaIds"
             ],
             "properties": {
-                "ordered_media_ids": {
+                "orderedMediaIds": {
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -5832,10 +5832,10 @@ const docTemplate = `{
                 "bucket": {
                     "type": "string"
                 },
-                "content_type": {
+                "contentType": {
                     "type": "string"
                 },
-                "file_size": {
+                "fileSize": {
                     "type": "integer"
                 },
                 "id": {
@@ -5844,7 +5844,7 @@ const docTemplate = `{
                 "key": {
                     "type": "string"
                 },
-                "public_url": {
+                "publicUrl": {
                     "type": "string"
                 }
             }
@@ -5856,7 +5856,7 @@ const docTemplate = `{
                     "type": "object",
                     "additionalProperties": {}
                 },
-                "crossed_out_price": {
+                "crossedOutPrice": {
                     "type": "integer",
                     "example": 4499
                 },
@@ -5864,7 +5864,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "USD"
                 },
-                "is_default": {
+                "isDefault": {
                     "type": "boolean",
                     "example": true
                 },
@@ -5872,7 +5872,7 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 3499
                 },
-                "thumbnail_object_id": {
+                "thumbnailObjectId": {
                     "type": "string",
                     "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
                 },
@@ -5889,26 +5889,26 @@ const docTemplate = `{
                     "type": "string",
                     "example": "8f123456-e89b-12d3-a456-426614174000"
                 },
-                "media_type": {
+                "mediaType": {
                     "type": "string",
                     "example": "image"
                 },
                 "object": {
                     "$ref": "#/definitions/variant.StorageObjectResponse"
                 },
-                "object_id": {
+                "objectId": {
                     "type": "string",
                     "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
                 },
-                "public_id": {
+                "publicId": {
                     "type": "string",
                     "example": "8f123456-e89b-12d3-a456-426614174000"
                 },
-                "sort_order": {
+                "sortOrder": {
                     "type": "integer",
                     "example": 0
                 },
-                "variant_id": {
+                "variantId": {
                     "type": "string",
                     "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
                 }
@@ -5920,10 +5920,10 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "media_type": {
+                "mediaType": {
                     "type": "string"
                 },
-                "sort_order": {
+                "sortOrder": {
                     "type": "integer"
                 },
                 "url": {
@@ -5938,7 +5938,7 @@ const docTemplate = `{
                     "type": "object",
                     "additionalProperties": {}
                 },
-                "crossed_out_price": {
+                "crossedOutPrice": {
                     "type": "integer",
                     "example": 3999
                 },
@@ -5950,7 +5950,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
                 },
-                "is_default": {
+                "isDefault": {
                     "type": "boolean",
                     "example": false
                 },
@@ -5964,7 +5964,7 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 2999
                 },
-                "product_id": {
+                "productId": {
                     "type": "string",
                     "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
                 },
