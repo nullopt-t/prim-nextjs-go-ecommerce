@@ -35,14 +35,20 @@ func (s ReviewStatus) String() string {
 }
 
 type Review struct {
-	ID          uuid.UUID    `db:"id"`
-	ProductID   uuid.UUID    `db:"product_id"`
-	UserID      uuid.UUID    `db:"user_id"`
-	OrderItemID uuid.UUID    `db:"order_item_id"`
-	Rating      int16        `db:"rating"`
-	Title       *string      `db:"title"`
-	Body        *string      `db:"body"`
-	Status      ReviewStatus `db:"status"`
-	CreatedAt   time.Time    `db:"created_at"`
-	UpdatedAt   time.Time    `db:"updated_at"`
+	ID          uuid.UUID
+	ProductID   uuid.UUID
+	UserID      uuid.UUID
+	OrderItemID uuid.UUID
+	Rating      int16
+	Title       *string
+	Body        *string
+	Status      ReviewStatus
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type RatingSummary struct {
+	AverageRating float64
+	ReviewCount   int
+	Distribution  map[int16]int
 }

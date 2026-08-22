@@ -86,3 +86,30 @@ INSERT INTO inventory_ledgers (id, variant_id, quantity, reason, created_at) VAL
 ('80000000-0000-0000-0000-000000000006', '70000000-0000-0000-0000-000000000011', 120, 'restock', now()),
 ('80000000-0000-0000-0000-000000000007', '70000000-0000-0000-0000-000000000013', 30, 'restock', now())
 ON CONFLICT DO NOTHING;
+
+-- Orders (Completed / Delivered for customer accounts)
+INSERT INTO orders (id, customer_id, customer_email, shipping_address, billing_address, status, total_amount, currency, created_at, updated_at) VALUES
+('90000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', 'john.doe@example.com', '{"street": "123 Main St", "city": "New York", "postal_code": "10001", "country": "USA"}'::jsonb, '{"street": "123 Main St", "city": "New York", "postal_code": "10001", "country": "USA"}'::jsonb, 'delivered', 249900, 'USD', now() - INTERVAL '15 days', now() - INTERVAL '10 days'),
+('90000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000003', 'jane.smith@example.com', '{"street": "456 Market St", "city": "San Francisco", "postal_code": "94103", "country": "USA"}'::jsonb, '{"street": "456 Market St", "city": "San Francisco", "postal_code": "94103", "country": "USA"}'::jsonb, 'delivered', 129999, 'USD', now() - INTERVAL '12 days', now() - INTERVAL '8 days'),
+('90000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000002', 'john.doe@example.com', '{"street": "123 Main St", "city": "New York", "postal_code": "10001", "country": "USA"}'::jsonb, '{"street": "123 Main St", "city": "New York", "postal_code": "10001", "country": "USA"}'::jsonb, 'delivered', 11500, 'USD', now() - INTERVAL '7 days', now() - INTERVAL '5 days'),
+('90000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000003', 'jane.smith@example.com', '{"street": "456 Market St", "city": "San Francisco", "postal_code": "94103", "country": "USA"}'::jsonb, '{"street": "456 Market St", "city": "San Francisco", "postal_code": "94103", "country": "USA"}'::jsonb, 'delivered', 39800, 'USD', now() - INTERVAL '5 days', now() - INTERVAL '3 days'),
+('90000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000002', 'john.doe@example.com', '{"street": "123 Main St", "city": "New York", "postal_code": "10001", "country": "USA"}'::jsonb, '{"street": "123 Main St", "city": "New York", "postal_code": "10001", "country": "USA"}'::jsonb, 'delivered', 39800, 'USD', now() - INTERVAL '4 days', now() - INTERVAL '2 days')
+ON CONFLICT DO NOTHING;
+
+-- Order Items
+INSERT INTO order_items (id, order_id, variant_id, quantity, price_at_purchase, product_snapshot) VALUES
+('91000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000001', 1, 249900, '{"title": "MacBook Pro 16\""}'::jsonb),
+('91000000-0000-0000-0000-000000000002', '90000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000005', 1, 129999, '{"title": "Galaxy S24 Ultra"}'::jsonb),
+('91000000-0000-0000-0000-000000000003', '90000000-0000-0000-0000-000000000003', '70000000-0000-0000-0000-000000000009', 1, 11500, '{"title": "Nike Air Force 1"}'::jsonb),
+('91000000-0000-0000-0000-000000000004', '90000000-0000-0000-0000-000000000004', '70000000-0000-0000-0000-000000000013', 1, 39800, '{"title": "Sony WH-1000XM5"}'::jsonb),
+('91000000-0000-0000-0000-000000000005', '90000000-0000-0000-0000-000000000005', '70000000-0000-0000-0000-000000000013', 1, 39800, '{"title": "Sony WH-1000XM5"}'::jsonb)
+ON CONFLICT DO NOTHING;
+
+-- Reviews (Approved customer reviews with ratings)
+INSERT INTO reviews (id, product_id, user_id, order_item_id, rating, title, body, status, created_at, updated_at) VALUES
+('92000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', '91000000-0000-0000-0000-000000000001', 5, 'Unbelievable performance!', 'The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly. Battery lasts all day long.', 'approved', now() - INTERVAL '9 days', now() - INTERVAL '9 days'),
+('92000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', '91000000-0000-0000-0000-000000000002', 5, 'Best smartphone screen on the market', 'The anti-reflective titanium display is gorgeous outdoors and the camera zoom is crazy good.', 'approved', now() - INTERVAL '7 days', now() - INTERVAL '7 days'),
+('92000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000002', '91000000-0000-0000-0000-000000000003', 4, 'Classic and timeless sneakers', 'Fits true to size and looks great with almost anything. Takes a couple of days to break in.', 'approved', now() - INTERVAL '4 days', now() - INTERVAL '4 days'),
+('92000000-0000-0000-0000-000000000004', '60000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000003', '91000000-0000-0000-0000-000000000004', 5, 'Exceptional noise cancellation', 'The ANC on these Sony headphones is completely next level. Comfortable ear cushions for long flights.', 'approved', now() - INTERVAL '2 days', now() - INTERVAL '2 days'),
+('92000000-0000-0000-0000-000000000005', '60000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000002', '91000000-0000-0000-0000-000000000005', 4, 'Great sound, slightly bulky case', 'Audio quality and battery life are fantastic. The only minor gripe is the carrying case size.', 'approved', now() - INTERVAL '1 day', now() - INTERVAL '1 day')
+ON CONFLICT DO NOTHING;
