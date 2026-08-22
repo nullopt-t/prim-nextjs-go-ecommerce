@@ -5917,11 +5917,17 @@ const docTemplate = `{
                     "type": "object",
                     "additionalProperties": {}
                 },
-                "crossedOutPrice": {
-                    "type": "integer"
-                },
                 "currency": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "USD"
+                },
+                "extractedOriginalPrice": {
+                    "type": "number",
+                    "example": 29.99
+                },
+                "extractedPrice": {
+                    "type": "number",
+                    "example": 24.99
                 },
                 "id": {
                     "type": "string"
@@ -5935,8 +5941,13 @@ const docTemplate = `{
                         "$ref": "#/definitions/product.VariantMediaSummary"
                     }
                 },
+                "originalPrice": {
+                    "type": "string",
+                    "example": "$29.99"
+                },
                 "price": {
-                    "type": "integer"
+                    "type": "string",
+                    "example": "$24.99"
                 },
                 "sku": {
                     "type": "string"
@@ -6070,14 +6081,25 @@ const docTemplate = `{
                 "brand": {
                     "type": "string"
                 },
-                "crossedOutPrice": {
-                    "type": "integer"
-                },
                 "currency": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "USD"
+                },
+                "extractedOriginalPrice": {
+                    "type": "number",
+                    "example": 29.99
+                },
+                "extractedPrice": {
+                    "type": "number",
+                    "example": 24.99
+                },
+                "originalPrice": {
+                    "type": "string",
+                    "example": "$29.99"
                 },
                 "price": {
-                    "type": "integer"
+                    "type": "string",
+                    "example": "$24.99"
                 },
                 "rating": {
                     "$ref": "#/definitions/product.ProductRatingSummaryResponse"
@@ -6115,14 +6137,20 @@ const docTemplate = `{
         "product.ProductResponse": {
             "type": "object",
             "properties": {
-                "crossedOutPrice": {
-                    "type": "integer"
-                },
                 "currency": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "USD"
                 },
                 "description": {
                     "type": "string"
+                },
+                "extractedOriginalPrice": {
+                    "type": "number",
+                    "example": 29.99
+                },
+                "extractedPrice": {
+                    "type": "number",
+                    "example": 24.99
                 },
                 "highlights": {
                     "type": "array",
@@ -6134,8 +6162,13 @@ const docTemplate = `{
                     "type": "string",
                     "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
                 },
+                "originalPrice": {
+                    "type": "string",
+                    "example": "$29.99"
+                },
                 "price": {
-                    "type": "integer"
+                    "type": "string",
+                    "example": "$24.99"
                 },
                 "productType": {
                     "type": "string"
@@ -6497,10 +6530,6 @@ const docTemplate = `{
                     "type": "string",
                     "example": "2026-08-02T16:00:00Z"
                 },
-                "crossedOutPrice": {
-                    "type": "integer",
-                    "example": 3999
-                },
                 "currency": {
                     "type": "string",
                     "example": "USD"
@@ -6508,6 +6537,14 @@ const docTemplate = `{
                 "deletedAt": {
                     "type": "string",
                     "example": "2026-08-02T16:15:00Z"
+                },
+                "extractedOriginalPrice": {
+                    "type": "number",
+                    "example": 29.99
+                },
+                "extractedPrice": {
+                    "type": "number",
+                    "example": 24.99
                 },
                 "id": {
                     "type": "string",
@@ -6523,9 +6560,13 @@ const docTemplate = `{
                         "$ref": "#/definitions/variant.VariantMediaSummary"
                     }
                 },
+                "originalPrice": {
+                    "type": "string",
+                    "example": "$29.99"
+                },
                 "price": {
-                    "type": "integer",
-                    "example": 2999
+                    "type": "string",
+                    "example": "$24.99"
                 },
                 "productId": {
                     "type": "string",
@@ -6794,13 +6835,17 @@ const docTemplate = `{
                     "type": "object",
                     "additionalProperties": {}
                 },
-                "crossedOutPrice": {
-                    "type": "integer",
-                    "example": 3999
-                },
                 "currency": {
                     "type": "string",
                     "example": "USD"
+                },
+                "extractedOriginalPrice": {
+                    "type": "number",
+                    "example": 29.99
+                },
+                "extractedPrice": {
+                    "type": "number",
+                    "example": 24.99
                 },
                 "id": {
                     "type": "string",
@@ -6816,9 +6861,13 @@ const docTemplate = `{
                         "$ref": "#/definitions/variant.VariantMediaSummary"
                     }
                 },
+                "originalPrice": {
+                    "type": "string",
+                    "example": "$29.99"
+                },
                 "price": {
-                    "type": "integer",
-                    "example": 2999
+                    "type": "string",
+                    "example": "$24.99"
                 },
                 "productId": {
                     "type": "string",
