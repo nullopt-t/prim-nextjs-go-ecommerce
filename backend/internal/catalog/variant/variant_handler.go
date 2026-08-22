@@ -27,87 +27,87 @@ func NewHandler(s *VariantService) *VariantHandler {
 type CreateVariantRequest struct {
 	Title             string         `json:"title" binding:"required" example:"Red / XL"`
 	Price             *int64         `json:"price,omitempty" example:"2999"`
-	CrossedOutPrice   *int64         `json:"crossed_out_price,omitempty" example:"3999"`
+	CrossedOutPrice   *int64         `json:"crossedOutPrice,omitempty" example:"3999"`
 	Currency          *string        `json:"currency,omitempty" example:"USD"`
 	Attributes        map[string]any `json:"attributes,omitempty"`
-	IsDefault         bool           `json:"is_default" example:"false"`
-	ThumbnailObjectID *string        `json:"thumbnail_object_id,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	IsDefault         bool           `json:"isDefault" example:"false"`
+	ThumbnailObjectID *string        `json:"thumbnailObjectId,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
 }
 
 type UpdateVariantRequest struct {
 	Title             *string        `json:"title,omitempty" example:"Red / XXL"`
 	Price             *int64         `json:"price,omitempty" example:"3499"`
-	CrossedOutPrice   *int64         `json:"crossed_out_price,omitempty" example:"4499"`
+	CrossedOutPrice   *int64         `json:"crossedOutPrice,omitempty" example:"4499"`
 	Currency          *string        `json:"currency,omitempty" example:"USD"`
 	Attributes        map[string]any `json:"attributes,omitempty"`
-	IsDefault         *bool          `json:"is_default,omitempty" example:"true"`
-	ThumbnailObjectID *string        `json:"thumbnail_object_id,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	IsDefault         *bool          `json:"isDefault,omitempty" example:"true"`
+	ThumbnailObjectID *string        `json:"thumbnailObjectId,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
 }
 
 type VariantMediaSummary struct {
 	ID        string `json:"id"`
-	MediaType string `json:"media_type"`
-	SortOrder int    `json:"sort_order"`
+	MediaType string `json:"mediaType"`
+	SortOrder int    `json:"sortOrder"`
 	URL       string `json:"url"`
 }
 
 type VariantResponse struct {
 	ID              string                `json:"id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
 	SKU             string                `json:"sku,omitempty"`
-	ProductID       string                `json:"product_id" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
+	ProductID       string                `json:"productId" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
 	Title           string                `json:"title" example:"Red / XL"`
 	Price           *int64                `json:"price,omitempty" example:"2999"`
-	CrossedOutPrice *int64                `json:"crossed_out_price,omitempty" example:"3999"`
+	CrossedOutPrice *int64                `json:"crossedOutPrice,omitempty" example:"3999"`
 	Currency        *string               `json:"currency,omitempty" example:"USD"`
 	Thumbnail       *string               `json:"thumbnail,omitempty"`
 	Media           []VariantMediaSummary `json:"media"`
 	Attributes      map[string]any        `json:"attributes"`
-	IsDefault       bool                  `json:"is_default" example:"false"`
+	IsDefault       bool                  `json:"isDefault" example:"false"`
 }
 
 type AdminVariantResponse struct {
 	ID              string                 `json:"id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
 	SKU             string                 `json:"sku" example:"prod_var_123"`
-	ProductID       string                 `json:"product_id" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
+	ProductID       string                 `json:"productId" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
 	Title           string                 `json:"title" example:"Red / XL"`
 	Price           *int64                 `json:"price,omitempty" example:"2999"`
-	CrossedOutPrice *int64                 `json:"crossed_out_price,omitempty" example:"3999"`
+	CrossedOutPrice *int64                 `json:"crossedOutPrice,omitempty" example:"3999"`
 	Currency        *string                `json:"currency,omitempty" example:"USD"`
 	Thumbnail       *StorageObjectResponse `json:"thumbnail,omitempty"`
 	Media           []VariantMediaSummary  `json:"media"`
 	Attributes      map[string]any         `json:"attributes"`
-	IsDefault       bool                   `json:"is_default" example:"false"`
-	CreatedAt       string                 `json:"created_at" example:"2026-08-02T16:00:00Z"`
-	UpdatedAt       string                 `json:"updated_at" example:"2026-08-02T16:00:00Z"`
-	DeletedAt       *string                `json:"deleted_at,omitempty" example:"2026-08-02T16:15:00Z"`
+	IsDefault       bool                   `json:"isDefault" example:"false"`
+	CreatedAt       string                 `json:"createdAt" example:"2026-08-02T16:00:00Z"`
+	UpdatedAt       string                 `json:"updatedAt" example:"2026-08-02T16:00:00Z"`
+	DeletedAt       *string                `json:"deletedAt,omitempty" example:"2026-08-02T16:15:00Z"`
 }
 
 type AttachMediaRequest struct {
-	StorageObjectID string `json:"storage_object_id" binding:"required,uuid" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	MediaType       string `json:"media_type" binding:"required" example:"image"`
-	SortOrder       int    `json:"sort_order" example:"0"`
+	StorageObjectID string `json:"storageObjectId" binding:"required,uuid" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	MediaType       string `json:"mediaType" binding:"required" example:"image"`
+	SortOrder       int    `json:"sortOrder" example:"0"`
 }
 
 type ReorderMediaRequest struct {
-	OrderedMediaIDs []string `json:"ordered_media_ids" binding:"required,gt=0,dive,uuid"`
+	OrderedMediaIDs []string `json:"orderedMediaIds" binding:"required,gt=0,dive,uuid"`
 }
 
 type StorageObjectResponse struct {
 	ID          string `json:"id"`
 	Bucket      string `json:"bucket"`
 	Key         string `json:"key"`
-	ContentType string `json:"content_type,omitempty"`
-	FileSize    int64  `json:"file_size,omitempty"`
-	PublicURL   string `json:"public_url,omitempty"`
+	ContentType string `json:"contentType,omitempty"`
+	FileSize    int64  `json:"fileSize,omitempty"`
+	PublicURL   string `json:"publicUrl,omitempty"`
 }
 
 type VariantMediaResponse struct {
 	ID        string                 `json:"id" example:"8f123456-e89b-12d3-a456-426614174000"`
-	PublicID  string                 `json:"public_id" example:"8f123456-e89b-12d3-a456-426614174000"`
-	VariantID string                 `json:"variant_id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
-	ObjectID  string                 `json:"object_id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	MediaType string                 `json:"media_type" example:"image"`
-	SortOrder int                    `json:"sort_order" example:"0"`
+	PublicID  string                 `json:"publicId" example:"8f123456-e89b-12d3-a456-426614174000"`
+	VariantID string                 `json:"variantId" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
+	ObjectID  string                 `json:"objectId" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	MediaType string                 `json:"mediaType" example:"image"`
+	SortOrder int                    `json:"sortOrder" example:"0"`
 	Object    *StorageObjectResponse `json:"object,omitempty"`
 }
 
@@ -696,24 +696,24 @@ type AdjustStockRequest struct {
 }
 
 type PublicStockResponse struct {
-	AvailableQuantity int  `json:"available_quantity" example:"45"`
-	IsInStock         bool `json:"is_in_stock" example:"true"`
+	AvailableQuantity int  `json:"availableQuantity" example:"45"`
+	IsInStock         bool `json:"isInStock" example:"true"`
 }
 
 type InventoryStockResponse struct {
-	VariantID         string `json:"variant_id" example:"70000000-0000-0000-0000-000000000001"`
-	OnHandQuantity    int    `json:"on_hand_quantity" example:"50"`
-	ReservedQuantity  int    `json:"reserved_quantity" example:"5"`
-	AvailableQuantity int    `json:"available_quantity" example:"45"`
-	IsInStock         bool   `json:"is_in_stock" example:"true"`
+	VariantID         string `json:"variantId" example:"70000000-0000-0000-0000-000000000001"`
+	OnHandQuantity    int    `json:"onHandQuantity" example:"50"`
+	ReservedQuantity  int    `json:"reservedQuantity" example:"5"`
+	AvailableQuantity int    `json:"availableQuantity" example:"45"`
+	IsInStock         bool   `json:"isInStock" example:"true"`
 }
 
 type InventoryLedgerResponse struct {
 	ID        string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
-	VariantID string `json:"variant_id" example:"70000000-0000-0000-0000-000000000001"`
+	VariantID string `json:"variantId" example:"70000000-0000-0000-0000-000000000001"`
 	Quantity  int    `json:"quantity" example:"50"`
 	Reason    string `json:"reason" example:"restock"`
-	CreatedAt string `json:"created_at" example:"2026-08-15T12:00:00Z"`
+	CreatedAt string `json:"createdAt" example:"2026-08-15T12:00:00Z"`
 }
 
 func mapStockResponse(stock *model.InventoryStock) InventoryStockResponse {

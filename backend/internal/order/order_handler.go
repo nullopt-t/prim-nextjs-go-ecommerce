@@ -23,34 +23,34 @@ type UpdateOrderStatusRequest struct {
 
 type OrderItemResponse struct {
 	ID              string `json:"id"`
-	VariantID       string `json:"variant_id"`
+	VariantID       string `json:"variantId"`
 	Quantity        int    `json:"quantity"`
-	PriceAtPurchase int64  `json:"price_at_purchase"`
-	ProductSnapshot string `json:"product_snapshot"`
+	PriceAtPurchase int64  `json:"priceAtPurchase"`
+	ProductSnapshot string `json:"productSnapshot"`
 }
 
 type AddressResponse struct {
 	Street     string `json:"street"`
 	City       string `json:"city"`
 	State      string `json:"state"`
-	PostalCode string `json:"postal_code"`
+	PostalCode string `json:"postalCode"`
 	Country    string `json:"country"`
 }
 
 type OrderResponse struct {
 	ID              string              `json:"id"`
-	CustomerID      *string             `json:"customer_id,omitempty"`
-	CustomerEmail   string              `json:"customer_email"`
-	ShippingAddress AddressResponse     `json:"shipping_address"`
-	BillingAddress  AddressResponse     `json:"billing_address"`
+	CustomerID      *string             `json:"customerId,omitempty"`
+	CustomerEmail   string              `json:"customerEmail"`
+	ShippingAddress AddressResponse     `json:"shippingAddress"`
+	BillingAddress  AddressResponse     `json:"billingAddress"`
 	Status          model.OrderStatus   `json:"status"`
-	CouponID        *string             `json:"coupon_id,omitempty"`
-	DiscountAmount  int64               `json:"discount_amount"`
-	TotalAmount     int64               `json:"total_amount"`
+	CouponID        *string             `json:"couponId,omitempty"`
+	DiscountAmount  int64               `json:"discountAmount"`
+	TotalAmount     int64               `json:"totalAmount"`
 	Currency        string              `json:"currency"`
 	Items           []OrderItemResponse `json:"items,omitempty"`
-	CreatedAt       string              `json:"created_at"`
-	UpdatedAt       string              `json:"updated_at"`
+	CreatedAt       string              `json:"createdAt"`
+	UpdatedAt       string              `json:"updatedAt"`
 }
 
 func mapOrderResponse(o *model.Order) OrderResponse {

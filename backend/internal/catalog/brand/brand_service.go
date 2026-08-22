@@ -81,7 +81,7 @@ type CreateBrandInput struct {
 type UpdateBrandInput struct {
 	Name         *string    `json:"name,omitempty"`
 	Link         *string    `json:"link,omitempty"`
-	LogoObjectID *uuid.UUID `json:"logo_object_id,omitempty"`
+	LogoObjectID *uuid.UUID `json:"logoObjectId,omitempty"`
 }
 
 func (bs *BrandService) CreateBrand(

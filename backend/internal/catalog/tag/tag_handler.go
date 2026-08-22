@@ -39,9 +39,9 @@ type TagResponse struct {
 type AdminTagResponse struct {
 	ID        string  `json:"id" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
 	Name      string  `json:"name" example:"black-friday"`
-	CreatedAt string  `json:"created_at" example:"2026-06-30T15:47:19Z"`
-	UpdatedAt string  `json:"updated_at" example:"2026-06-30T15:47:19Z"`
-	DeletedAt *string `json:"deleted_at,omitempty" example:"2026-06-30T15:47:19Z"`
+	CreatedAt string  `json:"createdAt" example:"2026-06-30T15:47:19Z"`
+	UpdatedAt string  `json:"updatedAt" example:"2026-06-30T15:47:19Z"`
+	DeletedAt *string `json:"deletedAt,omitempty" example:"2026-06-30T15:47:19Z"`
 }
 
 func toPublicTagResponse(t *model.ProductTag) TagResponse {

@@ -136,7 +136,7 @@ definitions:
     type: object
   auth.MeResponse:
     properties:
-      created_at:
+      createdAt:
         type: string
       id:
         type: string
@@ -147,7 +147,7 @@ definitions:
     type: object
   auth.RefreshTokenRequest:
     properties:
-      refresh_token:
+      refreshToken:
         type: string
     type: object
   auth.ResendChallengeRequest:
@@ -178,26 +178,26 @@ definitions:
         type: integer
       email:
         type: string
-      expires_at:
+      expiresAt:
         type: string
     type: object
   auth.UserSession:
     properties:
-      created_at:
+      createdAt:
         type: string
-      current_refresh_jti:
+      currentRefreshJti:
         type: string
       id:
         type: string
-      ip_address:
+      ipAddress:
         type: string
-      last_active:
+      lastActive:
         type: string
       type:
         $ref: '#/definitions/auth.SessionType'
-      user_agent:
+      userAgent:
         type: string
-      user_id:
+      userId:
         type: string
     type: object
   auth.VerifyChallengeRequest:
@@ -212,10 +212,10 @@ definitions:
     type: object
   brand.AdminBrandResponse:
     properties:
-      created_at:
+      createdAt:
         example: "2026-07-01T05:04:38Z"
         type: string
-      deleted_at:
+      deletedAt:
         example: "2026-07-01T05:04:38Z"
         type: string
       id:
@@ -225,17 +225,17 @@ definitions:
       link:
         example: https://nvidia.com
         type: string
-      logo_object_id:
+      logoObjectId:
         example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
         type: string
       name:
         example: nvidia
         type: string
-      public_id:
+      publicId:
         description: Public ID of the brand
         example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
         type: string
-      updated_at:
+      updatedAt:
         example: "2026-07-01T05:04:38Z"
         type: string
     type: object
@@ -248,7 +248,7 @@ definitions:
       link:
         example: https://nvidia.com
         type: string
-      logo_url:
+      logoUrl:
         example: https://example.com/logo.png
         type: string
       name:
@@ -271,7 +271,7 @@ definitions:
       link:
         example: https://apple.com
         type: string
-      logo_object_id:
+      logoObjectId:
         example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
         type: string
       name:
@@ -283,12 +283,12 @@ definitions:
       quantity:
         example: 2
         type: integer
-      variant_id:
+      variantId:
         example: nano_id_string
         type: string
     required:
     - quantity
-    - variant_id
+    - variantId
     type: object
   cart.UpdateQuantityRequest:
     properties:
@@ -300,10 +300,10 @@ definitions:
     type: object
   category.AdminCategoryResponse:
     properties:
-      created_at:
+      createdAt:
         example: "2026-06-30T15:47:19Z"
         type: string
-      deleted_at:
+      deletedAt:
         example: "2026-07-01T10:00:00Z"
         type: string
       id:
@@ -312,10 +312,10 @@ definitions:
       name:
         example: Electronics
         type: string
-      parent_id:
+      parentId:
         example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
         type: string
-      updated_at:
+      updatedAt:
         example: "2026-06-30T15:47:19Z"
         type: string
     type: object
@@ -323,7 +323,7 @@ definitions:
     properties:
       name:
         type: string
-      parent_id:
+      parentId:
         type: string
     required:
     - name
@@ -342,7 +342,7 @@ definitions:
       name:
         example: Electronics
         type: string
-      parent_id:
+      parentId:
         example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
         type: string
     type: object
@@ -352,7 +352,7 @@ definitions:
         type: string
       country:
         type: string
-      postal_code:
+      postalCode:
         type: string
       state:
         type: string
@@ -361,27 +361,27 @@ definitions:
     required:
     - city
     - country
-    - postal_code
+    - postalCode
     - street
     type: object
   checkout.CheckoutRequest:
     properties:
-      billing_address:
+      billingAddress:
         $ref: '#/definitions/checkout.AddressRequest'
-      coupon_id:
+      couponId:
         type: string
-      customer_email:
+      customerEmail:
         type: string
-      shipping_address:
+      shippingAddress:
         $ref: '#/definitions/checkout.AddressRequest'
     required:
-    - billing_address
-    - customer_email
-    - shipping_address
+    - billingAddress
+    - customerEmail
+    - shippingAddress
     type: object
   checkout.CheckoutResponse:
     properties:
-      order_id:
+      orderId:
         type: string
       status:
         type: string
@@ -637,7 +637,7 @@ definitions:
         type: string
       country:
         type: string
-      postal_code:
+      postalCode:
         type: string
       state:
         type: string
@@ -648,30 +648,30 @@ definitions:
     properties:
       id:
         type: string
-      price_at_purchase:
+      priceAtPurchase:
         type: integer
-      product_snapshot:
+      productSnapshot:
         type: string
       quantity:
         type: integer
-      variant_id:
+      variantId:
         type: string
     type: object
   order.OrderResponse:
     properties:
-      billing_address:
+      billingAddress:
         $ref: '#/definitions/order.AddressResponse'
-      coupon_id:
+      couponId:
         type: string
-      created_at:
+      createdAt:
         type: string
       currency:
         type: string
-      customer_email:
+      customerEmail:
         type: string
-      customer_id:
+      customerId:
         type: string
-      discount_amount:
+      discountAmount:
         type: integer
       id:
         type: string
@@ -679,13 +679,13 @@ definitions:
         items:
           $ref: '#/definitions/order.OrderItemResponse'
         type: array
-      shipping_address:
+      shippingAddress:
         $ref: '#/definitions/order.AddressResponse'
       status:
         $ref: '#/definitions/model.OrderStatus'
-      total_amount:
+      totalAmount:
         type: integer
-      updated_at:
+      updatedAt:
         type: string
     type: object
   order.UpdateOrderStatusRequest:
@@ -699,22 +699,22 @@ definitions:
     type: object
   pagination.Page:
     properties:
-      has_next:
+      hasNext:
         example: true
         type: boolean
-      has_previous:
+      hasPrevious:
         example: false
         type: boolean
       page:
         example: 1
         type: integer
-      page_size:
+      pageSize:
         example: 10
         type: integer
-      total_items:
+      totalItems:
         example: 20
         type: integer
-      total_pages:
+      totalPages:
         example: 2
         type: integer
     type: object
@@ -740,16 +740,16 @@ definitions:
     properties:
       brand:
         $ref: '#/definitions/product.ProductBrandSummary'
-      brand_id:
+      brandId:
         type: string
       category:
         $ref: '#/definitions/product.ProductCategorySummary'
-      category_id:
+      categoryId:
         type: string
-      created_at:
+      createdAt:
         example: "2026-08-05T19:00:00Z"
         type: string
-      deleted_at:
+      deletedAt:
         example: "2026-08-05T19:30:00Z"
         type: string
       description:
@@ -761,7 +761,7 @@ definitions:
       id:
         example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
         type: string
-      product_type:
+      productType:
         type: string
       slug:
         type: string
@@ -778,7 +778,7 @@ definitions:
       title:
         example: Wireless Headphones
         type: string
-      updated_at:
+      updatedAt:
         example: "2026-08-05T19:00:00Z"
         type: string
       variants:
@@ -791,13 +791,13 @@ definitions:
       attributes:
         additionalProperties: {}
         type: object
-      crossed_out_price:
+      crossedOutPrice:
         type: integer
       currency:
         type: string
       id:
         type: string
-      is_default:
+      isDefault:
         type: boolean
       media:
         items:
@@ -816,27 +816,27 @@ definitions:
     type: object
   product.AdminStockSummary:
     properties:
-      available_quantity:
+      availableQuantity:
         type: integer
-      is_in_stock:
+      isInStock:
         type: boolean
-      on_hand_quantity:
+      onHandQuantity:
         type: integer
-      reserved_quantity:
+      reservedQuantity:
         type: integer
     type: object
   product.CreateProductRequest:
     properties:
-      brand_id:
+      brandId:
         example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
         type: string
-      category_id:
+      categoryId:
         example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
         type: string
       description:
         example: Premium over-ear Bluetooth headphones with active noise cancellation.
         type: string
-      product_type:
+      productType:
         example: simple
         type: string
       slug:
@@ -846,7 +846,7 @@ definitions:
         example: Wireless Noise-Canceling Headphones
         type: string
     required:
-    - category_id
+    - categoryId
     - slug
     - title
     type: object
@@ -855,16 +855,16 @@ definitions:
       attributes:
         additionalProperties: {}
         type: object
-      crossed_out_price:
+      crossedOutPrice:
         example: 3999
         type: integer
       currency:
         example: USD
         type: string
-      initial_stock:
+      initialStock:
         example: 100
         type: integer
-      is_default:
+      isDefault:
         example: false
         type: boolean
       price:
@@ -896,7 +896,7 @@ definitions:
     properties:
       brand:
         type: string
-      crossed_out_price:
+      crossedOutPrice:
         type: integer
       currency:
         type: string
@@ -911,7 +911,7 @@ definitions:
     type: object
   product.ProductResponse:
     properties:
-      crossed_out_price:
+      crossedOutPrice:
         type: integer
       currency:
         type: string
@@ -926,7 +926,7 @@ definitions:
         type: string
       price:
         type: integer
-      product_type:
+      productType:
         type: string
       slug:
         example: wireless-headphones
@@ -939,13 +939,13 @@ definitions:
     properties:
       body:
         type: string
-      created_at:
+      createdAt:
         type: string
       id:
         type: string
-      order_item_id:
+      orderItemId:
         type: string
-      product_id:
+      productId:
         type: string
       rating:
         type: integer
@@ -953,9 +953,9 @@ definitions:
         type: string
       title:
         type: string
-      updated_at:
+      updatedAt:
         type: string
-      user_id:
+      userId:
         type: string
     type: object
   product.ProductTagSummary:
@@ -967,41 +967,41 @@ definitions:
     type: object
   product.PutProductCategoryRequest:
     properties:
-      category_id:
+      categoryId:
         type: string
     required:
-    - category_id
+    - categoryId
     type: object
   product.PutProductTagsRequest:
     properties:
-      tag_ids:
+      tagIds:
         items:
           type: string
         type: array
     required:
-    - tag_ids
+    - tagIds
     type: object
   product.SetDefaultVariantRequest:
     properties:
-      variant_id:
+      variantId:
         type: string
     required:
-    - variant_id
+    - variantId
     type: object
   product.StorageObjectResponse:
     properties:
-      content_type:
+      contentType:
         type: string
-      file_size:
+      fileSize:
         type: integer
       url:
         type: string
     type: object
   product.UpdateProductRequest:
     properties:
-      brand_id:
+      brandId:
         type: string
-      category_id:
+      categoryId:
         type: string
       description:
         type: string
@@ -1009,7 +1009,7 @@ definitions:
         items:
           type: string
         type: array
-      product_type:
+      productType:
         example: simple
         type: string
       title:
@@ -1019,19 +1019,19 @@ definitions:
     properties:
       id:
         type: string
-      media_type:
+      mediaType:
         type: string
-      sort_order:
+      sortOrder:
         type: integer
       url:
         type: string
     type: object
   tag.AdminTagResponse:
     properties:
-      created_at:
+      createdAt:
         example: "2026-06-30T15:47:19Z"
         type: string
-      deleted_at:
+      deletedAt:
         example: "2026-06-30T15:47:19Z"
         type: string
       id:
@@ -1040,7 +1040,7 @@ definitions:
       name:
         example: black-friday
         type: string
-      updated_at:
+      updatedAt:
         example: "2026-06-30T15:47:19Z"
         type: string
     type: object
@@ -1090,22 +1090,22 @@ definitions:
       attributes:
         additionalProperties: {}
         type: object
-      created_at:
+      createdAt:
         example: "2026-08-02T16:00:00Z"
         type: string
-      crossed_out_price:
+      crossedOutPrice:
         example: 3999
         type: integer
       currency:
         example: USD
         type: string
-      deleted_at:
+      deletedAt:
         example: "2026-08-02T16:15:00Z"
         type: string
       id:
         example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
         type: string
-      is_default:
+      isDefault:
         example: false
         type: boolean
       media:
@@ -1115,7 +1115,7 @@ definitions:
       price:
         example: 2999
         type: integer
-      product_id:
+      productId:
         example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
         type: string
       sku:
@@ -1126,43 +1126,43 @@ definitions:
       title:
         example: Red / XL
         type: string
-      updated_at:
+      updatedAt:
         example: "2026-08-02T16:00:00Z"
         type: string
     type: object
   variant.AttachMediaRequest:
     properties:
-      media_type:
+      mediaType:
         example: image
         type: string
-      sort_order:
+      sortOrder:
         example: 0
         type: integer
-      storage_object_id:
+      storageObjectId:
         example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
         type: string
     required:
-    - media_type
-    - storage_object_id
+    - mediaType
+    - storageObjectId
     type: object
   variant.CreateVariantRequest:
     properties:
       attributes:
         additionalProperties: {}
         type: object
-      crossed_out_price:
+      crossedOutPrice:
         example: 3999
         type: integer
       currency:
         example: USD
         type: string
-      is_default:
+      isDefault:
         example: false
         type: boolean
       price:
         example: 2999
         type: integer
-      thumbnail_object_id:
+      thumbnailObjectId:
         example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
         type: string
       title:
@@ -1173,7 +1173,7 @@ definitions:
     type: object
   variant.InventoryLedgerResponse:
     properties:
-      created_at:
+      createdAt:
         example: "2026-08-15T12:00:00Z"
         type: string
       id:
@@ -1185,59 +1185,59 @@ definitions:
       reason:
         example: restock
         type: string
-      variant_id:
+      variantId:
         example: 70000000-0000-0000-0000-000000000001
         type: string
     type: object
   variant.InventoryStockResponse:
     properties:
-      available_quantity:
+      availableQuantity:
         example: 45
         type: integer
-      is_in_stock:
+      isInStock:
         example: true
         type: boolean
-      on_hand_quantity:
+      onHandQuantity:
         example: 50
         type: integer
-      reserved_quantity:
+      reservedQuantity:
         example: 5
         type: integer
-      variant_id:
+      variantId:
         example: 70000000-0000-0000-0000-000000000001
         type: string
     type: object
   variant.PublicStockResponse:
     properties:
-      available_quantity:
+      availableQuantity:
         example: 45
         type: integer
-      is_in_stock:
+      isInStock:
         example: true
         type: boolean
     type: object
   variant.ReorderMediaRequest:
     properties:
-      ordered_media_ids:
+      orderedMediaIds:
         items:
           type: string
         type: array
     required:
-    - ordered_media_ids
+    - orderedMediaIds
     type: object
   variant.StorageObjectResponse:
     properties:
       bucket:
         type: string
-      content_type:
+      contentType:
         type: string
-      file_size:
+      fileSize:
         type: integer
       id:
         type: string
       key:
         type: string
-      public_url:
+      publicUrl:
         type: string
     type: object
   variant.UpdateVariantRequest:
@@ -1245,19 +1245,19 @@ definitions:
       attributes:
         additionalProperties: {}
         type: object
-      crossed_out_price:
+      crossedOutPrice:
         example: 4499
         type: integer
       currency:
         example: USD
         type: string
-      is_default:
+      isDefault:
         example: true
         type: boolean
       price:
         example: 3499
         type: integer
-      thumbnail_object_id:
+      thumbnailObjectId:
         example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
         type: string
       title:
@@ -1269,21 +1269,21 @@ definitions:
       id:
         example: 8f123456-e89b-12d3-a456-426614174000
         type: string
-      media_type:
+      mediaType:
         example: image
         type: string
       object:
         $ref: '#/definitions/variant.StorageObjectResponse'
-      object_id:
+      objectId:
         example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
         type: string
-      public_id:
+      publicId:
         example: 8f123456-e89b-12d3-a456-426614174000
         type: string
-      sort_order:
+      sortOrder:
         example: 0
         type: integer
-      variant_id:
+      variantId:
         example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
         type: string
     type: object
@@ -1291,9 +1291,9 @@ definitions:
     properties:
       id:
         type: string
-      media_type:
+      mediaType:
         type: string
-      sort_order:
+      sortOrder:
         type: integer
       url:
         type: string
@@ -1303,7 +1303,7 @@ definitions:
       attributes:
         additionalProperties: {}
         type: object
-      crossed_out_price:
+      crossedOutPrice:
         example: 3999
         type: integer
       currency:
@@ -1312,7 +1312,7 @@ definitions:
       id:
         example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
         type: string
-      is_default:
+      isDefault:
         example: false
         type: boolean
       media:
@@ -1322,7 +1322,7 @@ definitions:
       price:
         example: 2999
         type: integer
-      product_id:
+      productId:
         example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
         type: string
       sku:

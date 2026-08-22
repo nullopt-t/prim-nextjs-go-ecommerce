@@ -16,14 +16,14 @@ import (
 )
 
 type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refreshToken"`
 }
 
 type MeResponse struct {
 	ID        uuid.UUID `json:"id,omitempty"`
 	Role      string    `json:"role,omitempty"`
 	Status    string    `json:"status,omitempty"`
-	CreatedAt time.Time `json:"created_at,omitzero"`
+	CreatedAt time.Time `json:"createdAt,omitzero"`
 }
 
 type Handler struct {
@@ -63,7 +63,7 @@ type StartChallengeRequest struct {
 
 type StartChallengeResponse struct {
 	Email     string `json:"email"`
-	ExpiresAt string `json:"expires_at"`
+	ExpiresAt string `json:"expiresAt"`
 	Duration  int64  `json:"duration"`
 }
 

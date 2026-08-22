@@ -20,8 +20,8 @@ func NewHandler(s *ReviewService) *ReviewHandler {
 }
 
 type CreateReviewRequest struct {
-	ProductID   string  `json:"product_id" binding:"required,uuid"`
-	OrderItemID string  `json:"order_item_id" binding:"required,uuid"`
+	ProductID   string  `json:"productId" binding:"required,uuid"`
+	OrderItemID string  `json:"orderItemId" binding:"required,uuid"`
 	Rating      int16   `json:"rating" binding:"required,min=1,max=5"`
 	Title       *string `json:"title,omitempty"`
 	Body        *string `json:"body,omitempty"`
@@ -33,15 +33,15 @@ type UpdateReviewStatusRequest struct {
 
 type ReviewResponse struct {
 	ID          string    `json:"id"`
-	ProductID   string    `json:"product_id"`
-	UserID      string    `json:"user_id"`
-	OrderItemID string    `json:"order_item_id"`
+	ProductID   string    `json:"productId"`
+	UserID      string    `json:"userId"`
+	OrderItemID string    `json:"orderItemId"`
 	Rating      int16     `json:"rating"`
 	Title       *string   `json:"title,omitempty"`
 	Body        *string   `json:"body,omitempty"`
 	Status      string    `json:"status"`
-	CreatedAt   string    `json:"created_at"`
-	UpdatedAt   string    `json:"updated_at"`
+	CreatedAt   string    `json:"createdAt"`
+	UpdatedAt   string    `json:"updatedAt"`
 }
 
 func mapReviewToResponse(r *model.Review) ReviewResponse {
