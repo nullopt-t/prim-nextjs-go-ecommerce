@@ -2041,6 +2041,223 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/variants/{id}/inventory": {
+            "get": {
+                "description": "Retrieves on-hand, reserved, available quantities and in-stock status for a variant.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant Inventory"
+                ],
+                "summary": "Get detailed stock levels for a variant (Admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Variant stock summary",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/variant.InventoryStockResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format",
+                        "schema": {
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/variants/{id}/inventory/adjust": {
+            "post": {
+                "description": "Records a new inventory ledger transaction (restock, adjustment, sale, return) to increment or decrement the variant's stock.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant Inventory"
+                ],
+                "summary": "Adjust variant inventory stock",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Stock adjustment details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/variant.AdjustStockRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated stock levels",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/variant.InventoryStockResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error or insufficient inventory",
+                        "schema": {
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Variant not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/variants/{id}/inventory/ledgers": {
+            "get": {
+                "description": "Returns a paginated list of inventory audit ledger transactions for a specific variant.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant Inventory"
+                ],
+                "summary": "List inventory audit ledgers for a variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated inventory audit history",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/variant.InventoryLedgerResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/pagination.Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters or UUID format",
+                        "schema": {
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/variants/{id}/media": {
             "post": {
                 "description": "Links an uploaded storage object (image/video) to a specific product variant with media type and sort order.",
@@ -2383,6 +2600,35 @@ const docTemplate = `{
                         "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "description": "Revokes the current session and clears auth cookies.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/api.UnauthorizedResponse"
                         }
                     },
                     "500": {
@@ -3677,6 +3923,60 @@ const docTemplate = `{
                 }
             }
         },
+        "/variants/{id}/inventory": {
+            "get": {
+                "description": "Retrieves available quantity and in-stock status for a variant for customer storefront.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant Inventory"
+                ],
+                "summary": "Get current available stock for a variant (Public)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Public stock availability",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/api.DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/variant.PublicStockResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format",
+                        "schema": {
+                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/variants/{id}/media": {
             "get": {
                 "description": "Returns all attached media items for a specific variant with presigned object URLs.",
@@ -4007,6 +4307,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "created_at": {
+                    "type": "string"
+                },
+                "current_refresh_jti": {
                     "type": "string"
                 },
                 "id": {
@@ -4585,6 +4888,12 @@ const docTemplate = `{
                 "isDefault": {
                     "type": "boolean"
                 },
+                "media": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.VariantMedia"
+                    }
+                },
                 "price": {
                     "type": "integer"
                 },
@@ -4593,6 +4902,9 @@ const docTemplate = `{
                 },
                 "sku": {
                     "type": "string"
+                },
+                "thumbnail": {
+                    "$ref": "#/definitions/model.Object"
                 },
                 "thumbnailObjectID": {
                     "type": "string"
@@ -4617,6 +4929,32 @@ const docTemplate = `{
                 "PublicationStatusPublished",
                 "PublicationStatusArchived"
             ]
+        },
+        "model.VariantMedia": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "mediaType": {
+                    "type": "string"
+                },
+                "object": {
+                    "$ref": "#/definitions/model.Object"
+                },
+                "objectID": {
+                    "type": "string"
+                },
+                "publicID": {
+                    "type": "string"
+                },
+                "sortOrder": {
+                    "type": "integer"
+                },
+                "variantID": {
+                    "type": "string"
+                }
+            }
         },
         "order.AddressResponse": {
             "type": "object",
@@ -4846,8 +5184,67 @@ const docTemplate = `{
                 "variants": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/product.ProductVariantResponse"
+                        "$ref": "#/definitions/product.AdminProductVariantResponse"
                     }
+                }
+            }
+        },
+        "product.AdminProductVariantResponse": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossed_out_price": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_default": {
+                    "type": "boolean"
+                },
+                "media": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/product.VariantMediaSummary"
+                    }
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "sku": {
+                    "type": "string"
+                },
+                "stock": {
+                    "$ref": "#/definitions/product.AdminStockSummary"
+                },
+                "thumbnail": {
+                    "$ref": "#/definitions/product.StorageObjectResponse"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "product.AdminStockSummary": {
+            "type": "object",
+            "properties": {
+                "available_quantity": {
+                    "type": "integer"
+                },
+                "is_in_stock": {
+                    "type": "boolean"
+                },
+                "on_hand_quantity": {
+                    "type": "integer"
+                },
+                "reserved_quantity": {
+                    "type": "integer"
                 }
             }
         },
@@ -4903,6 +5300,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "USD"
                 },
+                "initial_stock": {
+                    "type": "integer",
+                    "example": 100
+                },
                 "is_default": {
                     "type": "boolean",
                     "example": false
@@ -4948,16 +5349,10 @@ const docTemplate = `{
                 "brand": {
                     "type": "string"
                 },
-                "category": {
-                    "type": "string"
-                },
                 "crossed_out_price": {
                     "type": "integer"
                 },
                 "currency": {
-                    "type": "string"
-                },
-                "id": {
                     "type": "string"
                 },
                 "price": {
@@ -4965,12 +5360,6 @@ const docTemplate = `{
                 },
                 "slug": {
                     "type": "string"
-                },
-                "tags": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 },
                 "thumbnail": {
                     "type": "string"
@@ -4983,6 +5372,9 @@ const docTemplate = `{
         "product.ProductResponse": {
             "type": "object",
             "properties": {
+                "crossed_out_price": {
+                    "type": "integer"
+                },
                 "currency": {
                     "type": "string"
                 },
@@ -5057,33 +5449,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "product.ProductVariantResponse": {
-            "type": "object",
-            "properties": {
-                "attributes": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "crossed_out_price": {
-                    "type": "integer"
-                },
-                "currency": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_default": {
-                    "type": "boolean"
-                },
-                "price": {
-                    "type": "integer"
-                },
-                "title": {
                     "type": "string"
                 }
             }
@@ -5165,6 +5530,23 @@ const docTemplate = `{
                 }
             }
         },
+        "product.VariantMediaSummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "media_type": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "tag.AdminTagResponse": {
             "type": "object",
             "properties": {
@@ -5224,6 +5606,30 @@ const docTemplate = `{
                 }
             }
         },
+        "variant.AdjustStockRequest": {
+            "type": "object",
+            "required": [
+                "quantity",
+                "reason"
+            ],
+            "properties": {
+                "quantity": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "reason": {
+                    "type": "string",
+                    "enum": [
+                        "restock",
+                        "sale",
+                        "return",
+                        "adjustment",
+                        "reservation_release"
+                    ],
+                    "example": "restock"
+                }
+            }
+        },
         "variant.AdminVariantResponse": {
             "type": "object",
             "properties": {
@@ -5255,6 +5661,12 @@ const docTemplate = `{
                     "type": "boolean",
                     "example": false
                 },
+                "media": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/variant.VariantMediaSummary"
+                    }
+                },
                 "price": {
                     "type": "integer",
                     "example": 2999
@@ -5266,6 +5678,9 @@ const docTemplate = `{
                 "sku": {
                     "type": "string",
                     "example": "prod_var_123"
+                },
+                "thumbnail": {
+                    "$ref": "#/definitions/variant.StorageObjectResponse"
                 },
                 "title": {
                     "type": "string",
@@ -5324,9 +5739,76 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 2999
                 },
+                "thumbnail_object_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                },
                 "title": {
                     "type": "string",
                     "example": "Red / XL"
+                }
+            }
+        },
+        "variant.InventoryLedgerResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-08-15T12:00:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "80000000-0000-0000-0000-000000000001"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "reason": {
+                    "type": "string",
+                    "example": "restock"
+                },
+                "variant_id": {
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "variant.InventoryStockResponse": {
+            "type": "object",
+            "properties": {
+                "available_quantity": {
+                    "type": "integer",
+                    "example": 45
+                },
+                "is_in_stock": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "on_hand_quantity": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "reserved_quantity": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "variant_id": {
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "variant.PublicStockResponse": {
+            "type": "object",
+            "properties": {
+                "available_quantity": {
+                    "type": "integer",
+                    "example": 45
+                },
+                "is_in_stock": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },
@@ -5390,6 +5872,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 3499
                 },
+                "thumbnail_object_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                },
                 "title": {
                     "type": "string",
                     "example": "Red / XXL"
@@ -5410,17 +5896,38 @@ const docTemplate = `{
                 "object": {
                     "$ref": "#/definitions/variant.StorageObjectResponse"
                 },
+                "object_id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                },
+                "public_id": {
+                    "type": "string",
+                    "example": "8f123456-e89b-12d3-a456-426614174000"
+                },
                 "sort_order": {
                     "type": "integer",
                     "example": 0
                 },
-                "thumbnail_object_id": {
-                    "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
-                },
                 "variant_id": {
                     "type": "string",
                     "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                }
+            }
+        },
+        "variant.VariantMediaSummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "media_type": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "url": {
+                    "type": "string"
                 }
             }
         },
@@ -5447,6 +5954,12 @@ const docTemplate = `{
                     "type": "boolean",
                     "example": false
                 },
+                "media": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/variant.VariantMediaSummary"
+                    }
+                },
                 "price": {
                     "type": "integer",
                     "example": 2999
@@ -5454,6 +5967,12 @@ const docTemplate = `{
                 "product_id": {
                     "type": "string",
                     "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                },
+                "sku": {
+                    "type": "string"
+                },
+                "thumbnail": {
+                    "type": "string"
                 },
                 "title": {
                     "type": "string",

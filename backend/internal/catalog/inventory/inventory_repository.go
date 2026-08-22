@@ -144,8 +144,7 @@ func (r *InventoryRepository) GetStockForVariants(
 	return result, nil
 }
 
-// TODO: the method name should reflect the action being performed (list ledgers for a variant) it could be ListVariantLedgers
-func (r *InventoryRepository) ListLedgers(
+func (r *InventoryRepository) ListVariantLedgers(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	variantID uuid.UUID,
