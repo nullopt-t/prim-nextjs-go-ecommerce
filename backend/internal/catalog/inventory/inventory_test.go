@@ -2,7 +2,6 @@ package inventory_test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -37,7 +36,7 @@ func (s *InventoryTestSuite) SetupSuite() {
 	ctx := context.Background()
 
 	pgContainer, err := postgres.Run(ctx,
-		"postgres:15-alpine",
+		"postgres:18-alpine",
 		postgres.WithDatabase("prim_inventory_test"),
 		postgres.WithUsername("testuser"),
 		postgres.WithPassword("testpass"),
@@ -349,8 +348,7 @@ func (s *InventoryTestSuite) Test02_OrderFulfillmentAtomicConversion() {
 	s.Equal(93, stockBefore.AvailableQuantity)
 
 	// Atomic Order Fulfillment / Commit Reservation
-	orderRef := "ORD-9901"
-	err = s.service.CommitReservation(ctx, res.ID, &orderRef)
+	err = s.service.CommitReservation(ctx, res.ID)
 	s.Require().NoError(err)
 
 	// Verify post-checkout state:
@@ -455,11 +453,10 @@ func (s *InventoryTestSuite) Test03_ConcurrentCheckoutsLowStock() {
 
 	for i := 0; i < 10; i++ {
 		resID := reservations[i].ID
-		orderRef := fmt.Sprintf("ORD-BATCH-%d", i)
 		go func() {
 			defer wg.Done()
 			<-startGate
-			err := s.service.CommitReservation(context.Background(), resID, &orderRef)
+			err := s.service.CommitReservation(context.Background(), resID)
 			s.Require().NoError(err)
 		}()
 	}
@@ -495,8 +492,7 @@ func (s *InventoryTestSuite) Test03_CheckoutVsExpirationRace() {
 	s.Require().NoError(err)
 
 	// Attempting to commit an expired reservation must fail safely and roll back
-	ref := "ORD-EXPIRED"
-	err = s.service.CommitReservation(ctx, expiredResID, &ref)
+	err = s.service.CommitReservation(ctx, expiredResID)
 	s.Require().Error(err)
 
 	// Ledger should remain 5 and available should remain 5
@@ -565,12 +561,10 @@ func (s *InventoryTestSuite) Test05_WriteOffsAndDamage() {
 	s.Require().NoError(err)
 
 	// Write-off / damage adjustment -15
-	damageRef := "DAMAGE-LOG-44"
 	stock, err := s.service.AdjustStock(ctx, inventory.AdjustStockInput{
-		VariantID:   variantID,
-		Quantity:    -15,
-		Reason:      "adjustment",
-		ReferenceID: &damageRef,
+		VariantID: variantID,
+		Quantity:  -15,
+		Reason:    "adjustment",
 	})
 	s.Require().NoError(err)
 	s.Equal(85, stock.OnHandQuantity)
@@ -590,12 +584,10 @@ func (s *InventoryTestSuite) Test05_ReturnsAndRefunds() {
 	s.Require().NoError(err)
 
 	// Process customer return +2
-	returnRef := "RET-505"
 	stock, err := s.service.AdjustStock(ctx, inventory.AdjustStockInput{
-		VariantID:   variantID,
-		Quantity:    2,
-		Reason:      "return",
-		ReferenceID: &returnRef,
+		VariantID: variantID,
+		Quantity:  2,
+		Reason:    "return",
 	})
 	s.Require().NoError(err)
 	s.Equal(12, stock.OnHandQuantity)

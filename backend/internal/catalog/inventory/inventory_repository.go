@@ -43,10 +43,9 @@ func (r *InventoryRepository) CreateLedger(
 			variant_id,
 			quantity,
 			reason,
-			reference_id,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, $5, now())
+		VALUES ($1, $2, $3, $4, now())
 		RETURNING created_at
 	`
 
@@ -57,7 +56,6 @@ func (r *InventoryRepository) CreateLedger(
 		ledger.VariantID,
 		ledger.Quantity,
 		ledger.Reason,
-		ledger.ReferenceID,
 	).Scan(&ledger.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("create inventory ledger: %w", err)
@@ -84,7 +82,7 @@ func (r *InventoryRepository) GetStock(
 		return nil, fmt.Errorf("get inventory stock: %w", err)
 	}
 
-	stock.AvailableQuantity = max(stock.OnHandQuantity - stock.ReservedQuantity, 0)
+	stock.AvailableQuantity = max(stock.OnHandQuantity-stock.ReservedQuantity, 0)
 	stock.IsInStock = stock.AvailableQuantity > 0
 
 	return stock, nil
@@ -134,9 +132,7 @@ func (r *InventoryRepository) GetStockForVariants(
 			return nil, fmt.Errorf("scan stock for variants: %w", err)
 		}
 		stock.AvailableQuantity = stock.OnHandQuantity - stock.ReservedQuantity
-		if stock.AvailableQuantity < 0 {
-			stock.AvailableQuantity = 0
-		}
+		stock.AvailableQuantity = max(0, stock.AvailableQuantity)
 		stock.IsInStock = stock.AvailableQuantity > 0
 		result[stock.VariantID] = stock
 	}
@@ -148,6 +144,7 @@ func (r *InventoryRepository) GetStockForVariants(
 	return result, nil
 }
 
+// TODO: the method name should reflect the action being performed (list ledgers for a variant) it could be ListVariantLedgers
 func (r *InventoryRepository) ListLedgers(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -175,7 +172,6 @@ func (r *InventoryRepository) ListLedgers(
 			variant_id,
 			quantity,
 			reason,
-			reference_id,
 			created_at
 		FROM inventory_ledgers
 		WHERE variant_id = $1

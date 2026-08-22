@@ -34,10 +34,9 @@ func NewService(
 }
 
 type AdjustStockInput struct {
-	VariantID   uuid.UUID
-	Quantity    int
-	Reason      string
-	ReferenceID *string
+	VariantID uuid.UUID
+	Quantity  int
+	Reason    string
 }
 
 type ReserveStockInput struct {
@@ -63,7 +62,7 @@ func (s *InventoryService) AdjustStock(
 
 	reason, err := model.ParseInventoryReason(in.Reason)
 	if err != nil {
-		return nil, apierr.ErrBadRequest("Invalid inventory reason: "+in.Reason).
+		return nil, apierr.ErrBadRequest("Invalid inventory reason: " + in.Reason).
 			WithCode(errcode.CodeInvalidInventoryReason).
 			Wrap(err)
 	}
@@ -71,6 +70,7 @@ func (s *InventoryService) AdjustStock(
 	var updatedStock *model.InventoryStock
 
 	txErr := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		// TODO: what errors can occur here?
 		_ = s.repo.LockVariantForUpdate(ctx, tx, in.VariantID)
 
 		currentStock, err := s.repo.GetStock(ctx, tx, in.VariantID)
@@ -85,11 +85,10 @@ func (s *InventoryService) AdjustStock(
 		}
 
 		ledger := &model.InventoryLedger{
-			ID:          uuid.New(),
-			VariantID:   in.VariantID,
-			Quantity:    in.Quantity,
-			Reason:      reason,
-			ReferenceID: in.ReferenceID,
+			ID:        uuid.New(),
+			VariantID: in.VariantID,
+			Quantity:  in.Quantity,
+			Reason:    reason,
 		}
 
 		if err := s.repo.CreateLedger(ctx, tx, ledger); err != nil {
@@ -108,10 +107,6 @@ func (s *InventoryService) AdjustStock(
 				WithCode(errcode.CodeVariantNotFound).
 				Wrap(txErr)
 		default:
-			var apiErr *apierr.APIError
-			if errors.As(txErr, &apiErr) {
-				return nil, apiErr
-			}
 			return nil, apierr.ErrInternalError("Failed to adjust inventory").
 				WithCode(apierr.CodeInternalError).
 				Wrap(txErr).
@@ -278,10 +273,6 @@ func (s *InventoryService) ReserveStock(
 				WithCode(errcode.CodeVariantNotFound).
 				Wrap(err)
 		default:
-			var apiErr *apierr.APIError
-			if errors.As(err, &apiErr) {
-				return nil, apiErr
-			}
 			return nil, apierr.ErrInternalError("Failed to reserve inventory").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
@@ -369,7 +360,6 @@ func (s *InventoryService) ReleaseExpiredReservations(
 func (s *InventoryService) CommitReservation(
 	ctx context.Context,
 	reservationID uuid.UUID,
-	referenceID *string,
 ) error {
 	if reservationID == uuid.Nil {
 		return apierr.ErrBadRequest("Reservation ID is required").
@@ -397,21 +387,16 @@ func (s *InventoryService) CommitReservation(
 		}
 
 		ledger := &model.InventoryLedger{
-			ID:          uuid.New(),
-			VariantID:   res.VariantID,
-			Quantity:    -res.Quantity,
-			Reason:      model.InventoryReasonSale,
-			ReferenceID: referenceID,
+			ID:        uuid.New(),
+			VariantID: res.VariantID,
+			Quantity:  -res.Quantity,
+			Reason:    model.InventoryReasonSale,
 		}
 
 		return s.repo.CreateLedger(ctx, tx, ledger)
 	})
 
 	if err != nil {
-		var apiErr *apierr.APIError
-		if errors.As(err, &apiErr) {
-			return apiErr
-		}
 		return apierr.ErrInternalError("Failed to commit reservation").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).

@@ -318,7 +318,6 @@ CREATE TABLE IF NOT EXISTS inventory_ledgers (
     variant_id      uuid NOT NULL,
     quantity        int NOT NULL,
     reason          inventory_reason NOT NULL,
-    reference_id    text NULL,
     created_at      timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (id),
     FOREIGN KEY (variant_id) REFERENCES product_variants (id),

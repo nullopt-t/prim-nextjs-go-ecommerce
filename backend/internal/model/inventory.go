@@ -40,13 +40,14 @@ func (r InventoryReason) String() string {
 	return string(r)
 }
 
+// TODO: domain models shouldn't know about the representation mechanics
+
 type InventoryLedger struct {
-	ID          uuid.UUID       `db:"id" json:"id"`
-	VariantID   uuid.UUID       `db:"variant_id" json:"variant_id"`
-	Quantity    int             `db:"quantity" json:"quantity"`
-	Reason      InventoryReason `db:"reason" json:"reason"`
-	ReferenceID *string         `db:"reference_id" json:"reference_id,omitempty"`
-	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
+	ID        uuid.UUID       `db:"id" json:"id"`
+	VariantID uuid.UUID       `db:"variant_id" json:"variant_id"`
+	Quantity  int             `db:"quantity" json:"quantity"`
+	Reason    InventoryReason `db:"reason" json:"reason"`
+	CreatedAt time.Time       `db:"created_at" json:"created_at"`
 }
 
 type InventoryReservation struct {
