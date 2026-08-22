@@ -791,10 +791,15 @@ definitions:
       attributes:
         additionalProperties: {}
         type: object
-      crossedOutPrice:
-        type: integer
       currency:
+        example: USD
         type: string
+      extractedOriginalPrice:
+        example: 29.99
+        type: number
+      extractedPrice:
+        example: 24.99
+        type: number
       id:
         type: string
       isDefault:
@@ -803,8 +808,12 @@ definitions:
         items:
           $ref: '#/definitions/product.VariantMediaSummary'
         type: array
+      originalPrice:
+        example: $29.99
+        type: string
       price:
-        type: integer
+        example: $24.99
+        type: string
       sku:
         type: string
       stock:
@@ -896,12 +905,21 @@ definitions:
     properties:
       brand:
         type: string
-      crossedOutPrice:
-        type: integer
       currency:
+        example: USD
+        type: string
+      extractedOriginalPrice:
+        example: 29.99
+        type: number
+      extractedPrice:
+        example: 24.99
+        type: number
+      originalPrice:
+        example: $29.99
         type: string
       price:
-        type: integer
+        example: $24.99
+        type: string
       rating:
         $ref: '#/definitions/product.ProductRatingSummaryResponse'
       slug:
@@ -926,12 +944,17 @@ definitions:
     type: object
   product.ProductResponse:
     properties:
-      crossedOutPrice:
-        type: integer
       currency:
+        example: USD
         type: string
       description:
         type: string
+      extractedOriginalPrice:
+        example: 29.99
+        type: number
+      extractedPrice:
+        example: 24.99
+        type: number
       highlights:
         items:
           type: string
@@ -939,8 +962,12 @@ definitions:
       id:
         example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
         type: string
+      originalPrice:
+        example: $29.99
+        type: string
       price:
-        type: integer
+        example: $24.99
+        type: string
       productType:
         type: string
       slug:
@@ -1191,15 +1218,18 @@ definitions:
       createdAt:
         example: "2026-08-02T16:00:00Z"
         type: string
-      crossedOutPrice:
-        example: 3999
-        type: integer
       currency:
         example: USD
         type: string
       deletedAt:
         example: "2026-08-02T16:15:00Z"
         type: string
+      extractedOriginalPrice:
+        example: 29.99
+        type: number
+      extractedPrice:
+        example: 24.99
+        type: number
       id:
         example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
         type: string
@@ -1210,9 +1240,12 @@ definitions:
         items:
           $ref: '#/definitions/variant.VariantMediaSummary'
         type: array
+      originalPrice:
+        example: $29.99
+        type: string
       price:
-        example: 2999
-        type: integer
+        example: $24.99
+        type: string
       productId:
         example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
         type: string
@@ -1401,12 +1434,15 @@ definitions:
       attributes:
         additionalProperties: {}
         type: object
-      crossedOutPrice:
-        example: 3999
-        type: integer
       currency:
         example: USD
         type: string
+      extractedOriginalPrice:
+        example: 29.99
+        type: number
+      extractedPrice:
+        example: 24.99
+        type: number
       id:
         example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
         type: string
@@ -1417,9 +1453,12 @@ definitions:
         items:
           $ref: '#/definitions/variant.VariantMediaSummary'
         type: array
+      originalPrice:
+        example: $29.99
+        type: string
       price:
-        example: 2999
-        type: integer
+        example: $24.99
+        type: string
       productId:
         example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
         type: string

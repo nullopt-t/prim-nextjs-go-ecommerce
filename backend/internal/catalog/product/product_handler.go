@@ -14,6 +14,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 )
 
 type ProductHandler struct {
@@ -78,43 +79,49 @@ type VariantMediaSummary struct {
 }
 
 type ProductVariantResponse struct {
-	ID              string                 `json:"id"`
-	SKU             string                 `json:"sku,omitempty"`
-	Title           string                 `json:"title"`
-	Price           *int64                 `json:"price,omitempty"`
-	CrossedOutPrice *int64                 `json:"crossedOutPrice,omitempty"`
-	Currency        *string                `json:"currency,omitempty"`
-	Thumbnail       *string                `json:"thumbnail,omitempty"`
-	Media           []VariantMediaSummary  `json:"media"`
-	Attributes      map[string]any         `json:"attributes"`
-	IsDefault       bool                   `json:"isDefault"`
-	Stock           *PublicStockSummary    `json:"stock,omitempty"`
+	ID                     string                        `json:"id"`
+	SKU                    string                        `json:"sku,omitempty"`
+	Title                  string                        `json:"title"`
+	Price                  *string                       `json:"price,omitempty" example:"$24.99"`
+	ExtractedPrice         *float64                      `json:"extractedPrice,omitempty" example:"24.99"`
+	OriginalPrice          *string                       `json:"originalPrice,omitempty" example:"$29.99"`
+	ExtractedOriginalPrice *float64                      `json:"extractedOriginalPrice,omitempty" example:"29.99"`
+	Currency               *string                       `json:"currency,omitempty" example:"USD"`
+	Thumbnail              *string                       `json:"thumbnail,omitempty"`
+	Media                  []VariantMediaSummary         `json:"media"`
+	Attributes             map[string]any                `json:"attributes"`
+	IsDefault              bool                          `json:"isDefault"`
+	Stock                  *PublicStockSummary           `json:"stock,omitempty"`
 }
 
 type AdminProductVariantResponse struct {
-	ID              string                 `json:"id"`
-	SKU             string                 `json:"sku,omitempty"`
-	Title           string                 `json:"title"`
-	Price           *int64                 `json:"price,omitempty"`
-	CrossedOutPrice *int64                 `json:"crossedOutPrice,omitempty"`
-	Currency        *string                `json:"currency,omitempty"`
-	Thumbnail       *StorageObjectResponse `json:"thumbnail,omitempty"`
-	Media           []VariantMediaSummary  `json:"media"`
-	Attributes      map[string]any         `json:"attributes"`
-	IsDefault       bool                   `json:"isDefault"`
-	Stock           *AdminStockSummary     `json:"stock,omitempty"`
+	ID                     string                 `json:"id"`
+	SKU                    string                 `json:"sku,omitempty"`
+	Title                  string                 `json:"title"`
+	Price                  *string                `json:"price,omitempty" example:"$24.99"`
+	ExtractedPrice         *float64               `json:"extractedPrice,omitempty" example:"24.99"`
+	OriginalPrice          *string                `json:"originalPrice,omitempty" example:"$29.99"`
+	ExtractedOriginalPrice *float64               `json:"extractedOriginalPrice,omitempty" example:"29.99"`
+	Currency               *string                `json:"currency,omitempty" example:"USD"`
+	Thumbnail              *StorageObjectResponse `json:"thumbnail,omitempty"`
+	Media                  []VariantMediaSummary  `json:"media"`
+	Attributes             map[string]any         `json:"attributes"`
+	IsDefault              bool                   `json:"isDefault"`
+	Stock                  *AdminStockSummary     `json:"stock,omitempty"`
 }
 
 type ProductResponse struct {
-	ID              string   `json:"id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	Slug            string   `json:"slug" example:"wireless-headphones"`
-	Title           string   `json:"title" example:"Wireless Headphones"`
-	Description     *string  `json:"description,omitempty"`
-	Highlights      []string `json:"highlights"`
-	ProductType     string   `json:"productType"`
-	Price           *int64   `json:"price,omitempty"`
-	CrossedOutPrice *int64   `json:"crossedOutPrice,omitempty"`
-	Currency        *string  `json:"currency,omitempty"`
+	ID                     string   `json:"id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	Slug                   string   `json:"slug" example:"wireless-headphones"`
+	Title                  string   `json:"title" example:"Wireless Headphones"`
+	Description            *string  `json:"description,omitempty"`
+	Highlights             []string `json:"highlights"`
+	ProductType            string   `json:"productType"`
+	Price                  *string  `json:"price,omitempty" example:"$24.99"`
+	ExtractedPrice         *float64 `json:"extractedPrice,omitempty" example:"24.99"`
+	OriginalPrice          *string  `json:"originalPrice,omitempty" example:"$29.99"`
+	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"29.99"`
+	Currency               *string  `json:"currency,omitempty" example:"USD"`
 }
 
 type ProductRatingSummaryResponse struct {
@@ -298,16 +305,41 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 					})
 				}
 			}
+			curr := "USD"
+			if v.Currency != nil && *v.Currency != "" {
+				curr = *v.Currency
+			}
+
+			var priceStr *string
+			var extPrice *float64
+			if v.Price != nil {
+				ps := utils.FormatPrice(*v.Price, curr)
+				ep := utils.ExtractPrice(*v.Price)
+				priceStr = &ps
+				extPrice = &ep
+			}
+
+			var origPriceStr *string
+			var extOrigPrice *float64
+			if v.CrossedOutPrice != nil {
+				ops := utils.FormatPrice(*v.CrossedOutPrice, curr)
+				eop := utils.ExtractPrice(*v.CrossedOutPrice)
+				origPriceStr = &ops
+				extOrigPrice = &eop
+			}
+
 			vr := AdminProductVariantResponse{
-				ID:              v.ID.String(),
-				SKU:             v.SKU,
-				Title:           v.Title,
-				Price:           v.Price,
-				CrossedOutPrice: v.CrossedOutPrice,
-				Currency:        v.Currency,
-				Media:           mediaSummaries,
-				Attributes:      attrs,
-				IsDefault:       v.IsDefault,
+				ID:                     v.ID.String(),
+				SKU:                    v.SKU,
+				Title:                  v.Title,
+				Price:                  priceStr,
+				ExtractedPrice:         extPrice,
+				OriginalPrice:          origPriceStr,
+				ExtractedOriginalPrice: extOrigPrice,
+				Currency:               v.Currency,
+				Media:                  mediaSummaries,
+				Attributes:             attrs,
+				IsDefault:              v.IsDefault,
 			}
 			if v.Thumbnail != nil {
 				vr.Thumbnail = &StorageObjectResponse{
@@ -414,23 +446,42 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 }
 
 type ProductListItemResponse struct {
-	Slug            string                        `json:"slug"`
-	Title           string                        `json:"title"`
-	Brand           *string                       `json:"brand,omitempty"`
-	Thumbnail       *string                       `json:"thumbnail,omitempty"`
-	Price           *int64                        `json:"price,omitempty"`
-	CrossedOutPrice *int64                        `json:"crossedOutPrice,omitempty"`
-	Currency        *string                       `json:"currency,omitempty"`
-	Rating          *ProductRatingSummaryResponse `json:"rating,omitempty"`
+	Slug                   string                        `json:"slug"`
+	Title                  string                        `json:"title"`
+	Brand                  *string                       `json:"brand,omitempty"`
+	Thumbnail              *string                       `json:"thumbnail,omitempty"`
+	Price                  *string                       `json:"price,omitempty" example:"$24.99"`
+	ExtractedPrice         *float64                      `json:"extractedPrice,omitempty" example:"24.99"`
+	OriginalPrice          *string                       `json:"originalPrice,omitempty" example:"$29.99"`
+	ExtractedOriginalPrice *float64                      `json:"extractedOriginalPrice,omitempty" example:"29.99"`
+	Currency               *string                       `json:"currency,omitempty" example:"USD"`
+	Rating                 *ProductRatingSummaryResponse `json:"rating,omitempty"`
 }
 
 func mapProductListItemResponse(item *ProductCardReadModel) ProductListItemResponse {
 	res := ProductListItemResponse{
-		Slug:            item.Slug,
-		Title:           item.Title,
-		Price:           item.Price,
-		CrossedOutPrice: item.CrossedOutPrice,
-		Currency:        item.Currency,
+		Slug:     item.Slug,
+		Title:    item.Title,
+		Currency: item.Currency,
+	}
+
+	curr := "USD"
+	if item.Currency != nil && *item.Currency != "" {
+		curr = *item.Currency
+	}
+
+	if item.Price != nil {
+		priceStr := utils.FormatPrice(*item.Price, curr)
+		extPrice := utils.ExtractPrice(*item.Price)
+		res.Price = &priceStr
+		res.ExtractedPrice = &extPrice
+	}
+
+	if item.CrossedOutPrice != nil {
+		origPriceStr := utils.FormatPrice(*item.CrossedOutPrice, curr)
+		extOrigPrice := utils.ExtractPrice(*item.CrossedOutPrice)
+		res.OriginalPrice = &origPriceStr
+		res.ExtractedOriginalPrice = &extOrigPrice
 	}
 
 	if item.Brand != nil {
@@ -719,17 +770,42 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 			if v.Thumbnail != nil && v.Thumbnail.PublicURL != "" {
 				thumbnailURL = &v.Thumbnail.PublicURL
 			}
+			curr := "USD"
+			if v.Currency != nil && *v.Currency != "" {
+				curr = *v.Currency
+			}
+
+			var priceStr *string
+			var extPrice *float64
+			if v.Price != nil {
+				ps := utils.FormatPrice(*v.Price, curr)
+				ep := utils.ExtractPrice(*v.Price)
+				priceStr = &ps
+				extPrice = &ep
+			}
+
+			var origPriceStr *string
+			var extOrigPrice *float64
+			if v.CrossedOutPrice != nil {
+				ops := utils.FormatPrice(*v.CrossedOutPrice, curr)
+				eop := utils.ExtractPrice(*v.CrossedOutPrice)
+				origPriceStr = &ops
+				extOrigPrice = &eop
+			}
+
 			vr := ProductVariantResponse{
-				ID:              v.ID.String(),
-				SKU:             v.SKU,
-				Title:           v.Title,
-				Price:           v.Price,
-				CrossedOutPrice: v.CrossedOutPrice,
-				Currency:        v.Currency,
-				Thumbnail:       thumbnailURL,
-				Media:           mediaSummaries,
-				Attributes:      attrs,
-				IsDefault:       v.IsDefault,
+				ID:                     v.ID.String(),
+				SKU:                    v.SKU,
+				Title:                  v.Title,
+				Price:                  priceStr,
+				ExtractedPrice:         extPrice,
+				OriginalPrice:          origPriceStr,
+				ExtractedOriginalPrice: extOrigPrice,
+				Currency:               v.Currency,
+				Thumbnail:              thumbnailURL,
+				Media:                  mediaSummaries,
+				Attributes:             attrs,
+				IsDefault:              v.IsDefault,
 			}
 			if details.Stock != nil {
 				if s, ok := details.Stock[v.ID]; ok && s != nil {
@@ -740,6 +816,14 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 				}
 			}
 			variantRes = append(variantRes, vr)
+
+			if v.IsDefault || res.Price == nil {
+				res.Price = priceStr
+				res.ExtractedPrice = extPrice
+				res.OriginalPrice = origPriceStr
+				res.ExtractedOriginalPrice = extOrigPrice
+				res.Currency = v.Currency
+			}
 		}
 		res.Variants = variantRes
 	}
@@ -1034,19 +1118,44 @@ func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 		return
 	}
 
+	curr := "USD"
+	if v.Currency != nil && *v.Currency != "" {
+		curr = *v.Currency
+	}
+
+	var priceStr *string
+	var extPrice *float64
+	if v.Price != nil {
+		ps := utils.FormatPrice(*v.Price, curr)
+		ep := utils.ExtractPrice(*v.Price)
+		priceStr = &ps
+		extPrice = &ep
+	}
+
+	var origPriceStr *string
+	var extOrigPrice *float64
+	if v.CrossedOutPrice != nil {
+		ops := utils.FormatPrice(*v.CrossedOutPrice, curr)
+		eop := utils.ExtractPrice(*v.CrossedOutPrice)
+		origPriceStr = &ops
+		extOrigPrice = &eop
+	}
+
 	c.JSON(http.StatusCreated, api.DataResponse{
 		Data: variant.AdminVariantResponse{
-			ID:              v.ID.String(),
-			SKU:        v.SKU,
-			ProductID:       v.ProductID.String(),
-			Title:           v.Title,
-			Price:           v.Price,
-			CrossedOutPrice: v.CrossedOutPrice,
-			Currency:        v.Currency,
-			Attributes:      v.Attributes,
-			IsDefault:       v.IsDefault,
-			CreatedAt:       v.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:       v.UpdatedAt.Format(time.RFC3339),
+			ID:                     v.ID.String(),
+			SKU:                    v.SKU,
+			ProductID:              v.ProductID.String(),
+			Title:                  v.Title,
+			Price:                  priceStr,
+			ExtractedPrice:         extPrice,
+			OriginalPrice:          origPriceStr,
+			ExtractedOriginalPrice: extOrigPrice,
+			Currency:               v.Currency,
+			Attributes:             v.Attributes,
+			IsDefault:              v.IsDefault,
+			CreatedAt:              v.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:              v.UpdatedAt.Format(time.RFC3339),
 		},
 	})
 }
