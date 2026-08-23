@@ -257,7 +257,7 @@ func (s *CartHTTPTestSuite) TestHTTP_AddItem_SuccessAndStrictItemSchema() {
 	_, itemUUIDErr := uuid.Parse(item.ID)
 	s.Require().NoError(itemUUIDErr, "CartItem ID must be valid UUID")
 	s.Equal(s.productID.String(), item.ProductID)
-	s.Equal("SKU-MATTE-BLK", item.VariantID)
+	s.Equal(variantID.String(), item.VariantID)
 	s.Equal("ANC Headphones - Black / Matte", item.Title)
 	s.Equal(2, item.Quantity)
 	s.Equal(int64(2999), item.UnitPrice)
@@ -424,7 +424,7 @@ func (s *CartHTTPTestSuite) TestHTTP_RemoveItemAndClearCart() {
 	var removeResp StrictDataEnvelope[cart.CartResponse]
 	s.Require().NoError(json.Unmarshal(wRemove.Body.Bytes(), &removeResp))
 	s.Require().Len(removeResp.Data.Items, 1)
-	s.Equal("SKU-2", removeResp.Data.Items[0].VariantID)
+	s.Equal(v2.String(), removeResp.Data.Items[0].VariantID)
 	s.Equal(int64(4000), removeResp.Data.Summary.Total)
 
 	// 2. DELETE /api/v1/cart (Clear remaining items)

@@ -92,13 +92,15 @@ func mapCartResponse(cart *model.Cart) CartResponse {
 		}
 
 		if item.Variant != nil {
-			itemRes.VariantID = item.Variant.SKU
+			itemRes.VariantID = item.Variant.ID.String()
 			itemRes.Title = item.Variant.Title
 			if item.Variant.Price != nil {
 				itemRes.UnitPrice = *item.Variant.Price
 				itemSubtotal = int64(item.Quantity) * (*item.Variant.Price)
 				itemRes.Subtotal = itemSubtotal
 			}
+		} else {
+			itemRes.VariantID = item.VariantID.String()
 		}
 
 		if item.Product != nil {
