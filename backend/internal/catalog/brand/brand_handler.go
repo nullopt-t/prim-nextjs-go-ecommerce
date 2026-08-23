@@ -25,32 +25,49 @@ func NewHandler(brandService *BrandService) *BrandHandler {
 }
 
 type CreateBrandRequest struct {
-	Name string  `json:"name" binding:"required" example:"apple"`
+	// Unique brand/manufacturer name
+	Name string `json:"name" binding:"required" example:"Apple"`
+	// Optional official website URL
 	Link *string `json:"link,omitempty" example:"https://apple.com"`
 }
 
 type UpdateBrandRequest struct {
-	Name         *string    `json:"name,omitempty" example:"apple"`
-	Link         *string    `json:"link,omitempty" example:"https://apple.com"`
+	// Updated brand name
+	Name *string `json:"name,omitempty" example:"Apple Inc."`
+	// Updated official website URL
+	Link *string `json:"link,omitempty" example:"https://apple.com"`
+	// Object storage UUID of the brand logo
 	LogoObjectID *uuid.UUID `json:"logoObjectId,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
 }
 
 type BrandResponse struct {
-	ID      string  `json:"id" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"` // Public ID of the brand
-	Name    string  `json:"name" example:"nvidia"`
-	Link    *string `json:"link,omitempty" example:"https://nvidia.com"`
-	LogoURL *string `json:"logoUrl,omitempty" example:"https://example.com/logo.png"`
+	// Public UUID identifier of the brand
+	ID string `json:"id" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
+	// Brand/manufacturer name
+	Name string `json:"name" example:"Apple"`
+	// Official website URL
+	Link *string `json:"link,omitempty" example:"https://apple.com"`
+	// Publicly accessible URL for the brand logo
+	LogoURL *string `json:"logoUrl,omitempty" example:"https://example.com/apple-logo.png"`
 }
 
 type AdminBrandResponse struct {
-	ID           string     `json:"id" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`        // Internal ID of the brand
-	PublicID     string     `json:"publicId" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`  // Public ID of the brand
-	Name         string     `json:"name" example:"nvidia"`
-	Link         *string    `json:"link,omitempty" example:"https://nvidia.com"`
+	// Internal database ID of the brand
+	ID string `json:"id" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
+	// Public customer-facing UUID identifier
+	PublicID string `json:"publicId" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
+	// Brand/manufacturer name
+	Name string `json:"name" example:"Apple"`
+	// Official website URL
+	Link *string `json:"link,omitempty" example:"https://apple.com"`
+	// Object storage UUID of the uploaded logo file
 	LogoObjectID *uuid.UUID `json:"logoObjectId,omitempty" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
-	CreatedAt    string     `json:"createdAt" example:"2026-07-01T05:04:38Z"`
-	UpdatedAt    string     `json:"updatedAt" example:"2026-07-01T05:04:38Z"`
-	DeletedAt    *string    `json:"deletedAt,omitempty" example:"2026-07-01T05:04:38Z"`
+	// Timestamp when brand was created (RFC3339)
+	CreatedAt string `json:"createdAt" example:"2026-07-01T05:04:38Z"`
+	// Timestamp when brand was last updated (RFC3339)
+	UpdatedAt string `json:"updatedAt" example:"2026-07-01T05:04:38Z"`
+	// Timestamp when brand was soft-deleted, if applicable
+	DeletedAt *string `json:"deletedAt,omitempty" example:"2026-07-01T05:04:38Z"`
 }
 
 // CreateBrand godoc

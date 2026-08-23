@@ -24,23 +24,32 @@ func NewHandler(s *TagService) *TagHandler {
 }
 
 type CreateTagRequest struct {
-	Name string `json:"name" binding:"required" example:"black-friday"`
+	// Unique tag label name (e.g. Featured, Sale, New Arrival)
+	Name string `json:"name" binding:"required" example:"Featured"`
 }
 
 type UpdateTagRequest struct {
-	Name *string `json:"name,omitempty" example:"best-seller"`
+	// Updated tag label name
+	Name *string `json:"name,omitempty" example:"Best Seller"`
 }
 
 type TagResponse struct {
-	ID   string `json:"id" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
-	Name string `json:"name" example:"black-friday"`
+	// Unique UUID identifier of the tag
+	ID string `json:"id" example:"50000000-0000-0000-0000-000000000001"`
+	// Tag label name
+	Name string `json:"name" example:"Featured"`
 }
 
 type AdminTagResponse struct {
-	ID        string  `json:"id" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
-	Name      string  `json:"name" example:"black-friday"`
-	CreatedAt string  `json:"createdAt" example:"2026-06-30T15:47:19Z"`
-	UpdatedAt string  `json:"updatedAt" example:"2026-06-30T15:47:19Z"`
+	// Unique database UUID identifier of the tag
+	ID string `json:"id" example:"50000000-0000-0000-0000-000000000001"`
+	// Tag label name
+	Name string `json:"name" example:"Featured"`
+	// Timestamp when tag was created (RFC3339)
+	CreatedAt string `json:"createdAt" example:"2026-06-30T15:47:19Z"`
+	// Timestamp when tag was last updated (RFC3339)
+	UpdatedAt string `json:"updatedAt" example:"2026-06-30T15:47:19Z"`
+	// Timestamp when tag was soft-deleted, if applicable
 	DeletedAt *string `json:"deletedAt,omitempty" example:"2026-06-30T15:47:19Z"`
 }
 

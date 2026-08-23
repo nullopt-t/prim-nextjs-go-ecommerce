@@ -3,10 +3,12 @@ definitions:
   AddItemRequest:
     properties:
       quantity:
+        description: Quantity of units to add (must be at least 1)
         example: 2
         type: integer
       variantId:
-        example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
+        description: Product Variant UUID to add to the cart
+        example: 70000000-0000-0000-0000-000000000001
         type: string
     required:
     - quantity
@@ -72,68 +74,111 @@ definitions:
   BrandResponse:
     properties:
       id:
-        description: Public ID of the brand
+        description: Public UUID identifier of the brand
         example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
         type: string
       link:
-        example: https://nvidia.com
+        description: Official website URL
+        example: https://apple.com
         type: string
       logoUrl:
-        example: https://example.com/logo.png
+        description: Publicly accessible URL for the brand logo
+        example: https://example.com/apple-logo.png
         type: string
       name:
-        example: nvidia
+        description: Brand/manufacturer name
+        example: Apple
         type: string
     type: object
   CartItemResponse:
     properties:
       id:
+        description: Unique Cart Item record UUID
+        example: 030553cd-712a-4950-913f-6c26fdd6a2b5
         type: string
       inStock:
+        description: 'Live inventory availability check: true if inventory >= quantity'
+        example: true
         type: boolean
       productId:
+        description: Parent Product UUID
+        example: 60000000-0000-0000-0000-000000000001
         type: string
       quantity:
+        description: Selected quantity units in cart
+        example: 2
         type: integer
       subtotal:
+        description: Line item subtotal (quantity * unitPrice) in cents
+        example: 499800
         type: integer
       thumbnailUrl:
+        description: Thumbnail preview image URL
+        example: https://example.com/thumbnail.png
         type: string
       title:
+        description: Formatted line item title (Product Title + Variant Title)
+        example: MacBook Pro 16" - Space Black, 18GB RAM, 512GB SSD
         type: string
       unitPrice:
+        description: Unit price per single item in cents
+        example: 249900
         type: integer
       variantId:
+        description: Selected SKU Variant UUID
+        example: 70000000-0000-0000-0000-000000000001
         type: string
     type: object
   CartResponse:
     properties:
       currency:
+        description: Active store currency code
+        example: USD
         type: string
       id:
+        description: Cart UUID
+        example: c23c12b7-37ff-49e6-a70f-1dcd122a0b99
         type: string
       itemCount:
+        description: Total count of distinct units in cart
+        example: 2
         type: integer
       items:
+        description: List of all items currently in cart
         items:
           $ref: '#/definitions/CartItemResponse'
         type: array
       summary:
-        $ref: '#/definitions/CartSummaryResponse'
+        allOf:
+        - $ref: '#/definitions/CartSummaryResponse'
+        description: Monetary calculation breakdown
       updatedAt:
+        description: Timestamp of the most recent cart mutation (RFC3339)
+        example: "2026-08-23T16:26:25Z"
         type: string
     type: object
   CartSummaryResponse:
     properties:
       discount:
+        description: Applied discount deductions in cents
+        example: 0
         type: integer
       shipping:
+        description: Estimated shipping cost in cents
+        example: 0
         type: integer
       subtotal:
+        description: Sum total of all items before discounts/tax in cents
+        example: 499800
         type: integer
       tax:
+        description: Estimated tax amount in cents
+        example: 0
         type: integer
       total:
+        description: Final calculated order total (subtotal - discount + shipping
+          + tax) in cents
+        example: 499800
         type: integer
     type: object
   CheckoutRequest:
@@ -170,21 +215,26 @@ definitions:
   CreateReviewRequest:
     properties:
       body:
-        example: The sound quality and active noise cancellation are top notch.
+        description: Review detailed feedback narrative
+        example: The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly.
         type: string
       orderItemId:
-        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        description: Purchased Order Item UUID verifying buyer eligibility
+        example: 91000000-0000-0000-0000-000000000001
         type: string
       productId:
-        example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
+        description: Product UUID to review
+        example: 60000000-0000-0000-0000-000000000001
         type: string
       rating:
+        description: Star score between 1 and 5
         example: 5
         maximum: 5
         minimum: 1
         type: integer
       title:
-        example: Amazing headphones!
+        description: Optional review headline title
+        example: Unbelievable performance!
         type: string
     required:
     - orderItemId
@@ -355,55 +405,80 @@ definitions:
   ProductBrandSummary:
     properties:
       id:
+        description: Brand UUID
+        example: 30000000-0000-0000-0000-000000000001
         type: string
       link:
+        description: Official website URL
+        example: https://apple.com
         type: string
       name:
+        description: Brand name
+        example: Apple
         type: string
     type: object
   ProductDetailsResponse:
     properties:
       brand:
-        $ref: '#/definitions/ProductBrandSummary'
+        allOf:
+        - $ref: '#/definitions/ProductBrandSummary'
+        description: Associated brand summary
       currency:
+        description: Currency ISO code
         example: USD
         type: string
       description:
+        description: Detailed product description
+        example: Supercharged by M3 Pro or M3 Max.
         type: string
       extractedOriginalPrice:
-        example: 29.99
+        description: Numeric original price
+        example: 2999
         type: number
       extractedPrice:
-        example: 24.99
+        description: Numeric active price
+        example: 2499
         type: number
       highlights:
+        description: Bulleted product highlights
         items:
           type: string
         type: array
       id:
-        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
+        description: Product database UUID
+        example: 60000000-0000-0000-0000-000000000001
         type: string
       originalPrice:
-        example: $29.99
+        description: Formatted original crossed-out price
+        example: $2999.00
         type: string
       price:
-        example: $24.99
+        description: Formatted active price
+        example: $2499.00
         type: string
       productType:
+        description: 'Product type: simple or variable'
+        example: variable
         type: string
       rating:
-        $ref: '#/definitions/ProductRatingSummaryResponse'
+        allOf:
+        - $ref: '#/definitions/ProductRatingSummaryResponse'
+        description: Aggregated review score and count
       slug:
-        example: wireless-headphones
+        description: URL-friendly unique slug
+        example: macbook-pro-16
         type: string
       tags:
+        description: Assigned taxonomy tags
         items:
           $ref: '#/definitions/ProductTagSummary'
         type: array
       title:
-        example: Wireless Headphones
+        description: Product display title
+        example: MacBook Pro 16"
         type: string
       variants:
+        description: List of all active product variants
         items:
           $ref: '#/definitions/ProductVariantResponse'
         type: array
@@ -411,134 +486,203 @@ definitions:
   ProductListItemResponse:
     properties:
       brand:
+        description: Brand name
+        example: Apple
         type: string
       currency:
+        description: Currency ISO code
         example: USD
         type: string
       extractedOriginalPrice:
-        example: 29.99
+        description: Numeric original price
+        example: 2999
         type: number
       extractedPrice:
-        example: 24.99
+        description: Numeric price value
+        example: 2499
         type: number
       originalPrice:
-        example: $29.99
+        description: Formatted crossed-out original price
+        example: $2999.00
         type: string
       price:
-        example: $24.99
+        description: Formatted display price
+        example: $2499.00
         type: string
       rating:
-        $ref: '#/definitions/ProductRatingSummaryResponse'
+        allOf:
+        - $ref: '#/definitions/ProductRatingSummaryResponse'
+        description: Rating summary and score breakdown
       slug:
+        description: URL-friendly unique slug
+        example: macbook-pro-16
         type: string
       thumbnail:
+        description: Product card thumbnail URL
+        example: https://example.com/thumb.jpg
         type: string
       title:
+        description: Product display title
+        example: MacBook Pro 16"
         type: string
     type: object
   ProductRatingSummaryResponse:
     properties:
       averageRating:
+        description: Average review score (1.0 to 5.0)
         example: 4.5
         type: number
       distribution:
         additionalProperties:
           type: integer
+        description: Star rating distribution mapping score (1-5) to frequency
         type: object
       reviewCount:
+        description: Total count of approved reviews
         example: 24
         type: integer
     type: object
   ProductReviewResponse:
     properties:
       body:
+        description: Review text narrative
+        example: The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly.
         type: string
       createdAt:
+        description: Submission timestamp (RFC3339)
+        example: "2026-08-13T07:56:17Z"
         type: string
       id:
+        description: Review UUID
+        example: 92000000-0000-0000-0000-000000000001
         type: string
       orderItemId:
+        description: Verified order item purchase UUID
+        example: 91000000-0000-0000-0000-000000000001
         type: string
       productId:
+        description: Product UUID being reviewed
+        example: 60000000-0000-0000-0000-000000000001
         type: string
       rating:
+        description: Score from 1 to 5 stars
+        example: 5
         type: integer
       status:
+        description: 'Moderation state: pending, approved, rejected'
+        example: approved
         type: string
       title:
+        description: Optional review heading title
+        example: Unbelievable performance!
         type: string
       updatedAt:
+        description: Last modified timestamp (RFC3339)
+        example: "2026-08-13T07:56:17Z"
         type: string
       userId:
+        description: Author customer UUID
+        example: 10000000-0000-0000-0000-000000000002
         type: string
     type: object
   ProductTagSummary:
     properties:
       id:
+        description: Tag UUID
+        example: 50000000-0000-0000-0000-000000000001
         type: string
       name:
+        description: Tag name
+        example: Featured
         type: string
     type: object
   ProductVariantResponse:
     properties:
       attributes:
         additionalProperties: {}
+        description: Custom variant attributes (e.g. {"color":"Black","ram":"18GB"})
         type: object
       currency:
+        description: Currency ISO code
         example: USD
         type: string
       extractedOriginalPrice:
-        example: 29.99
+        description: Numeric original MSRP price
+        example: 2999
         type: number
       extractedPrice:
-        example: 24.99
+        description: Numeric price value
+        example: 2499
         type: number
       id:
+        description: Variant UUID
+        example: 70000000-0000-0000-0000-000000000001
         type: string
       isDefault:
+        description: True if this variant is the default selection on product pages
+        example: true
         type: boolean
       media:
+        description: Associated media gallery
         items:
           $ref: '#/definitions/VariantMediaSummary'
         type: array
       originalPrice:
-        example: $29.99
+        description: Formatted crossed-out/original MSRP price
+        example: $2999.00
         type: string
       price:
-        example: $24.99
+        description: Formatted display price
+        example: $2499.00
         type: string
       sku:
+        description: Unique Stock Keeping Unit
+        example: MAC-PRO-16-BLK-18
         type: string
       stock:
-        $ref: '#/definitions/PublicStockSummary'
+        allOf:
+        - $ref: '#/definitions/PublicStockSummary'
+        description: Live customer-facing stock availability
       thumbnail:
+        description: Primary variant thumbnail URL
+        example: https://example.com/thumb.jpg
         type: string
       title:
+        description: Variant option title (e.g. "Space Black, 18GB RAM")
+        example: Space Black, 18GB RAM, 512GB SSD
         type: string
     type: object
   PublicCategoryResponse:
     properties:
       id:
-        example: prod_cat_123
+        description: Public category identifier
+        example: 40000000-0000-0000-0000-000000000002
         type: string
       name:
+        description: Category display name
         example: Electronics
         type: string
     type: object
   PublicStockResponse:
     properties:
       availableQuantity:
-        example: 45
+        description: Units available for customer checkout
+        example: 50
         type: integer
       isInStock:
+        description: True if availableQuantity > 0
         example: true
         type: boolean
     type: object
   PublicStockSummary:
     properties:
       availableQuantity:
+        description: Quantity available for customer purchase
+        example: 50
         type: integer
       isInStock:
+        description: True if availableQuantity > 0
+        example: true
         type: boolean
     type: object
   RefreshTokenRequest:
@@ -556,34 +700,44 @@ definitions:
   ReviewResponse:
     properties:
       body:
-        example: The sound quality is top notch.
+        description: Review detailed text
+        example: The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly.
         type: string
       createdAt:
-        example: "2026-08-10T15:00:00Z"
+        description: Submission timestamp (RFC3339)
+        example: "2026-08-13T07:56:17Z"
         type: string
       id:
-        example: 8f123456-e89b-12d3-a456-426614174000
+        description: Review UUID
+        example: 92000000-0000-0000-0000-000000000001
         type: string
       orderItemId:
-        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        description: Verified Order Item purchase UUID
+        example: 91000000-0000-0000-0000-000000000001
         type: string
       productId:
-        example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
+        description: Reviewed Product UUID
+        example: 60000000-0000-0000-0000-000000000001
         type: string
       rating:
+        description: Star score (1-5)
         example: 5
         type: integer
       status:
-        example: pending
+        description: 'Moderation status: pending, approved, rejected'
+        example: approved
         type: string
       title:
-        example: Amazing headphones!
+        description: Optional review headline
+        example: Unbelievable performance!
         type: string
       updatedAt:
-        example: "2026-08-10T15:00:00Z"
+        description: Last updated timestamp (RFC3339)
+        example: "2026-08-13T07:56:17Z"
         type: string
       userId:
-        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
+        description: Author Customer UUID
+        example: 10000000-0000-0000-0000-000000000002
         type: string
     type: object
   SessionType:
@@ -631,16 +785,28 @@ definitions:
   StorageObjectResponse:
     properties:
       bucket:
+        description: Storage bucket name
+        example: product-media
         type: string
       contentType:
+        description: MIME content type
+        example: image/webp
         type: string
       fileSize:
+        description: File size in bytes
+        example: 1048576
         type: integer
       id:
+        description: Internal object storage UUID
+        example: 80000000-0000-0000-0000-000000000001
         type: string
       key:
+        description: Storage object key / filepath
+        example: variants/70000000/image.webp
         type: string
       publicUrl:
+        description: Public CDN URL
+        example: https://example.com/media/image.webp
         type: string
     type: object
   SuccessResponse:
@@ -653,10 +819,12 @@ definitions:
   TagResponse:
     properties:
       id:
-        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        description: Unique UUID identifier of the tag
+        example: 50000000-0000-0000-0000-000000000001
         type: string
       name:
-        example: black-friday
+        description: Tag label name
+        example: Featured
         type: string
     type: object
   UnauthorizedErrorResponse:
@@ -680,7 +848,9 @@ definitions:
   UpdateQuantityRequest:
     properties:
       quantity:
-        example: 5
+        description: New total quantity desired for this cart item (must be at least
+          1)
+        example: 3
         type: integer
     required:
     - quantity
@@ -688,15 +858,18 @@ definitions:
   UpdateReviewRequest:
     properties:
       body:
-        example: Updated review body.
+        description: Updated review feedback narrative
+        example: Updated feedback after 3 months of continuous daily use.
         type: string
       rating:
-        example: 4
+        description: Updated star score between 1 and 5
+        example: 5
         maximum: 5
         minimum: 1
         type: integer
       title:
-        example: Updated title
+        description: Updated review headline title
+        example: Updated review headline
         type: string
     type: object
   UserSession:
@@ -721,76 +894,107 @@ definitions:
   VariantMediaResponse:
     properties:
       id:
-        example: 8f123456-e89b-12d3-a456-426614174000
+        description: Media record UUID
+        example: 80000000-0000-0000-0000-000000000001
         type: string
       mediaType:
+        description: Media classification (image or video)
         example: image
         type: string
       object:
-        $ref: '#/definitions/StorageObjectResponse'
+        allOf:
+        - $ref: '#/definitions/StorageObjectResponse'
+        description: Detailed storage file metadata
       objectId:
-        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
+        description: Underlying storage object UUID
+        example: 80000000-0000-0000-0000-000000000001
         type: string
       publicId:
-        example: 8f123456-e89b-12d3-a456-426614174000
+        description: Public customer-facing UUID
+        example: 80000000-0000-0000-0000-000000000001
         type: string
       sortOrder:
-        example: 0
+        description: Display sequence sort order
+        example: 1
         type: integer
       variantId:
-        example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
+        description: Associated variant UUID
+        example: 70000000-0000-0000-0000-000000000001
         type: string
     type: object
   VariantMediaSummary:
     properties:
       id:
+        description: Media record UUID
+        example: 80000000-0000-0000-0000-000000000001
         type: string
       mediaType:
+        description: Media MIME type or format (e.g. image/jpeg, video/mp4)
+        example: image/jpeg
         type: string
       sortOrder:
+        description: Display sequence sort order
+        example: 1
         type: integer
       url:
+        description: Public CDN or storage URL
+        example: https://example.com/media/headphones.jpg
         type: string
     type: object
   VariantResponse:
     properties:
       attributes:
         additionalProperties: {}
+        description: Custom variant attributes
         type: object
       currency:
+        description: Currency ISO code
         example: USD
         type: string
       extractedOriginalPrice:
-        example: 29.99
+        description: Numeric original price value
+        example: 2999
         type: number
       extractedPrice:
-        example: 24.99
+        description: Numeric active price value
+        example: 2499
         type: number
       id:
-        example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
+        description: Variant UUID
+        example: 70000000-0000-0000-0000-000000000001
         type: string
       isDefault:
-        example: false
+        description: True if this is the default variant
+        example: true
         type: boolean
       media:
+        description: Attached gallery media assets
         items:
           $ref: '#/definitions/VariantMediaSummary'
         type: array
       originalPrice:
-        example: $29.99
+        description: Formatted original crossed-out price
+        example: $2999.00
         type: string
       price:
-        example: $24.99
+        description: Formatted active display price
+        example: $2499.00
         type: string
       productId:
-        example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
+        description: Parent product UUID
+        example: 60000000-0000-0000-0000-000000000001
         type: string
       sku:
+        description: Stock Keeping Unit
+        example: MAC-PRO-16-BLK-18
         type: string
       thumbnail:
+        description: Primary thumbnail image URL
+        example: https://example.com/thumb.jpg
         type: string
       title:
-        example: Red / XL
+        description: Variant title
+        example: Space Black, 18GB RAM, 512GB SSD
         type: string
     type: object
   VerifyChallengeRequest:

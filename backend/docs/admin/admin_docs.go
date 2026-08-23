@@ -2807,10 +2807,12 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "quantity": {
+                    "description": "Adjustment quantity delta (positive to increase, negative to decrease)",
                     "type": "integer",
                     "example": 50
                 },
                 "reason": {
+                    "description": "Business audit reason (restock, sale, return, adjustment, reservation_release)",
                     "type": "string",
                     "enum": [
                         "restock",
@@ -2827,36 +2829,42 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "createdAt": {
+                    "description": "Timestamp when brand was created (RFC3339)",
                     "type": "string",
                     "example": "2026-07-01T05:04:38Z"
                 },
                 "deletedAt": {
+                    "description": "Timestamp when brand was soft-deleted, if applicable",
                     "type": "string",
                     "example": "2026-07-01T05:04:38Z"
                 },
                 "id": {
-                    "description": "Internal ID of the brand",
+                    "description": "Internal database ID of the brand",
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
                 "link": {
+                    "description": "Official website URL",
                     "type": "string",
-                    "example": "https://nvidia.com"
+                    "example": "https://apple.com"
                 },
                 "logoObjectId": {
+                    "description": "Object storage UUID of the uploaded logo file",
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
                 "name": {
+                    "description": "Brand/manufacturer name",
                     "type": "string",
-                    "example": "nvidia"
+                    "example": "Apple"
                 },
                 "publicId": {
-                    "description": "Public ID of the brand",
+                    "description": "Public customer-facing UUID identifier",
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
                 "updatedAt": {
+                    "description": "Timestamp when brand was last updated (RFC3339)",
                     "type": "string",
                     "example": "2026-07-01T05:04:38Z"
                 }
@@ -2866,26 +2874,32 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "createdAt": {
+                    "description": "Timestamp when category was created (RFC3339)",
                     "type": "string",
                     "example": "2026-06-30T15:47:19Z"
                 },
                 "deletedAt": {
+                    "description": "Timestamp when category was soft-deleted, if applicable",
                     "type": "string",
                     "example": "2026-07-01T10:00:00Z"
                 },
                 "id": {
+                    "description": "Internal database UUID of the category",
                     "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                    "example": "40000000-0000-0000-0000-000000000002"
                 },
                 "name": {
+                    "description": "Category name",
                     "type": "string",
                     "example": "Electronics"
                 },
                 "parentId": {
+                    "description": "Optional UUID of the parent category for nested tree hierarchies",
                     "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                    "example": "40000000-0000-0000-0000-000000000001"
                 },
                 "updatedAt": {
+                    "description": "Timestamp when category was last updated (RFC3339)",
                     "type": "string",
                     "example": "2026-06-30T15:47:19Z"
                 }
@@ -2895,70 +2909,104 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "brand": {
-                    "$ref": "#/definitions/ProductBrandSummary"
+                    "description": "Brand summary",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductBrandSummary"
+                        }
+                    ]
                 },
                 "brandId": {
-                    "type": "string"
+                    "description": "Associated brand ID",
+                    "type": "string",
+                    "example": "30000000-0000-0000-0000-000000000001"
                 },
                 "category": {
-                    "$ref": "#/definitions/ProductCategorySummary"
+                    "description": "Category summary",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductCategorySummary"
+                        }
+                    ]
                 },
                 "categoryId": {
-                    "type": "string"
+                    "description": "Associated category ID",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
                 },
                 "createdAt": {
+                    "description": "Timestamp when product was created (RFC3339)",
                     "type": "string",
                     "example": "2026-08-05T19:00:00Z"
                 },
                 "deletedAt": {
+                    "description": "Timestamp when product was soft-deleted, if applicable",
                     "type": "string",
                     "example": "2026-08-05T19:30:00Z"
                 },
                 "description": {
-                    "type": "string"
+                    "description": "Product description",
+                    "type": "string",
+                    "example": "Supercharged by M3 Pro or M3 Max."
                 },
                 "highlights": {
+                    "description": "Bullet highlights",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
                 "id": {
+                    "description": "Product database UUID",
                     "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                    "example": "60000000-0000-0000-0000-000000000001"
                 },
                 "productType": {
-                    "type": "string"
+                    "description": "Product classification: simple or variable",
+                    "type": "string",
+                    "example": "variable"
                 },
                 "slug": {
-                    "type": "string"
+                    "description": "URL-friendly slug",
+                    "type": "string",
+                    "example": "macbook-pro-16"
                 },
                 "status": {
+                    "description": "Publication status: draft, published, archived",
                     "allOf": [
                         {
                             "$ref": "#/definitions/PublicationStatus"
                         }
                     ],
-                    "example": "draft"
+                    "example": "published"
                 },
                 "tags": {
+                    "description": "Product tags",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/ProductTagSummary"
                     }
                 },
                 "thumbnail": {
-                    "$ref": "#/definitions/StorageObjectResponse"
+                    "description": "Primary thumbnail storage object",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/StorageObjectResponse"
+                        }
+                    ]
                 },
                 "title": {
+                    "description": "Product title",
                     "type": "string",
-                    "example": "Wireless Headphones"
+                    "example": "MacBook Pro 16\""
                 },
                 "updatedAt": {
+                    "description": "Timestamp when product was last updated (RFC3339)",
                     "type": "string",
                     "example": "2026-08-05T19:00:00Z"
                 },
                 "variants": {
+                    "description": "Full administrative variant details",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/AdminProductVariantResponse"
@@ -2970,52 +3018,77 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "attributes": {
+                    "description": "Custom attributes",
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "currency": {
+                    "description": "Currency ISO code",
                     "type": "string",
                     "example": "USD"
                 },
                 "extractedOriginalPrice": {
+                    "description": "Numeric original price",
                     "type": "number",
-                    "example": 29.99
+                    "example": 2999
                 },
                 "extractedPrice": {
+                    "description": "Numeric price value",
                     "type": "number",
-                    "example": 24.99
+                    "example": 2499
                 },
                 "id": {
-                    "type": "string"
+                    "description": "Variant database UUID",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
                 },
                 "isDefault": {
-                    "type": "boolean"
+                    "description": "Default variant flag",
+                    "type": "boolean",
+                    "example": true
                 },
                 "media": {
+                    "description": "Media gallery",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/VariantMediaSummary"
                     }
                 },
                 "originalPrice": {
+                    "description": "Formatted original price",
                     "type": "string",
-                    "example": "$29.99"
+                    "example": "$2999.00"
                 },
                 "price": {
+                    "description": "Formatted display price",
                     "type": "string",
-                    "example": "$24.99"
+                    "example": "$2499.00"
                 },
                 "sku": {
-                    "type": "string"
+                    "description": "Stock Keeping Unit",
+                    "type": "string",
+                    "example": "MAC-PRO-16-BLK-18"
                 },
                 "stock": {
-                    "$ref": "#/definitions/AdminStockSummary"
+                    "description": "Full administrative inventory breakdown",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/AdminStockSummary"
+                        }
+                    ]
                 },
                 "thumbnail": {
-                    "$ref": "#/definitions/StorageObjectResponse"
+                    "description": "Storage object metadata for thumbnail",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/StorageObjectResponse"
+                        }
+                    ]
                 },
                 "title": {
-                    "type": "string"
+                    "description": "Variant title",
+                    "type": "string",
+                    "example": "Space Black, 18GB RAM, 512GB SSD"
                 }
             }
         },
@@ -3023,16 +3096,24 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "availableQuantity": {
-                    "type": "integer"
+                    "description": "Salable stock (onHand - reserved)",
+                    "type": "integer",
+                    "example": 50
                 },
                 "isInStock": {
-                    "type": "boolean"
+                    "description": "True if availableQuantity \u003e 0",
+                    "type": "boolean",
+                    "example": true
                 },
                 "onHandQuantity": {
-                    "type": "integer"
+                    "description": "Total physical stock in warehouse",
+                    "type": "integer",
+                    "example": 60
                 },
                 "reservedQuantity": {
-                    "type": "integer"
+                    "description": "Stock reserved in active customer orders/checkouts",
+                    "type": "integer",
+                    "example": 10
                 }
             }
         },
@@ -3040,22 +3121,27 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "createdAt": {
+                    "description": "Timestamp when tag was created (RFC3339)",
                     "type": "string",
                     "example": "2026-06-30T15:47:19Z"
                 },
                 "deletedAt": {
+                    "description": "Timestamp when tag was soft-deleted, if applicable",
                     "type": "string",
                     "example": "2026-06-30T15:47:19Z"
                 },
                 "id": {
+                    "description": "Unique database UUID identifier of the tag",
                     "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                    "example": "50000000-0000-0000-0000-000000000001"
                 },
                 "name": {
+                    "description": "Tag label name",
                     "type": "string",
-                    "example": "black-friday"
+                    "example": "Featured"
                 },
                 "updatedAt": {
+                    "description": "Timestamp when tag was last updated (RFC3339)",
                     "type": "string",
                     "example": "2026-06-30T15:47:19Z"
                 }
@@ -3065,67 +3151,87 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "attributes": {
+                    "description": "Custom variant attributes",
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "createdAt": {
+                    "description": "Timestamp when variant was created (RFC3339)",
                     "type": "string",
                     "example": "2026-08-02T16:00:00Z"
                 },
                 "currency": {
+                    "description": "Currency ISO code",
                     "type": "string",
                     "example": "USD"
                 },
                 "deletedAt": {
+                    "description": "Timestamp when variant was soft-deleted, if applicable",
                     "type": "string",
                     "example": "2026-08-02T16:15:00Z"
                 },
                 "extractedOriginalPrice": {
+                    "description": "Numeric original price value",
                     "type": "number",
-                    "example": 29.99
+                    "example": 2999
                 },
                 "extractedPrice": {
+                    "description": "Numeric active price value",
                     "type": "number",
-                    "example": 24.99
+                    "example": 2499
                 },
                 "id": {
+                    "description": "Variant database UUID",
                     "type": "string",
-                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                    "example": "70000000-0000-0000-0000-000000000001"
                 },
                 "isDefault": {
+                    "description": "True if this is the default variant",
                     "type": "boolean",
-                    "example": false
+                    "example": true
                 },
                 "media": {
+                    "description": "Attached gallery media assets",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/VariantMediaSummary"
                     }
                 },
                 "originalPrice": {
+                    "description": "Formatted original crossed-out price",
                     "type": "string",
-                    "example": "$29.99"
+                    "example": "$2999.00"
                 },
                 "price": {
+                    "description": "Formatted active display price",
                     "type": "string",
-                    "example": "$24.99"
+                    "example": "$2499.00"
                 },
                 "productId": {
+                    "description": "Parent product UUID",
                     "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                    "example": "60000000-0000-0000-0000-000000000001"
                 },
                 "sku": {
+                    "description": "Stock Keeping Unit",
                     "type": "string",
-                    "example": "prod_var_123"
+                    "example": "MAC-PRO-16-BLK-18"
                 },
                 "thumbnail": {
-                    "$ref": "#/definitions/StorageObjectResponse"
+                    "description": "Thumbnail storage object details",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/StorageObjectResponse"
+                        }
+                    ]
                 },
                 "title": {
+                    "description": "Variant title",
                     "type": "string",
-                    "example": "Red / XL"
+                    "example": "Space Black, 18GB RAM, 512GB SSD"
                 },
                 "updatedAt": {
+                    "description": "Timestamp when variant was last updated (RFC3339)",
                     "type": "string",
                     "example": "2026-08-02T16:00:00Z"
                 }
@@ -3139,16 +3245,19 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "mediaType": {
+                    "description": "Media classification (image or video)",
                     "type": "string",
                     "example": "image"
                 },
                 "sortOrder": {
+                    "description": "Presentation sequence position index",
                     "type": "integer",
-                    "example": 0
+                    "example": 1
                 },
                 "storageObjectId": {
+                    "description": "Storage object UUID of the uploaded media file",
                     "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                    "example": "80000000-0000-0000-0000-000000000001"
                 }
             }
         },
@@ -3191,12 +3300,14 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "link": {
+                    "description": "Optional official website URL",
                     "type": "string",
                     "example": "https://apple.com"
                 },
                 "name": {
+                    "description": "Unique brand/manufacturer name",
                     "type": "string",
-                    "example": "apple"
+                    "example": "Apple"
                 }
             }
         },
@@ -3207,10 +3318,14 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "name": {
-                    "type": "string"
+                    "description": "Category name",
+                    "type": "string",
+                    "example": "Laptops"
                 },
                 "parentId": {
-                    "type": "string"
+                    "description": "Optional UUID of parent category",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
                 }
             }
         },
@@ -3223,26 +3338,32 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "brandId": {
+                    "description": "Optional UUID of the brand/manufacturer",
                     "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                    "example": "30000000-0000-0000-0000-000000000001"
                 },
                 "categoryId": {
+                    "description": "Required category UUID",
                     "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                    "example": "40000000-0000-0000-0000-000000000002"
                 },
                 "description": {
+                    "description": "Full product description in markdown or plaintext",
                     "type": "string",
                     "example": "Premium over-ear Bluetooth headphones with active noise cancellation."
                 },
                 "productType": {
+                    "description": "Product classification: 'simple' or 'variable'",
                     "type": "string",
                     "example": "simple"
                 },
                 "slug": {
+                    "description": "Unique URL-friendly product identifier",
                     "type": "string",
                     "example": "wireless-noise-canceling-headphones"
                 },
                 "title": {
+                    "description": "Product display title",
                     "type": "string",
                     "example": "Wireless Noise-Canceling Headphones"
                 }
@@ -3255,32 +3376,39 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "attributes": {
+                    "description": "Custom attributes map",
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "crossedOutPrice": {
+                    "description": "Crossed-out/original MSRP price in cents",
                     "type": "integer",
-                    "example": 3999
+                    "example": 299900
                 },
                 "currency": {
+                    "description": "Currency ISO code",
                     "type": "string",
                     "example": "USD"
                 },
                 "initialStock": {
+                    "description": "Initial stock inventory count to credit to warehouse",
                     "type": "integer",
-                    "example": 100
+                    "example": 50
                 },
                 "isDefault": {
+                    "description": "Flag if this variant should be the default selection",
                     "type": "boolean",
-                    "example": false
+                    "example": true
                 },
                 "price": {
+                    "description": "Price in cents (e.g. 249900 = $2499.00)",
                     "type": "integer",
-                    "example": 2999
+                    "example": 249900
                 },
                 "title": {
+                    "description": "Variant option title (e.g. \"Space Black / 18GB RAM\")",
                     "type": "string",
-                    "example": "Black / XL"
+                    "example": "Space Black / 18GB RAM / 512GB SSD"
                 }
             }
         },
@@ -3291,8 +3419,9 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "name": {
+                    "description": "Unique tag label name (e.g. Featured, Sale, New Arrival)",
                     "type": "string",
-                    "example": "black-friday"
+                    "example": "Featured"
                 }
             }
         },
@@ -3303,36 +3432,44 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "attributes": {
+                    "description": "Key-value attribute specifications (e.g. {\"color\":\"Black\",\"ram\":\"18GB\"})",
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "crossedOutPrice": {
+                    "description": "Crossed-out/original MSRP price in cents",
                     "type": "integer",
-                    "example": 3999
+                    "example": 299900
                 },
                 "currency": {
+                    "description": "Currency ISO code",
                     "type": "string",
                     "example": "USD"
                 },
                 "isDefault": {
+                    "description": "True if this is the default selected variant on storefronts",
                     "type": "boolean",
-                    "example": false
+                    "example": true
                 },
                 "price": {
+                    "description": "Price in cents (e.g. 249900 = $2499.00)",
                     "type": "integer",
-                    "example": 2999
+                    "example": 249900
                 },
                 "sku": {
+                    "description": "Optional custom SKU identifier",
                     "type": "string",
-                    "example": "TSHIRT-RED-XL"
+                    "example": "MAC-PRO-16-BLK-18"
                 },
                 "thumbnailObjectId": {
+                    "description": "Storage object UUID for the primary thumbnail",
                     "type": "string",
                     "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
                 },
                 "title": {
+                    "description": "Variant display title",
                     "type": "string",
-                    "example": "Red / XL"
+                    "example": "Space Black, 18GB RAM, 512GB SSD"
                 }
             }
         },
@@ -3389,22 +3526,27 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "createdAt": {
+                    "description": "Transaction timestamp (RFC3339)",
                     "type": "string",
                     "example": "2026-08-15T12:00:00Z"
                 },
                 "id": {
+                    "description": "Ledger entry record UUID",
                     "type": "string",
                     "example": "80000000-0000-0000-0000-000000000001"
                 },
                 "quantity": {
+                    "description": "Signed quantity adjustment (+/- units)",
                     "type": "integer",
                     "example": 50
                 },
                 "reason": {
+                    "description": "Adjustment reason classification",
                     "type": "string",
                     "example": "restock"
                 },
                 "variantId": {
+                    "description": "Associated variant UUID",
                     "type": "string",
                     "example": "70000000-0000-0000-0000-000000000001"
                 }
@@ -3414,22 +3556,27 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "availableQuantity": {
+                    "description": "Salable stock (onHand - reserved)",
                     "type": "integer",
-                    "example": 45
+                    "example": 50
                 },
                 "isInStock": {
+                    "description": "True if availableQuantity \u003e 0",
                     "type": "boolean",
                     "example": true
                 },
                 "onHandQuantity": {
+                    "description": "Physical units counted on warehouse shelves",
                     "type": "integer",
-                    "example": 50
+                    "example": 60
                 },
                 "reservedQuantity": {
+                    "description": "Units currently reserved in open orders / pending checkouts",
                     "type": "integer",
-                    "example": 5
+                    "example": 10
                 },
                 "variantId": {
+                    "description": "Variant UUID",
                     "type": "string",
                     "example": "70000000-0000-0000-0000-000000000001"
                 }
@@ -3657,13 +3804,19 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "string"
+                    "description": "Brand UUID",
+                    "type": "string",
+                    "example": "30000000-0000-0000-0000-000000000001"
                 },
                 "link": {
-                    "type": "string"
+                    "description": "Official website URL",
+                    "type": "string",
+                    "example": "https://apple.com"
                 },
                 "name": {
-                    "type": "string"
+                    "description": "Brand name",
+                    "type": "string",
+                    "example": "Apple"
                 }
             }
         },
@@ -3697,10 +3850,14 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "string"
+                    "description": "Category UUID",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
                 },
                 "name": {
-                    "type": "string"
+                    "description": "Category name",
+                    "type": "string",
+                    "example": "Electronics"
                 }
             }
         },
@@ -3708,10 +3865,14 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "string"
+                    "description": "Tag UUID",
+                    "type": "string",
+                    "example": "50000000-0000-0000-0000-000000000001"
                 },
                 "name": {
-                    "type": "string"
+                    "description": "Tag name",
+                    "type": "string",
+                    "example": "Featured"
                 }
             }
         },
@@ -3746,7 +3907,9 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "categoryId": {
-                    "type": "string"
+                    "description": "Target category UUID",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
                 }
             }
         },
@@ -3757,10 +3920,14 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "tagIds": {
+                    "description": "List of Tag UUIDs to associate with the product",
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "['50000000-0000-0000-0000-000000000001']"
+                    ]
                 }
             }
         },
@@ -3771,10 +3938,14 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "orderedMediaIds": {
+                    "description": "Array of media UUIDs in desired presentation sequence",
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "['80000000-0000-0000-0000-000000000001']"
+                    ]
                 }
             }
         },
@@ -3782,44 +3953,54 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "body": {
+                    "description": "Review detailed text",
                     "type": "string",
-                    "example": "The sound quality is top notch."
+                    "example": "The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."
                 },
                 "createdAt": {
+                    "description": "Submission timestamp (RFC3339)",
                     "type": "string",
-                    "example": "2026-08-10T15:00:00Z"
+                    "example": "2026-08-13T07:56:17Z"
                 },
                 "id": {
+                    "description": "Review UUID",
                     "type": "string",
-                    "example": "8f123456-e89b-12d3-a456-426614174000"
+                    "example": "92000000-0000-0000-0000-000000000001"
                 },
                 "orderItemId": {
+                    "description": "Verified Order Item purchase UUID",
                     "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                    "example": "91000000-0000-0000-0000-000000000001"
                 },
                 "productId": {
+                    "description": "Reviewed Product UUID",
                     "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                    "example": "60000000-0000-0000-0000-000000000001"
                 },
                 "rating": {
+                    "description": "Star score (1-5)",
                     "type": "integer",
                     "example": 5
                 },
                 "status": {
+                    "description": "Moderation status: pending, approved, rejected",
                     "type": "string",
-                    "example": "pending"
+                    "example": "approved"
                 },
                 "title": {
+                    "description": "Optional review headline",
                     "type": "string",
-                    "example": "Amazing headphones!"
+                    "example": "Unbelievable performance!"
                 },
                 "updatedAt": {
+                    "description": "Last updated timestamp (RFC3339)",
                     "type": "string",
-                    "example": "2026-08-10T15:00:00Z"
+                    "example": "2026-08-13T07:56:17Z"
                 },
                 "userId": {
+                    "description": "Author Customer UUID",
                     "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                    "example": "10000000-0000-0000-0000-000000000002"
                 }
             }
         },
@@ -3830,7 +4011,9 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "variantId": {
-                    "type": "string"
+                    "description": "Variant UUID to set as default",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
                 }
             }
         },
@@ -3866,22 +4049,34 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "bucket": {
-                    "type": "string"
+                    "description": "Storage bucket name",
+                    "type": "string",
+                    "example": "product-media"
                 },
                 "contentType": {
-                    "type": "string"
+                    "description": "MIME content type",
+                    "type": "string",
+                    "example": "image/webp"
                 },
                 "fileSize": {
-                    "type": "integer"
+                    "description": "File size in bytes",
+                    "type": "integer",
+                    "example": 1048576
                 },
                 "id": {
-                    "type": "string"
+                    "description": "Internal object storage UUID",
+                    "type": "string",
+                    "example": "80000000-0000-0000-0000-000000000001"
                 },
                 "key": {
-                    "type": "string"
+                    "description": "Storage object key / filepath",
+                    "type": "string",
+                    "example": "variants/70000000/image.webp"
                 },
                 "publicUrl": {
-                    "type": "string"
+                    "description": "Public CDN URL",
+                    "type": "string",
+                    "example": "https://example.com/media/image.webp"
                 }
             }
         },
@@ -3902,16 +4097,19 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "link": {
+                    "description": "Updated official website URL",
                     "type": "string",
                     "example": "https://apple.com"
                 },
                 "logoObjectId": {
+                    "description": "Object storage UUID of the brand logo",
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
                 "name": {
+                    "description": "Updated brand name",
                     "type": "string",
-                    "example": "apple"
+                    "example": "Apple Inc."
                 }
             }
         },
@@ -3919,12 +4117,14 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "name": {
+                    "description": "Updated category name",
                     "type": "string",
-                    "example": "Electronics"
+                    "example": "Gaming Laptops"
                 },
                 "parentId": {
+                    "description": "Updated parent category UUID",
                     "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                    "example": "40000000-0000-0000-0000-000000000002"
                 }
             }
         },
@@ -3946,26 +4146,40 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "brandId": {
-                    "type": "string"
+                    "description": "Optional updated brand UUID",
+                    "type": "string",
+                    "example": "30000000-0000-0000-0000-000000000001"
                 },
                 "categoryId": {
-                    "type": "string"
+                    "description": "Optional updated category UUID",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
                 },
                 "description": {
-                    "type": "string"
+                    "description": "Updated product description",
+                    "type": "string",
+                    "example": "Updated description with enhanced specs."
                 },
                 "highlights": {
+                    "description": "Key product highlight bullet points",
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "['Active Noise Cancellation'",
+                        "'Up to 30h battery']"
+                    ]
                 },
                 "productType": {
+                    "description": "Product type classification: 'simple' or 'variable'",
                     "type": "string",
                     "example": "simple"
                 },
                 "title": {
-                    "type": "string"
+                    "description": "Updated product title",
+                    "type": "string",
+                    "example": "Wireless Noise-Canceling Headphones Pro"
                 }
             }
         },
@@ -3976,6 +4190,7 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "status": {
+                    "description": "Moderation state: pending, approved, rejected",
                     "type": "string",
                     "enum": [
                         "pending",
@@ -3990,8 +4205,9 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "name": {
+                    "description": "Updated tag label name",
                     "type": "string",
-                    "example": "best-seller"
+                    "example": "Best Seller"
                 }
             }
         },
@@ -3999,36 +4215,44 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "attributes": {
+                    "description": "Updated attributes map",
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "crossedOutPrice": {
+                    "description": "Updated original price in cents",
                     "type": "integer",
-                    "example": 4499
+                    "example": 299900
                 },
                 "currency": {
+                    "description": "Currency ISO code",
                     "type": "string",
                     "example": "USD"
                 },
                 "isDefault": {
+                    "description": "Updated default selection flag",
                     "type": "boolean",
                     "example": true
                 },
                 "price": {
+                    "description": "Updated price in cents",
                     "type": "integer",
-                    "example": 3499
+                    "example": 249900
                 },
                 "sku": {
+                    "description": "Updated SKU identifier",
                     "type": "string",
-                    "example": "TSHIRT-RED-XXL"
+                    "example": "MAC-PRO-16-BLK-18"
                 },
                 "thumbnailObjectId": {
+                    "description": "Updated thumbnail storage object UUID",
                     "type": "string",
                     "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
                 },
                 "title": {
+                    "description": "Updated variant display title",
                     "type": "string",
-                    "example": "Red / XXL"
+                    "example": "Space Black, 18GB RAM, 512GB SSD"
                 }
             }
         },
@@ -4036,31 +4260,42 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "id": {
+                    "description": "Media record UUID",
                     "type": "string",
-                    "example": "8f123456-e89b-12d3-a456-426614174000"
+                    "example": "80000000-0000-0000-0000-000000000001"
                 },
                 "mediaType": {
+                    "description": "Media classification (image or video)",
                     "type": "string",
                     "example": "image"
                 },
                 "object": {
-                    "$ref": "#/definitions/StorageObjectResponse"
+                    "description": "Detailed storage file metadata",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/StorageObjectResponse"
+                        }
+                    ]
                 },
                 "objectId": {
+                    "description": "Underlying storage object UUID",
                     "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                    "example": "80000000-0000-0000-0000-000000000001"
                 },
                 "publicId": {
+                    "description": "Public customer-facing UUID",
                     "type": "string",
-                    "example": "8f123456-e89b-12d3-a456-426614174000"
+                    "example": "80000000-0000-0000-0000-000000000001"
                 },
                 "sortOrder": {
+                    "description": "Display sequence sort order",
                     "type": "integer",
-                    "example": 0
+                    "example": 1
                 },
                 "variantId": {
+                    "description": "Associated variant UUID",
                     "type": "string",
-                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                    "example": "70000000-0000-0000-0000-000000000001"
                 }
             }
         },
@@ -4068,16 +4303,24 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "string"
+                    "description": "Media record UUID",
+                    "type": "string",
+                    "example": "80000000-0000-0000-0000-000000000001"
                 },
                 "mediaType": {
-                    "type": "string"
+                    "description": "Media MIME type or format (e.g. image/jpeg, video/mp4)",
+                    "type": "string",
+                    "example": "image/jpeg"
                 },
                 "sortOrder": {
-                    "type": "integer"
+                    "description": "Display sequence sort order",
+                    "type": "integer",
+                    "example": 1
                 },
                 "url": {
-                    "type": "string"
+                    "description": "Public CDN or storage URL",
+                    "type": "string",
+                    "example": "https://example.com/media/headphones.jpg"
                 }
             }
         },
@@ -4085,56 +4328,71 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "attributes": {
+                    "description": "Custom variant attributes",
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "currency": {
+                    "description": "Currency ISO code",
                     "type": "string",
                     "example": "USD"
                 },
                 "extractedOriginalPrice": {
+                    "description": "Numeric original price value",
                     "type": "number",
-                    "example": 29.99
+                    "example": 2999
                 },
                 "extractedPrice": {
+                    "description": "Numeric active price value",
                     "type": "number",
-                    "example": 24.99
+                    "example": 2499
                 },
                 "id": {
+                    "description": "Variant UUID",
                     "type": "string",
-                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                    "example": "70000000-0000-0000-0000-000000000001"
                 },
                 "isDefault": {
+                    "description": "True if this is the default variant",
                     "type": "boolean",
-                    "example": false
+                    "example": true
                 },
                 "media": {
+                    "description": "Attached gallery media assets",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/VariantMediaSummary"
                     }
                 },
                 "originalPrice": {
+                    "description": "Formatted original crossed-out price",
                     "type": "string",
-                    "example": "$29.99"
+                    "example": "$2999.00"
                 },
                 "price": {
+                    "description": "Formatted active display price",
                     "type": "string",
-                    "example": "$24.99"
+                    "example": "$2499.00"
                 },
                 "productId": {
+                    "description": "Parent product UUID",
                     "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                    "example": "60000000-0000-0000-0000-000000000001"
                 },
                 "sku": {
-                    "type": "string"
+                    "description": "Stock Keeping Unit",
+                    "type": "string",
+                    "example": "MAC-PRO-16-BLK-18"
                 },
                 "thumbnail": {
-                    "type": "string"
+                    "description": "Primary thumbnail image URL",
+                    "type": "string",
+                    "example": "https://example.com/thumb.jpg"
                 },
                 "title": {
+                    "description": "Variant title",
                     "type": "string",
-                    "example": "Red / XL"
+                    "example": "Space Black, 18GB RAM, 512GB SSD"
                 }
             }
         }
