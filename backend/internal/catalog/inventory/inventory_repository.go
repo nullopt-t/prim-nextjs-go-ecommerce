@@ -71,12 +71,14 @@ func (r *InventoryRepository) GetStock(
 ) (*model.InventoryStock, error) {
 	query := `
 		SELECT
-			$1::uuid AS variant_id,
-			COALESCE((SELECT SUM(quantity) FROM inventory_ledgers WHERE variant_id = $1), 0)::int AS on_hand_quantity,
-			COALESCE((SELECT SUM(quantity) FROM inventory_reservations WHERE variant_id = $1 AND released_at IS NULL AND expires_at > now()), 0)::int AS reserved_quantity
+			pv.id AS variant_id,
+			COALESCE((SELECT SUM(quantity) FROM inventory_ledgers WHERE variant_id = pv.id), 0)::int AS on_hand_quantity,
+			COALESCE((SELECT SUM(quantity) FROM inventory_reservations WHERE variant_id = pv.id AND released_at IS NULL AND expires_at > now()), 0)::int AS reserved_quantity
+		FROM product_variants pv
+		WHERE pv.id = $1 AND pv.deleted_at IS NULL
 	`
 
-	stock := &model.InventoryStock{VariantID: variantID}
+	stock := &model.InventoryStock{}
 	err := qe.QueryRow(ctx, query, variantID).Scan(&stock.VariantID, &stock.OnHandQuantity, &stock.ReservedQuantity)
 	if err != nil {
 		return nil, fmt.Errorf("get inventory stock: %w", err)
