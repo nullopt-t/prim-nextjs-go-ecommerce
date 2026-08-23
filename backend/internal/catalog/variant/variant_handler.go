@@ -285,7 +285,7 @@ func mapVariantMediaResponse(m *model.VariantMedia) VariantMediaResponse {
 //
 //	@Summary		Create a product variant
 //	@Description	Adds a new SKU/variant to an existing product (e.g., specific color, size, price, or custom attributes).
-//	@Tags			Product Variants
+//	@Tags			Admin Product Variants
 //	@Accept			json
 //	@Produce		json
 //	@Param			product_id	path		string									true	"Product UUID"	format(uuid)
@@ -409,7 +409,7 @@ func (vh *VariantHandler) GetVariantBySKU(c *gin.Context) {
 //
 //	@Summary		Update product variant attributes
 //	@Description	Updates specific fields of an existing variant such as SKU, title, price, crossed-out price, currency, attributes, or default status.
-//	@Tags			Product Variants
+//	@Tags			Admin Product Variants
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string							true	"Variant UUID"	format(uuid)
@@ -473,7 +473,7 @@ func (vh *VariantHandler) UpdateVariantByID(c *gin.Context) {
 //
 //	@Summary		Soft-delete a product variant
 //	@Description	Marks an active product variant as soft-deleted (`deleted_at = NOW()`), removing it from active product options.
-//	@Tags			Product Variants
+//	@Tags			Admin Product Variants
 //	@Produce		json
 //	@Param			id	path		string							true	"Variant UUID"	format(uuid)
 //	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
@@ -503,7 +503,7 @@ func (vh *VariantHandler) DeleteVariantByID(c *gin.Context) {
 //
 //	@Summary		Restore a soft-deleted product variant
 //	@Description	Restores a soft-deleted product variant back to active status (`deleted_at = NULL`).
-//	@Tags			Product Variants
+//	@Tags			Admin Product Variants
 //	@Produce		json
 //	@Param			id	path		string							true	"Variant UUID"	format(uuid)
 //	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
@@ -581,7 +581,7 @@ func (vh *VariantHandler) ListVariantsByProductID(c *gin.Context) {
 //
 //	@Summary		List all variants for a product including soft-deleted ones (Admin)
 //	@Description	Returns a paginated list of all variants associated with a specific product including soft-deleted records for administrator management.
-//	@Tags			Product Variants
+//	@Tags			Admin Product Variants
 //	@Produce		json
 //	@Param			product_id	path		string																	true	"Product UUID"	format(uuid)
 //	@Param			q			query		pagination.ListQuery													true	"Pagination, search query, and sorting parameters"
@@ -627,7 +627,7 @@ func (vh *VariantHandler) AdminListVariantsByProductID(c *gin.Context) {
 //
 //	@Summary		Attach a storage object to a variant
 //	@Description	Links an uploaded storage object (image/video) to a specific product variant with media type and sort order.
-//	@Tags			Variant Media
+//	@Tags			Admin Variant Media
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string										true	"Variant UUID"	format(uuid)
@@ -719,7 +719,7 @@ func (vh *VariantHandler) ListVariantMedia(c *gin.Context) {
 //
 //	@Summary		Remove a media attachment from a variant
 //	@Description	Removes a media attachment relationship from a variant.
-//	@Tags			Variant Media
+//	@Tags			Admin Variant Media
 //	@Produce		json
 //	@Param			id			path		string							true	"Variant UUID"			format(uuid)
 //	@Param			media_id	path		string							true	"Media Attachment UUID"	format(uuid)
@@ -759,7 +759,7 @@ func (vh *VariantHandler) DetachMedia(c *gin.Context) {
 //
 //	@Summary		Batch reorder media items for a variant
 //	@Description	Reorders attached media items for a variant according to the specified array of media IDs.
-//	@Tags			Variant Media
+//	@Tags			Admin Variant Media
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string							true	"Variant UUID"	format(uuid)
@@ -857,7 +857,7 @@ func mapLedgerResponse(l *model.InventoryLedger) InventoryLedgerResponse {
 //
 //	@Summary		Adjust variant inventory stock
 //	@Description	Records a new inventory ledger transaction (restock, adjustment, sale, return) to increment or decrement the variant's stock.
-//	@Tags			Variant Inventory
+//	@Tags			Admin Variant Inventory
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string								true	"Variant UUID"	format(uuid)
@@ -937,7 +937,7 @@ func (vh *VariantHandler) GetVariantStockPublic(c *gin.Context) {
 //
 //	@Summary		Get detailed stock levels for a variant (Admin)
 //	@Description	Retrieves on-hand, reserved, available quantities and in-stock status for a variant.
-//	@Tags			Variant Inventory
+//	@Tags			Admin Variant Inventory
 //	@Produce		json
 //	@Param			id	path		string								true	"Variant UUID"	format(uuid)
 //	@Failure		400	{object}	api.BadRequestErrorResponse			"Invalid UUID format"
@@ -969,7 +969,7 @@ func (vh *VariantHandler) GetVariantStockAdmin(c *gin.Context) {
 //
 //	@Summary		List inventory audit ledgers for a variant
 //	@Description	Returns a paginated list of inventory audit ledger transactions for a specific variant.
-//	@Tags			Variant Inventory
+//	@Tags			Admin Variant Inventory
 //	@Produce		json
 //	@Param			id	path		string													true	"Variant UUID"	format(uuid)
 //	@Param			q	query		pagination.ListQuery									true	"Pagination query"

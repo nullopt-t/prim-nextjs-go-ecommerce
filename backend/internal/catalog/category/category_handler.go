@@ -85,7 +85,7 @@ type CreateCategoryRequest struct {
 //
 //	@Summary		Create a product category
 //	@Description	Creates a new product category in the taxonomy tree. Can optionally be assigned a parent category ID for hierarchical nesting.
-//	@Tags			Categories
+//	@Tags			Admin Categories
 //	@Accept			json
 //	@Produce		json
 //	@Param			body	body		CreateCategoryRequest							true	"Category name and optional parent category UUID"
@@ -125,7 +125,7 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 //
 //	@Summary		Get category details by ID
 //	@Description	Retrieves product category details by its UUID.
-//	@Tags			Categories
+//	@Tags			Admin Categories
 //	@Accept			json
 //	@Produce		json
 //	@Param			id	path		string											true	"Category UUID"	format(uuid)
@@ -207,7 +207,7 @@ func (h *CategoryHandler) ListCategories(c *gin.Context) {
 //
 //	@Summary		List all categories including soft-deleted ones (Admin)
 //	@Description	Returns a paginated list of all product categories including soft-deleted records for administrator taxonomy management.
-//	@Tags			Categories
+//	@Tags			Admin Categories
 //	@Accept			json
 //	@Produce		json
 //	@Param			q	query		pagination.ListQuery														true	"Pagination, search query, and sorting parameters"
@@ -252,7 +252,7 @@ type UpdateCategoryRequest struct {
 //
 //	@Summary		Update category details
 //	@Description	Updates specific fields of an existing category (name or parent category ID). Guards against self-referencing and circular tree dependencies.
-//	@Tags			Categories
+//	@Tags			Admin Categories
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string							true	"Category UUID"	format(uuid)

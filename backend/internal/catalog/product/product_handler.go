@@ -384,7 +384,7 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 //
 //	@Summary		Create a new draft product
 //	@Description	Creates a new product in 'draft' status. Products remain in draft state until at least one variant is created and the product is explicitly published.
-//	@Tags			Products
+//	@Tags			Admin Products
 //	@Accept			json
 //	@Produce		json
 //	@Param			product	body		CreateProductRequest								true	"Product title, description, category ID, optional brand ID and highlights"
@@ -543,7 +543,7 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 //
 //	@Summary		List all products for management (Admin)
 //	@Description	Returns a paginated list of all products including draft, published, archived, and soft-deleted records for administrator catalog management.
-//	@Tags			Products
+//	@Tags			Admin Products
 //	@Produce		json
 //	@Param			q	query		pagination.ListQuery												true	"Pagination, search query, and sorting parameters"
 //	@Failure		400	{object}	api.BadRequestErrorResponse											"Invalid query parameters"
@@ -677,7 +677,7 @@ func (h *ProductHandler) GetProductRatingSummary(c *gin.Context) {
 //
 //	@Summary		Get product by internal UUID
 //	@Description	Retrieves full product details by its unique internal UUID.
-//	@Tags			Products
+//	@Tags			Admin Products
 //	@Produce		json
 //	@Param			id	path		string												true	"Internal Product UUID"	format(uuid)
 //	@Failure		400	{object}	api.BadRequestErrorResponse							"Invalid UUID format"
@@ -857,7 +857,7 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 //
 //	@Summary		Update product attributes
 //	@Description	Updates specific fields of an existing product such as title, description, category, brand, or publication status.
-//	@Tags			Products
+//	@Tags			Admin Products
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string												true	"Product UUID"	format(uuid)
@@ -946,7 +946,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 //
 //	@Summary		Publish a draft product
 //	@Description	Transitions a product status to 'published' so it becomes visible to customers. Requires the product to have at least one active variant.
-//	@Tags			Products
+//	@Tags			Admin Products
 //	@Produce		json
 //	@Param			id	path		string							true	"Product UUID"	format(uuid)
 //	@Failure		400	{object}	api.BadRequestErrorResponse		"Product lacks active variants or invalid UUID"
@@ -978,7 +978,7 @@ func (h *ProductHandler) PublishProduct(c *gin.Context) {
 //
 //	@Summary		Archive a product
 //	@Description	Transitions a product status to 'archived', hiding it from public store front listings while retaining all historical sales and inventory data.
-//	@Tags			Products
+//	@Tags			Admin Products
 //	@Produce		json
 //	@Param			id	path		string							true	"Product UUID"	format(uuid)
 //	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
@@ -1010,7 +1010,7 @@ func (h *ProductHandler) ArchiveProduct(c *gin.Context) {
 //
 //	@Summary		Soft-delete a product
 //	@Description	Marks a product as soft-deleted (`deleted_at = NOW()`), removing it from active administrative and customer listings.
-//	@Tags			Products
+//	@Tags			Admin Products
 //	@Produce		json
 //	@Param			id	path		string							true	"Product UUID"	format(uuid)
 //	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
@@ -1040,7 +1040,7 @@ func (h *ProductHandler) SoftDeleteProduct(c *gin.Context) {
 // UploadProductThumbnail godoc
 //
 //	@Summary	upload thumbnail image for a product
-//	@Tags		Product Media
+//	@Tags		Admin Product Media
 //	@Accept		multipart/form-data
 //	@Produce	json
 //	@Param		id		path		string	true	"Product ID (UUID)"	format(uuid)
@@ -1087,7 +1087,7 @@ func (h *ProductHandler) UploadProductThumbnail(c *gin.Context) {
 // CreateProductVariant godoc
 //
 //	@Summary	create a variant under a product
-//	@Tags		Product Variants
+//	@Tags		Admin Product Variants
 //	@Accept		json
 //	@Produce	json
 //	@Param		id		path		string						true	"Product ID (UUID)"	format(uuid)
@@ -1163,7 +1163,7 @@ func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 // SetDefaultVariant godoc
 //
 //	@Summary	set a variant as the default for a product
-//	@Tags		Product Variants
+//	@Tags		Admin Product Variants
 //	@Accept		json
 //	@Produce	json
 //	@Param		id		path		string						true	"Product ID (UUID)"	format(uuid)
@@ -1211,7 +1211,7 @@ func (h *ProductHandler) SetDefaultVariant(c *gin.Context) {
 // PutProductTags godoc
 //
 //	@Summary	replace all tag assignments for a product
-//	@Tags		Products
+//	@Tags		Admin Products
 //	@Accept		json
 //	@Produce	json
 //	@Param		id		path		string					true	"Product ID (UUID)"	format(uuid)
@@ -1262,7 +1262,7 @@ func (h *ProductHandler) PutProductTags(c *gin.Context) {
 // PutProductCategories godoc
 //
 //	@Summary	update the category of a product
-//	@Tags		Products
+//	@Tags		Admin Products
 //	@Accept		json
 //	@Produce	json
 //	@Param		id		path		string						true	"Product ID (UUID)"	format(uuid)

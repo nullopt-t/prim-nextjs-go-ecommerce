@@ -319,7 +319,7 @@ func (h *ReviewHandler) DeleteReview(c *gin.Context) {
 //
 //	@Summary		List reviews (Admin)
 //	@Description	Returns a paginated list of reviews with optional filters for product, user, and status.
-//	@Tags			Reviews
+//	@Tags			Admin Reviews
 //	@Produce		json
 //	@Param			q			query		pagination.ListQuery												true	"Pagination and sorting parameters"
 //	@Param			productId	query		string																false	"Filter by Product ID (UUID)"
@@ -395,7 +395,7 @@ func (h *ReviewHandler) AdminListReviews(c *gin.Context) {
 //
 //	@Summary		Get review details (Admin)
 //	@Description	Retrieves full details of a review for moderation.
-//	@Tags			Reviews
+//	@Tags			Admin Reviews
 //	@Produce		json
 //	@Param			id	path		string									true	"Review ID"
 //	@Success		200	{object}	api.DataResponse{data=ReviewResponse}	"Review details"
@@ -426,7 +426,7 @@ func (h *ReviewHandler) AdminGetReviewByID(c *gin.Context) {
 //
 //	@Summary		Moderate review status (Admin)
 //	@Description	Updates a review's moderation status (pending, approved, rejected).
-//	@Tags			Reviews
+//	@Tags			Admin Reviews
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string							true	"Review ID"
@@ -471,7 +471,7 @@ func (h *ReviewHandler) UpdateReviewStatus(c *gin.Context) {
 //
 //	@Summary		Delete review (Admin)
 //	@Description	Permanently deletes a review.
-//	@Tags			Reviews
+//	@Tags			Admin Reviews
 //	@Produce		json
 //	@Param			id	path		string							true	"Review ID"
 //	@Success		200	{object}	api.MessageResponse				"Review deleted successfully"
