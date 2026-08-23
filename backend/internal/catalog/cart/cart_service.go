@@ -21,6 +21,7 @@ type ProductService interface {
 }
 
 type InventoryService interface {
+	GetStockByVariantID(ctx context.Context, variantID uuid.UUID) (*model.InventoryStock, error)
 	GetStockForVariants(ctx context.Context, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
 }
 
@@ -139,11 +140,27 @@ func (s *CartService) AddItem(
 	variantPublicID uuid.UUID,
 	quantity int,
 ) (*model.Cart, error) {
+	if quantity <= 0 {
+		return nil, apierr.ErrBadRequest("Quantity must be greater than zero").
+			WithCode(errcode.CodeInvalidQuantity)
+	}
+
 	v, err := s.variantService.GetVariantByID(ctx, variantPublicID)
 	if err != nil {
 		return nil, apierr.ErrNotFound("Variant not found").
 			WithCode(errcode.CodeVariantNotFound).
 			Wrap(err)
+	}
+
+	// Validate available inventory
+	if s.inventoryService != nil {
+		stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, v.ID)
+		if stockErr == nil && stock != nil {
+			if stock.AvailableQuantity < quantity {
+				return nil, apierr.ErrBadRequest("Insufficient inventory available").
+					WithCode(errcode.CodeInsufficientInventory)
+			}
+		}
 	}
 
 	price := int64(0)
@@ -187,8 +204,16 @@ func (s *CartService) AddItem(
 
 		existingItem, getErr := s.cartRepo.GetItemByVariantID(ctx, tx, cart.ID, v.ID)
 		if getErr == nil {
+			newQty := existingItem.Quantity + quantity
+			if s.inventoryService != nil {
+				stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, v.ID)
+				if stockErr == nil && stock != nil && stock.AvailableQuantity < newQty {
+					return apierr.ErrBadRequest("Insufficient inventory available").
+						WithCode(errcode.CodeInsufficientInventory)
+				}
+			}
 			// Item exists, update quantity
-			err = s.cartRepo.UpdateItemQuantity(ctx, tx, cart.ID, existingItem.ID, existingItem.Quantity+quantity)
+			err = s.cartRepo.UpdateItemQuantity(ctx, tx, cart.ID, existingItem.ID, newQty)
 			return err
 		} else if !errors.Is(database.MapError(getErr), database.ErrNotFound) {
 			return getErr
@@ -206,6 +231,10 @@ func (s *CartService) AddItem(
 	})
 
 	if txErr != nil {
+		var apiErr *apierr.APIError
+		if errors.As(txErr, &apiErr) {
+			return nil, apiErr
+		}
 		return nil, apierr.ErrInternalError("Failed to add item to cart").
 			WithCode(apierr.CodeInternalError).
 			Wrap(txErr).
@@ -222,16 +251,38 @@ func (s *CartService) UpdateCartItemQuantity(
 	itemID uuid.UUID,
 	quantity int,
 ) (*model.Cart, error) {
+	if quantity <= 0 {
+		return nil, apierr.ErrBadRequest("Quantity must be greater than zero").
+			WithCode(errcode.CodeInvalidQuantity)
+	}
+
 	cart, err := s.GetOrCreateCart(ctx, userID, sessionID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return s.cartRepo.UpdateItemQuantity(ctx, db, cart.ID, itemID, quantity)
+	err = s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		item, err := s.cartRepo.GetItemByID(ctx, tx, cart.ID, itemID)
+		if err != nil {
+			return err
+		}
+
+		if s.inventoryService != nil {
+			stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, item.VariantID)
+			if stockErr == nil && stock != nil && stock.AvailableQuantity < quantity {
+				return apierr.ErrBadRequest("Insufficient inventory available").
+					WithCode(errcode.CodeInsufficientInventory)
+			}
+		}
+
+		return s.cartRepo.UpdateItemQuantity(ctx, tx, cart.ID, itemID, quantity)
 	})
 
 	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return nil, apiErr
+		}
 		if errors.Is(database.MapError(err), database.ErrNotFound) {
 			return nil, apierr.ErrNotFound("Cart item not found").
 				WithCode(errcode.CodeCartItemNotFound).
