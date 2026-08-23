@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/errcode"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
@@ -83,7 +84,8 @@ func (s *ReviewService) CreateReview(
 			return apierr.ErrInternalError("failed to check existing review").Wrap(err)
 		}
 		if existing != nil {
-			return apierr.ErrConflict("a review has already been submitted for this order item")
+			return apierr.ErrConflict("a review has already been submitted for this order item").
+				WithCode(errcode.CodeReviewAlreadyExists)
 		}
 
 		// 3. Create review

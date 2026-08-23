@@ -25,4 +25,6 @@ const (
 	CodeInvalidInventoryReason    = "INVALID_INVENTORY_REASON"
 	CodeReservationNotFound       = "INVENTORY_RESERVATION_NOT_FOUND"
 	CodeReservationExpired        = "INVENTORY_RESERVATION_EXPIRED"
+	CodeReviewAlreadyExists       = "REVIEW_ALREADY_EXISTS"
+	CodeReviewNotFound            = "REVIEW_NOT_FOUND"
 )
