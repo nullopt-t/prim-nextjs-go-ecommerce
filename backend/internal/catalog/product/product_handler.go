@@ -706,19 +706,17 @@ func (h *ProductHandler) GetProductByID(c *gin.Context) {
 	})
 }
 
-// GetProductBySKU godoc
-//
-//	@Summary		Get product details by public ID
-//	@Description	Retrieves full public-facing product details including brand information by its human-readable public ID.
 // GetProductBySlug godoc
 //
 //	@Summary		Get product by slug
 //	@Description	Retrieve a single product by its public slug (for storefronts)
-//	@Tags			products
+//	@Tags			Products
 //	@Produce		json
-//	@Param			slug	path		string	true	"Product Slug"
-//	@Success		200			{object}	api.DataResponse{data=ProductResponse}
-//	@Failure		404			{object}	api.ErrorResponse
+//	@Param			slug	path		string													true	"Product Slug"
+//	@Success		200		{object}	api.DataResponse{data=ProductDetailsResponse}			"Product details"
+//	@Failure		400		{object}	api.BadRequestErrorResponse								"Invalid slug"
+//	@Failure		404		{object}	api.NotFoundErrorResponse								"Product not found"
+//	@Failure		500		{object}	api.InternalServerErrorResponse							"Internal server error"
 //	@Router			/products/{slug} [get]
 func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 	slug := c.Param("slug")
@@ -1016,7 +1014,7 @@ func (h *ProductHandler) ArchiveProduct(c *gin.Context) {
 //	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
 //	@Failure		404	{object}	api.NotFoundErrorResponse		"Product not found"
 //	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
-//	@Success		200	{object}	api.MessageResponse				"Deletion confirmation message"
+//	@Success		204													"Product soft-deleted successfully"
 //	@Router			/admin/products/{id} [delete]
 func (h *ProductHandler) SoftDeleteProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))

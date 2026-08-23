@@ -112,8 +112,8 @@ func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
 //	@Param			request	body		CreateReviewRequest				true	"Review creation payload"
 //	@Success		201		{object}	api.DataResponse{data=ReviewResponse}	"Review submitted successfully"
 //	@Failure		400		{object}	api.BadRequestErrorResponse		"Invalid input or unverified purchase"
-//	@Failure		401		{object}	api.UnauthorizedResponse		"Unauthorized"
-//	@Failure		403		{object}	api.ErrorResponse				"Forbidden - not your purchase"
+//	@Failure		401		{object}	api.UnauthorizedErrorResponse	"Unauthorized"
+//	@Failure		403		{object}	api.ForbiddenErrorResponse		"Forbidden - not your purchase"
 //	@Failure		409		{object}	api.ConflictErrorResponse		"Item already reviewed"
 //	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
 //	@Router			/reviews [post]
@@ -166,7 +166,7 @@ func (h *ReviewHandler) CreateReview(c *gin.Context) {
 //	@Produce		json
 //	@Param			q	query		pagination.ListQuery												true	"Pagination and sorting parameters"
 //	@Success		200	{object}	api.PaginatedResponse{data=[]ReviewResponse,meta=pagination.Page}	"User's reviews"
-//	@Failure		401	{object}	api.UnauthorizedResponse											"Unauthorized"
+//	@Failure		401	{object}	api.UnauthorizedErrorResponse										"Unauthorized"
 //	@Failure		500	{object}	api.InternalServerErrorResponse										"Internal server error"
 //	@Router			/reviews/me [get]
 func (h *ReviewHandler) GetMyReviews(c *gin.Context) {
@@ -240,8 +240,8 @@ func (h *ReviewHandler) GetReviewByID(c *gin.Context) {
 //	@Param			request	body		UpdateReviewRequest						true	"Review update payload"
 //	@Success		200		{object}	api.DataResponse{data=ReviewResponse}	"Review updated successfully"
 //	@Failure		400		{object}	api.BadRequestErrorResponse				"Invalid input"
-//	@Failure		401		{object}	api.UnauthorizedResponse				"Unauthorized"
-//	@Failure		403		{object}	api.ErrorResponse						"Forbidden"
+//	@Failure		401		{object}	api.UnauthorizedErrorResponse			"Unauthorized"
+//	@Failure		403		{object}	api.ForbiddenErrorResponse				"Forbidden"
 //	@Failure		404		{object}	api.NotFoundErrorResponse				"Review not found"
 //	@Failure		500		{object}	api.InternalServerErrorResponse			"Internal server error"
 //	@Router			/reviews/{id} [patch]
@@ -287,8 +287,8 @@ func (h *ReviewHandler) UpdateReview(c *gin.Context) {
 //	@Param			id	path		string							true	"Review ID"
 //	@Success		200	{object}	api.MessageResponse				"Review deleted successfully"
 //	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid review ID"
-//	@Failure		401	{object}	api.UnauthorizedResponse		"Unauthorized"
-//	@Failure		403	{object}	api.ErrorResponse				"Forbidden"
+//	@Failure		401	{object}	api.UnauthorizedErrorResponse	"Unauthorized"
+//	@Failure		403	{object}	api.ForbiddenErrorResponse		"Forbidden"
 //	@Failure		404	{object}	api.NotFoundErrorResponse		"Review not found"
 //	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
 //	@Router			/reviews/{id} [delete]
@@ -326,8 +326,8 @@ func (h *ReviewHandler) DeleteReview(c *gin.Context) {
 //	@Param			userId		query		string																false	"Filter by User ID (UUID)"
 //	@Param			status		query		string																false	"Filter by Review Status (pending, approved, rejected)"
 //	@Success		200			{object}	api.PaginatedResponse{data=[]ReviewResponse,meta=pagination.Page}	"Paginated list of reviews"
-//	@Failure		401			{object}	api.UnauthorizedResponse											"Unauthorized"
-//	@Failure		403			{object}	api.ErrorResponse													"Forbidden"
+//	@Failure		401			{object}	api.UnauthorizedErrorResponse										"Unauthorized"
+//	@Failure		403			{object}	api.ForbiddenErrorResponse											"Forbidden"
 //	@Failure		500			{object}	api.InternalServerErrorResponse										"Internal server error"
 //	@Router			/admin/reviews [get]
 func (h *ReviewHandler) AdminListReviews(c *gin.Context) {
@@ -400,8 +400,8 @@ func (h *ReviewHandler) AdminListReviews(c *gin.Context) {
 //	@Param			id	path		string									true	"Review ID"
 //	@Success		200	{object}	api.DataResponse{data=ReviewResponse}	"Review details"
 //	@Failure		400	{object}	api.BadRequestErrorResponse				"Invalid review ID"
-//	@Failure		401	{object}	api.UnauthorizedResponse				"Unauthorized"
-//	@Failure		403	{object}	api.ErrorResponse						"Forbidden"
+//	@Failure		401	{object}	api.UnauthorizedErrorResponse			"Unauthorized"
+//	@Failure		403	{object}	api.ForbiddenErrorResponse				"Forbidden"
 //	@Failure		404	{object}	api.NotFoundErrorResponse				"Review not found"
 //	@Failure		500	{object}	api.InternalServerErrorResponse			"Internal server error"
 //	@Router			/admin/reviews/{id} [get]
@@ -433,8 +433,8 @@ func (h *ReviewHandler) AdminGetReviewByID(c *gin.Context) {
 //	@Param			request	body		UpdateReviewStatusRequest		true	"New status payload"
 //	@Success		200		{object}	api.MessageResponse				"Status updated successfully"
 //	@Failure		400		{object}	api.BadRequestErrorResponse		"Invalid input or status"
-//	@Failure		401		{object}	api.UnauthorizedResponse		"Unauthorized"
-//	@Failure		403		{object}	api.ErrorResponse				"Forbidden"
+//	@Failure		401		{object}	api.UnauthorizedErrorResponse	"Unauthorized"
+//	@Failure		403		{object}	api.ForbiddenErrorResponse		"Forbidden"
 //	@Failure		404		{object}	api.NotFoundErrorResponse		"Review not found"
 //	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
 //	@Router			/admin/reviews/{id}/status [patch]
@@ -476,8 +476,8 @@ func (h *ReviewHandler) UpdateReviewStatus(c *gin.Context) {
 //	@Param			id	path		string							true	"Review ID"
 //	@Success		200	{object}	api.MessageResponse				"Review deleted successfully"
 //	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid review ID"
-//	@Failure		401	{object}	api.UnauthorizedResponse		"Unauthorized"
-//	@Failure		403	{object}	api.ErrorResponse				"Forbidden"
+//	@Failure		401	{object}	api.UnauthorizedErrorResponse	"Unauthorized"
+//	@Failure		403	{object}	api.ForbiddenErrorResponse		"Forbidden"
 //	@Failure		404	{object}	api.NotFoundErrorResponse		"Review not found"
 //	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
 //	@Router			/admin/reviews/{id} [delete]

@@ -49,6 +49,7 @@ func toPublicCategoryResponse(c *model.ProductCategory) PublicCategoryResponse {
 func toAdminCategoryResponse(c *model.ProductCategory) AdminCategoryResponse {
 	res := AdminCategoryResponse{
 		ID:        c.ID,
+		ParentID:  c.ParentID,
 		Name:      c.Name,
 		CreatedAt: c.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: c.UpdatedAt.Format(time.RFC3339),
@@ -257,11 +258,11 @@ type UpdateCategoryRequest struct {
 //	@Produce		json
 //	@Param			id		path		string							true	"Category UUID"	format(uuid)
 //	@Param			body	body		UpdateCategoryRequest			true	"Fields to update (name, parent_id)"
-//	@Failure		400		{object}	api.BadRequestErrorResponse		"Validation error, circular hierarchy, or parent not found"
-//	@Failure		404		{object}	api.NotFoundErrorResponse		"Category not found"
-//	@Failure		409		{object}	api.ConflictErrorResponse		"A category with updated name already exists"
-//	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
-//	@Success		200		{object}	api.MessageResponse				"Update confirmation message"
+//	@Failure		400		{object}	api.BadRequestErrorResponse						"Validation error, circular hierarchy, or parent not found"
+//	@Failure		404		{object}	api.NotFoundErrorResponse						"Category not found"
+//	@Failure		409		{object}	api.ConflictErrorResponse						"A category with updated name already exists"
+//	@Failure		500		{object}	api.InternalServerErrorResponse					"Internal server error"
+//	@Success		200		{object}	api.DataResponse{data=AdminCategoryResponse}	"Updated category details"
 //	@Router			/admin/categories/{id} [patch]
 func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 	categoryID, err := uuid.Parse(c.Param("id"))

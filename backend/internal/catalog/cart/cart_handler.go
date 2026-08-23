@@ -22,7 +22,7 @@ func NewHandler(cartService *CartService) *CartHandler {
 }
 
 type AddItemRequest struct {
-	VariantID uuid.UUID `json:"variantId" binding:"required" example:"nano_id_string"`
+	VariantID uuid.UUID `json:"variantId" binding:"required" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
 	Quantity  int       `json:"quantity" binding:"required,gt=0" example:"2"`
 }
 
@@ -174,7 +174,7 @@ func (h *CartHandler) extractUserAndSession(c *gin.Context) (*uuid.UUID, *string
 //	@Tags			Cart
 //	@Produce		json
 //	@Param			X-Session-ID	header		string								false	"Guest Session ID"
-//	@Success		200				{object}	api.DataResponse{data=model.Cart}	"Cart details"
+//	@Success		200				{object}	api.DataResponse{data=CartResponse}	"Cart details"
 //	@Failure		400				{object}	api.BadRequestErrorResponse			"Invalid input or missing session"
 //	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
 //	@Router			/cart [get]
@@ -199,7 +199,7 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 //	@Produce		json
 //	@Param			X-Session-ID	header		string								false	"Guest Session ID"
 //	@Param			body			body		AddItemRequest						true	"Item variant and quantity"
-//	@Success		200				{object}	api.DataResponse{data=model.Cart}	"Updated cart"
+//	@Success		200				{object}	api.DataResponse{data=CartResponse}	"Updated cart"
 //	@Failure		400				{object}	api.BadRequestErrorResponse			"Validation error"
 //	@Failure		404				{object}	api.NotFoundErrorResponse			"Variant not found"
 //	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
@@ -232,7 +232,7 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 //	@Param			id				path		string								true	"Cart Item UUID"
 //	@Param			X-Session-ID	header		string								false	"Guest Session ID"
 //	@Param			body			body		UpdateQuantityRequest				true	"New quantity"
-//	@Success		200				{object}	api.DataResponse{data=model.Cart}	"Updated cart"
+//	@Success		200				{object}	api.DataResponse{data=CartResponse}	"Updated cart"
 //	@Failure		400				{object}	api.BadRequestErrorResponse			"Validation error or invalid UUID"
 //	@Failure		404				{object}	api.NotFoundErrorResponse			"Cart item not found"
 //	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
@@ -269,7 +269,7 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 //	@Produce		json
 //	@Param			id				path		string								true	"Cart Item UUID"
 //	@Param			X-Session-ID	header		string								false	"Guest Session ID"
-//	@Success		200				{object}	api.DataResponse{data=model.Cart}	"Updated cart"
+//	@Success		200				{object}	api.DataResponse{data=CartResponse}	"Updated cart"
 //	@Failure		400				{object}	api.BadRequestErrorResponse			"Invalid item ID"
 //	@Failure		404				{object}	api.NotFoundErrorResponse			"Cart item not found"
 //	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"

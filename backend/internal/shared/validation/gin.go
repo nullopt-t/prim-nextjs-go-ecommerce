@@ -13,8 +13,8 @@ func ValidationError(c *gin.Context, err error) {
 		fieldErrors := make([]apierr.FieldError, 0, len(ve))
 		for _, e := range ve {
 			fieldErrors = append(fieldErrors, apierr.FieldError{
-				Field: e.Field(),
-				Tags:  e.Tag(),
+				Field:      e.Field(),
+				Constraint: e.Tag(),
 			})
 		}
 		_ = c.Error(apierr.New(

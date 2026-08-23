@@ -726,7 +726,7 @@ func (vh *VariantHandler) ListVariantMedia(c *gin.Context) {
 //	@Failure		400			{object}	api.BadRequestErrorResponse		"Invalid UUID format"
 //	@Failure		404			{object}	api.NotFoundErrorResponse		"Media relationship not found"
 //	@Failure		500			{object}	api.InternalServerErrorResponse	"Internal server error"
-//	@Success		200			{object}	api.MessageResponse				"Detachment confirmation message"
+//	@Success		204													"Media detached successfully"
 //	@Router			/admin/variants/{id}/media/{media_id} [delete]
 func (vh *VariantHandler) DetachMedia(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))

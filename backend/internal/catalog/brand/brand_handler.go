@@ -203,7 +203,7 @@ func (bh *BrandHandler) UpdateBrand(c *gin.Context) {
 //	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
 //	@Failure		404	{object}	api.NotFoundErrorResponse		"Brand not found"
 //	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
-//	@Success		200	{object}	api.MessageResponse				"Deletion confirmation message"
+//	@Success		204													"Brand soft-deleted successfully"
 //	@Router			/admin/brands/{id} [delete]
 func (bh *BrandHandler) DeleteBrandByID(c *gin.Context) {
 	brandID, err := uuid.Parse(c.Param("id"))

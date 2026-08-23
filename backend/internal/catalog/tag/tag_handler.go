@@ -207,7 +207,7 @@ func (th *TagHandler) UpdateTagByID(c *gin.Context) {
 //	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
 //	@Failure		404	{object}	api.NotFoundErrorResponse		"Tag not found"
 //	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
-//	@Success		200	{object}	api.MessageResponse				"Deletion confirmation message"
+//	@Success		204													"Tag soft-deleted successfully"
 //	@Router			/admin/tags/{id} [delete]
 func (th *TagHandler) DeleteTagByID(c *gin.Context) {
 	tagID, err := uuid.Parse(c.Param("id"))
