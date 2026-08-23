@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 )
@@ -207,7 +208,7 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 func (h *CartHandler) AddItem(c *gin.Context) {
 	var req AddItemRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		_ = c.Error(apierr.ErrBadRequest("Invalid input payload").WithCode(apierr.CodeValidationFailed).Wrap(err))
+		validation.ValidationError(c, err)
 		return
 	}
 
@@ -246,7 +247,7 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 
 	var req UpdateQuantityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		_ = c.Error(apierr.ErrBadRequest("Invalid input payload").WithCode(apierr.CodeValidationFailed).Wrap(err))
+		validation.ValidationError(c, err)
 		return
 	}
 

@@ -20,13 +20,13 @@ func ValidationError(c *gin.Context, err error) {
 		_ = c.Error(apierr.New(
 			http.StatusBadRequest,
 			"Validation failed",
-		).WithFields(fieldErrors...))
+		).WithCode(apierr.CodeValidationFailed).WithFields(fieldErrors...))
 		return
 	}
 	_ = c.Error(
 		apierr.New(
 			http.StatusBadRequest,
 			"bad request data",
-		).Wrap(err),
+		).WithCode(apierr.CodeInvalidInput).Wrap(err),
 	)
 }
