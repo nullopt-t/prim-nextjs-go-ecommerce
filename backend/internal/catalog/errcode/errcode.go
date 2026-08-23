@@ -5,6 +5,7 @@ const (
 	CodeProductNotFound           = "PRODUCT_NOT_FOUND"
 	CodeProductAlreadyExists      = "PRODUCT_ALREADY_EXISTS"
 	CodeVariantNotFound           = "VARIANT_NOT_FOUND"
+	CodeVariantAlreadyExists      = "VARIANT_ALREADY_EXISTS"
 	CodeVariantProductMismatch    = "VARIANT_PRODUCT_MISMATCH"
 	CodeBrandNotFound             = "BRAND_NOT_FOUND"
 	CodeBrandAlreadyExists        = "BRAND_ALREADY_EXISTS"

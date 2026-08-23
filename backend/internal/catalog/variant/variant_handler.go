@@ -26,6 +26,7 @@ func NewHandler(s *VariantService) *VariantHandler {
 }
 
 type CreateVariantRequest struct {
+	SKU               *string        `json:"sku,omitempty" example:"TSHIRT-RED-XL"`
 	Title             string         `json:"title" binding:"required" example:"Red / XL"`
 	Price             *int64         `json:"price,omitempty" example:"2999"`
 	CrossedOutPrice   *int64         `json:"crossedOutPrice,omitempty" example:"3999"`
@@ -36,6 +37,7 @@ type CreateVariantRequest struct {
 }
 
 type UpdateVariantRequest struct {
+	SKU               *string        `json:"sku,omitempty" example:"TSHIRT-RED-XXL"`
 	Title             *string        `json:"title,omitempty" example:"Red / XXL"`
 	Price             *int64         `json:"price,omitempty" example:"3499"`
 	CrossedOutPrice   *int64         `json:"crossedOutPrice,omitempty" example:"4499"`
@@ -324,6 +326,7 @@ func (vh *VariantHandler) CreateVariant(c *gin.Context) {
 
 	in := &CreateVariantInput{
 		ProductID:         productID,
+		SKU:               body.SKU,
 		Title:             body.Title,
 		Price:             body.Price,
 		CrossedOutPrice:   body.CrossedOutPrice,
@@ -377,17 +380,43 @@ func (vh *VariantHandler) GetVariantByID(c *gin.Context) {
 	})
 }
 
+// GetVariantBySKU godoc
+//
+//	@Summary		Get variant details by SKU
+//	@Description	Retrieves specific product variant details by its SKU string.
+//	@Tags			Product Variants
+//	@Produce		json
+//	@Param			sku	path		string									true	"Variant SKU"
+//	@Failure		400	{object}	api.BadRequestErrorResponse				"SKU is required"
+//	@Failure		404	{object}	api.NotFoundErrorResponse				"Variant not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse			"Internal server error"
+//	@Success		200	{object}	api.DataResponse{data=VariantResponse}	"Variant details"
+//	@Router			/variants/sku/{sku} [get]
+func (vh *VariantHandler) GetVariantBySKU(c *gin.Context) {
+	sku := c.Param("sku")
+	variant, err := vh.vservice.GetVariantBySKU(c.Request.Context(), sku)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{
+		Data: mapVariantResponse(variant),
+	})
+}
+
 // UpdateVariantByID godoc
 //
 //	@Summary		Update product variant attributes
-//	@Description	Updates specific fields of an existing variant such as title, price, crossed-out price, currency, attributes, or default status.
+//	@Description	Updates specific fields of an existing variant such as SKU, title, price, crossed-out price, currency, attributes, or default status.
 //	@Tags			Product Variants
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string							true	"Variant UUID"	format(uuid)
-//	@Param			input	body		UpdateVariantRequest			true	"Fields to update (title, price, crossed_out_price, currency, attributes, is_default)"
+//	@Param			input	body		UpdateVariantRequest			true	"Fields to update (sku, title, price, crossed_out_price, currency, attributes, is_default)"
 //	@Failure		400		{object}	api.BadRequestErrorResponse		"Validation error or invalid UUID format"
 //	@Failure		404		{object}	api.NotFoundErrorResponse		"Variant not found"
+//	@Failure		409		{object}	api.ConflictErrorResponse		"SKU already in use"
 //	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
 //	@Success		200		{object}	api.MessageResponse				"Update confirmation message"
 //	@Router			/admin/variants/{id} [patch]
@@ -421,6 +450,7 @@ func (vh *VariantHandler) UpdateVariantByID(c *gin.Context) {
 	}
 
 	err = vh.vservice.UpdateVariant(c.Request.Context(), variantID, UpdateVariantInput{
+		SKU:               body.SKU,
 		Title:             body.Title,
 		Price:             body.Price,
 		CrossedOutPrice:   body.CrossedOutPrice,
@@ -449,7 +479,7 @@ func (vh *VariantHandler) UpdateVariantByID(c *gin.Context) {
 //	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
 //	@Failure		404	{object}	api.NotFoundErrorResponse		"Variant not found"
 //	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
-//	@Success		200	{object}	api.MessageResponse				"Deletion confirmation message"
+//	@Success		204													"Deletion confirmation"
 //	@Router			/admin/variants/{id} [delete]
 func (vh *VariantHandler) DeleteVariantByID(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
@@ -467,6 +497,38 @@ func (vh *VariantHandler) DeleteVariantByID(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+// RestoreVariantByID godoc
+//
+//	@Summary		Restore a soft-deleted product variant
+//	@Description	Restores a soft-deleted product variant back to active status (`deleted_at = NULL`).
+//	@Tags			Product Variants
+//	@Produce		json
+//	@Param			id	path		string							true	"Variant UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
+//	@Failure		404	{object}	api.NotFoundErrorResponse		"Variant not found or not deleted"
+//	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200	{object}	api.MessageResponse				"Restore confirmation message"
+//	@Router			/admin/variants/{id}/restore [post]
+func (vh *VariantHandler) RestoreVariantByID(c *gin.Context) {
+	variantID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid variant UUID format",
+		}))
+		return
+	}
+
+	if err := vh.vservice.RestoreVariantByID(c.Request.Context(), variantID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{
+		Message: "restored successfully",
+	})
 }
 
 // ListVariantsByProductID godoc

@@ -30,6 +30,7 @@ type variantFilter struct {
 }
 
 type UpdateVariantFields struct {
+	SKU               *string
 	Title             *string
 	Price             *int64
 	CrossedOutPrice   *int64
@@ -252,9 +253,15 @@ func (vr *VariantRepository) Update(
 		return errors.New("update variant: variantID is required")
 	}
 
-	setClauses := make([]string, 0, 7)
-	args := make([]any, 0, 7)
+	setClauses := make([]string, 0, 8)
+	args := make([]any, 0, 8)
 	argIdx := 1
+
+	if fields.SKU != nil {
+		setClauses = append(setClauses, fmt.Sprintf("sku = $%d", argIdx))
+		args = append(args, *fields.SKU)
+		argIdx++
+	}
 
 	if fields.Title != nil {
 		setClauses = append(setClauses, fmt.Sprintf("title = $%d", argIdx))
@@ -493,6 +500,25 @@ func (vr *VariantRepository) ListByProductID(
 	return pagination.NewPagedResult(variants, pagination.NewPage(q.Page, q.PageSize, total)), nil
 }
 
+func (vr *VariantRepository) CountByProductID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) (int, error) {
+	if productID == uuid.Nil {
+		return 0, errors.New("count variants: productID is required")
+	}
+
+	query := `SELECT COUNT(*) FROM product_variants WHERE product_id = $1 AND deleted_at IS NULL`
+	var count int
+	err := qe.QueryRow(ctx, query, productID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("count variants: %w", err)
+	}
+
+	return count, nil
+}
+
 func (vr *VariantRepository) Delete(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -511,6 +537,33 @@ func (vr *VariantRepository) Delete(
 	cmd, err := qe.Exec(ctx, query, variantID)
 	if err != nil {
 		return fmt.Errorf("delete variant: %w", err)
+	}
+
+	if cmd.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
+	return nil
+}
+
+func (vr *VariantRepository) Restore(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	variantID uuid.UUID,
+) error {
+	if variantID == uuid.Nil {
+		return errors.New("restore variant: variantID is required")
+	}
+
+	query := `
+		UPDATE product_variants
+		SET deleted_at = NULL, updated_at = now()
+		WHERE id = $1 AND deleted_at IS NOT NULL
+	`
+
+	cmd, err := qe.Exec(ctx, query, variantID)
+	if err != nil {
+		return fmt.Errorf("restore variant: %w", err)
 	}
 
 	if cmd.RowsAffected() == 0 {
@@ -732,16 +785,23 @@ func (vr *VariantRepository) ReorderMedia(
 		return nil
 	}
 
+	orders := make([]int, len(orderedMediaIDs))
+	for i := range orderedMediaIDs {
+		orders[i] = i
+	}
+
 	query := `
-		UPDATE variant_media
-		SET sort_order = $1
-		WHERE id = $2 AND variant_id = $3
+		UPDATE variant_media AS vm
+		SET sort_order = batch.sort_order
+		FROM (
+			SELECT unnest($1::uuid[]) AS id, unnest($2::int[]) AS sort_order
+		) AS batch
+		WHERE vm.id = batch.id AND vm.variant_id = $3
 	`
 
-	for idx, mediaID := range orderedMediaIDs {
-		if _, err := qe.Exec(ctx, query, idx, mediaID, variantID); err != nil {
-			return fmt.Errorf("reorder variant media item %s: %w", mediaID, err)
-		}
+	_, err := qe.Exec(ctx, query, orderedMediaIDs, orders, variantID)
+	if err != nil {
+		return fmt.Errorf("reorder variant media: %w", err)
 	}
 
 	return nil
