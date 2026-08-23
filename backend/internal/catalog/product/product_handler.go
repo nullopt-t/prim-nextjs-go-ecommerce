@@ -26,185 +26,299 @@ func NewHandler(s *ProductService) *ProductHandler {
 }
 
 type CreateProductRequest struct {
-	BrandID     *string `json:"brandId,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	CategoryID  string  `json:"categoryId" binding:"required,uuid" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
-	Slug        string  `json:"slug" binding:"required" example:"wireless-noise-canceling-headphones"`
-	Title       string  `json:"title" binding:"required" example:"Wireless Noise-Canceling Headphones"`
+	// Optional UUID of the brand/manufacturer
+	BrandID *string `json:"brandId,omitempty" example:"30000000-0000-0000-0000-000000000001"`
+	// Required category UUID
+	CategoryID string `json:"categoryId" binding:"required,uuid" example:"40000000-0000-0000-0000-000000000002"`
+	// Unique URL-friendly product identifier
+	Slug string `json:"slug" binding:"required" example:"wireless-noise-canceling-headphones"`
+	// Product display title
+	Title string `json:"title" binding:"required" example:"Wireless Noise-Canceling Headphones"`
+	// Full product description in markdown or plaintext
 	Description *string `json:"description,omitempty" example:"Premium over-ear Bluetooth headphones with active noise cancellation."`
-	ProductType string  `json:"productType" example:"simple"`
+	// Product classification: 'simple' or 'variable'
+	ProductType string `json:"productType" example:"simple"`
 }
 
 type UpdateProductRequest struct {
-	BrandID     *string  `json:"brandId,omitempty"`
-	CategoryID  *string  `json:"categoryId,omitempty"`
-	Title       *string  `json:"title,omitempty"`
-	Description *string  `json:"description,omitempty"`
-	Highlights  []string `json:"highlights,omitempty"`
-	ProductType *string  `json:"productType,omitempty" example:"simple"`
+	// Optional updated brand UUID
+	BrandID *string `json:"brandId,omitempty" example:"30000000-0000-0000-0000-000000000001"`
+	// Optional updated category UUID
+	CategoryID *string `json:"categoryId,omitempty" example:"40000000-0000-0000-0000-000000000002"`
+	// Updated product title
+	Title *string `json:"title,omitempty" example:"Wireless Noise-Canceling Headphones Pro"`
+	// Updated product description
+	Description *string `json:"description,omitempty" example:"Updated description with enhanced specs."`
+	// Key product highlight bullet points
+	Highlights []string `json:"highlights,omitempty" example:"['Active Noise Cancellation','Up to 30h battery']"`
+	// Product type classification: 'simple' or 'variable'
+	ProductType *string `json:"productType,omitempty" example:"simple"`
 }
 
 type ProductBrandSummary struct {
-	ID   string  `json:"id,omitempty"`
-	Name string  `json:"name"`
-	Link *string `json:"link,omitempty"`
+	// Brand UUID
+	ID string `json:"id,omitempty" example:"30000000-0000-0000-0000-000000000001"`
+	// Brand name
+	Name string `json:"name" example:"Apple"`
+	// Official website URL
+	Link *string `json:"link,omitempty" example:"https://apple.com"`
 }
 
 type ProductCategorySummary struct {
-	ID   string `json:"id,omitempty"`
-	Name string `json:"name"`
+	// Category UUID
+	ID string `json:"id,omitempty" example:"40000000-0000-0000-0000-000000000002"`
+	// Category name
+	Name string `json:"name" example:"Electronics"`
 }
 
 type ProductTagSummary struct {
-	ID   string `json:"id,omitempty"`
-	Name string `json:"name"`
+	// Tag UUID
+	ID string `json:"id,omitempty" example:"50000000-0000-0000-0000-000000000001"`
+	// Tag name
+	Name string `json:"name" example:"Featured"`
 }
 
 type PublicStockSummary struct {
-	AvailableQuantity int  `json:"availableQuantity"`
-	IsInStock         bool `json:"isInStock"`
+	// Quantity available for customer purchase
+	AvailableQuantity int `json:"availableQuantity" example:"50"`
+	// True if availableQuantity > 0
+	IsInStock bool `json:"isInStock" example:"true"`
 }
 
 type AdminStockSummary struct {
-	OnHandQuantity    int  `json:"onHandQuantity"`
-	ReservedQuantity  int  `json:"reservedQuantity"`
-	AvailableQuantity int  `json:"availableQuantity"`
-	IsInStock         bool `json:"isInStock"`
+	// Total physical stock in warehouse
+	OnHandQuantity int `json:"onHandQuantity" example:"60"`
+	// Stock reserved in active customer orders/checkouts
+	ReservedQuantity int `json:"reservedQuantity" example:"10"`
+	// Salable stock (onHand - reserved)
+	AvailableQuantity int `json:"availableQuantity" example:"50"`
+	// True if availableQuantity > 0
+	IsInStock bool `json:"isInStock" example:"true"`
 }
 
 type VariantMediaSummary struct {
-	ID        string `json:"id"`
-	MediaType string `json:"mediaType"`
-	SortOrder int    `json:"sortOrder"`
-	URL       string `json:"url"`
+	// Media record UUID
+	ID string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
+	// Media MIME type or format (e.g. image/jpeg, video/mp4)
+	MediaType string `json:"mediaType" example:"image/jpeg"`
+	// Display sequence sort order
+	SortOrder int `json:"sortOrder" example:"1"`
+	// Public CDN or storage URL of the media asset
+	URL string `json:"url" example:"https://example.com/media/headphones.jpg"`
 }
 
 type ProductVariantResponse struct {
-	ID                     string                        `json:"id"`
-	SKU                    string                        `json:"sku,omitempty"`
-	Title                  string                        `json:"title"`
-	Price                  *string                       `json:"price,omitempty" example:"$24.99"`
-	ExtractedPrice         *float64                      `json:"extractedPrice,omitempty" example:"24.99"`
-	OriginalPrice          *string                       `json:"originalPrice,omitempty" example:"$29.99"`
-	ExtractedOriginalPrice *float64                      `json:"extractedOriginalPrice,omitempty" example:"29.99"`
-	Currency               *string                       `json:"currency,omitempty" example:"USD"`
-	Thumbnail              *string                       `json:"thumbnail,omitempty"`
-	Media                  []VariantMediaSummary         `json:"media"`
-	Attributes             map[string]any                `json:"attributes"`
-	IsDefault              bool                          `json:"isDefault"`
-	Stock                  *PublicStockSummary           `json:"stock,omitempty"`
+	// Variant UUID
+	ID string `json:"id" example:"70000000-0000-0000-0000-000000000001"`
+	// Unique Stock Keeping Unit
+	SKU string `json:"sku,omitempty" example:"MAC-PRO-16-BLK-18"`
+	// Variant option title (e.g. "Space Black, 18GB RAM")
+	Title string `json:"title" example:"Space Black, 18GB RAM, 512GB SSD"`
+	// Formatted display price
+	Price *string `json:"price,omitempty" example:"$2499.00"`
+	// Numeric price value
+	ExtractedPrice *float64 `json:"extractedPrice,omitempty" example:"2499.00"`
+	// Formatted crossed-out/original MSRP price
+	OriginalPrice *string `json:"originalPrice,omitempty" example:"$2999.00"`
+	// Numeric original MSRP price
+	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
+	// Currency ISO code
+	Currency *string `json:"currency,omitempty" example:"USD"`
+	// Primary variant thumbnail URL
+	Thumbnail *string `json:"thumbnail,omitempty" example:"https://example.com/thumb.jpg"`
+	// Associated media gallery
+	Media []VariantMediaSummary `json:"media"`
+	// Custom variant attributes (e.g. {"color":"Black","ram":"18GB"})
+	Attributes map[string]any `json:"attributes"`
+	// True if this variant is the default selection on product pages
+	IsDefault bool `json:"isDefault" example:"true"`
+	// Live customer-facing stock availability
+	Stock *PublicStockSummary `json:"stock,omitempty"`
 }
 
 type AdminProductVariantResponse struct {
-	ID                     string                 `json:"id"`
-	SKU                    string                 `json:"sku,omitempty"`
-	Title                  string                 `json:"title"`
-	Price                  *string                `json:"price,omitempty" example:"$24.99"`
-	ExtractedPrice         *float64               `json:"extractedPrice,omitempty" example:"24.99"`
-	OriginalPrice          *string                `json:"originalPrice,omitempty" example:"$29.99"`
-	ExtractedOriginalPrice *float64               `json:"extractedOriginalPrice,omitempty" example:"29.99"`
-	Currency               *string                `json:"currency,omitempty" example:"USD"`
-	Thumbnail              *StorageObjectResponse `json:"thumbnail,omitempty"`
-	Media                  []VariantMediaSummary  `json:"media"`
-	Attributes             map[string]any         `json:"attributes"`
-	IsDefault              bool                   `json:"isDefault"`
-	Stock                  *AdminStockSummary     `json:"stock,omitempty"`
+	// Variant database UUID
+	ID string `json:"id" example:"70000000-0000-0000-0000-000000000001"`
+	// Stock Keeping Unit
+	SKU string `json:"sku,omitempty" example:"MAC-PRO-16-BLK-18"`
+	// Variant title
+	Title string `json:"title" example:"Space Black, 18GB RAM, 512GB SSD"`
+	// Formatted display price
+	Price *string `json:"price,omitempty" example:"$2499.00"`
+	// Numeric price value
+	ExtractedPrice *float64 `json:"extractedPrice,omitempty" example:"2499.00"`
+	// Formatted original price
+	OriginalPrice *string `json:"originalPrice,omitempty" example:"$2999.00"`
+	// Numeric original price
+	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
+	// Currency ISO code
+	Currency *string `json:"currency,omitempty" example:"USD"`
+	// Storage object metadata for thumbnail
+	Thumbnail *StorageObjectResponse `json:"thumbnail,omitempty"`
+	// Media gallery
+	Media []VariantMediaSummary `json:"media"`
+	// Custom attributes
+	Attributes map[string]any `json:"attributes"`
+	// Default variant flag
+	IsDefault bool `json:"isDefault" example:"true"`
+	// Full administrative inventory breakdown
+	Stock *AdminStockSummary `json:"stock,omitempty"`
 }
 
 type ProductResponse struct {
-	ID                     string   `json:"id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	Slug                   string   `json:"slug" example:"wireless-headphones"`
-	Title                  string   `json:"title" example:"Wireless Headphones"`
-	Description            *string  `json:"description,omitempty"`
-	Highlights             []string `json:"highlights"`
-	ProductType            string   `json:"productType"`
-	Price                  *string  `json:"price,omitempty" example:"$24.99"`
-	ExtractedPrice         *float64 `json:"extractedPrice,omitempty" example:"24.99"`
-	OriginalPrice          *string  `json:"originalPrice,omitempty" example:"$29.99"`
-	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"29.99"`
-	Currency               *string  `json:"currency,omitempty" example:"USD"`
+	// Product database UUID
+	ID string `json:"id" example:"60000000-0000-0000-0000-000000000001"`
+	// URL-friendly unique slug
+	Slug string `json:"slug" example:"macbook-pro-16"`
+	// Product display title
+	Title string `json:"title" example:"MacBook Pro 16\""`
+	// Detailed product description
+	Description *string `json:"description,omitempty" example:"Supercharged by M3 Pro or M3 Max."`
+	// Bulleted product highlights
+	Highlights []string `json:"highlights"`
+	// Product type: simple or variable
+	ProductType string `json:"productType" example:"variable"`
+	// Formatted active price
+	Price *string `json:"price,omitempty" example:"$2499.00"`
+	// Numeric active price
+	ExtractedPrice *float64 `json:"extractedPrice,omitempty" example:"2499.00"`
+	// Formatted original crossed-out price
+	OriginalPrice *string `json:"originalPrice,omitempty" example:"$2999.00"`
+	// Numeric original price
+	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
+	// Currency ISO code
+	Currency *string `json:"currency,omitempty" example:"USD"`
 }
 
 type ProductRatingSummaryResponse struct {
-	AverageRating float64       `json:"averageRating" example:"4.5"`
-	ReviewCount   int           `json:"reviewCount" example:"24"`
-	Distribution  map[int16]int `json:"distribution"`
+	// Average review score (1.0 to 5.0)
+	AverageRating float64 `json:"averageRating" example:"4.5"`
+	// Total count of approved reviews
+	ReviewCount int `json:"reviewCount" example:"24"`
+	// Star rating distribution mapping score (1-5) to frequency
+	Distribution map[int16]int `json:"distribution"`
 }
 
 type ProductDetailsResponse struct {
 	ProductResponse
-	Brand    *ProductBrandSummary          `json:"brand,omitempty"`
-	Variants []ProductVariantResponse      `json:"variants"`
-	Tags     []ProductTagSummary           `json:"tags"`
-	Rating   *ProductRatingSummaryResponse `json:"rating,omitempty"`
+	// Associated brand summary
+	Brand *ProductBrandSummary `json:"brand,omitempty"`
+	// List of all active product variants
+	Variants []ProductVariantResponse `json:"variants"`
+	// Assigned taxonomy tags
+	Tags []ProductTagSummary `json:"tags"`
+	// Aggregated review score and count
+	Rating *ProductRatingSummaryResponse `json:"rating,omitempty"`
 }
 
 type AdminProductDetailsResponse struct {
-	ID          string                        `json:"id" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	Slug        string                        `json:"slug"`
-	Title       string                        `json:"title" example:"Wireless Headphones"`
-	Description *string                       `json:"description,omitempty"`
-	Highlights  []string                      `json:"highlights"`
-	Status      model.PublicationStatus       `json:"status" example:"draft"`
-	ProductType string                        `json:"productType"`
-	Thumbnail   *StorageObjectResponse        `json:"thumbnail,omitempty"`
-	BrandID     *string                       `json:"brandId,omitempty"`
-	Brand       *ProductBrandSummary          `json:"brand,omitempty"`
-	CategoryID  string                        `json:"categoryId"`
-	Category    *ProductCategorySummary       `json:"category,omitempty"`
-	Variants    []AdminProductVariantResponse `json:"variants"`
-	Tags        []ProductTagSummary           `json:"tags"`
-	CreatedAt   string                        `json:"createdAt" example:"2026-08-05T19:00:00Z"`
-	UpdatedAt   string                        `json:"updatedAt" example:"2026-08-05T19:00:00Z"`
-	DeletedAt   *string                       `json:"deletedAt,omitempty" example:"2026-08-05T19:30:00Z"`
+	// Product database UUID
+	ID string `json:"id" example:"60000000-0000-0000-0000-000000000001"`
+	// URL-friendly slug
+	Slug string `json:"slug" example:"macbook-pro-16"`
+	// Product title
+	Title string `json:"title" example:"MacBook Pro 16\""`
+	// Product description
+	Description *string `json:"description,omitempty" example:"Supercharged by M3 Pro or M3 Max."`
+	// Bullet highlights
+	Highlights []string `json:"highlights"`
+	// Publication status: draft, published, archived
+	Status model.PublicationStatus `json:"status" example:"published"`
+	// Product classification: simple or variable
+	ProductType string `json:"productType" example:"variable"`
+	// Primary thumbnail storage object
+	Thumbnail *StorageObjectResponse `json:"thumbnail,omitempty"`
+	// Associated brand ID
+	BrandID *string `json:"brandId,omitempty" example:"30000000-0000-0000-0000-000000000001"`
+	// Brand summary
+	Brand *ProductBrandSummary `json:"brand,omitempty"`
+	// Associated category ID
+	CategoryID string `json:"categoryId" example:"40000000-0000-0000-0000-000000000002"`
+	// Category summary
+	Category *ProductCategorySummary `json:"category,omitempty"`
+	// Full administrative variant details
+	Variants []AdminProductVariantResponse `json:"variants"`
+	// Product tags
+	Tags []ProductTagSummary `json:"tags"`
+	// Timestamp when product was created (RFC3339)
+	CreatedAt string `json:"createdAt" example:"2026-08-05T19:00:00Z"`
+	// Timestamp when product was last updated (RFC3339)
+	UpdatedAt string `json:"updatedAt" example:"2026-08-05T19:00:00Z"`
+	// Timestamp when product was soft-deleted, if applicable
+	DeletedAt *string `json:"deletedAt,omitempty" example:"2026-08-05T19:30:00Z"`
 }
 
 type ProductReviewResponse struct {
-	ID          string    `json:"id"`
-	ProductID   string    `json:"productId"`
-	UserID      string    `json:"userId"`
-	OrderItemID string    `json:"orderItemId"`
-	Rating      int16     `json:"rating"`
-	Title       *string   `json:"title,omitempty"`
-	Body        *string   `json:"body,omitempty"`
-	Status      string    `json:"status"`
-	CreatedAt   string    `json:"createdAt"`
-	UpdatedAt   string    `json:"updatedAt"`
+	// Review UUID
+	ID string `json:"id" example:"92000000-0000-0000-0000-000000000001"`
+	// Product UUID being reviewed
+	ProductID string `json:"productId" example:"60000000-0000-0000-0000-000000000001"`
+	// Author customer UUID
+	UserID string `json:"userId" example:"10000000-0000-0000-0000-000000000002"`
+	// Verified order item purchase UUID
+	OrderItemID string `json:"orderItemId" example:"91000000-0000-0000-0000-000000000001"`
+	// Score from 1 to 5 stars
+	Rating int16 `json:"rating" example:"5"`
+	// Optional review heading title
+	Title *string `json:"title,omitempty" example:"Unbelievable performance!"`
+	// Review text narrative
+	Body *string `json:"body,omitempty" example:"The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."`
+	// Moderation state: pending, approved, rejected
+	Status string `json:"status" example:"approved"`
+	// Submission timestamp (RFC3339)
+	CreatedAt string `json:"createdAt" example:"2026-08-13T07:56:17Z"`
+	// Last modified timestamp (RFC3339)
+	UpdatedAt string `json:"updatedAt" example:"2026-08-13T07:56:17Z"`
 }
 
 // --- DTOs: Media ---
 
 type StorageObjectResponse struct {
-	ContentType string `json:"contentType,omitempty"`
-	FileSize    int64  `json:"fileSize,omitempty"`
-	PublicURL   string `json:"url,omitempty"`
+	// MIME content type (e.g. image/webp)
+	ContentType string `json:"contentType,omitempty" example:"image/webp"`
+	// File size in bytes
+	FileSize int64 `json:"fileSize,omitempty" example:"1048576"`
+	// Public CDN access URL
+	PublicURL string `json:"url,omitempty" example:"https://example.com/media/image.webp"`
 }
 
 type ReorderMediaRequest struct {
-	OrderedMediaIDs []string `json:"orderedMediaIds" binding:"required,gt=0,dive,uuid"`
+	// Array of media UUIDs in desired presentation sequence
+	OrderedMediaIDs []string `json:"orderedMediaIds" binding:"required,gt=0,dive,uuid" example:"['80000000-0000-0000-0000-000000000001']"`
 }
 
 // --- DTOs: Variants ---
 
 type CreateProductVariantRequest struct {
-	Title           string         `json:"title" binding:"required" example:"Black / XL"`
-	Price           *int64         `json:"price,omitempty" example:"2999"`
-	CrossedOutPrice *int64         `json:"crossedOutPrice,omitempty" example:"3999"`
-	Currency        *string        `json:"currency,omitempty" example:"USD"`
-	Attributes      map[string]any `json:"attributes,omitempty"`
-	IsDefault       bool           `json:"isDefault" example:"false"`
-	InitialStock    *int           `json:"initialStock,omitempty" example:"100"`
+	// Variant option title (e.g. "Space Black / 18GB RAM")
+	Title string `json:"title" binding:"required" example:"Space Black / 18GB RAM / 512GB SSD"`
+	// Price in cents (e.g. 249900 = $2499.00)
+	Price *int64 `json:"price,omitempty" example:"249900"`
+	// Crossed-out/original MSRP price in cents
+	CrossedOutPrice *int64 `json:"crossedOutPrice,omitempty" example:"299900"`
+	// Currency ISO code
+	Currency *string `json:"currency,omitempty" example:"USD"`
+	// Custom attributes map
+	Attributes map[string]any `json:"attributes,omitempty"`
+	// Flag if this variant should be the default selection
+	IsDefault bool `json:"isDefault" example:"true"`
+	// Initial stock inventory count to credit to warehouse
+	InitialStock *int `json:"initialStock,omitempty" example:"50"`
 }
 
 type SetDefaultVariantRequest struct {
-	VariantID string `json:"variantId" binding:"required,uuid"`
+	// Variant UUID to set as default
+	VariantID string `json:"variantId" binding:"required,uuid" example:"70000000-0000-0000-0000-000000000001"`
 }
 
 type PutProductTagsRequest struct {
-	TagIDs []string `json:"tagIds" binding:"required,dive,uuid"`
+	// List of Tag UUIDs to associate with the product
+	TagIDs []string `json:"tagIds" binding:"required,dive,uuid" example:"['50000000-0000-0000-0000-000000000001']"`
 }
 
 type PutProductCategoryRequest struct {
-	CategoryID string `json:"categoryId" binding:"required,uuid"`
+	// Target category UUID
+	CategoryID string `json:"categoryId" binding:"required,uuid" example:"40000000-0000-0000-0000-000000000002"`
 }
 
 // --- Mappers ---
@@ -446,16 +560,26 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 }
 
 type ProductListItemResponse struct {
-	Slug                   string                        `json:"slug"`
-	Title                  string                        `json:"title"`
-	Brand                  *string                       `json:"brand,omitempty"`
-	Thumbnail              *string                       `json:"thumbnail,omitempty"`
-	Price                  *string                       `json:"price,omitempty" example:"$24.99"`
-	ExtractedPrice         *float64                      `json:"extractedPrice,omitempty" example:"24.99"`
-	OriginalPrice          *string                       `json:"originalPrice,omitempty" example:"$29.99"`
-	ExtractedOriginalPrice *float64                      `json:"extractedOriginalPrice,omitempty" example:"29.99"`
-	Currency               *string                       `json:"currency,omitempty" example:"USD"`
-	Rating                 *ProductRatingSummaryResponse `json:"rating,omitempty"`
+	// URL-friendly unique slug
+	Slug string `json:"slug" example:"macbook-pro-16"`
+	// Product display title
+	Title string `json:"title" example:"MacBook Pro 16\""`
+	// Brand name
+	Brand *string `json:"brand,omitempty" example:"Apple"`
+	// Product card thumbnail URL
+	Thumbnail *string `json:"thumbnail,omitempty" example:"https://example.com/thumb.jpg"`
+	// Formatted display price
+	Price *string `json:"price,omitempty" example:"$2499.00"`
+	// Numeric price value
+	ExtractedPrice *float64 `json:"extractedPrice,omitempty" example:"2499.00"`
+	// Formatted crossed-out original price
+	OriginalPrice *string `json:"originalPrice,omitempty" example:"$2999.00"`
+	// Numeric original price
+	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
+	// Currency ISO code
+	Currency *string `json:"currency,omitempty" example:"USD"`
+	// Rating summary and score breakdown
+	Rating *ProductRatingSummaryResponse `json:"rating,omitempty"`
 }
 
 func mapProductListItemResponse(item *ProductCardReadModel) ProductListItemResponse {

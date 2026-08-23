@@ -2113,12 +2113,14 @@ const docTemplatepublic = `{
             ],
             "properties": {
                 "quantity": {
+                    "description": "Quantity of units to add (must be at least 1)",
                     "type": "integer",
                     "example": 2
                 },
                 "variantId": {
+                    "description": "Product Variant UUID to add to the cart",
                     "type": "string",
-                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                    "example": "70000000-0000-0000-0000-000000000001"
                 }
             }
         },
@@ -2210,21 +2212,24 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "description": "Public ID of the brand",
+                    "description": "Public UUID identifier of the brand",
                     "type": "string",
                     "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
                 "link": {
+                    "description": "Official website URL",
                     "type": "string",
-                    "example": "https://nvidia.com"
+                    "example": "https://apple.com"
                 },
                 "logoUrl": {
+                    "description": "Publicly accessible URL for the brand logo",
                     "type": "string",
-                    "example": "https://example.com/logo.png"
+                    "example": "https://example.com/apple-logo.png"
                 },
                 "name": {
+                    "description": "Brand/manufacturer name",
                     "type": "string",
-                    "example": "nvidia"
+                    "example": "Apple"
                 }
             }
         },
@@ -2232,31 +2237,49 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "string"
+                    "description": "Unique Cart Item record UUID",
+                    "type": "string",
+                    "example": "030553cd-712a-4950-913f-6c26fdd6a2b5"
                 },
                 "inStock": {
-                    "type": "boolean"
+                    "description": "Live inventory availability check: true if inventory \u003e= quantity",
+                    "type": "boolean",
+                    "example": true
                 },
                 "productId": {
-                    "type": "string"
+                    "description": "Parent Product UUID",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
                 },
                 "quantity": {
-                    "type": "integer"
+                    "description": "Selected quantity units in cart",
+                    "type": "integer",
+                    "example": 2
                 },
                 "subtotal": {
-                    "type": "integer"
+                    "description": "Line item subtotal (quantity * unitPrice) in cents",
+                    "type": "integer",
+                    "example": 499800
                 },
                 "thumbnailUrl": {
-                    "type": "string"
+                    "description": "Thumbnail preview image URL",
+                    "type": "string",
+                    "example": "https://example.com/thumbnail.png"
                 },
                 "title": {
-                    "type": "string"
+                    "description": "Formatted line item title (Product Title + Variant Title)",
+                    "type": "string",
+                    "example": "MacBook Pro 16\" - Space Black, 18GB RAM, 512GB SSD"
                 },
                 "unitPrice": {
-                    "type": "integer"
+                    "description": "Unit price per single item in cents",
+                    "type": "integer",
+                    "example": 249900
                 },
                 "variantId": {
-                    "type": "string"
+                    "description": "Selected SKU Variant UUID",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
                 }
             }
         },
@@ -2264,25 +2287,39 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "currency": {
-                    "type": "string"
+                    "description": "Active store currency code",
+                    "type": "string",
+                    "example": "USD"
                 },
                 "id": {
-                    "type": "string"
+                    "description": "Cart UUID",
+                    "type": "string",
+                    "example": "c23c12b7-37ff-49e6-a70f-1dcd122a0b99"
                 },
                 "itemCount": {
-                    "type": "integer"
+                    "description": "Total count of distinct units in cart",
+                    "type": "integer",
+                    "example": 2
                 },
                 "items": {
+                    "description": "List of all items currently in cart",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/CartItemResponse"
                     }
                 },
                 "summary": {
-                    "$ref": "#/definitions/CartSummaryResponse"
+                    "description": "Monetary calculation breakdown",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/CartSummaryResponse"
+                        }
+                    ]
                 },
                 "updatedAt": {
-                    "type": "string"
+                    "description": "Timestamp of the most recent cart mutation (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-23T16:26:25Z"
                 }
             }
         },
@@ -2290,19 +2327,29 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "discount": {
-                    "type": "integer"
+                    "description": "Applied discount deductions in cents",
+                    "type": "integer",
+                    "example": 0
                 },
                 "shipping": {
-                    "type": "integer"
+                    "description": "Estimated shipping cost in cents",
+                    "type": "integer",
+                    "example": 0
                 },
                 "subtotal": {
-                    "type": "integer"
+                    "description": "Sum total of all items before discounts/tax in cents",
+                    "type": "integer",
+                    "example": 499800
                 },
                 "tax": {
-                    "type": "integer"
+                    "description": "Estimated tax amount in cents",
+                    "type": "integer",
+                    "example": 0
                 },
                 "total": {
-                    "type": "integer"
+                    "description": "Final calculated order total (subtotal - discount + shipping + tax) in cents",
+                    "type": "integer",
+                    "example": 499800
                 }
             }
         },
@@ -2361,26 +2408,31 @@ const docTemplatepublic = `{
             ],
             "properties": {
                 "body": {
+                    "description": "Review detailed feedback narrative",
                     "type": "string",
-                    "example": "The sound quality and active noise cancellation are top notch."
+                    "example": "The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."
                 },
                 "orderItemId": {
+                    "description": "Purchased Order Item UUID verifying buyer eligibility",
                     "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                    "example": "91000000-0000-0000-0000-000000000001"
                 },
                 "productId": {
+                    "description": "Product UUID to review",
                     "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                    "example": "60000000-0000-0000-0000-000000000001"
                 },
                 "rating": {
+                    "description": "Star score between 1 and 5",
                     "type": "integer",
                     "maximum": 5,
                     "minimum": 1,
                     "example": 5
                 },
                 "title": {
+                    "description": "Optional review headline title",
                     "type": "string",
-                    "example": "Amazing headphones!"
+                    "example": "Unbelievable performance!"
                 }
             }
         },
@@ -2619,13 +2671,19 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "string"
+                    "description": "Brand UUID",
+                    "type": "string",
+                    "example": "30000000-0000-0000-0000-000000000001"
                 },
                 "link": {
-                    "type": "string"
+                    "description": "Official website URL",
+                    "type": "string",
+                    "example": "https://apple.com"
                 },
                 "name": {
-                    "type": "string"
+                    "description": "Brand name",
+                    "type": "string",
+                    "example": "Apple"
                 }
             }
         },
@@ -2633,62 +2691,87 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "brand": {
-                    "$ref": "#/definitions/ProductBrandSummary"
+                    "description": "Associated brand summary",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductBrandSummary"
+                        }
+                    ]
                 },
                 "currency": {
+                    "description": "Currency ISO code",
                     "type": "string",
                     "example": "USD"
                 },
                 "description": {
-                    "type": "string"
+                    "description": "Detailed product description",
+                    "type": "string",
+                    "example": "Supercharged by M3 Pro or M3 Max."
                 },
                 "extractedOriginalPrice": {
+                    "description": "Numeric original price",
                     "type": "number",
-                    "example": 29.99
+                    "example": 2999
                 },
                 "extractedPrice": {
+                    "description": "Numeric active price",
                     "type": "number",
-                    "example": 24.99
+                    "example": 2499
                 },
                 "highlights": {
+                    "description": "Bulleted product highlights",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
                 "id": {
+                    "description": "Product database UUID",
                     "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                    "example": "60000000-0000-0000-0000-000000000001"
                 },
                 "originalPrice": {
+                    "description": "Formatted original crossed-out price",
                     "type": "string",
-                    "example": "$29.99"
+                    "example": "$2999.00"
                 },
                 "price": {
+                    "description": "Formatted active price",
                     "type": "string",
-                    "example": "$24.99"
+                    "example": "$2499.00"
                 },
                 "productType": {
-                    "type": "string"
+                    "description": "Product type: simple or variable",
+                    "type": "string",
+                    "example": "variable"
                 },
                 "rating": {
-                    "$ref": "#/definitions/ProductRatingSummaryResponse"
+                    "description": "Aggregated review score and count",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductRatingSummaryResponse"
+                        }
+                    ]
                 },
                 "slug": {
+                    "description": "URL-friendly unique slug",
                     "type": "string",
-                    "example": "wireless-headphones"
+                    "example": "macbook-pro-16"
                 },
                 "tags": {
+                    "description": "Assigned taxonomy tags",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/ProductTagSummary"
                     }
                 },
                 "title": {
+                    "description": "Product display title",
                     "type": "string",
-                    "example": "Wireless Headphones"
+                    "example": "MacBook Pro 16\""
                 },
                 "variants": {
+                    "description": "List of all active product variants",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/ProductVariantResponse"
@@ -2700,39 +2783,57 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "brand": {
-                    "type": "string"
+                    "description": "Brand name",
+                    "type": "string",
+                    "example": "Apple"
                 },
                 "currency": {
+                    "description": "Currency ISO code",
                     "type": "string",
                     "example": "USD"
                 },
                 "extractedOriginalPrice": {
+                    "description": "Numeric original price",
                     "type": "number",
-                    "example": 29.99
+                    "example": 2999
                 },
                 "extractedPrice": {
+                    "description": "Numeric price value",
                     "type": "number",
-                    "example": 24.99
+                    "example": 2499
                 },
                 "originalPrice": {
+                    "description": "Formatted crossed-out original price",
                     "type": "string",
-                    "example": "$29.99"
+                    "example": "$2999.00"
                 },
                 "price": {
+                    "description": "Formatted display price",
                     "type": "string",
-                    "example": "$24.99"
+                    "example": "$2499.00"
                 },
                 "rating": {
-                    "$ref": "#/definitions/ProductRatingSummaryResponse"
+                    "description": "Rating summary and score breakdown",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductRatingSummaryResponse"
+                        }
+                    ]
                 },
                 "slug": {
-                    "type": "string"
+                    "description": "URL-friendly unique slug",
+                    "type": "string",
+                    "example": "macbook-pro-16"
                 },
                 "thumbnail": {
-                    "type": "string"
+                    "description": "Product card thumbnail URL",
+                    "type": "string",
+                    "example": "https://example.com/thumb.jpg"
                 },
                 "title": {
-                    "type": "string"
+                    "description": "Product display title",
+                    "type": "string",
+                    "example": "MacBook Pro 16\""
                 }
             }
         },
@@ -2740,16 +2841,19 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "averageRating": {
+                    "description": "Average review score (1.0 to 5.0)",
                     "type": "number",
                     "example": 4.5
                 },
                 "distribution": {
+                    "description": "Star rating distribution mapping score (1-5) to frequency",
                     "type": "object",
                     "additionalProperties": {
                         "type": "integer"
                     }
                 },
                 "reviewCount": {
+                    "description": "Total count of approved reviews",
                     "type": "integer",
                     "example": 24
                 }
@@ -2759,34 +2863,54 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "body": {
-                    "type": "string"
+                    "description": "Review text narrative",
+                    "type": "string",
+                    "example": "The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."
                 },
                 "createdAt": {
-                    "type": "string"
+                    "description": "Submission timestamp (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-13T07:56:17Z"
                 },
                 "id": {
-                    "type": "string"
+                    "description": "Review UUID",
+                    "type": "string",
+                    "example": "92000000-0000-0000-0000-000000000001"
                 },
                 "orderItemId": {
-                    "type": "string"
+                    "description": "Verified order item purchase UUID",
+                    "type": "string",
+                    "example": "91000000-0000-0000-0000-000000000001"
                 },
                 "productId": {
-                    "type": "string"
+                    "description": "Product UUID being reviewed",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
                 },
                 "rating": {
-                    "type": "integer"
+                    "description": "Score from 1 to 5 stars",
+                    "type": "integer",
+                    "example": 5
                 },
                 "status": {
-                    "type": "string"
+                    "description": "Moderation state: pending, approved, rejected",
+                    "type": "string",
+                    "example": "approved"
                 },
                 "title": {
-                    "type": "string"
+                    "description": "Optional review heading title",
+                    "type": "string",
+                    "example": "Unbelievable performance!"
                 },
                 "updatedAt": {
-                    "type": "string"
+                    "description": "Last modified timestamp (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-13T07:56:17Z"
                 },
                 "userId": {
-                    "type": "string"
+                    "description": "Author customer UUID",
+                    "type": "string",
+                    "example": "10000000-0000-0000-0000-000000000002"
                 }
             }
         },
@@ -2794,10 +2918,14 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "string"
+                    "description": "Tag UUID",
+                    "type": "string",
+                    "example": "50000000-0000-0000-0000-000000000001"
                 },
                 "name": {
-                    "type": "string"
+                    "description": "Tag name",
+                    "type": "string",
+                    "example": "Featured"
                 }
             }
         },
@@ -2805,52 +2933,74 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "attributes": {
+                    "description": "Custom variant attributes (e.g. {\"color\":\"Black\",\"ram\":\"18GB\"})",
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "currency": {
+                    "description": "Currency ISO code",
                     "type": "string",
                     "example": "USD"
                 },
                 "extractedOriginalPrice": {
+                    "description": "Numeric original MSRP price",
                     "type": "number",
-                    "example": 29.99
+                    "example": 2999
                 },
                 "extractedPrice": {
+                    "description": "Numeric price value",
                     "type": "number",
-                    "example": 24.99
+                    "example": 2499
                 },
                 "id": {
-                    "type": "string"
+                    "description": "Variant UUID",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
                 },
                 "isDefault": {
-                    "type": "boolean"
+                    "description": "True if this variant is the default selection on product pages",
+                    "type": "boolean",
+                    "example": true
                 },
                 "media": {
+                    "description": "Associated media gallery",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/VariantMediaSummary"
                     }
                 },
                 "originalPrice": {
+                    "description": "Formatted crossed-out/original MSRP price",
                     "type": "string",
-                    "example": "$29.99"
+                    "example": "$2999.00"
                 },
                 "price": {
+                    "description": "Formatted display price",
                     "type": "string",
-                    "example": "$24.99"
+                    "example": "$2499.00"
                 },
                 "sku": {
-                    "type": "string"
+                    "description": "Unique Stock Keeping Unit",
+                    "type": "string",
+                    "example": "MAC-PRO-16-BLK-18"
                 },
                 "stock": {
-                    "$ref": "#/definitions/PublicStockSummary"
+                    "description": "Live customer-facing stock availability",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/PublicStockSummary"
+                        }
+                    ]
                 },
                 "thumbnail": {
-                    "type": "string"
+                    "description": "Primary variant thumbnail URL",
+                    "type": "string",
+                    "example": "https://example.com/thumb.jpg"
                 },
                 "title": {
-                    "type": "string"
+                    "description": "Variant option title (e.g. \"Space Black, 18GB RAM\")",
+                    "type": "string",
+                    "example": "Space Black, 18GB RAM, 512GB SSD"
                 }
             }
         },
@@ -2858,10 +3008,12 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "id": {
+                    "description": "Public category identifier",
                     "type": "string",
-                    "example": "prod_cat_123"
+                    "example": "40000000-0000-0000-0000-000000000002"
                 },
                 "name": {
+                    "description": "Category display name",
                     "type": "string",
                     "example": "Electronics"
                 }
@@ -2871,10 +3023,12 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "availableQuantity": {
+                    "description": "Units available for customer checkout",
                     "type": "integer",
-                    "example": 45
+                    "example": 50
                 },
                 "isInStock": {
+                    "description": "True if availableQuantity \u003e 0",
                     "type": "boolean",
                     "example": true
                 }
@@ -2884,10 +3038,14 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "availableQuantity": {
-                    "type": "integer"
+                    "description": "Quantity available for customer purchase",
+                    "type": "integer",
+                    "example": 50
                 },
                 "isInStock": {
-                    "type": "boolean"
+                    "description": "True if availableQuantity \u003e 0",
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },
@@ -2914,44 +3072,54 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "body": {
+                    "description": "Review detailed text",
                     "type": "string",
-                    "example": "The sound quality is top notch."
+                    "example": "The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."
                 },
                 "createdAt": {
+                    "description": "Submission timestamp (RFC3339)",
                     "type": "string",
-                    "example": "2026-08-10T15:00:00Z"
+                    "example": "2026-08-13T07:56:17Z"
                 },
                 "id": {
+                    "description": "Review UUID",
                     "type": "string",
-                    "example": "8f123456-e89b-12d3-a456-426614174000"
+                    "example": "92000000-0000-0000-0000-000000000001"
                 },
                 "orderItemId": {
+                    "description": "Verified Order Item purchase UUID",
                     "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                    "example": "91000000-0000-0000-0000-000000000001"
                 },
                 "productId": {
+                    "description": "Reviewed Product UUID",
                     "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                    "example": "60000000-0000-0000-0000-000000000001"
                 },
                 "rating": {
+                    "description": "Star score (1-5)",
                     "type": "integer",
                     "example": 5
                 },
                 "status": {
+                    "description": "Moderation status: pending, approved, rejected",
                     "type": "string",
-                    "example": "pending"
+                    "example": "approved"
                 },
                 "title": {
+                    "description": "Optional review headline",
                     "type": "string",
-                    "example": "Amazing headphones!"
+                    "example": "Unbelievable performance!"
                 },
                 "updatedAt": {
+                    "description": "Last updated timestamp (RFC3339)",
                     "type": "string",
-                    "example": "2026-08-10T15:00:00Z"
+                    "example": "2026-08-13T07:56:17Z"
                 },
                 "userId": {
+                    "description": "Author Customer UUID",
                     "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                    "example": "10000000-0000-0000-0000-000000000002"
                 }
             }
         },
@@ -3023,22 +3191,34 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "bucket": {
-                    "type": "string"
+                    "description": "Storage bucket name",
+                    "type": "string",
+                    "example": "product-media"
                 },
                 "contentType": {
-                    "type": "string"
+                    "description": "MIME content type",
+                    "type": "string",
+                    "example": "image/webp"
                 },
                 "fileSize": {
-                    "type": "integer"
+                    "description": "File size in bytes",
+                    "type": "integer",
+                    "example": 1048576
                 },
                 "id": {
-                    "type": "string"
+                    "description": "Internal object storage UUID",
+                    "type": "string",
+                    "example": "80000000-0000-0000-0000-000000000001"
                 },
                 "key": {
-                    "type": "string"
+                    "description": "Storage object key / filepath",
+                    "type": "string",
+                    "example": "variants/70000000/image.webp"
                 },
                 "publicUrl": {
-                    "type": "string"
+                    "description": "Public CDN URL",
+                    "type": "string",
+                    "example": "https://example.com/media/image.webp"
                 }
             }
         },
@@ -3056,12 +3236,14 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "id": {
+                    "description": "Unique UUID identifier of the tag",
                     "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                    "example": "50000000-0000-0000-0000-000000000001"
                 },
                 "name": {
+                    "description": "Tag label name",
                     "type": "string",
-                    "example": "black-friday"
+                    "example": "Featured"
                 }
             }
         },
@@ -3098,8 +3280,9 @@ const docTemplatepublic = `{
             ],
             "properties": {
                 "quantity": {
+                    "description": "New total quantity desired for this cart item (must be at least 1)",
                     "type": "integer",
-                    "example": 5
+                    "example": 3
                 }
             }
         },
@@ -3107,18 +3290,21 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "body": {
+                    "description": "Updated review feedback narrative",
                     "type": "string",
-                    "example": "Updated review body."
+                    "example": "Updated feedback after 3 months of continuous daily use."
                 },
                 "rating": {
+                    "description": "Updated star score between 1 and 5",
                     "type": "integer",
                     "maximum": 5,
                     "minimum": 1,
-                    "example": 4
+                    "example": 5
                 },
                 "title": {
+                    "description": "Updated review headline title",
                     "type": "string",
-                    "example": "Updated title"
+                    "example": "Updated review headline"
                 }
             }
         },
@@ -3155,31 +3341,42 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "id": {
+                    "description": "Media record UUID",
                     "type": "string",
-                    "example": "8f123456-e89b-12d3-a456-426614174000"
+                    "example": "80000000-0000-0000-0000-000000000001"
                 },
                 "mediaType": {
+                    "description": "Media classification (image or video)",
                     "type": "string",
                     "example": "image"
                 },
                 "object": {
-                    "$ref": "#/definitions/StorageObjectResponse"
+                    "description": "Detailed storage file metadata",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/StorageObjectResponse"
+                        }
+                    ]
                 },
                 "objectId": {
+                    "description": "Underlying storage object UUID",
                     "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                    "example": "80000000-0000-0000-0000-000000000001"
                 },
                 "publicId": {
+                    "description": "Public customer-facing UUID",
                     "type": "string",
-                    "example": "8f123456-e89b-12d3-a456-426614174000"
+                    "example": "80000000-0000-0000-0000-000000000001"
                 },
                 "sortOrder": {
+                    "description": "Display sequence sort order",
                     "type": "integer",
-                    "example": 0
+                    "example": 1
                 },
                 "variantId": {
+                    "description": "Associated variant UUID",
                     "type": "string",
-                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                    "example": "70000000-0000-0000-0000-000000000001"
                 }
             }
         },
@@ -3187,16 +3384,24 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "string"
+                    "description": "Media record UUID",
+                    "type": "string",
+                    "example": "80000000-0000-0000-0000-000000000001"
                 },
                 "mediaType": {
-                    "type": "string"
+                    "description": "Media MIME type or format (e.g. image/jpeg, video/mp4)",
+                    "type": "string",
+                    "example": "image/jpeg"
                 },
                 "sortOrder": {
-                    "type": "integer"
+                    "description": "Display sequence sort order",
+                    "type": "integer",
+                    "example": 1
                 },
                 "url": {
-                    "type": "string"
+                    "description": "Public CDN or storage URL",
+                    "type": "string",
+                    "example": "https://example.com/media/headphones.jpg"
                 }
             }
         },
@@ -3204,56 +3409,71 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "attributes": {
+                    "description": "Custom variant attributes",
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "currency": {
+                    "description": "Currency ISO code",
                     "type": "string",
                     "example": "USD"
                 },
                 "extractedOriginalPrice": {
+                    "description": "Numeric original price value",
                     "type": "number",
-                    "example": 29.99
+                    "example": 2999
                 },
                 "extractedPrice": {
+                    "description": "Numeric active price value",
                     "type": "number",
-                    "example": 24.99
+                    "example": 2499
                 },
                 "id": {
+                    "description": "Variant UUID",
                     "type": "string",
-                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                    "example": "70000000-0000-0000-0000-000000000001"
                 },
                 "isDefault": {
+                    "description": "True if this is the default variant",
                     "type": "boolean",
-                    "example": false
+                    "example": true
                 },
                 "media": {
+                    "description": "Attached gallery media assets",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/VariantMediaSummary"
                     }
                 },
                 "originalPrice": {
+                    "description": "Formatted original crossed-out price",
                     "type": "string",
-                    "example": "$29.99"
+                    "example": "$2999.00"
                 },
                 "price": {
+                    "description": "Formatted active display price",
                     "type": "string",
-                    "example": "$24.99"
+                    "example": "$2499.00"
                 },
                 "productId": {
+                    "description": "Parent product UUID",
                     "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                    "example": "60000000-0000-0000-0000-000000000001"
                 },
                 "sku": {
-                    "type": "string"
+                    "description": "Stock Keeping Unit",
+                    "type": "string",
+                    "example": "MAC-PRO-16-BLK-18"
                 },
                 "thumbnail": {
-                    "type": "string"
+                    "description": "Primary thumbnail image URL",
+                    "type": "string",
+                    "example": "https://example.com/thumb.jpg"
                 },
                 "title": {
+                    "description": "Variant title",
                     "type": "string",
-                    "example": "Red / XL"
+                    "example": "Space Black, 18GB RAM, 512GB SSD"
                 }
             }
         },

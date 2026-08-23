@@ -23,41 +23,64 @@ func NewHandler(cartService *CartService) *CartHandler {
 }
 
 type AddItemRequest struct {
-	VariantID uuid.UUID `json:"variantId" binding:"required" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
-	Quantity  int       `json:"quantity" binding:"required,gt=0" example:"2"`
+	// Product Variant UUID to add to the cart
+	VariantID uuid.UUID `json:"variantId" binding:"required" example:"70000000-0000-0000-0000-000000000001"`
+	// Quantity of units to add (must be at least 1)
+	Quantity int `json:"quantity" binding:"required,gt=0" example:"2"`
 }
 
 type UpdateQuantityRequest struct {
-	Quantity int `json:"quantity" binding:"required,gt=0" example:"5"`
+	// New total quantity desired for this cart item (must be at least 1)
+	Quantity int `json:"quantity" binding:"required,gt=0" example:"3"`
 }
 
 type CartSummaryResponse struct {
-	Subtotal int64 `json:"subtotal"`
-	Discount int64 `json:"discount"`
-	Shipping int64 `json:"shipping"`
-	Tax      int64 `json:"tax"`
-	Total    int64 `json:"total"`
+	// Sum total of all items before discounts/tax in cents
+	Subtotal int64 `json:"subtotal" example:"499800"`
+	// Applied discount deductions in cents
+	Discount int64 `json:"discount" example:"0"`
+	// Estimated shipping cost in cents
+	Shipping int64 `json:"shipping" example:"0"`
+	// Estimated tax amount in cents
+	Tax int64 `json:"tax" example:"0"`
+	// Final calculated order total (subtotal - discount + shipping + tax) in cents
+	Total int64 `json:"total" example:"499800"`
 }
 
 type CartItemResponse struct {
-	ID           string `json:"id"`
-	ProductID    string `json:"productId"`
-	VariantID    string `json:"variantId"`
-	Title        string `json:"title"`
-	ThumbnailURL string `json:"thumbnailUrl"`
-	Quantity     int    `json:"quantity"`
-	UnitPrice    int64  `json:"unitPrice"`
-	Subtotal     int64  `json:"subtotal"`
-	InStock      bool   `json:"inStock"`
+	// Unique Cart Item record UUID
+	ID string `json:"id" example:"030553cd-712a-4950-913f-6c26fdd6a2b5"`
+	// Parent Product UUID
+	ProductID string `json:"productId" example:"60000000-0000-0000-0000-000000000001"`
+	// Selected SKU Variant UUID
+	VariantID string `json:"variantId" example:"70000000-0000-0000-0000-000000000001"`
+	// Formatted line item title (Product Title + Variant Title)
+	Title string `json:"title" example:"MacBook Pro 16\" - Space Black, 18GB RAM, 512GB SSD"`
+	// Thumbnail preview image URL
+	ThumbnailURL string `json:"thumbnailUrl" example:"https://example.com/thumbnail.png"`
+	// Selected quantity units in cart
+	Quantity int `json:"quantity" example:"2"`
+	// Unit price per single item in cents
+	UnitPrice int64 `json:"unitPrice" example:"249900"`
+	// Line item subtotal (quantity * unitPrice) in cents
+	Subtotal int64 `json:"subtotal" example:"499800"`
+	// Live inventory availability check: true if inventory >= quantity
+	InStock bool `json:"inStock" example:"true"`
 }
 
 type CartResponse struct {
-	ID        string              `json:"id"`
-	Currency  string              `json:"currency"`
-	Items     []CartItemResponse  `json:"items"`
-	Summary   CartSummaryResponse `json:"summary"`
-	ItemCount int                 `json:"itemCount"`
-	UpdatedAt string              `json:"updatedAt"`
+	// Cart UUID
+	ID string `json:"id" example:"c23c12b7-37ff-49e6-a70f-1dcd122a0b99"`
+	// Active store currency code
+	Currency string `json:"currency" example:"USD"`
+	// List of all items currently in cart
+	Items []CartItemResponse `json:"items"`
+	// Monetary calculation breakdown
+	Summary CartSummaryResponse `json:"summary"`
+	// Total count of distinct units in cart
+	ItemCount int `json:"itemCount" example:"2"`
+	// Timestamp of the most recent cart mutation (RFC3339)
+	UpdatedAt string `json:"updatedAt" example:"2026-08-23T16:26:25Z"`
 }
 
 func mapCartResponse(cart *model.Cart) CartResponse {

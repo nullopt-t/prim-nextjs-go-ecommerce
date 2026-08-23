@@ -26,96 +26,162 @@ func NewHandler(s *VariantService) *VariantHandler {
 }
 
 type CreateVariantRequest struct {
-	SKU               *string        `json:"sku,omitempty" example:"TSHIRT-RED-XL"`
-	Title             string         `json:"title" binding:"required" example:"Red / XL"`
-	Price             *int64         `json:"price,omitempty" example:"2999"`
-	CrossedOutPrice   *int64         `json:"crossedOutPrice,omitempty" example:"3999"`
-	Currency          *string        `json:"currency,omitempty" example:"USD"`
-	Attributes        map[string]any `json:"attributes,omitempty"`
-	IsDefault         bool           `json:"isDefault" example:"false"`
-	ThumbnailObjectID *string        `json:"thumbnailObjectId,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	// Optional custom SKU identifier
+	SKU *string `json:"sku,omitempty" example:"MAC-PRO-16-BLK-18"`
+	// Variant display title
+	Title string `json:"title" binding:"required" example:"Space Black, 18GB RAM, 512GB SSD"`
+	// Price in cents (e.g. 249900 = $2499.00)
+	Price *int64 `json:"price,omitempty" example:"249900"`
+	// Crossed-out/original MSRP price in cents
+	CrossedOutPrice *int64 `json:"crossedOutPrice,omitempty" example:"299900"`
+	// Currency ISO code
+	Currency *string `json:"currency,omitempty" example:"USD"`
+	// Key-value attribute specifications (e.g. {"color":"Black","ram":"18GB"})
+	Attributes map[string]any `json:"attributes,omitempty"`
+	// True if this is the default selected variant on storefronts
+	IsDefault bool `json:"isDefault" example:"true"`
+	// Storage object UUID for the primary thumbnail
+	ThumbnailObjectID *string `json:"thumbnailObjectId,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
 }
 
 type UpdateVariantRequest struct {
-	SKU               *string        `json:"sku,omitempty" example:"TSHIRT-RED-XXL"`
-	Title             *string        `json:"title,omitempty" example:"Red / XXL"`
-	Price             *int64         `json:"price,omitempty" example:"3499"`
-	CrossedOutPrice   *int64         `json:"crossedOutPrice,omitempty" example:"4499"`
-	Currency          *string        `json:"currency,omitempty" example:"USD"`
-	Attributes        map[string]any `json:"attributes,omitempty"`
-	IsDefault         *bool          `json:"isDefault,omitempty" example:"true"`
-	ThumbnailObjectID *string        `json:"thumbnailObjectId,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
+	// Updated SKU identifier
+	SKU *string `json:"sku,omitempty" example:"MAC-PRO-16-BLK-18"`
+	// Updated variant display title
+	Title *string `json:"title,omitempty" example:"Space Black, 18GB RAM, 512GB SSD"`
+	// Updated price in cents
+	Price *int64 `json:"price,omitempty" example:"249900"`
+	// Updated original price in cents
+	CrossedOutPrice *int64 `json:"crossedOutPrice,omitempty" example:"299900"`
+	// Currency ISO code
+	Currency *string `json:"currency,omitempty" example:"USD"`
+	// Updated attributes map
+	Attributes map[string]any `json:"attributes,omitempty"`
+	// Updated default selection flag
+	IsDefault *bool `json:"isDefault,omitempty" example:"true"`
+	// Updated thumbnail storage object UUID
+	ThumbnailObjectID *string `json:"thumbnailObjectId,omitempty" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
 }
 
 type VariantMediaSummary struct {
-	ID        string `json:"id"`
-	MediaType string `json:"mediaType"`
-	SortOrder int    `json:"sortOrder"`
-	URL       string `json:"url"`
+	// Media record UUID
+	ID string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
+	// Media MIME type or format (e.g. image/jpeg, video/mp4)
+	MediaType string `json:"mediaType" example:"image/jpeg"`
+	// Display sequence sort order
+	SortOrder int `json:"sortOrder" example:"1"`
+	// Public CDN or storage URL
+	URL string `json:"url" example:"https://example.com/media/headphones.jpg"`
 }
 
 type VariantResponse struct {
-	ID                     string                `json:"id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
-	SKU                    string                `json:"sku,omitempty"`
-	ProductID              string                `json:"productId" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
-	Title                  string                `json:"title" example:"Red / XL"`
-	Price                  *string               `json:"price,omitempty" example:"$24.99"`
-	ExtractedPrice         *float64              `json:"extractedPrice,omitempty" example:"24.99"`
-	OriginalPrice          *string               `json:"originalPrice,omitempty" example:"$29.99"`
-	ExtractedOriginalPrice *float64              `json:"extractedOriginalPrice,omitempty" example:"29.99"`
-	Currency               *string               `json:"currency,omitempty" example:"USD"`
-	Thumbnail              *string               `json:"thumbnail,omitempty"`
-	Media                  []VariantMediaSummary `json:"media"`
-	Attributes             map[string]any        `json:"attributes"`
-	IsDefault              bool                  `json:"isDefault" example:"false"`
+	// Variant UUID
+	ID string `json:"id" example:"70000000-0000-0000-0000-000000000001"`
+	// Stock Keeping Unit
+	SKU string `json:"sku,omitempty" example:"MAC-PRO-16-BLK-18"`
+	// Parent product UUID
+	ProductID string `json:"productId" example:"60000000-0000-0000-0000-000000000001"`
+	// Variant title
+	Title string `json:"title" example:"Space Black, 18GB RAM, 512GB SSD"`
+	// Formatted active display price
+	Price *string `json:"price,omitempty" example:"$2499.00"`
+	// Numeric active price value
+	ExtractedPrice *float64 `json:"extractedPrice,omitempty" example:"2499.00"`
+	// Formatted original crossed-out price
+	OriginalPrice *string `json:"originalPrice,omitempty" example:"$2999.00"`
+	// Numeric original price value
+	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
+	// Currency ISO code
+	Currency *string `json:"currency,omitempty" example:"USD"`
+	// Primary thumbnail image URL
+	Thumbnail *string `json:"thumbnail,omitempty" example:"https://example.com/thumb.jpg"`
+	// Attached gallery media assets
+	Media []VariantMediaSummary `json:"media"`
+	// Custom variant attributes
+	Attributes map[string]any `json:"attributes"`
+	// True if this is the default variant
+	IsDefault bool `json:"isDefault" example:"true"`
 }
 
 type AdminVariantResponse struct {
-	ID                     string                 `json:"id" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
-	SKU                    string                 `json:"sku" example:"prod_var_123"`
-	ProductID              string                 `json:"productId" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
-	Title                  string                 `json:"title" example:"Red / XL"`
-	Price                  *string                `json:"price,omitempty" example:"$24.99"`
-	ExtractedPrice         *float64               `json:"extractedPrice,omitempty" example:"24.99"`
-	OriginalPrice          *string                `json:"originalPrice,omitempty" example:"$29.99"`
-	ExtractedOriginalPrice *float64               `json:"extractedOriginalPrice,omitempty" example:"29.99"`
-	Currency               *string                `json:"currency,omitempty" example:"USD"`
-	Thumbnail              *StorageObjectResponse `json:"thumbnail,omitempty"`
-	Media                  []VariantMediaSummary  `json:"media"`
-	Attributes             map[string]any         `json:"attributes"`
-	IsDefault              bool                   `json:"isDefault" example:"false"`
-	CreatedAt              string                 `json:"createdAt" example:"2026-08-02T16:00:00Z"`
-	UpdatedAt              string                 `json:"updatedAt" example:"2026-08-02T16:00:00Z"`
-	DeletedAt              *string                `json:"deletedAt,omitempty" example:"2026-08-02T16:15:00Z"`
+	// Variant database UUID
+	ID string `json:"id" example:"70000000-0000-0000-0000-000000000001"`
+	// Stock Keeping Unit
+	SKU string `json:"sku" example:"MAC-PRO-16-BLK-18"`
+	// Parent product UUID
+	ProductID string `json:"productId" example:"60000000-0000-0000-0000-000000000001"`
+	// Variant title
+	Title string `json:"title" example:"Space Black, 18GB RAM, 512GB SSD"`
+	// Formatted active display price
+	Price *string `json:"price,omitempty" example:"$2499.00"`
+	// Numeric active price value
+	ExtractedPrice *float64 `json:"extractedPrice,omitempty" example:"2499.00"`
+	// Formatted original crossed-out price
+	OriginalPrice *string `json:"originalPrice,omitempty" example:"$2999.00"`
+	// Numeric original price value
+	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
+	// Currency ISO code
+	Currency *string `json:"currency,omitempty" example:"USD"`
+	// Thumbnail storage object details
+	Thumbnail *StorageObjectResponse `json:"thumbnail,omitempty"`
+	// Attached gallery media assets
+	Media []VariantMediaSummary `json:"media"`
+	// Custom variant attributes
+	Attributes map[string]any `json:"attributes"`
+	// True if this is the default variant
+	IsDefault bool `json:"isDefault" example:"true"`
+	// Timestamp when variant was created (RFC3339)
+	CreatedAt string `json:"createdAt" example:"2026-08-02T16:00:00Z"`
+	// Timestamp when variant was last updated (RFC3339)
+	UpdatedAt string `json:"updatedAt" example:"2026-08-02T16:00:00Z"`
+	// Timestamp when variant was soft-deleted, if applicable
+	DeletedAt *string `json:"deletedAt,omitempty" example:"2026-08-02T16:15:00Z"`
 }
 
 type AttachMediaRequest struct {
-	StorageObjectID string `json:"storageObjectId" binding:"required,uuid" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	MediaType       string `json:"mediaType" binding:"required" example:"image"`
-	SortOrder       int    `json:"sortOrder" example:"0"`
+	// Storage object UUID of the uploaded media file
+	StorageObjectID string `json:"storageObjectId" binding:"required,uuid" example:"80000000-0000-0000-0000-000000000001"`
+	// Media classification (image or video)
+	MediaType string `json:"mediaType" binding:"required" example:"image"`
+	// Presentation sequence position index
+	SortOrder int `json:"sortOrder" example:"1"`
 }
 
 type ReorderMediaRequest struct {
-	OrderedMediaIDs []string `json:"orderedMediaIds" binding:"required,gt=0,dive,uuid"`
+	// Array of media UUIDs in desired presentation sequence
+	OrderedMediaIDs []string `json:"orderedMediaIds" binding:"required,gt=0,dive,uuid" example:"['80000000-0000-0000-0000-000000000001']"`
 }
 
 type StorageObjectResponse struct {
-	ID          string `json:"id"`
-	Bucket      string `json:"bucket"`
-	Key         string `json:"key"`
-	ContentType string `json:"contentType,omitempty"`
-	FileSize    int64  `json:"fileSize,omitempty"`
-	PublicURL   string `json:"publicUrl,omitempty"`
+	// Internal object storage UUID
+	ID string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
+	// Storage bucket name
+	Bucket string `json:"bucket" example:"product-media"`
+	// Storage object key / filepath
+	Key string `json:"key" example:"variants/70000000/image.webp"`
+	// MIME content type
+	ContentType string `json:"contentType,omitempty" example:"image/webp"`
+	// File size in bytes
+	FileSize int64 `json:"fileSize,omitempty" example:"1048576"`
+	// Public CDN URL
+	PublicURL string `json:"publicUrl,omitempty" example:"https://example.com/media/image.webp"`
 }
 
 type VariantMediaResponse struct {
-	ID        string                 `json:"id" example:"8f123456-e89b-12d3-a456-426614174000"`
-	PublicID  string                 `json:"publicId" example:"8f123456-e89b-12d3-a456-426614174000"`
-	VariantID string                 `json:"variantId" example:"96c4e462-ed4a-4fec-9115-47cbf12206a7"`
-	ObjectID  string                 `json:"objectId" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	MediaType string                 `json:"mediaType" example:"image"`
-	SortOrder int                    `json:"sortOrder" example:"0"`
-	Object    *StorageObjectResponse `json:"object,omitempty"`
+	// Media record UUID
+	ID string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
+	// Public customer-facing UUID
+	PublicID string `json:"publicId" example:"80000000-0000-0000-0000-000000000001"`
+	// Associated variant UUID
+	VariantID string `json:"variantId" example:"70000000-0000-0000-0000-000000000001"`
+	// Underlying storage object UUID
+	ObjectID string `json:"objectId" example:"80000000-0000-0000-0000-000000000001"`
+	// Media classification (image or video)
+	MediaType string `json:"mediaType" example:"image"`
+	// Display sequence sort order
+	SortOrder int `json:"sortOrder" example:"1"`
+	// Detailed storage file metadata
+	Object *StorageObjectResponse `json:"object,omitempty"`
 }
 
 func mapVariantResponse(v *model.ProductVariant) VariantResponse {
@@ -808,28 +874,42 @@ func (vh *VariantHandler) ReorderMedia(c *gin.Context) {
 }
 
 type AdjustStockRequest struct {
-	Quantity int    `json:"quantity" binding:"required" example:"50"`
-	Reason   string `json:"reason" binding:"required,oneof=restock sale return adjustment reservation_release" example:"restock"`
+	// Adjustment quantity delta (positive to increase, negative to decrease)
+	Quantity int `json:"quantity" binding:"required" example:"50"`
+	// Business audit reason (restock, sale, return, adjustment, reservation_release)
+	Reason string `json:"reason" binding:"required,oneof=restock sale return adjustment reservation_release" example:"restock"`
 }
 
 type PublicStockResponse struct {
-	AvailableQuantity int  `json:"availableQuantity" example:"45"`
-	IsInStock         bool `json:"isInStock" example:"true"`
+	// Units available for customer checkout
+	AvailableQuantity int `json:"availableQuantity" example:"50"`
+	// True if availableQuantity > 0
+	IsInStock bool `json:"isInStock" example:"true"`
 }
 
 type InventoryStockResponse struct {
-	VariantID         string `json:"variantId" example:"70000000-0000-0000-0000-000000000001"`
-	OnHandQuantity    int    `json:"onHandQuantity" example:"50"`
-	ReservedQuantity  int    `json:"reservedQuantity" example:"5"`
-	AvailableQuantity int    `json:"availableQuantity" example:"45"`
-	IsInStock         bool   `json:"isInStock" example:"true"`
+	// Variant UUID
+	VariantID string `json:"variantId" example:"70000000-0000-0000-0000-000000000001"`
+	// Physical units counted on warehouse shelves
+	OnHandQuantity int `json:"onHandQuantity" example:"60"`
+	// Units currently reserved in open orders / pending checkouts
+	ReservedQuantity int `json:"reservedQuantity" example:"10"`
+	// Salable stock (onHand - reserved)
+	AvailableQuantity int `json:"availableQuantity" example:"50"`
+	// True if availableQuantity > 0
+	IsInStock bool `json:"isInStock" example:"true"`
 }
 
 type InventoryLedgerResponse struct {
-	ID        string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
+	// Ledger entry record UUID
+	ID string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
+	// Associated variant UUID
 	VariantID string `json:"variantId" example:"70000000-0000-0000-0000-000000000001"`
-	Quantity  int    `json:"quantity" example:"50"`
-	Reason    string `json:"reason" example:"restock"`
+	// Signed quantity adjustment (+/- units)
+	Quantity int `json:"quantity" example:"50"`
+	// Adjustment reason classification
+	Reason string `json:"reason" example:"restock"`
+	// Transaction timestamp (RFC3339)
 	CreatedAt string `json:"createdAt" example:"2026-08-15T12:00:00Z"`
 }
 

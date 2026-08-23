@@ -21,40 +21,62 @@ func NewHandler(s *ReviewService) *ReviewHandler {
 }
 
 type CreateReviewRequest struct {
-	ProductID   string  `json:"productId" binding:"required,uuid" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
-	OrderItemID string  `json:"orderItemId" binding:"required,uuid" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
-	Rating      int16   `json:"rating" binding:"required,min=1,max=5" example:"5"`
-	Title       *string `json:"title,omitempty" example:"Amazing headphones!"`
-	Body        *string `json:"body,omitempty" example:"The sound quality and active noise cancellation are top notch."`
+	// Product UUID to review
+	ProductID string `json:"productId" binding:"required,uuid" example:"60000000-0000-0000-0000-000000000001"`
+	// Purchased Order Item UUID verifying buyer eligibility
+	OrderItemID string `json:"orderItemId" binding:"required,uuid" example:"91000000-0000-0000-0000-000000000001"`
+	// Star score between 1 and 5
+	Rating int16 `json:"rating" binding:"required,min=1,max=5" example:"5"`
+	// Optional review headline title
+	Title *string `json:"title,omitempty" example:"Unbelievable performance!"`
+	// Review detailed feedback narrative
+	Body *string `json:"body,omitempty" example:"The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."`
 }
 
 type UpdateReviewRequest struct {
-	Rating *int16  `json:"rating,omitempty" binding:"omitempty,min=1,max=5" example:"4"`
-	Title  *string `json:"title,omitempty" example:"Updated title"`
-	Body   *string `json:"body,omitempty" example:"Updated review body."`
+	// Updated star score between 1 and 5
+	Rating *int16 `json:"rating,omitempty" binding:"omitempty,min=1,max=5" example:"5"`
+	// Updated review headline title
+	Title *string `json:"title,omitempty" example:"Updated review headline"`
+	// Updated review feedback narrative
+	Body *string `json:"body,omitempty" example:"Updated feedback after 3 months of continuous daily use."`
 }
 
 type UpdateReviewStatusRequest struct {
+	// Moderation state: pending, approved, rejected
 	Status string `json:"status" binding:"required,oneof=pending approved rejected" example:"approved"`
 }
 
 type ReviewResponse struct {
-	ID          string  `json:"id" example:"8f123456-e89b-12d3-a456-426614174000"`
-	ProductID   string  `json:"productId" example:"356cbaee-4700-4af5-ac9c-61aeeafd541c"`
-	UserID      string  `json:"userId" example:"a1b2c3d4-e5f6-7890-1234-56789abcdef0"`
-	OrderItemID string  `json:"orderItemId" example:"c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"`
-	Rating      int16   `json:"rating" example:"5"`
-	Title       *string `json:"title,omitempty" example:"Amazing headphones!"`
-	Body        *string `json:"body,omitempty" example:"The sound quality is top notch."`
-	Status      string  `json:"status" example:"pending"`
-	CreatedAt   string  `json:"createdAt" example:"2026-08-10T15:00:00Z"`
-	UpdatedAt   string  `json:"updatedAt" example:"2026-08-10T15:00:00Z"`
+	// Review UUID
+	ID string `json:"id" example:"92000000-0000-0000-0000-000000000001"`
+	// Reviewed Product UUID
+	ProductID string `json:"productId" example:"60000000-0000-0000-0000-000000000001"`
+	// Author Customer UUID
+	UserID string `json:"userId" example:"10000000-0000-0000-0000-000000000002"`
+	// Verified Order Item purchase UUID
+	OrderItemID string `json:"orderItemId" example:"91000000-0000-0000-0000-000000000001"`
+	// Star score (1-5)
+	Rating int16 `json:"rating" example:"5"`
+	// Optional review headline
+	Title *string `json:"title,omitempty" example:"Unbelievable performance!"`
+	// Review detailed text
+	Body *string `json:"body,omitempty" example:"The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."`
+	// Moderation status: pending, approved, rejected
+	Status string `json:"status" example:"approved"`
+	// Submission timestamp (RFC3339)
+	CreatedAt string `json:"createdAt" example:"2026-08-13T07:56:17Z"`
+	// Last updated timestamp (RFC3339)
+	UpdatedAt string `json:"updatedAt" example:"2026-08-13T07:56:17Z"`
 }
 
 type RatingSummaryResponse struct {
-	AverageRating float64       `json:"averageRating" example:"4.5"`
-	ReviewCount   int           `json:"reviewCount" example:"24"`
-	Distribution  map[int16]int `json:"distribution"`
+	// Average review score (1.0 to 5.0)
+	AverageRating float64 `json:"averageRating" example:"4.5"`
+	// Total number of approved reviews
+	ReviewCount int `json:"reviewCount" example:"24"`
+	// Star distribution mapping score (1-5) to count
+	Distribution map[int16]int `json:"distribution"`
 }
 
 func mapReviewToResponse(r *model.Review) ReviewResponse {
