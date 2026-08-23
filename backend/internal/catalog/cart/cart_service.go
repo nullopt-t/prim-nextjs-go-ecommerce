@@ -20,11 +20,16 @@ type ProductService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error)
 }
 
+type InventoryService interface {
+	GetStockForVariants(ctx context.Context, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
+}
+
 type CartService struct {
-	dr             database.Runner
-	cartRepo       *CartRepository
-	variantService VariantService
-	productService ProductService
+	dr               database.Runner
+	cartRepo         *CartRepository
+	variantService   VariantService
+	productService   ProductService
+	inventoryService InventoryService
 }
 
 func NewService(
@@ -32,12 +37,14 @@ func NewService(
 	cartRepo *CartRepository,
 	variantService VariantService,
 	productService ProductService,
+	inventoryService InventoryService,
 ) *CartService {
 	return &CartService{
-		dr:             dr,
-		cartRepo:       cartRepo,
-		variantService: variantService,
-		productService: productService,
+		dr:               dr,
+		cartRepo:         cartRepo,
+		variantService:   variantService,
+		productService:   productService,
+		inventoryService: inventoryService,
 	}
 }
 
@@ -81,21 +88,35 @@ func (s *CartService) GetOrCreateCart(
 			return itemsErr
 		}
 
+		variantIDs := make([]uuid.UUID, 0, len(items))
 		for i := range items {
 			v, vErr := s.variantService.GetVariantByID(ctx, items[i].VariantID)
 			if vErr == nil {
 				items[i].Variant = v
-				
+				variantIDs = append(variantIDs, v.ID)
+
 				// Fetch the associated product
 				p, pErr := s.productService.GetByID(ctx, v.ProductID)
 				if pErr == nil {
 					items[i].Product = p
 				}
 
-				// Fetch variant media for the thumbnail
-				media, mediaErr := s.variantService.ListVariantMedia(ctx, v.ID)
-				if mediaErr == nil && len(media) > 0 && media[0].Object != nil {
-					items[i].ThumbnailURL = media[0].Object.PublicURL
+				// Thumbnail resolution: prefer variant thumbnail or variant media
+				if v.Thumbnail != nil && v.Thumbnail.PublicURL != "" {
+					items[i].ThumbnailURL = v.Thumbnail.PublicURL
+				} else if len(v.Media) > 0 && v.Media[0].Object != nil {
+					items[i].ThumbnailURL = v.Media[0].Object.PublicURL
+				}
+			}
+		}
+
+		if len(variantIDs) > 0 && s.inventoryService != nil {
+			stocks, stockErr := s.inventoryService.GetStockForVariants(ctx, variantIDs)
+			if stockErr == nil && stocks != nil {
+				for i := range items {
+					if st, ok := stocks[items[i].VariantID]; ok {
+						items[i].InStock = st.AvailableQuantity >= items[i].Quantity
+					}
 				}
 			}
 		}

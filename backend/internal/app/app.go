@@ -215,7 +215,7 @@ func (app *App) setupRoutes(config config.Config, router *gin.Engine) {
 
 	// cart
 	cartRepo := cart.NewRepository()
-	cartService := cart.NewService(txRunner, cartRepo, variantService, productService)
+	cartService := cart.NewService(txRunner, cartRepo, variantService, productService, inventoryService)
 	cartHandler := cart.NewHandler(cartService)
 	cartRouter := cart.NewRouter(cartHandler, config.KeysCfg)
 	cartRouter.MapRoutes(v1)

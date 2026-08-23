@@ -88,12 +88,17 @@ func mapCartResponse(cart *model.Cart) CartResponse {
 			Quantity:  item.Quantity,
 			UnitPrice: item.PriceAtPurchase,
 			Subtotal:  itemSubtotal,
-			InStock:   true, // Assuming in stock for now, can be updated with inventory logic
+			InStock:   item.InStock,
 		}
 
 		if item.Variant != nil {
 			itemRes.VariantID = item.Variant.SKU
 			itemRes.Title = item.Variant.Title
+			if item.Variant.Price != nil {
+				itemRes.UnitPrice = *item.Variant.Price
+				itemSubtotal = int64(item.Quantity) * (*item.Variant.Price)
+				itemRes.Subtotal = itemSubtotal
+			}
 		}
 
 		if item.Product != nil {

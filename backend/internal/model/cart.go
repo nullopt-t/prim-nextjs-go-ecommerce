@@ -22,10 +22,12 @@ type CartItem struct {
 	VariantID       uuid.UUID
 	Quantity        int
 	PriceAtPurchase int64
+	CurrentPrice    *int64
 	Currency        string
 	CartedAt        time.Time
 	DeletedAt       *time.Time
 	Variant         *ProductVariant
 	Product         *Product
 	ThumbnailURL    string
+	InStock         bool
 }
