@@ -139,10 +139,18 @@ func (s *InventoryService) GetStockByVariantID(
 	})
 
 	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to get variant inventory stock").
-			WithCode(apierr.CodeInternalError).
-			Wrap(err).
-			WithStack()
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return nil, apierr.ErrNotFound("Variant not found").
+				WithCode(errcode.CodeVariantNotFound).
+				Wrap(err)
+		default:
+			return nil, apierr.ErrInternalError("Failed to get variant inventory stock").
+				WithCode(apierr.CodeInternalError).
+				Wrap(err).
+				WithStack()
+		}
 	}
 
 	return stock, nil

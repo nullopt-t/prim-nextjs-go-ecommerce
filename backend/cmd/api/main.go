@@ -28,7 +28,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	_ "github.com/m-mahmoud-alsaid/prim-backend/docs"
+	_ "github.com/m-mahmoud-alsaid/prim-backend/docs/admin"
+	_ "github.com/m-mahmoud-alsaid/prim-backend/docs/public"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/app"
 )
 

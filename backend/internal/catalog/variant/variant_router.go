@@ -24,6 +24,7 @@ func (vr *VariantRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	public.Use(middleware.PublicCache(300))
 	{
 		public.GET("/variants/:id", vr.vh.GetVariantByID)
+		public.GET("/variants/sku/:sku", vr.vh.GetVariantBySKU)
 		public.GET("/variants/:id/media", vr.vh.ListVariantMedia)
 	}
 
@@ -41,6 +42,7 @@ func (vr *VariantRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	{
 		admin.PATCH("/variants/:id", vr.vh.UpdateVariantByID)
 		admin.DELETE("/variants/:id", vr.vh.DeleteVariantByID)
+		admin.POST("/variants/:id/restore", vr.vh.RestoreVariantByID)
 
 		admin.POST("/variants/:id/media", vr.vh.AttachMedia)
 		admin.DELETE("/variants/:id/media/:media_id", vr.vh.DetachMedia)

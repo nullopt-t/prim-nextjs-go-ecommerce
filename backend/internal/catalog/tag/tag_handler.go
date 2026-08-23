@@ -69,7 +69,7 @@ func toAdminTagResponse(t *model.ProductTag) AdminTagResponse {
 //
 //	@Summary		Create a product tag
 //	@Description	Adds a new product classification tag (e.g. 'black-friday', 'best-seller'). Tag names must be unique.
-//	@Tags			Tags
+//	@Tags			Admin Tags
 //	@Accept			json
 //	@Produce		json
 //	@Param			data	body		CreateTagRequest					true	"Tag name payload"
@@ -107,7 +107,7 @@ func (th *TagHandler) CreateTag(c *gin.Context) {
 //
 //	@Summary		Get tag details by ID
 //	@Description	Retrieves active product tag details by its UUID.
-//	@Tags			Tags
+//	@Tags			Admin Tags
 //	@Accept			json
 //	@Produce		json
 //	@Param			id	path		string								true	"Tag UUID"	format(uuid)
@@ -148,7 +148,7 @@ func (th *TagHandler) GetTagByID(c *gin.Context) {
 //
 //	@Summary		Update tag details
 //	@Description	Updates the name of an existing product tag. Tag names must be unique.
-//	@Tags			Tags
+//	@Tags			Admin Tags
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string							true	"Tag UUID"	format(uuid)
@@ -200,14 +200,14 @@ func (th *TagHandler) UpdateTagByID(c *gin.Context) {
 //
 //	@Summary		Soft-delete a tag
 //	@Description	Marks an active product tag as soft-deleted (`deleted_at = NOW()`), removing it from tag selections.
-//	@Tags			Tags
+//	@Tags			Admin Tags
 //	@Accept			json
 //	@Produce		json
 //	@Param			id	path		string							true	"Tag UUID"	format(uuid)
 //	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
 //	@Failure		404	{object}	api.NotFoundErrorResponse		"Tag not found"
 //	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
-//	@Success		200	{object}	api.MessageResponse				"Deletion confirmation message"
+//	@Success		204													"Tag soft-deleted successfully"
 //	@Router			/admin/tags/{id} [delete]
 func (th *TagHandler) DeleteTagByID(c *gin.Context) {
 	tagID, err := uuid.Parse(c.Param("id"))
@@ -282,7 +282,7 @@ func (th *TagHandler) ListTags(c *gin.Context) {
 //
 //	@Summary		List all tags including soft-deleted ones (Admin)
 //	@Description	Returns a paginated list of all product tags including soft-deleted records for administrator management.
-//	@Tags			Tags
+//	@Tags			Admin Tags
 //	@Accept			json
 //	@Produce		json
 //	@Param			q	query		pagination.ListQuery												true	"Pagination, search query, and sorting parameters"

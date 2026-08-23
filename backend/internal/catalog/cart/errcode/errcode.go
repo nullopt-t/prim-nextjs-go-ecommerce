@@ -5,6 +5,7 @@ const (
 	CodeCartItemNotFound      = "CART_ITEM_NOT_FOUND"
 	CodeCartItemAlreadyExists = "CART_ITEM_ALREADY_EXISTS"
 	CodeInvalidQuantity       = "INVALID_CART_QUANTITY"
+	CodeInsufficientInventory = "INSUFFICIENT_INVENTORY"
 	CodeVariantNotFound       = "VARIANT_NOT_FOUND"
 	CodeMergeCartFailed       = "MERGE_CART_FAILED"
 )

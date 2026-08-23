@@ -1,0 +1,3282 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is the Prim API",
+        "title": "Prim API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "email": "support@swagger.io"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/auth/challenge/resend": {
+            "post": {
+                "description": "Resends a new verification code to the provided email or phone number if allowed by the challenge policy.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Resend an authentication challenge",
+                "parameters": [
+                    {
+                        "description": "Resend Challenge Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ResendChallengeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/challenge/start": {
+            "post": {
+                "description": "Starts an authentication challenge by sending a verification code to the provided email or phone number.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Start an authentication challenge",
+                "parameters": [
+                    {
+                        "description": "Challenge Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/StartChallengeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/StartChallengeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/challenge/verify": {
+            "post": {
+                "description": "Verifies the one-time code sent to the user's email or phone and sets auth cookies.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Verify an authentication challenge",
+                "parameters": [
+                    {
+                        "description": "Challenge Verification Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/VerifyChallengeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "description": "Revokes the current session and clears auth cookies.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "description": "fetch session user data",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "fetch session user data",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/MeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Rotate refresh token and issue new access and refresh tokens.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Rotate refresh token and issue new access and refresh tokens.",
+                "parameters": [
+                    {
+                        "description": "Refresh Token",
+                        "name": "refresh_token",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/RefreshTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/sessions": {
+            "get": {
+                "description": "Fetches all active login sessions stored in Redis for the current user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "List active user sessions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/UserSession"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/sessions/{id}": {
+            "delete": {
+                "description": "Revokes and deletes a specific active session from Redis.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Revoke session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID to revoke",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/brands": {
+            "get": {
+                "description": "Returns a paginated list of active product brands for customer storefront browsing.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Brands"
+                ],
+                "summary": "List active product brands",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of active brands",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/BrandResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cart": {
+            "get": {
+                "description": "Fetches the current user's or guest session's shopping cart and item details.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Get shopping cart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Guest Session ID",
+                        "name": "X-Session-ID",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cart details",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/CartResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or missing session",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Removes all items from the current cart.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Clear cart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Guest Session ID",
+                        "name": "X-Session-ID",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Cart cleared"
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cart/items": {
+            "post": {
+                "description": "Adds a product variant with specified quantity to the shopping cart.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Add item to cart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Guest Session ID",
+                        "name": "X-Session-ID",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Item variant and quantity",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AddItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated cart",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/CartResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Variant not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cart/items/{id}": {
+            "delete": {
+                "description": "Removes a single item from the cart by item ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Remove item from cart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cart Item UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Guest Session ID",
+                        "name": "X-Session-ID",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated cart",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/CartResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid item ID",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Cart item not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Updates the quantity of a specific item in the cart.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cart"
+                ],
+                "summary": "Update cart item quantity",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cart Item UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Guest Session ID",
+                        "name": "X-Session-ID",
+                        "in": "header"
+                    },
+                    {
+                        "description": "New quantity",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateQuantityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated cart",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/CartResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error or invalid UUID",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Cart item not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/categories": {
+            "get": {
+                "description": "Returns a paginated list of active product categories for customer browsing and navigation.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "List active product categories",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of active categories",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/PublicCategoryResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/checkout": {
+            "post": {
+                "description": "Creates an order from the current user's cart and clears the cart.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Checkout"
+                ],
+                "summary": "Perform checkout",
+                "parameters": [
+                    {
+                        "description": "Checkout Details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CheckoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Checkout result",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/CheckoutResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error or empty cart",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders": {
+            "get": {
+                "description": "Returns a list of orders belonging to the authenticated customer.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "List customer orders",
+                "responses": {
+                    "200": {
+                        "description": "List of orders",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/OrderResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/{id}": {
+            "get": {
+                "description": "Retrieves full order details by its UUID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Get order by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Order UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Order details",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/OrderResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Order not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/products": {
+            "get": {
+                "description": "Returns a paginated list of active, published products for customer browsing. Soft-deleted and draft products are hidden.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "List active published products",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of active products",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/ProductListItemResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/{product_id}/variants": {
+            "get": {
+                "description": "Returns a paginated list of active variants associated with a specific product for storefront selection.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Product Variants"
+                ],
+                "summary": "List active variants for a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product UUID",
+                        "name": "product_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of active product variants",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/VariantResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters or UUID format",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/{slug}": {
+            "get": {
+                "description": "Retrieve a single product by its public slug (for storefronts)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Get product by slug",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product Slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product details",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/ProductDetailsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid slug",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/{slug}/reviews": {
+            "get": {
+                "description": "Returns a paginated list of approved reviews for a given product.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "List reviews for a specific product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product Slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of product reviews",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/ProductReviewResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/products/{slug}/reviews/summary": {
+            "get": {
+                "description": "Returns average rating, total review count, and star distribution for approved reviews.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Get rating summary for a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product Slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product rating summary",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/ProductRatingSummaryResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid slug",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/reviews": {
+            "post": {
+                "description": "Allows a customer to review a product they purchased via a specific order item.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Submit a product review",
+                "parameters": [
+                    {
+                        "description": "Review creation payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CreateReviewRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Review submitted successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/ReviewResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or unverified purchase",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - not your purchase",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Item already reviewed",
+                        "schema": {
+                            "$ref": "#/definitions/ConflictErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/reviews/me": {
+            "get": {
+                "description": "Returns a paginated list of all reviews written by the authenticated user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "List current user's reviews",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User's reviews",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/ReviewResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/reviews/{id}": {
+            "get": {
+                "description": "Retrieves a review by its unique identifier.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Get review by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Review ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Review details",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/ReviewResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid review ID format",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Review not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a review written by the authenticated user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Delete user's review",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Review ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Review deleted successfully",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid review ID",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Review not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Updates rating, title, or body of a review written by the authenticated user. Resets status to pending for re-moderation.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Update user's review",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Review ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Review update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateReviewRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Review updated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/ReviewResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Review not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/tags": {
+            "get": {
+                "description": "Returns a paginated list of active product tags for customer storefront filtering.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tags"
+                ],
+                "summary": "List active product tags",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of active tags",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/TagResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/variants/sku/{sku}": {
+            "get": {
+                "description": "Retrieves specific product variant details by its SKU string.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Product Variants"
+                ],
+                "summary": "Get variant details by SKU",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Variant SKU",
+                        "name": "sku",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Variant details",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/VariantResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "SKU is required",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Variant not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/variants/{id}": {
+            "get": {
+                "description": "Retrieves specific product variant (SKU) details by its UUID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Product Variants"
+                ],
+                "summary": "Get variant details by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Variant details",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/VariantResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Variant not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/variants/{id}/inventory": {
+            "get": {
+                "description": "Retrieves available quantity and in-stock status for a variant for customer storefront.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant Inventory"
+                ],
+                "summary": "Get current available stock for a variant (Public)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Public stock availability",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/PublicStockResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/variants/{id}/media": {
+            "get": {
+                "description": "Returns all attached media items for a specific variant with presigned object URLs.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Variant Media"
+                ],
+                "summary": "List all media items for a variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of variant media items",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/VariantMediaResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "AddItemRequest": {
+            "type": "object",
+            "required": [
+                "quantity",
+                "variantId"
+            ],
+            "properties": {
+                "quantity": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "variantId": {
+                    "type": "string",
+                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                }
+            }
+        },
+        "AddressRequest": {
+            "type": "object",
+            "required": [
+                "city",
+                "country",
+                "postalCode",
+                "street"
+            ],
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "postalCode": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "street": {
+                    "type": "string"
+                }
+            }
+        },
+        "AddressResponse": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "postalCode": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "street": {
+                    "type": "string"
+                }
+            }
+        },
+        "BadReqResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "VALIDATION_FAILED"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/FieldError"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Invalid request input or malformed payload"
+                }
+            }
+        },
+        "BadRequestErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "VALIDATION_FAILED"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/FieldError"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Invalid request input or malformed payload"
+                }
+            }
+        },
+        "BrandResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Public ID of the brand",
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "link": {
+                    "type": "string",
+                    "example": "https://nvidia.com"
+                },
+                "logoUrl": {
+                    "type": "string",
+                    "example": "https://example.com/logo.png"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "nvidia"
+                }
+            }
+        },
+        "CartItemResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "inStock": {
+                    "type": "boolean"
+                },
+                "productId": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "subtotal": {
+                    "type": "integer"
+                },
+                "thumbnailUrl": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "unitPrice": {
+                    "type": "integer"
+                },
+                "variantId": {
+                    "type": "string"
+                }
+            }
+        },
+        "CartResponse": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "itemCount": {
+                    "type": "integer"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/CartItemResponse"
+                    }
+                },
+                "summary": {
+                    "$ref": "#/definitions/CartSummaryResponse"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "CartSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "discount": {
+                    "type": "integer"
+                },
+                "shipping": {
+                    "type": "integer"
+                },
+                "subtotal": {
+                    "type": "integer"
+                },
+                "tax": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "CheckoutRequest": {
+            "type": "object",
+            "required": [
+                "billingAddress",
+                "customerEmail",
+                "shippingAddress"
+            ],
+            "properties": {
+                "billingAddress": {
+                    "$ref": "#/definitions/AddressRequest"
+                },
+                "couponId": {
+                    "type": "string"
+                },
+                "customerEmail": {
+                    "type": "string"
+                },
+                "shippingAddress": {
+                    "$ref": "#/definitions/AddressRequest"
+                }
+            }
+        },
+        "CheckoutResponse": {
+            "type": "object",
+            "properties": {
+                "orderId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "ConflictErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "ALREADY_EXISTS"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "A resource with this identifier or name already exists"
+                }
+            }
+        },
+        "CreateReviewRequest": {
+            "type": "object",
+            "required": [
+                "orderItemId",
+                "productId",
+                "rating"
+            ],
+            "properties": {
+                "body": {
+                    "type": "string",
+                    "example": "The sound quality and active noise cancellation are top notch."
+                },
+                "orderItemId": {
+                    "type": "string",
+                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                },
+                "productId": {
+                    "type": "string",
+                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                },
+                "rating": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1,
+                    "example": 5
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Amazing headphones!"
+                }
+            }
+        },
+        "DataResponse": {
+            "type": "object",
+            "properties": {
+                "data": {}
+            }
+        },
+        "ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "INTERNAL_ERROR"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/FieldError"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "An unexpected internal server error occurred"
+                }
+            }
+        },
+        "FieldError": {
+            "type": "object",
+            "properties": {
+                "constraint": {
+                    "type": "string",
+                    "example": "min"
+                },
+                "field": {
+                    "type": "string",
+                    "example": "quantity"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "quantity must be at least 1"
+                }
+            }
+        },
+        "ForbiddenErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "FORBIDDEN"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "You do not have permission to access this resource"
+                }
+            }
+        },
+        "InternalServerErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "INTERNAL_ERROR"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "An unexpected internal server error occurred"
+                }
+            }
+        },
+        "MeResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "MessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Operation completed successfully"
+                }
+            }
+        },
+        "NotFoundErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "NOT_FOUND"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "The requested resource was not found"
+                }
+            }
+        },
+        "OrderItemResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "priceAtPurchase": {
+                    "type": "integer"
+                },
+                "productSnapshot": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "variantId": {
+                    "type": "string"
+                }
+            }
+        },
+        "OrderResponse": {
+            "type": "object",
+            "properties": {
+                "billingAddress": {
+                    "$ref": "#/definitions/AddressResponse"
+                },
+                "couponId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "customerEmail": {
+                    "type": "string"
+                },
+                "customerId": {
+                    "type": "string"
+                },
+                "discountAmount": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/OrderItemResponse"
+                    }
+                },
+                "shippingAddress": {
+                    "$ref": "#/definitions/AddressResponse"
+                },
+                "status": {
+                    "$ref": "#/definitions/OrderStatus"
+                },
+                "totalAmount": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "OrderStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "paid",
+                "processing",
+                "shipped",
+                "delivered",
+                "canceled",
+                "refunded"
+            ],
+            "x-enum-varnames": [
+                "OrderStatusPending",
+                "OrderStatusPaid",
+                "OrderStatusProcessing",
+                "OrderStatusShipped",
+                "OrderStatusDelivered",
+                "OrderStatusCanceled",
+                "OrderStatusRefunded"
+            ]
+        },
+        "Page": {
+            "type": "object",
+            "properties": {
+                "hasNext": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "hasPrevious": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "pageSize": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "totalItems": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "totalPages": {
+                    "type": "integer",
+                    "example": 2
+                }
+            }
+        },
+        "PaginatedResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "meta": {}
+            }
+        },
+        "ProductBrandSummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "link": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "ProductDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "brand": {
+                    "$ref": "#/definitions/ProductBrandSummary"
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "USD"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "extractedOriginalPrice": {
+                    "type": "number",
+                    "example": 29.99
+                },
+                "extractedPrice": {
+                    "type": "number",
+                    "example": 24.99
+                },
+                "highlights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                },
+                "originalPrice": {
+                    "type": "string",
+                    "example": "$29.99"
+                },
+                "price": {
+                    "type": "string",
+                    "example": "$24.99"
+                },
+                "productType": {
+                    "type": "string"
+                },
+                "rating": {
+                    "$ref": "#/definitions/ProductRatingSummaryResponse"
+                },
+                "slug": {
+                    "type": "string",
+                    "example": "wireless-headphones"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ProductTagSummary"
+                    }
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Wireless Headphones"
+                },
+                "variants": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ProductVariantResponse"
+                    }
+                }
+            }
+        },
+        "ProductListItemResponse": {
+            "type": "object",
+            "properties": {
+                "brand": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "USD"
+                },
+                "extractedOriginalPrice": {
+                    "type": "number",
+                    "example": 29.99
+                },
+                "extractedPrice": {
+                    "type": "number",
+                    "example": 24.99
+                },
+                "originalPrice": {
+                    "type": "string",
+                    "example": "$29.99"
+                },
+                "price": {
+                    "type": "string",
+                    "example": "$24.99"
+                },
+                "rating": {
+                    "$ref": "#/definitions/ProductRatingSummaryResponse"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "thumbnail": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "ProductRatingSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "averageRating": {
+                    "type": "number",
+                    "example": 4.5
+                },
+                "distribution": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "reviewCount": {
+                    "type": "integer",
+                    "example": 24
+                }
+            }
+        },
+        "ProductReviewResponse": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "orderItemId": {
+                    "type": "string"
+                },
+                "productId": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "ProductTagSummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "ProductVariantResponse": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "USD"
+                },
+                "extractedOriginalPrice": {
+                    "type": "number",
+                    "example": 29.99
+                },
+                "extractedPrice": {
+                    "type": "number",
+                    "example": 24.99
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "media": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/VariantMediaSummary"
+                    }
+                },
+                "originalPrice": {
+                    "type": "string",
+                    "example": "$29.99"
+                },
+                "price": {
+                    "type": "string",
+                    "example": "$24.99"
+                },
+                "sku": {
+                    "type": "string"
+                },
+                "stock": {
+                    "$ref": "#/definitions/PublicStockSummary"
+                },
+                "thumbnail": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "PublicCategoryResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "prod_cat_123"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Electronics"
+                }
+            }
+        },
+        "PublicStockResponse": {
+            "type": "object",
+            "properties": {
+                "availableQuantity": {
+                    "type": "integer",
+                    "example": 45
+                },
+                "isInStock": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "PublicStockSummary": {
+            "type": "object",
+            "properties": {
+                "availableQuantity": {
+                    "type": "integer"
+                },
+                "isInStock": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "RefreshTokenRequest": {
+            "type": "object",
+            "properties": {
+                "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "ResendChallengeRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "ReviewResponse": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string",
+                    "example": "The sound quality is top notch."
+                },
+                "createdAt": {
+                    "type": "string",
+                    "example": "2026-08-10T15:00:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "8f123456-e89b-12d3-a456-426614174000"
+                },
+                "orderItemId": {
+                    "type": "string",
+                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                },
+                "productId": {
+                    "type": "string",
+                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                },
+                "rating": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "status": {
+                    "type": "string",
+                    "example": "pending"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Amazing headphones!"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "example": "2026-08-10T15:00:00Z"
+                },
+                "userId": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                }
+            }
+        },
+        "SessionType": {
+            "type": "string",
+            "enum": [
+                "guest",
+                "authenticated"
+            ],
+            "x-enum-varnames": [
+                "SessionTypeGuest",
+                "SessionTypeAuthenticated"
+            ]
+        },
+        "Sort": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string",
+                    "example": "name"
+                },
+                "order": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/SortOrder"
+                        }
+                    ],
+                    "example": "asc"
+                }
+            }
+        },
+        "SortOrder": {
+            "type": "string",
+            "enum": [
+                "asc",
+                "desc"
+            ],
+            "x-enum-varnames": [
+                "SortAsc",
+                "SortDesc"
+            ]
+        },
+        "StartChallengeRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "StartChallengeResponse": {
+            "type": "object",
+            "properties": {
+                "duration": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "StorageObjectResponse": {
+            "type": "object",
+            "properties": {
+                "bucket": {
+                    "type": "string"
+                },
+                "contentType": {
+                    "type": "string"
+                },
+                "fileSize": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "publicUrl": {
+                    "type": "string"
+                }
+            }
+        },
+        "SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                },
+                "meta": {}
+            }
+        },
+        "TagResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "black-friday"
+                }
+            }
+        },
+        "UnauthorizedErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "UNAUTHORIZED"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Authentication token is missing or expired"
+                }
+            }
+        },
+        "UnauthorizedResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "UNAUTHORIZED"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Authentication token is missing or invalid"
+                }
+            }
+        },
+        "UpdateQuantityRequest": {
+            "type": "object",
+            "required": [
+                "quantity"
+            ],
+            "properties": {
+                "quantity": {
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
+        "UpdateReviewRequest": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string",
+                    "example": "Updated review body."
+                },
+                "rating": {
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1,
+                    "example": 4
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Updated title"
+                }
+            }
+        },
+        "UserSession": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "currentRefreshJti": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ipAddress": {
+                    "type": "string"
+                },
+                "lastActive": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/SessionType"
+                },
+                "userAgent": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "VariantMediaResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "8f123456-e89b-12d3-a456-426614174000"
+                },
+                "mediaType": {
+                    "type": "string",
+                    "example": "image"
+                },
+                "object": {
+                    "$ref": "#/definitions/StorageObjectResponse"
+                },
+                "objectId": {
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                },
+                "publicId": {
+                    "type": "string",
+                    "example": "8f123456-e89b-12d3-a456-426614174000"
+                },
+                "sortOrder": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "variantId": {
+                    "type": "string",
+                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                }
+            }
+        },
+        "VariantMediaSummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "mediaType": {
+                    "type": "string"
+                },
+                "sortOrder": {
+                    "type": "integer"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "VariantResponse": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "USD"
+                },
+                "extractedOriginalPrice": {
+                    "type": "number",
+                    "example": 29.99
+                },
+                "extractedPrice": {
+                    "type": "number",
+                    "example": 24.99
+                },
+                "id": {
+                    "type": "string",
+                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                },
+                "isDefault": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "media": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/VariantMediaSummary"
+                    }
+                },
+                "originalPrice": {
+                    "type": "string",
+                    "example": "$29.99"
+                },
+                "price": {
+                    "type": "string",
+                    "example": "$24.99"
+                },
+                "productId": {
+                    "type": "string",
+                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                },
+                "sku": {
+                    "type": "string"
+                },
+                "thumbnail": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Red / XL"
+                }
+            }
+        },
+        "VerifyChallengeRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "email"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    },
+    "security": [
+        {
+            "BearerAuth": []
+        }
+    ]
+}

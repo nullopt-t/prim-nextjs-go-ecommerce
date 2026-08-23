@@ -57,7 +57,7 @@ type AdminBrandResponse struct {
 //
 //	@Summary		Create a product brand
 //	@Description	Adds a new product manufacturer/brand to the store catalog. Brand names must be unique.
-//	@Tags			Brands
+//	@Tags			Admin Brands
 //	@Accept			json
 //	@Produce		json
 //	@Param			brand	body		CreateBrandRequest						true	"Brand details (name and optional external website link)"
@@ -102,7 +102,7 @@ func (bh *BrandHandler) CreateBrand(c *gin.Context) {
 //
 //	@Summary		Get brand details by ID
 //	@Description	Retrieves active product brand details by its UUID.
-//	@Tags			Brands
+//	@Tags			Admin Brands
 //	@Accept			json
 //	@Produce		json
 //	@Param			id	path		string									true	"Brand UUID"	format(uuid)
@@ -143,7 +143,7 @@ func (bh *BrandHandler) GetBrandByID(c *gin.Context) {
 //
 //	@Summary		Update brand details
 //	@Description	Updates specific fields of an existing brand such as name, website link, or logo object reference.
-//	@Tags			Brands
+//	@Tags			Admin Brands
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string							true	"Brand UUID"	format(uuid)
@@ -196,14 +196,14 @@ func (bh *BrandHandler) UpdateBrand(c *gin.Context) {
 //
 //	@Summary		Soft-delete a brand
 //	@Description	Marks an active brand as soft-deleted (`deleted_at = NOW()`), removing it from active listings.
-//	@Tags			Brands
+//	@Tags			Admin Brands
 //	@Accept			json
 //	@Produce		json
 //	@Param			id	path		string							true	"Brand UUID"	format(uuid)
 //	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID format"
 //	@Failure		404	{object}	api.NotFoundErrorResponse		"Brand not found"
 //	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
-//	@Success		200	{object}	api.MessageResponse				"Deletion confirmation message"
+//	@Success		204													"Brand soft-deleted successfully"
 //	@Router			/admin/brands/{id} [delete]
 func (bh *BrandHandler) DeleteBrandByID(c *gin.Context) {
 	brandID, err := uuid.Parse(c.Param("id"))
@@ -275,7 +275,7 @@ func (bh *BrandHandler) ListBrands(c *gin.Context) {
 //
 //	@Summary		List all brands including soft-deleted ones (Admin)
 //	@Description	Returns a paginated list of all product brands including soft-deleted records for administrator management.
-//	@Tags			Brands
+//	@Tags			Admin Brands
 //	@Accept			json
 //	@Produce		json
 //	@Param			q	query		pagination.ListQuery													true	"Pagination, search query, and sorting parameters"
@@ -319,7 +319,7 @@ func (bh *BrandHandler) ListAdminBrands(c *gin.Context) {
 //
 //	@Summary		Upload brand logo
 //	@Description	Uploads an image file to be used as the brand's logo
-//	@Tags			Brands
+//	@Tags			Admin Brands
 //	@Accept			multipart/form-data
 //	@Produce		json
 //	@Param			id		path		string						true	"Brand UUID"	format(uuid)

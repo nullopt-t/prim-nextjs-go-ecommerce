@@ -1,0 +1,2141 @@
+basePath: /api/v1
+definitions:
+  AddItemRequest:
+    properties:
+      quantity:
+        example: 2
+        type: integer
+      variantId:
+        example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
+        type: string
+    required:
+    - quantity
+    - variantId
+    type: object
+  AddressRequest:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      postalCode:
+        type: string
+      state:
+        type: string
+      street:
+        type: string
+    required:
+    - city
+    - country
+    - postalCode
+    - street
+    type: object
+  AddressResponse:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      postalCode:
+        type: string
+      state:
+        type: string
+      street:
+        type: string
+    type: object
+  BadReqResponse:
+    properties:
+      code:
+        example: VALIDATION_FAILED
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/FieldError'
+        type: array
+      message:
+        example: Invalid request input or malformed payload
+        type: string
+    type: object
+  BadRequestErrorResponse:
+    properties:
+      code:
+        example: VALIDATION_FAILED
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/FieldError'
+        type: array
+      message:
+        example: Invalid request input or malformed payload
+        type: string
+    type: object
+  BrandResponse:
+    properties:
+      id:
+        description: Public ID of the brand
+        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
+        type: string
+      link:
+        example: https://nvidia.com
+        type: string
+      logoUrl:
+        example: https://example.com/logo.png
+        type: string
+      name:
+        example: nvidia
+        type: string
+    type: object
+  CartItemResponse:
+    properties:
+      id:
+        type: string
+      inStock:
+        type: boolean
+      productId:
+        type: string
+      quantity:
+        type: integer
+      subtotal:
+        type: integer
+      thumbnailUrl:
+        type: string
+      title:
+        type: string
+      unitPrice:
+        type: integer
+      variantId:
+        type: string
+    type: object
+  CartResponse:
+    properties:
+      currency:
+        type: string
+      id:
+        type: string
+      itemCount:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/CartItemResponse'
+        type: array
+      summary:
+        $ref: '#/definitions/CartSummaryResponse'
+      updatedAt:
+        type: string
+    type: object
+  CartSummaryResponse:
+    properties:
+      discount:
+        type: integer
+      shipping:
+        type: integer
+      subtotal:
+        type: integer
+      tax:
+        type: integer
+      total:
+        type: integer
+    type: object
+  CheckoutRequest:
+    properties:
+      billingAddress:
+        $ref: '#/definitions/AddressRequest'
+      couponId:
+        type: string
+      customerEmail:
+        type: string
+      shippingAddress:
+        $ref: '#/definitions/AddressRequest'
+    required:
+    - billingAddress
+    - customerEmail
+    - shippingAddress
+    type: object
+  CheckoutResponse:
+    properties:
+      orderId:
+        type: string
+      status:
+        type: string
+    type: object
+  ConflictErrorResponse:
+    properties:
+      code:
+        example: ALREADY_EXISTS
+        type: string
+      message:
+        example: A resource with this identifier or name already exists
+        type: string
+    type: object
+  CreateReviewRequest:
+    properties:
+      body:
+        example: The sound quality and active noise cancellation are top notch.
+        type: string
+      orderItemId:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+      productId:
+        example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
+        type: string
+      rating:
+        example: 5
+        maximum: 5
+        minimum: 1
+        type: integer
+      title:
+        example: Amazing headphones!
+        type: string
+    required:
+    - orderItemId
+    - productId
+    - rating
+    type: object
+  DataResponse:
+    properties:
+      data: {}
+    type: object
+  ErrorResponse:
+    properties:
+      code:
+        example: INTERNAL_ERROR
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/FieldError'
+        type: array
+      message:
+        example: An unexpected internal server error occurred
+        type: string
+    type: object
+  FieldError:
+    properties:
+      constraint:
+        example: min
+        type: string
+      field:
+        example: quantity
+        type: string
+      message:
+        example: quantity must be at least 1
+        type: string
+    type: object
+  ForbiddenErrorResponse:
+    properties:
+      code:
+        example: FORBIDDEN
+        type: string
+      message:
+        example: You do not have permission to access this resource
+        type: string
+    type: object
+  InternalServerErrorResponse:
+    properties:
+      code:
+        example: INTERNAL_ERROR
+        type: string
+      message:
+        example: An unexpected internal server error occurred
+        type: string
+    type: object
+  MeResponse:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      role:
+        type: string
+      status:
+        type: string
+    type: object
+  MessageResponse:
+    properties:
+      message:
+        example: Operation completed successfully
+        type: string
+    type: object
+  NotFoundErrorResponse:
+    properties:
+      code:
+        example: NOT_FOUND
+        type: string
+      message:
+        example: The requested resource was not found
+        type: string
+    type: object
+  OrderItemResponse:
+    properties:
+      id:
+        type: string
+      priceAtPurchase:
+        type: integer
+      productSnapshot:
+        type: string
+      quantity:
+        type: integer
+      variantId:
+        type: string
+    type: object
+  OrderResponse:
+    properties:
+      billingAddress:
+        $ref: '#/definitions/AddressResponse'
+      couponId:
+        type: string
+      createdAt:
+        type: string
+      currency:
+        type: string
+      customerEmail:
+        type: string
+      customerId:
+        type: string
+      discountAmount:
+        type: integer
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/OrderItemResponse'
+        type: array
+      shippingAddress:
+        $ref: '#/definitions/AddressResponse'
+      status:
+        $ref: '#/definitions/OrderStatus'
+      totalAmount:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  OrderStatus:
+    enum:
+    - pending
+    - paid
+    - processing
+    - shipped
+    - delivered
+    - canceled
+    - refunded
+    type: string
+    x-enum-varnames:
+    - OrderStatusPending
+    - OrderStatusPaid
+    - OrderStatusProcessing
+    - OrderStatusShipped
+    - OrderStatusDelivered
+    - OrderStatusCanceled
+    - OrderStatusRefunded
+  Page:
+    properties:
+      hasNext:
+        example: true
+        type: boolean
+      hasPrevious:
+        example: false
+        type: boolean
+      page:
+        example: 1
+        type: integer
+      pageSize:
+        example: 10
+        type: integer
+      totalItems:
+        example: 20
+        type: integer
+      totalPages:
+        example: 2
+        type: integer
+    type: object
+  PaginatedResponse:
+    properties:
+      data: {}
+      meta: {}
+    type: object
+  ProductBrandSummary:
+    properties:
+      id:
+        type: string
+      link:
+        type: string
+      name:
+        type: string
+    type: object
+  ProductDetailsResponse:
+    properties:
+      brand:
+        $ref: '#/definitions/ProductBrandSummary'
+      currency:
+        example: USD
+        type: string
+      description:
+        type: string
+      extractedOriginalPrice:
+        example: 29.99
+        type: number
+      extractedPrice:
+        example: 24.99
+        type: number
+      highlights:
+        items:
+          type: string
+        type: array
+      id:
+        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
+        type: string
+      originalPrice:
+        example: $29.99
+        type: string
+      price:
+        example: $24.99
+        type: string
+      productType:
+        type: string
+      rating:
+        $ref: '#/definitions/ProductRatingSummaryResponse'
+      slug:
+        example: wireless-headphones
+        type: string
+      tags:
+        items:
+          $ref: '#/definitions/ProductTagSummary'
+        type: array
+      title:
+        example: Wireless Headphones
+        type: string
+      variants:
+        items:
+          $ref: '#/definitions/ProductVariantResponse'
+        type: array
+    type: object
+  ProductListItemResponse:
+    properties:
+      brand:
+        type: string
+      currency:
+        example: USD
+        type: string
+      extractedOriginalPrice:
+        example: 29.99
+        type: number
+      extractedPrice:
+        example: 24.99
+        type: number
+      originalPrice:
+        example: $29.99
+        type: string
+      price:
+        example: $24.99
+        type: string
+      rating:
+        $ref: '#/definitions/ProductRatingSummaryResponse'
+      slug:
+        type: string
+      thumbnail:
+        type: string
+      title:
+        type: string
+    type: object
+  ProductRatingSummaryResponse:
+    properties:
+      averageRating:
+        example: 4.5
+        type: number
+      distribution:
+        additionalProperties:
+          type: integer
+        type: object
+      reviewCount:
+        example: 24
+        type: integer
+    type: object
+  ProductReviewResponse:
+    properties:
+      body:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      orderItemId:
+        type: string
+      productId:
+        type: string
+      rating:
+        type: integer
+      status:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: string
+    type: object
+  ProductTagSummary:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  ProductVariantResponse:
+    properties:
+      attributes:
+        additionalProperties: {}
+        type: object
+      currency:
+        example: USD
+        type: string
+      extractedOriginalPrice:
+        example: 29.99
+        type: number
+      extractedPrice:
+        example: 24.99
+        type: number
+      id:
+        type: string
+      isDefault:
+        type: boolean
+      media:
+        items:
+          $ref: '#/definitions/VariantMediaSummary'
+        type: array
+      originalPrice:
+        example: $29.99
+        type: string
+      price:
+        example: $24.99
+        type: string
+      sku:
+        type: string
+      stock:
+        $ref: '#/definitions/PublicStockSummary'
+      thumbnail:
+        type: string
+      title:
+        type: string
+    type: object
+  PublicCategoryResponse:
+    properties:
+      id:
+        example: prod_cat_123
+        type: string
+      name:
+        example: Electronics
+        type: string
+    type: object
+  PublicStockResponse:
+    properties:
+      availableQuantity:
+        example: 45
+        type: integer
+      isInStock:
+        example: true
+        type: boolean
+    type: object
+  PublicStockSummary:
+    properties:
+      availableQuantity:
+        type: integer
+      isInStock:
+        type: boolean
+    type: object
+  RefreshTokenRequest:
+    properties:
+      refreshToken:
+        type: string
+    type: object
+  ResendChallengeRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  ReviewResponse:
+    properties:
+      body:
+        example: The sound quality is top notch.
+        type: string
+      createdAt:
+        example: "2026-08-10T15:00:00Z"
+        type: string
+      id:
+        example: 8f123456-e89b-12d3-a456-426614174000
+        type: string
+      orderItemId:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+      productId:
+        example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
+        type: string
+      rating:
+        example: 5
+        type: integer
+      status:
+        example: pending
+        type: string
+      title:
+        example: Amazing headphones!
+        type: string
+      updatedAt:
+        example: "2026-08-10T15:00:00Z"
+        type: string
+      userId:
+        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
+        type: string
+    type: object
+  SessionType:
+    enum:
+    - guest
+    - authenticated
+    type: string
+    x-enum-varnames:
+    - SessionTypeGuest
+    - SessionTypeAuthenticated
+  Sort:
+    properties:
+      field:
+        example: name
+        type: string
+      order:
+        allOf:
+        - $ref: '#/definitions/SortOrder'
+        example: asc
+    type: object
+  SortOrder:
+    enum:
+    - asc
+    - desc
+    type: string
+    x-enum-varnames:
+    - SortAsc
+    - SortDesc
+  StartChallengeRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  StartChallengeResponse:
+    properties:
+      duration:
+        type: integer
+      email:
+        type: string
+      expiresAt:
+        type: string
+    type: object
+  StorageObjectResponse:
+    properties:
+      bucket:
+        type: string
+      contentType:
+        type: string
+      fileSize:
+        type: integer
+      id:
+        type: string
+      key:
+        type: string
+      publicUrl:
+        type: string
+    type: object
+  SuccessResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+      meta: {}
+    type: object
+  TagResponse:
+    properties:
+      id:
+        example: c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28
+        type: string
+      name:
+        example: black-friday
+        type: string
+    type: object
+  UnauthorizedErrorResponse:
+    properties:
+      code:
+        example: UNAUTHORIZED
+        type: string
+      message:
+        example: Authentication token is missing or expired
+        type: string
+    type: object
+  UnauthorizedResponse:
+    properties:
+      code:
+        example: UNAUTHORIZED
+        type: string
+      message:
+        example: Authentication token is missing or invalid
+        type: string
+    type: object
+  UpdateQuantityRequest:
+    properties:
+      quantity:
+        example: 5
+        type: integer
+    required:
+    - quantity
+    type: object
+  UpdateReviewRequest:
+    properties:
+      body:
+        example: Updated review body.
+        type: string
+      rating:
+        example: 4
+        maximum: 5
+        minimum: 1
+        type: integer
+      title:
+        example: Updated title
+        type: string
+    type: object
+  UserSession:
+    properties:
+      createdAt:
+        type: string
+      currentRefreshJti:
+        type: string
+      id:
+        type: string
+      ipAddress:
+        type: string
+      lastActive:
+        type: string
+      type:
+        $ref: '#/definitions/SessionType'
+      userAgent:
+        type: string
+      userId:
+        type: string
+    type: object
+  VariantMediaResponse:
+    properties:
+      id:
+        example: 8f123456-e89b-12d3-a456-426614174000
+        type: string
+      mediaType:
+        example: image
+        type: string
+      object:
+        $ref: '#/definitions/StorageObjectResponse'
+      objectId:
+        example: a1b2c3d4-e5f6-7890-1234-56789abcdef0
+        type: string
+      publicId:
+        example: 8f123456-e89b-12d3-a456-426614174000
+        type: string
+      sortOrder:
+        example: 0
+        type: integer
+      variantId:
+        example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
+        type: string
+    type: object
+  VariantMediaSummary:
+    properties:
+      id:
+        type: string
+      mediaType:
+        type: string
+      sortOrder:
+        type: integer
+      url:
+        type: string
+    type: object
+  VariantResponse:
+    properties:
+      attributes:
+        additionalProperties: {}
+        type: object
+      currency:
+        example: USD
+        type: string
+      extractedOriginalPrice:
+        example: 29.99
+        type: number
+      extractedPrice:
+        example: 24.99
+        type: number
+      id:
+        example: 96c4e462-ed4a-4fec-9115-47cbf12206a7
+        type: string
+      isDefault:
+        example: false
+        type: boolean
+      media:
+        items:
+          $ref: '#/definitions/VariantMediaSummary'
+        type: array
+      originalPrice:
+        example: $29.99
+        type: string
+      price:
+        example: $24.99
+        type: string
+      productId:
+        example: 356cbaee-4700-4af5-ac9c-61aeeafd541c
+        type: string
+      sku:
+        type: string
+      thumbnail:
+        type: string
+      title:
+        example: Red / XL
+        type: string
+    type: object
+  VerifyChallengeRequest:
+    properties:
+      code:
+        type: string
+      email:
+        type: string
+    required:
+    - code
+    - email
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+  description: This is the Prim API
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Prim API
+  version: "1.0"
+paths:
+  /auth/challenge/resend:
+    post:
+      consumes:
+      - application/json
+      description: Resends a new verification code to the provided email or phone
+        number if allowed by the challenge policy.
+      parameters:
+      - description: Resend Challenge Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/ResendChallengeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Resend an authentication challenge
+      tags:
+      - Auth
+  /auth/challenge/start:
+    post:
+      consumes:
+      - application/json
+      description: Starts an authentication challenge by sending a verification code
+        to the provided email or phone number.
+      parameters:
+      - description: Challenge Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/StartChallengeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/StartChallengeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Start an authentication challenge
+      tags:
+      - Auth
+  /auth/challenge/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verifies the one-time code sent to the user's email or phone and
+        sets auth cookies.
+      parameters:
+      - description: Challenge Verification Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/VerifyChallengeRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Verify an authentication challenge
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      description: Revokes the current session and clears auth cookies.
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Logout
+      tags:
+      - Auth
+  /auth/me:
+    get:
+      consumes:
+      - application/json
+      description: fetch session user data
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/MeResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: fetch session user data
+      tags:
+      - Auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Rotate refresh token and issue new access and refresh tokens.
+      parameters:
+      - description: Refresh Token
+        in: body
+        name: refresh_token
+        schema:
+          $ref: '#/definitions/RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Rotate refresh token and issue new access and refresh tokens.
+      tags:
+      - Auth
+  /auth/sessions:
+    get:
+      description: Fetches all active login sessions stored in Redis for the current
+        user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/UserSession'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: List active user sessions
+      tags:
+      - Auth
+  /auth/sessions/{id}:
+    delete:
+      description: Revokes and deletes a specific active session from Redis.
+      parameters:
+      - description: Session ID to revoke
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Revoke session
+      tags:
+      - Auth
+  /brands:
+    get:
+      consumes:
+      - application/json
+      description: Returns a paginated list of active product brands for customer
+        storefront browsing.
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -created_at
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Paginated list of active brands
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/BrandResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/Page'
+              type: object
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: List active product brands
+      tags:
+      - Brands
+  /cart:
+    delete:
+      description: Removes all items from the current cart.
+      parameters:
+      - description: Guest Session ID
+        in: header
+        name: X-Session-ID
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Cart cleared
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Clear cart
+      tags:
+      - Cart
+    get:
+      description: Fetches the current user's or guest session's shopping cart and
+        item details.
+      parameters:
+      - description: Guest Session ID
+        in: header
+        name: X-Session-ID
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cart details
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/CartResponse'
+              type: object
+        "400":
+          description: Invalid input or missing session
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Get shopping cart
+      tags:
+      - Cart
+  /cart/items:
+    post:
+      consumes:
+      - application/json
+      description: Adds a product variant with specified quantity to the shopping
+        cart.
+      parameters:
+      - description: Guest Session ID
+        in: header
+        name: X-Session-ID
+        type: string
+      - description: Item variant and quantity
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/AddItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated cart
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/CartResponse'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "404":
+          description: Variant not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Add item to cart
+      tags:
+      - Cart
+  /cart/items/{id}:
+    delete:
+      description: Removes a single item from the cart by item ID.
+      parameters:
+      - description: Cart Item UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Guest Session ID
+        in: header
+        name: X-Session-ID
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated cart
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/CartResponse'
+              type: object
+        "400":
+          description: Invalid item ID
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "404":
+          description: Cart item not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Remove item from cart
+      tags:
+      - Cart
+    patch:
+      consumes:
+      - application/json
+      description: Updates the quantity of a specific item in the cart.
+      parameters:
+      - description: Cart Item UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Guest Session ID
+        in: header
+        name: X-Session-ID
+        type: string
+      - description: New quantity
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateQuantityRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated cart
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/CartResponse'
+              type: object
+        "400":
+          description: Validation error or invalid UUID
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "404":
+          description: Cart item not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Update cart item quantity
+      tags:
+      - Cart
+  /categories:
+    get:
+      consumes:
+      - application/json
+      description: Returns a paginated list of active product categories for customer
+        browsing and navigation.
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -created_at
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Paginated list of active categories
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/PublicCategoryResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/Page'
+              type: object
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: List active product categories
+      tags:
+      - Categories
+  /checkout:
+    post:
+      consumes:
+      - application/json
+      description: Creates an order from the current user's cart and clears the cart.
+      parameters:
+      - description: Checkout Details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/CheckoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Checkout result
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/CheckoutResponse'
+              type: object
+        "400":
+          description: Validation error or empty cart
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Perform checkout
+      tags:
+      - Checkout
+  /orders:
+    get:
+      description: Returns a list of orders belonging to the authenticated customer.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of orders
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/OrderResponse'
+                  type: array
+              type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: List customer orders
+      tags:
+      - Orders
+  /orders/{id}:
+    get:
+      description: Retrieves full order details by its UUID.
+      parameters:
+      - description: Order UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Order details
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/OrderResponse'
+              type: object
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Order not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Get order by ID
+      tags:
+      - Orders
+  /products:
+    get:
+      description: Returns a paginated list of active, published products for customer
+        browsing. Soft-deleted and draft products are hidden.
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -created_at
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Paginated list of active products
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/ProductListItemResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/Page'
+              type: object
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: List active published products
+      tags:
+      - Products
+  /products/{product_id}/variants:
+    get:
+      description: Returns a paginated list of active variants associated with a specific
+        product for storefront selection.
+      parameters:
+      - description: Product UUID
+        format: uuid
+        in: path
+        name: product_id
+        required: true
+        type: string
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -created_at
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Paginated list of active product variants
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/VariantResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/Page'
+              type: object
+        "400":
+          description: Invalid query parameters or UUID format
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: List active variants for a product
+      tags:
+      - Product Variants
+  /products/{slug}:
+    get:
+      description: Retrieve a single product by its public slug (for storefronts)
+      parameters:
+      - description: Product Slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product details
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/ProductDetailsResponse'
+              type: object
+        "400":
+          description: Invalid slug
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "404":
+          description: Product not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Get product by slug
+      tags:
+      - Products
+  /products/{slug}/reviews:
+    get:
+      description: Returns a paginated list of approved reviews for a given product.
+      parameters:
+      - description: Product Slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -created_at
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Paginated list of product reviews
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/ProductReviewResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/Page'
+              type: object
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: List reviews for a specific product
+      tags:
+      - Products
+  /products/{slug}/reviews/summary:
+    get:
+      description: Returns average rating, total review count, and star distribution
+        for approved reviews.
+      parameters:
+      - description: Product Slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product rating summary
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/ProductRatingSummaryResponse'
+              type: object
+        "400":
+          description: Invalid slug
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "404":
+          description: Product not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Get rating summary for a product
+      tags:
+      - Products
+  /reviews:
+    post:
+      consumes:
+      - application/json
+      description: Allows a customer to review a product they purchased via a specific
+        order item.
+      parameters:
+      - description: Review creation payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/CreateReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Review submitted successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/ReviewResponse'
+              type: object
+        "400":
+          description: Invalid input or unverified purchase
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "403":
+          description: Forbidden - not your purchase
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "409":
+          description: Item already reviewed
+          schema:
+            $ref: '#/definitions/ConflictErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Submit a product review
+      tags:
+      - Reviews
+  /reviews/{id}:
+    delete:
+      description: Deletes a review written by the authenticated user.
+      parameters:
+      - description: Review ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Review deleted successfully
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Invalid review ID
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Review not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Delete user's review
+      tags:
+      - Reviews
+    get:
+      description: Retrieves a review by its unique identifier.
+      parameters:
+      - description: Review ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Review details
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/ReviewResponse'
+              type: object
+        "400":
+          description: Invalid review ID format
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "404":
+          description: Review not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Get review by ID
+      tags:
+      - Reviews
+    patch:
+      consumes:
+      - application/json
+      description: Updates rating, title, or body of a review written by the authenticated
+        user. Resets status to pending for re-moderation.
+      parameters:
+      - description: Review ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Review update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Review updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/ReviewResponse'
+              type: object
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Review not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Update user's review
+      tags:
+      - Reviews
+  /reviews/me:
+    get:
+      description: Returns a paginated list of all reviews written by the authenticated
+        user.
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -created_at
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User's reviews
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/ReviewResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/Page'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: List current user's reviews
+      tags:
+      - Reviews
+  /tags:
+    get:
+      consumes:
+      - application/json
+      description: Returns a paginated list of active product tags for customer storefront
+        filtering.
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -created_at
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Paginated list of active tags
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/TagResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/Page'
+              type: object
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: List active product tags
+      tags:
+      - Tags
+  /variants/{id}:
+    get:
+      description: Retrieves specific product variant (SKU) details by its UUID.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variant details
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/VariantResponse'
+              type: object
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "404":
+          description: Variant not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Get variant details by ID
+      tags:
+      - Product Variants
+  /variants/{id}/inventory:
+    get:
+      description: Retrieves available quantity and in-stock status for a variant
+        for customer storefront.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Public stock availability
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/PublicStockResponse'
+              type: object
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Get current available stock for a variant (Public)
+      tags:
+      - Variant Inventory
+  /variants/{id}/media:
+    get:
+      description: Returns all attached media items for a specific variant with presigned
+        object URLs.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of variant media items
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/VariantMediaResponse'
+                  type: array
+              type: object
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: List all media items for a variant
+      tags:
+      - Variant Media
+  /variants/sku/{sku}:
+    get:
+      description: Retrieves specific product variant details by its SKU string.
+      parameters:
+      - description: Variant SKU
+        in: path
+        name: sku
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Variant details
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/VariantResponse'
+              type: object
+        "400":
+          description: SKU is required
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "404":
+          description: Variant not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Get variant details by SKU
+      tags:
+      - Product Variants
+security:
+- BearerAuth: []
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

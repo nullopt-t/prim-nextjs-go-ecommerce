@@ -194,7 +194,7 @@ func (h *OrderHandler) GetOrderByID(c *gin.Context) {
 //
 //	@Summary		Update order status (Admin)
 //	@Description	Updates the status of an existing order.
-//	@Tags			Orders
+//	@Tags			Admin Orders
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string							true	"Order UUID"	format(uuid)

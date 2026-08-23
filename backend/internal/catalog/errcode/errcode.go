@@ -5,6 +5,7 @@ const (
 	CodeProductNotFound           = "PRODUCT_NOT_FOUND"
 	CodeProductAlreadyExists      = "PRODUCT_ALREADY_EXISTS"
 	CodeVariantNotFound           = "VARIANT_NOT_FOUND"
+	CodeVariantAlreadyExists      = "VARIANT_ALREADY_EXISTS"
 	CodeVariantProductMismatch    = "VARIANT_PRODUCT_MISMATCH"
 	CodeBrandNotFound             = "BRAND_NOT_FOUND"
 	CodeBrandAlreadyExists        = "BRAND_ALREADY_EXISTS"
@@ -24,4 +25,6 @@ const (
 	CodeInvalidInventoryReason    = "INVALID_INVENTORY_REASON"
 	CodeReservationNotFound       = "INVENTORY_RESERVATION_NOT_FOUND"
 	CodeReservationExpired        = "INVENTORY_RESERVATION_EXPIRED"
+	CodeReviewAlreadyExists       = "REVIEW_ALREADY_EXISTS"
+	CodeReviewNotFound            = "REVIEW_NOT_FOUND"
 )

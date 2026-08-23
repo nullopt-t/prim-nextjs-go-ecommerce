@@ -130,6 +130,35 @@ func (r *CartRepository) GetCartItems(
 	return items, nil
 }
 
+func (r *CartRepository) GetItemByID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	cartID uuid.UUID,
+	itemID uuid.UUID,
+) (*model.CartItem, error) {
+	query := `
+		SELECT id, cart_id, variant_id, quantity, price_at_purchase, currency, carted_at, deleted_at
+		FROM cart_items
+		WHERE cart_id = $1 AND id = $2 AND deleted_at IS NULL
+	`
+	row := qe.QueryRow(ctx, query, cartID, itemID)
+	item := &model.CartItem{}
+	err := row.Scan(
+		&item.ID,
+		&item.CartID,
+		&item.VariantID,
+		&item.Quantity,
+		&item.PriceAtPurchase,
+		&item.Currency,
+		&item.CartedAt,
+		&item.DeletedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return item, nil
+}
+
 func (r *CartRepository) GetItemByVariantID(
 	ctx context.Context,
 	qe database.QueryExecutor,

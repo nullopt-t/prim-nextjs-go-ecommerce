@@ -7,5 +7,15 @@ import (
 )
 
 func SetUpDocs(rg *gin.RouterGroup) {
-	rg.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Public Customer API Documentation
+	rg.GET("/docs/public/*any", ginSwagger.WrapHandler(
+		swaggerFiles.Handler,
+		ginSwagger.InstanceName("public"),
+	))
+
+	// Private Admin / Ops API Documentation
+	rg.GET("/docs/admin/*any", ginSwagger.WrapHandler(
+		swaggerFiles.Handler,
+		ginSwagger.InstanceName("admin"),
+	))
 }

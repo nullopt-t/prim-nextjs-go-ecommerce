@@ -20,11 +20,17 @@ type ProductService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error)
 }
 
+type InventoryService interface {
+	GetStockByVariantID(ctx context.Context, variantID uuid.UUID) (*model.InventoryStock, error)
+	GetStockForVariants(ctx context.Context, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
+}
+
 type CartService struct {
-	dr             database.Runner
-	cartRepo       *CartRepository
-	variantService VariantService
-	productService ProductService
+	dr               database.Runner
+	cartRepo         *CartRepository
+	variantService   VariantService
+	productService   ProductService
+	inventoryService InventoryService
 }
 
 func NewService(
@@ -32,12 +38,14 @@ func NewService(
 	cartRepo *CartRepository,
 	variantService VariantService,
 	productService ProductService,
+	inventoryService InventoryService,
 ) *CartService {
 	return &CartService{
-		dr:             dr,
-		cartRepo:       cartRepo,
-		variantService: variantService,
-		productService: productService,
+		dr:               dr,
+		cartRepo:         cartRepo,
+		variantService:   variantService,
+		productService:   productService,
+		inventoryService: inventoryService,
 	}
 }
 
@@ -81,21 +89,35 @@ func (s *CartService) GetOrCreateCart(
 			return itemsErr
 		}
 
+		variantIDs := make([]uuid.UUID, 0, len(items))
 		for i := range items {
 			v, vErr := s.variantService.GetVariantByID(ctx, items[i].VariantID)
 			if vErr == nil {
 				items[i].Variant = v
-				
+				variantIDs = append(variantIDs, v.ID)
+
 				// Fetch the associated product
 				p, pErr := s.productService.GetByID(ctx, v.ProductID)
 				if pErr == nil {
 					items[i].Product = p
 				}
 
-				// Fetch variant media for the thumbnail
-				media, mediaErr := s.variantService.ListVariantMedia(ctx, v.ID)
-				if mediaErr == nil && len(media) > 0 && media[0].Object != nil {
-					items[i].ThumbnailURL = media[0].Object.PublicURL
+				// Thumbnail resolution: prefer variant thumbnail or variant media
+				if v.Thumbnail != nil && v.Thumbnail.PublicURL != "" {
+					items[i].ThumbnailURL = v.Thumbnail.PublicURL
+				} else if len(v.Media) > 0 && v.Media[0].Object != nil {
+					items[i].ThumbnailURL = v.Media[0].Object.PublicURL
+				}
+			}
+		}
+
+		if len(variantIDs) > 0 && s.inventoryService != nil {
+			stocks, stockErr := s.inventoryService.GetStockForVariants(ctx, variantIDs)
+			if stockErr == nil && stocks != nil {
+				for i := range items {
+					if st, ok := stocks[items[i].VariantID]; ok {
+						items[i].InStock = st.AvailableQuantity >= items[i].Quantity
+					}
 				}
 			}
 		}
@@ -118,11 +140,27 @@ func (s *CartService) AddItem(
 	variantPublicID uuid.UUID,
 	quantity int,
 ) (*model.Cart, error) {
+	if quantity <= 0 {
+		return nil, apierr.ErrBadRequest("Quantity must be greater than zero").
+			WithCode(errcode.CodeInvalidQuantity)
+	}
+
 	v, err := s.variantService.GetVariantByID(ctx, variantPublicID)
 	if err != nil {
 		return nil, apierr.ErrNotFound("Variant not found").
 			WithCode(errcode.CodeVariantNotFound).
 			Wrap(err)
+	}
+
+	// Validate available inventory
+	if s.inventoryService != nil {
+		stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, v.ID)
+		if stockErr == nil && stock != nil {
+			if stock.AvailableQuantity < quantity {
+				return nil, apierr.ErrBadRequest("Insufficient inventory available").
+					WithCode(errcode.CodeInsufficientInventory)
+			}
+		}
 	}
 
 	price := int64(0)
@@ -166,8 +204,16 @@ func (s *CartService) AddItem(
 
 		existingItem, getErr := s.cartRepo.GetItemByVariantID(ctx, tx, cart.ID, v.ID)
 		if getErr == nil {
+			newQty := existingItem.Quantity + quantity
+			if s.inventoryService != nil {
+				stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, v.ID)
+				if stockErr == nil && stock != nil && stock.AvailableQuantity < newQty {
+					return apierr.ErrBadRequest("Insufficient inventory available").
+						WithCode(errcode.CodeInsufficientInventory)
+				}
+			}
 			// Item exists, update quantity
-			err = s.cartRepo.UpdateItemQuantity(ctx, tx, cart.ID, existingItem.ID, existingItem.Quantity+quantity)
+			err = s.cartRepo.UpdateItemQuantity(ctx, tx, cart.ID, existingItem.ID, newQty)
 			return err
 		} else if !errors.Is(database.MapError(getErr), database.ErrNotFound) {
 			return getErr
@@ -185,6 +231,10 @@ func (s *CartService) AddItem(
 	})
 
 	if txErr != nil {
+		var apiErr *apierr.APIError
+		if errors.As(txErr, &apiErr) {
+			return nil, apiErr
+		}
 		return nil, apierr.ErrInternalError("Failed to add item to cart").
 			WithCode(apierr.CodeInternalError).
 			Wrap(txErr).
@@ -201,16 +251,38 @@ func (s *CartService) UpdateCartItemQuantity(
 	itemID uuid.UUID,
 	quantity int,
 ) (*model.Cart, error) {
+	if quantity <= 0 {
+		return nil, apierr.ErrBadRequest("Quantity must be greater than zero").
+			WithCode(errcode.CodeInvalidQuantity)
+	}
+
 	cart, err := s.GetOrCreateCart(ctx, userID, sessionID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return s.cartRepo.UpdateItemQuantity(ctx, db, cart.ID, itemID, quantity)
+	err = s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		item, err := s.cartRepo.GetItemByID(ctx, tx, cart.ID, itemID)
+		if err != nil {
+			return err
+		}
+
+		if s.inventoryService != nil {
+			stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, item.VariantID)
+			if stockErr == nil && stock != nil && stock.AvailableQuantity < quantity {
+				return apierr.ErrBadRequest("Insufficient inventory available").
+					WithCode(errcode.CodeInsufficientInventory)
+			}
+		}
+
+		return s.cartRepo.UpdateItemQuantity(ctx, tx, cart.ID, itemID, quantity)
 	})
 
 	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return nil, apiErr
+		}
 		if errors.Is(database.MapError(err), database.ErrNotFound) {
 			return nil, apierr.ErrNotFound("Cart item not found").
 				WithCode(errcode.CodeCartItemNotFound).

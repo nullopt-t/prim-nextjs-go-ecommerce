@@ -1,6 +1,10 @@
 COMPOSE=docker compose -f docker-compose.dev.yml
 
-.PHONY: up up-d down clean logs logs-api logs-worker migrate-up migrate-down migrate-drop migrate-reset migrate-force
+.PHONY: up up-d down clean logs logs-api logs-worker migrate-up migrate-down migrate-drop migrate-reset migrate-force swagger
+
+swagger:
+	swag init -g cmd/api/main.go -o docs/public --instanceName public -t "!Admin Orders,!Admin Categories,!Admin Product Variants,!Admin Variant Media,!Admin Variant Inventory,!Admin Tags,!Admin Reviews,!Admin Products,!Admin Product Media,!Admin Brands" --parseDependency --useStructName
+	swag init -g cmd/api/main.go -o docs/admin --instanceName admin -t "Admin Orders,Admin Categories,Admin Product Variants,Admin Variant Media,Admin Variant Inventory,Admin Tags,Admin Reviews,Admin Products,Admin Product Media,Admin Brands" --parseDependency --useStructName
 
 up:
 	$(COMPOSE) up

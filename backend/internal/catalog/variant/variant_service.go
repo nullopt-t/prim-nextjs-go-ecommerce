@@ -3,7 +3,6 @@ package variant
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -47,6 +46,7 @@ func NewService(
 
 type CreateVariantInput struct {
 	ProductID         uuid.UUID
+	SKU               *string
 	Title             string
 	Price             *int64
 	CrossedOutPrice   *int64
@@ -57,6 +57,7 @@ type CreateVariantInput struct {
 }
 
 type UpdateVariantInput struct {
+	SKU               *string
 	Title             *string
 	Price             *int64
 	CrossedOutPrice   *int64
@@ -101,9 +102,17 @@ func (vs *VariantService) CreateVariant(
 			})
 	}
 
+	sku := uuid.NewString()
+	if in.SKU != nil {
+		trimmedSKU := strings.TrimSpace(*in.SKU)
+		if trimmedSKU != "" {
+			sku = trimmedSKU
+		}
+	}
+
 	variant := &model.ProductVariant{
 		ID:                uuid.New(),
-		SKU:               uuid.NewString(),
+		SKU:               sku,
 		ProductID:         in.ProductID,
 		Title:             title,
 		Price:             in.Price,
@@ -114,18 +123,22 @@ func (vs *VariantService) CreateVariant(
 		ThumbnailObjectID: in.ThumbnailObjectID,
 	}
 
-	execFunc := vs.dr.WithDB
-	if variant.IsDefault {
-		execFunc = vs.dr.WithTx
-	}
+	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		// If this is the first variant of the product, make it default automatically
+		count, err := vs.vr.CountByProductID(ctx, tx, variant.ProductID)
+		if err != nil {
+			return err
+		}
+		if count == 0 {
+			variant.IsDefault = true
+		}
 
-	err := execFunc(ctx, func(db database.QueryExecutor) error {
-		if variant.IsDefault {
-			if err := vs.vr.ClearDefaultFlags(ctx, db, variant.ProductID); err != nil {
+		if variant.IsDefault && count > 0 {
+			if err := vs.vr.ClearDefaultFlags(ctx, tx, variant.ProductID); err != nil {
 				return err
 			}
 		}
-		return vs.vr.Create(ctx, db, variant)
+		return vs.vr.Create(ctx, tx, variant)
 	})
 
 	if err != nil {
@@ -139,6 +152,11 @@ func (vs *VariantService) CreateVariant(
 					Field:   "product_id",
 					Message: "product reference is invalid",
 				})
+
+		case errors.Is(mappedErr, database.ErrConflict):
+			return nil, apierr.ErrConflict("Variant with this SKU already exists").
+				WithCode(errcode.CodeVariantAlreadyExists).
+				Wrap(err)
 
 		default:
 			return nil, apierr.ErrInternalError("Failed to create variant").
@@ -198,10 +216,15 @@ func (vs *VariantService) GetVariantBySKU(
 	ctx context.Context,
 	sku string,
 ) (*model.ProductVariant, error) {
-	var variant *model.ProductVariant
+	cleanSKU := strings.TrimSpace(sku)
+	if cleanSKU == "" {
+		return nil, apierr.ErrBadRequest("SKU is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
 
+	var variant *model.ProductVariant
 	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		v, err := vs.vr.GetBySKU(ctx, db, sku)
+		v, err := vs.vr.GetBySKU(ctx, db, cleanSKU)
 		if err != nil {
 			return err
 		}
@@ -210,7 +233,19 @@ func (vs *VariantService) GetVariantBySKU(
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("get variant by sku: %w", err)
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return nil, apierr.ErrNotFound("Variant not found").
+				WithCode(errcode.CodeVariantNotFound).
+				Wrap(err)
+
+		default:
+			return nil, apierr.ErrInternalError("Failed to fetch variant by SKU").
+				WithCode(apierr.CodeInternalError).
+				Wrap(err).
+				WithStack()
+		}
 	}
 
 	if variant.Thumbnail != nil && vs.objectService != nil {
@@ -241,6 +276,19 @@ func (vs *VariantService) UpdateVariant(
 		Attributes:        in.Attributes,
 		IsDefault:         in.IsDefault,
 		ThumbnailObjectID: in.ThumbnailObjectID,
+	}
+
+	if in.SKU != nil {
+		sku := strings.TrimSpace(*in.SKU)
+		if sku == "" {
+			return apierr.ErrBadRequest("Validation error").
+				WithCode(apierr.CodeValidationFailed).
+				WithFields(api.FieldError{
+					Field:   "sku",
+					Message: "sku cannot be empty",
+				})
+		}
+		fields.SKU = &sku
 	}
 
 	if in.Title != nil {
@@ -275,6 +323,11 @@ func (vs *VariantService) UpdateVariant(
 		case errors.Is(mappedErr, database.ErrNotFound):
 			return apierr.ErrNotFound("Variant not found").
 				WithCode(errcode.CodeVariantNotFound).
+				Wrap(err)
+
+		case errors.Is(mappedErr, database.ErrConflict):
+			return apierr.ErrConflict("Variant with this SKU already exists").
+				WithCode(errcode.CodeVariantAlreadyExists).
 				Wrap(err)
 
 		default:
@@ -395,6 +448,38 @@ func (vs *VariantService) DeleteVariantByID(
 
 		default:
 			return apierr.ErrInternalError("Failed to delete variant").
+				WithCode(apierr.CodeInternalError).
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	return nil
+}
+
+func (vs *VariantService) RestoreVariantByID(
+	ctx context.Context,
+	variantID uuid.UUID,
+) error {
+	if variantID == uuid.Nil {
+		return apierr.ErrBadRequest("Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		return vs.vr.Restore(ctx, db, variantID)
+	})
+
+	if err != nil {
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return apierr.ErrNotFound("Variant not found or not deleted").
+				WithCode(errcode.CodeVariantNotFound).
+				Wrap(err)
+
+		default:
+			return apierr.ErrInternalError("Failed to restore variant").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
