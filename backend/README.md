@@ -153,16 +153,22 @@ internal/
 pkg/
 migrations/
 
-Dockerfile
-Dockerfile.dev
-docker-compose.dev.yml
+configs/
+├── air.api.toml
+└── air.worker.toml
+
+docker/
+├── Dockerfile.prod
+├── Dockerfile.dev
+├── docker-compose.prod.yml
+└── docker-compose.dev.yml
 ```
 
 ---
 
 ## Production
 
-A production Dockerfile is included for building optimized deployment images.
+A production Dockerfile (`docker/Dockerfile.prod`) and compose configuration (`docker/docker-compose.prod.yml`) are included for building optimized deployment images.
 
 ---
 

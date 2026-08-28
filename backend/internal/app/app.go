@@ -20,7 +20,6 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
 	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 
 	"context"
 	"fmt"
@@ -56,12 +55,15 @@ type App struct {
 
 	// storage provider
 	storageProvider storage.StorageProvider
+
+	// app config
+	config config.Config
 }
 
-func (app *App) setupRoutes(config config.Config, router *gin.Engine) {
+func (app *App) setupRoutes(router *gin.Engine) {
 	// setup middlewares
 	router.Use(middleware.ErrorHandler(app.logger))
-	router.Use(middleware.CORS(config.AllowedOrigins...))
+	router.Use(middleware.CORS(app.config.AllowedOrigins...))
 
 	v1 := router.Group("/api/v1")
 	swagger.SetUpDocs(v1)
@@ -90,20 +92,20 @@ func (app *App) setupRoutes(config config.Config, router *gin.Engine) {
 	)
 
 	jwtService := jwt.NewJWTManager(
-		config.KeysCfg,
+		app.config.KeysCfg,
 	)
 
 	challengeService := auth.NewChallengeService(
 		app.redisClient,
 		notifier,
 		app.logger,
-		config.AuthCfg.ChallengeTTL,
+		app.config.AuthCfg.ChallengeTTL,
 	)
 
 	sessionService := auth.NewSessionService(
 		app.redisClient,
 		app.logger,
-		config.AuthCfg.SessionTTL,
+		app.config.AuthCfg.SessionTTL,
 	)
 
 	authService := auth.NewAuthService(
@@ -114,7 +116,7 @@ func (app *App) setupRoutes(config config.Config, router *gin.Engine) {
 		jwtService,
 		app.redisClient,
 		notifier,
-		config.KeysCfg,
+		app.config.KeysCfg,
 	)
 
 	objectRepository := object.NewRepository()
@@ -135,7 +137,7 @@ func (app *App) setupRoutes(config config.Config, router *gin.Engine) {
 	)
 	brandRouter := brand.NewRouter(
 		brandHandler,
-		config.KeysCfg,
+		app.config.KeysCfg,
 	)
 	brandRouter.MapRoutes(v1)
 
@@ -149,7 +151,7 @@ func (app *App) setupRoutes(config config.Config, router *gin.Engine) {
 	)
 	tagRouter := tag.NewRouter(
 		tagHandler,
-		config.KeysCfg,
+		app.config.KeysCfg,
 	)
 	tagRouter.MapRoutes(v1)
 
@@ -163,7 +165,7 @@ func (app *App) setupRoutes(config config.Config, router *gin.Engine) {
 	)
 	categoryRouter := category.NewRouter(
 		categoryHandler,
-		config.KeysCfg,
+		app.config.KeysCfg,
 	)
 	categoryRouter.MapRoutes(v1)
 
@@ -185,14 +187,14 @@ func (app *App) setupRoutes(config config.Config, router *gin.Engine) {
 	)
 
 	variantHandler := variant.NewHandler(variantService)
-	variantRouter := variant.NewRouter(variantHandler, config.KeysCfg)
+	variantRouter := variant.NewRouter(variantHandler, app.config.KeysCfg)
 	variantRouter.MapRoutes(v1)
 
 	// review
 	reviewRepo := review.NewReviewRepository()
 	reviewService := review.NewService(txRunner, reviewRepo)
 	reviewHandler := review.NewHandler(reviewService)
-	reviewRouter := review.NewRouter(reviewHandler, config.KeysCfg)
+	reviewRouter := review.NewRouter(reviewHandler, app.config.KeysCfg)
 	reviewRouter.MapRoutes(v1)
 
 	// product
@@ -210,45 +212,45 @@ func (app *App) setupRoutes(config config.Config, router *gin.Engine) {
 		reviewService,
 	)
 	productHandler := product.NewHandler(productService)
-	productRouter := product.NewRouter(productHandler, config.KeysCfg)
+	productRouter := product.NewRouter(productHandler, app.config.KeysCfg)
 	productRouter.MapRoutes(v1)
 
 	// cart
 	cartRepo := cart.NewRepository()
 	cartService := cart.NewService(txRunner, cartRepo, variantService, productService, inventoryService)
 	cartHandler := cart.NewHandler(cartService)
-	cartRouter := cart.NewRouter(cartHandler, config.KeysCfg)
+	cartRouter := cart.NewRouter(cartHandler, app.config.KeysCfg)
 	cartRouter.MapRoutes(v1)
 
 	authHandler := auth.NewAuthHandler(
 		authService,
 		sessionService,
 		app.logger,
-		config.IsProduction,
+		app.config.IsProduction,
 		cartService,
-		config.AuthCfg.ChallengeTTL,
+		app.config.AuthCfg.ChallengeTTL,
 	)
 
 	authRouter := auth.NewRouter(
 		authHandler,
-		config.KeysCfg,
+		app.config.KeysCfg,
 		rateLimiter,
 		app.logger,
 		app.redisClient,
-		config.RateLimitCfg,
+		app.config.RateLimitCfg,
 	)
 	authRouter.MapRoutes(v1)
 
 	userHandler := user.NewHandler(
 		userService,
 		rateLimiter,
-		config.KeysCfg,
+		app.config.KeysCfg,
 		app.logger,
 	)
 
 	userRouter := user.NewRouter(
 		userHandler,
-		config,
+		app.config,
 	)
 
 	userRouter.MapRoutes(v1)
@@ -257,13 +259,13 @@ func (app *App) setupRoutes(config config.Config, router *gin.Engine) {
 	orderRepo := order.NewRepository()
 	orderService := order.NewService(txRunner, orderRepo, app.logger)
 	orderHandler := order.NewHandler(orderService)
-	orderRouter := order.NewRouter(orderHandler, config.KeysCfg)
+	orderRouter := order.NewRouter(orderHandler, app.config.KeysCfg)
 	orderRouter.MapRoutes(v1)
 
 	// checkout
 	checkoutService := checkout.NewService(cartService, orderService)
 	checkoutHandler := checkout.NewHandler(checkoutService)
-	checkoutRouter := checkout.NewRouter(checkoutHandler, config.KeysCfg)
+	checkoutRouter := checkout.NewRouter(checkoutHandler, app.config.KeysCfg)
 	checkoutRouter.MapRoutes(v1)
 }
 
@@ -300,9 +302,8 @@ func (app *App) Run() error {
 		)
 	}
 
-	cfg := config.Load()
-
-	app.db, err = database.ConnectDB(context.Background(), cfg)
+	app.config = config.Load()
+	app.db, err = database.ConnectDB(context.Background(), app.config.DBCfg)
 	if err != nil {
 		app.logger.Error(
 			"database connection issue",
@@ -322,26 +323,11 @@ func (app *App) Run() error {
 		)
 	}
 
-	app.minioClient, err = minio.New(cfg.MinioCfg.Endpoint, &minio.Options{
-		Creds:      credentials.NewStaticV4(cfg.MinioCfg.AccessKey, cfg.MinioCfg.SecretKey, ""),
-		Secure:     false,
-		EnableRDMA: true,
-	})
-	if err != nil {
-		app.logger.Error(
-			"minio connection issue",
-			log.Meta{
-				"Error": err,
-			},
-		)
-		return err
-	}
-
-	app.storageProvider, err = storage.NewMinioStorageProvider(
-		cfg.MinioCfg.Endpoint,
-		cfg.MinioCfg.AccessKey,
-		cfg.MinioCfg.SecretKey,
-		cfg.MinioCfg.PublicURL,
+	storageProv, err := storage.NewMinioStorageProvider(
+		app.config.MinioCfg.Endpoint,
+		app.config.MinioCfg.AccessKey,
+		app.config.MinioCfg.SecretKey,
+		app.config.MinioCfg.PublicURL,
 	)
 	if err != nil {
 		app.logger.Error(
@@ -352,6 +338,8 @@ func (app *App) Run() error {
 		)
 		return err
 	}
+	app.storageProvider = storageProv
+	app.minioClient = storageProv.Client
 
 	exists, err := app.minioClient.BucketExists(
 		context.Background(),
@@ -391,8 +379,8 @@ func (app *App) Run() error {
 
 	app.redisClient = redis.NewClient(&redis.Options{
 		Addr: fmt.Sprintf("%s:%d",
-			cfg.RedisCfg.Host,
-			cfg.RedisCfg.Port,
+			app.config.RedisCfg.Host,
+			app.config.RedisCfg.Port,
 		),
 	})
 
@@ -406,18 +394,18 @@ func (app *App) Run() error {
 	}
 
 	router := gin.Default()
-	app.setupRoutes(cfg, router)
+	app.setupRoutes(router)
 
 	app.server = &http.Server{
-		Addr:    fmt.Sprintf(":%s", cfg.SvPort),
+		Addr:    fmt.Sprintf(":%s", app.config.SvPort),
 		Handler: router,
 	}
 
 	app.logger.Info(
 		"Server started",
 		log.Meta{
-			"URL":  fmt.Sprintf("http://localhost:%s", cfg.SvPort),
-			"Port": cfg.SvPort,
+			"URL":  fmt.Sprintf("http://localhost:%s", app.config.SvPort),
+			"Port": app.config.SvPort,
 		},
 	)
 	return app.server.ListenAndServe()

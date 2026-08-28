@@ -42,7 +42,7 @@ func (s *InventoryTestSuite) SetupSuite() {
 		postgres.WithPassword("testpass"),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).WithStartupTimeout(5*time.Second)),
+				WithOccurrence(2).WithStartupTimeout(30*time.Second)),
 	)
 	require.NoError(s.T(), err)
 	s.pgContainer = pgContainer
@@ -52,14 +52,12 @@ func (s *InventoryTestSuite) SetupSuite() {
 	port, err := pgContainer.MappedPort(ctx, "5432")
 	require.NoError(s.T(), err)
 
-	db, err := database.ConnectDB(ctx, config.Config{
-		DBCfg: config.DatabaseConfig{
-			DBHost:     host,
-			DBPort:     port.Port(),
-			DBUser:     "testuser",
-			DBPassword: "testpass",
-			DBName:     "prim_inventory_test",
-		},
+	db, err := database.ConnectDB(ctx, config.DatabaseConfig{
+		DBHost:     host,
+		DBPort:     port.Port(),
+		DBUser:     "testuser",
+		DBPassword: "testpass",
+		DBName:     "prim_inventory_test",
 	})
 	require.NoError(s.T(), err)
 	s.db = db

@@ -1,13 +1,13 @@
 services:
   api:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile.prod
     ports:
       - "8080:8080"
     restart: unless-stopped
     env_file:
-      - .env
+      - ../.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -16,12 +16,12 @@ services:
 
   worker:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile.prod
     command: ./worker
     restart: unless-stopped
     env_file:
-      - .env
+      - ../.env
     depends_on:
       redis:
         condition: service_healthy

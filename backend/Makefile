@@ -1,4 +1,4 @@
-COMPOSE=docker compose -f docker-compose.dev.yml
+COMPOSE=docker compose -f docker/docker-compose.dev.yml
 
 .PHONY: up up-d down clean logs logs-api logs-worker migrate-up migrate-down migrate-drop migrate-reset migrate-force swagger
 

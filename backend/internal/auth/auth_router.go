@@ -38,9 +38,31 @@ func NewRouter(
 func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	auth := vgroup.Group("/auth")
 	challenge := auth.Group("/challenge")
-	challenge.POST("/start", middleware.RateLimit(r.limiter, "rate_limit:auth:start", r.rateLimitCfg.AuthStartRequests, r.rateLimitCfg.AuthStartWindow, r.logger), r.authHandler.StartChallenge)
-	challenge.POST("/resend", middleware.RateLimit(r.limiter, "rate_limit:auth:resend", r.rateLimitCfg.AuthResendRequests, r.rateLimitCfg.AuthResendWindow, r.logger), r.authHandler.ResendChallenge)
-	challenge.POST("/verify", middleware.RateLimit(r.limiter, "rate_limit:auth:verify", r.rateLimitCfg.AuthVerifyRequests, r.rateLimitCfg.AuthVerifyWindow, r.logger), r.authHandler.VerifyChallenge)
+
+	challenge.POST("/start",
+		middleware.RateLimit(r.limiter, "rate_limit:auth:start",
+			r.rateLimitCfg.AuthStartRequests,
+			r.rateLimitCfg.AuthStartWindow,
+			r.logger,
+		),
+		r.authHandler.StartChallenge)
+
+	challenge.POST("/resend",
+		middleware.RateLimit(r.limiter, "rate_limit:auth:resend",
+			r.rateLimitCfg.AuthResendRequests,
+			r.rateLimitCfg.AuthResendWindow,
+			r.logger,
+		),
+		r.authHandler.ResendChallenge)
+
+	challenge.POST("/verify",
+		middleware.RateLimit(r.limiter, "rate_limit:auth:verify",
+			r.rateLimitCfg.AuthVerifyRequests,
+			r.rateLimitCfg.AuthVerifyWindow,
+			r.logger,
+		),
+		r.authHandler.VerifyChallenge)
+
 	auth.POST("/refresh", r.authHandler.Refresh)
 
 	// protected
