@@ -4,7 +4,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.prod
     ports:
-      - "8080:8080"
+      - "${HTTP_PORT:-8080}:8080"
     restart: unless-stopped
     env_file:
       - ../.env
@@ -56,7 +56,6 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: prim-minio
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
