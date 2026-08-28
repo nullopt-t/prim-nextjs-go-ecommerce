@@ -18,7 +18,7 @@ type StorageProvider interface {
 }
 
 type MinioStorageProvider struct {
-	client    *minio.Client
+	Client    *minio.Client
 	publicURL string
 }
 
@@ -43,18 +43,18 @@ func NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL string) (
 	}
 
 	return &MinioStorageProvider{
-		client:    minioClient,
+		Client:    minioClient,
 		publicURL: publicURL,
 	}, nil
 }
 
 func (m *MinioStorageProvider) ensureBucket(ctx context.Context, bucket string) error {
-	exists, err := m.client.BucketExists(ctx, bucket)
+	exists, err := m.Client.BucketExists(ctx, bucket)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		err = m.client.MakeBucket(ctx, bucket, minio.MakeBucketOptions{})
+		err = m.Client.MakeBucket(ctx, bucket, minio.MakeBucketOptions{})
 		if err != nil {
 			return err
 		}
@@ -67,7 +67,7 @@ func (m *MinioStorageProvider) Upload(ctx context.Context, bucket, key string, f
 		return fmt.Errorf("ensure bucket: %w", err)
 	}
 
-	_, err := m.client.PutObject(ctx, bucket, key, file, size, minio.PutObjectOptions{
+	_, err := m.Client.PutObject(ctx, bucket, key, file, size, minio.PutObjectOptions{
 		ContentType: contentType,
 	})
 	if err != nil {
@@ -78,7 +78,7 @@ func (m *MinioStorageProvider) Upload(ctx context.Context, bucket, key string, f
 }
 
 func (m *MinioStorageProvider) Delete(ctx context.Context, bucket, key string) error {
-	err := m.client.RemoveObject(ctx, bucket, key, minio.RemoveObjectOptions{})
+	err := m.Client.RemoveObject(ctx, bucket, key, minio.RemoveObjectOptions{})
 	if err != nil {
 		return fmt.Errorf("remove object: %w", err)
 	}
@@ -86,7 +86,7 @@ func (m *MinioStorageProvider) Delete(ctx context.Context, bucket, key string) e
 }
 
 func (m *MinioStorageProvider) GetPresignedURL(ctx context.Context, bucket, key string, expires time.Duration) (string, error) {
-	url, err := m.client.PresignedGetObject(ctx, bucket, key, expires, nil)
+	url, err := m.Client.PresignedGetObject(ctx, bucket, key, expires, nil)
 	if err != nil {
 		return "", fmt.Errorf("presigned get object: %w", err)
 	}

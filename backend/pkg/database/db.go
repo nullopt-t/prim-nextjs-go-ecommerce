@@ -21,14 +21,14 @@ type DB struct {
 	Pool *pgxpool.Pool
 }
 
-func ConnectDB(ctx context.Context, cfg config.Config) (*DB, error) {
+func ConnectDB(ctx context.Context, cfg config.DatabaseConfig) (*DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		cfg.DBCfg.DBHost,
-		cfg.DBCfg.DBPort,
-		cfg.DBCfg.DBUser,
-		cfg.DBCfg.DBPassword,
-		cfg.DBCfg.DBName,
+		cfg.DBHost,
+		cfg.DBPort,
+		cfg.DBUser,
+		cfg.DBPassword,
+		cfg.DBName,
 	)
 
 	var err error
