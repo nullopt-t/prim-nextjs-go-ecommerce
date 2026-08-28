@@ -1,193 +1,76 @@
 
 # PRIM Backend
 
-Backend service for the PRIM platform, built with Go. The project provides a REST API, background workers, authentication, email notifications, and a complete Docker-based development environment.
+Go backend service providing REST APIs, background workers, authentication, catalog management, and media storage.
 
 ## Tech Stack
 
-* Go
-* Gin
-* PostgreSQL
-* Redis
-* Docker & Docker Compose
-* Air (hot reload)
-* golang-migrate
-* JWT Authentication
+- **Language & Framework:** Go, Gin
+- **Data & Cache:** PostgreSQL, Redis
+- **Object Storage:** MinIO (S3-compatible)
+- **Hot Reload:** Air
+- **Migrations:** golang-migrate
+- **Auth & Docs:** JWT, Swag (Swagger/OpenAPI)
 
 ---
 
-## Prerequisites
-
-* Docker
-* Docker Compose
-* Make
-
-No local installation of Go, PostgreSQL, Redis, or golang-migrate is required for development.
-
----
-
-## Getting Started
-
-Clone the repository:
+## Quick Start
 
 ```bash
-git clone <repository-url>
-cd backend
-```
-
-Start the development environment:
-
-```bash
+# Start all development services (API, DB, Redis, MinIO, Migrations)
 make up
-```
 
-This command starts:
-
-* API Server
-* Worker
-* PostgreSQL
-* Redis
-
----
-
-## Available Commands
-
-### Start the application
-
-```bash
-make up
-```
-
-Run in detached mode:
-
-```bash
+# Or run detached
 make up-d
 ```
 
-Stop all services:
-
-```bash
-make down
-```
-
-Remove all containers and volumes:
-
-```bash
-make clean
-```
+Services will be available at:
+- **API Server:** `http://localhost:8080`
+- **Swagger Docs (Public):** `http://localhost:8080/swagger/public/index.html`
+- **Swagger Docs (Admin):** `http://localhost:8080/swagger/admin/index.html`
+- **MinIO Console:** `http://localhost:9001` (User: `admin`, Pass: `supersecret`)
 
 ---
 
-## Database Migrations
+## Commands Reference
 
-Apply all migrations:
-
-```bash
-make migrate-up
-```
-
-Rollback the last migration:
-
-```bash
-make migrate-down
-```
-
-Drop the database:
-
-```bash
-make migrate-drop
-```
-
-Reset the database:
-
-```bash
-make migrate-reset
-```
-
-Force the migration version:
-
-```bash
-make migrate-force version=<version>
-```
-
----
-
-## Viewing Logs
-
-View logs from all services:
-
-```bash
-make logs
-```
-
-View API logs:
-
-```bash
-make logs-api
-```
-
-View Worker logs:
-
-```bash
-make logs-worker
-```
-
----
-
-## Development
-
-The project uses **Air** for hot reloading.
-
-Any changes made to the source code are automatically rebuilt and restarted inside the development containers.
+| Task | Command |
+|---|---|
+| **Start Dev** | `make up` (or `make up-d` / `make up-build`) |
+| **Stop Dev** | `make down` |
+| **Clean Volumes** | `make clean` |
+| **View Logs** | `make logs` / `make logs-api` / `make logs-worker` |
+| **Run Migrations** | `make migrate-up` / `make migrate-down` / `make migrate-reset` |
+| **Generate Swagger** | `make swagger` |
+| **Build Binaries** | `make build` |
+| **Run Tests** | `go test ./...` |
 
 ---
 
 ## Project Structure
 
 ```
-cmd/
-├── api/
-└── worker/
-
-internal/
-pkg/
-migrations/
-
-configs/
-├── air.api.toml
-└── air.worker.toml
-
-docker/
-├── Dockerfile.prod
-├── Dockerfile.dev
-├── docker-compose.prod.yml
-└── docker-compose.dev.yml
+backend/
+├── cmd/                # Entrypoints (api, worker)
+├── internal/           # Core domain logic (auth, catalog, order, etc.)
+├── pkg/                # Reusable packages (config, database, log, storage)
+├── configs/            # Configs (config.yaml, air.api.toml, air.worker.toml)
+├── docker/             # Dockerfiles & compose manifests (dev & prod)
+├── migrations/         # SQL migration scripts
+└── docs/               # Auto-generated Swagger documentation
 ```
-
----
-
-## Production
-
-A production Dockerfile (`docker/Dockerfile.prod`) and compose configuration (`docker/docker-compose.prod.yml`) are included for building optimized deployment images.
 
 ---
 
 ## Environment Variables
 
-Development uses Docker Compose for most configuration.
-
-Sensitive values such as SMTP credentials should be provided locally and must not be committed to the repository.
-
-Example:
+Sensitive or deployment-specific variables can be configured via `.env`:
 
 ```env
+# Optional SMTP email settings
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
 SMTP_USERNAME=your-email@example.com
 SMTP_PASSWORD=your-app-password
 SMTP_FROM_EMAIL=your-email@example.com
 ```
-
----
-
-## License
-
-This project is intended for the PRIM platform.
