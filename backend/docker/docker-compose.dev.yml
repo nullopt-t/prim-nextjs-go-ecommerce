@@ -138,6 +138,27 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-supersecret}
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ../seed/media:/seed/media:ro
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 ${MINIO_ACCESS_KEY:-admin} ${MINIO_SECRET_KEY:-supersecret};
+      /usr/bin/mc mb --ignore-existing myminio/catalog;
+      /usr/bin/mc anonymous set download myminio/catalog;
+      if [ -d /seed/media/catalog ]; then /usr/bin/mc cp --recursive /seed/media/catalog/ myminio/catalog/; fi;
+      exit 0;
+      "
 
 volumes:
   postgres_data:
