@@ -3,6 +3,7 @@ server:
   env: "development"
   allowed_origins:
     - "http://localhost:3000"
+    - "*"
 
 database:
   host: "localhost"
