@@ -2848,10 +2848,10 @@ const docTemplateadmin = `{
                     "type": "string",
                     "example": "https://apple.com"
                 },
-                "logoObjectId": {
-                    "description": "Object storage UUID of the uploaded logo file",
+                "logoUrl": {
+                    "description": "Publicly accessible URL for the brand logo",
                     "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                    "example": "https://example.com/apple-logo.png"
                 },
                 "name": {
                     "description": "Brand/manufacturer name",
@@ -3853,15 +3853,15 @@ const docTemplateadmin = `{
         "ProductBrandSummary": {
             "type": "object",
             "properties": {
-                "id": {
-                    "description": "Brand UUID",
-                    "type": "string",
-                    "example": "30000000-0000-0000-0000-000000000001"
-                },
                 "link": {
                     "description": "Official website URL",
                     "type": "string",
                     "example": "https://apple.com"
+                },
+                "logoUrl": {
+                    "description": "Publicly accessible URL for the brand logo",
+                    "type": "string",
+                    "example": "https://example.com/apple-logo.png"
                 },
                 "name": {
                     "description": "Brand name",

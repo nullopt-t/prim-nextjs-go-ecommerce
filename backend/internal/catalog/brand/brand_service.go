@@ -117,7 +117,10 @@ func (bs *BrandService) GetBrandByID(
 	err := bs.runner.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		brand, repoErr = bs.brandRepo.GetByID(ctx, db, id)
-		return repoErr
+		if repoErr != nil {
+			return repoErr
+		}
+		return bs.populateLogoURLs(ctx, []*model.ProductBrand{brand})
 	})
 
 	if err != nil {
@@ -217,7 +220,7 @@ func (bs *BrandService) AdminList(
 	return bs.listBrands(ctx, listBrandsOptions{
 		query:          q,
 		includeDeleted: true,
-		populateURL:    false,
+		populateURL:    true,
 	})
 }
 

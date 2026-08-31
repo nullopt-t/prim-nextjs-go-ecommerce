@@ -39,9 +39,9 @@ definitions:
         description: Official website URL
         example: https://apple.com
         type: string
-      logoObjectId:
-        description: Object storage UUID of the uploaded logo file
-        example: 358b2e03-0b3f-40a4-8163-ebed0cb252ee
+      logoUrl:
+        description: Publicly accessible URL for the brand logo
+        example: https://example.com/apple-logo.png
         type: string
       name:
         description: Brand/manufacturer name
@@ -777,13 +777,13 @@ definitions:
     type: object
   ProductBrandSummary:
     properties:
-      id:
-        description: Brand UUID
-        example: 30000000-0000-0000-0000-000000000001
-        type: string
       link:
         description: Official website URL
         example: https://apple.com
+        type: string
+      logoUrl:
+        description: Publicly accessible URL for the brand logo
+        example: https://example.com/apple-logo.png
         type: string
       name:
         description: Brand name

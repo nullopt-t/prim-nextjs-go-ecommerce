@@ -2663,15 +2663,15 @@
         "ProductBrandSummary": {
             "type": "object",
             "properties": {
-                "id": {
-                    "description": "Brand UUID",
-                    "type": "string",
-                    "example": "30000000-0000-0000-0000-000000000001"
-                },
                 "link": {
                     "description": "Official website URL",
                     "type": "string",
                     "example": "https://apple.com"
+                },
+                "logoUrl": {
+                    "description": "Publicly accessible URL for the brand logo",
+                    "type": "string",
+                    "example": "https://example.com/apple-logo.png"
                 },
                 "name": {
                     "description": "Brand name",

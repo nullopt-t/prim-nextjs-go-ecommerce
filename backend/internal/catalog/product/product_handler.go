@@ -56,12 +56,12 @@ type UpdateProductRequest struct {
 }
 
 type ProductBrandSummary struct {
-	// Brand UUID
-	ID string `json:"id,omitempty" example:"30000000-0000-0000-0000-000000000001"`
 	// Brand name
 	Name string `json:"name" example:"Apple"`
 	// Official website URL
 	Link *string `json:"link,omitempty" example:"https://apple.com"`
+	// Publicly accessible URL for the brand logo
+	LogoURL *string `json:"logoUrl,omitempty" example:"https://example.com/apple-logo.png"`
 }
 
 type ProductCategorySummary struct {
@@ -388,9 +388,9 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 
 	if details.Brand != nil {
 		res.Brand = &ProductBrandSummary{
-			ID:   details.Brand.ID.String(),
-			Name: details.Brand.Name,
-			Link: details.Brand.Link,
+			Name:    details.Brand.Name,
+			Link:    details.Brand.Link,
+			LogoURL: details.Brand.LogoURL,
 		}
 	}
 
@@ -865,9 +865,9 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 
 	if details.Brand != nil {
 		res.Brand = &ProductBrandSummary{
-			ID:   details.Brand.ID.String(),
-			Name: details.Brand.Name,
-			Link: details.Brand.Link,
+			Name:    details.Brand.Name,
+			Link:    details.Brand.Link,
+			LogoURL: details.Brand.LogoURL,
 		}
 	}
 
