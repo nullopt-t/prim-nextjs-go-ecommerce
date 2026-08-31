@@ -93,10 +93,9 @@ func (bs *BrandService) CreateBrand(
 	}
 
 	brand := &model.ProductBrand{
-		ID:       uuid.New(),
-		PublicID: uuid.NewString(),
-		Name:     in.Name,
-		Link:     in.Link,
+		ID:   uuid.New(),
+		Name: in.Name,
+		Link: in.Link,
 	}
 
 	err := bs.runner.WithDB(ctx, func(db database.QueryExecutor) error {

@@ -48,7 +48,6 @@ type ListVariantOptions struct {
 
 type CreateVariantMediaInput struct {
 	ID        uuid.UUID
-	PublicID  uuid.UUID
 	VariantID uuid.UUID
 	ObjectID  uuid.UUID
 	MediaType string
@@ -583,20 +582,18 @@ func (vr *VariantRepository) AddMedia(
 	query := `
 		INSERT INTO variant_media (
 			id,
-			public_id,
 			variant_id,
 			object_id,
 			media_type,
 			sort_order
 		)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		VALUES ($1, $2, $3, $4, $5)
 	`
 
 	_, err := qe.Exec(
 		ctx,
 		query,
 		in.ID,
-		in.PublicID,
 		in.VariantID,
 		in.ObjectID,
 		in.MediaType,
@@ -608,7 +605,6 @@ func (vr *VariantRepository) AddMedia(
 
 	return &model.VariantMedia{
 		ID:        in.ID,
-		PublicID:  in.PublicID,
 		VariantID: in.VariantID,
 		ObjectID:  in.ObjectID,
 		MediaType: in.MediaType,
@@ -628,7 +624,6 @@ func (vr *VariantRepository) ListMediaByVariantID(
 	query := `
 		SELECT
 			m.id,
-			m.public_id,
 			m.variant_id,
 			m.object_id,
 			m.media_type,
@@ -658,7 +653,6 @@ func (vr *VariantRepository) ListMediaByVariantID(
 		}
 		if err := rows.Scan(
 			&m.ID,
-			&m.PublicID,
 			&m.VariantID,
 			&m.ObjectID,
 			&m.MediaType,
@@ -695,7 +689,6 @@ func (vr *VariantRepository) ListMediaByVariantIDs(
 	query := `
 		SELECT
 			m.id,
-			m.public_id,
 			m.variant_id,
 			m.object_id,
 			m.media_type,
@@ -724,7 +717,6 @@ func (vr *VariantRepository) ListMediaByVariantIDs(
 		}
 		if err := rows.Scan(
 			&m.ID,
-			&m.PublicID,
 			&m.VariantID,
 			&m.ObjectID,
 			&m.MediaType,

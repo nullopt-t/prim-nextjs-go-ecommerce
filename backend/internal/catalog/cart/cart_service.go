@@ -137,7 +137,7 @@ func (s *CartService) AddItem(
 	ctx context.Context,
 	userID *uuid.UUID,
 	sessionID *string,
-	variantPublicID uuid.UUID,
+	variantID uuid.UUID,
 	quantity int,
 ) (*model.Cart, error) {
 	if quantity <= 0 {
@@ -145,7 +145,7 @@ func (s *CartService) AddItem(
 			WithCode(errcode.CodeInvalidQuantity)
 	}
 
-	v, err := s.variantService.GetVariantByID(ctx, variantPublicID)
+	v, err := s.variantService.GetVariantByID(ctx, variantID)
 	if err != nil {
 		return nil, apierr.ErrNotFound("Variant not found").
 			WithCode(errcode.CodeVariantNotFound).

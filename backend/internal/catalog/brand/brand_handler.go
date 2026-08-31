@@ -54,8 +54,6 @@ type BrandResponse struct {
 type AdminBrandResponse struct {
 	// Internal database ID of the brand
 	ID string `json:"id" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
-	// Public customer-facing UUID identifier
-	PublicID string `json:"publicId" example:"358b2e03-0b3f-40a4-8163-ebed0cb252ee"`
 	// Brand/manufacturer name
 	Name string `json:"name" example:"Apple"`
 	// Official website URL
@@ -378,7 +376,7 @@ func (bh *BrandHandler) UploadBrandLogo(c *gin.Context) {
 
 func mapBrandResponse(brand *model.ProductBrand) *BrandResponse {
 	return &BrandResponse{
-		ID:      brand.PublicID,
+		ID:      brand.ID.String(),
 		Name:    brand.Name,
 		Link:    brand.Link,
 		LogoURL: brand.LogoURL,
@@ -388,7 +386,6 @@ func mapBrandResponse(brand *model.ProductBrand) *BrandResponse {
 func mapAdminBrandResponse(brand *model.ProductBrand) *AdminBrandResponse {
 	res := &AdminBrandResponse{
 		ID:           brand.ID.String(),
-		PublicID:     brand.PublicID,
 		Name:         brand.Name,
 		Link:         brand.Link,
 		LogoObjectID: brand.LogoObjectID,

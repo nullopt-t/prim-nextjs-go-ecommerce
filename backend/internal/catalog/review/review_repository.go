@@ -13,6 +13,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 )
 
+
 var allowedReviewSortFields = map[string]string{
 	"id":        "r.id",
 	"rating":    "r.rating",
@@ -58,6 +59,38 @@ func (r *ReviewRepository) VerifyPurchase(
 	}
 	return &pv, nil
 }
+
+// FindEligibleOrderItem finds a delivered order item for the given customer and product that hasn't been reviewed yet.
+func (r *ReviewRepository) FindEligibleOrderItem(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	userID uuid.UUID,
+	productID uuid.UUID,
+) (uuid.UUID, error) {
+	query := `
+		SELECT oi.id
+		FROM order_items oi
+		JOIN orders o ON o.id = oi.order_id
+		JOIN product_variants pv ON pv.id = oi.variant_id
+		LEFT JOIN reviews rev ON rev.order_item_id = oi.id
+		WHERE o.customer_id = $1
+		  AND pv.product_id = $2
+		  AND o.status = 'delivered'
+		  AND rev.id IS NULL
+		ORDER BY o.created_at DESC
+		LIMIT 1
+	`
+	var orderItemID uuid.UUID
+	err := qe.QueryRow(ctx, query, userID, productID).Scan(&orderItemID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return uuid.Nil, nil
+		}
+		return uuid.Nil, err
+	}
+	return orderItemID, nil
+}
+
 
 func (r *ReviewRepository) Create(ctx context.Context, qe database.QueryExecutor, rv *model.Review) error {
 	query := `
@@ -467,3 +500,4 @@ func (r *ReviewRepository) List(
 
 	return reviews, total, nil
 }
+

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/review"
@@ -21,6 +22,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
@@ -98,15 +100,15 @@ func (s *ReviewHTTPTestSuite) SetupSuite() {
 	s.router.Use(middleware.ErrorHandler(logger))
 
 	reviewRouter := review.NewRouter(s.handler, s.secrets)
-	v1 := s.router.Group("/api/v1")
-	reviewRouter.MapRoutes(v1)
+	apiGroup := s.router.Group("/api/v1")
+	reviewRouter.MapRoutes(apiGroup)
 
 	// Seed product hierarchy
 	s.categoryID = uuid.New()
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO product_categories (id, public_id, name)
-		VALUES ($1, $2, $3)
-	`, s.categoryID, uuid.New(), "Review Category")
+		INSERT INTO product_categories (id, name)
+		VALUES ($1, $2)
+	`, s.categoryID, "Review Category")
 	require.NoError(s.T(), err)
 
 	s.productID = uuid.New()
@@ -196,14 +198,16 @@ func (s *ReviewHTTPTestSuite) TestHTTP_01_CreateReview_SuccessAndValidation() {
 	title := "Outstanding noise cancellation"
 	body := "Exceeded my expectations on airplane flights."
 
+	orderItemIDStr := orderItemID.String()
 	// 1. Success Create Review (Rating = 5)
 	reqBody, _ := json.Marshal(review.CreateReviewRequest{
 		ProductID:   s.productID.String(),
-		OrderItemID: orderItemID.String(),
+		OrderItemID: &orderItemIDStr,
 		Rating:      5,
 		Title:       &title,
 		Body:        &body,
 	})
+
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -245,9 +249,8 @@ func (s *ReviewHTTPTestSuite) TestHTTP_01_CreateReview_SuccessAndValidation() {
 
 	// 3. Reject Invalid Rating (Rating = 6 > 5)
 	badRatingBody, _ := json.Marshal(review.CreateReviewRequest{
-		ProductID:   s.productID.String(),
-		OrderItemID: uuid.NewString(),
-		Rating:      6,
+		ProductID: s.productID.String(),
+		Rating:    6,
 	})
 	wRating := httptest.NewRecorder()
 	reqRating := httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(badRatingBody))
@@ -256,7 +259,30 @@ func (s *ReviewHTTPTestSuite) TestHTTP_01_CreateReview_SuccessAndValidation() {
 	s.router.ServeHTTP(wRating, reqRating)
 
 	s.Require().Equal(http.StatusBadRequest, wRating.Code)
+
+	// 4. Success Create Review without orderItemId (server-side auto resolution)
+	userAutoID, autoToken := s.createTestUser("customer")
+	autoOrderItemID := s.createDeliveredOrder(userAutoID)
+
+	autoTitle := "Auto verified review"
+	autoReqBody, _ := json.Marshal(review.CreateReviewRequest{
+		ProductID: s.productID.String(),
+		Rating:    5,
+		Title:     &autoTitle,
+	})
+	wAuto := httptest.NewRecorder()
+	reqAuto := httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(autoReqBody))
+	reqAuto.Header.Set("Content-Type", "application/json")
+	reqAuto.Header.Set("Authorization", "Bearer "+autoToken)
+	s.router.ServeHTTP(wAuto, reqAuto)
+
+	s.Require().Equal(http.StatusCreated, wAuto.Code)
+	var autoResp StrictDataEnvelope[review.ReviewResponse]
+	s.Require().NoError(json.Unmarshal(wAuto.Body.Bytes(), &autoResp))
+	s.Equal(autoOrderItemID.String(), autoResp.Data.OrderItemID)
+	s.Equal(s.productID.String(), autoResp.Data.ProductID)
 }
+
 
 func (s *ReviewHTTPTestSuite) TestHTTP_02_CustomerGetAndUpdateMyReview() {
 	userID, token := s.createTestUser("customer")
@@ -267,12 +293,13 @@ func (s *ReviewHTTPTestSuite) TestHTTP_02_CustomerGetAndUpdateMyReview() {
 	createdReview, err := s.service.CreateReview(context.Background(), review.CreateReviewInput{
 		ProductID:   s.productID,
 		UserID:      userID,
-		OrderItemID: orderItemID,
+		OrderItemID: &orderItemID,
 		Rating:      4,
 		Title:       &title,
 		Body:        &body,
 	})
 	s.Require().NoError(err)
+
 
 	// 1. GET /api/v1/reviews/me
 	reqMe := httptest.NewRequest(http.MethodGet, "/api/v1/reviews/me", nil)
@@ -341,11 +368,12 @@ func (s *ReviewHTTPTestSuite) TestHTTP_03_AdminModerationLifecycle() {
 	rv, err := s.service.CreateReview(context.Background(), review.CreateReviewInput{
 		ProductID:   s.productID,
 		UserID:      customerID,
-		OrderItemID: orderItemID,
+		OrderItemID: &orderItemID,
 		Rating:      5,
 		Title:       &title,
 	})
 	s.Require().NoError(err)
+
 
 	// 1. GET /api/v1/admin/reviews?status=pending
 	reqList := httptest.NewRequest(http.MethodGet, "/api/v1/admin/reviews?status=pending", nil)
@@ -400,7 +428,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_04_RatingSummaryComputation() {
 		rv, err := s.service.CreateReview(context.Background(), review.CreateReviewInput{
 			ProductID:   s.productID,
 			UserID:      custID,
-			OrderItemID: orderItemID,
+			OrderItemID: &orderItemID,
 			Rating:      int16(i),
 		})
 		s.Require().NoError(err)
@@ -424,3 +452,5 @@ func (s *ReviewHTTPTestSuite) TestHTTP_04_RatingSummaryComputation() {
 func TestReviewHTTPTestSuite(t *testing.T) {
 	suite.Run(t, new(ReviewHTTPTestSuite))
 }
+
+

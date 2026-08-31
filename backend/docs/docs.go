@@ -33,7 +33,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Brands"
+                    "Admin Brands"
                 ],
                 "summary": "List all brands including soft-deleted ones (Admin)",
                 "parameters": [
@@ -75,7 +75,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -83,11 +83,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/brand.AdminBrandResponse"
+                                                "$ref": "#/definitions/AdminBrandResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -97,13 +97,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -117,7 +117,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Brands"
+                    "Admin Brands"
                 ],
                 "summary": "Create a product brand",
                 "parameters": [
@@ -127,7 +127,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/brand.CreateBrandRequest"
+                            "$ref": "#/definitions/CreateBrandRequest"
                         }
                     }
                 ],
@@ -137,13 +137,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/brand.AdminBrandResponse"
+                                            "$ref": "#/definitions/AdminBrandResponse"
                                         }
                                     }
                                 }
@@ -153,19 +153,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or missing brand name",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A brand with this name already exists",
                         "schema": {
-                            "$ref": "#/definitions/api.ConflictErrorResponse"
+                            "$ref": "#/definitions/ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -181,7 +181,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Brands"
+                    "Admin Brands"
                 ],
                 "summary": "Get brand details by ID",
                 "parameters": [
@@ -200,13 +200,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/brand.AdminBrandResponse"
+                                            "$ref": "#/definitions/AdminBrandResponse"
                                         }
                                     }
                                 }
@@ -216,19 +216,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Brand not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -242,7 +242,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Brands"
+                    "Admin Brands"
                 ],
                 "summary": "Soft-delete a brand",
                 "parameters": [
@@ -256,28 +256,25 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Deletion confirmation message",
-                        "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
-                        }
+                    "204": {
+                        "description": "Brand soft-deleted successfully"
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Brand not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -291,7 +288,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Brands"
+                    "Admin Brands"
                 ],
                 "summary": "Update brand details",
                 "parameters": [
@@ -309,7 +306,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/brand.UpdateBrandRequest"
+                            "$ref": "#/definitions/UpdateBrandRequest"
                         }
                     }
                 ],
@@ -317,31 +314,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Update confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error or referenced logo object not found",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Brand not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A brand with updated name already exists",
                         "schema": {
-                            "$ref": "#/definitions/api.ConflictErrorResponse"
+                            "$ref": "#/definitions/ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -357,7 +354,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Brands"
+                    "Admin Brands"
                 ],
                 "summary": "Upload brand logo",
                 "parameters": [
@@ -381,19 +378,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Upload confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format or missing file",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -409,7 +406,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Categories"
+                    "Admin Categories"
                 ],
                 "summary": "List all categories including soft-deleted ones (Admin)",
                 "parameters": [
@@ -451,7 +448,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -459,11 +456,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/category.AdminCategoryResponse"
+                                                "$ref": "#/definitions/AdminCategoryResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -473,13 +470,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -493,7 +490,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Categories"
+                    "Admin Categories"
                 ],
                 "summary": "Create a product category",
                 "parameters": [
@@ -503,7 +500,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/category.CreateCategoryRequest"
+                            "$ref": "#/definitions/CreateCategoryRequest"
                         }
                     }
                 ],
@@ -513,13 +510,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/category.AdminCategoryResponse"
+                                            "$ref": "#/definitions/AdminCategoryResponse"
                                         }
                                     }
                                 }
@@ -529,19 +526,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or referenced parent category does not exist",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A category with this name already exists",
                         "schema": {
-                            "$ref": "#/definitions/api.ConflictErrorResponse"
+                            "$ref": "#/definitions/ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -557,7 +554,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Categories"
+                    "Admin Categories"
                 ],
                 "summary": "Get category details by ID",
                 "parameters": [
@@ -576,13 +573,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/category.AdminCategoryResponse"
+                                            "$ref": "#/definitions/AdminCategoryResponse"
                                         }
                                     }
                                 }
@@ -592,19 +589,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Category not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -618,7 +615,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Categories"
+                    "Admin Categories"
                 ],
                 "summary": "Update category details",
                 "parameters": [
@@ -636,39 +633,51 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/category.UpdateCategoryRequest"
+                            "$ref": "#/definitions/UpdateCategoryRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Update confirmation message",
+                        "description": "Updated category details",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/AdminCategoryResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "Validation error, circular hierarchy, or parent not found",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Category not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A category with updated name already exists",
                         "schema": {
-                            "$ref": "#/definitions/api.ConflictErrorResponse"
+                            "$ref": "#/definitions/ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -684,7 +693,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Orders"
+                    "Admin Orders"
                 ],
                 "summary": "Update order status (Admin)",
                 "parameters": [
@@ -702,7 +711,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/order.UpdateOrderStatusRequest"
+                            "$ref": "#/definitions/UpdateOrderStatusRequest"
                         }
                     }
                 ],
@@ -710,25 +719,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Status update confirmation",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error or invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Order not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -741,7 +750,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Admin Products"
                 ],
                 "summary": "List all products for management (Admin)",
                 "parameters": [
@@ -783,7 +792,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -791,11 +800,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.Product"
+                                                "$ref": "#/definitions/Product"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -805,13 +814,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -825,7 +834,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Admin Products"
                 ],
                 "summary": "Create a new draft product",
                 "parameters": [
@@ -835,7 +844,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/product.CreateProductRequest"
+                            "$ref": "#/definitions/CreateProductRequest"
                         }
                     }
                 ],
@@ -845,13 +854,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/product.AdminProductDetailsResponse"
+                                            "$ref": "#/definitions/AdminProductDetailsResponse"
                                         }
                                     }
                                 }
@@ -861,19 +870,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or invalid UUID reference",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Product with generated public ID already exists",
                         "schema": {
-                            "$ref": "#/definitions/api.ConflictErrorResponse"
+                            "$ref": "#/definitions/ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -886,7 +895,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Admin Products"
                 ],
                 "summary": "Get product by internal UUID",
                 "parameters": [
@@ -905,13 +914,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/product.AdminProductDetailsResponse"
+                                            "$ref": "#/definitions/AdminProductDetailsResponse"
                                         }
                                     }
                                 }
@@ -921,19 +930,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -944,7 +953,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Admin Products"
                 ],
                 "summary": "Soft-delete a product",
                 "parameters": [
@@ -958,28 +967,25 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Deletion confirmation message",
-                        "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
-                        }
+                    "204": {
+                        "description": "Product soft-deleted successfully"
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -993,7 +999,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Admin Products"
                 ],
                 "summary": "Update product attributes",
                 "parameters": [
@@ -1011,7 +1017,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/product.UpdateProductRequest"
+                            "$ref": "#/definitions/UpdateProductRequest"
                         }
                     }
                 ],
@@ -1021,13 +1027,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/product.AdminProductDetailsResponse"
+                                            "$ref": "#/definitions/AdminProductDetailsResponse"
                                         }
                                     }
                                 }
@@ -1037,19 +1043,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product, brand, or category not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1062,7 +1068,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Admin Products"
                 ],
                 "summary": "Archive a product",
                 "parameters": [
@@ -1079,25 +1085,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Archival confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1112,7 +1118,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Admin Products"
                 ],
                 "summary": "update the category of a product",
                 "parameters": [
@@ -1130,7 +1136,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/product.PutProductCategoryRequest"
+                            "$ref": "#/definitions/PutProductCategoryRequest"
                         }
                     }
                 ],
@@ -1138,25 +1144,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1169,7 +1175,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Admin Products"
                 ],
                 "summary": "Publish a draft product",
                 "parameters": [
@@ -1186,25 +1192,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Publication confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Product lacks active variants or invalid UUID",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1219,7 +1225,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Products"
+                    "Admin Products"
                 ],
                 "summary": "replace all tag assignments for a product",
                 "parameters": [
@@ -1237,7 +1243,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/product.PutProductTagsRequest"
+                            "$ref": "#/definitions/PutProductTagsRequest"
                         }
                     }
                 ],
@@ -1245,19 +1251,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1272,7 +1278,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Product Media"
+                    "Admin Product Media"
                 ],
                 "summary": "upload thumbnail image for a product",
                 "parameters": [
@@ -1298,13 +1304,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/product.StorageObjectResponse"
+                                            "$ref": "#/definitions/StorageObjectResponse"
                                         }
                                     }
                                 }
@@ -1314,13 +1320,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1335,7 +1341,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Product Variants"
+                    "Admin Product Variants"
                 ],
                 "summary": "create a variant under a product",
                 "parameters": [
@@ -1353,7 +1359,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/product.CreateProductVariantRequest"
+                            "$ref": "#/definitions/CreateProductVariantRequest"
                         }
                     }
                 ],
@@ -1363,13 +1369,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/variant.AdminVariantResponse"
+                                            "$ref": "#/definitions/AdminVariantResponse"
                                         }
                                     }
                                 }
@@ -1379,13 +1385,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1400,7 +1406,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Product Variants"
+                    "Admin Product Variants"
                 ],
                 "summary": "set a variant as the default for a product",
                 "parameters": [
@@ -1418,7 +1424,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/product.SetDefaultVariantRequest"
+                            "$ref": "#/definitions/SetDefaultVariantRequest"
                         }
                     }
                 ],
@@ -1426,25 +1432,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1457,7 +1463,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Product Variants"
+                    "Admin Product Variants"
                 ],
                 "summary": "List all variants for a product including soft-deleted ones (Admin)",
                 "parameters": [
@@ -1507,7 +1513,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1515,11 +1521,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/variant.AdminVariantResponse"
+                                                "$ref": "#/definitions/AdminVariantResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -1529,13 +1535,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters or UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1549,7 +1555,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Product Variants"
+                    "Admin Product Variants"
                 ],
                 "summary": "Create a product variant",
                 "parameters": [
@@ -1567,7 +1573,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/variant.CreateVariantRequest"
+                            "$ref": "#/definitions/CreateVariantRequest"
                         }
                     }
                 ],
@@ -1577,13 +1583,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/variant.VariantResponse"
+                                            "$ref": "#/definitions/VariantResponse"
                                         }
                                     }
                                 }
@@ -1593,19 +1599,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or missing required fields",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Parent product not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1618,7 +1624,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Reviews"
+                    "Admin Reviews"
                 ],
                 "summary": "List reviews (Admin)",
                 "parameters": [
@@ -1678,7 +1684,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1686,11 +1692,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/review.ReviewResponse"
+                                                "$ref": "#/definitions/ReviewResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -1700,19 +1706,19 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1725,7 +1731,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Reviews"
+                    "Admin Reviews"
                 ],
                 "summary": "Get review details (Admin)",
                 "parameters": [
@@ -1743,13 +1749,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/review.ReviewResponse"
+                                            "$ref": "#/definitions/ReviewResponse"
                                         }
                                     }
                                 }
@@ -1759,31 +1765,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid review ID",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Review not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1794,7 +1800,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Reviews"
+                    "Admin Reviews"
                 ],
                 "summary": "Delete review (Admin)",
                 "parameters": [
@@ -1810,37 +1816,37 @@ const docTemplate = `{
                     "200": {
                         "description": "Review deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid review ID",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Review not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1856,7 +1862,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Reviews"
+                    "Admin Reviews"
                 ],
                 "summary": "Moderate review status (Admin)",
                 "parameters": [
@@ -1873,7 +1879,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/review.UpdateReviewStatusRequest"
+                            "$ref": "#/definitions/UpdateReviewStatusRequest"
                         }
                     }
                 ],
@@ -1881,37 +1887,37 @@ const docTemplate = `{
                     "200": {
                         "description": "Status updated successfully",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid input or status",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Review not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -1927,7 +1933,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Tags"
+                    "Admin Tags"
                 ],
                 "summary": "List all tags including soft-deleted ones (Admin)",
                 "parameters": [
@@ -1969,7 +1975,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1977,11 +1983,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/tag.AdminTagResponse"
+                                                "$ref": "#/definitions/AdminTagResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -1991,13 +1997,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2011,7 +2017,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Tags"
+                    "Admin Tags"
                 ],
                 "summary": "Create a product tag",
                 "parameters": [
@@ -2021,7 +2027,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/tag.CreateTagRequest"
+                            "$ref": "#/definitions/CreateTagRequest"
                         }
                     }
                 ],
@@ -2031,13 +2037,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/tag.AdminTagResponse"
+                                            "$ref": "#/definitions/AdminTagResponse"
                                         }
                                     }
                                 }
@@ -2047,19 +2053,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or missing tag name",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A tag with this name already exists",
                         "schema": {
-                            "$ref": "#/definitions/api.ConflictErrorResponse"
+                            "$ref": "#/definitions/ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2075,7 +2081,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Tags"
+                    "Admin Tags"
                 ],
                 "summary": "Get tag details by ID",
                 "parameters": [
@@ -2094,13 +2100,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/tag.AdminTagResponse"
+                                            "$ref": "#/definitions/AdminTagResponse"
                                         }
                                     }
                                 }
@@ -2110,19 +2116,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Tag not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2136,7 +2142,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Tags"
+                    "Admin Tags"
                 ],
                 "summary": "Soft-delete a tag",
                 "parameters": [
@@ -2150,28 +2156,25 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Deletion confirmation message",
-                        "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
-                        }
+                    "204": {
+                        "description": "Tag soft-deleted successfully"
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Tag not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2185,7 +2188,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Tags"
+                    "Admin Tags"
                 ],
                 "summary": "Update tag details",
                 "parameters": [
@@ -2203,7 +2206,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/tag.UpdateTagRequest"
+                            "$ref": "#/definitions/UpdateTagRequest"
                         }
                     }
                 ],
@@ -2211,31 +2214,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Update confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error or invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Tag not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "409": {
                         "description": "A tag with updated name already exists",
                         "schema": {
-                            "$ref": "#/definitions/api.ConflictErrorResponse"
+                            "$ref": "#/definitions/ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2248,7 +2251,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Product Variants"
+                    "Admin Product Variants"
                 ],
                 "summary": "Soft-delete a product variant",
                 "parameters": [
@@ -2262,34 +2265,31 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Deletion confirmation message",
-                        "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
-                        }
+                    "204": {
+                        "description": "Deletion confirmation"
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Variant not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
             },
             "patch": {
-                "description": "Updates specific fields of an existing variant such as title, price, crossed-out price, currency, attributes, or default status.",
+                "description": "Updates specific fields of an existing variant such as SKU, title, price, crossed-out price, currency, attributes, or default status.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2297,7 +2297,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Product Variants"
+                    "Admin Product Variants"
                 ],
                 "summary": "Update product variant attributes",
                 "parameters": [
@@ -2310,12 +2310,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Fields to update (title, price, crossed_out_price, currency, attributes, is_default)",
+                        "description": "Fields to update (sku, title, price, crossed_out_price, currency, attributes, is_default)",
                         "name": "input",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/variant.UpdateVariantRequest"
+                            "$ref": "#/definitions/UpdateVariantRequest"
                         }
                     }
                 ],
@@ -2323,25 +2323,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Update confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error or invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Variant not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "SKU already in use",
+                        "schema": {
+                            "$ref": "#/definitions/ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2354,7 +2360,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Variant Inventory"
+                    "Admin Variant Inventory"
                 ],
                 "summary": "Get detailed stock levels for a variant (Admin)",
                 "parameters": [
@@ -2373,13 +2379,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/variant.InventoryStockResponse"
+                                            "$ref": "#/definitions/InventoryStockResponse"
                                         }
                                     }
                                 }
@@ -2389,13 +2395,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2411,7 +2417,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Variant Inventory"
+                    "Admin Variant Inventory"
                 ],
                 "summary": "Adjust variant inventory stock",
                 "parameters": [
@@ -2429,7 +2435,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/variant.AdjustStockRequest"
+                            "$ref": "#/definitions/AdjustStockRequest"
                         }
                     }
                 ],
@@ -2439,13 +2445,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/variant.InventoryStockResponse"
+                                            "$ref": "#/definitions/InventoryStockResponse"
                                         }
                                     }
                                 }
@@ -2455,19 +2461,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or insufficient inventory",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Variant not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2480,7 +2486,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Variant Inventory"
+                    "Admin Variant Inventory"
                 ],
                 "summary": "List inventory audit ledgers for a variant",
                 "parameters": [
@@ -2530,7 +2536,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2538,11 +2544,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/variant.InventoryLedgerResponse"
+                                                "$ref": "#/definitions/InventoryLedgerResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -2552,13 +2558,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters or UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2574,7 +2580,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Variant Media"
+                    "Admin Variant Media"
                 ],
                 "summary": "Attach a storage object to a variant",
                 "parameters": [
@@ -2592,7 +2598,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/variant.AttachMediaRequest"
+                            "$ref": "#/definitions/AttachMediaRequest"
                         }
                     }
                 ],
@@ -2602,13 +2608,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/variant.VariantMediaResponse"
+                                            "$ref": "#/definitions/VariantMediaResponse"
                                         }
                                     }
                                 }
@@ -2618,19 +2624,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or invalid UUID reference",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Storage object is already attached to this variant",
                         "schema": {
-                            "$ref": "#/definitions/api.ConflictErrorResponse"
+                            "$ref": "#/definitions/ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2646,7 +2652,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Variant Media"
+                    "Admin Variant Media"
                 ],
                 "summary": "Batch reorder media items for a variant",
                 "parameters": [
@@ -2664,7 +2670,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/variant.ReorderMediaRequest"
+                            "$ref": "#/definitions/ReorderMediaRequest"
                         }
                     }
                 ],
@@ -2672,19 +2678,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Reorder confirmation message",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format or empty list",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2697,7 +2703,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Variant Media"
+                    "Admin Variant Media"
                 ],
                 "summary": "Remove a media attachment from a variant",
                 "parameters": [
@@ -2719,28 +2725,73 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Detachment confirmation message",
-                        "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
-                        }
+                    "204": {
+                        "description": "Media detached successfully"
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Media relationship not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/variants/{id}/restore": {
+            "post": {
+                "description": "Restores a soft-deleted product variant back to active status (` + "`" + `deleted_at = NULL` + "`" + `).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Product Variants"
+                ],
+                "summary": "Restore a soft-deleted product variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Restore confirmation message",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID format",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Variant not found or not deleted",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2766,7 +2817,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.ResendChallengeRequest"
+                            "$ref": "#/definitions/ResendChallengeRequest"
                         }
                     }
                 ],
@@ -2774,25 +2825,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.BadReqResponse"
+                            "$ref": "#/definitions/BadReqResponse"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2818,7 +2869,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.StartChallengeRequest"
+                            "$ref": "#/definitions/StartChallengeRequest"
                         }
                     }
                 ],
@@ -2828,13 +2879,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/auth.StartChallengeResponse"
+                                            "$ref": "#/definitions/StartChallengeResponse"
                                         }
                                     }
                                 }
@@ -2844,19 +2895,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.BadReqResponse"
+                            "$ref": "#/definitions/BadReqResponse"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2882,7 +2933,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.VerifyChallengeRequest"
+                            "$ref": "#/definitions/VerifyChallengeRequest"
                         }
                     }
                 ],
@@ -2893,25 +2944,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.BadReqResponse"
+                            "$ref": "#/definitions/BadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                            "$ref": "#/definitions/UnauthorizedResponse"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2934,13 +2985,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                            "$ref": "#/definitions/UnauthorizedResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -2965,13 +3016,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/auth.MeResponse"
+                                            "$ref": "#/definitions/MeResponse"
                                         }
                                     }
                                 }
@@ -2981,7 +3032,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3006,7 +3057,7 @@ const docTemplate = `{
                         "name": "refresh_token",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/auth.RefreshTokenRequest"
+                            "$ref": "#/definitions/RefreshTokenRequest"
                         }
                     }
                 ],
@@ -3014,31 +3065,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.SuccessResponse"
+                            "$ref": "#/definitions/SuccessResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/api.BadReqResponse"
+                            "$ref": "#/definitions/BadReqResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                            "$ref": "#/definitions/UnauthorizedResponse"
                         }
                     },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3060,7 +3111,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3068,7 +3119,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/auth.UserSession"
+                                                "$ref": "#/definitions/UserSession"
                                             }
                                         }
                                     }
@@ -3079,13 +3130,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                            "$ref": "#/definitions/UnauthorizedResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3114,19 +3165,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                            "$ref": "#/definitions/UnauthorizedResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3184,7 +3235,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3192,11 +3243,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/brand.BrandResponse"
+                                                "$ref": "#/definitions/BrandResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -3206,13 +3257,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3242,13 +3293,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.Cart"
+                                            "$ref": "#/definitions/CartResponse"
                                         }
                                     }
                                 }
@@ -3258,13 +3309,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid input or missing session",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3293,7 +3344,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3325,7 +3376,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cart.AddItemRequest"
+                            "$ref": "#/definitions/AddItemRequest"
                         }
                     }
                 ],
@@ -3335,13 +3386,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.Cart"
+                                            "$ref": "#/definitions/CartResponse"
                                         }
                                     }
                                 }
@@ -3351,19 +3402,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Variant not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3400,13 +3451,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.Cart"
+                                            "$ref": "#/definitions/CartResponse"
                                         }
                                     }
                                 }
@@ -3416,19 +3467,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid item ID",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Cart item not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3465,7 +3516,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/cart.UpdateQuantityRequest"
+                            "$ref": "#/definitions/UpdateQuantityRequest"
                         }
                     }
                 ],
@@ -3475,13 +3526,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.Cart"
+                                            "$ref": "#/definitions/CartResponse"
                                         }
                                     }
                                 }
@@ -3491,19 +3542,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or invalid UUID",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Cart item not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3561,7 +3612,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3569,11 +3620,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/category.PublicCategoryResponse"
+                                                "$ref": "#/definitions/PublicCategoryResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -3583,13 +3634,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3615,7 +3666,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/checkout.CheckoutRequest"
+                            "$ref": "#/definitions/CheckoutRequest"
                         }
                     }
                 ],
@@ -3625,13 +3676,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/checkout.CheckoutResponse"
+                                            "$ref": "#/definitions/CheckoutResponse"
                                         }
                                     }
                                 }
@@ -3641,19 +3692,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error or empty cart",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedErrorResponse"
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3675,7 +3726,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3683,7 +3734,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/order.OrderResponse"
+                                                "$ref": "#/definitions/OrderResponse"
                                             }
                                         }
                                     }
@@ -3694,13 +3745,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedErrorResponse"
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3732,13 +3783,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/order.OrderResponse"
+                                            "$ref": "#/definitions/OrderResponse"
                                         }
                                     }
                                 }
@@ -3748,25 +3799,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedErrorResponse"
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Order not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3821,7 +3872,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3829,11 +3880,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/product.ProductListItemResponse"
+                                                "$ref": "#/definitions/ProductListItemResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -3843,13 +3894,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3912,7 +3963,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3920,11 +3971,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/variant.VariantResponse"
+                                                "$ref": "#/definitions/VariantResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -3934,13 +3985,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters or UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -3948,12 +3999,12 @@ const docTemplate = `{
         },
         "/products/{slug}": {
             "get": {
-                "description": "Retrieves full public-facing product details including brand information by its human-readable public ID.\nRetrieve a single product by its public slug (for storefronts)",
+                "description": "Retrieve a single product by its public slug (for storefronts)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "products"
+                    "Products"
                 ],
                 "summary": "Get product by slug",
                 "parameters": [
@@ -3967,27 +4018,39 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Product details",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/product.ProductResponse"
+                                            "$ref": "#/definitions/ProductDetailsResponse"
                                         }
                                     }
                                 }
                             ]
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "400": {
+                        "description": "Invalid slug",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -4049,7 +4112,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -4057,11 +4120,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/product.ProductReviewResponse"
+                                                "$ref": "#/definitions/ProductReviewResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -4071,13 +4134,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -4108,13 +4171,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/product.ProductRatingSummaryResponse"
+                                            "$ref": "#/definitions/ProductRatingSummaryResponse"
                                         }
                                     }
                                 }
@@ -4124,19 +4187,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid slug",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Product not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -4162,7 +4225,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/review.CreateReviewRequest"
+                            "$ref": "#/definitions/CreateReviewRequest"
                         }
                     }
                 ],
@@ -4172,13 +4235,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/review.ReviewResponse"
+                                            "$ref": "#/definitions/ReviewResponse"
                                         }
                                     }
                                 }
@@ -4188,31 +4251,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid input or unverified purchase",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden - not your purchase",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Item already reviewed",
                         "schema": {
-                            "$ref": "#/definitions/api.ConflictErrorResponse"
+                            "$ref": "#/definitions/ConflictErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -4267,7 +4330,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -4275,11 +4338,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/review.ReviewResponse"
+                                                "$ref": "#/definitions/ReviewResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -4289,13 +4352,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -4326,13 +4389,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/review.ReviewResponse"
+                                            "$ref": "#/definitions/ReviewResponse"
                                         }
                                     }
                                 }
@@ -4342,19 +4405,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid review ID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Review not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -4381,37 +4444,37 @@ const docTemplate = `{
                     "200": {
                         "description": "Review deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/api.MessageResponse"
+                            "$ref": "#/definitions/MessageResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid review ID",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Review not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -4442,7 +4505,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/review.UpdateReviewRequest"
+                            "$ref": "#/definitions/UpdateReviewRequest"
                         }
                     }
                 ],
@@ -4452,13 +4515,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/review.ReviewResponse"
+                                            "$ref": "#/definitions/ReviewResponse"
                                         }
                                     }
                                 }
@@ -4468,31 +4531,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid input",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/api.UnauthorizedResponse"
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/api.ErrorResponse"
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Review not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -4550,7 +4613,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.PaginatedResponse"
+                                    "$ref": "#/definitions/PaginatedResponse"
                                 },
                                 {
                                     "type": "object",
@@ -4558,11 +4621,11 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/tag.TagResponse"
+                                                "$ref": "#/definitions/TagResponse"
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/pagination.Page"
+                                            "$ref": "#/definitions/Page"
                                         }
                                     }
                                 }
@@ -4572,13 +4635,72 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid query parameters",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/variants/sku/{sku}": {
+            "get": {
+                "description": "Retrieves specific product variant details by its SKU string.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Product Variants"
+                ],
+                "summary": "Get variant details by SKU",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Variant SKU",
+                        "name": "sku",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Variant details",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/VariantResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "SKU is required",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Variant not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -4610,13 +4732,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/variant.VariantResponse"
+                                            "$ref": "#/definitions/VariantResponse"
                                         }
                                     }
                                 }
@@ -4626,19 +4748,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Variant not found",
                         "schema": {
-                            "$ref": "#/definitions/api.NotFoundErrorResponse"
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -4670,13 +4792,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/variant.PublicStockResponse"
+                                            "$ref": "#/definitions/PublicStockResponse"
                                         }
                                     }
                                 }
@@ -4686,13 +4808,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -4724,7 +4846,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/api.DataResponse"
+                                    "$ref": "#/definitions/DataResponse"
                                 },
                                 {
                                     "type": "object",
@@ -4732,7 +4854,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/variant.VariantMediaResponse"
+                                                "$ref": "#/definitions/VariantMediaResponse"
                                             }
                                         }
                                     }
@@ -4743,13 +4865,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/api.BadRequestErrorResponse"
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/api.InternalServerErrorResponse"
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -4757,412 +4879,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "api.BadReqResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "VALIDATION_FAILED"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "Invalid input or payload parameters"
-                }
-            }
-        },
-        "api.BadRequestErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "VALIDATION_FAILED"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "Invalid request input or malformed payload"
-                }
-            }
-        },
-        "api.ConflictErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "ALREADY_EXISTS"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "A resource with this identifier or name already exists"
-                }
-            }
-        },
-        "api.DataResponse": {
-            "type": "object",
-            "properties": {
-                "data": {}
-            }
-        },
-        "api.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "INTERNAL_ERROR"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "An unexpected internal server error occurred"
-                }
-            }
-        },
-        "api.FieldError": {
-            "type": "object",
-            "properties": {
-                "field": {
-                    "type": "string",
-                    "example": "name"
-                },
-                "message": {
-                    "type": "string",
-                    "example": "name is required and cannot be empty"
-                },
-                "tags": {
-                    "type": "string",
-                    "example": "string"
-                }
-            }
-        },
-        "api.InternalServerErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "INTERNAL_ERROR"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "An unexpected internal server error occurred"
-                }
-            }
-        },
-        "api.MessageResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "Operation completed successfully"
-                }
-            }
-        },
-        "api.NotFoundErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "NOT_FOUND"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "The requested resource was not found"
-                }
-            }
-        },
-        "api.PaginatedResponse": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "meta": {}
-            }
-        },
-        "api.SuccessResponse": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "message": {
-                    "type": "string"
-                },
-                "meta": {}
-            }
-        },
-        "api.UnauthorizedErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "UNAUTHORIZED"
-                },
-                "details": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.FieldError"
-                    }
-                },
-                "message": {
-                    "type": "string",
-                    "example": "Authentication token is missing or expired"
-                }
-            }
-        },
-        "api.UnauthorizedResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "UNAUTHORIZED"
-                },
-                "message": {
-                    "type": "string",
-                    "example": "Authentication token is missing or invalid"
-                }
-            }
-        },
-        "auth.MeResponse": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "auth.RefreshTokenRequest": {
-            "type": "object",
-            "properties": {
-                "refreshToken": {
-                    "type": "string"
-                }
-            }
-        },
-        "auth.ResendChallengeRequest": {
-            "type": "object",
-            "required": [
-                "email"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string"
-                }
-            }
-        },
-        "auth.SessionType": {
-            "type": "string",
-            "enum": [
-                "guest",
-                "authenticated"
-            ],
-            "x-enum-varnames": [
-                "SessionTypeGuest",
-                "SessionTypeAuthenticated"
-            ]
-        },
-        "auth.StartChallengeRequest": {
-            "type": "object",
-            "required": [
-                "email"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string"
-                }
-            }
-        },
-        "auth.StartChallengeResponse": {
-            "type": "object",
-            "properties": {
-                "duration": {
-                    "type": "integer"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "expiresAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "auth.UserSession": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "currentRefreshJti": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "ipAddress": {
-                    "type": "string"
-                },
-                "lastActive": {
-                    "type": "string"
-                },
-                "type": {
-                    "$ref": "#/definitions/auth.SessionType"
-                },
-                "userAgent": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "auth.VerifyChallengeRequest": {
-            "type": "object",
-            "required": [
-                "code",
-                "email"
-            ],
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                }
-            }
-        },
-        "brand.AdminBrandResponse": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string",
-                    "example": "2026-07-01T05:04:38Z"
-                },
-                "deletedAt": {
-                    "type": "string",
-                    "example": "2026-07-01T05:04:38Z"
-                },
-                "id": {
-                    "description": "Internal ID of the brand",
-                    "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
-                },
-                "link": {
-                    "type": "string",
-                    "example": "https://nvidia.com"
-                },
-                "logoObjectId": {
-                    "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "nvidia"
-                },
-                "publicId": {
-                    "description": "Public ID of the brand",
-                    "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
-                },
-                "updatedAt": {
-                    "type": "string",
-                    "example": "2026-07-01T05:04:38Z"
-                }
-            }
-        },
-        "brand.BrandResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "description": "Public ID of the brand",
-                    "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
-                },
-                "link": {
-                    "type": "string",
-                    "example": "https://nvidia.com"
-                },
-                "logoUrl": {
-                    "type": "string",
-                    "example": "https://example.com/logo.png"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "nvidia"
-                }
-            }
-        },
-        "brand.CreateBrandRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "link": {
-                    "type": "string",
-                    "example": "https://apple.com"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "apple"
-                }
-            }
-        },
-        "brand.UpdateBrandRequest": {
-            "type": "object",
-            "properties": {
-                "link": {
-                    "type": "string",
-                    "example": "https://apple.com"
-                },
-                "logoObjectId": {
-                    "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "apple"
-                }
-            }
-        },
-        "cart.AddItemRequest": {
+        "AddItemRequest": {
             "type": "object",
             "required": [
                 "quantity",
@@ -5170,97 +4887,18 @@ const docTemplate = `{
             ],
             "properties": {
                 "quantity": {
+                    "description": "Quantity of units to add (must be at least 1)",
                     "type": "integer",
                     "example": 2
                 },
                 "variantId": {
+                    "description": "Product Variant UUID to add to the cart",
                     "type": "string",
-                    "example": "nano_id_string"
+                    "example": "70000000-0000-0000-0000-000000000001"
                 }
             }
         },
-        "cart.UpdateQuantityRequest": {
-            "type": "object",
-            "required": [
-                "quantity"
-            ],
-            "properties": {
-                "quantity": {
-                    "type": "integer",
-                    "example": 5
-                }
-            }
-        },
-        "category.AdminCategoryResponse": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string",
-                    "example": "2026-06-30T15:47:19Z"
-                },
-                "deletedAt": {
-                    "type": "string",
-                    "example": "2026-07-01T10:00:00Z"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Electronics"
-                },
-                "parentId": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                },
-                "updatedAt": {
-                    "type": "string",
-                    "example": "2026-06-30T15:47:19Z"
-                }
-            }
-        },
-        "category.CreateCategoryRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "parentId": {
-                    "type": "string"
-                }
-            }
-        },
-        "category.PublicCategoryResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string",
-                    "example": "prod_cat_123"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "Electronics"
-                }
-            }
-        },
-        "category.UpdateCategoryRequest": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "example": "Electronics"
-                },
-                "parentId": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                }
-            }
-        },
-        "checkout.AddressRequest": {
+        "AddressRequest": {
             "type": "object",
             "required": [
                 "city",
@@ -5286,398 +4924,7 @@ const docTemplate = `{
                 }
             }
         },
-        "checkout.CheckoutRequest": {
-            "type": "object",
-            "required": [
-                "billingAddress",
-                "customerEmail",
-                "shippingAddress"
-            ],
-            "properties": {
-                "billingAddress": {
-                    "$ref": "#/definitions/checkout.AddressRequest"
-                },
-                "couponId": {
-                    "type": "string"
-                },
-                "customerEmail": {
-                    "type": "string"
-                },
-                "shippingAddress": {
-                    "$ref": "#/definitions/checkout.AddressRequest"
-                }
-            }
-        },
-        "checkout.CheckoutResponse": {
-            "type": "object",
-            "properties": {
-                "orderId": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.Cart": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.CartItem"
-                    }
-                },
-                "sessionID": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "userID": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.CartItem": {
-            "type": "object",
-            "properties": {
-                "cartID": {
-                    "type": "string"
-                },
-                "cartedAt": {
-                    "type": "string"
-                },
-                "currency": {
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "priceAtPurchase": {
-                    "type": "integer",
-                    "format": "int64"
-                },
-                "product": {
-                    "$ref": "#/definitions/model.Product"
-                },
-                "quantity": {
-                    "type": "integer"
-                },
-                "thumbnailURL": {
-                    "type": "string"
-                },
-                "variant": {
-                    "$ref": "#/definitions/model.ProductVariant"
-                },
-                "variantID": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.Object": {
-            "type": "object",
-            "properties": {
-                "bucket": {
-                    "type": "string"
-                },
-                "contentType": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "type": "string"
-                },
-                "fileSize": {
-                    "type": "integer",
-                    "format": "int64"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "key": {
-                    "type": "string"
-                },
-                "publicURL": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/model.ObjectStatus"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.ObjectStatus": {
-            "type": "string",
-            "enum": [
-                "uploading",
-                "uploaded",
-                "deleting",
-                "deleted"
-            ],
-            "x-enum-varnames": [
-                "ObjectStatusUploading",
-                "ObjectStatusUploaded",
-                "ObjectStatusDeleting",
-                "ObjectStatusDeleted"
-            ]
-        },
-        "model.OrderStatus": {
-            "type": "string",
-            "enum": [
-                "pending",
-                "paid",
-                "processing",
-                "shipped",
-                "delivered",
-                "canceled",
-                "refunded"
-            ],
-            "x-enum-varnames": [
-                "OrderStatusPending",
-                "OrderStatusPaid",
-                "OrderStatusProcessing",
-                "OrderStatusShipped",
-                "OrderStatusDelivered",
-                "OrderStatusCanceled",
-                "OrderStatusRefunded"
-            ]
-        },
-        "model.Product": {
-            "type": "object",
-            "properties": {
-                "brand": {
-                    "$ref": "#/definitions/model.ProductBrand"
-                },
-                "brandID": {
-                    "type": "string"
-                },
-                "category": {
-                    "$ref": "#/definitions/model.ProductCategory"
-                },
-                "categoryID": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "highlights": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "productType": {
-                    "$ref": "#/definitions/model.ProductType"
-                },
-                "slug": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/model.PublicationStatus"
-                },
-                "thumbnail": {
-                    "$ref": "#/definitions/model.Object"
-                },
-                "thumbnailObjectID": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.ProductBrand": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "link": {
-                    "type": "string"
-                },
-                "logoObjectID": {
-                    "type": "string"
-                },
-                "logoURL": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "publicID": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.ProductCategory": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "parentID": {
-                    "type": "string"
-                },
-                "publicID": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.ProductType": {
-            "type": "string",
-            "enum": [
-                "simple",
-                "variable"
-            ],
-            "x-enum-varnames": [
-                "ProductTypeSimple",
-                "ProductTypeVariable"
-            ]
-        },
-        "model.ProductVariant": {
-            "type": "object",
-            "properties": {
-                "attributes": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "crossedOutPrice": {
-                    "type": "integer"
-                },
-                "currency": {
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isDefault": {
-                    "type": "boolean"
-                },
-                "media": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.VariantMedia"
-                    }
-                },
-                "price": {
-                    "type": "integer"
-                },
-                "productID": {
-                    "type": "string"
-                },
-                "sku": {
-                    "type": "string"
-                },
-                "thumbnail": {
-                    "$ref": "#/definitions/model.Object"
-                },
-                "thumbnailObjectID": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.PublicationStatus": {
-            "type": "string",
-            "enum": [
-                "draft",
-                "published",
-                "archived"
-            ],
-            "x-enum-varnames": [
-                "PublicationStatusDraft",
-                "PublicationStatusPublished",
-                "PublicationStatusArchived"
-            ]
-        },
-        "model.VariantMedia": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "mediaType": {
-                    "type": "string"
-                },
-                "object": {
-                    "$ref": "#/definitions/model.Object"
-                },
-                "objectID": {
-                    "type": "string"
-                },
-                "publicID": {
-                    "type": "string"
-                },
-                "sortOrder": {
-                    "type": "integer"
-                },
-                "variantID": {
-                    "type": "string"
-                }
-            }
-        },
-        "order.AddressResponse": {
+        "AddressResponse": {
             "type": "object",
             "properties": {
                 "city": {
@@ -5697,7 +4944,1141 @@ const docTemplate = `{
                 }
             }
         },
-        "order.OrderItemResponse": {
+        "AdjustStockRequest": {
+            "type": "object",
+            "required": [
+                "quantity",
+                "reason"
+            ],
+            "properties": {
+                "quantity": {
+                    "description": "Adjustment quantity delta (positive to increase, negative to decrease)",
+                    "type": "integer",
+                    "example": 50
+                },
+                "reason": {
+                    "description": "Business audit reason (restock, sale, return, adjustment, reservation_release)",
+                    "type": "string",
+                    "enum": [
+                        "restock",
+                        "sale",
+                        "return",
+                        "adjustment",
+                        "reservation_release"
+                    ],
+                    "example": "restock"
+                }
+            }
+        },
+        "AdminBrandResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "Timestamp when brand was created (RFC3339)",
+                    "type": "string",
+                    "example": "2026-07-01T05:04:38Z"
+                },
+                "deletedAt": {
+                    "description": "Timestamp when brand was soft-deleted, if applicable",
+                    "type": "string",
+                    "example": "2026-07-01T05:04:38Z"
+                },
+                "id": {
+                    "description": "Internal database ID of the brand",
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "link": {
+                    "description": "Official website URL",
+                    "type": "string",
+                    "example": "https://apple.com"
+                },
+                "logoObjectId": {
+                    "description": "Object storage UUID of the uploaded logo file",
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "name": {
+                    "description": "Brand/manufacturer name",
+                    "type": "string",
+                    "example": "Apple"
+                },
+                "updatedAt": {
+                    "description": "Timestamp when brand was last updated (RFC3339)",
+                    "type": "string",
+                    "example": "2026-07-01T05:04:38Z"
+                }
+            }
+        },
+        "AdminCategoryResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "Timestamp when category was created (RFC3339)",
+                    "type": "string",
+                    "example": "2026-06-30T15:47:19Z"
+                },
+                "deletedAt": {
+                    "description": "Timestamp when category was soft-deleted, if applicable",
+                    "type": "string",
+                    "example": "2026-07-01T10:00:00Z"
+                },
+                "id": {
+                    "description": "Internal database UUID of the category",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
+                },
+                "name": {
+                    "description": "Category name",
+                    "type": "string",
+                    "example": "Electronics"
+                },
+                "parentId": {
+                    "description": "Optional UUID of the parent category for nested tree hierarchies",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000001"
+                },
+                "updatedAt": {
+                    "description": "Timestamp when category was last updated (RFC3339)",
+                    "type": "string",
+                    "example": "2026-06-30T15:47:19Z"
+                }
+            }
+        },
+        "AdminProductDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "brand": {
+                    "description": "Brand summary",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductBrandSummary"
+                        }
+                    ]
+                },
+                "brandId": {
+                    "description": "Associated brand ID",
+                    "type": "string",
+                    "example": "30000000-0000-0000-0000-000000000001"
+                },
+                "category": {
+                    "description": "Category summary",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductCategorySummary"
+                        }
+                    ]
+                },
+                "categoryId": {
+                    "description": "Associated category ID",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
+                },
+                "createdAt": {
+                    "description": "Timestamp when product was created (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-05T19:00:00Z"
+                },
+                "deletedAt": {
+                    "description": "Timestamp when product was soft-deleted, if applicable",
+                    "type": "string",
+                    "example": "2026-08-05T19:30:00Z"
+                },
+                "description": {
+                    "description": "Product description",
+                    "type": "string",
+                    "example": "Supercharged by M3 Pro or M3 Max."
+                },
+                "highlights": {
+                    "description": "Bullet highlights",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "description": "Product database UUID",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "productType": {
+                    "description": "Product classification: simple or variable",
+                    "type": "string",
+                    "example": "variable"
+                },
+                "slug": {
+                    "description": "URL-friendly slug",
+                    "type": "string",
+                    "example": "macbook-pro-16"
+                },
+                "status": {
+                    "description": "Publication status: draft, published, archived",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/PublicationStatus"
+                        }
+                    ],
+                    "example": "published"
+                },
+                "tags": {
+                    "description": "Product tags",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ProductTagSummary"
+                    }
+                },
+                "thumbnail": {
+                    "description": "Primary thumbnail storage object",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/StorageObjectResponse"
+                        }
+                    ]
+                },
+                "title": {
+                    "description": "Product title",
+                    "type": "string",
+                    "example": "MacBook Pro 16\""
+                },
+                "updatedAt": {
+                    "description": "Timestamp when product was last updated (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-05T19:00:00Z"
+                },
+                "variants": {
+                    "description": "Full administrative variant details",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/AdminProductVariantResponse"
+                    }
+                }
+            }
+        },
+        "AdminProductVariantResponse": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "description": "Custom attributes",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "currency": {
+                    "description": "Currency ISO code",
+                    "type": "string",
+                    "example": "USD"
+                },
+                "extractedOriginalPrice": {
+                    "description": "Numeric original price",
+                    "type": "number",
+                    "example": 2999
+                },
+                "extractedPrice": {
+                    "description": "Numeric price value",
+                    "type": "number",
+                    "example": 2499
+                },
+                "id": {
+                    "description": "Variant database UUID",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
+                },
+                "isDefault": {
+                    "description": "Default variant flag",
+                    "type": "boolean",
+                    "example": true
+                },
+                "media": {
+                    "description": "Media gallery",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/VariantMediaSummary"
+                    }
+                },
+                "originalPrice": {
+                    "description": "Formatted original price",
+                    "type": "string",
+                    "example": "$2999.00"
+                },
+                "price": {
+                    "description": "Formatted display price",
+                    "type": "string",
+                    "example": "$2499.00"
+                },
+                "sku": {
+                    "description": "Stock Keeping Unit",
+                    "type": "string",
+                    "example": "MAC-PRO-16-BLK-18"
+                },
+                "stock": {
+                    "description": "Full administrative inventory breakdown",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/AdminStockSummary"
+                        }
+                    ]
+                },
+                "thumbnail": {
+                    "description": "Storage object metadata for thumbnail",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/StorageObjectResponse"
+                        }
+                    ]
+                },
+                "title": {
+                    "description": "Variant title",
+                    "type": "string",
+                    "example": "Space Black, 18GB RAM, 512GB SSD"
+                }
+            }
+        },
+        "AdminStockSummary": {
+            "type": "object",
+            "properties": {
+                "availableQuantity": {
+                    "description": "Salable stock (onHand - reserved)",
+                    "type": "integer",
+                    "example": 50
+                },
+                "isInStock": {
+                    "description": "True if availableQuantity \u003e 0",
+                    "type": "boolean",
+                    "example": true
+                },
+                "onHandQuantity": {
+                    "description": "Total physical stock in warehouse",
+                    "type": "integer",
+                    "example": 60
+                },
+                "reservedQuantity": {
+                    "description": "Stock reserved in active customer orders/checkouts",
+                    "type": "integer",
+                    "example": 10
+                }
+            }
+        },
+        "AdminTagResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "Timestamp when tag was created (RFC3339)",
+                    "type": "string",
+                    "example": "2026-06-30T15:47:19Z"
+                },
+                "deletedAt": {
+                    "description": "Timestamp when tag was soft-deleted, if applicable",
+                    "type": "string",
+                    "example": "2026-06-30T15:47:19Z"
+                },
+                "id": {
+                    "description": "Unique database UUID identifier of the tag",
+                    "type": "string",
+                    "example": "50000000-0000-0000-0000-000000000001"
+                },
+                "name": {
+                    "description": "Tag label name",
+                    "type": "string",
+                    "example": "Featured"
+                },
+                "updatedAt": {
+                    "description": "Timestamp when tag was last updated (RFC3339)",
+                    "type": "string",
+                    "example": "2026-06-30T15:47:19Z"
+                }
+            }
+        },
+        "AdminVariantResponse": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "description": "Custom variant attributes",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "createdAt": {
+                    "description": "Timestamp when variant was created (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-02T16:00:00Z"
+                },
+                "currency": {
+                    "description": "Currency ISO code",
+                    "type": "string",
+                    "example": "USD"
+                },
+                "deletedAt": {
+                    "description": "Timestamp when variant was soft-deleted, if applicable",
+                    "type": "string",
+                    "example": "2026-08-02T16:15:00Z"
+                },
+                "extractedOriginalPrice": {
+                    "description": "Numeric original price value",
+                    "type": "number",
+                    "example": 2999
+                },
+                "extractedPrice": {
+                    "description": "Numeric active price value",
+                    "type": "number",
+                    "example": 2499
+                },
+                "id": {
+                    "description": "Variant database UUID",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
+                },
+                "isDefault": {
+                    "description": "True if this is the default variant",
+                    "type": "boolean",
+                    "example": true
+                },
+                "media": {
+                    "description": "Attached gallery media assets",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/VariantMediaSummary"
+                    }
+                },
+                "originalPrice": {
+                    "description": "Formatted original crossed-out price",
+                    "type": "string",
+                    "example": "$2999.00"
+                },
+                "price": {
+                    "description": "Formatted active display price",
+                    "type": "string",
+                    "example": "$2499.00"
+                },
+                "productId": {
+                    "description": "Parent product UUID",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "sku": {
+                    "description": "Stock Keeping Unit",
+                    "type": "string",
+                    "example": "MAC-PRO-16-BLK-18"
+                },
+                "thumbnail": {
+                    "description": "Thumbnail storage object details",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/StorageObjectResponse"
+                        }
+                    ]
+                },
+                "title": {
+                    "description": "Variant title",
+                    "type": "string",
+                    "example": "Space Black, 18GB RAM, 512GB SSD"
+                },
+                "updatedAt": {
+                    "description": "Timestamp when variant was last updated (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-02T16:00:00Z"
+                }
+            }
+        },
+        "AttachMediaRequest": {
+            "type": "object",
+            "required": [
+                "mediaType",
+                "storageObjectId"
+            ],
+            "properties": {
+                "mediaType": {
+                    "description": "Media classification (image or video)",
+                    "type": "string",
+                    "example": "image"
+                },
+                "sortOrder": {
+                    "description": "Presentation sequence position index",
+                    "type": "integer",
+                    "example": 1
+                },
+                "storageObjectId": {
+                    "description": "Storage object UUID of the uploaded media file",
+                    "type": "string",
+                    "example": "80000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "BadReqResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "VALIDATION_FAILED"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/FieldError"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Invalid request input or malformed payload"
+                }
+            }
+        },
+        "BadRequestErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "VALIDATION_FAILED"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/FieldError"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Invalid request input or malformed payload"
+                }
+            }
+        },
+        "BrandResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Public UUID identifier of the brand",
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "link": {
+                    "description": "Official website URL",
+                    "type": "string",
+                    "example": "https://apple.com"
+                },
+                "logoUrl": {
+                    "description": "Publicly accessible URL for the brand logo",
+                    "type": "string",
+                    "example": "https://example.com/apple-logo.png"
+                },
+                "name": {
+                    "description": "Brand/manufacturer name",
+                    "type": "string",
+                    "example": "Apple"
+                }
+            }
+        },
+        "CartItemResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Unique Cart Item record UUID",
+                    "type": "string",
+                    "example": "030553cd-712a-4950-913f-6c26fdd6a2b5"
+                },
+                "inStock": {
+                    "description": "Live inventory availability check: true if inventory \u003e= quantity",
+                    "type": "boolean",
+                    "example": true
+                },
+                "productId": {
+                    "description": "Parent Product UUID",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "quantity": {
+                    "description": "Selected quantity units in cart",
+                    "type": "integer",
+                    "example": 2
+                },
+                "subtotal": {
+                    "description": "Line item subtotal (quantity * unitPrice) in cents",
+                    "type": "integer",
+                    "example": 499800
+                },
+                "thumbnailUrl": {
+                    "description": "Thumbnail preview image URL",
+                    "type": "string",
+                    "example": "https://example.com/thumbnail.png"
+                },
+                "title": {
+                    "description": "Formatted line item title (Product Title + Variant Title)",
+                    "type": "string",
+                    "example": "MacBook Pro 16\" - Space Black, 18GB RAM, 512GB SSD"
+                },
+                "unitPrice": {
+                    "description": "Unit price per single item in cents",
+                    "type": "integer",
+                    "example": 249900
+                },
+                "variantId": {
+                    "description": "Selected SKU Variant UUID",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "CartResponse": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "description": "Active store currency code",
+                    "type": "string",
+                    "example": "USD"
+                },
+                "id": {
+                    "description": "Cart UUID",
+                    "type": "string",
+                    "example": "c23c12b7-37ff-49e6-a70f-1dcd122a0b99"
+                },
+                "itemCount": {
+                    "description": "Total count of distinct units in cart",
+                    "type": "integer",
+                    "example": 2
+                },
+                "items": {
+                    "description": "List of all items currently in cart",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/CartItemResponse"
+                    }
+                },
+                "summary": {
+                    "description": "Monetary calculation breakdown",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/CartSummaryResponse"
+                        }
+                    ]
+                },
+                "updatedAt": {
+                    "description": "Timestamp of the most recent cart mutation (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-23T16:26:25Z"
+                }
+            }
+        },
+        "CartSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "discount": {
+                    "description": "Applied discount deductions in cents",
+                    "type": "integer",
+                    "example": 0
+                },
+                "shipping": {
+                    "description": "Estimated shipping cost in cents",
+                    "type": "integer",
+                    "example": 0
+                },
+                "subtotal": {
+                    "description": "Sum total of all items before discounts/tax in cents",
+                    "type": "integer",
+                    "example": 499800
+                },
+                "tax": {
+                    "description": "Estimated tax amount in cents",
+                    "type": "integer",
+                    "example": 0
+                },
+                "total": {
+                    "description": "Final calculated order total (subtotal - discount + shipping + tax) in cents",
+                    "type": "integer",
+                    "example": 499800
+                }
+            }
+        },
+        "CheckoutRequest": {
+            "type": "object",
+            "required": [
+                "billingAddress",
+                "customerEmail",
+                "shippingAddress"
+            ],
+            "properties": {
+                "billingAddress": {
+                    "$ref": "#/definitions/AddressRequest"
+                },
+                "couponId": {
+                    "type": "string"
+                },
+                "customerEmail": {
+                    "type": "string"
+                },
+                "shippingAddress": {
+                    "$ref": "#/definitions/AddressRequest"
+                }
+            }
+        },
+        "CheckoutResponse": {
+            "type": "object",
+            "properties": {
+                "orderId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "ConflictErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "ALREADY_EXISTS"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "A resource with this identifier or name already exists"
+                }
+            }
+        },
+        "CreateBrandRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "link": {
+                    "description": "Optional official website URL",
+                    "type": "string",
+                    "example": "https://apple.com"
+                },
+                "name": {
+                    "description": "Unique brand/manufacturer name",
+                    "type": "string",
+                    "example": "Apple"
+                }
+            }
+        },
+        "CreateCategoryRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "description": "Category name",
+                    "type": "string",
+                    "example": "Laptops"
+                },
+                "parentId": {
+                    "description": "Optional UUID of parent category",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
+                }
+            }
+        },
+        "CreateProductRequest": {
+            "type": "object",
+            "required": [
+                "categoryId",
+                "slug",
+                "title"
+            ],
+            "properties": {
+                "brandId": {
+                    "description": "Optional UUID of the brand/manufacturer",
+                    "type": "string",
+                    "example": "30000000-0000-0000-0000-000000000001"
+                },
+                "categoryId": {
+                    "description": "Required category UUID",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
+                },
+                "description": {
+                    "description": "Full product description in markdown or plaintext",
+                    "type": "string",
+                    "example": "Premium over-ear Bluetooth headphones with active noise cancellation."
+                },
+                "productType": {
+                    "description": "Product classification: 'simple' or 'variable'",
+                    "type": "string",
+                    "example": "simple"
+                },
+                "slug": {
+                    "description": "Unique URL-friendly product identifier",
+                    "type": "string",
+                    "example": "wireless-noise-canceling-headphones"
+                },
+                "title": {
+                    "description": "Product display title",
+                    "type": "string",
+                    "example": "Wireless Noise-Canceling Headphones"
+                }
+            }
+        },
+        "CreateProductVariantRequest": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "attributes": {
+                    "description": "Custom attributes map",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossedOutPrice": {
+                    "description": "Crossed-out/original MSRP price in cents",
+                    "type": "integer",
+                    "example": 299900
+                },
+                "currency": {
+                    "description": "Currency ISO code",
+                    "type": "string",
+                    "example": "USD"
+                },
+                "initialStock": {
+                    "description": "Initial stock inventory count to credit to warehouse",
+                    "type": "integer",
+                    "example": 50
+                },
+                "isDefault": {
+                    "description": "Flag if this variant should be the default selection",
+                    "type": "boolean",
+                    "example": true
+                },
+                "price": {
+                    "description": "Price in cents (e.g. 249900 = $2499.00)",
+                    "type": "integer",
+                    "example": 249900
+                },
+                "title": {
+                    "description": "Variant option title (e.g. \"Space Black / 18GB RAM\")",
+                    "type": "string",
+                    "example": "Space Black / 18GB RAM / 512GB SSD"
+                }
+            }
+        },
+        "CreateReviewRequest": {
+            "type": "object",
+            "required": [
+                "productId",
+                "rating"
+            ],
+            "properties": {
+                "body": {
+                    "description": "Review detailed feedback narrative",
+                    "type": "string",
+                    "example": "The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."
+                },
+                "orderItemId": {
+                    "description": "Optional purchased Order Item UUID (if omitted, server automatically verifies buyer eligibility from delivered orders)",
+                    "type": "string",
+                    "example": "91000000-0000-0000-0000-000000000001"
+                },
+                "productId": {
+                    "description": "Product UUID to review",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "rating": {
+                    "description": "Star score between 1 and 5",
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1,
+                    "example": 5
+                },
+                "title": {
+                    "description": "Optional review headline title",
+                    "type": "string",
+                    "example": "Unbelievable performance!"
+                }
+            }
+        },
+        "CreateTagRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "description": "Unique tag label name (e.g. Featured, Sale, New Arrival)",
+                    "type": "string",
+                    "example": "Featured"
+                }
+            }
+        },
+        "CreateVariantRequest": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "attributes": {
+                    "description": "Key-value attribute specifications (e.g. {\"color\":\"Black\",\"ram\":\"18GB\"})",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossedOutPrice": {
+                    "description": "Crossed-out/original MSRP price in cents",
+                    "type": "integer",
+                    "example": 299900
+                },
+                "currency": {
+                    "description": "Currency ISO code",
+                    "type": "string",
+                    "example": "USD"
+                },
+                "isDefault": {
+                    "description": "True if this is the default selected variant on storefronts",
+                    "type": "boolean",
+                    "example": true
+                },
+                "price": {
+                    "description": "Price in cents (e.g. 249900 = $2499.00)",
+                    "type": "integer",
+                    "example": 249900
+                },
+                "sku": {
+                    "description": "Optional custom SKU identifier",
+                    "type": "string",
+                    "example": "MAC-PRO-16-BLK-18"
+                },
+                "thumbnailObjectId": {
+                    "description": "Storage object UUID for the primary thumbnail",
+                    "type": "string",
+                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
+                },
+                "title": {
+                    "description": "Variant display title",
+                    "type": "string",
+                    "example": "Space Black, 18GB RAM, 512GB SSD"
+                }
+            }
+        },
+        "DataResponse": {
+            "type": "object",
+            "properties": {
+                "data": {}
+            }
+        },
+        "ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "INTERNAL_ERROR"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/FieldError"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "An unexpected internal server error occurred"
+                }
+            }
+        },
+        "FieldError": {
+            "type": "object",
+            "properties": {
+                "constraint": {
+                    "type": "string",
+                    "example": "min"
+                },
+                "field": {
+                    "type": "string",
+                    "example": "quantity"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "quantity must be at least 1"
+                }
+            }
+        },
+        "ForbiddenErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "FORBIDDEN"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "You do not have permission to access this resource"
+                }
+            }
+        },
+        "InternalServerErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "INTERNAL_ERROR"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "An unexpected internal server error occurred"
+                }
+            }
+        },
+        "InventoryLedgerResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "Transaction timestamp (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-15T12:00:00Z"
+                },
+                "id": {
+                    "description": "Ledger entry record UUID",
+                    "type": "string",
+                    "example": "80000000-0000-0000-0000-000000000001"
+                },
+                "quantity": {
+                    "description": "Signed quantity adjustment (+/- units)",
+                    "type": "integer",
+                    "example": 50
+                },
+                "reason": {
+                    "description": "Adjustment reason classification",
+                    "type": "string",
+                    "example": "restock"
+                },
+                "variantId": {
+                    "description": "Associated variant UUID",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "InventoryStockResponse": {
+            "type": "object",
+            "properties": {
+                "availableQuantity": {
+                    "description": "Salable stock (onHand - reserved)",
+                    "type": "integer",
+                    "example": 50
+                },
+                "isInStock": {
+                    "description": "True if availableQuantity \u003e 0",
+                    "type": "boolean",
+                    "example": true
+                },
+                "onHandQuantity": {
+                    "description": "Physical units counted on warehouse shelves",
+                    "type": "integer",
+                    "example": 60
+                },
+                "reservedQuantity": {
+                    "description": "Units currently reserved in open orders / pending checkouts",
+                    "type": "integer",
+                    "example": 10
+                },
+                "variantId": {
+                    "description": "Variant UUID",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "MeResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "MessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Operation completed successfully"
+                }
+            }
+        },
+        "NotFoundErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "NOT_FOUND"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "The requested resource was not found"
+                }
+            }
+        },
+        "Object": {
+            "type": "object",
+            "properties": {
+                "bucket": {
+                    "description": "Bucket is the target S3/MinIO bucket name.",
+                    "type": "string"
+                },
+                "contentType": {
+                    "description": "ContentType is the MIME type (e.g. \"image/webp\", \"application/pdf\").",
+                    "type": "string"
+                },
+                "createdAt": {
+                    "description": "CreatedAt is the timestamp when the object record was created.",
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "description": "DeletedAt is the optional soft-delete timestamp.",
+                    "type": "string"
+                },
+                "fileSize": {
+                    "description": "FileSize is the file length in bytes.",
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "id": {
+                    "description": "ID is the unique database UUID for the storage object.",
+                    "type": "string"
+                },
+                "key": {
+                    "description": "Key is the object path key inside the bucket (e.g. \"products/uuid/image.webp\").",
+                    "type": "string"
+                },
+                "publicURL": {
+                    "description": "PublicURL is the publicly accessible CDN or presigned HTTP endpoint for the file.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status is the current storage lifecycle state.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ObjectStatus"
+                        }
+                    ]
+                },
+                "updatedAt": {
+                    "description": "UpdatedAt is the timestamp when metadata was last modified.",
+                    "type": "string"
+                }
+            }
+        },
+        "ObjectStatus": {
+            "type": "string",
+            "enum": [
+                "uploading",
+                "uploaded",
+                "deleting",
+                "deleted"
+            ],
+            "x-enum-varnames": [
+                "ObjectStatusUploading",
+                "ObjectStatusUploaded",
+                "ObjectStatusDeleting",
+                "ObjectStatusDeleted"
+            ]
+        },
+        "OrderItemResponse": {
             "type": "object",
             "properties": {
                 "id": {
@@ -5717,11 +6098,11 @@ const docTemplate = `{
                 }
             }
         },
-        "order.OrderResponse": {
+        "OrderResponse": {
             "type": "object",
             "properties": {
                 "billingAddress": {
-                    "$ref": "#/definitions/order.AddressResponse"
+                    "$ref": "#/definitions/AddressResponse"
                 },
                 "couponId": {
                     "type": "string"
@@ -5747,14 +6128,14 @@ const docTemplate = `{
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/order.OrderItemResponse"
+                        "$ref": "#/definitions/OrderItemResponse"
                     }
                 },
                 "shippingAddress": {
-                    "$ref": "#/definitions/order.AddressResponse"
+                    "$ref": "#/definitions/AddressResponse"
                 },
                 "status": {
-                    "$ref": "#/definitions/model.OrderStatus"
+                    "$ref": "#/definitions/OrderStatus"
                 },
                 "totalAmount": {
                     "type": "integer"
@@ -5764,21 +6145,28 @@ const docTemplate = `{
                 }
             }
         },
-        "order.UpdateOrderStatusRequest": {
-            "type": "object",
-            "required": [
-                "status"
+        "OrderStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "paid",
+                "processing",
+                "shipped",
+                "delivered",
+                "canceled",
+                "refunded"
             ],
-            "properties": {
-                "notes": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/model.OrderStatus"
-                }
-            }
+            "x-enum-varnames": [
+                "OrderStatusPending",
+                "OrderStatusPaid",
+                "OrderStatusProcessing",
+                "OrderStatusShipped",
+                "OrderStatusDelivered",
+                "OrderStatusCanceled",
+                "OrderStatusRefunded"
+            ]
         },
-        "pagination.Page": {
+        "Page": {
             "type": "object",
             "properties": {
                 "hasNext": {
@@ -5807,7 +6195,740 @@ const docTemplate = `{
                 }
             }
         },
-        "pagination.Sort": {
+        "PaginatedResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "meta": {}
+            }
+        },
+        "Product": {
+            "type": "object",
+            "properties": {
+                "brand": {
+                    "description": "Brand is the hydrated ProductBrand entity (not stored directly in the products table).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductBrand"
+                        }
+                    ]
+                },
+                "brandID": {
+                    "description": "BrandID is the optional UUID of the product's manufacturer/brand.",
+                    "type": "string"
+                },
+                "category": {
+                    "description": "Category is the hydrated ProductCategory entity (not stored directly in the products table).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductCategory"
+                        }
+                    ]
+                },
+                "categoryID": {
+                    "description": "CategoryID is the required taxonomy category UUID.",
+                    "type": "string"
+                },
+                "createdAt": {
+                    "description": "CreatedAt is the timestamp when the product was added to the catalog.",
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "description": "DeletedAt is the optional soft-delete timestamp.",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Description is the full product narrative copy.",
+                    "type": "string"
+                },
+                "highlights": {
+                    "description": "Highlights contains key bullet points displayed on product detail pages.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "description": "ID is the unique database UUID for the product.",
+                    "type": "string"
+                },
+                "productType": {
+                    "description": "ProductType indicates simple or variable catalog classification.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductType"
+                        }
+                    ]
+                },
+                "slug": {
+                    "description": "Slug is the URL-friendly unique SEO identifier.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status is the draft/published/archived lifecycle state.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/PublicationStatus"
+                        }
+                    ]
+                },
+                "thumbnail": {
+                    "description": "Thumbnail is the hydrated Object entity for the cover image (not stored directly in the products table).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/Object"
+                        }
+                    ]
+                },
+                "thumbnailObjectID": {
+                    "description": "ThumbnailObjectID is the optional storage object UUID for the primary cover image.",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Title is the primary product display name.",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "description": "UpdatedAt is the timestamp when product metadata was last modified.",
+                    "type": "string"
+                }
+            }
+        },
+        "ProductBrand": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "CreatedAt is the timestamp when the brand record was created.",
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "description": "DeletedAt is the optional soft-delete timestamp.",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID is the internal database UUID.",
+                    "type": "string"
+                },
+                "link": {
+                    "description": "Link is the optional official website URL.",
+                    "type": "string"
+                },
+                "logoObjectID": {
+                    "description": "LogoObjectID is the optional storage object UUID for the brand logo.",
+                    "type": "string"
+                },
+                "logoURL": {
+                    "description": "LogoURL is the resolved public CDN URL for the brand logo image.",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name is the unique brand name (e.g. \"Apple\", \"Nike\").",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "description": "UpdatedAt is the timestamp when brand details were last modified.",
+                    "type": "string"
+                }
+            }
+        },
+        "ProductBrandSummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Brand UUID",
+                    "type": "string",
+                    "example": "30000000-0000-0000-0000-000000000001"
+                },
+                "link": {
+                    "description": "Official website URL",
+                    "type": "string",
+                    "example": "https://apple.com"
+                },
+                "name": {
+                    "description": "Brand name",
+                    "type": "string",
+                    "example": "Apple"
+                }
+            }
+        },
+        "ProductCategory": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "CreatedAt is the timestamp when the category was created.",
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "description": "DeletedAt is the optional soft-delete timestamp.",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID is the unique internal database UUID.",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name is the category display name (e.g. \"Electronics\", \"Laptops\").",
+                    "type": "string"
+                },
+                "parentID": {
+                    "description": "ParentID is the optional UUID of the parent category (nil for root categories).",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "description": "UpdatedAt is the timestamp when category details were last modified.",
+                    "type": "string"
+                }
+            }
+        },
+        "ProductCategorySummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Category UUID",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
+                },
+                "name": {
+                    "description": "Category name",
+                    "type": "string",
+                    "example": "Electronics"
+                }
+            }
+        },
+        "ProductDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "brand": {
+                    "description": "Associated brand summary",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductBrandSummary"
+                        }
+                    ]
+                },
+                "currency": {
+                    "description": "Currency ISO code",
+                    "type": "string",
+                    "example": "USD"
+                },
+                "description": {
+                    "description": "Detailed product description",
+                    "type": "string",
+                    "example": "Supercharged by M3 Pro or M3 Max."
+                },
+                "extractedOriginalPrice": {
+                    "description": "Numeric original price",
+                    "type": "number",
+                    "example": 2999
+                },
+                "extractedPrice": {
+                    "description": "Numeric active price",
+                    "type": "number",
+                    "example": 2499
+                },
+                "highlights": {
+                    "description": "Bulleted product highlights",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "description": "Product database UUID",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "originalPrice": {
+                    "description": "Formatted original crossed-out price",
+                    "type": "string",
+                    "example": "$2999.00"
+                },
+                "price": {
+                    "description": "Formatted active price",
+                    "type": "string",
+                    "example": "$2499.00"
+                },
+                "productType": {
+                    "description": "Product type: simple or variable",
+                    "type": "string",
+                    "example": "variable"
+                },
+                "rating": {
+                    "description": "Aggregated review score and count",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductRatingSummaryResponse"
+                        }
+                    ]
+                },
+                "slug": {
+                    "description": "URL-friendly unique slug",
+                    "type": "string",
+                    "example": "macbook-pro-16"
+                },
+                "tags": {
+                    "description": "Assigned taxonomy tags",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ProductTagSummary"
+                    }
+                },
+                "title": {
+                    "description": "Product display title",
+                    "type": "string",
+                    "example": "MacBook Pro 16\""
+                },
+                "variants": {
+                    "description": "List of all active product variants",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ProductVariantResponse"
+                    }
+                }
+            }
+        },
+        "ProductListItemResponse": {
+            "type": "object",
+            "properties": {
+                "brand": {
+                    "description": "Brand name",
+                    "type": "string",
+                    "example": "Apple"
+                },
+                "currency": {
+                    "description": "Currency ISO code",
+                    "type": "string",
+                    "example": "USD"
+                },
+                "extractedOriginalPrice": {
+                    "description": "Numeric original price",
+                    "type": "number",
+                    "example": 2999
+                },
+                "extractedPrice": {
+                    "description": "Numeric price value",
+                    "type": "number",
+                    "example": 2499
+                },
+                "originalPrice": {
+                    "description": "Formatted crossed-out original price",
+                    "type": "string",
+                    "example": "$2999.00"
+                },
+                "price": {
+                    "description": "Formatted display price",
+                    "type": "string",
+                    "example": "$2499.00"
+                },
+                "rating": {
+                    "description": "Rating summary and score breakdown",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductRatingSummaryResponse"
+                        }
+                    ]
+                },
+                "slug": {
+                    "description": "URL-friendly unique slug",
+                    "type": "string",
+                    "example": "macbook-pro-16"
+                },
+                "thumbnail": {
+                    "description": "Product card thumbnail URL",
+                    "type": "string",
+                    "example": "https://example.com/thumb.jpg"
+                },
+                "title": {
+                    "description": "Product display title",
+                    "type": "string",
+                    "example": "MacBook Pro 16\""
+                }
+            }
+        },
+        "ProductRatingSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "averageRating": {
+                    "description": "Average review score (1.0 to 5.0)",
+                    "type": "number",
+                    "example": 4.5
+                },
+                "distribution": {
+                    "description": "Star rating distribution mapping score (1-5) to frequency",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "reviewCount": {
+                    "description": "Total count of approved reviews",
+                    "type": "integer",
+                    "example": 24
+                }
+            }
+        },
+        "ProductReviewResponse": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "description": "Review text narrative",
+                    "type": "string",
+                    "example": "The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."
+                },
+                "createdAt": {
+                    "description": "Submission timestamp (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-13T07:56:17Z"
+                },
+                "id": {
+                    "description": "Review UUID",
+                    "type": "string",
+                    "example": "92000000-0000-0000-0000-000000000001"
+                },
+                "orderItemId": {
+                    "description": "Verified order item purchase UUID",
+                    "type": "string",
+                    "example": "91000000-0000-0000-0000-000000000001"
+                },
+                "productId": {
+                    "description": "Product UUID being reviewed",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "rating": {
+                    "description": "Score from 1 to 5 stars",
+                    "type": "integer",
+                    "example": 5
+                },
+                "status": {
+                    "description": "Moderation state: pending, approved, rejected",
+                    "type": "string",
+                    "example": "approved"
+                },
+                "title": {
+                    "description": "Optional review heading title",
+                    "type": "string",
+                    "example": "Unbelievable performance!"
+                },
+                "updatedAt": {
+                    "description": "Last modified timestamp (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-13T07:56:17Z"
+                },
+                "userId": {
+                    "description": "Author customer UUID",
+                    "type": "string",
+                    "example": "10000000-0000-0000-0000-000000000002"
+                }
+            }
+        },
+        "ProductTagSummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Tag UUID",
+                    "type": "string",
+                    "example": "50000000-0000-0000-0000-000000000001"
+                },
+                "name": {
+                    "description": "Tag name",
+                    "type": "string",
+                    "example": "Featured"
+                }
+            }
+        },
+        "ProductType": {
+            "type": "string",
+            "enum": [
+                "simple",
+                "variable"
+            ],
+            "x-enum-varnames": [
+                "ProductTypeSimple",
+                "ProductTypeVariable"
+            ]
+        },
+        "ProductVariantResponse": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "description": "Custom variant attributes (e.g. {\"color\":\"Black\",\"ram\":\"18GB\"})",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "currency": {
+                    "description": "Currency ISO code",
+                    "type": "string",
+                    "example": "USD"
+                },
+                "extractedOriginalPrice": {
+                    "description": "Numeric original MSRP price",
+                    "type": "number",
+                    "example": 2999
+                },
+                "extractedPrice": {
+                    "description": "Numeric price value",
+                    "type": "number",
+                    "example": 2499
+                },
+                "id": {
+                    "description": "Variant UUID",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
+                },
+                "isDefault": {
+                    "description": "True if this variant is the default selection on product pages",
+                    "type": "boolean",
+                    "example": true
+                },
+                "media": {
+                    "description": "Associated media gallery",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/VariantMediaSummary"
+                    }
+                },
+                "originalPrice": {
+                    "description": "Formatted crossed-out/original MSRP price",
+                    "type": "string",
+                    "example": "$2999.00"
+                },
+                "price": {
+                    "description": "Formatted display price",
+                    "type": "string",
+                    "example": "$2499.00"
+                },
+                "sku": {
+                    "description": "Unique Stock Keeping Unit",
+                    "type": "string",
+                    "example": "MAC-PRO-16-BLK-18"
+                },
+                "stock": {
+                    "description": "Live customer-facing stock availability",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/PublicStockSummary"
+                        }
+                    ]
+                },
+                "thumbnail": {
+                    "description": "Primary variant thumbnail URL",
+                    "type": "string",
+                    "example": "https://example.com/thumb.jpg"
+                },
+                "title": {
+                    "description": "Variant option title (e.g. \"Space Black, 18GB RAM\")",
+                    "type": "string",
+                    "example": "Space Black, 18GB RAM, 512GB SSD"
+                }
+            }
+        },
+        "PublicCategoryResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Public category identifier",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
+                },
+                "name": {
+                    "description": "Category display name",
+                    "type": "string",
+                    "example": "Electronics"
+                }
+            }
+        },
+        "PublicStockResponse": {
+            "type": "object",
+            "properties": {
+                "availableQuantity": {
+                    "description": "Units available for customer checkout",
+                    "type": "integer",
+                    "example": 50
+                },
+                "isInStock": {
+                    "description": "True if availableQuantity \u003e 0",
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "PublicStockSummary": {
+            "type": "object",
+            "properties": {
+                "availableQuantity": {
+                    "description": "Quantity available for customer purchase",
+                    "type": "integer",
+                    "example": 50
+                },
+                "isInStock": {
+                    "description": "True if availableQuantity \u003e 0",
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "PublicationStatus": {
+            "type": "string",
+            "enum": [
+                "draft",
+                "published",
+                "archived"
+            ],
+            "x-enum-varnames": [
+                "PublicationStatusDraft",
+                "PublicationStatusPublished",
+                "PublicationStatusArchived"
+            ]
+        },
+        "PutProductCategoryRequest": {
+            "type": "object",
+            "required": [
+                "categoryId"
+            ],
+            "properties": {
+                "categoryId": {
+                    "description": "Target category UUID",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
+                }
+            }
+        },
+        "PutProductTagsRequest": {
+            "type": "object",
+            "required": [
+                "tagIds"
+            ],
+            "properties": {
+                "tagIds": {
+                    "description": "List of Tag UUIDs to associate with the product",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "['50000000-0000-0000-0000-000000000001']"
+                    ]
+                }
+            }
+        },
+        "RefreshTokenRequest": {
+            "type": "object",
+            "properties": {
+                "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "ReorderMediaRequest": {
+            "type": "object",
+            "required": [
+                "orderedMediaIds"
+            ],
+            "properties": {
+                "orderedMediaIds": {
+                    "description": "Array of media UUIDs in desired presentation sequence",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "['80000000-0000-0000-0000-000000000001']"
+                    ]
+                }
+            }
+        },
+        "ResendChallengeRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "ReviewResponse": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "description": "Review detailed text",
+                    "type": "string",
+                    "example": "The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."
+                },
+                "createdAt": {
+                    "description": "Submission timestamp (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-13T07:56:17Z"
+                },
+                "id": {
+                    "description": "Review UUID",
+                    "type": "string",
+                    "example": "92000000-0000-0000-0000-000000000001"
+                },
+                "orderItemId": {
+                    "description": "Verified Order Item purchase UUID",
+                    "type": "string",
+                    "example": "91000000-0000-0000-0000-000000000001"
+                },
+                "productId": {
+                    "description": "Reviewed Product UUID",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "rating": {
+                    "description": "Star score (1-5)",
+                    "type": "integer",
+                    "example": 5
+                },
+                "status": {
+                    "description": "Moderation status: pending, approved, rejected",
+                    "type": "string",
+                    "example": "approved"
+                },
+                "title": {
+                    "description": "Optional review headline",
+                    "type": "string",
+                    "example": "Unbelievable performance!"
+                },
+                "updatedAt": {
+                    "description": "Last updated timestamp (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-13T07:56:17Z"
+                },
+                "userId": {
+                    "description": "Author Customer UUID",
+                    "type": "string",
+                    "example": "10000000-0000-0000-0000-000000000002"
+                }
+            }
+        },
+        "SessionType": {
+            "type": "string",
+            "enum": [
+                "guest",
+                "authenticated"
+            ],
+            "x-enum-varnames": [
+                "SessionTypeGuest",
+                "SessionTypeAuthenticated"
+            ]
+        },
+        "SetDefaultVariantRequest": {
+            "type": "object",
+            "required": [
+                "variantId"
+            ],
+            "properties": {
+                "variantId": {
+                    "description": "Variant UUID to set as default",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "Sort": {
             "type": "object",
             "properties": {
                 "field": {
@@ -5817,14 +6938,14 @@ const docTemplate = `{
                 "order": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/pagination.SortOrder"
+                            "$ref": "#/definitions/SortOrder"
                         }
                     ],
                     "example": "asc"
                 }
             }
         },
-        "pagination.SortOrder": {
+        "SortOrder": {
             "type": "string",
             "enum": [
                 "asc",
@@ -5835,597 +6956,250 @@ const docTemplate = `{
                 "SortDesc"
             ]
         },
-        "product.AdminProductDetailsResponse": {
+        "StartChallengeRequest": {
             "type": "object",
+            "required": [
+                "email"
+            ],
             "properties": {
-                "brand": {
-                    "$ref": "#/definitions/product.ProductBrandSummary"
-                },
-                "brandId": {
-                    "type": "string"
-                },
-                "category": {
-                    "$ref": "#/definitions/product.ProductCategorySummary"
-                },
-                "categoryId": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string",
-                    "example": "2026-08-05T19:00:00Z"
-                },
-                "deletedAt": {
-                    "type": "string",
-                    "example": "2026-08-05T19:30:00Z"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "highlights": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
-                },
-                "productType": {
-                    "type": "string"
-                },
-                "slug": {
-                    "type": "string"
-                },
-                "status": {
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.PublicationStatus"
-                        }
-                    ],
-                    "example": "draft"
-                },
-                "tags": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/product.ProductTagSummary"
-                    }
-                },
-                "thumbnail": {
-                    "$ref": "#/definitions/product.StorageObjectResponse"
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Wireless Headphones"
-                },
-                "updatedAt": {
-                    "type": "string",
-                    "example": "2026-08-05T19:00:00Z"
-                },
-                "variants": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/product.AdminProductVariantResponse"
-                    }
-                }
-            }
-        },
-        "product.AdminProductVariantResponse": {
-            "type": "object",
-            "properties": {
-                "attributes": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "currency": {
-                    "type": "string",
-                    "example": "USD"
-                },
-                "extractedOriginalPrice": {
-                    "type": "number",
-                    "example": 29.99
-                },
-                "extractedPrice": {
-                    "type": "number",
-                    "example": 24.99
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isDefault": {
-                    "type": "boolean"
-                },
-                "media": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/product.VariantMediaSummary"
-                    }
-                },
-                "originalPrice": {
-                    "type": "string",
-                    "example": "$29.99"
-                },
-                "price": {
-                    "type": "string",
-                    "example": "$24.99"
-                },
-                "sku": {
-                    "type": "string"
-                },
-                "stock": {
-                    "$ref": "#/definitions/product.AdminStockSummary"
-                },
-                "thumbnail": {
-                    "$ref": "#/definitions/product.StorageObjectResponse"
-                },
-                "title": {
+                "email": {
                     "type": "string"
                 }
             }
         },
-        "product.AdminStockSummary": {
+        "StartChallengeResponse": {
             "type": "object",
             "properties": {
-                "availableQuantity": {
+                "duration": {
                     "type": "integer"
                 },
-                "isInStock": {
-                    "type": "boolean"
-                },
-                "onHandQuantity": {
-                    "type": "integer"
-                },
-                "reservedQuantity": {
-                    "type": "integer"
-                }
-            }
-        },
-        "product.CreateProductRequest": {
-            "type": "object",
-            "required": [
-                "categoryId",
-                "slug",
-                "title"
-            ],
-            "properties": {
-                "brandId": {
-                    "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
-                },
-                "categoryId": {
-                    "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
-                },
-                "description": {
-                    "type": "string",
-                    "example": "Premium over-ear Bluetooth headphones with active noise cancellation."
-                },
-                "productType": {
-                    "type": "string",
-                    "example": "simple"
-                },
-                "slug": {
-                    "type": "string",
-                    "example": "wireless-noise-canceling-headphones"
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Wireless Noise-Canceling Headphones"
-                }
-            }
-        },
-        "product.CreateProductVariantRequest": {
-            "type": "object",
-            "required": [
-                "title"
-            ],
-            "properties": {
-                "attributes": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "crossedOutPrice": {
-                    "type": "integer",
-                    "example": 3999
-                },
-                "currency": {
-                    "type": "string",
-                    "example": "USD"
-                },
-                "initialStock": {
-                    "type": "integer",
-                    "example": 100
-                },
-                "isDefault": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "price": {
-                    "type": "integer",
-                    "example": 2999
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Black / XL"
-                }
-            }
-        },
-        "product.ProductBrandSummary": {
-            "type": "object",
-            "properties": {
-                "id": {
+                "email": {
                     "type": "string"
                 },
-                "link": {
-                    "type": "string"
-                },
-                "name": {
+                "expiresAt": {
                     "type": "string"
                 }
             }
         },
-        "product.ProductCategorySummary": {
+        "StorageObjectResponse": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "product.ProductListItemResponse": {
-            "type": "object",
-            "properties": {
-                "brand": {
-                    "type": "string"
-                },
-                "currency": {
+                "bucket": {
+                    "description": "Storage bucket name",
                     "type": "string",
-                    "example": "USD"
+                    "example": "product-media"
                 },
-                "extractedOriginalPrice": {
-                    "type": "number",
-                    "example": 29.99
-                },
-                "extractedPrice": {
-                    "type": "number",
-                    "example": 24.99
-                },
-                "originalPrice": {
-                    "type": "string",
-                    "example": "$29.99"
-                },
-                "price": {
-                    "type": "string",
-                    "example": "$24.99"
-                },
-                "rating": {
-                    "$ref": "#/definitions/product.ProductRatingSummaryResponse"
-                },
-                "slug": {
-                    "type": "string"
-                },
-                "thumbnail": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "product.ProductRatingSummaryResponse": {
-            "type": "object",
-            "properties": {
-                "averageRating": {
-                    "type": "number",
-                    "example": 4.5
-                },
-                "distribution": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "integer"
-                    }
-                },
-                "reviewCount": {
-                    "type": "integer",
-                    "example": 24
-                }
-            }
-        },
-        "product.ProductResponse": {
-            "type": "object",
-            "properties": {
-                "currency": {
-                    "type": "string",
-                    "example": "USD"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "extractedOriginalPrice": {
-                    "type": "number",
-                    "example": 29.99
-                },
-                "extractedPrice": {
-                    "type": "number",
-                    "example": 24.99
-                },
-                "highlights": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
-                },
-                "originalPrice": {
-                    "type": "string",
-                    "example": "$29.99"
-                },
-                "price": {
-                    "type": "string",
-                    "example": "$24.99"
-                },
-                "productType": {
-                    "type": "string"
-                },
-                "slug": {
-                    "type": "string",
-                    "example": "wireless-headphones"
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Wireless Headphones"
-                }
-            }
-        },
-        "product.ProductReviewResponse": {
-            "type": "object",
-            "properties": {
-                "body": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "orderItemId": {
-                    "type": "string"
-                },
-                "productId": {
-                    "type": "string"
-                },
-                "rating": {
-                    "type": "integer"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "product.ProductTagSummary": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "product.PutProductCategoryRequest": {
-            "type": "object",
-            "required": [
-                "categoryId"
-            ],
-            "properties": {
-                "categoryId": {
-                    "type": "string"
-                }
-            }
-        },
-        "product.PutProductTagsRequest": {
-            "type": "object",
-            "required": [
-                "tagIds"
-            ],
-            "properties": {
-                "tagIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "product.SetDefaultVariantRequest": {
-            "type": "object",
-            "required": [
-                "variantId"
-            ],
-            "properties": {
-                "variantId": {
-                    "type": "string"
-                }
-            }
-        },
-        "product.StorageObjectResponse": {
-            "type": "object",
-            "properties": {
                 "contentType": {
-                    "type": "string"
+                    "description": "MIME content type",
+                    "type": "string",
+                    "example": "image/webp"
                 },
                 "fileSize": {
-                    "type": "integer"
+                    "description": "File size in bytes",
+                    "type": "integer",
+                    "example": 1048576
                 },
-                "url": {
-                    "type": "string"
+                "id": {
+                    "description": "Internal object storage UUID",
+                    "type": "string",
+                    "example": "80000000-0000-0000-0000-000000000001"
+                },
+                "key": {
+                    "description": "Storage object key / filepath",
+                    "type": "string",
+                    "example": "variants/70000000/image.webp"
+                },
+                "publicUrl": {
+                    "description": "Public CDN URL",
+                    "type": "string",
+                    "example": "https://example.com/media/image.webp"
                 }
             }
         },
-        "product.UpdateProductRequest": {
+        "SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                },
+                "meta": {}
+            }
+        },
+        "TagResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Unique UUID identifier of the tag",
+                    "type": "string",
+                    "example": "50000000-0000-0000-0000-000000000001"
+                },
+                "name": {
+                    "description": "Tag label name",
+                    "type": "string",
+                    "example": "Featured"
+                }
+            }
+        },
+        "UnauthorizedErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "UNAUTHORIZED"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Authentication token is missing or expired"
+                }
+            }
+        },
+        "UnauthorizedResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "UNAUTHORIZED"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Authentication token is missing or invalid"
+                }
+            }
+        },
+        "UpdateBrandRequest": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "description": "Updated official website URL",
+                    "type": "string",
+                    "example": "https://apple.com"
+                },
+                "logoObjectId": {
+                    "description": "Object storage UUID of the brand logo",
+                    "type": "string",
+                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                },
+                "name": {
+                    "description": "Updated brand name",
+                    "type": "string",
+                    "example": "Apple Inc."
+                }
+            }
+        },
+        "UpdateCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "Updated category name",
+                    "type": "string",
+                    "example": "Gaming Laptops"
+                },
+                "parentId": {
+                    "description": "Updated parent category UUID",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
+                }
+            }
+        },
+        "UpdateOrderStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "notes": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/OrderStatus"
+                }
+            }
+        },
+        "UpdateProductRequest": {
             "type": "object",
             "properties": {
                 "brandId": {
-                    "type": "string"
+                    "description": "Optional updated brand UUID",
+                    "type": "string",
+                    "example": "30000000-0000-0000-0000-000000000001"
                 },
                 "categoryId": {
-                    "type": "string"
+                    "description": "Optional updated category UUID",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
                 },
                 "description": {
-                    "type": "string"
+                    "description": "Updated product description",
+                    "type": "string",
+                    "example": "Updated description with enhanced specs."
                 },
                 "highlights": {
+                    "description": "Key product highlight bullet points",
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "['Active Noise Cancellation'",
+                        "'Up to 30h battery']"
+                    ]
                 },
                 "productType": {
+                    "description": "Product type classification: 'simple' or 'variable'",
                     "type": "string",
                     "example": "simple"
                 },
                 "title": {
-                    "type": "string"
+                    "description": "Updated product title",
+                    "type": "string",
+                    "example": "Wireless Noise-Canceling Headphones Pro"
                 }
             }
         },
-        "product.VariantMediaSummary": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "mediaType": {
-                    "type": "string"
-                },
-                "sortOrder": {
-                    "type": "integer"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "review.CreateReviewRequest": {
+        "UpdateQuantityRequest": {
             "type": "object",
             "required": [
-                "orderItemId",
-                "productId",
-                "rating"
+                "quantity"
             ],
             "properties": {
+                "quantity": {
+                    "description": "New total quantity desired for this cart item (must be at least 1)",
+                    "type": "integer",
+                    "example": 3
+                }
+            }
+        },
+        "UpdateReviewRequest": {
+            "type": "object",
+            "properties": {
                 "body": {
+                    "description": "Updated review feedback narrative",
                     "type": "string",
-                    "example": "The sound quality and active noise cancellation are top notch."
-                },
-                "orderItemId": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                },
-                "productId": {
-                    "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                    "example": "Updated feedback after 3 months of continuous daily use."
                 },
                 "rating": {
+                    "description": "Updated star score between 1 and 5",
                     "type": "integer",
                     "maximum": 5,
                     "minimum": 1,
                     "example": 5
                 },
                 "title": {
+                    "description": "Updated review headline title",
                     "type": "string",
-                    "example": "Amazing headphones!"
+                    "example": "Updated review headline"
                 }
             }
         },
-        "review.ReviewResponse": {
-            "type": "object",
-            "properties": {
-                "body": {
-                    "type": "string",
-                    "example": "The sound quality is top notch."
-                },
-                "createdAt": {
-                    "type": "string",
-                    "example": "2026-08-10T15:00:00Z"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "8f123456-e89b-12d3-a456-426614174000"
-                },
-                "orderItemId": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                },
-                "productId": {
-                    "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
-                },
-                "rating": {
-                    "type": "integer",
-                    "example": 5
-                },
-                "status": {
-                    "type": "string",
-                    "example": "pending"
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Amazing headphones!"
-                },
-                "updatedAt": {
-                    "type": "string",
-                    "example": "2026-08-10T15:00:00Z"
-                },
-                "userId": {
-                    "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
-                }
-            }
-        },
-        "review.UpdateReviewRequest": {
-            "type": "object",
-            "properties": {
-                "body": {
-                    "type": "string",
-                    "example": "Updated review body."
-                },
-                "rating": {
-                    "type": "integer",
-                    "maximum": 5,
-                    "minimum": 1,
-                    "example": 4
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Updated title"
-                }
-            }
-        },
-        "review.UpdateReviewStatusRequest": {
+        "UpdateReviewStatusRequest": {
             "type": "object",
             "required": [
                 "status"
             ],
             "properties": {
                 "status": {
+                    "description": "Moderation state: pending, approved, rejected",
                     "type": "string",
                     "enum": [
                         "pending",
@@ -6436,452 +7210,237 @@ const docTemplate = `{
                 }
             }
         },
-        "tag.AdminTagResponse": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string",
-                    "example": "2026-06-30T15:47:19Z"
-                },
-                "deletedAt": {
-                    "type": "string",
-                    "example": "2026-06-30T15:47:19Z"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "black-friday"
-                },
-                "updatedAt": {
-                    "type": "string",
-                    "example": "2026-06-30T15:47:19Z"
-                }
-            }
-        },
-        "tag.CreateTagRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "example": "black-friday"
-                }
-            }
-        },
-        "tag.TagResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string",
-                    "example": "c8ccec1c-ded5-4380-9f78-a1d4eb3d4f28"
-                },
-                "name": {
-                    "type": "string",
-                    "example": "black-friday"
-                }
-            }
-        },
-        "tag.UpdateTagRequest": {
+        "UpdateTagRequest": {
             "type": "object",
             "properties": {
                 "name": {
+                    "description": "Updated tag label name",
                     "type": "string",
-                    "example": "best-seller"
+                    "example": "Best Seller"
                 }
             }
         },
-        "variant.AdjustStockRequest": {
-            "type": "object",
-            "required": [
-                "quantity",
-                "reason"
-            ],
-            "properties": {
-                "quantity": {
-                    "type": "integer",
-                    "example": 50
-                },
-                "reason": {
-                    "type": "string",
-                    "enum": [
-                        "restock",
-                        "sale",
-                        "return",
-                        "adjustment",
-                        "reservation_release"
-                    ],
-                    "example": "restock"
-                }
-            }
-        },
-        "variant.AdminVariantResponse": {
+        "UpdateVariantRequest": {
             "type": "object",
             "properties": {
                 "attributes": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "createdAt": {
-                    "type": "string",
-                    "example": "2026-08-02T16:00:00Z"
-                },
-                "currency": {
-                    "type": "string",
-                    "example": "USD"
-                },
-                "deletedAt": {
-                    "type": "string",
-                    "example": "2026-08-02T16:15:00Z"
-                },
-                "extractedOriginalPrice": {
-                    "type": "number",
-                    "example": 29.99
-                },
-                "extractedPrice": {
-                    "type": "number",
-                    "example": 24.99
-                },
-                "id": {
-                    "type": "string",
-                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
-                },
-                "isDefault": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "media": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/variant.VariantMediaSummary"
-                    }
-                },
-                "originalPrice": {
-                    "type": "string",
-                    "example": "$29.99"
-                },
-                "price": {
-                    "type": "string",
-                    "example": "$24.99"
-                },
-                "productId": {
-                    "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
-                },
-                "sku": {
-                    "type": "string",
-                    "example": "prod_var_123"
-                },
-                "thumbnail": {
-                    "$ref": "#/definitions/variant.StorageObjectResponse"
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Red / XL"
-                },
-                "updatedAt": {
-                    "type": "string",
-                    "example": "2026-08-02T16:00:00Z"
-                }
-            }
-        },
-        "variant.AttachMediaRequest": {
-            "type": "object",
-            "required": [
-                "mediaType",
-                "storageObjectId"
-            ],
-            "properties": {
-                "mediaType": {
-                    "type": "string",
-                    "example": "image"
-                },
-                "sortOrder": {
-                    "type": "integer",
-                    "example": 0
-                },
-                "storageObjectId": {
-                    "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
-                }
-            }
-        },
-        "variant.CreateVariantRequest": {
-            "type": "object",
-            "required": [
-                "title"
-            ],
-            "properties": {
-                "attributes": {
+                    "description": "Updated attributes map",
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "crossedOutPrice": {
+                    "description": "Updated original price in cents",
                     "type": "integer",
-                    "example": 3999
+                    "example": 299900
                 },
                 "currency": {
+                    "description": "Currency ISO code",
                     "type": "string",
                     "example": "USD"
                 },
                 "isDefault": {
+                    "description": "Updated default selection flag",
                     "type": "boolean",
-                    "example": false
+                    "example": true
                 },
                 "price": {
+                    "description": "Updated price in cents",
                     "type": "integer",
-                    "example": 2999
+                    "example": 249900
+                },
+                "sku": {
+                    "description": "Updated SKU identifier",
+                    "type": "string",
+                    "example": "MAC-PRO-16-BLK-18"
                 },
                 "thumbnailObjectId": {
+                    "description": "Updated thumbnail storage object UUID",
                     "type": "string",
                     "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
                 },
                 "title": {
+                    "description": "Updated variant display title",
                     "type": "string",
-                    "example": "Red / XL"
+                    "example": "Space Black, 18GB RAM, 512GB SSD"
                 }
             }
         },
-        "variant.InventoryLedgerResponse": {
+        "UserSession": {
             "type": "object",
             "properties": {
                 "createdAt": {
-                    "type": "string",
-                    "example": "2026-08-15T12:00:00Z"
+                    "type": "string"
+                },
+                "currentRefreshJti": {
+                    "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "ipAddress": {
+                    "type": "string"
+                },
+                "lastActive": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/SessionType"
+                },
+                "userAgent": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "VariantMediaResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Media record UUID",
                     "type": "string",
                     "example": "80000000-0000-0000-0000-000000000001"
                 },
-                "quantity": {
-                    "type": "integer",
-                    "example": 50
-                },
-                "reason": {
-                    "type": "string",
-                    "example": "restock"
-                },
-                "variantId": {
-                    "type": "string",
-                    "example": "70000000-0000-0000-0000-000000000001"
-                }
-            }
-        },
-        "variant.InventoryStockResponse": {
-            "type": "object",
-            "properties": {
-                "availableQuantity": {
-                    "type": "integer",
-                    "example": 45
-                },
-                "isInStock": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "onHandQuantity": {
-                    "type": "integer",
-                    "example": 50
-                },
-                "reservedQuantity": {
-                    "type": "integer",
-                    "example": 5
-                },
-                "variantId": {
-                    "type": "string",
-                    "example": "70000000-0000-0000-0000-000000000001"
-                }
-            }
-        },
-        "variant.PublicStockResponse": {
-            "type": "object",
-            "properties": {
-                "availableQuantity": {
-                    "type": "integer",
-                    "example": 45
-                },
-                "isInStock": {
-                    "type": "boolean",
-                    "example": true
-                }
-            }
-        },
-        "variant.ReorderMediaRequest": {
-            "type": "object",
-            "required": [
-                "orderedMediaIds"
-            ],
-            "properties": {
-                "orderedMediaIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "variant.StorageObjectResponse": {
-            "type": "object",
-            "properties": {
-                "bucket": {
-                    "type": "string"
-                },
-                "contentType": {
-                    "type": "string"
-                },
-                "fileSize": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "key": {
-                    "type": "string"
-                },
-                "publicUrl": {
-                    "type": "string"
-                }
-            }
-        },
-        "variant.UpdateVariantRequest": {
-            "type": "object",
-            "properties": {
-                "attributes": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "crossedOutPrice": {
-                    "type": "integer",
-                    "example": 4499
-                },
-                "currency": {
-                    "type": "string",
-                    "example": "USD"
-                },
-                "isDefault": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "price": {
-                    "type": "integer",
-                    "example": 3499
-                },
-                "thumbnailObjectId": {
-                    "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
-                },
-                "title": {
-                    "type": "string",
-                    "example": "Red / XXL"
-                }
-            }
-        },
-        "variant.VariantMediaResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string",
-                    "example": "8f123456-e89b-12d3-a456-426614174000"
-                },
                 "mediaType": {
+                    "description": "Media classification (image or video)",
                     "type": "string",
                     "example": "image"
                 },
                 "object": {
-                    "$ref": "#/definitions/variant.StorageObjectResponse"
+                    "description": "Detailed storage file metadata",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/StorageObjectResponse"
+                        }
+                    ]
                 },
                 "objectId": {
+                    "description": "Underlying storage object UUID",
                     "type": "string",
-                    "example": "a1b2c3d4-e5f6-7890-1234-56789abcdef0"
-                },
-                "publicId": {
-                    "type": "string",
-                    "example": "8f123456-e89b-12d3-a456-426614174000"
+                    "example": "80000000-0000-0000-0000-000000000001"
                 },
                 "sortOrder": {
+                    "description": "Display sequence sort order",
                     "type": "integer",
-                    "example": 0
+                    "example": 1
                 },
                 "variantId": {
+                    "description": "Associated variant UUID",
                     "type": "string",
-                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                    "example": "70000000-0000-0000-0000-000000000001"
                 }
             }
         },
-        "variant.VariantMediaSummary": {
+        "VariantMediaSummary": {
             "type": "object",
             "properties": {
                 "id": {
-                    "type": "string"
+                    "description": "Media record UUID",
+                    "type": "string",
+                    "example": "80000000-0000-0000-0000-000000000001"
                 },
                 "mediaType": {
-                    "type": "string"
+                    "description": "Media MIME type or format (e.g. image/jpeg, video/mp4)",
+                    "type": "string",
+                    "example": "image/jpeg"
                 },
                 "sortOrder": {
-                    "type": "integer"
+                    "description": "Display sequence sort order",
+                    "type": "integer",
+                    "example": 1
                 },
                 "url": {
-                    "type": "string"
+                    "description": "Public CDN or storage URL",
+                    "type": "string",
+                    "example": "https://example.com/media/headphones.jpg"
                 }
             }
         },
-        "variant.VariantResponse": {
+        "VariantResponse": {
             "type": "object",
             "properties": {
                 "attributes": {
+                    "description": "Custom variant attributes",
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "currency": {
+                    "description": "Currency ISO code",
                     "type": "string",
                     "example": "USD"
                 },
                 "extractedOriginalPrice": {
+                    "description": "Numeric original price value",
                     "type": "number",
-                    "example": 29.99
+                    "example": 2999
                 },
                 "extractedPrice": {
+                    "description": "Numeric active price value",
                     "type": "number",
-                    "example": 24.99
+                    "example": 2499
                 },
                 "id": {
+                    "description": "Variant UUID",
                     "type": "string",
-                    "example": "96c4e462-ed4a-4fec-9115-47cbf12206a7"
+                    "example": "70000000-0000-0000-0000-000000000001"
                 },
                 "isDefault": {
+                    "description": "True if this is the default variant",
                     "type": "boolean",
-                    "example": false
+                    "example": true
                 },
                 "media": {
+                    "description": "Attached gallery media assets",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/variant.VariantMediaSummary"
+                        "$ref": "#/definitions/VariantMediaSummary"
                     }
                 },
                 "originalPrice": {
+                    "description": "Formatted original crossed-out price",
                     "type": "string",
-                    "example": "$29.99"
+                    "example": "$2999.00"
                 },
                 "price": {
+                    "description": "Formatted active display price",
                     "type": "string",
-                    "example": "$24.99"
+                    "example": "$2499.00"
                 },
                 "productId": {
+                    "description": "Parent product UUID",
                     "type": "string",
-                    "example": "356cbaee-4700-4af5-ac9c-61aeeafd541c"
+                    "example": "60000000-0000-0000-0000-000000000001"
                 },
                 "sku": {
-                    "type": "string"
+                    "description": "Stock Keeping Unit",
+                    "type": "string",
+                    "example": "MAC-PRO-16-BLK-18"
                 },
                 "thumbnail": {
-                    "type": "string"
+                    "description": "Primary thumbnail image URL",
+                    "type": "string",
+                    "example": "https://example.com/thumb.jpg"
                 },
                 "title": {
+                    "description": "Variant title",
                     "type": "string",
-                    "example": "Red / XL"
+                    "example": "Space Black, 18GB RAM, 512GB SSD"
+                }
+            }
+        },
+        "VerifyChallengeRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "email"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
                 }
             }
         }

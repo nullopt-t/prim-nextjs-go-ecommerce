@@ -271,6 +271,7 @@ type ProductReviewResponse struct {
 	UpdatedAt string `json:"updatedAt" example:"2026-08-13T07:56:17Z"`
 }
 
+
 // --- DTOs: Media ---
 
 type StorageObjectResponse struct {
@@ -750,6 +751,7 @@ func (h *ProductHandler) ListProductReviews(c *gin.Context) {
 			UpdatedAt:   rv.UpdatedAt.Format(time.RFC3339),
 		})
 	}
+
 
 	c.JSON(http.StatusOK, api.PaginatedResponse{
 		Data: responses,

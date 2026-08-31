@@ -577,8 +577,7 @@ brands = []
 brand_id_by_name = {}
 for i, (name, link, logo_id) in enumerate(brands_list, 1):
     b_id = hex_id(0x30000000, i*2 - 1)
-    b_pub = hex_id(0x30000000, i*2)
-    brands.append((b_id, b_pub, name, link, logo_id))
+    brands.append((b_id, name, link, logo_id))
     brand_id_by_name[name] = b_id
 
 tag_names = ['Featured', 'Sale', 'New Arrival', 'Best Seller', 'Trending', 'Limited Edition', 'Eco-Friendly', "Editor's Choice"]
@@ -590,16 +589,16 @@ for i, name in enumerate(tag_names, 1):
     tag_id_by_name[name] = t_id
 
 categories = [
-    (hex_id(0x40000000, 1), hex_id(0x40000000, 2), None, 'Electronics'),
-    (hex_id(0x40000000, 3), hex_id(0x40000000, 4), None, 'Apparel'),
-    (hex_id(0x40000000, 5), hex_id(0x40000000, 6), hex_id(0x40000000, 1), 'Laptops'),
-    (hex_id(0x40000000, 7), hex_id(0x40000000, 8), hex_id(0x40000000, 1), 'Smartphones'),
-    (hex_id(0x40000000, 9), hex_id(0x40000000, 10), hex_id(0x40000000, 3), 'Shoes'),
-    (hex_id(0x40000000, 11), hex_id(0x40000000, 12), hex_id(0x40000000, 1), 'Audio & Headphones'),
-    (hex_id(0x40000000, 13), hex_id(0x40000000, 14), hex_id(0x40000000, 1), 'Tablets & Wearables'),
-    (hex_id(0x40000000, 15), hex_id(0x40000000, 16), hex_id(0x40000000, 3), 'Outerwear'),
-    (hex_id(0x40000000, 17), hex_id(0x40000000, 18), hex_id(0x40000000, 1), 'Computer Accessories'),
-    (hex_id(0x40000000, 19), hex_id(0x40000000, 20), hex_id(0x40000000, 1), 'Gaming Consoles'),
+    (hex_id(0x40000000, 1), None, 'Electronics'),
+    (hex_id(0x40000000, 3), None, 'Apparel'),
+    (hex_id(0x40000000, 5), hex_id(0x40000000, 1), 'Laptops'),
+    (hex_id(0x40000000, 7), hex_id(0x40000000, 1), 'Smartphones'),
+    (hex_id(0x40000000, 9), hex_id(0x40000000, 3), 'Shoes'),
+    (hex_id(0x40000000, 11), hex_id(0x40000000, 1), 'Audio & Headphones'),
+    (hex_id(0x40000000, 13), hex_id(0x40000000, 1), 'Tablets & Wearables'),
+    (hex_id(0x40000000, 15), hex_id(0x40000000, 3), 'Outerwear'),
+    (hex_id(0x40000000, 17), hex_id(0x40000000, 1), 'Computer Accessories'),
+    (hex_id(0x40000000, 19), hex_id(0x40000000, 1), 'Gaming Consoles'),
 ]
 
 cat_id_by_name = {
@@ -671,17 +670,15 @@ for cat_name, brand_name, title, slug, desc, highlights, var_list in catalog_def
         variants.append((v_id, v_sku, p_id, is_def, v_title, v_price, v_cross, 'USD', v_attrs, v_thumb_id))
         
         # 1. Primary Hero Image (sort_order = 0)
-        vm_id = hex_id(0x71000000, vmedia_counter*2 - 1)
-        vm_pub = hex_id(0x71000000, vmedia_counter*2)
-        variant_media.append((vm_id, vm_pub, v_id, v_thumb_id, 'image', 0))
+        vm_id = hex_id(0x71000000, vmedia_counter)
+        variant_media.append((vm_id, v_id, v_thumb_id, 'image', 0))
         vmedia_counter += 1
         
         # 2. Add extra gallery images for each variant (sort_order = 1, 2, ...)
         for order_idx, extra_img in enumerate(extra_angles, 1):
             extra_obj_id = image_to_obj_id[extra_img]
-            vm_id_extra = hex_id(0x71000000, vmedia_counter*2 - 1)
-            vm_pub_extra = hex_id(0x71000000, vmedia_counter*2)
-            variant_media.append((vm_id_extra, vm_pub_extra, v_id, extra_obj_id, 'image', order_idx))
+            vm_id_extra = hex_id(0x71000000, vmedia_counter)
+            variant_media.append((vm_id_extra, v_id, extra_obj_id, 'image', order_idx))
             vmedia_counter += 1
         
         inv_id = hex_id(0x81000000, inv_counter)
@@ -728,8 +725,8 @@ lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 lines.append("-- =====================================================================")
 lines.append("-- 4. BRANDS")
 lines.append("-- =====================================================================")
-lines.append("INSERT INTO product_brands (id, public_id, name, link, logo_object_id, created_at, updated_at) VALUES")
-val_rows = [f"({esc(b[0])}, {esc(b[1])}, {esc(b[2])}, {esc(b[3])}, {esc(b[4])}, now() - INTERVAL '50 days', now() - INTERVAL '50 days')" for b in brands]
+lines.append("INSERT INTO product_brands (id, name, link, logo_object_id, created_at, updated_at) VALUES")
+val_rows = [f"({esc(b[0])}, {esc(b[1])}, {esc(b[2])}, {esc(b[3])}, now() - INTERVAL '50 days', now() - INTERVAL '50 days')" for b in brands]
 lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 
 # 5. tags
@@ -744,8 +741,8 @@ lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 lines.append("-- =====================================================================")
 lines.append("-- 6. CATEGORIES")
 lines.append("-- =====================================================================")
-lines.append("INSERT INTO product_categories (id, public_id, parent_id, name, created_at, updated_at) VALUES")
-val_rows = [f"({esc(c[0])}, {esc(c[1])}, {esc(c[2])}, {esc(c[3])}, now() - INTERVAL '50 days', now() - INTERVAL '50 days')" for c in categories]
+lines.append("INSERT INTO product_categories (id, parent_id, name, created_at, updated_at) VALUES")
+val_rows = [f"({esc(c[0])}, {esc(c[1])}, {esc(c[2])}, now() - INTERVAL '50 days', now() - INTERVAL '50 days')" for c in categories]
 lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 
 # 7. category_attributes
@@ -784,8 +781,8 @@ lines.append(",\n".join(val_rows) + "\nON CONFLICT (product_id, tag_id) DO NOTHI
 lines.append("-- =====================================================================")
 lines.append("-- 11. VARIANT MEDIA")
 lines.append("-- =====================================================================")
-lines.append("INSERT INTO variant_media (id, public_id, variant_id, object_id, media_type, sort_order) VALUES")
-val_rows = [f"({esc(vm[0])}, {esc(vm[1])}, {esc(vm[2])}, {esc(vm[3])}, {esc(vm[4])}, {vm[5]})" for vm in variant_media]
+lines.append("INSERT INTO variant_media (id, variant_id, object_id, media_type, sort_order) VALUES")
+val_rows = [f"({esc(vm[0])}, {esc(vm[1])}, {esc(vm[2])}, {esc(vm[3])}, {vm[4]})" for vm in variant_media]
 lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 
 # 12. inventory_ledgers
@@ -860,6 +857,7 @@ reviews_data = []
 payments_data = []
 
 review_templates = {
+
     5: [
         ("Exceptional quality and performance!", "Exceeded all my expectations. The build quality and speed are truly second to none."),
         ("Best purchase this year, hands down", "Works flawlessly out of the box. Absolutely worth every single penny."),
@@ -923,10 +921,11 @@ for p_idx, prod in enumerate(products):
         rating_score = random.choices([5, 4, 3], weights=[70, 25, 5])[0]
         t_title, t_body = random.choice(review_templates[rating_score])
         reviews_data.append((rev_id, p_id, u_id, oi_id, rating_score, t_title, t_body, 'approved'))
-        
+
         o_counter += 1
         oi_counter += 1
         rev_counter += 1
+
 
 # Insert Orders
 lines.append("INSERT INTO orders (id, customer_id, customer_email, shipping_address, billing_address, status, coupon_id, discount_amount, total_amount, currency, created_at, updated_at) VALUES")
@@ -986,6 +985,7 @@ lines.append(f"""INSERT INTO wishlist_items (id, user_id, product_id, created_at
 ('e0000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', '{products[1][0]}', now() - INTERVAL '15 days')
 ON CONFLICT (id) DO NOTHING;
 """)
+
 
 lines.append("\nCOMMIT;\n")
 

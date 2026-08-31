@@ -170,8 +170,6 @@ type StorageObjectResponse struct {
 type VariantMediaResponse struct {
 	// Media record UUID
 	ID string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
-	// Public customer-facing UUID
-	PublicID string `json:"publicId" example:"80000000-0000-0000-0000-000000000001"`
 	// Associated variant UUID
 	VariantID string `json:"variantId" example:"70000000-0000-0000-0000-000000000001"`
 	// Underlying storage object UUID
@@ -326,7 +324,6 @@ func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
 func mapVariantMediaResponse(m *model.VariantMedia) VariantMediaResponse {
 	res := VariantMediaResponse{
 		ID:        m.ID.String(),
-		PublicID:  m.PublicID.String(),
 		VariantID: m.VariantID.String(),
 		ObjectID:  m.ObjectID.String(),
 		MediaType: m.MediaType,

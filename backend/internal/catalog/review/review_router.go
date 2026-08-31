@@ -43,3 +43,5 @@ func (r *ReviewRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.DELETE("/:id", r.rh.AdminDeleteReview)
 	}
 }
+
+

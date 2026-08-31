@@ -17,7 +17,10 @@ type ReviewService struct {
 	repo     *ReviewRepository
 }
 
-func NewService(dbRunner database.Runner, repo *ReviewRepository) *ReviewService {
+func NewService(
+	dbRunner database.Runner,
+	repo *ReviewRepository,
+) *ReviewService {
 	return &ReviewService{
 		dbRunner: dbRunner,
 		repo:     repo,
@@ -27,7 +30,7 @@ func NewService(dbRunner database.Runner, repo *ReviewRepository) *ReviewService
 type CreateReviewInput struct {
 	ProductID   uuid.UUID
 	UserID      uuid.UUID
-	OrderItemID uuid.UUID
+	OrderItemID *uuid.UUID
 	Rating      int16
 	Title       *string
 	Body        *string
@@ -47,39 +50,44 @@ func (s *ReviewService) CreateReview(
 		return nil, apierr.ErrValidationFailed("rating must be between 1 and 5")
 	}
 
-	rv := &model.Review{
-		ID:          uuid.New(),
-		ProductID:   in.ProductID,
-		UserID:      in.UserID,
-		OrderItemID: in.OrderItemID,
-		Rating:      in.Rating,
-		Title:       in.Title,
-		Body:        in.Body,
-		Status:      model.ReviewStatusPending,
-	}
-
+	var targetOrderItemID uuid.UUID
+	var createdReview *model.Review
 	var apiErr *apierr.APIError
+
 	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
-		// 1. Verify purchase
-		pv, err := s.repo.VerifyPurchase(ctx, tx, in.OrderItemID)
-		if err != nil {
-			return apierr.ErrInternalError("failed to verify purchase").Wrap(err)
-		}
-		if pv == nil {
-			return apierr.ErrNotFound("order item not found")
-		}
-		if pv.CustomerID == nil || *pv.CustomerID != in.UserID {
-			return apierr.ErrForbidden("you can only review products from your own orders")
-		}
-		if pv.ProductID != in.ProductID {
-			return apierr.ErrBadRequest("order item does not belong to the specified product")
-		}
-		if pv.OrderStatus == model.OrderStatusCanceled || pv.OrderStatus == model.OrderStatusRefunded {
-			return apierr.ErrBadRequest("cannot review items from canceled or refunded orders")
+		if in.OrderItemID != nil && *in.OrderItemID != uuid.Nil {
+			targetOrderItemID = *in.OrderItemID
+			// 1. Verify specific purchase
+			pv, err := s.repo.VerifyPurchase(ctx, tx, targetOrderItemID)
+			if err != nil {
+				return apierr.ErrInternalError("failed to verify purchase").Wrap(err)
+			}
+			if pv == nil {
+				return apierr.ErrNotFound("order item not found")
+			}
+			if pv.CustomerID == nil || *pv.CustomerID != in.UserID {
+				return apierr.ErrForbidden("you can only review products from your own orders")
+			}
+			if pv.ProductID != in.ProductID {
+				return apierr.ErrBadRequest("order item does not belong to the specified product")
+			}
+			if pv.OrderStatus == model.OrderStatusCanceled || pv.OrderStatus == model.OrderStatusRefunded {
+				return apierr.ErrBadRequest("cannot review items from canceled or refunded orders")
+			}
+		} else {
+			// Auto-resolve eligible delivered purchase for this user and product
+			eligibleID, err := s.repo.FindEligibleOrderItem(ctx, tx, in.UserID, in.ProductID)
+			if err != nil {
+				return apierr.ErrInternalError("failed to verify purchase eligibility").Wrap(err)
+			}
+			if eligibleID == uuid.Nil {
+				return apierr.ErrForbidden("you can only review products you have purchased and received (delivered)")
+			}
+			targetOrderItemID = eligibleID
 		}
 
 		// 2. Check if already reviewed
-		existing, err := s.repo.GetByOrderItemID(ctx, tx, in.OrderItemID)
+		existing, err := s.repo.GetByOrderItemID(ctx, tx, targetOrderItemID)
 		if err != nil {
 			return apierr.ErrInternalError("failed to check existing review").Wrap(err)
 		}
@@ -89,9 +97,23 @@ func (s *ReviewService) CreateReview(
 		}
 
 		// 3. Create review
+		reviewID := uuid.New()
+		rv := &model.Review{
+			ID:          reviewID,
+			ProductID:   in.ProductID,
+			UserID:      in.UserID,
+			OrderItemID: targetOrderItemID,
+			Rating:      in.Rating,
+			Title:       in.Title,
+			Body:        in.Body,
+			Status:      model.ReviewStatusPending,
+		}
+
 		if err := s.repo.Create(ctx, tx, rv); err != nil {
 			return apierr.ErrInternalError("failed to create review").Wrap(err)
 		}
+
+		createdReview = rv
 		return nil
 	})
 
@@ -102,12 +124,13 @@ func (s *ReviewService) CreateReview(
 		return nil, apierr.ErrInternalError("failed to create review").Wrap(err)
 	}
 
-	return rv, nil
+	return createdReview, nil
 }
 
 func (s *ReviewService) GetReviewByID(ctx context.Context, id uuid.UUID) (*model.Review, error) {
 	var rv *model.Review
 	var err error
+
 	err = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		rv, err = s.repo.GetByID(ctx, db, id)
 		return err
@@ -118,6 +141,7 @@ func (s *ReviewService) GetReviewByID(ctx context.Context, id uuid.UUID) (*model
 	if rv == nil {
 		return nil, apierr.ErrNotFound("review not found")
 	}
+
 	return rv, nil
 }
 
@@ -189,6 +213,7 @@ func (s *ReviewService) UpdateUserReview(
 		if err := s.repo.Update(ctx, tx, rv); err != nil {
 			return apierr.ErrInternalError("failed to update review").Wrap(err)
 		}
+
 		updatedReview = rv
 		return nil
 	})
@@ -296,3 +321,4 @@ func (s *ReviewService) ListReviews(
 	page := pagination.NewPage(q.Page, q.PageSize, total)
 	return pagination.NewPagedResult(reviewPtrs, page), nil
 }
+

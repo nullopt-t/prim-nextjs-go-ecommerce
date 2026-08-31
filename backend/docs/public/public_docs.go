@@ -2402,7 +2402,6 @@ const docTemplatepublic = `{
         "CreateReviewRequest": {
             "type": "object",
             "required": [
-                "orderItemId",
                 "productId",
                 "rating"
             ],
@@ -2413,7 +2412,7 @@ const docTemplatepublic = `{
                     "example": "The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."
                 },
                 "orderItemId": {
-                    "description": "Purchased Order Item UUID verifying buyer eligibility",
+                    "description": "Optional purchased Order Item UUID (if omitted, server automatically verifies buyer eligibility from delivered orders)",
                     "type": "string",
                     "example": "91000000-0000-0000-0000-000000000001"
                 },
@@ -3360,11 +3359,6 @@ const docTemplatepublic = `{
                 },
                 "objectId": {
                     "description": "Underlying storage object UUID",
-                    "type": "string",
-                    "example": "80000000-0000-0000-0000-000000000001"
-                },
-                "publicId": {
-                    "description": "Public customer-facing UUID",
                     "type": "string",
                     "example": "80000000-0000-0000-0000-000000000001"
                 },

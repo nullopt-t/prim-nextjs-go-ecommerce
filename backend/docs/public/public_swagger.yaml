@@ -219,7 +219,8 @@ definitions:
         example: The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly.
         type: string
       orderItemId:
-        description: Purchased Order Item UUID verifying buyer eligibility
+        description: Optional purchased Order Item UUID (if omitted, server automatically
+          verifies buyer eligibility from delivered orders)
         example: 91000000-0000-0000-0000-000000000001
         type: string
       productId:
@@ -237,7 +238,6 @@ definitions:
         example: Unbelievable performance!
         type: string
     required:
-    - orderItemId
     - productId
     - rating
     type: object
@@ -907,10 +907,6 @@ definitions:
         description: Detailed storage file metadata
       objectId:
         description: Underlying storage object UUID
-        example: 80000000-0000-0000-0000-000000000001
-        type: string
-      publicId:
-        description: Public customer-facing UUID
         example: 80000000-0000-0000-0000-000000000001
         type: string
       sortOrder:

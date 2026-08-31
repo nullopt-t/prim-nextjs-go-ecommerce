@@ -49,7 +49,7 @@ type AdminCategoryResponse struct {
 
 func toPublicCategoryResponse(c *model.ProductCategory) PublicCategoryResponse {
 	return PublicCategoryResponse{
-		ID:   c.PublicID,
+		ID:   c.ID.String(),
 		Name: c.Name,
 	}
 }
