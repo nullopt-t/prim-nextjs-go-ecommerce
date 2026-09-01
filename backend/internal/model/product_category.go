@@ -10,8 +10,6 @@ import (
 type ProductCategory struct {
 	// ID is the unique internal database UUID.
 	ID uuid.UUID
-	// PublicID is the customer-facing public identifier string.
-	PublicID string
 
 	// ParentID is the optional UUID of the parent category (nil for root categories).
 	ParentID *uuid.UUID

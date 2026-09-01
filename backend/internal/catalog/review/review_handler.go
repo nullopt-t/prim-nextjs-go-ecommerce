@@ -23,8 +23,8 @@ func NewHandler(s *ReviewService) *ReviewHandler {
 type CreateReviewRequest struct {
 	// Product UUID to review
 	ProductID string `json:"productId" binding:"required,uuid" example:"60000000-0000-0000-0000-000000000001"`
-	// Purchased Order Item UUID verifying buyer eligibility
-	OrderItemID string `json:"orderItemId" binding:"required,uuid" example:"91000000-0000-0000-0000-000000000001"`
+	// Optional purchased Order Item UUID (if omitted, server automatically verifies buyer eligibility from delivered orders)
+	OrderItemID *string `json:"orderItemId,omitempty" binding:"omitempty,uuid" example:"91000000-0000-0000-0000-000000000001"`
 	// Star score between 1 and 5
 	Rating int16 `json:"rating" binding:"required,min=1,max=5" example:"5"`
 	// Optional review headline title
@@ -32,6 +32,7 @@ type CreateReviewRequest struct {
 	// Review detailed feedback narrative
 	Body *string `json:"body,omitempty" example:"The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."`
 }
+
 
 type UpdateReviewRequest struct {
 	// Updated star score between 1 and 5
@@ -94,6 +95,7 @@ func mapReviewToResponse(r *model.Review) ReviewResponse {
 	}
 }
 
+
 func mapRatingSummaryResponse(s *model.RatingSummary) RatingSummaryResponse {
 	if s == nil {
 		return RatingSummaryResponse{
@@ -152,10 +154,14 @@ func (h *ReviewHandler) CreateReview(c *gin.Context) {
 		return
 	}
 
-	orderItemID, err := uuid.Parse(req.OrderItemID)
-	if err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid order item id"))
-		return
+	var orderItemID *uuid.UUID
+	if req.OrderItemID != nil && *req.OrderItemID != "" {
+		parsedID, err := uuid.Parse(*req.OrderItemID)
+		if err != nil {
+			_ = c.Error(apierr.ErrValidationFailed("invalid order item id"))
+			return
+		}
+		orderItemID = &parsedID
 	}
 
 	userID, err := getUserIDFromContext(c)
@@ -179,6 +185,7 @@ func (h *ReviewHandler) CreateReview(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, api.DataResponse{Data: mapReviewToResponse(rv)})
 }
+
 
 // GetMyReviews godoc
 //
@@ -519,3 +526,5 @@ func (h *ReviewHandler) AdminDeleteReview(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "review deleted successfully"})
 }
+
+

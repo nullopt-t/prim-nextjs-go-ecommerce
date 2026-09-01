@@ -75,9 +75,9 @@ func (s *InventoryTestSuite) SetupSuite() {
 	// Create base Category and Product for Foreign Key relations
 	s.categoryID = uuid.New()
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO product_categories (id, public_id, name)
-		VALUES ($1, $2, $3)
-	`, s.categoryID, uuid.New(), "Test Category")
+		INSERT INTO product_categories (id, name)
+		VALUES ($1, $2)
+	`, s.categoryID, "Test Category")
 	require.NoError(s.T(), err)
 
 	s.productID = uuid.New()

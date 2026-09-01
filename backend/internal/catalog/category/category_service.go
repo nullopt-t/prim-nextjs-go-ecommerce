@@ -50,7 +50,6 @@ func (cs *CategoryService) CreateCategory(
 
 	category := &model.ProductCategory{
 		ID:       uuid.New(),
-		PublicID: uuid.NewString(),
 		ParentID: in.ParentID,
 		Name:     name,
 	}

@@ -27,13 +27,12 @@ func (cr *CategoryRepository) Create(
 	const query = `
 		INSERT INTO product_categories (
 			id,
-			public_id,
 			parent_id,
 			name,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, now(), now())
+		VALUES ($1, $2, $3, now(), now())
 		RETURNING created_at, updated_at
 	`
 
@@ -41,7 +40,6 @@ func (cr *CategoryRepository) Create(
 		ctx,
 		query,
 		category.ID,
-		category.PublicID,
 		category.ParentID,
 		category.Name,
 	).Scan(&category.CreatedAt, &category.UpdatedAt)
@@ -59,7 +57,7 @@ func (cr *CategoryRepository) get(
 	args ...any,
 ) (*model.ProductCategory, error) {
 	query := fmt.Sprintf(`
-		SELECT id, public_id, parent_id, name, created_at, updated_at
+		SELECT id, parent_id, name, created_at, updated_at
 		FROM product_categories
 		WHERE %s
 	`, whereClause)
@@ -67,7 +65,6 @@ func (cr *CategoryRepository) get(
 	category := new(model.ProductCategory)
 	err := qe.QueryRow(ctx, query, args...).Scan(
 		&category.ID,
-		&category.PublicID,
 		&category.ParentID,
 		&category.Name,
 		&category.CreatedAt,
@@ -262,7 +259,6 @@ func (cr *CategoryRepository) List(
 	selectQuery := fmt.Sprintf(`
 		SELECT
 			id,
-			public_id,
 			parent_id,
 			name,
 			created_at,
@@ -287,7 +283,6 @@ func (cr *CategoryRepository) List(
 		var cat model.ProductCategory
 		if err := rows.Scan(
 			&cat.ID,
-			&cat.PublicID,
 			&cat.ParentID,
 			&cat.Name,
 			&cat.CreatedAt,

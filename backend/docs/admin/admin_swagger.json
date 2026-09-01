@@ -2842,20 +2842,15 @@
                     "type": "string",
                     "example": "https://apple.com"
                 },
-                "logoObjectId": {
-                    "description": "Object storage UUID of the uploaded logo file",
+                "logoUrl": {
+                    "description": "Publicly accessible URL for the brand logo",
                     "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
+                    "example": "https://example.com/apple-logo.png"
                 },
                 "name": {
                     "description": "Brand/manufacturer name",
                     "type": "string",
                     "example": "Apple"
-                },
-                "publicId": {
-                    "description": "Public customer-facing UUID identifier",
-                    "type": "string",
-                    "example": "358b2e03-0b3f-40a4-8163-ebed0cb252ee"
                 },
                 "updatedAt": {
                     "description": "Timestamp when brand was last updated (RFC3339)",
@@ -3602,34 +3597,48 @@
             "type": "object",
             "properties": {
                 "bucket": {
+                    "description": "Bucket is the target S3/MinIO bucket name.",
                     "type": "string"
                 },
                 "contentType": {
+                    "description": "ContentType is the MIME type (e.g. \"image/webp\", \"application/pdf\").",
                     "type": "string"
                 },
                 "createdAt": {
+                    "description": "CreatedAt is the timestamp when the object record was created.",
                     "type": "string"
                 },
                 "deletedAt": {
+                    "description": "DeletedAt is the optional soft-delete timestamp.",
                     "type": "string"
                 },
                 "fileSize": {
+                    "description": "FileSize is the file length in bytes.",
                     "type": "integer",
                     "format": "int64"
                 },
                 "id": {
+                    "description": "ID is the unique database UUID for the storage object.",
                     "type": "string"
                 },
                 "key": {
+                    "description": "Key is the object path key inside the bucket (e.g. \"products/uuid/image.webp\").",
                     "type": "string"
                 },
                 "publicURL": {
+                    "description": "PublicURL is the publicly accessible CDN or presigned HTTP endpoint for the file.",
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/ObjectStatus"
+                    "description": "Status is the current storage lifecycle state.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ObjectStatus"
+                        }
+                    ]
                 },
                 "updatedAt": {
+                    "description": "UpdatedAt is the timestamp when metadata was last modified.",
                     "type": "string"
                 }
             }
@@ -3710,54 +3719,90 @@
             "type": "object",
             "properties": {
                 "brand": {
-                    "$ref": "#/definitions/ProductBrand"
+                    "description": "Brand is the hydrated ProductBrand entity (not stored directly in the products table).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductBrand"
+                        }
+                    ]
                 },
                 "brandID": {
+                    "description": "BrandID is the optional UUID of the product's manufacturer/brand.",
                     "type": "string"
                 },
                 "category": {
-                    "$ref": "#/definitions/ProductCategory"
+                    "description": "Category is the hydrated ProductCategory entity (not stored directly in the products table).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductCategory"
+                        }
+                    ]
                 },
                 "categoryID": {
+                    "description": "CategoryID is the required taxonomy category UUID.",
                     "type": "string"
                 },
                 "createdAt": {
+                    "description": "CreatedAt is the timestamp when the product was added to the catalog.",
                     "type": "string"
                 },
                 "deletedAt": {
+                    "description": "DeletedAt is the optional soft-delete timestamp.",
                     "type": "string"
                 },
                 "description": {
+                    "description": "Description is the full product narrative copy.",
                     "type": "string"
                 },
                 "highlights": {
+                    "description": "Highlights contains key bullet points displayed on product detail pages.",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
                 "id": {
+                    "description": "ID is the unique database UUID for the product.",
                     "type": "string"
                 },
                 "productType": {
-                    "$ref": "#/definitions/ProductType"
+                    "description": "ProductType indicates simple or variable catalog classification.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductType"
+                        }
+                    ]
                 },
                 "slug": {
+                    "description": "Slug is the URL-friendly unique SEO identifier.",
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/PublicationStatus"
+                    "description": "Status is the draft/published/archived lifecycle state.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/PublicationStatus"
+                        }
+                    ]
                 },
                 "thumbnail": {
-                    "$ref": "#/definitions/Object"
+                    "description": "Thumbnail is the hydrated Object entity for the cover image (not stored directly in the products table).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/Object"
+                        }
+                    ]
                 },
                 "thumbnailObjectID": {
+                    "description": "ThumbnailObjectID is the optional storage object UUID for the primary cover image.",
                     "type": "string"
                 },
                 "title": {
+                    "description": "Title is the primary product display name.",
                     "type": "string"
                 },
                 "updatedAt": {
+                    "description": "UpdatedAt is the timestamp when product metadata was last modified.",
                     "type": "string"
                 }
             }
@@ -3766,30 +3811,35 @@
             "type": "object",
             "properties": {
                 "createdAt": {
+                    "description": "CreatedAt is the timestamp when the brand record was created.",
                     "type": "string"
                 },
                 "deletedAt": {
+                    "description": "DeletedAt is the optional soft-delete timestamp.",
                     "type": "string"
                 },
                 "id": {
+                    "description": "ID is the internal database UUID.",
                     "type": "string"
                 },
                 "link": {
+                    "description": "Link is the optional official website URL.",
                     "type": "string"
                 },
                 "logoObjectID": {
+                    "description": "LogoObjectID is the optional storage object UUID for the brand logo.",
                     "type": "string"
                 },
                 "logoURL": {
+                    "description": "LogoURL is the resolved public CDN URL for the brand logo image.",
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
-                },
-                "publicID": {
+                    "description": "Name is the unique brand name (e.g. \"Apple\", \"Nike\").",
                     "type": "string"
                 },
                 "updatedAt": {
+                    "description": "UpdatedAt is the timestamp when brand details were last modified.",
                     "type": "string"
                 }
             }
@@ -3797,15 +3847,15 @@
         "ProductBrandSummary": {
             "type": "object",
             "properties": {
-                "id": {
-                    "description": "Brand UUID",
-                    "type": "string",
-                    "example": "30000000-0000-0000-0000-000000000001"
-                },
                 "link": {
                     "description": "Official website URL",
                     "type": "string",
                     "example": "https://apple.com"
+                },
+                "logoUrl": {
+                    "description": "Publicly accessible URL for the brand logo",
+                    "type": "string",
+                    "example": "https://example.com/apple-logo.png"
                 },
                 "name": {
                     "description": "Brand name",
@@ -3818,24 +3868,27 @@
             "type": "object",
             "properties": {
                 "createdAt": {
+                    "description": "CreatedAt is the timestamp when the category was created.",
                     "type": "string"
                 },
                 "deletedAt": {
+                    "description": "DeletedAt is the optional soft-delete timestamp.",
                     "type": "string"
                 },
                 "id": {
+                    "description": "ID is the unique internal database UUID.",
                     "type": "string"
                 },
                 "name": {
+                    "description": "Name is the category display name (e.g. \"Electronics\", \"Laptops\").",
                     "type": "string"
                 },
                 "parentID": {
-                    "type": "string"
-                },
-                "publicID": {
+                    "description": "ParentID is the optional UUID of the parent category (nil for root categories).",
                     "type": "string"
                 },
                 "updatedAt": {
+                    "description": "UpdatedAt is the timestamp when category details were last modified.",
                     "type": "string"
                 }
             }
@@ -4273,11 +4326,6 @@
                 },
                 "objectId": {
                     "description": "Underlying storage object UUID",
-                    "type": "string",
-                    "example": "80000000-0000-0000-0000-000000000001"
-                },
-                "publicId": {
-                    "description": "Public customer-facing UUID",
                     "type": "string",
                     "example": "80000000-0000-0000-0000-000000000001"
                 },

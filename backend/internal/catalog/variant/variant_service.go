@@ -510,7 +510,6 @@ func (vs *VariantService) AttachMedia(
 		var repoErr error
 		createdMedia, repoErr = vs.vr.AddMedia(ctx, tx, CreateVariantMediaInput{
 			ID:        mediaID,
-			PublicID:  uuid.New(),
 			VariantID: in.VariantID,
 			ObjectID:  in.StorageObjectID,
 			MediaType: in.MediaType,

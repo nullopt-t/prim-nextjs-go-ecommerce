@@ -74,3 +74,4 @@ type RatingSummary struct {
 	// Distribution maps each star score (1-5) to its frequency count.
 	Distribution map[int16]int
 }
+

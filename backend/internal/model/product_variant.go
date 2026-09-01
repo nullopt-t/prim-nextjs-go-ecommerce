@@ -45,8 +45,6 @@ type ProductVariant struct {
 type VariantMedia struct {
 	// ID is the internal database UUID for the association.
 	ID uuid.UUID `db:"id"`
-	// PublicID is the customer-facing public identifier UUID.
-	PublicID uuid.UUID `db:"public_id"`
 	// VariantID is the target ProductVariant UUID.
 	VariantID uuid.UUID `db:"variant_id"`
 	// ObjectID is the underlying binary storage Object UUID.

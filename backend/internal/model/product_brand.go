@@ -10,8 +10,6 @@ import (
 type ProductBrand struct {
 	// ID is the internal database UUID.
 	ID uuid.UUID
-	// PublicID is the customer-facing public identifier string.
-	PublicID string
 	// Name is the unique brand name (e.g. "Apple", "Nike").
 	Name string
 	// Link is the optional official website URL.

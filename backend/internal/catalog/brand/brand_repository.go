@@ -47,14 +47,13 @@ func (br *BrandRepository) Create(
 	query := `
 		INSERT INTO product_brands (
 			id,
-			public_id,
 			name,
 			link,
 			logo_object_id,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, now(), now())
+		VALUES ($1, $2, $3, $4, now(), now())
 		RETURNING created_at, updated_at
 	`
 
@@ -62,7 +61,6 @@ func (br *BrandRepository) Create(
 		ctx,
 		query,
 		brand.ID,
-		brand.PublicID,
 		brand.Name,
 		brand.Link,
 		brand.LogoObjectID,
@@ -84,7 +82,6 @@ func (br *BrandRepository) get(
 	query := fmt.Sprintf(`
 		SELECT
 			id,
-			public_id,
 			name,
 			link,
 			logo_object_id,
@@ -249,7 +246,6 @@ func (br *BrandRepository) List(
 	selectQuery := fmt.Sprintf(`
 		SELECT
 			id,
-			public_id,
 			name,
 			link,
 			logo_object_id,

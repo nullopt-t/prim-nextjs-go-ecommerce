@@ -107,9 +107,9 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 
 	s.categoryID = uuid.New()
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO product_categories (id, public_id, name)
-		VALUES ($1, $2, $3)
-	`, s.categoryID, uuid.New(), "Audio Electronics")
+		INSERT INTO product_categories (id, name)
+		VALUES ($1, $2)
+	`, s.categoryID, "Audio Electronics")
 	require.NoError(s.T(), err)
 
 	s.productID = uuid.New()
