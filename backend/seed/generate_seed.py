@@ -28,17 +28,17 @@ brand_logos = [
     ("brands/bose-logo.png", "image/png", 31000),
 ]
 
-# Gallery angles by category
-gallery_angles_by_cat = {
-    "Laptops": ["products/laptop-angle-keyboard.jpg", "products/laptop-angle-side.jpg", "products/laptop-lifestyle-desk.jpg"],
-    "Smartphones": ["products/phone-angle-camera.jpg", "products/phone-angle-screen.jpg", "products/phone-lifestyle-hand.jpg"],
-    "Audio & Headphones": ["products/audio-case-detail.jpg", "products/audio-lifestyle-wear.jpg", "products/audio-cushion-macro.jpg"],
-    "Shoes": ["products/shoe-sole-traction.jpg", "products/shoe-heel-angle.jpg", "products/shoe-pair-overhead.jpg"],
-    "Outerwear": ["products/apparel-fabric-texture.jpg", "products/apparel-zipper-detail.jpg", "products/apparel-model-back.jpg"],
-    "Tablets & Wearables": ["products/tablet-pencil-drawing.jpg", "products/wearable-wrist-display.jpg"],
-    "Computer Accessories": ["products/accessory-sensor-bottom.jpg", "products/accessory-desk-setup.jpg"],
-    "Gaming Consoles": ["products/gaming-controller-macro.jpg", "products/gaming-console-stand.jpg"],
-}
+# Gallery angles & contextual detail angles
+all_context_angles = [
+    "products/laptop-angle-keyboard.jpg", "products/laptop-angle-side.jpg", "products/laptop-lifestyle-desk.jpg",
+    "products/phone-angle-camera.jpg", "products/phone-angle-screen.jpg", "products/phone-lifestyle-hand.jpg",
+    "products/audio-case-detail.jpg", "products/audio-lifestyle-wear.jpg", "products/audio-cushion-macro.jpg",
+    "products/shoe-sole-traction.jpg", "products/shoe-heel-angle.jpg", "products/shoe-pair-overhead.jpg",
+    "products/apparel-fabric-texture.jpg", "products/apparel-zipper-detail.jpg", "products/apparel-model-back.jpg",
+    "products/tablet-pencil-drawing.jpg", "products/wearable-wrist-display.jpg",
+    "products/accessory-sensor-bottom.jpg", "products/accessory-desk-setup.jpg",
+    "products/gaming-controller-macro.jpg", "products/gaming-console-stand.jpg",
+]
 
 brand_logo_map = {}
 storage_objects = []
@@ -52,14 +52,13 @@ for key, ctype, size in brand_logos:
     brand_logo_map[brand_name] = obj_id
     obj_idx += 1
 
-# Register extra gallery angles
-for cat, angles in gallery_angles_by_cat.items():
-    for ang in angles:
-        if ang not in image_to_obj_id:
-            obj_id = hex_id(0x80000000, obj_idx)
-            storage_objects.append((obj_id, 'catalog', ang, 'image/jpeg', 120000))
-            image_to_obj_id[ang] = obj_id
-            obj_idx += 1
+# Register all contextual gallery angles
+for ang in all_context_angles:
+    if ang not in image_to_obj_id:
+        obj_id = hex_id(0x80000000, obj_idx)
+        storage_objects.append((obj_id, 'catalog', ang, 'image/jpeg', 120000))
+        image_to_obj_id[ang] = obj_id
+        obj_idx += 1
 
 # Catalog Definitions with explicit multi-variants where applicable
 # Format: (category, brand, title, slug, desc, highlights, [ (var_title, price, crossed_price, attrs, optional_image_file) ])
@@ -632,6 +631,83 @@ variant_media = []
 inventory_ledgers = []
 
 prod_counter = 1
+def resolve_variant_gallery(cat, brand, title, slug, var_list, current_v_idx):
+    current_var = var_list[current_v_idx]
+    v_hero = current_var[4] if len(current_var) > 4 and current_var[4] else f"products/{slug}.jpg"
+    gallery = [v_hero]
+    
+    # 1. Add other variant color images of this product (if different from hero)
+    for other_idx, other_v in enumerate(var_list):
+        if other_idx != current_v_idx:
+            other_img = other_v[4] if len(other_v) > 4 and other_v[4] else f"products/{slug}.jpg"
+            if other_img and other_img not in gallery:
+                gallery.append(other_img)
+                
+    # 2. Add category & subcategory contextual lifestyle & detail angles
+    t_lower = title.lower()
+    contextual = []
+    if cat == 'Laptops':
+        if 'gaming' in t_lower or 'alienware' in t_lower:
+            contextual = ['products/laptop-angle-keyboard.jpg', 'products/laptop-angle-side.jpg', 'products/accessory-desk-setup.jpg']
+        else:
+            contextual = ['products/laptop-angle-keyboard.jpg', 'products/laptop-angle-side.jpg', 'products/laptop-lifestyle-desk.jpg']
+    elif cat == 'Smartphones':
+        if 'fold' in t_lower or 'flip' in t_lower:
+            contextual = ['products/phone-angle-screen.jpg', 'products/phone-lifestyle-hand.jpg', 'products/phone-angle-camera.jpg']
+        else:
+            contextual = ['products/phone-angle-camera.jpg', 'products/phone-angle-screen.jpg', 'products/phone-lifestyle-hand.jpg']
+    elif cat == 'Audio & Headphones':
+        if 'speaker' in t_lower:
+            contextual = ['products/accessory-desk-setup.jpg', 'products/audio-lifestyle-wear.jpg']
+        elif 'earbuds' in t_lower or 'airpods pro' in t_lower or 'airpods (3rd' in t_lower or 'linkbuds' in t_lower or 'fits' in t_lower:
+            contextual = ['products/audio-case-detail.jpg', 'products/audio-lifestyle-wear.jpg']
+        else: # Over-ear headphones
+            contextual = ['products/audio-cushion-macro.jpg', 'products/audio-lifestyle-wear.jpg']
+    elif cat == 'Tablets & Wearables':
+        if 'watch' in t_lower:
+            contextual = ['products/wearable-wrist-display.jpg', 'products/audio-lifestyle-wear.jpg']
+        elif 'pencil' in t_lower or 'stylus' in t_lower:
+            contextual = ['products/tablet-pencil-drawing.jpg', 'products/accessory-desk-setup.jpg']
+        elif 'keyboard' in t_lower:
+            contextual = ['products/laptop-angle-keyboard.jpg', 'products/accessory-desk-setup.jpg']
+        else: # Tablets
+            contextual = ['products/tablet-pencil-drawing.jpg', 'products/accessory-desk-setup.jpg']
+    elif cat == 'Computer Accessories':
+        if 'mouse' in t_lower:
+            contextual = ['products/accessory-sensor-bottom.jpg', 'products/accessory-desk-setup.jpg']
+        elif 'keyboard' in t_lower:
+            contextual = ['products/laptop-angle-keyboard.jpg', 'products/accessory-desk-setup.jpg']
+        elif 'headset' in t_lower:
+            contextual = ['products/audio-cushion-macro.jpg', 'products/audio-lifestyle-wear.jpg']
+        elif 'monitor' in t_lower or 'dock' in t_lower or 'webcam' in t_lower:
+            contextual = ['products/accessory-desk-setup.jpg', 'products/laptop-angle-side.jpg']
+        else:
+            contextual = ['products/accessory-desk-setup.jpg']
+    elif cat == 'Gaming Consoles':
+        if 'controller' in t_lower or 'wheel' in t_lower:
+            contextual = ['products/gaming-controller-macro.jpg', 'products/gaming-console-stand.jpg']
+        elif 'headset' in t_lower or 'earbuds' in t_lower:
+            contextual = ['products/audio-cushion-macro.jpg', 'products/gaming-console-stand.jpg']
+        elif 'player' in t_lower:
+            contextual = ['products/gaming-controller-macro.jpg', 'products/accessory-desk-setup.jpg']
+        else: # Consoles, covers, docks
+            contextual = ['products/gaming-console-stand.jpg', 'products/gaming-controller-macro.jpg']
+    elif cat == 'Shoes':
+        contextual = ['products/shoe-sole-traction.jpg', 'products/shoe-heel-angle.jpg', 'products/shoe-pair-overhead.jpg']
+    elif cat == 'Outerwear':
+        if 'pant' in t_lower or 'jogger' in t_lower:
+            contextual = ['products/apparel-fabric-texture.jpg', 'products/apparel-zipper-detail.jpg']
+        elif 'tee' in t_lower or 'shirt' in t_lower:
+            contextual = ['products/apparel-fabric-texture.jpg', 'products/apparel-model-back.jpg']
+        else: # Jackets / Hoodies
+            contextual = ['products/apparel-zipper-detail.jpg', 'products/apparel-fabric-texture.jpg', 'products/apparel-model-back.jpg']
+
+    for ctx_img in contextual:
+        if ctx_img not in gallery:
+            gallery.append(ctx_img)
+            
+    return gallery
+
 var_counter = 1
 vmedia_counter = 1
 inv_counter = 1
@@ -654,8 +730,6 @@ for cat_name, brand_name, title, slug, desc, highlights, var_list in catalog_def
     if not var_list:
         var_list = [("Standard", 19999, 21999, {}, prod_main_img)]
         
-    extra_angles = gallery_angles_by_cat.get(cat_name, [])
-        
     for v_idx, v_item in enumerate(var_list):
         v_title = v_item[0]
         v_price = v_item[1]
@@ -669,16 +743,12 @@ for cat_name, brand_name, title, slug, desc, highlights, var_list in catalog_def
         is_def = (v_idx == 0)
         variants.append((v_id, v_sku, p_id, is_def, v_title, v_price, v_cross, 'USD', v_attrs, v_thumb_id))
         
-        # 1. Primary Hero Image (sort_order = 0)
-        vm_id = hex_id(0x71000000, vmedia_counter)
-        variant_media.append((vm_id, v_id, v_thumb_id, 'image', 0))
-        vmedia_counter += 1
-        
-        # 2. Add extra gallery images for each variant (sort_order = 1, 2, ...)
-        for order_idx, extra_img in enumerate(extra_angles, 1):
-            extra_obj_id = image_to_obj_id[extra_img]
-            vm_id_extra = hex_id(0x71000000, vmedia_counter)
-            variant_media.append((vm_id_extra, v_id, extra_obj_id, 'image', order_idx))
+        # Build intelligently arranged gallery for this variant
+        arranged_gallery = resolve_variant_gallery(cat_name, brand_name, title, slug, var_list, v_idx)
+        for order_idx, g_img in enumerate(arranged_gallery):
+            g_obj_id = image_to_obj_id[g_img]
+            vm_id = hex_id(0x71000000, vmedia_counter)
+            variant_media.append((vm_id, v_id, g_obj_id, 'image', order_idx))
             vmedia_counter += 1
         
         inv_id = hex_id(0x81000000, inv_counter)
