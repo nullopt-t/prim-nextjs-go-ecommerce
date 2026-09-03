@@ -229,21 +229,72 @@ func (r *ProductRepository) Update(
 func (r *ProductRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	q *pagination.ListQuery,
+	q *ListProductsQuery,
 	includeDeleted bool,
 ) (*pagination.PagedResult[ProductCardReadModel], error) {
 	if q == nil {
-		q = &pagination.ListQuery{}
+		q = &ListProductsQuery{}
 	}
 	q.Process(pagination.QueryOptions{})
 
-	whereClauses := make([]string, 0, 2)
-	args := make([]any, 0, 2)
+	whereClauses := make([]string, 0, 5)
+	args := make([]any, 0, 5)
 	argIdx := 1
 
 	if !includeDeleted {
 		whereClauses = append(whereClauses, "p.deleted_at IS NULL")
 		whereClauses = append(whereClauses, "p.status = 'published'")
+	}
+
+	if len(q.BrandUUIDs) > 0 || len(q.BrandNames) > 0 {
+		var brandParts []string
+		if len(q.BrandUUIDs) > 0 {
+			brandParts = append(brandParts, fmt.Sprintf("p.brand_id = ANY($%d)", argIdx))
+			args = append(args, q.BrandUUIDs)
+			argIdx++
+		}
+		for _, name := range q.BrandNames {
+			brandParts = append(brandParts, fmt.Sprintf("b.name ILIKE $%d", argIdx))
+			args = append(args, name)
+			argIdx++
+		}
+		if len(brandParts) > 0 {
+			whereClauses = append(whereClauses, "("+strings.Join(brandParts, " OR ")+")")
+		}
+	}
+
+	if len(q.CategoryUUIDs) > 0 || len(q.CategoryNames) > 0 {
+		var catParts []string
+		if len(q.CategoryUUIDs) > 0 {
+			catParts = append(catParts, fmt.Sprintf("p.category_id = ANY($%d)", argIdx))
+			args = append(args, q.CategoryUUIDs)
+			argIdx++
+		}
+		for _, name := range q.CategoryNames {
+			catParts = append(catParts, fmt.Sprintf("c.name ILIKE $%d", argIdx))
+			args = append(args, name)
+			argIdx++
+		}
+		if len(catParts) > 0 {
+			whereClauses = append(whereClauses, "("+strings.Join(catParts, " OR ")+")")
+		}
+	}
+
+	if len(q.TagUUIDs) > 0 || len(q.TagNames) > 0 {
+		var tagParts []string
+		if len(q.TagUUIDs) > 0 {
+			tagParts = append(tagParts, fmt.Sprintf("EXISTS (SELECT 1 FROM product_tag_assignments pta WHERE pta.product_id = p.id AND pta.tag_id = ANY($%d))", argIdx))
+			args = append(args, q.TagUUIDs)
+			argIdx++
+		}
+		for _, name := range q.TagNames {
+			tagParts = append(tagParts, fmt.Sprintf("EXISTS (SELECT 1 FROM product_tag_assignments pta JOIN product_tags pt ON pta.tag_id = pt.id WHERE pta.product_id = p.id AND pt.name ILIKE $%d)", argIdx))
+			args = append(args, name)
+			argIdx++
+		}
+		if len(tagParts) > 0 {
+			whereClauses = append(whereClauses, "("+strings.Join(tagParts, " OR ")+")")
+		}
 	}
 
 	search := strings.TrimSpace(q.Search)
@@ -415,20 +466,71 @@ func (r *ProductRepository) List(
 func (r *ProductRepository) AdminList(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	q *pagination.ListQuery,
+	q *ListProductsQuery,
 	includeDeleted bool,
 ) (*pagination.PagedResult[model.Product], error) {
 	if q == nil {
-		q = &pagination.ListQuery{}
+		q = &ListProductsQuery{}
 	}
 	q.Process(pagination.QueryOptions{})
 
-	whereClauses := make([]string, 0, 2)
-	args := make([]any, 0, 2)
+	whereClauses := make([]string, 0, 5)
+	args := make([]any, 0, 5)
 	argIdx := 1
 
 	if !includeDeleted {
 		whereClauses = append(whereClauses, "p.deleted_at IS NULL")
+	}
+
+	if len(q.BrandUUIDs) > 0 || len(q.BrandNames) > 0 {
+		var brandParts []string
+		if len(q.BrandUUIDs) > 0 {
+			brandParts = append(brandParts, fmt.Sprintf("p.brand_id = ANY($%d)", argIdx))
+			args = append(args, q.BrandUUIDs)
+			argIdx++
+		}
+		for _, name := range q.BrandNames {
+			brandParts = append(brandParts, fmt.Sprintf("b.name ILIKE $%d", argIdx))
+			args = append(args, name)
+			argIdx++
+		}
+		if len(brandParts) > 0 {
+			whereClauses = append(whereClauses, "("+strings.Join(brandParts, " OR ")+")")
+		}
+	}
+
+	if len(q.CategoryUUIDs) > 0 || len(q.CategoryNames) > 0 {
+		var catParts []string
+		if len(q.CategoryUUIDs) > 0 {
+			catParts = append(catParts, fmt.Sprintf("p.category_id = ANY($%d)", argIdx))
+			args = append(args, q.CategoryUUIDs)
+			argIdx++
+		}
+		for _, name := range q.CategoryNames {
+			catParts = append(catParts, fmt.Sprintf("c.name ILIKE $%d", argIdx))
+			args = append(args, name)
+			argIdx++
+		}
+		if len(catParts) > 0 {
+			whereClauses = append(whereClauses, "("+strings.Join(catParts, " OR ")+")")
+		}
+	}
+
+	if len(q.TagUUIDs) > 0 || len(q.TagNames) > 0 {
+		var tagParts []string
+		if len(q.TagUUIDs) > 0 {
+			tagParts = append(tagParts, fmt.Sprintf("EXISTS (SELECT 1 FROM product_tag_assignments pta WHERE pta.product_id = p.id AND pta.tag_id = ANY($%d))", argIdx))
+			args = append(args, q.TagUUIDs)
+			argIdx++
+		}
+		for _, name := range q.TagNames {
+			tagParts = append(tagParts, fmt.Sprintf("EXISTS (SELECT 1 FROM product_tag_assignments pta JOIN product_tags pt ON pta.tag_id = pt.id WHERE pta.product_id = p.id AND pt.name ILIKE $%d)", argIdx))
+			args = append(args, name)
+			argIdx++
+		}
+		if len(tagParts) > 0 {
+			whereClauses = append(whereClauses, "("+strings.Join(tagParts, " OR ")+")")
+		}
 	}
 
 	search := strings.TrimSpace(q.Search)

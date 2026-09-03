@@ -100,6 +100,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		notifier,
 		app.logger,
 		app.config.AuthCfg.ChallengeTTL,
+		app.config.IsProduction,
 	)
 
 	sessionService := auth.NewSessionService(

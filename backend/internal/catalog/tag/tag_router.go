@@ -32,6 +32,7 @@ func (tr *TagRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	}
 
 	public := vgroup.Group("/tags")
+	public.Use(middleware.PublicCache(300))
 	{
 		public.GET("", tr.th.ListTags)
 	}

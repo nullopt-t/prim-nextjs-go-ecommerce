@@ -355,7 +355,7 @@ func (s *CartService) MergeGuestCart(
 	ctx context.Context,
 	sessionID string,
 	userID uuid.UUID,
-) (*model.Cart, error) {
+) error {
 	err := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
 		guestCart, gErr := s.cartRepo.GetCartBySessionID(ctx, tx, sessionID)
 		if gErr != nil {
@@ -415,11 +415,11 @@ func (s *CartService) MergeGuestCart(
 	})
 
 	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to merge guest cart").
+		return apierr.ErrInternalError("Failed to merge guest cart").
 			WithCode(errcode.CodeMergeCartFailed).
 			Wrap(err).
 			WithStack()
 	}
 
-	return s.GetOrCreateCart(ctx, &userID, nil)
+	return nil
 }
