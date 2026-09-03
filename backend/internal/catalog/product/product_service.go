@@ -29,6 +29,7 @@ type ObjectService interface {
 	UploadObject(ctx context.Context, contentType string, size int64, bucket string, file io.Reader) (*model.Object, error)
 	GetObjectByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
 	DeleteObject(ctx context.Context, bucket, key string) error
+	DeleteObjectByID(ctx context.Context, id uuid.UUID) error
 	GetObjectURL(ctx context.Context, bucket, key string) string
 }
 
@@ -137,6 +138,29 @@ func (s *ProductService) CreateProductAsDraft(
 			Wrap(err)
 	}
 
+	if input.CategoryID == uuid.Nil {
+		return nil, apierr.ErrBadRequest("Category ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	// Validate category existence and active status
+	if s.categoryService != nil {
+		if _, err := s.categoryService.GetCategoryByID(ctx, input.CategoryID); err != nil {
+			return nil, apierr.ErrBadRequest("Referenced category does not exist").
+				WithCode(apierr.CodeInvalidReference).
+				Wrap(err)
+		}
+	}
+
+	// Validate brand existence and active status if specified
+	if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandService != nil {
+		if _, err := s.brandService.GetBrandByID(ctx, *input.BrandID); err != nil {
+			return nil, apierr.ErrBadRequest("Referenced brand does not exist").
+				WithCode(apierr.CodeInvalidReference).
+				Wrap(err)
+		}
+	}
+
 	product := &model.Product{
 		ID:          uuid.New(),
 		Slug:        utils.Slugify(input.Title),
@@ -163,6 +187,22 @@ func (s *ProductService) UpdateProduct(
 	productID uuid.UUID,
 	input UpdateProductInput,
 ) error {
+	if input.CategoryID != nil && *input.CategoryID != uuid.Nil && s.categoryService != nil {
+		if _, err := s.categoryService.GetCategoryByID(ctx, *input.CategoryID); err != nil {
+			return apierr.ErrBadRequest("Referenced category does not exist").
+				WithCode(apierr.CodeInvalidReference).
+				Wrap(err)
+		}
+	}
+
+	if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandService != nil {
+		if _, err := s.brandService.GetBrandByID(ctx, *input.BrandID); err != nil {
+			return apierr.ErrBadRequest("Referenced brand does not exist").
+				WithCode(apierr.CodeInvalidReference).
+				Wrap(err)
+		}
+	}
+
 	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
 		product, err := s.productRepo.GetByID(ctx, tx, productID)
 		if err != nil {
@@ -183,10 +223,6 @@ func (s *ProductService) UpdateProduct(
 
 		if input.CategoryID != nil {
 			product.CategoryID = *input.CategoryID
-		}
-
-		if input.Title != nil {
-			product.Title = *input.Title
 		}
 
 		if input.Highlights != nil {
@@ -695,17 +731,22 @@ func (ps *ProductService) UploadProductThumbnail(
 			WithStack()
 	}
 
+	oldThumbnailObjectID := product.ThumbnailObjectID
 	product.ThumbnailObjectID = &obj.ID
 	err = ps.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
 		return ps.productRepo.Update(ctx, tx, product)
 	})
 
 	if err != nil {
-		_ = ps.objectService.DeleteObject(ctx, obj.Bucket, obj.Key)
+		_ = ps.objectService.DeleteObjectByID(ctx, obj.ID)
 		return nil, apierr.ErrInternalError("Failed to attach thumbnail to product").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
+	}
+
+	if oldThumbnailObjectID != nil && *oldThumbnailObjectID != obj.ID {
+		_ = ps.objectService.DeleteObjectByID(ctx, *oldThumbnailObjectID)
 	}
 
 	obj.PublicURL = ps.objectService.GetObjectURL(ctx, obj.Bucket, obj.Key)

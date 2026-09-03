@@ -434,8 +434,23 @@ func (vs *VariantService) DeleteVariantByID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return vs.vr.Delete(ctx, db, variantID)
+	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		variant, err := vs.vr.GetByID(ctx, tx, variantID)
+		if err != nil {
+			return err
+		}
+
+		if err := vs.vr.Delete(ctx, tx, variantID); err != nil {
+			return err
+		}
+
+		if variant.IsDefault {
+			if err := vs.vr.SetFirstAvailableAsDefault(ctx, tx, variant.ProductID); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	})
 
 	if err != nil {
@@ -594,10 +609,36 @@ func (vs *VariantService) ReorderMedia(
 	}
 
 	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		existingMedia, err := vs.vr.ListMediaByVariantID(ctx, tx, variantID)
+		if err != nil {
+			return err
+		}
+
+		if len(existingMedia) != len(orderedMediaIDs) {
+			return apierr.ErrBadRequest("Ordered media list must contain all variant media items").
+				WithCode(apierr.CodeInvalidInput)
+		}
+
+		existingMap := make(map[uuid.UUID]bool, len(existingMedia))
+		for _, m := range existingMedia {
+			existingMap[m.ID] = true
+		}
+
+		for _, id := range orderedMediaIDs {
+			if !existingMap[id] {
+				return apierr.ErrBadRequest("Media ID does not belong to this variant").
+					WithCode(apierr.CodeInvalidInput)
+			}
+		}
+
 		return vs.vr.ReorderMedia(ctx, tx, variantID, orderedMediaIDs)
 	})
 
 	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return apiErr
+		}
 		return apierr.ErrInternalError("Failed to reorder media").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).

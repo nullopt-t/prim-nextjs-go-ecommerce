@@ -391,8 +391,22 @@ func (s *CartService) MergeGuestCart(
 			if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
 				return err
 			}
+
+			targetQty := item.Quantity
 			if existing != nil {
-				if err := s.cartRepo.UpdateItemQuantity(ctx, tx, userCart.ID, existing.ID, existing.Quantity+item.Quantity); err != nil {
+				targetQty = existing.Quantity + item.Quantity
+			}
+
+			if s.inventoryService != nil {
+				stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, item.VariantID)
+				if stockErr == nil && stock != nil && stock.AvailableQuantity < targetQty {
+					return apierr.ErrBadRequest("Insufficient inventory available for variant").
+						WithCode(errcode.CodeInsufficientInventory)
+				}
+			}
+
+			if existing != nil {
+				if err := s.cartRepo.UpdateItemQuantity(ctx, tx, userCart.ID, existing.ID, targetQty); err != nil {
 					return err
 				}
 			} else {
@@ -415,6 +429,10 @@ func (s *CartService) MergeGuestCart(
 	})
 
 	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return apiErr
+		}
 		return apierr.ErrInternalError("Failed to merge guest cart").
 			WithCode(errcode.CodeMergeCartFailed).
 			Wrap(err).

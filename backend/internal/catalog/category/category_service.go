@@ -90,12 +90,19 @@ func (cs *CategoryService) isDescendant(
 ) (bool, error) {
 	var isChild bool
 	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		visited := make(map[uuid.UUID]struct{})
 		currentParent := &newParentID
 		for currentParent != nil && *currentParent != uuid.Nil {
 			if *currentParent == categoryID {
 				isChild = true
 				return nil
 			}
+			if _, seen := visited[*currentParent]; seen {
+				// Cycle detected in existing hierarchy
+				return errors.New("cyclic category hierarchy detected")
+			}
+			visited[*currentParent] = struct{}{}
+
 			parentCategory, err := cs.repo.GetByID(ctx, db, *currentParent)
 			if err != nil {
 				mappedErr := database.MapError(err)

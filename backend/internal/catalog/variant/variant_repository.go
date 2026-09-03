@@ -545,6 +545,36 @@ func (vr *VariantRepository) Delete(
 	return nil
 }
 
+// SetFirstAvailableAsDefault sets the oldest active variant of a product as the new default.
+func (vr *VariantRepository) SetFirstAvailableAsDefault(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) error {
+	if productID == uuid.Nil {
+		return errors.New("set first available as default: productID is required")
+	}
+
+	query := `
+		UPDATE product_variants
+		SET is_default = true, updated_at = now()
+		WHERE id = (
+			SELECT id
+			FROM product_variants
+			WHERE product_id = $1 AND deleted_at IS NULL
+			ORDER BY created_at ASC
+			LIMIT 1
+		)
+	`
+
+	_, err := qe.Exec(ctx, query, productID)
+	if err != nil {
+		return fmt.Errorf("set first available as default: %w", err)
+	}
+
+	return nil
+}
+
 func (vr *VariantRepository) Restore(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -587,18 +617,25 @@ func (vr *VariantRepository) AddMedia(
 			media_type,
 			sort_order
 		)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES (
+			$1,
+			$2,
+			$3,
+			$4,
+			COALESCE((SELECT MAX(sort_order) + 1 FROM variant_media WHERE variant_id = $2), 0)
+		)
+		RETURNING sort_order
 	`
 
-	_, err := qe.Exec(
+	var sortOrder int
+	err := qe.QueryRow(
 		ctx,
 		query,
 		in.ID,
 		in.VariantID,
 		in.ObjectID,
 		in.MediaType,
-		in.SortOrder,
-	)
+	).Scan(&sortOrder)
 	if err != nil {
 		return nil, fmt.Errorf("add variant media: %w", err)
 	}
@@ -608,7 +645,7 @@ func (vr *VariantRepository) AddMedia(
 		VariantID: in.VariantID,
 		ObjectID:  in.ObjectID,
 		MediaType: in.MediaType,
-		SortOrder: in.SortOrder,
+		SortOrder: sortOrder,
 	}, nil
 }
 
@@ -763,6 +800,19 @@ func (vr *VariantRepository) RemoveMedia(
 	if cmd.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
+
+	// Resequence remaining media items to maintain contiguous 0..N-1 sort orders
+	resequenceQuery := `
+		UPDATE variant_media AS vm
+		SET sort_order = ranked.new_order
+		FROM (
+			SELECT id, ROW_NUMBER() OVER (ORDER BY sort_order ASC) - 1 AS new_order
+			FROM variant_media
+			WHERE variant_id = $1
+		) AS ranked
+		WHERE vm.id = ranked.id AND vm.variant_id = $1
+	`
+	_, _ = qe.Exec(ctx, resequenceQuery, variantID)
 
 	return nil
 }
