@@ -618,9 +618,8 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MergeIntoUserCart() {
 	s.Require().Equal(http.StatusOK, wU2.Code)
 
 	// 3. Merge guest cart into user cart via CartService
-	mergedCart, err := s.cartService.MergeGuestCart(context.Background(), guestSessionID, userID)
+	err := s.cartService.MergeGuestCart(context.Background(), guestSessionID, userID)
 	s.Require().NoError(err)
-	s.Require().NotNil(mergedCart)
 
 	// 4. Verify merged user cart contents:
 	// - v1: qty 2 (from guest)
@@ -674,11 +673,8 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MergeEmptyGuestCartDoesNotError()
 	userID, _ := s.createAuthenticatedUser()
 
 	// Calling merge on a non-existent / empty guest cart session
-	mergedCart, err := s.cartService.MergeGuestCart(context.Background(), guestSessionID, userID)
+	err := s.cartService.MergeGuestCart(context.Background(), guestSessionID, userID)
 	s.Require().NoError(err)
-	s.Require().NotNil(mergedCart)
-	s.Equal(userID, *mergedCart.UserID)
-	s.Empty(mergedCart.Items)
 }
 
 func TestCartHTTPTestSuite(t *testing.T) {

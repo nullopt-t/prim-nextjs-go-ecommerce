@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
@@ -36,7 +35,7 @@ type Handler struct {
 }
 
 type CartMerger interface {
-	MergeGuestCart(ctx context.Context, sessionID string, userID uuid.UUID) (*model.Cart, error)
+	MergeGuestCart(ctx context.Context, sessionID string, userID uuid.UUID) error
 }
 
 func NewAuthHandler(
@@ -186,8 +185,7 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 	// Merge guest cart if a session cookie is present
 	guestSessionID, err := c.Cookie("session_id")
 	if err == nil && guestSessionID != "" && h.cartMerger != nil {
-		_, mergeErr := h.cartMerger.MergeGuestCart(c.Request.Context(), guestSessionID, tokens.UserID)
-		if mergeErr != nil {
+		if mergeErr := h.cartMerger.MergeGuestCart(c.Request.Context(), guestSessionID, tokens.UserID); mergeErr != nil {
 			h.logger.Error("Failed to merge guest cart", log.Meta{"error": mergeErr, "session_id": guestSessionID, "user_id": tokens.UserID})
 		}
 	}
