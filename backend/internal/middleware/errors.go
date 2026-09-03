@@ -17,6 +17,7 @@ func ErrorHandler(logger log.Logger) gin.HandlerFunc {
 			return
 		}
 
+		c.Header("Cache-Control", "no-store, private")
 		err := c.Errors.Last().Err
 		if ae, ok := err.(*apierr.APIError); ok {
 			meta := log.Meta{"error": ae.LogValue()}

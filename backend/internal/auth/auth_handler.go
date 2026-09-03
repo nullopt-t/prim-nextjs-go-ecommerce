@@ -226,7 +226,7 @@ func (h *Handler) ResendChallenge(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, api.MessageResponse{
-		Message: "the code sent succeccfully",
+		Message: "the code sent successfully",
 	})
 }
 

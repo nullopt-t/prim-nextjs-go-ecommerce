@@ -409,7 +409,7 @@ func (s *ProductService) GetBySlug(
 }
 func (s *ProductService) AdminList(
 	ctx context.Context,
-	q *pagination.ListQuery,
+	q *ListProductsQuery,
 	includeDeleted bool,
 ) (*pagination.PagedResult[model.Product], error) {
 	var res *pagination.PagedResult[model.Product]
@@ -437,7 +437,7 @@ func (s *ProductService) AdminList(
 }
 func (s *ProductService) List(
 	ctx context.Context,
-	q *pagination.ListQuery,
+	q *ListProductsQuery,
 	includeDeleted bool,
 ) (*pagination.PagedResult[ProductCardReadModel], error) {
 	var res *pagination.PagedResult[ProductCardReadModel]

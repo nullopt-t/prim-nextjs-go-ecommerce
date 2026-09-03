@@ -628,26 +628,71 @@ func mapProductListItemResponse(item *ProductCardReadModel) ProductListItemRespo
 	return res
 }
 
+type ListProductsQuery struct {
+	pagination.ListQuery
+	// Optional brand name(s) or UUID(s) (comma-separated, e.g. "apple,sony")
+	Brand *string `form:"brand" example:"apple,sony"`
+	// Optional category name(s) or UUID(s) (comma-separated, e.g. "laptops,audio")
+	Category *string `form:"category" example:"laptops,audio"`
+	// Optional tag name(s) or UUID(s) (comma-separated, e.g. "featured,sale")
+	Tag *string `form:"tag" example:"featured,sale"`
+
+	BrandUUIDs    []uuid.UUID `form:"-"`
+	BrandNames    []string    `form:"-"`
+	CategoryUUIDs []uuid.UUID `form:"-"`
+	CategoryNames []string    `form:"-"`
+	TagUUIDs      []uuid.UUID `form:"-"`
+	TagNames      []string    `form:"-"`
+}
+
+func parseCommaSeparatedValues(input *string) ([]uuid.UUID, []string) {
+	if input == nil {
+		return nil, nil
+	}
+	parts := strings.Split(*input, ",")
+	uuids := make([]uuid.UUID, 0, len(parts))
+	names := make([]string, 0, len(parts))
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed == "" {
+			continue
+		}
+		if id, err := uuid.Parse(trimmed); err == nil {
+			uuids = append(uuids, id)
+		} else {
+			names = append(names, trimmed)
+		}
+	}
+	return uuids, names
+}
+
+func (q *ListProductsQuery) Process(opts pagination.QueryOptions) {
+	q.ListQuery.Process(opts)
+	q.BrandUUIDs, q.BrandNames = parseCommaSeparatedValues(q.Brand)
+	q.CategoryUUIDs, q.CategoryNames = parseCommaSeparatedValues(q.Category)
+	q.TagUUIDs, q.TagNames = parseCommaSeparatedValues(q.Tag)
+}
+
 // GetAllProducts godoc
 //
 //	@Summary		List active published products
-//	@Description	Returns a paginated list of active, published products for customer browsing. Soft-deleted and draft products are hidden.
+//	@Description	Returns a paginated list of active, published products for customer browsing with optional brand, category, tag, search, and sort filters. Soft-deleted and draft products are hidden.
 //	@Tags			Products
 //	@Produce		json
-//	@Param			q	query		pagination.ListQuery														true	"Pagination, search query, and sorting parameters"
+//	@Param			q	query		ListProductsQuery															true	"Pagination, search query, brandId, categoryId, tagId, and sorting parameters"
 //	@Failure		400	{object}	api.BadRequestErrorResponse													"Invalid query parameters"
 //	@Failure		500	{object}	api.InternalServerErrorResponse												"Internal server error"
 //	@Success		200	{object}	api.PaginatedResponse{data=[]ProductListItemResponse,meta=pagination.Page}	"Paginated list of active products"
 //	@Router			/products [get]
 func (h *ProductHandler) GetAllProducts(c *gin.Context) {
-	q := &pagination.ListQuery{}
-	if err := c.ShouldBindQuery(q); err != nil {
+	var q ListProductsQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
-	result, err := h.service.List(c.Request.Context(), q, false)
+	result, err := h.service.List(c.Request.Context(), &q, false)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -670,20 +715,20 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 //	@Description	Returns a paginated list of all products including draft, published, archived, and soft-deleted records for administrator catalog management.
 //	@Tags			Admin Products
 //	@Produce		json
-//	@Param			q	query		pagination.ListQuery												true	"Pagination, search query, and sorting parameters"
+//	@Param			q	query		ListProductsQuery													true	"Pagination, search query, brand, category, tag, and sorting parameters"
 //	@Failure		400	{object}	api.BadRequestErrorResponse											"Invalid query parameters"
 //	@Failure		500	{object}	api.InternalServerErrorResponse										"Internal server error"
 //	@Success		200	{object}	api.PaginatedResponse{data=[]model.Product,meta=pagination.Page}	"Paginated list of all products including deleted"
 //	@Router			/admin/products [get]
 func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
-	q := &pagination.ListQuery{}
-	if err := c.ShouldBindQuery(q); err != nil {
+	var q ListProductsQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
-	result, err := h.service.AdminList(c.Request.Context(), q, true)
+	result, err := h.service.AdminList(c.Request.Context(), &q, true)
 	if err != nil {
 		_ = c.Error(err)
 		return
