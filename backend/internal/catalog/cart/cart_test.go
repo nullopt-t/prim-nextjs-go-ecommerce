@@ -17,6 +17,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
@@ -448,6 +449,239 @@ func (s *CartHTTPTestSuite) TestHTTP_RemoveItemAndClearCart() {
 	s.Equal(int64(0), finalResp.Data.Summary.Total)
 }
 
+func (s *CartHTTPTestSuite) createAuthenticatedUser() (uuid.UUID, string) {
+	userID := uuid.New()
+	_, err := s.db.Exec(context.Background(), `
+		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
+		VALUES ($1, $2, $3, 'customer', true, 'active')
+	`, userID, "user_"+userID.String()+"@example.com", "Test User")
+	s.Require().NoError(err)
+
+	jwtManager := jwt.NewJWTManager(s.secrets)
+	role := "customer"
+	accessToken, err := jwtManager.GenerateAccessToken(&jwt.UserClaims{
+		UserID:   userID,
+		UserRole: &role,
+	})
+	s.Require().NoError(err)
+
+	return userID, accessToken
+}
+
+func (s *CartHTTPTestSuite) TestHTTP_GuestCart_CookieGenerationAndPersistence() {
+	// When a guest request has no X-Session-ID header and no cookie,
+	// the handler should auto-generate a guest session ID and set the session_id cookie.
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var resp StrictDataEnvelope[cart.CartResponse]
+	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &resp))
+	s.Empty(resp.Data.Items)
+
+	// Verify Set-Cookie header contains session_id starting with sess_
+	var sessionCookie *http.Cookie
+	for _, cookie := range w.Result().Cookies() {
+		if cookie.Name == "session_id" {
+			sessionCookie = cookie
+			break
+		}
+	}
+	s.Require().NotNil(sessionCookie, "session_id cookie must be set for guest without session")
+	s.NotEmpty(sessionCookie.Value)
+	s.True(sessionCookie.HttpOnly)
+
+	// Now use that cookie on a subsequent request to add an item
+	variantID := s.createVariant("SKU-COOKIE-GUEST", 1200, 10)
+	addBody, _ := json.Marshal(cart.AddItemRequest{
+		VariantID: variantID,
+		Quantity:  3,
+	})
+	reqAdd := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(addBody))
+	reqAdd.Header.Set("Content-Type", "application/json")
+	reqAdd.AddCookie(sessionCookie)
+	wAdd := httptest.NewRecorder()
+	s.router.ServeHTTP(wAdd, reqAdd)
+
+	s.Require().Equal(http.StatusOK, wAdd.Code)
+	var addResp StrictDataEnvelope[cart.CartResponse]
+	s.Require().NoError(json.Unmarshal(wAdd.Body.Bytes(), &addResp))
+	s.Equal(3, addResp.Data.ItemCount)
+	s.Equal(resp.Data.ID, addResp.Data.ID, "Same cart should be retrieved and updated using cookie session")
+
+	// Verify GET with cookie returns the same cart and items
+	reqGet := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
+	reqGet.AddCookie(sessionCookie)
+	wGet := httptest.NewRecorder()
+	s.router.ServeHTTP(wGet, reqGet)
+
+	s.Require().Equal(http.StatusOK, wGet.Code)
+	var getResp StrictDataEnvelope[cart.CartResponse]
+	s.Require().NoError(json.Unmarshal(wGet.Body.Bytes(), &getResp))
+	s.Equal(3, getResp.Data.ItemCount)
+	s.Require().Len(getResp.Data.Items, 1)
+	s.Equal(variantID.String(), getResp.Data.Items[0].VariantID)
+}
+
+func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MultipleGuestsAreIsolated() {
+	session1 := "sess_" + uuid.NewString()
+	session2 := "sess_" + uuid.NewString()
+
+	v1 := s.createVariant("SKU-ISO-1", 1000, 10)
+	v2 := s.createVariant("SKU-ISO-2", 2000, 10)
+
+	// Guest 1 adds v1
+	b1, _ := json.Marshal(cart.AddItemRequest{VariantID: v1, Quantity: 1})
+	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(b1))
+	req1.Header.Set("Content-Type", "application/json")
+	req1.Header.Set("X-Session-ID", session1)
+	w1 := httptest.NewRecorder()
+	s.router.ServeHTTP(w1, req1)
+	s.Require().Equal(http.StatusOK, w1.Code)
+
+	// Guest 2 adds v2
+	b2, _ := json.Marshal(cart.AddItemRequest{VariantID: v2, Quantity: 2})
+	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(b2))
+	req2.Header.Set("Content-Type", "application/json")
+	req2.Header.Set("X-Session-ID", session2)
+	w2 := httptest.NewRecorder()
+	s.router.ServeHTTP(w2, req2)
+	s.Require().Equal(http.StatusOK, w2.Code)
+
+	// Fetch guest 1 cart
+	reqGet1 := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
+	reqGet1.Header.Set("X-Session-ID", session1)
+	wGet1 := httptest.NewRecorder()
+	s.router.ServeHTTP(wGet1, reqGet1)
+	var resp1 StrictDataEnvelope[cart.CartResponse]
+	s.Require().NoError(json.Unmarshal(wGet1.Body.Bytes(), &resp1))
+	s.Equal(1, resp1.Data.ItemCount)
+	s.Require().Len(resp1.Data.Items, 1)
+	s.Equal(v1.String(), resp1.Data.Items[0].VariantID)
+
+	// Fetch guest 2 cart
+	reqGet2 := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
+	reqGet2.Header.Set("X-Session-ID", session2)
+	wGet2 := httptest.NewRecorder()
+	s.router.ServeHTTP(wGet2, reqGet2)
+	var resp2 StrictDataEnvelope[cart.CartResponse]
+	s.Require().NoError(json.Unmarshal(wGet2.Body.Bytes(), &resp2))
+	s.Equal(2, resp2.Data.ItemCount)
+	s.Require().Len(resp2.Data.Items, 1)
+	s.Equal(v2.String(), resp2.Data.Items[0].VariantID)
+
+	s.NotEqual(resp1.Data.ID, resp2.Data.ID, "Different guest sessions must have distinct carts")
+}
+
+func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MergeIntoUserCart() {
+	guestSessionID := "sess_" + uuid.NewString()
+	userID, token := s.createAuthenticatedUser()
+
+	v1 := s.createVariant("SKU-MERGE-1", 1000, 20)
+	v2 := s.createVariant("SKU-MERGE-2", 2000, 20)
+	v3 := s.createVariant("SKU-MERGE-3", 3000, 20)
+
+	// 1. Guest adds v1 (qty 2) and v2 (qty 1)
+	b1, _ := json.Marshal(cart.AddItemRequest{VariantID: v1, Quantity: 2})
+	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(b1))
+	req1.Header.Set("Content-Type", "application/json")
+	req1.Header.Set("X-Session-ID", guestSessionID)
+	w1 := httptest.NewRecorder()
+	s.router.ServeHTTP(w1, req1)
+	s.Require().Equal(http.StatusOK, w1.Code)
+
+	b2, _ := json.Marshal(cart.AddItemRequest{VariantID: v2, Quantity: 1})
+	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(b2))
+	req2.Header.Set("Content-Type", "application/json")
+	req2.Header.Set("X-Session-ID", guestSessionID)
+	w2 := httptest.NewRecorder()
+	s.router.ServeHTTP(w2, req2)
+	s.Require().Equal(http.StatusOK, w2.Code)
+
+	// 2. User has an existing cart with v2 (qty 3) and v3 (qty 1)
+	bUser1, _ := json.Marshal(cart.AddItemRequest{VariantID: v2, Quantity: 3})
+	reqU1 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(bUser1))
+	reqU1.Header.Set("Content-Type", "application/json")
+	reqU1.Header.Set("Authorization", "Bearer "+token)
+	wU1 := httptest.NewRecorder()
+	s.router.ServeHTTP(wU1, reqU1)
+	s.Require().Equal(http.StatusOK, wU1.Code)
+
+	bUser2, _ := json.Marshal(cart.AddItemRequest{VariantID: v3, Quantity: 1})
+	reqU2 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(bUser2))
+	reqU2.Header.Set("Content-Type", "application/json")
+	reqU2.Header.Set("Authorization", "Bearer "+token)
+	wU2 := httptest.NewRecorder()
+	s.router.ServeHTTP(wU2, reqU2)
+	s.Require().Equal(http.StatusOK, wU2.Code)
+
+	// 3. Merge guest cart into user cart via CartService
+	mergedCart, err := s.cartService.MergeGuestCart(context.Background(), guestSessionID, userID)
+	s.Require().NoError(err)
+	s.Require().NotNil(mergedCart)
+
+	// 4. Verify merged user cart contents:
+	// - v1: qty 2 (from guest)
+	// - v2: qty 1 (guest) + 3 (user) = 4
+	// - v3: qty 1 (user)
+	// Total items = 7 units, 3 distinct lines
+	reqUserCart := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
+	reqUserCart.Header.Set("Authorization", "Bearer "+token)
+	wUserCart := httptest.NewRecorder()
+	s.router.ServeHTTP(wUserCart, reqUserCart)
+
+	s.Require().Equal(http.StatusOK, wUserCart.Code)
+	var userCartResp StrictDataEnvelope[cart.CartResponse]
+	s.Require().NoError(json.Unmarshal(wUserCart.Body.Bytes(), &userCartResp))
+
+	s.Equal(7, userCartResp.Data.ItemCount)
+	s.Require().Len(userCartResp.Data.Items, 3)
+
+	itemMap := make(map[string]cart.CartItemResponse)
+	for _, it := range userCartResp.Data.Items {
+		itemMap[it.VariantID] = it
+	}
+
+	s.Equal(2, itemMap[v1.String()].Quantity)
+	s.Equal(int64(2000), itemMap[v1.String()].Subtotal)
+
+	s.Equal(4, itemMap[v2.String()].Quantity)
+	s.Equal(int64(8000), itemMap[v2.String()].Subtotal)
+
+	s.Equal(1, itemMap[v3.String()].Quantity)
+	s.Equal(int64(3000), itemMap[v3.String()].Subtotal)
+
+	// Expected total = 2000 + 8000 + 3000 = 13000
+	s.Equal(int64(13000), userCartResp.Data.Summary.Total)
+
+	// 5. Verify the guest cart record was deleted after merge
+	reqGuestAfter := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
+	reqGuestAfter.Header.Set("X-Session-ID", guestSessionID)
+	wGuestAfter := httptest.NewRecorder()
+	s.router.ServeHTTP(wGuestAfter, reqGuestAfter)
+
+	s.Require().Equal(http.StatusOK, wGuestAfter.Code)
+	var guestAfterResp StrictDataEnvelope[cart.CartResponse]
+	s.Require().NoError(json.Unmarshal(wGuestAfter.Body.Bytes(), &guestAfterResp))
+	s.Empty(guestAfterResp.Data.Items)
+	s.Equal(0, guestAfterResp.Data.ItemCount)
+}
+
+func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MergeEmptyGuestCartDoesNotError() {
+	guestSessionID := "sess_" + uuid.NewString()
+	userID, _ := s.createAuthenticatedUser()
+
+	// Calling merge on a non-existent / empty guest cart session
+	mergedCart, err := s.cartService.MergeGuestCart(context.Background(), guestSessionID, userID)
+	s.Require().NoError(err)
+	s.Require().NotNil(mergedCart)
+	s.Equal(userID, *mergedCart.UserID)
+	s.Empty(mergedCart.Items)
+}
+
 func TestCartHTTPTestSuite(t *testing.T) {
 	suite.Run(t, new(CartHTTPTestSuite))
 }
+
