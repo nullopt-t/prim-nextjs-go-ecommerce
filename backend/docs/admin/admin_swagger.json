@@ -749,6 +749,29 @@
                 "summary": "List all products for management (Admin)",
                 "parameters": [
                     {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "name": "-",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "apple,sony",
+                        "description": "Optional brand name(s) or UUID(s) (comma-separated, e.g. \"apple,sony\")",
+                        "name": "brand",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "laptops,audio",
+                        "description": "Optional category name(s) or UUID(s) (comma-separated, e.g. \"laptops,audio\")",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "example": 1,
                         "name": "page",
@@ -777,6 +800,13 @@
                             "-created_at"
                         ],
                         "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "featured,sale",
+                        "description": "Optional tag name(s) or UUID(s) (comma-separated, e.g. \"featured,sale\")",
+                        "name": "tag",
                         "in": "query"
                     }
                 ],

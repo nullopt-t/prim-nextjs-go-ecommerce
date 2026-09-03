@@ -1667,8 +1667,25 @@ paths:
   /products:
     get:
       description: Returns a paginated list of active, published products for customer
-        browsing. Soft-deleted and draft products are hidden.
+        browsing with optional brand, category, tag, search, and sort filters. Soft-deleted
+        and draft products are hidden.
       parameters:
+      - collectionFormat: csv
+        in: query
+        items:
+          type: string
+        name: '-'
+        type: array
+      - description: Optional brand name(s) or UUID(s) (comma-separated, e.g. "apple,sony")
+        example: apple,sony
+        in: query
+        name: brand
+        type: string
+      - description: Optional category name(s) or UUID(s) (comma-separated, e.g. "laptops,audio")
+        example: laptops,audio
+        in: query
+        name: category
+        type: string
       - example: 1
         in: query
         name: page
@@ -1690,6 +1707,11 @@ paths:
           type: string
         name: sort
         type: array
+      - description: Optional tag name(s) or UUID(s) (comma-separated, e.g. "featured,sale")
+        example: featured,sale
+        in: query
+        name: tag
+        type: string
       produces:
       - application/json
       responses:

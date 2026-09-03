@@ -1051,7 +1051,7 @@ const docTemplatepublic = `{
         },
         "/products": {
             "get": {
-                "description": "Returns a paginated list of active, published products for customer browsing. Soft-deleted and draft products are hidden.",
+                "description": "Returns a paginated list of active, published products for customer browsing with optional brand, category, tag, search, and sort filters. Soft-deleted and draft products are hidden.",
                 "produces": [
                     "application/json"
                 ],
@@ -1060,6 +1060,29 @@ const docTemplatepublic = `{
                 ],
                 "summary": "List active published products",
                 "parameters": [
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "name": "-",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "apple,sony",
+                        "description": "Optional brand name(s) or UUID(s) (comma-separated, e.g. \"apple,sony\")",
+                        "name": "brand",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "laptops,audio",
+                        "description": "Optional category name(s) or UUID(s) (comma-separated, e.g. \"laptops,audio\")",
+                        "name": "category",
+                        "in": "query"
+                    },
                     {
                         "type": "integer",
                         "example": 1,
@@ -1089,6 +1112,13 @@ const docTemplatepublic = `{
                             "-created_at"
                         ],
                         "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "featured,sale",
+                        "description": "Optional tag name(s) or UUID(s) (comma-separated, e.g. \"featured,sale\")",
+                        "name": "tag",
                         "in": "query"
                     }
                 ],
