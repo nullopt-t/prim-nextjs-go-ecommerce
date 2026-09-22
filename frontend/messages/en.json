@@ -1,0 +1,182 @@
+{
+  "about": {
+    "hero": {
+      "badge": "Our Story",
+      "title": "Built for everyone, everywhere.",
+      "description": "PRIM was founded with a single belief: great products should be accessible to everyone, delivered with care."
+    },
+    "belief": {
+      "title": "What We Believe",
+      "description": "We started PRIM because we were tired of shopping experiences that felt complicated, expensive, and impersonal. We believed there was a better way — a way to bring together thousands of trusted sellers, millions of products, and a platform that actually felt good to use. Since 2020, we've grown from a small team of five to a global marketplace serving customers in over 190 countries. But our core belief hasn't changed: shopping should be simple, honest, and built for people — not algorithms."
+    },
+    "values": {
+      "quality": {
+        "title": "Quality",
+        "description": "Every product is vetted for excellence before it reaches you."
+      },
+      "speed": {
+        "title": "Speed",
+        "description": "Same-day dispatch and next-day delivery across the region."
+      },
+      "trust": {
+        "title": "Trust",
+        "description": "Transparent pricing, honest reviews, and no hidden fees."
+      },
+      "simplicity": {
+        "title": "Simplicity",
+        "description": "Shopping should feel effortless — we obsess over the details."
+      }
+    },
+    "developers": {
+      "title": "Developers",
+      "frontend": "Frontend Developer",
+      "backend": "Backend Developer"
+    }
+  },
+  "auth": {
+    "sign": {
+      "title": "Get Started",
+      "subtitle": "Enter your email to sign in or create a new account.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter your email",
+      "signButton": "ُEnter"
+    },
+    "verify": {
+      "title": "Verify OTP Code",
+      "subtitle": "We sent a verification code to your email. Enter it below to proceed.",
+      "codeLabel": "Code",
+      "codePlaceholder": "Enter your code",
+      "verifyButton": "Verify your code"
+    }
+  },
+  "cart": {
+    "cart": {
+      "title": "Your Cart",
+      "item": "{count} item",
+      "items": "{count} items"
+    },
+    "product": {
+      "remove": "Remove"
+    },
+    "coupon": {
+      "placeholder": "Enter your coupon",
+      "apply": "Apply",
+      "available": "Available codes:"
+    },
+    "orderSummary": {
+      "title": "Order Summary",
+      "subtotal": "Subtotal",
+      "shipping": "Shipping",
+      "free": "Free",
+      "tax": "Tax (8%)",
+      "total": "Total",
+      "checkout": "Proceed to Checkout"
+    },
+    "empty": {
+      "title": "Your cart is empty",
+      "description": "Looks like you haven't added anything to your cart yet. Discover trending products and premium gear.",
+      "action": "Start Shopping"
+    }
+  },
+  "common": {
+    "currency": "$",
+    "header": {
+      "search": "Search",
+      "home": "Home",
+      "allCategories": "All categories"
+    },
+    "footer": {
+      "shop": "Shop",
+      "support": "Support",
+      "company": "Company",
+      "contactUs": "Contact Us",
+      "faqs": "FAQS",
+      "shipping": "Shipping",
+      "returns": "Returns",
+      "trackOrders": "Track Orders",
+      "sizeGuide": "size guide",
+      "aboutUs": "About Us",
+      "careers": "Careers",
+      "press": "Press",
+      "sustainability": "Sustainability",
+      "blog": "Blog",
+      "copyright": "© {year} PRIM. All rights reserved.",
+      "footerDescription": "Your one-stop destination for everything you need. Quality products, fast delivery, and exceptional service since 2020."
+    }
+  },
+  "home": {
+    "hero": {
+      "badge": "New Season — {year}",
+      "title": "Everything you need, ",
+      "delivered": "delivered.",
+      "description": "Discover thousands of products from trusted brands, all in one place. Fast shipping, easy returns, and unbeatable prices.",
+      "shopNow": "Shop now",
+      "viewDeals": "View deals"
+    },
+    "categories": {
+      "title": "Categories",
+      "seeAll": "See all"
+    },
+    "featuredProducts": {
+      "title": "Featured Products"
+    },
+    "recentlyViewed": {
+      "title": "Recently Viewed"
+    },
+    "product": {
+      "addToCart": "Add to cart"
+    }
+  },
+  "notFound": {
+    "title": "Page Not Found",
+    "subtitle": "The page you're looking for doesn't exist or may have been moved.",
+    "home": "Back to Home",
+    "products": "Browse Products"
+  },
+  "reviews": {
+    "reviews": {
+      "title": "Your Reviews",
+      "description": "Reviews you've written about your purchases.",
+      "commented": "Commented",
+      "editReview": "Edit Review",
+      "delete": "Delete"
+    }
+  },
+  "settings": {
+    "settings": {
+      "title": "Settings",
+      "description": "Manage your account preferences.",
+      "personalInformation": "Personal Information",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email",
+      "phone": "Phone",
+      "placeholders": {
+        "firstName": "Enter your first name",
+        "lastName": "Enter your last name",
+        "email": "Enter your email",
+        "phone": "Enter your phone number"
+      },
+      "saveChanges": "Save Changes",
+      "preferences": "Preferences",
+      "language": "Language",
+      "darkMode": "Dark Mode",
+      "emailNotifications": "Email notifications",
+      "dangerZone": "Danger Zone",
+      "logout": "Logout",
+      "deleteAccount": "Delete Account"
+    }
+  },
+  "wishlist": {
+    "title": "Wishlist",
+    "savedItems": "{count} saved items",
+    "addToCart": "Add all to Cart"
+  },
+  "notFound": {
+    "title": "Page Not Found",
+    "subtitle": "The page you're looking for doesn't exist or may have been moved.",
+    "button": "Back to Home",
+    "home": "Back to Home",
+    "products": "Browse Products"
+  }
+}

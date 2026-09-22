@@ -191,8 +191,9 @@ var allowedCategorySortFields = map[string]string{
 }
 
 type ListCategoryOptions struct {
-	ListQuery      *pagination.ListQuery
-	IncludeDeleted bool // set true for admin views
+	ListQuery        *pagination.ListQuery
+	IncludeDeleted   bool // set true for admin views
+	OnlyWithProducts bool // set true for public customer views to omit empty categories
 }
 
 func (cr *CategoryRepository) List(
@@ -213,6 +214,10 @@ func (cr *CategoryRepository) List(
 
 	if !opts.IncludeDeleted {
 		whereClauses = append(whereClauses, "deleted_at IS NULL")
+	}
+
+	if opts.OnlyWithProducts {
+		whereClauses = append(whereClauses, "EXISTS (SELECT 1 FROM products p WHERE p.category_id = product_categories.id AND p.deleted_at IS NULL AND p.status = 'published')")
 	}
 
 	search := strings.TrimSpace(q.Search)

@@ -193,8 +193,9 @@ func (cs *CategoryService) UpdateCategory(
 }
 
 type ListCategoriesInput struct {
-	Query          *pagination.ListQuery
-	IncludeDeleted bool
+	Query            *pagination.ListQuery
+	IncludeDeleted   bool
+	OnlyWithProducts bool
 }
 
 func (cs *CategoryService) ListCategories(
@@ -211,8 +212,9 @@ func (cs *CategoryService) ListCategories(
 	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		result, repoErr = cs.repo.List(ctx, db, ListCategoryOptions{
-			ListQuery:      q,
-			IncludeDeleted: in.IncludeDeleted,
+			ListQuery:        q,
+			IncludeDeleted:   in.IncludeDeleted,
+			OnlyWithProducts: in.OnlyWithProducts,
 		})
 		return repoErr
 	})
@@ -229,8 +231,9 @@ func (cs *CategoryService) List(
 	q *pagination.ListQuery,
 ) (*pagination.PagedResult[model.ProductCategory], error) {
 	return cs.ListCategories(ctx, ListCategoriesInput{
-		Query:          q,
-		IncludeDeleted: false,
+		Query:            q,
+		IncludeDeleted:   false,
+		OnlyWithProducts: true,
 	})
 }
 

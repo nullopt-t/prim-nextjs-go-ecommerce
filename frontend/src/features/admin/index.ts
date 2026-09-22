@@ -1,0 +1,14 @@
+export { AdminLayout } from "./routes/adminLayout";
+export { AdminDashboard } from "./routes/dashboard";
+export { AdminProducts } from "./routes/products";
+export { AdminCategories } from "./routes/categories";
+export { AdminBrands } from "./routes/brands";
+export { AdminAttributes } from "./routes/attributes";
+export { AdminMedia } from "./routes/media";
+export { AdminInventory } from "./routes/inventory";
+export { AdminOrders } from "./routes/orders";
+export { AdminOrderDetails } from "./routes/orderDetails";
+export { AdminCustomers } from "./routes/customers";
+export { AdminPayments } from "./routes/payments";
+export { AdminPromotions } from "./routes/promotions";
+export { AdminSettings } from "./routes/settings";

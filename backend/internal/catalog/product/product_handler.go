@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/category"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
@@ -579,6 +580,8 @@ type ProductListItemResponse struct {
 	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
 	// Currency ISO code
 	Currency *string `json:"currency,omitempty" example:"USD"`
+	// Category information
+	Category *category.PublicCategoryResponse `json:"category,omitempty"`
 	// Rating summary and score breakdown
 	Rating *ProductRatingSummaryResponse `json:"rating,omitempty"`
 }
@@ -588,6 +591,13 @@ func mapProductListItemResponse(item *ProductCardReadModel) ProductListItemRespo
 		Slug:     item.Slug,
 		Title:    item.Title,
 		Currency: item.Currency,
+	}
+
+	if item.Category != nil {
+		res.Category = &category.PublicCategoryResponse{
+			ID:   item.Category.ID.String(),
+			Name: item.Category.Name,
+		}
 	}
 
 	curr := "USD"

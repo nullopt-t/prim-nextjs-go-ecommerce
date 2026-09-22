@@ -1,0 +1,214 @@
+"use client";
+
+import { createContext, useContext, useState, useEffect } from "react";
+import { api } from "@/api/client";
+
+export interface CartContextItem {
+  id: string;
+  productId?: string;
+  variantId?: string;
+  productName: { ar?: string; en?: string } | string;
+  productBrand?: string;
+  productPrice: string | number;
+  quantity: number;
+  img?: string;
+  color?: string;
+}
+
+export interface CouponData {
+  code: string;
+  discountPercent?: number;
+  fixedDiscount?: number;
+  freeShipping?: boolean;
+  message?: string;
+}
+
+interface CartContextType {
+  cartItems: CartContextItem[];
+  cartSummary: {
+    subtotal: number;
+    discount: number;
+    shipping: number;
+    tax: number;
+    total: number;
+  };
+  loading: boolean;
+  errorMsg: string | null;
+  appliedCoupon: CouponData | null;
+  isCartOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
+  toggleCart: () => void;
+  applyCoupon: (code: string) => Promise<{ success: boolean; coupon?: CouponData; error?: string }>;
+  removeCoupon: () => void;
+  addToCart: (payload: any) => Promise<{ success: boolean; error?: string }>;
+  updateCartItem: (id: string, quantity: number) => Promise<{ success: boolean; error?: string }>;
+  removeFromCart: (id: string) => Promise<{ success: boolean; error?: string }>;
+  clearCart: () => Promise<{ success: boolean; error?: string }>;
+  refreshCart: () => Promise<void>;
+}
+
+const CartContext = createContext<CartContextType | null>(null);
+
+export function CartProvider({ children }: { children: React.ReactNode }) {
+  const [cartItems, setCartItems] = useState<CartContextItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cartSummary, setCartSummary] = useState({
+    subtotal: 0,
+    discount: 0,
+    shipping: 0,
+    tax: 0,
+    total: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponData | null>(null);
+
+  const openCart = () => setIsCartOpen(true);
+  const closeCart = () => setIsCartOpen(false);
+  const toggleCart = () => setIsCartOpen((prev) => !prev);
+
+  const normalizeCartData = (res: any) => {
+    const rawCart = res?.data || res || {};
+    const rawItems = Array.isArray(rawCart.items) 
+      ? rawCart.items 
+      : (Array.isArray(rawCart) ? rawCart : []);
+
+    const formattedItems: CartContextItem[] = rawItems.map((item: any) => {
+      const title = item.title || item.name || item.productName || "Product";
+      const price = item.unitPrice !== undefined
+        ? `$${(item.unitPrice / 100).toFixed(2)}`
+        : (item.productPrice || item.price || "$0.00");
+      const img = item.thumbnailUrl || item.img || item.image || "/placeholder-product.png";
+
+      return {
+        id: String(item.id),
+        productId: item.productId,
+        variantId: item.variantId,
+        productName: typeof title === "object" ? title : { en: title, ar: title },
+        productBrand: item.brand || item.productBrand || "PRIM",
+        productPrice: price,
+        quantity: item.quantity || 1,
+        img,
+        color: item.color || item.attributes?.color || "Default",
+      };
+    });
+
+    setCartItems(formattedItems);
+    if (rawCart.summary) {
+      setCartSummary({
+        subtotal: (rawCart.summary.subtotal || 0) / 100,
+        discount: (rawCart.summary.discount || 0) / 100,
+        shipping: (rawCart.summary.shipping || 0) / 100,
+        tax: (rawCart.summary.tax || 0) / 100,
+        total: (rawCart.summary.total || 0) / 100,
+      });
+    }
+  };
+
+  const fetchCart = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/api/v1/cart");
+      normalizeCartData(res);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to load cart");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCart();
+  }, []);
+
+  const addToCart = async (payload: any) => {
+    try {
+      // Backend expects { variantId, quantity }
+      const variantId = payload.variantId || payload.id || "70000000-0000-0000-0000-000000000001";
+      const quantity = payload.quantity || 1;
+      await api.post("/api/v1/cart/items", { variantId, quantity });
+      await fetchCart();
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  };
+
+  const updateCartItem = async (id: string, quantity: number) => {
+    try {
+      await api.patch(`/api/v1/cart/items/${id}`, { quantity });
+      await fetchCart();
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  };
+
+  const removeFromCart = async (id: string) => {
+    try {
+      await api.delete(`/api/v1/cart/items/${id}`);
+      await fetchCart();
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  };
+
+  const clearCart = async () => {
+    try {
+      await api.delete("/api/v1/cart");
+      await fetchCart();
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  };
+
+  const applyCoupon = async (code: string) => {
+    try {
+      const res = await api.post<CouponData>("/api/v1/coupons/apply", { code });
+      setAppliedCoupon(res);
+      return { success: true, coupon: res };
+    } catch (err: any) {
+      return { success: false, error: err.message || "Invalid coupon code" };
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+  };
+
+  return (
+    <CartContext.Provider
+      value={{
+        cartItems,
+        cartSummary,
+        loading,
+        errorMsg,
+        appliedCoupon,
+        isCartOpen,
+        openCart,
+        closeCart,
+        toggleCart,
+        applyCoupon,
+        removeCoupon,
+        addToCart,
+        updateCartItem,
+        removeFromCart,
+        clearCart,
+        refreshCart: fetchCart,
+      }}
+    >
+      {children}
+    </CartContext.Provider>
+  );
+}
+
+export function useCartContext() {
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error("useCartContext must be used within a CartProvider");
+  }
+  return context;
+}
