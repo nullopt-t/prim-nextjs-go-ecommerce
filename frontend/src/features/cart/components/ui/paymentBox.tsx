@@ -7,9 +7,9 @@ import { useCart } from "@/hooks/useCart";
 import { useRouter } from "@/i18n/navigation";
 import { Truck, Sparkles, ShieldCheck } from "lucide-react";
 
-export default function PaymentBox() {
+export default function PaymentBox({ compact = false }: { compact?: boolean }) {
   const t = useTranslations("cart");
-  const { cartItems, appliedCoupon } = useCart();
+  const { cartItems, appliedCoupon, closeCart } = useCart();
   const router = useRouter();
 
   if (!cartItems || cartItems.length === 0) {
@@ -41,8 +41,8 @@ export default function PaymentBox() {
   const total = Math.max(0, subtotal - discount + shippingCost);
 
   return (
-    <div className="border border-border p-6 rounded-2xl bg-card shadow-xs flex flex-col">
-      <h3 className="mb-4 font-semibold text-lg text-foreground">
+    <div className={`border border-border rounded-2xl bg-card shadow-xs flex flex-col ${compact ? "p-4" : "p-6"}`}>
+      <h3 className={`font-semibold text-foreground ${compact ? "text-base mb-3" : "text-lg mb-4"}`}>
         {t("orderSummary.title", { defaultMessage: "Order Summary" })}
       </h3>
 
@@ -121,7 +121,10 @@ export default function PaymentBox() {
           text={`${t("orderSummary.checkout", { defaultMessage: "Proceed to Checkout" })} (${cartItems?.length || 0})`}
           className="py-3 text-base shadow-sm w-full"
           disabled={!cartItems || cartItems.length === 0}
-          onClick={() => router.push("/checkout")}
+          onClick={() => {
+            closeCart();
+            router.push("/checkout");
+          }}
         />
       </div>
 

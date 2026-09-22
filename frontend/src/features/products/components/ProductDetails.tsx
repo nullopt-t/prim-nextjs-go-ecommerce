@@ -207,8 +207,11 @@ export function ProductDetails() {
 					<ChevronRight className="size-4 rtl:rotate-180 shrink-0" />
 					<Link href="/products" className="hover:text-foreground transition-colors">Products</Link>
 					<ChevronRight className="size-4 rtl:rotate-180 shrink-0" />
-					<Link href={`/products?category=${product.category}`} className="hover:text-foreground transition-colors capitalize">
-						{product.category.replace("-", " ")}
+					<Link 
+						href={`/products?category=${product.categoryId || product.category}`} 
+						className="hover:text-foreground transition-colors capitalize"
+					>
+						{product.category?.replace?.("-", " ") || product.category}
 					</Link>
 					<ChevronRight className="size-4 rtl:rotate-180 shrink-0" />
 					<span className="text-foreground font-medium truncate max-w-[200px]">{productName}</span>
@@ -704,7 +707,7 @@ export function ProductDetails() {
 				{/* Similar Products */}
 				{similarProducts.length > 0 && (
 					<div className="mt-20 mb-12">
-						<SectionTitle title="Similar Products" link={`/products?category=${product.category}`} />
+						<SectionTitle title="Similar Products" link={`/products?category=${product.categoryId || product.category}`} />
 						<ProductsGrid
 							products={similarProducts}
 							className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"

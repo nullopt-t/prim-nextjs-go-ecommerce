@@ -4,13 +4,23 @@ import { HeaderActions } from "@/components/ui/headerActions";
 
 export function Header() {
   return (
-    <header className="p-2.5 md:p-5 lg:px-10 lg:py-4 sticky top-0 z-50 text-foreground bg-background/70 backdrop-blur-3xl border-b border-border/50">
-      <div className="grid gap-5 grid-cols-3 items-center">
-        <Brand />
-        <div className="col-span-3 md:col-span-1">
+    <header className="sticky top-0 z-50 text-foreground bg-background/80 backdrop-blur-xl border-b border-border/60 transition-colors">
+      <div className="px-4 py-2.5 md:px-6 md:py-3 lg:px-10 lg:py-4 flex flex-col md:grid md:grid-cols-3 md:items-center gap-2.5 md:gap-6">
+        {/* Top row on mobile: Brand on left, Actions on right */}
+        <div className="flex items-center justify-between w-full md:w-auto">
+          <Brand />
+          <div className="flex md:hidden items-center">
+            <HeaderActions />
+          </div>
+        </div>
+
+        {/* Search bar: full-width second row on mobile, centered on desktop */}
+        <div className="w-full">
           <SearchBar />
         </div>
-        <div className="col-span-3 md:col-span-1 justify-self-end flex justify-end items-center gap-5 text-foreground">
+
+        {/* Actions: visible on desktop, placed on the right */}
+        <div className="hidden md:flex justify-end items-center gap-5 justify-self-end text-foreground">
           <HeaderActions />
         </div>
       </div>

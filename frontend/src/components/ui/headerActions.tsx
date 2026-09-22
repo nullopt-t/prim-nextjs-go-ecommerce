@@ -21,11 +21,11 @@ export function HeaderActions() {
   };
 
   return (
-    <div className="flex items-center gap-5">
+    <div className="flex items-center gap-3 sm:gap-4 md:gap-5">
       <button
         type="button"
         onClick={toggleLang}
-        className="cursor-pointer font-medium hover:text-accent-brand"
+        className="cursor-pointer text-sm font-semibold hover:text-accent-brand px-1 py-1"
       >
         <span className={locale === "en" ? "text-accent-brand font-bold" : ""}>
           En

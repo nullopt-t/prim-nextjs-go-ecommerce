@@ -16,7 +16,7 @@ export default function FormInput({ inputObj }: FormInputProps) {
 
   return (
     <input
-      className="p-2.5 pl-4 rounded-md border-2 border-border focus:border-accent-brand bg-input-background text-foreground w-full outline-none transition-colors"
+      className="p-3 pl-4 rounded-xl border border-border focus:border-accent-brand focus:ring-2 focus:ring-accent-brand/20 bg-background text-foreground w-full outline-none transition-all shadow-xs text-sm"
       type={inputObj.type}
       value={inputObj.value}
       onChange={(e) => inputObj.setValue(e.target.value)}

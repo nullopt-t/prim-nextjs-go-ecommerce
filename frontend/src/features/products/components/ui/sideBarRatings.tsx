@@ -30,7 +30,7 @@ export default function SideBarRatings() {
             >
               <Stars starsNum={value.stars} />
               <span className={`text-xs ${isSelected ? "text-accent-brand" : "text-muted-foreground group-hover:text-foreground"}`}>
-                &amp; up
+                {"&"} up
               </span>
             </button>
           );

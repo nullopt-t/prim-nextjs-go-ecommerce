@@ -6,7 +6,7 @@ export function Brand() {
   return (
     <Link
       href="/"
-      className="inline-block hover:scale-95 transition-transform col-span-3 md:col-span-1 md:justify-self-start font-black text-title-sm md:text-title-md lg:text-title-lg text-center"
+      className="inline-flex items-center hover:scale-95 transition-transform font-black text-2xl md:text-title-md tracking-tight"
     >
       <span>PRI</span>
       <span className="text-accent-brand">M</span>

@@ -20,7 +20,7 @@ export default function FormButton({ type, payload, handle }: FormButtonProps) {
   return (
     <button
       type="submit"
-      className="bg-primary text-primary-foreground rounded-md py-3 font-medium capitalize hover:opacity-90 transition-opacity cursor-pointer w-full"
+      className="bg-primary text-primary-foreground rounded-xl py-3.5 font-semibold text-sm capitalize hover:bg-primary/90 transition-all shadow-sm cursor-pointer w-full"
       onClick={(e) => {
         e.preventDefault();
         handle(type, payload);

@@ -17,7 +17,7 @@ export default function SectionTitle({ title, link = "/products" }: { title: str
         className="flex gap-2 items-center text-txt-sm md:text-txt-md lg:text-txt-lg cursor-pointer text-accent-brand hover:underline hover:underline-offset-4"
       >
         <span>{t("categories.seeAll")}</span>
-        <HiMiniArrowLongRight className="size-5" />
+        <HiMiniArrowLongRight className="size-5 rtl:rotate-180" />
       </Link>
     </div>
   );

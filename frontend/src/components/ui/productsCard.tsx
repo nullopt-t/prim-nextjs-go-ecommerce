@@ -41,9 +41,9 @@ export function ProductsCard({
     locale === "en" ? cardDetails.product.en : cardDetails.product.ar;
 
   return (
-    <div className="shadow-lg cursor-pointer hover:scale-95 transition-transform hover:border-accent-brand border-2 border-border rounded-md overflow-hidden bg-card flex flex-col justify-between">
+    <div className="shadow-xs hover:shadow-md cursor-pointer transition-all duration-300 hover:border-accent-brand/80 border border-border rounded-2xl overflow-hidden bg-card flex flex-col justify-between group">
       <div>
-        <div className="relative aspect-square w-full bg-secondary">
+        <div className="relative aspect-square w-full bg-secondary/50 overflow-hidden">
           {typeof cardDetails.img === "string" ? (
             <img
               src={cardDetails.img}
@@ -100,10 +100,11 @@ export function ProductsCard({
       </div>
 
       <div>
-        <div className="h-10 m-2.5 text-primary-foreground bg-primary rounded-md hover:opacity-90">
+        <div className="h-10 mx-3 mb-3 text-primary-foreground bg-primary rounded-xl overflow-hidden hover:opacity-90 transition-opacity">
           <CustomButton
             text={tHome("product.addToCart")}
             onClick={onAddToCart}
+            className="rounded-xl border-none font-semibold text-xs tracking-wide"
           />
         </div>
         {isWishlist && (

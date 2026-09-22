@@ -921,7 +921,7 @@ export function Checkout() {
 										<div className="flex items-center gap-3">
 											<div className="w-12 h-12 rounded-lg bg-secondary overflow-hidden shrink-0 border border-border/50">
 												<img
-													src={item.img || "https://images.unsplash.com/photo-1546868871-7041f2a55e12?auhref=format&fit=crop&q=80&w=200"}
+													src={item.img || "/placeholder-product.png"}
 													alt={(typeof item.productName === "object" ? item.productName?.en : item.productName) || "Product"}
 													className="w-full h-full object-cover"
 												/>
@@ -976,28 +976,37 @@ export function Checkout() {
 
 							{/* Context-aware primary button */}
 							{currentStep === 1 && (
-								<CustomButton
-									text="Continue to Delivery Speed"
+								<button
+									type="button"
 									onClick={handleGoToShipping}
-									className="w-full py-3.5 text-sm font-semibold shadow-md"
-								/>
+									className="w-full py-3.5 px-6 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2"
+								>
+									<span>Continue to Delivery Speed</span>
+									<ArrowRight className="size-4" />
+								</button>
 							)}
 
 							{currentStep === 2 && (
-								<CustomButton
-									text="Continue to Payment"
+								<button
+									type="button"
 									onClick={handleGoToPayment}
-									className="w-full py-3.5 text-sm font-semibold shadow-md"
-								/>
+									className="w-full py-3.5 px-6 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2"
+								>
+									<span>Continue to Payment</span>
+									<ArrowRight className="size-4" />
+								</button>
 							)}
 
 							{currentStep === 3 && (
-								<CustomButton
-									text={placingOrder ? "Processing Order..." : `Place Order • $${finalTotal.toFixed(2)}`}
+								<button
+									type="button"
 									onClick={handlePlaceOrder}
-									className="w-full py-3.5 text-base font-bold shadow-md"
 									disabled={placingOrder || !cartItems || cartItems.length === 0}
-								/>
+									className="w-full py-3.5 px-6 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-bold text-base shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									<span>{placingOrder ? "Processing Order..." : `Place Order • $${finalTotal.toFixed(2)}`}</span>
+									<CheckCircle2 className="size-4" />
+								</button>
 							)}
 
 							<div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">

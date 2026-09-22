@@ -11,7 +11,7 @@ export default function SectionCard({ category, slug }: SectionCardProps) {
   return (
     <Link
       href={href}
-      className="p-2.5 py-5 capitalize text-foreground hover:text-accent-brand hover:border-accent-brand bg-card font-medium flex items-center justify-center rounded-sm border-2 border-border hover:bg-accent transition-all text-center"
+      className="p-3 py-5 capitalize text-foreground hover:text-accent-brand hover:border-accent-brand bg-card font-semibold text-sm flex items-center justify-center rounded-xl border border-border hover:bg-accent/40 shadow-2xs hover:shadow-xs transition-all text-center"
     >
       {category}
     </Link>
