@@ -3,27 +3,23 @@ import { SearchBar } from "@/components/ui/search";
 import { HeaderActions } from "@/components/ui/headerActions";
 
 export function Header() {
-  return (
-    <header className="sticky top-0 z-50 text-foreground bg-background/80 backdrop-blur-xl border-b border-border/60 transition-colors">
-      <div className="px-4 py-2.5 md:px-6 md:py-3 lg:px-10 lg:py-4 flex flex-col md:grid md:grid-cols-3 md:items-center gap-2.5 md:gap-6">
-        {/* Top row on mobile: Brand on left, Actions on right */}
-        <div className="flex items-center justify-between w-full md:w-auto">
-          <Brand />
-          <div className="flex md:hidden items-center">
-            <HeaderActions />
-          </div>
-        </div>
-
-        {/* Search bar: full-width second row on mobile, centered on desktop */}
-        <div className="w-full">
-          <SearchBar />
-        </div>
-
-        {/* Actions: visible on desktop, placed on the right */}
-        <div className="hidden md:flex justify-end items-center gap-5 justify-self-end text-foreground">
-          <HeaderActions />
-        </div>
-      </div>
-    </header>
-  );
+	return (
+		<header className="sticky top-0 z-50 w-full bg-background/85 backdrop-blur-md border-b border-border/80 shadow-xs transition-colors">
+			<div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-10 h-15 sm:h-16 flex items-center justify-between gap-3 sm:gap-6">
+				<div className="flex-shrink-0">
+					<Brand />
+				</div>
+				<div className="flex-1 max-w-2xl hidden md:block">
+					<SearchBar />
+				</div>
+				<div className="flex items-center flex-shrink-0">
+					<HeaderActions />
+				</div>
+			</div>
+			{/* Mobile Search - shown only on small screens */}
+			<div className="md:hidden px-4 sm:px-6 pb-2.5 pt-0.5 max-w-screen-2xl mx-auto w-full">
+				<SearchBar />
+			</div>
+		</header>
+	);
 }

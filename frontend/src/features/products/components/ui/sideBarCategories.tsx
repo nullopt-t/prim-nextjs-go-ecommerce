@@ -6,8 +6,10 @@ import { useSearchParams } from "next/navigation";
 import SideBarTitle from "@/features/products/components/ui/sideBarTitle";
 import { useCatalogContext } from "@/context/CatalogContext";
 import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 
 export default function SideBarCategories() {
+  const t = useTranslations("common.filters");
   const catRef = useRef<HTMLUListElement>(null);
   const [height, setHeight] = useState<number | undefined>(undefined);
   const [isOpen, setIsOpen] = useState(true);
@@ -24,7 +26,7 @@ export default function SideBarCategories() {
   return (
     <div className="border-b border-border pb-5">
       <div className="flex justify-between items-center">
-        <SideBarTitle title="Category" />
+        <SideBarTitle title={t("category")} />
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
@@ -50,7 +52,7 @@ export default function SideBarCategories() {
                 !currentCategory ? "text-accent-brand font-semibold" : "text-muted-foreground hover:text-accent-brand"
               }`}
             >
-              All Categories
+              {t("allCategories")}
             </Link>
           </li>
           {categories.map((category: any) => {

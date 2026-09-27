@@ -1,3 +1,5 @@
+"use client";
+
 import { Star, Gauge, ShieldCheck, Smile } from "lucide-react";
 import BeliefCards, { BeliefItem } from "@/features/about/components/ui/beliefsCards";
 

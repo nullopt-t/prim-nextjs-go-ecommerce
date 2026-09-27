@@ -103,20 +103,21 @@ export function ProductDetails() {
 
 	if (allLoading || productLoading) {
 		return (
-			<div className="flex flex-col items-center justify-center py-32 text-center text-muted-foreground">
-				Loading...
+			<div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+				<div className="size-8 rounded-full border-2 border-accent-brand border-t-transparent animate-spin mb-3" />
+				<span className="text-sm">Loading product details...</span>
 			</div>
 		);
 	}
 
 	if (!product) {
 		return (
-			<div className="flex flex-col items-center justify-center py-32 text-center">
-				<Package className="size-16 text-muted-foreground mb-4 opacity-50" />
-				<h1 className="text-2xl font-bold text-foreground mb-4">Product Not Found</h1>
-				<p className="text-muted-foreground mb-8">The product you are looking for doesn't exist or has been removed.</p>
+			<div className="flex flex-col items-center justify-center py-16 text-center">
+				<Package className="size-12 text-muted-foreground mb-3 opacity-50" />
+				<h1 className="text-xl font-bold text-foreground mb-2">Product Not Found</h1>
+				<p className="text-muted-foreground text-sm mb-6 max-w-sm">The product you are looking for doesn't exist or has been removed.</p>
 				<Link href="/products">
-					<CustomButton text="Browse All Products" className="px-8" />
+					<CustomButton text="Browse All Products" className="px-6 py-2.5 text-sm" />
 				</Link>
 			</div>
 		);
@@ -200,20 +201,20 @@ export function ProductDetails() {
 	};
 
 	return (
-		<AnimatedSection className="max-w-7xl mx-auto">
+		<AnimatedSection className="max-w-screen-2xl mx-auto">
 				{/* Breadcrumb */}
-				<nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8 overflow-x-auto whitespace-nowrap pb-2 scrollbar-none">
+				<nav className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 overflow-x-auto whitespace-nowrap pb-1 scrollbar-none">
 					<Link href="/" className="hover:text-foreground transition-colors">Home</Link>
-					<ChevronRight className="size-4 rtl:rotate-180 shrink-0" />
+					<ChevronRight className="size-3.5 rtl:rotate-180 shrink-0" />
 					<Link href="/products" className="hover:text-foreground transition-colors">Products</Link>
-					<ChevronRight className="size-4 rtl:rotate-180 shrink-0" />
+					<ChevronRight className="size-3.5 rtl:rotate-180 shrink-0" />
 					<Link 
 						href={`/products?category=${product.categoryId || product.category}`} 
 						className="hover:text-foreground transition-colors capitalize"
 					>
 						{product.category?.replace?.("-", " ") || product.category}
 					</Link>
-					<ChevronRight className="size-4 rtl:rotate-180 shrink-0" />
+					<ChevronRight className="size-3.5 rtl:rotate-180 shrink-0" />
 					<span className="text-foreground font-medium truncate max-w-[200px]">{productName}</span>
 				</nav>
 
@@ -706,7 +707,7 @@ export function ProductDetails() {
 
 				{/* Similar Products */}
 				{similarProducts.length > 0 && (
-					<div className="mt-20 mb-12">
+					<div className="mt-8 sm:mt-12 mb-6 sm:mb-8">
 						<SectionTitle title="Similar Products" link={`/products?category=${product.categoryId || product.category}`} />
 						<ProductsGrid
 							products={similarProducts}

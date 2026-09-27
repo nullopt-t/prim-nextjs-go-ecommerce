@@ -4,7 +4,7 @@ import CategoryShelves from "@/features/home/components/ui/categoryShelves";
 
 export default function HomeLayout() {
   return (
-    <div className="flex flex-col gap-12">
+    <div className="flex flex-col gap-6 md:gap-8">
       <Hero />
 
       {/* Category showcase cards */}

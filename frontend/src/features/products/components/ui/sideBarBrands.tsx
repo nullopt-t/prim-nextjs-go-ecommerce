@@ -3,9 +3,11 @@
 import SideBarTitle from "@/features/products/components/ui/sideBarTitle";
 import FilterCheckbox from "@/features/products/components/ui/filterCheckbox";
 import { useCatalogContext } from "@/context/CatalogContext";
+import { useTranslations } from "next-intl";
 
 export default function SideBarBrands() {
   const { brands, filters, setFilter } = useCatalogContext();
+  const t = useTranslations("common.filters");
 
   const fallbackBrands = [
     { id: "brand-1", name: "Apple" },
@@ -19,7 +21,7 @@ export default function SideBarBrands() {
 
   return (
     <div className="border-b border-border pb-5">
-      <SideBarTitle title="Brands" />
+      <SideBarTitle title={t("brands")} />
       <div className="flex flex-col gap-2.5">
         {brandList.slice(0, 6).map((brand: any) => {
           const brandName = brand.name || brand.brand || "Brand";

@@ -66,6 +66,12 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	router.Use(middleware.CORS(app.config.AllowedOrigins...))
 
 	v1 := router.Group("/api/v1")
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	v1.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 	swagger.SetUpDocs(v1)
 
 	txRunner := database.NewTxRunner(app.db)

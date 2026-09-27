@@ -14,14 +14,15 @@ export default function RecentlyGrid() {
   }
 
   return (
-    <div className="flex flex-wrap gap-5 mt-5">
+    <div className="flex gap-4 sm:gap-6 mt-4 overflow-x-auto pb-2 scrollbar-none">
       {items.map((item: any) => (
-        <RecentlyCard
-          key={item.id || item.slug}
-          title={item.title || item.product?.en}
-          img={item.img}
-          slug={item.slug || item.id}
-        />
+        <div key={item.id || item.slug} className="shrink-0">
+          <RecentlyCard
+            title={item.title || item.product?.en}
+            img={item.img}
+            slug={item.slug || item.id}
+          />
+        </div>
       ))}
     </div>
   );

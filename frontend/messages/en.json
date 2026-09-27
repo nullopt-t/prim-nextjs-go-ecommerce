@@ -83,7 +83,25 @@
     "header": {
       "search": "Search",
       "home": "Home",
-      "allCategories": "All categories"
+      "allCategories": "All categories",
+      "account": "Account",
+      "wishlist": "Wishlist",
+      "cart": "Shopping Cart"
+    },
+    "filters": {
+      "title": "Filters",
+      "clearAll": "Clear all",
+      "filterAndRefine": "Filter & Refine",
+      "apply": "Apply Filters",
+      "category": "Category",
+      "allCategories": "All Categories",
+      "brands": "Brands",
+      "ratings": "Ratings",
+      "andUp": "& up",
+      "availability": "Availability",
+      "inStockOnly": "In stock only",
+      "discount": "Discount",
+      "discountMore": "{percent}% or more"
     },
     "footer": {
       "shop": "Shop",
@@ -111,7 +129,30 @@
       "delivered": "delivered.",
       "description": "Discover thousands of products from trusted brands, all in one place. Fast shipping, easy returns, and unbeatable prices.",
       "shopNow": "Shop now",
-      "viewDeals": "View deals"
+      "viewDeals": "View deals",
+      "slides": {
+        "slide1": {
+          "tag": "Featured Collection",
+          "title": "Next-Gen Audio & Gear",
+          "highlight": "Pure Sound.",
+          "desc": "Immerse yourself with premium acoustic performance and noise-canceling headphones crafted for daily focus.",
+          "cta": "Explore Audio"
+        },
+        "slide2": {
+          "tag": "Special Offers",
+          "title": "Smart Tech Essentials",
+          "highlight": "Up to 40% Off.",
+          "desc": "Upgrade your desk setup with ultra-slim mechanical keyboards, ergonomic monitors, and precision accessories.",
+          "cta": "Shop Tech Deals"
+        },
+        "slide3": {
+          "tag": "New Arrivals",
+          "title": "Minimalist Lifestyle",
+          "highlight": "Designed to Last.",
+          "desc": "Timeless watches, handcrafted leather bags, and sleek everyday carry items built with modern utility.",
+          "cta": "Discover More"
+        }
+      }
     },
     "categories": {
       "title": "Categories",

@@ -129,46 +129,48 @@ export function Footer() {
   ];
 
   return (
-    <footer className="bg-footer p-2.5 md:p-5 lg:p-10 text-white mt-auto">
-      <div className="mb-5 flex flex-col gap-10 md:flex-row text-white text-txt-sm md:text-txt-md lg:text-txt-lg">
-        <div className="flex-1">
-          <Brand />
-          <p className="text-muted-foreground mt-2">
-            {t("footer.footerDescription")}
-          </p>
-        </div>
-        {sections.map((value) => (
-          <div key={value.id} className="flex-1">
-            <p className="mb-5 text-txt-lg font-medium capitalize">
-              {t(value.title)}
+    <footer className="bg-footer text-white mt-auto border-t border-border/20">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-10 py-10 md:py-14">
+        <div className="mb-10 flex flex-col gap-10 md:flex-row text-white text-txt-sm md:text-txt-md lg:text-txt-lg">
+          <div className="flex-1 max-w-sm">
+            <Brand />
+            <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+              {t("footer.footerDescription")}
             </p>
-            <div className="flex flex-col gap-2.5">
-              {value.content.map((content) => (
-                <Link
-                  href={content.path}
-                  key={content.id}
-                  className="capitalize text-muted-foreground cursor-pointer hover:text-accent-brand transition-colors"
-                >
-                  {content.name.startsWith("footer.")
-                    ? t(content.name)
-                    : content.name}
-                </Link>
-              ))}
-            </div>
           </div>
-        ))}
-      </div>
-      <hr className="border-border text-muted-foreground" />
-      <div className="flex flex-col gap-5 md:flex-row md:justify-between text-muted-foreground pt-5">
-        <p>{t("footer.copyright", { year: currentDate })}</p>
-
-        <div className="flex gap-2.5">
-          {social.map((value) => (
-            <value.icon
-              key={value.id}
-              className="size-6 hover:text-accent-brand cursor-pointer transition-colors"
-            />
+          {sections.map((value) => (
+            <div key={value.id} className="flex-1">
+              <p className="mb-4 text-base font-bold capitalize text-white">
+                {t(value.title)}
+              </p>
+              <div className="flex flex-col gap-2.5">
+                {value.content.map((content) => (
+                  <Link
+                    href={content.path}
+                    key={content.id}
+                    className="capitalize text-muted-foreground hover:text-accent-brand text-sm transition-colors cursor-pointer"
+                  >
+                    {content.name.startsWith("footer.")
+                      ? t(content.name)
+                      : content.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
           ))}
+        </div>
+        <hr className="border-border/40 text-muted-foreground mb-6" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-muted-foreground text-xs sm:text-sm">
+          <p>{t("footer.copyright", { year: currentDate })}</p>
+
+          <div className="flex gap-4">
+            {social.map((value) => (
+              <value.icon
+                key={value.id}
+                className="size-5 hover:text-accent-brand cursor-pointer transition-colors"
+              />
+            ))}
+          </div>
         </div>
       </div>
     </footer>

@@ -5,15 +5,24 @@ import Content from "@/features/products/components/ui/content";
 import { Title } from "@/components/ui/title";
 import { useCatalogContext } from "@/context/CatalogContext";
 
+import { useSearchParams } from "next/navigation";
+
 interface ProductsLayoutProps {
   category?: string;
 }
 
 export default function ProductsLayout({ category = "All" }: ProductsLayoutProps) {
   const { categories } = useCatalogContext();
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("q");
 
   let displayTitle = "All Products";
-  if (category && category.toLowerCase() !== "all") {
+  let displaySubtitle = "Showing all products";
+
+  if (searchQuery) {
+    displayTitle = `Search: "${searchQuery}"`;
+    displaySubtitle = "Matching products";
+  } else if (category && category.toLowerCase() !== "all") {
     const matchedCategory = categories.find((c: any) => c.id === category || c.slug === category);
     if (matchedCategory) {
       displayTitle = typeof matchedCategory.name === "object"
@@ -22,13 +31,14 @@ export default function ProductsLayout({ category = "All" }: ProductsLayoutProps
     } else {
       displayTitle = category.replace(/-/g, " ");
     }
+    displaySubtitle = `Showing products in ${displayTitle}`;
   }
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <Title
           title={displayTitle}
-          subtitle="Showing all products"
+          subtitle={displaySubtitle}
           className="mb-0"
         />
       </div>
