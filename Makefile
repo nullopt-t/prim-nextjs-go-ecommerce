@@ -1,5 +1,3 @@
-export DOCKER_TMPDIR ?= /mnt/HDD/AppsData/docker-tmp
-export TMPDIR ?= /mnt/HDD/AppsData/docker-tmp
 COMPOSE = docker compose -f docker-compose.dev.yml
 
 .PHONY: up up-build up-d down clean logs logs-api logs-frontend migrate-up migrate-down migrate-drop migrate-reset
