@@ -2,7 +2,8 @@
 
 import { Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
 export function SearchBar({ className = "" }: { className?: string }) {

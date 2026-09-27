@@ -112,18 +112,26 @@ export function Footer() {
   const social = [
     {
       id: "insta-1",
+      name: "Instagram",
+      href: "https://instagram.com",
       icon: FaInstagram,
     },
     {
       id: "x-1",
+      name: "X (Twitter)",
+      href: "https://x.com",
       icon: FaSquareXTwitter,
     },
     {
       id: "tik-1",
+      name: "TikTok",
+      href: "https://tiktok.com",
       icon: FaTiktok,
     },
     {
       id: "facebook-1",
+      name: "Facebook",
+      href: "https://facebook.com",
       icon: FaSquareFacebook,
     },
   ];
@@ -165,10 +173,16 @@ export function Footer() {
 
           <div className="flex gap-4">
             {social.map((value) => (
-              <value.icon
+              <a
                 key={value.id}
-                className="size-5 hover:text-accent-brand cursor-pointer transition-colors"
-              />
+                href={value.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={value.name}
+                className="text-muted-foreground hover:text-accent-brand transition-colors"
+              >
+                <value.icon className="size-5" />
+              </a>
             ))}
           </div>
         </div>

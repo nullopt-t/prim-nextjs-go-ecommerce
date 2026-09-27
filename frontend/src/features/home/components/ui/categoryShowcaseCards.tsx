@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Link } from "@/i18n/navigation";
 import { ArrowRight } from "lucide-react";
 import { useCatalogContext } from "@/context/CatalogContext";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 interface CategoryShowcaseCardProps {
   category: {
@@ -17,6 +17,7 @@ interface CategoryShowcaseCardProps {
 
 function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps) {
   const t = useTranslations("home.categories");
+  const locale = useLocale();
   // Take up to 4 items with images for this category
   const top4 = products.slice(0, 4);
   const categoryLinkTarget = category.slug || category.id;
@@ -33,7 +34,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
             {top4.map((p) => {
               const productTarget = p.slug || p.id;
               const productTitle = typeof p.product === "object"
-                ? (p.product?.en || p.product?.ar || p.title)
+                ? (locale === "ar" ? p.product?.ar || p.product?.en : p.product?.en || p.product?.ar) || p.title
                 : (p.title || "Product");
 
               return (
@@ -65,7 +66,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
           (() => {
             const productTarget = top4[0].slug || top4[0].id;
             const productTitle = typeof top4[0].product === "object"
-              ? (top4[0].product?.en || top4[0].product?.ar || top4[0].title)
+              ? (locale === "ar" ? top4[0].product?.ar || top4[0].product?.en : top4[0].product?.en || top4[0].product?.ar) || top4[0].title
               : (top4[0].title || "Product");
 
             return (

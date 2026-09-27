@@ -2,9 +2,15 @@
 
 import RecentlyGrid from "@/features/home/components/ui/recentlyGrid";
 import { useTranslations } from "next-intl";
+import { useCatalogContext } from "@/context/CatalogContext";
 
 export default function Recently() {
   const t = useTranslations("home");
+  const { products, loading } = useCatalogContext();
+
+  if (loading || !products || products.length < 6) {
+    return null;
+  }
 
   return (
     <div className="max-w-screen-2xl mx-auto w-full px-4 sm:px-6 lg:px-10 mb-5 sm:mb-6">

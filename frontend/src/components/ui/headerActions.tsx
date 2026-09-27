@@ -5,7 +5,6 @@ import { MdOutlineWbSunny } from "react-icons/md";
 import { useTheme } from "@/context/theme";
 import { useLocale } from "next-intl";
 import { useRouter, usePathname } from "@/i18n/navigation";
-import { CartSidebar } from "./cartSidebar";
 import { useCart } from "@/hooks/useCart";
 
 export function HeaderActions() {
@@ -67,7 +66,7 @@ export function HeaderActions() {
 					{/* Wishlist */}
 					<button
 						type="button"
-						onClick={() => router.push("/user/wishlist")}
+						onClick={() => router.push("/wishlist")}
 						aria-label="Wishlist"
 						className="size-9 rounded-lg text-muted-foreground hover:text-accent-brand hover:bg-secondary/60 transition-colors relative flex items-center justify-center cursor-pointer"
 					>
@@ -95,8 +94,6 @@ export function HeaderActions() {
 					</button>
 				</div>
 			</div>
-			
-			<CartSidebar />
 		</>
 	);
 }

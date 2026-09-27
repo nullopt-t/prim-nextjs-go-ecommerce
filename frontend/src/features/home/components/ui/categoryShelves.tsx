@@ -23,9 +23,7 @@ function CategoryShelf({ category, products }: CategoryShelfProps) {
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
-      // In RTL, scrollBy signs are reversed in most modern browser implementations
-      const multiplier = locale === "ar" ? -1 : 1;
-      const scrollAmount = (direction === "left" ? -400 : 400) * multiplier;
+      const scrollAmount = direction === "left" ? -400 : 400;
       scrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
     }
   };
