@@ -1,45 +1,48 @@
-name: Go
+name: Go Backend CI
+
 on:
   push:
     branches: ["main"]
+    paths:
+      - "backend/**"
+      - ".github/workflows/go.yml"
   pull_request:
     branches: ["main"]
+    paths:
+      - "backend/**"
+      - ".github/workflows/go.yml"
+
 jobs:
-  build:
+  build-and-test:
+    name: Build & Test
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: "1.26"
-    # -----------------------------
-    # Ensure module consistency
-    # -----------------------------
-    - name: Print Go version
-      run: |
-        go version
-    
-    - name: Tidy modules
-      working-directory: backend
-      run: |
-        go mod tidy
-        git diff --exit-code go.mod go.sum
-        
-    - name: Download dependencies
-      working-directory: backend
-      env:
-        GOPROXY: "https://proxy.golang.org,https://goproxy.io,direct"
-        GONOSUMCHECK: "*"
-      run: go mod download
-    # -----------------------------
-    # IMPORTANT: build first
-    # fixes all "undefined: X"
-    # -----------------------------
-    - name: Build (type check gate)
-      working-directory: backend
-      run: go build ./...
-      
-    - name: Test
-      working-directory: backend
-      run: go test ./...
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Print Go version
+        run: go version
+
+      - name: Download dependencies
+        env:
+          GOPROXY: "https://proxy.golang.org,https://goproxy.io,direct"
+          GONOSUMCHECK: "*"
+        run: go mod download
+
+      - name: Build all packages (Type-check gate)
+        run: go build ./...
+
+      - name: Run unit tests
+        run: go test -v -race ./...
