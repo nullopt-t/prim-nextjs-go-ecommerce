@@ -135,13 +135,13 @@ export default function CategoryShowcaseCards() {
         };
       })
       .filter((group: any) => group.products.length > 0)
-      .slice(0, 4);
+      .slice(0, 6);
   }, [categories, products]);
 
   if (loading && categoryGroups.length === 0) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {[...Array(4)].map((_, i) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+        {[...Array(6)].map((_, i) => (
           <div key={i} className="aspect-square bg-secondary/40 rounded-2xl animate-pulse" />
         ))}
       </div>
@@ -151,7 +151,7 @@ export default function CategoryShowcaseCards() {
   if (categoryGroups.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
       {categoryGroups.map((group) => (
         <CategoryShowcaseCard
           key={group.id}

@@ -13,7 +13,7 @@ export default function Recently() {
   }
 
   return (
-    <div className="max-w-screen-2xl mx-auto w-full px-4 sm:px-6 lg:px-10 mb-5 sm:mb-6">
+    <div className="w-full px-3 sm:px-6 lg:px-8 mb-5 sm:mb-6">
       <div className="bg-card/40 border border-border/80 rounded-2xl p-3.5 sm:p-5 shadow-xs">
         <div className="flex items-center justify-between pb-2.5 border-b border-border/50">
           <p className="text-foreground font-bold text-sm sm:text-base">

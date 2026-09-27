@@ -5,7 +5,7 @@ import { HeaderActions } from "@/components/ui/headerActions";
 export function Header() {
 	return (
 		<header className="sticky top-0 z-50 w-full bg-background/85 backdrop-blur-md border-b border-border/80 shadow-xs transition-colors">
-			<div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-10 h-15 sm:h-16 flex items-center justify-between gap-3 sm:gap-6">
+			<div className="w-full px-3 sm:px-6 lg:px-8 h-15 sm:h-16 flex items-center justify-between gap-3 sm:gap-6">
 				<div className="flex-shrink-0">
 					<Brand />
 				</div>
@@ -17,7 +17,7 @@ export function Header() {
 				</div>
 			</div>
 			{/* Mobile Search - shown only on small screens */}
-			<div className="md:hidden px-4 sm:px-6 pb-2.5 pt-0.5 max-w-screen-2xl mx-auto w-full">
+			<div className="md:hidden px-3 sm:px-6 pb-2.5 pt-0.5 w-full">
 				<SearchBar />
 			</div>
 		</header>

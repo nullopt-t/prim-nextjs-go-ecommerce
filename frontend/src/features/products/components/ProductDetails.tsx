@@ -201,7 +201,7 @@ export function ProductDetails() {
 	};
 
 	return (
-		<AnimatedSection className="max-w-screen-2xl mx-auto">
+		<AnimatedSection className="w-full">
 				{/* Breadcrumb */}
 				<nav className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 overflow-x-auto whitespace-nowrap pb-1 scrollbar-none">
 					<Link href="/" className="hover:text-foreground transition-colors">Home</Link>

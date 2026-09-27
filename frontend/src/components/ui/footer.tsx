@@ -138,7 +138,7 @@ export function Footer() {
 
   return (
     <footer className="bg-footer text-white mt-auto border-t border-border/20">
-      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-10 py-10 md:py-14">
+      <div className="w-full px-3 sm:px-6 lg:px-8 py-10 md:py-14">
         <div className="mb-10 flex flex-col gap-10 md:flex-row text-white text-txt-sm md:text-txt-md lg:text-txt-lg">
           <div className="flex-1 max-w-sm">
             <Brand />
