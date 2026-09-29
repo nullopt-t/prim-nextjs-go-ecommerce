@@ -1,35 +1,64 @@
 "use client";
 
-import { Title } from "@/components/ui/title";
 import DangerZone from "@/features/settings/components/ui/danger";
 import PersonalInfoForm from "@/features/settings/components/ui/personalInfoForm";
 import Preferences from "@/features/settings/components/ui/preferences";
-import { useTranslations } from "next-intl";
+
+interface SectionCardProps {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+  titleClassName?: string;
+}
+
+function SectionCard({ title, subtitle, children, titleClassName }: SectionCardProps) {
+  return (
+    <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-border bg-secondary/30">
+        <h2 className={`font-semibold text-sm text-foreground ${titleClassName ?? ""}`}>
+          {title}
+        </h2>
+        {subtitle && (
+          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        )}
+      </div>
+      <div className="px-6 py-5">{children}</div>
+    </div>
+  );
+}
 
 export default function SettingsLayout() {
-  const t = useTranslations("settings");
-
   return (
-    <div className="flex flex-col gap-10">
-      <Title
-        title={t("settings.title")}
-        subtitle={t("settings.description")}
-      />
+    <div className="w-full flex flex-col gap-6">
+      {/* Page header */}
       <div>
-        <Title title={t("settings.personalInformation")} />
+        <h1 className="text-xl font-semibold text-foreground">Account Settings</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Manage your personal information and preferences.
+        </p>
+      </div>
+
+      <SectionCard
+        title="Personal Information"
+        subtitle="Update your display name and contact details."
+      >
         <PersonalInfoForm />
-      </div>
-      <div>
-        <Title title={t("settings.preferences")} />
+      </SectionCard>
+
+      <SectionCard
+        title="Preferences"
+        subtitle="Customize your language, theme, and notification settings."
+      >
         <Preferences />
-      </div>
-      <div>
-        <Title
-          title={t("settings.dangerZone")}
-          textColor="text-destructive"
-        />
+      </SectionCard>
+
+      <SectionCard
+        title="Danger Zone"
+        subtitle="Irreversible account actions."
+        titleClassName="text-destructive"
+      >
         <DangerZone />
-      </div>
+      </SectionCard>
     </div>
   );
 }

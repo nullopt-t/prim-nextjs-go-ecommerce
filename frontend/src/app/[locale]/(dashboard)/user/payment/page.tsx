@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { CreditCard } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Payment Methods | PRIM",
@@ -7,15 +8,20 @@ export const metadata: Metadata = {
 
 export default function PaymentPage() {
   return (
-    <div>
-      <h1 className="font-medium text-title-sm md:text-title-md mb-2 text-foreground">
-        Payment Methods
-      </h1>
-      <p className="text-muted-foreground text-txt-sm mb-6">
-        Manage your payment options and billing settings
-      </p>
-      <div className="border border-border rounded-lg p-6 text-center text-muted-foreground bg-card">
-        No payment methods added yet.
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Payment Methods</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Manage your payment options and billing settings.
+        </p>
+      </div>
+
+      <div className="bg-card border border-border rounded-lg p-12 flex flex-col items-center justify-center text-center gap-3 shadow-sm">
+        <CreditCard className="size-10 text-muted-foreground/50" />
+        <p className="font-medium text-foreground">No payment methods</p>
+        <p className="text-sm text-muted-foreground">
+          Your saved payment methods will appear here.
+        </p>
       </div>
     </div>
   );

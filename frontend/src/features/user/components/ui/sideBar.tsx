@@ -3,9 +3,11 @@ import UserSideBarProfile from "@/features/user/components/ui/sideBarProfile";
 
 export default function UserSideBar() {
   return (
-    <aside className="w-14 md:w-60 shrink-0 bg-sidebar border-r border-sidebar-border p-2 md:p-4 min-h-[70vh]">
+    <aside className="hidden md:flex w-64 shrink-0 flex-col sticky top-6 self-start bg-card border border-border rounded-lg overflow-hidden shadow-sm min-h-fit">
       <UserSideBarProfile />
-      <UserSideBarLinks />
+      <div className="p-2">
+        <UserSideBarLinks />
+      </div>
     </aside>
   );
 }

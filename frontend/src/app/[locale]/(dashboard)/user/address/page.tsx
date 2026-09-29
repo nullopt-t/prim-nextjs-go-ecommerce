@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { MapPin } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Delivery Addresses | PRIM",
@@ -7,15 +8,20 @@ export const metadata: Metadata = {
 
 export default function AddressPage() {
   return (
-    <div>
-      <h1 className="font-medium text-title-sm md:text-title-md mb-2 text-foreground">
-        Addresses
-      </h1>
-      <p className="text-muted-foreground text-txt-sm mb-6">
-        Manage your delivery and billing addresses
-      </p>
-      <div className="border border-border rounded-lg p-6 text-center text-muted-foreground bg-card">
-        No addresses saved yet.
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Addresses</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Manage your delivery and billing addresses.
+        </p>
+      </div>
+
+      <div className="bg-card border border-border rounded-lg p-12 flex flex-col items-center justify-center text-center gap-3 shadow-sm">
+        <MapPin className="size-10 text-muted-foreground/50" />
+        <p className="font-medium text-foreground">No addresses saved yet</p>
+        <p className="text-sm text-muted-foreground">
+          Add your first address to speed up checkout.
+        </p>
       </div>
     </div>
   );

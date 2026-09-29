@@ -4,7 +4,7 @@ import { usePathname, useRouter, Link } from "@/i18n/navigation";
 import { useAuthContext } from "@/context/AuthContext";
 import {
   Blocks,
-  Box,
+  Package,
   Heart,
   MapPin,
   CreditCard,
@@ -13,55 +13,20 @@ import {
   LogOut,
 } from "lucide-react";
 
+export const navLinks = [
+  { id: "overview", icon: Blocks, label: "Overview", path: "/user/overview" },
+  { id: "orders", icon: Package, label: "My Orders", path: "/user/orders" },
+  { id: "wishlist", icon: Heart, label: "Wishlist", path: "/user/wishlist" },
+  { id: "address", icon: MapPin, label: "Addresses", path: "/user/address" },
+  { id: "payment", icon: CreditCard, label: "Payment", path: "/user/payment" },
+  { id: "reviews", icon: Star, label: "Reviews", path: "/user/reviews" },
+  { id: "settings", icon: Settings, label: "Settings", path: "/user/settings" },
+];
+
 export default function UserSideBarLinks() {
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuthContext();
-
-  const links = [
-    {
-      id: "overview",
-      icon: Blocks,
-      link: "Overview",
-      path: "/user/overview",
-    },
-    {
-      id: "orders",
-      icon: Box,
-      link: "My orders",
-      path: "/user/orders",
-    },
-    {
-      id: "wishlist",
-      icon: Heart,
-      link: "Wishlist",
-      path: "/user/wishlist",
-    },
-    {
-      id: "address",
-      icon: MapPin,
-      link: "Addresses",
-      path: "/user/address",
-    },
-    {
-      id: "payment",
-      icon: CreditCard,
-      link: "Payment methods",
-      path: "/user/payment",
-    },
-    {
-      id: "reviews",
-      icon: Star,
-      link: "Reviews",
-      path: "/user/reviews",
-    },
-    {
-      id: "settings",
-      icon: Settings,
-      link: "Settings",
-      path: "/user/settings",
-    },
-  ];
 
   const handleLogout = async () => {
     await logout();
@@ -69,40 +34,35 @@ export default function UserSideBarLinks() {
   };
 
   return (
-    <ul className="flex flex-col gap-1">
-      {links.map((value) => {
-        const isActive = pathname === value.path;
+    <ul className="flex flex-col gap-0.5">
+      {navLinks.map((item) => {
+        const isActive = pathname === item.path;
         return (
-          <li
-            key={value.id}
-            className="hover:bg-sidebar-accent overflow-hidden rounded-md transition-colors"
-          >
+          <li key={item.id}>
             <Link
-              href={value.path}
-              className={`flex gap-2.5 items-center p-2.5 transition-colors ${
+              href={item.path}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
                 isActive
-                  ? "text-accent-brand bg-sidebar-accent font-medium"
-                  : "text-sidebar-foreground"
+                  ? "bg-accent-brand/10 text-accent-brand font-medium"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground"
               }`}
             >
-              <value.icon className="size-5 shrink-0" />
-              <span className="hidden md:inline-block text-txt-sm md:text-txt-md">
-                {value.link}
-              </span>
+              <item.icon className="size-4 shrink-0" />
+              <span>{item.label}</span>
             </Link>
           </li>
         );
       })}
-      <li className="hover:bg-sidebar-accent overflow-hidden rounded-md transition-colors text-red-500">
+
+      {/* Logout */}
+      <li className="border-t border-border mt-2 pt-2">
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full flex gap-2.5 items-center p-2.5 text-destructive cursor-pointer text-left"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors text-destructive hover:bg-destructive/10 cursor-pointer text-left"
         >
-          <LogOut className="size-5 shrink-0" />
-          <span className="hidden md:inline-block text-txt-sm md:text-txt-md">
-            Logout
-          </span>
+          <LogOut className="size-4 shrink-0" />
+          <span>Logout</span>
         </button>
       </li>
     </ul>

@@ -1,101 +1,82 @@
 "use client";
 
 import { useState } from "react";
-import { CustomInput } from "@/components/ui/input";
-import { CustomButton } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
-import { useTranslations } from "next-intl";
+import { useAuthContext } from "@/context/AuthContext";
+import { Lock } from "lucide-react";
 
 export default function PersonalInfoForm() {
-  const [form, setForm] = useState({
-    firstName: "Mohamed",
-    lastName: "Mahmoud",
-    email: "m.mahmoud.alsaid.official@gmail.com",
-    phone: "+20123456789",
-  });
-  const t = useTranslations("settings");
+  const { user } = useAuthContext();
 
-  const infoFields = [
-    {
-      id: "first-name-1",
-      labelTitle: "firstName",
-      input: {
-        type: "text",
-        placeholder: "placeholders.firstName",
-        value: form.firstName,
-        isDisabled: false,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-          setForm((prev) => ({ ...prev, firstName: e.target.value }));
-        },
-      },
-    },
-    {
-      id: "last-name-1",
-      labelTitle: "lastName",
-      input: {
-        type: "text",
-        placeholder: "placeholders.lastName",
-        value: form.lastName,
-        isDisabled: false,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-          setForm((prev) => ({ ...prev, lastName: e.target.value }));
-        },
-      },
-    },
-    {
-      id: "email-1",
-      labelTitle: "email",
-      input: {
-        type: "email",
-        placeholder: "placeholders.email",
-        value: form.email,
-        isDisabled: true,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-          setForm((prev) => ({ ...prev, email: e.target.value }));
-        },
-      },
-    },
-    {
-      id: "phone-1",
-      labelTitle: "phone",
-      input: {
-        type: "text",
-        placeholder: "placeholders.phone",
-        value: form.phone,
-        isDisabled: true,
-        onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-          setForm((prev) => ({ ...prev, phone: e.target.value }));
-        },
-      },
-    },
-  ];
+  const [displayName, setDisplayName] = useState(user?.name || "");
 
   return (
     <form
-      className="flex flex-col gap-4 max-w-xl"
+      className="flex flex-col gap-5 max-w-xl"
       onSubmit={(e) => e.preventDefault()}
     >
-      {infoFields.map((info) => (
-        <label
-          key={info.id}
-          className="flex flex-col sm:flex-row sm:gap-5 sm:justify-between sm:items-center"
-        >
-          <div className="whitespace-nowrap mb-1 sm:mb-0">
-            <Text text={t(`settings.${info.labelTitle}`)} />
-          </div>
-          <div className="sm:w-72 bg-input-background rounded-md border border-border">
-            <CustomInput
-              type={info.input.type}
-              placeholder={t(`settings.${info.input.placeholder}`)}
-              value={info.input.value}
-              isDisabled={info.input.isDisabled}
-              onChange={info.input.onChange}
-            />
-          </div>
+      {/* Display Name */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="display-name" className="text-sm font-medium text-foreground">
+          Display Name
         </label>
-      ))}
-      <div className="mt-4 sm:ml-auto w-full sm:w-40 bg-primary text-primary-foreground rounded-md hover:opacity-90">
-        <CustomButton text={t("settings.saveChanges")} />
+        <input
+          id="display-name"
+          type="text"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          placeholder="Your display name"
+          className="h-10 w-full rounded-md border border-border bg-input-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent-brand/30 focus:border-accent-brand/60 transition"
+        />
+      </div>
+
+      {/* Email (disabled) */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="email" className="text-sm font-medium text-foreground">
+          Email Address
+        </label>
+        <div className="relative">
+          <input
+            id="email"
+            type="email"
+            value={user?.email || ""}
+            readOnly
+            disabled
+            className="h-10 w-full rounded-md border border-border bg-input-background px-3 pr-10 text-sm text-foreground placeholder:text-muted-foreground disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none transition"
+          />
+          <Lock className="absolute right-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/60" />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Email cannot be changed. Contact support to update.
+        </p>
+      </div>
+
+      {/* Phone (disabled) */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="phone" className="text-sm font-medium text-foreground">
+          Phone Number
+        </label>
+        <input
+          id="phone"
+          type="tel"
+          value={user?.phone || ""}
+          readOnly
+          disabled
+          placeholder="Not set"
+          className="h-10 w-full rounded-md border border-border bg-input-background px-3 text-sm text-foreground placeholder:text-muted-foreground disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none transition"
+        />
+        <p className="text-xs text-muted-foreground">
+          Contact support to update your phone number.
+        </p>
+      </div>
+
+      {/* Submit */}
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          className="h-9 px-4 rounded-md bg-accent-brand text-white text-sm font-medium hover:bg-accent-brand/90 transition shadow-sm"
+        >
+          Save Changes
+        </button>
       </div>
     </form>
   );
