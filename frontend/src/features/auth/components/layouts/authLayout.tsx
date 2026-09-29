@@ -12,7 +12,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
         <div className="w-full max-w-md">
           {/* Brand header badge */}
           <div className="flex items-center gap-2 mb-8">
-            <div className="size-9 rounded-xl bg-accent-brand/10 border border-accent-brand/25 flex items-center justify-center text-accent-brand">
+            <div className="size-9 rounded-md bg-accent-brand/10 border border-accent-brand/25 flex items-center justify-center text-accent-brand">
               <Sparkles className="size-5" />
             </div>
             <span className="font-black text-xl tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
@@ -20,7 +20,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
             </span>
           </div>
 
-          <div className="bg-card/40 backdrop-blur-xs rounded-2xl border border-border/60 p-6 sm:p-8 shadow-xs">
+          <div className="bg-card/40 backdrop-blur-xs rounded-md border border-border/60 p-6 sm:p-8 shadow-xs">
             {children}
           </div>
         </div>

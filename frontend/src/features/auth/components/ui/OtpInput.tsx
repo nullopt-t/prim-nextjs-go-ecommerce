@@ -105,7 +105,7 @@ export default function OtpInput({
           onPaste={handlePaste}
           onFocus={(e) => e.target.select()}
           aria-label={`Digit ${idx + 1}`}
-          className={`w-11 h-13 sm:w-13 sm:h-15 text-center text-xl sm:text-2xl font-bold rounded-xl border bg-background text-foreground transition-all outline-none shadow-xs
+          className={`w-11 h-13 sm:w-13 sm:h-15 text-center text-xl sm:text-2xl font-bold rounded-md border bg-background text-foreground transition-all outline-none shadow-xs
             ${
               digit
                 ? "border-accent-brand ring-2 ring-accent-brand/20 bg-accent-brand/5"

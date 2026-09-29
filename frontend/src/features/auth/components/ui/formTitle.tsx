@@ -30,7 +30,7 @@ export default function FormTitle({ type }: FormTitleProps) {
           <Link
             href="/auth"
             aria-label="Back to login"
-            className="p-1.5 -ms-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors inline-flex items-center justify-center"
+            className="p-1.5 -ms-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors inline-flex items-center justify-center"
           >
             {isRTL ? (
               <ArrowRight className="size-5" />
@@ -48,7 +48,7 @@ export default function FormTitle({ type }: FormTitleProps) {
         <Link
           href="/"
           aria-label="Home"
-          className="p-2 hover:text-foreground hover:bg-secondary rounded-lg transition-colors inline-flex items-center justify-center"
+          className="p-2 hover:text-foreground hover:bg-secondary rounded-md transition-colors inline-flex items-center justify-center"
         >
           <House className="size-4.5" />
         </Link>
@@ -56,7 +56,7 @@ export default function FormTitle({ type }: FormTitleProps) {
           type="button"
           onClick={toggle}
           aria-label="Toggle theme"
-          className="p-2 hover:text-foreground hover:bg-secondary rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+          className="p-2 hover:text-foreground hover:bg-secondary rounded-md transition-colors cursor-pointer inline-flex items-center justify-center"
         >
           {theme === "light" ? (
             <Sun className="size-4.5" />
