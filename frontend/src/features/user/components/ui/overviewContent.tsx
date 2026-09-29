@@ -112,10 +112,16 @@ export default function OverviewContent() {
   const { user } = useAuthContext();
   const firstName = user?.name?.split(" ")[0] || "there";
 
+  const [greeting, setGreeting] = useState("Welcome");
   const [orders, setOrders] = useState<Order[]>([]);
   const [reviewCount, setReviewCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Set greeting client-side only to avoid SSR hydration mismatch
+  useEffect(() => {
+    setGreeting(getGreeting());
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -131,14 +137,19 @@ export default function OverviewContent() {
 
         if (cancelled) return;
 
-        // Orders endpoint: { data: { orders: [] }, meta: {...} }
-        const rawOrders: Order[] =
-          ordersRes?.data?.orders ?? ordersRes?.orders ?? ordersRes ?? [];
+        // Orders: { data: Order[] }
+        const rawOrders: Order[] = Array.isArray(ordersRes?.data)
+          ? ordersRes.data
+          : Array.isArray(ordersRes)
+          ? ordersRes
+          : [];
 
-        // Reviews endpoint returns array directly
-        const rawReviews: unknown[] = Array.isArray(reviewsRes)
+        // Reviews: { data: Review[], meta: {...} }
+        const rawReviews: unknown[] = Array.isArray(reviewsRes?.data)
+          ? reviewsRes.data
+          : Array.isArray(reviewsRes)
           ? reviewsRes
-          : reviewsRes?.data ?? [];
+          : [];
 
         setOrders(rawOrders);
         setReviewCount(rawReviews.length);
@@ -177,7 +188,7 @@ export default function OverviewContent() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-foreground">
-            {getGreeting()}, {firstName}! 👋
+          {greeting}, {firstName}! 👋
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Here&apos;s what&apos;s happening with your account.
