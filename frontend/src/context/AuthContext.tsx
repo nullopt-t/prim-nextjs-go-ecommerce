@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
-import { api } from "@/api/client";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { authService } from "@/services/auth";
 
 export interface User {
   id: string | number;
@@ -28,25 +28,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api.get<User>("/api/v1/auth/me");
+      const data = await authService.getMe();
       setUser(data);
     } catch {
       setUser(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUser();
-  }, []);
+  }, [fetchUser]);
 
   const startChallenge = async (payload: { email: string }) => {
     try {
-      await api.post("/api/v1/auth/challenge/start", payload);
+      await authService.startChallenge(payload);
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message };
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resendChallenge = async (payload: { email: string }) => {
     try {
-      await api.post("/api/v1/auth/challenge/resend", payload);
+      await authService.resendChallenge(payload);
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message };
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const verifyChallenge = async (payload: { email?: string; code: string }) => {
     try {
-      const res = await api.post<{ user?: User; token?: string }>("/api/v1/auth/challenge/verify", payload);
+      const res: any = await authService.verifyChallenge(payload);
       if (res?.user) {
         setUser(res.user);
       } else {

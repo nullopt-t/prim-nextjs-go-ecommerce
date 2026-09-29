@@ -9,7 +9,7 @@ import SectionTitle from "@/features/home/components/ui/sectionTitle";
 import { useAllProducts, useProductBySlug } from "@/hooks/useCatalog";
 import { useCartContext } from "@/context/CartContext";
 import { catalogService } from "@/services/catalog";
-import { api } from "@/api/client";
+import { wishlistService } from "@/services/wishlist";
 import { toast } from "sonner";
 
 import {
@@ -165,7 +165,7 @@ export function ProductDetails() {
   const handleToggleWishlist = async () => {
     try {
       if (!isWishlisted) {
-        await api.post("/api/v1/wishlist", {
+        await wishlistService.addItem({
           id: String(product.id),
           productName: product.product,
           productPrice: `$${product.price}`,
@@ -174,7 +174,7 @@ export function ProductDetails() {
         setIsWishlisted(true);
         toast.success(`Saved ${productName} to your wishlist!`);
       } else {
-        await api.delete(`/api/v1/wishlist/${product.id}`);
+        await wishlistService.removeItem(product.id);
         setIsWishlisted(false);
         toast.info(`Removed ${productName} from wishlist`);
       }

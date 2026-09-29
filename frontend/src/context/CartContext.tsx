@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { api } from "@/api/client";
+import { cartService } from "@/services/cart";
 
 export interface CartContextItem {
   id: string;
@@ -124,7 +124,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const fetchCart = useCallback(async (isInitial: boolean = false) => {
     if (isInitial) setLoading(true);
     try {
-      const res = await api.get("/api/v1/cart");
+      const res = await cartService.getCart();
       normalizeCartData(res);
       setErrorMsg(null);
     } catch (err: any) {
@@ -138,36 +138,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     fetchCart(true);
   }, [fetchCart]);
 
-  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
   const addToCart = async (payload: AddToCartPayload) => {
     try {
-      let variantId = payload.variantId || payload.id;
-
-      if (!variantId || !UUID_REGEX.test(variantId)) {
-        const identifier = payload.slug || payload.id || variantId;
-        if (identifier) {
-          try {
-            const productRes = await api.get(`/api/v1/products/${identifier}`);
-            const pData = productRes.data?.data || productRes.data;
-            if (pData?.variants && pData.variants.length > 0) {
-              const defaultV = pData.variants.find((v: any) => v.isDefault) || pData.variants[0];
-              if (defaultV?.id && UUID_REGEX.test(defaultV.id)) {
-                variantId = defaultV.id;
-              }
-            }
-          } catch {
-            // fallback if lookup fails
-          }
-        }
-      }
-
-      if (!variantId || !UUID_REGEX.test(variantId)) {
-        variantId = "70000000-0000-0000-0000-000000000001";
-      }
-
-      const quantity = payload.quantity || 1;
-      await api.post("/api/v1/cart/items", { variantId, quantity });
+      await cartService.addItem({
+        variantId: payload.variantId,
+        id: payload.id,
+        slug: payload.slug,
+        quantity: payload.quantity || 1,
+      });
       await fetchCart(false);
       return { success: true };
     } catch (err: any) {
@@ -176,15 +154,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateCartItem = async (id: string, quantity: number) => {
-    // 1. Optimistic update: Update local state immediately without triggering loading/re-render flash
+    // 1. Optimistic update
     const previousItems = cartItems;
     setCartItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, quantity } : item))
     );
 
     try {
-      // 2. Perform backend update silently in background
-      await api.patch(`/api/v1/cart/items/${id}`, { quantity });
+      // 2. Delegate directly to cartService
+      await cartService.updateItemQuantity(id, quantity);
       // 3. Sync authoritative cart data from backend without flipping loading state
       await fetchCart(false);
       return { success: true };
@@ -197,11 +175,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const removeFromCart = async (id: string) => {
     const previousItems = cartItems;
-    // Optimistic removal
     setCartItems((prev) => prev.filter((item) => item.id !== id));
 
     try {
-      await api.delete(`/api/v1/cart/items/${id}`);
+      await cartService.removeItem(id);
       await fetchCart(false);
       return { success: true };
     } catch (err: any) {
@@ -215,7 +192,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCartItems([]);
 
     try {
-      await api.delete("/api/v1/cart");
+      await cartService.clearCart();
       await fetchCart(false);
       return { success: true };
     } catch (err: any) {
@@ -226,7 +203,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const applyCoupon = async (code: string) => {
     try {
-      const res = await api.post<CouponData>("/api/v1/coupons/apply", { code });
+      const res = await cartService.applyCoupon(code);
       setAppliedCoupon(res);
       return { success: true, coupon: res };
     } catch (err: any) {

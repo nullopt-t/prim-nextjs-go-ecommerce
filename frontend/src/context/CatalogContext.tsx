@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { api } from "@/api/client";
+import { catalogService } from "@/services/catalog";
 
 export function normalizeProduct(raw: any) {
   if (!raw) return null;
@@ -161,11 +161,11 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const fetchCatalog = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch products, categories & brands in parallel from backend
+      // Delegate to catalogService instead of raw URL fetching
       const [prodRes, catRes, brandRes] = await Promise.allSettled([
-        api.get("/api/v1/products?pageSize=100"),
-        api.get("/api/v1/categories?pageSize=50"),
-        api.get("/api/v1/brands?pageSize=50"),
+        catalogService.getProducts({ pageSize: 100 }),
+        catalogService.getCategories(50),
+        catalogService.getBrands(50),
       ]);
 
       if (prodRes.status === "fulfilled" && prodRes.value) {

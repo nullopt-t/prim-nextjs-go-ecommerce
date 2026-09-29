@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { api } from "@/api/client";
+import { userService } from "@/services/user";
 
 export function useAddresses() {
   const [addresses, setAddresses] = useState<any[]>([]);
@@ -10,7 +10,7 @@ export function useAddresses() {
 
   const fetchAddresses = useCallback(async () => {
     try {
-      const data = await api.get("/api/v1/user/addresses");
+      const data = await userService.getAddresses();
       setAddresses(data || []);
     } catch (err: any) {
       setError(err?.message || "Failed to load addresses");
@@ -20,26 +20,12 @@ export function useAddresses() {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    api
-      .get("/api/v1/user/addresses")
-      .then((data) => {
-        if (isMounted) setAddresses(data || []);
-      })
-      .catch((err: any) => {
-        if (isMounted) setError(err?.message || "Failed to load addresses");
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    fetchAddresses();
+  }, [fetchAddresses]);
 
   const addAddress = async (payload: any) => {
     try {
-      const newAddr = await api.post("/api/v1/user/addresses", payload);
+      const newAddr = await userService.createAddress(payload);
       await fetchAddresses();
       return { success: true, data: newAddr };
     } catch (err: any) {
@@ -49,7 +35,7 @@ export function useAddresses() {
 
   const updateAddress = async (id: string, payload: any) => {
     try {
-      const updated = await api.patch(`/api/v1/user/addresses/${id}`, payload);
+      const updated = await userService.updateAddress(id, payload);
       await fetchAddresses();
       return { success: true, data: updated };
     } catch (err: any) {
@@ -59,7 +45,7 @@ export function useAddresses() {
 
   const deleteAddress = async (id: string) => {
     try {
-      await api.delete(`/api/v1/user/addresses/${id}`);
+      await userService.deleteAddress(id);
       await fetchAddresses();
       return { success: true };
     } catch (err: any) {
@@ -85,7 +71,7 @@ export function usePaymentMethods() {
 
   const fetchCards = useCallback(async () => {
     try {
-      const data = await api.get("/api/v1/user/payment-methods");
+      const data = await userService.getPaymentMethods();
       setCards(data || []);
     } catch (err: any) {
       setError(err?.message || "Failed to load payment methods");
@@ -95,26 +81,12 @@ export function usePaymentMethods() {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    api
-      .get("/api/v1/user/payment-methods")
-      .then((data) => {
-        if (isMounted) setCards(data || []);
-      })
-      .catch((err: any) => {
-        if (isMounted) setError(err?.message || "Failed to load payment methods");
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    fetchCards();
+  }, [fetchCards]);
 
   const addCard = async (payload: any) => {
     try {
-      const newCard = await api.post("/api/v1/user/payment-methods", payload);
+      const newCard = await userService.createPaymentMethod(payload);
       await fetchCards();
       return { success: true, data: newCard };
     } catch (err: any) {
@@ -124,7 +96,7 @@ export function usePaymentMethods() {
 
   const deleteCard = async (id: string) => {
     try {
-      await api.delete(`/api/v1/user/payment-methods/${id}`);
+      await userService.deletePaymentMethod(id);
       await fetchCards();
       return { success: true };
     } catch (err: any) {
@@ -134,7 +106,7 @@ export function usePaymentMethods() {
 
   const setDefaultCard = async (id: string) => {
     try {
-      await api.patch(`/api/v1/user/payment-methods/${id}/default`);
+      await userService.setDefaultPaymentMethod(id);
       await fetchCards();
       return { success: true };
     } catch (err: any) {
@@ -160,7 +132,7 @@ export function useUserReviews() {
 
   const fetchReviews = useCallback(async () => {
     try {
-      const data = await api.get("/api/v1/user/reviews");
+      const data = await userService.getReviews();
       setReviews(data || []);
     } catch (err: any) {
       setError(err?.message || "Failed to load reviews");
@@ -170,28 +142,14 @@ export function useUserReviews() {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    api
-      .get("/api/v1/user/reviews")
-      .then((data) => {
-        if (isMounted) setReviews(data || []);
-      })
-      .catch((err: any) => {
-        if (isMounted) setError(err?.message || "Failed to load reviews");
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    fetchReviews();
+  }, [fetchReviews]);
 
   const toggleHelpful = async (id: string) => {
     try {
-      const res: any = await api.post(`/api/v1/user/reviews/${id}/helpful`);
+      const res: any = await userService.markReviewHelpful(id);
       setReviews((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, likes: res.likes, userLiked: res.userLiked } : r))
+        prev.map((r) => (r.id === id ? { ...r, likes: res?.likes, userLiked: res?.userLiked } : r))
       );
       return { success: true };
     } catch (err: any) {
@@ -201,7 +159,7 @@ export function useUserReviews() {
 
   const deleteReview = async (id: string) => {
     try {
-      await api.delete(`/api/v1/user/reviews/${id}`);
+      await userService.deleteReview(id);
       await fetchReviews();
       return { success: true };
     } catch (err: any) {
@@ -226,7 +184,7 @@ export function useUserProfile() {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const data = await api.get("/api/v1/auth/me");
+      const data = await userService.getProfile();
       setProfile(data);
     } catch (err: any) {
       setError(err?.message || "Failed to load profile");
@@ -236,26 +194,12 @@ export function useUserProfile() {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    api
-      .get("/api/v1/auth/me")
-      .then((data) => {
-        if (isMounted) setProfile(data);
-      })
-      .catch((err: any) => {
-        if (isMounted) setError(err?.message || "Failed to load profile");
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    fetchProfile();
+  }, [fetchProfile]);
 
   const updateProfile = async (payload: any) => {
     try {
-      const updated = await api.patch("/api/v1/auth/me", payload);
+      const updated = await userService.updateProfile(payload);
       setProfile(updated);
       return { success: true, data: updated };
     } catch (err: any) {

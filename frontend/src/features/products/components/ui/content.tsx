@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { ProductsGrid } from "@/components/ui/productsGrid";
 import { CardDetails } from "@/components/ui/productsCard";
 import { useCatalogContext, normalizeProduct } from "@/context/CatalogContext";
-import { api } from "@/api/client";
+import { catalogService } from "@/services/catalog";
 
 interface ContentProps {
   products?: CardDetails[];
@@ -29,8 +29,8 @@ export default function Content({ products, category }: ContentProps) {
     let isMounted = true;
     setCatLoading(true);
 
-    api
-      .get(`/api/v1/products?pageSize=100&category=${encodeURIComponent(category)}`)
+    catalogService
+      .getProducts({ pageSize: 100, category })
       .then((res: any) => {
         if (!isMounted) return;
         const rawList = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
