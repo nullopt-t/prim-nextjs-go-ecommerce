@@ -1,6 +1,7 @@
 import { Brand } from "@/components/ui/Brand";
 import { SearchBar } from "@/components/ui/search";
 import { HeaderActions } from "@/components/ui/headerActions";
+import { MobileSearchDialog } from "@/components/ui/mobileSearchDialog";
 
 export function Header() {
 	return (
@@ -12,13 +13,10 @@ export function Header() {
 				<div className="flex-1 max-w-2xl hidden md:block">
 					<SearchBar />
 				</div>
-				<div className="flex items-center flex-shrink-0">
+				<div className="flex items-center gap-2 flex-shrink-0">
+					<MobileSearchDialog />
 					<HeaderActions />
 				</div>
-			</div>
-			{/* Mobile Search - shown only on small screens */}
-			<div className="md:hidden px-3 sm:px-6 pb-2.5 pt-0.5 w-full">
-				<SearchBar />
 			</div>
 		</header>
 	);

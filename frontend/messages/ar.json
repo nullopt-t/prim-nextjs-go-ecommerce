@@ -82,6 +82,11 @@
     "currency": "EGP",
     "header": {
       "search": "بحث",
+      "searchPlaceholder": "ابحث عن منتجات، علامات تجارية، أو فئات...",
+      "searchProducts": "البحث عن المنتجات",
+      "popularCategories": "الفئات الشائعة",
+      "close": "إغلاق",
+      "clear": "مسح",
       "home": "الرئيسية",
       "allCategories": "جميع الفئات",
       "account": "الحساب",

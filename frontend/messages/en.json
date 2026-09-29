@@ -82,6 +82,11 @@
     "currency": "$",
     "header": {
       "search": "Search",
+      "searchPlaceholder": "Search products, brands, or categories...",
+      "searchProducts": "Search products",
+      "popularCategories": "Popular Categories",
+      "close": "Close",
+      "clear": "Clear",
       "home": "Home",
       "allCategories": "All categories",
       "account": "Account",
