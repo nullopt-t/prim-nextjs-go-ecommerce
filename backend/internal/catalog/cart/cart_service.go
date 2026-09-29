@@ -116,6 +116,7 @@ func (s *CartService) GetOrCreateCart(
 			if stockErr == nil && stocks != nil {
 				for i := range items {
 					if st, ok := stocks[items[i].VariantID]; ok {
+						items[i].AvailableStock = st.AvailableQuantity
 						items[i].InStock = st.AvailableQuantity >= items[i].Quantity
 					}
 				}

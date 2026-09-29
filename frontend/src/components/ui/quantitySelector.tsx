@@ -10,39 +10,61 @@ interface QuantitySelectorProps {
 }
 
 export function QuantitySelector({
-  value = 1,
+  value: controlledValue,
+  initialValue = 1,
   min = 1,
   max = 99,
+  disabled = false,
   onChange,
 }: QuantitySelectorProps) {
+  const [internalValue, setInternalValue] = React.useState(
+    controlledValue !== undefined ? controlledValue : initialValue
+  );
+
+  React.useEffect(() => {
+    if (controlledValue !== undefined) {
+      setInternalValue(controlledValue);
+    }
+  }, [controlledValue]);
+
+  const currentValue = controlledValue !== undefined ? controlledValue : internalValue;
+
   const handleDecrement = () => {
-    if (value > min) {
-      onChange?.(value - 1);
+    if (disabled) return;
+    if (currentValue > min) {
+      const next = currentValue - 1;
+      setInternalValue(next);
+      onChange?.(next);
     }
   };
 
   const handleIncrement = () => {
-    if (value < max) {
-      onChange?.(value + 1);
+    if (disabled) return;
+    if (currentValue < max) {
+      const next = currentValue + 1;
+      setInternalValue(next);
+      onChange?.(next);
     }
   };
 
   return (
-    <div className="text-foreground flex items-center border border-border rounded-md w-24 md:w-36 text-txt-sm md:text-txt-md lg:text-txt-lg select-none">
+    <div className={`text-foreground flex items-center border border-border/80 rounded-xl h-full w-full select-none ${disabled ? "opacity-50 cursor-not-allowed bg-muted/20" : ""}`}>
       <button
         type="button"
         onClick={handleDecrement}
-        disabled={value <= min}
-        className="py-1 flex-1 text-center border-r border-border hover:bg-accent hover:text-accent-foreground disabled:opacity-40"
+        disabled={disabled || currentValue <= min}
+        className="h-full flex-1 flex items-center justify-center border-r border-border/80 hover:bg-secondary/70 transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer text-sm font-semibold"
       >
         -
       </button>
-      <span className="py-1 flex-[2] text-center">{value}</span>
+      <span className="h-full flex-[1.5] flex items-center justify-center font-semibold text-xs sm:text-sm">
+        {currentValue}
+      </span>
       <button
         type="button"
         onClick={handleIncrement}
-        disabled={value >= max}
-        className="py-1 flex-1 text-center border-l border-border hover:bg-accent hover:text-accent-foreground disabled:opacity-40"
+        disabled={disabled || currentValue >= max}
+        className="h-full flex-1 flex items-center justify-center border-l border-border/80 hover:bg-secondary/70 transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer text-sm font-semibold"
       >
         +
       </button>

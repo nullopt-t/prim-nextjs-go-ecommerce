@@ -127,13 +127,21 @@ export function ProductDetails() {
 		? (product.product?.en || product.product?.ar || "Product")
 		: (product.product || product.name || "Product");
 
+	// Resolve the active variant based on selectedColor if available, or default variant
+	const activeVariantIndex = (product.colors && product.colors[selectedColor]?.variantIndex !== undefined)
+		? product.colors[selectedColor].variantIndex
+		: 0;
+	const activeVariant = (product.variants && product.variants[activeVariantIndex]) || (product.variants && product.variants[0]) || null;
+	const availableStock = activeVariant?.stock?.availableQuantity ?? product.stockCount ?? 10;
+	const isVariantInStock = (activeVariant?.stock?.isInStock ?? product.inStock ?? true) && availableStock > 0;
+
 	const handleAddToCart = async () => {
-		if (!(product.inStock ?? true)) return;
+		if (!isVariantInStock) return;
 		setIsAdding(true);
-		const defaultVariant = (product.variants && product.variants[0]) || null;
+		const variantId = activeVariant?.id || String(product.id);
 		const payload = {
 			id: String(product.id),
-			variantId: defaultVariant?.id || String(product.id),
+			variantId,
 			productName: product.product,
 			productPrice: `$${product.price}`,
 			img: (product.images || [product.img])[0],
@@ -323,13 +331,13 @@ export function ProductDetails() {
 
 						{/* Stock Status */}
 						<div className="flex items-center gap-2 mb-6">
-							{(product.inStock ?? true) ? (
+							{isVariantInStock ? (
 								<>
 									<div className="flex items-center justify-center size-5 rounded-full bg-emerald-500/10 text-emerald-500">
 										<Check className="size-3.5" />
 									</div>
 									<span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-										In Stock ({(product.stockCount || 10)} available)
+										In Stock ({availableStock} available)
 									</span>
 								</>
 							) : (
@@ -348,25 +356,25 @@ export function ProductDetails() {
 						<div className="flex flex-col gap-3.5 mb-8">
 							<div className="w-full h-12">
 								<QuantitySelector 
-									initialValue={quantity} 
-									max={(product.stockCount || 10)} 
-									disabled={!(product.inStock ?? true)} 
+									value={Math.min(quantity, Math.max(1, availableStock))} 
+									max={Math.max(1, availableStock)} 
+									disabled={!isVariantInStock} 
 									onChange={(val) => setQuantity(val)}
 								/>
 							</div>
 
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 								<CustomButton 
-									text={isAdding ? "Adding..." : ((product.inStock ?? true) ? "Add to Cart" : "Out of Stock")}
+									text={isAdding ? "Adding..." : (isVariantInStock ? "Add to Cart" : "Out of Stock")}
 									icon={<ShoppingCart className="size-4" />}
 									onClick={handleAddToCart}
-									className={`py-3.5 text-sm shadow-sm ${!(product.inStock ?? true) ? 'opacity-50 cursor-not-allowed' : ''}`}
-									disabled={isAdding || !(product.inStock ?? true)}
+									className={`py-3.5 text-sm shadow-sm ${!isVariantInStock ? 'opacity-50 cursor-not-allowed' : ''}`}
+									disabled={isAdding || !isVariantInStock}
 								/>
 
 								<button
 									onClick={handleBuyNow}
-									disabled={isAdding || !(product.inStock ?? true)}
+									disabled={isAdding || !isVariantInStock}
 									className="py-3.5 px-4 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-semibold text-sm transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
 								>
 									<Zap className="size-4 fill-current" />

@@ -66,6 +66,8 @@ type CartItemResponse struct {
 	Subtotal int64 `json:"subtotal" example:"499800"`
 	// Live inventory availability check: true if inventory >= quantity
 	InStock bool `json:"inStock" example:"true"`
+	// Live salable quantity available in inventory
+	AvailableStock int `json:"availableStock" example:"15"`
 }
 
 type CartResponse struct {
@@ -108,11 +110,12 @@ func mapCartResponse(cart *model.Cart) CartResponse {
 		itemCount += item.Quantity
 
 		itemRes := CartItemResponse{
-			ID:        item.ID.String(),
-			Quantity:  item.Quantity,
-			UnitPrice: item.PriceAtPurchase,
-			Subtotal:  itemSubtotal,
-			InStock:   item.InStock,
+			ID:             item.ID.String(),
+			Quantity:       item.Quantity,
+			UnitPrice:      item.PriceAtPurchase,
+			Subtotal:       itemSubtotal,
+			InStock:        item.InStock,
+			AvailableStock: item.AvailableStock,
 		}
 
 		if item.Variant != nil {

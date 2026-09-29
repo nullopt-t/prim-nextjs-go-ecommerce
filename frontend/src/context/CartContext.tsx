@@ -13,6 +13,8 @@ export interface CartContextItem {
   quantity: number;
   img?: string;
   color?: string;
+  inStock?: boolean;
+  availableStock?: number;
 }
 
 export interface CouponData {
@@ -91,6 +93,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         quantity: item.quantity || 1,
         img,
         color: item.color || item.attributes?.color || "Default",
+        inStock: item.inStock ?? true,
+        availableStock: item.availableStock,
       };
     });
 

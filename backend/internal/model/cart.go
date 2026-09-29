@@ -53,4 +53,6 @@ type CartItem struct {
 	ThumbnailURL string
 	// InStock is a live flag indicating whether warehouse inventory satisfies the requested quantity.
 	InStock bool
+	// AvailableStock is the live salable quantity available in inventory for this variant.
+	AvailableStock int
 }
