@@ -7,6 +7,12 @@ html,
 body {
 	min-height: 100vh;
 	background-color: var(--page-bg);
+	font-family: var(--font-ibm-plex-sans), system-ui, sans-serif;
+}
+
+[lang="ar"],
+[dir="rtl"] {
+	font-family: var(--font-ibm-plex-sans-arabic), var(--font-ibm-plex-sans), system-ui, sans-serif;
 }
 
 input {

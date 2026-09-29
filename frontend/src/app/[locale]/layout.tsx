@@ -4,7 +4,22 @@ import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { ThemeProvider } from "@/context/theme";
+import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic } from "next/font/google";
 import "@/styles/index.css";
+
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-ibm-plex-sans",
+  display: "swap",
+});
+
+const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
+  subsets: ["arabic"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-ibm-plex-sans-arabic",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "PRIM - Premium Audio & Wearables",
@@ -38,8 +53,13 @@ export default async function RootLayout({
   const dir = locale === "ar" ? "rtl" : "ltr";
 
   return (
-    <html lang={locale} dir={dir} suppressHydrationWarning>
-      <body className="antialiased">
+    <html
+      lang={locale}
+      dir={dir}
+      className={`${ibmPlexSans.variable} ${ibmPlexSansArabic.variable}`}
+      suppressHydrationWarning
+    >
+      <body className={`antialiased ${locale === "ar" ? "font-arabic" : "font-sans"}`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
             <AuthProvider>

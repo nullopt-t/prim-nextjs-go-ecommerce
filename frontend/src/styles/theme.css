@@ -136,6 +136,10 @@
 }
 
 @theme base inline {
+	/* Fonts */
+	--font-sans: var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif;
+	--font-arabic: var(--font-ibm-plex-sans-arabic), var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif;
+
 	/* Sizes & Text Weight Hooks */
 	--text-txt-sm: var(--font-size-txt-sm);
 	--text-title-sm: var(--font-size-title-sm);
