@@ -33,7 +33,7 @@ export function generateStaticParams() {
 import { CartProvider } from "@/context/CartContext";
 import { CatalogProvider } from "@/context/CatalogContext";
 import { AuthProvider } from "@/context/AuthContext";
-import { PortalSwitcher } from "@/components/ui/portalSwitcher";
+
 import { CartSidebar } from "@/components/ui/cartSidebar";
 
 export default async function RootLayout({
@@ -67,7 +67,6 @@ export default async function RootLayout({
                 <CartProvider>
                   {children}
                   <CartSidebar />
-                  <PortalSwitcher />
                 </CartProvider>
               </CatalogProvider>
             </AuthProvider>
