@@ -18,9 +18,9 @@ export default function PaymentPage() {
 
       <div className="bg-card border border-border rounded-lg p-12 flex flex-col items-center justify-center text-center gap-3 shadow-sm">
         <CreditCard className="size-10 text-muted-foreground/50" />
-        <p className="font-medium text-foreground">No payment methods</p>
+        <p className="font-medium text-foreground">Feature Coming Soon</p>
         <p className="text-sm text-muted-foreground">
-          Your saved payment methods will appear here.
+          We&apos;re working on this feature. Payment method management will be available soon.
         </p>
       </div>
     </div>
