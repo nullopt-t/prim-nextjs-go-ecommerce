@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { api } from "@/api/client";
 
 export interface CartContextItem {
@@ -121,31 +121,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const fetchCart = async () => {
-    setLoading(true);
+  const fetchCart = useCallback(async (isInitial: boolean = false) => {
+    if (isInitial) setLoading(true);
     try {
       const res = await api.get("/api/v1/cart");
       normalizeCartData(res);
+      setErrorMsg(null);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to load cart");
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchCart();
-  }, []);
+    fetchCart(true);
+  }, [fetchCart]);
 
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   const addToCart = async (payload: AddToCartPayload) => {
     try {
-      // Backend expects { variantId, quantity } where variantId is a valid UUID
       let variantId = payload.variantId || payload.id;
 
       if (!variantId || !UUID_REGEX.test(variantId)) {
-        // If variantId is not a UUID (e.g. slug string passed from cards), resolve it via product endpoint
         const identifier = payload.slug || payload.id || variantId;
         if (identifier) {
           try {
@@ -157,7 +156,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 variantId = defaultV.id;
               }
             }
-          } catch (e) {
+          } catch {
             // fallback if lookup fails
           }
         }
@@ -169,7 +168,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       const quantity = payload.quantity || 1;
       await api.post("/api/v1/cart/items", { variantId, quantity });
-      await fetchCart();
+      await fetchCart(false);
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message };
@@ -177,31 +176,50 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateCartItem = async (id: string, quantity: number) => {
+    // 1. Optimistic update: Update local state immediately without triggering loading/re-render flash
+    const previousItems = cartItems;
+    setCartItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, quantity } : item))
+    );
+
     try {
+      // 2. Perform backend update silently in background
       await api.patch(`/api/v1/cart/items/${id}`, { quantity });
-      await fetchCart();
+      // 3. Sync authoritative cart data from backend without flipping loading state
+      await fetchCart(false);
       return { success: true };
     } catch (err: any) {
+      // 4. Rollback on failure
+      setCartItems(previousItems);
       return { success: false, error: err.message };
     }
   };
 
   const removeFromCart = async (id: string) => {
+    const previousItems = cartItems;
+    // Optimistic removal
+    setCartItems((prev) => prev.filter((item) => item.id !== id));
+
     try {
       await api.delete(`/api/v1/cart/items/${id}`);
-      await fetchCart();
+      await fetchCart(false);
       return { success: true };
     } catch (err: any) {
+      setCartItems(previousItems);
       return { success: false, error: err.message };
     }
   };
 
   const clearCart = async () => {
+    const previousItems = cartItems;
+    setCartItems([]);
+
     try {
       await api.delete("/api/v1/cart");
-      await fetchCart();
+      await fetchCart(false);
       return { success: true };
     } catch (err: any) {
+      setCartItems(previousItems);
       return { success: false, error: err.message };
     }
   };
@@ -238,7 +256,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         updateCartItem,
         removeFromCart,
         clearCart,
-        refreshCart: fetchCart,
+        refreshCart: () => fetchCart(false),
       }}
     >
       {children}
