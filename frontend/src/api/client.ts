@@ -12,22 +12,16 @@ const getSessionId = () => {
   return sid;
 };
 
-const getAuthToken = () => {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem("prim_token") || "";
-};
-
 export async function request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = endpoint.startsWith("http") ? endpoint : `${getBaseUrl()}${endpoint}`;
   
-  const token = getAuthToken();
   const sessionId = getSessionId();
 
   const response = await fetch(url, {
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(sessionId ? { "X-Session-ID": sessionId } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
     ...options,

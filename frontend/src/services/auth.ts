@@ -6,5 +6,6 @@ export const authService = {
 	resendChallenge: (payload) => api.post("/api/v1/auth/challenge/resend", payload),
 	getMe: () => api.get("/api/v1/auth/me"),
 	getSessions: () => api.get("/api/v1/auth/sessions"),
-	logout: (sessionId) => api.delete(`/api/v1/auth/sessions/${sessionId}`),
+	logout: () => api.post("/api/v1/auth/logout"),
+	deleteSession: (sessionId: string) => api.delete(`/api/v1/auth/sessions/${sessionId}`),
 };

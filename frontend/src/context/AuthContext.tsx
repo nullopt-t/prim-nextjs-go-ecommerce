@@ -78,9 +78,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      await authService.logout();
       setUser(null);
       return { success: true };
     } catch (err: any) {
+      setUser(null);
       return { success: false, error: err.message };
     }
   };
