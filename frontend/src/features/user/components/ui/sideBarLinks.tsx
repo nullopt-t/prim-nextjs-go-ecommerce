@@ -1,6 +1,7 @@
 "use client";
 
-import { usePathname, Link } from "@/i18n/navigation";
+import { usePathname, useRouter, Link } from "@/i18n/navigation";
+import { useAuthContext } from "@/context/AuthContext";
 import {
   Blocks,
   Box,
@@ -14,6 +15,8 @@ import {
 
 export default function UserSideBarLinks() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuthContext();
 
   const links = [
     {
@@ -60,6 +63,11 @@ export default function UserSideBarLinks() {
     },
   ];
 
+  const handleLogout = async () => {
+    await logout();
+    router.push("/auth");
+  };
+
   return (
     <ul className="flex flex-col gap-1">
       {links.map((value) => {
@@ -86,15 +94,16 @@ export default function UserSideBarLinks() {
         );
       })}
       <li className="hover:bg-sidebar-accent overflow-hidden rounded-md transition-colors text-red-500">
-        <Link
-          href="/auth"
-          className="flex gap-2.5 items-center p-2.5 text-destructive"
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-full flex gap-2.5 items-center p-2.5 text-destructive cursor-pointer text-left"
         >
           <LogOut className="size-5 shrink-0" />
           <span className="hidden md:inline-block text-txt-sm md:text-txt-md">
             Logout
           </span>
-        </Link>
+        </button>
       </li>
     </ul>
   );
