@@ -1,7 +1,3 @@
-/**
- * Domain-level validation functions for Authentication (free of UI/DOM dependencies)
- */
-
 export interface ValidationResult {
   isValid: boolean;
   error: string | null;

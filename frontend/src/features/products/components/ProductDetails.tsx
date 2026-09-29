@@ -12,12 +12,12 @@ import { catalogService } from "@/services/catalog";
 import { wishlistService } from "@/services/wishlist";
 import { toast } from "sonner";
 
+import { ProductReview } from "../types";
 import {
-  ProductReview,
   getProductDisplayName,
   resolveProductStock,
   resolveProductImages,
-} from "../domain/productDomain";
+} from "../utils/productHelpers";
 import { ProductGallery } from "./ui/ProductGallery";
 import { ProductActions } from "./ui/ProductActions";
 import { ProductSpecs } from "./ui/ProductSpecs";

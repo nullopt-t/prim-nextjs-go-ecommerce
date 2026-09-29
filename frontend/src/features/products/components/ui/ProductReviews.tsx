@@ -2,7 +2,7 @@ import { useState } from "react";
 import { User, ThumbsUp } from "lucide-react";
 import { Stars } from "@/components/ui/stars";
 import { toast } from "sonner";
-import { ProductReview } from "../../domain/productDomain";
+import { ProductReview } from "../../types";
 
 interface ProductReviewsProps {
   stars?: number;

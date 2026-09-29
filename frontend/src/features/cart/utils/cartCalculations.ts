@@ -14,8 +14,7 @@ export const SHIPPING_THRESHOLD = 150;
 export const STANDARD_SHIPPING_COST = 9.99;
 
 /**
- * Pure business calculation function for cart totals, shipping rules, and discounts.
- * Free of UI, React lifecycle, and framework dependencies.
+ * Pure calculation function for cart totals, shipping rules, and discounts.
  */
 export function calculateCartTotals(
   items: CartContextItem[] = [],

@@ -2,7 +2,7 @@ import { Check, Clock, Heart, Share2, ShoppingCart, Zap } from "lucide-react";
 import { Stars } from "@/components/ui/stars";
 import { CustomButton } from "@/components/ui";
 import QuantitySelector from "@/components/ui/quantitySelector";
-import { ProductColorOption } from "../../domain/productDomain";
+import { ProductColorOption } from "../../types";
 
 interface ProductActionsProps {
   productCategory: string;

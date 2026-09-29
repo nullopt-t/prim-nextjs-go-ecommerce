@@ -3,7 +3,7 @@
 import Form from "@/features/auth/components/ui/form";
 import { useRouter } from "@/i18n/navigation";
 import { useAuthContext } from "@/context/AuthContext";
-import { validateOtpCode } from "../domain/authDomain";
+import { validateOtpCode } from "../utils/validation";
 import { toast } from "sonner";
 
 export function VerifyView() {

@@ -7,7 +7,7 @@ import { useCart } from "@/hooks/useCart";
 import { useRouter } from "@/i18n/navigation";
 import { Truck, Sparkles, ShieldCheck } from "lucide-react";
 
-import { calculateCartTotals } from "@/features/cart/domain/cartCalculations";
+import { calculateCartTotals } from "@/features/cart/utils/cartCalculations";
 
 export default function PaymentBox({ compact = false }: { compact?: boolean }) {
   const t = useTranslations("cart");

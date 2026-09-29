@@ -1,4 +1,4 @@
 export * from "./components/layouts/authLayout";
 export * from "./components/LoginView";
 export * from "./components/VerifyView";
-export * from "./domain/authDomain";
+export * from "./utils/validation";
