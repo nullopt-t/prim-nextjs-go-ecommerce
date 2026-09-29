@@ -37,16 +37,20 @@
     "sign": {
       "title": "Get Started",
       "subtitle": "Enter your email to sign in or create a new account.",
-      "emailLabel": "Email",
-      "emailPlaceholder": "Enter your email",
-      "signButton": "ُEnter"
+      "emailLabel": "Email Address",
+      "emailPlaceholder": "name@example.com",
+      "signButton": "Continue"
     },
     "verify": {
       "title": "Verify OTP Code",
-      "subtitle": "We sent a verification code to your email. Enter it below to proceed.",
-      "codeLabel": "Code",
-      "codePlaceholder": "Enter your code",
-      "verifyButton": "Verify your code"
+      "subtitle": "We sent a 6-digit verification code to your email. Enter it below to proceed.",
+      "codeLabel": "Verification Code",
+      "codePlaceholder": "Enter 6-digit code",
+      "verifyButton": "Verify & Continue",
+      "resend": "Resend Code",
+      "resendIn": "Resend code in {seconds}s",
+      "changeEmail": "Change email",
+      "sentTo": "Code sent to:"
     }
   },
   "cart": {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Form from "@/features/auth/components/ui/form";
 import { useRouter } from "@/i18n/navigation";
 import { useAuthContext } from "@/context/AuthContext";
@@ -8,7 +9,18 @@ import { toast } from "sonner";
 
 export function VerifyView() {
   const router = useRouter();
-  const { verifyChallenge } = useAuthContext();
+  const { verifyChallenge, resendChallenge } = useAuthContext();
+  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = sessionStorage.getItem("identifier");
+      if (stored) {
+        setEmail(stored);
+      }
+    }
+  }, []);
 
   const handleSubmit = async (_type: string, payload: { code: string }) => {
     const { isValid, error } = validateOtpCode(payload.code);
@@ -17,10 +29,12 @@ export function VerifyView() {
       return;
     }
 
-    const email = typeof window !== "undefined" ? sessionStorage.getItem("identifier") || undefined : undefined;
-
     try {
-      const res = await verifyChallenge({ email, code: payload.code });
+      setIsLoading(true);
+      const res = await verifyChallenge({
+        email: email || undefined,
+        code: payload.code.trim(),
+      });
       if (res.success) {
         toast.success("Welcome back!");
         router.push("/user/overview");
@@ -29,8 +43,40 @@ export function VerifyView() {
       }
     } catch {
       toast.error("Failed to verify code. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  return <Form formType="verify" handleSubmit={handleSubmit} />;
+  const handleResendOtp = async () => {
+    if (!email) {
+      toast.error("No email specified. Please return to login.");
+      return;
+    }
+    try {
+      const res = await resendChallenge({ email });
+      if (res.success) {
+        toast.success("New verification code sent!");
+      } else {
+        toast.error(res.error || "Failed to resend code");
+      }
+    } catch {
+      toast.error("Failed to resend verification code");
+    }
+  };
+
+  const handleEditEmail = () => {
+    router.push("/auth");
+  };
+
+  return (
+    <Form
+      formType="verify"
+      handleSubmit={handleSubmit}
+      isLoading={isLoading}
+      userEmail={email}
+      onResendOtp={handleResendOtp}
+      onEditEmail={handleEditEmail}
+    />
+  );
 }

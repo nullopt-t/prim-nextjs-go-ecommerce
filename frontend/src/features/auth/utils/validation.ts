@@ -1,7 +1,4 @@
-export interface ValidationResult {
-  isValid: boolean;
-  error: string | null;
-}
+import { ValidationResult } from "../types";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const OTP_CODE_REGEX = /^\d{6}$/;
