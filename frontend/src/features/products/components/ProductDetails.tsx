@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@/i18n/navigation";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { ChevronRight, Package } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
@@ -25,6 +25,7 @@ import { ProductReviews } from "./ui/ProductReviews";
 
 export function ProductDetails() {
   const { id } = useParams();
+  const searchParams = useSearchParams();
   const navigate = useRouter();
   const locale = useLocale();
   const t = useTranslations("common");
@@ -39,6 +40,39 @@ export function ProductDetails() {
   const [isAdding, setIsAdding] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
+
+  // Synchronize variant/color from URL search params (e.g. ?variant=... or ?color=...)
+  useEffect(() => {
+    if (!product) return;
+
+    const variantParam = searchParams.get("variant");
+    const colorParam = searchParams.get("color");
+
+    if (variantParam && Array.isArray(product.variants)) {
+      const vIndex = product.variants.findIndex(
+        (v: any) => v.id === variantParam || v.sku === variantParam
+      );
+      if (vIndex !== -1) {
+        // Find if this variant corresponds to a color option
+        const matchingColorIdx = (product.colors || []).findIndex(
+          (c: any) => c.variantIndex === vIndex
+        );
+        if (matchingColorIdx !== -1) {
+          setSelectedColor(matchingColorIdx);
+        }
+        return;
+      }
+    }
+
+    if (colorParam && Array.isArray(product.colors)) {
+      const cIndex = product.colors.findIndex(
+        (c: any) => c.name.toLowerCase() === colorParam.toLowerCase()
+      );
+      if (cIndex !== -1) {
+        setSelectedColor(cIndex);
+      }
+    }
+  }, [product, searchParams]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -116,8 +150,17 @@ export function ProductDetails() {
   }
 
   const productName = getProductDisplayName(product, locale);
-  const images = resolveProductImages(product);
   const { activeVariant, availableStock, isVariantInStock } = resolveProductStock(product, selectedColor);
+  const images = resolveProductImages(product, activeVariant);
+
+  // When selected color changes, reset active image to 0 to show the new variant's main photo
+  const handleSelectColor = (idx: number) => {
+    setSelectedColor(idx);
+    setActiveImage(0);
+  };
+
+  const currentPrice = activeVariant?.price ? activeVariant.price / 100 : product.price;
+  const currentOldPrice = product.oldPrice;
 
   const handleAddToCart = async () => {
     if (!isVariantInStock) return;
@@ -127,7 +170,7 @@ export function ProductDetails() {
       id: String(product.id),
       variantId,
       productName: product.product,
-      productPrice: `$${product.price}`,
+      productPrice: `$${currentPrice}`,
       img: images[0],
       quantity,
       color: (product.colors || [])[selectedColor]?.name || "Default",
@@ -260,12 +303,12 @@ export function ProductDetails() {
           productName={productName}
           stars={product.stars}
           reviewsCount={product.reviews}
-          price={product.price}
-          oldPrice={product.oldPrice}
+          price={currentPrice}
+          oldPrice={currentOldPrice}
           currency={t("currency")}
           colors={product.colors}
           selectedColor={selectedColor}
-          onSelectColor={setSelectedColor}
+          onSelectColor={handleSelectColor}
           availableStock={availableStock}
           isVariantInStock={isVariantInStock}
           quantity={quantity}

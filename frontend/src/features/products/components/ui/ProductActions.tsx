@@ -84,30 +84,39 @@ export function ProductActions({
         We've carefully designed the {productName} to be something you'll love using every single day. It's built to last, feels great to use, and fits right into your lifestyle without any fuss.
       </p>
 
-      {/* Colors */}
+      {/* Colors (Radio Group) */}
       {colors.length > 0 && (
-        <div className="flex flex-col gap-3 mb-8">
-          <span className="text-sm font-medium text-foreground">
+        <fieldset className="flex flex-col gap-3 mb-8">
+          <legend className="text-sm font-medium text-foreground">
             Color: <span className="text-muted-foreground ml-1">{colors[selectedColor]?.name || ""}</span>
-          </span>
-          <div className="flex gap-3">
-            {colors.map((color, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => onSelectColor(idx)}
-                title={color.name}
-                className={`size-10 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer ${
-                  selectedColor === idx
-                    ? "border-foreground ring-2 ring-foreground/10 ring-offset-2 ring-offset-background"
-                    : "border-transparent hover:scale-110"
-                }`}
-              >
-                <span className={`w-full h-full rounded-full ${color.class || "bg-gray-400"}`} />
-              </button>
-            ))}
+          </legend>
+          <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label="Select color">
+            {colors.map((color, idx) => {
+              const isSelected = selectedColor === idx;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  onClick={() => onSelectColor(idx)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all cursor-pointer flex items-center gap-2 ${
+                    isSelected
+                      ? "border-foreground bg-foreground text-background shadow-xs font-semibold"
+                      : "border-border bg-card text-foreground hover:bg-secondary/70 hover:border-border"
+                  }`}
+                >
+                  <span
+                    className={`size-2.5 rounded-full shrink-0 ${
+                      isSelected ? "bg-background" : "bg-muted-foreground/60"
+                    }`}
+                  />
+                  <span>{color.name}</span>
+                </button>
+              );
+            })}
           </div>
-        </div>
+        </fieldset>
       )}
 
       {/* Stock status */}

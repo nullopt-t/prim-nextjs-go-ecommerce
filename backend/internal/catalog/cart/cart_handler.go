@@ -52,8 +52,14 @@ type CartItemResponse struct {
 	ID string `json:"id" example:"030553cd-712a-4950-913f-6c26fdd6a2b5"`
 	// Parent Product UUID
 	ProductID string `json:"productId" example:"60000000-0000-0000-0000-000000000001"`
+	// Product Slug for storefront routing
+	ProductSlug string `json:"productSlug,omitempty" example:"macbook-air-15-m3"`
 	// Selected SKU Variant UUID
 	VariantID string `json:"variantId" example:"70000000-0000-0000-0000-000000000001"`
+	// Selected SKU Variant Color
+	Color string `json:"color,omitempty" example:"Midnight"`
+	// Variant attributes
+	Attributes map[string]any `json:"attributes,omitempty"`
 	// Formatted line item title (Product Title + Variant Title)
 	Title string `json:"title" example:"MacBook Pro 16\" - Space Black, 18GB RAM, 512GB SSD"`
 	// Thumbnail preview image URL
@@ -121,6 +127,10 @@ func mapCartResponse(cart *model.Cart) CartResponse {
 		if item.Variant != nil {
 			itemRes.VariantID = item.Variant.ID.String()
 			itemRes.Title = item.Variant.Title
+			itemRes.Attributes = item.Variant.Attributes
+			if colorVal, ok := item.Variant.Attributes["color"].(string); ok {
+				itemRes.Color = colorVal
+			}
 			if item.Variant.Price != nil {
 				itemRes.UnitPrice = *item.Variant.Price
 				itemSubtotal = int64(item.Quantity) * (*item.Variant.Price)
@@ -132,6 +142,7 @@ func mapCartResponse(cart *model.Cart) CartResponse {
 
 		if item.Product != nil {
 			itemRes.ProductID = item.Product.ID.String()
+			itemRes.ProductSlug = item.Product.Slug
 			if itemRes.Title == "" {
 				itemRes.Title = item.Product.Title
 			} else {

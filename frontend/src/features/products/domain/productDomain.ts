@@ -110,9 +110,24 @@ export function resolveProductStock(
 }
 
 /**
- * Resolves clean image array for product gallery
+ * Resolves clean image array for product gallery, prioritizing the active variant's media
  */
-export function resolveProductImages(product: ProductDetailsEntity): string[] {
+export function resolveProductImages(
+  product: ProductDetailsEntity,
+  activeVariant?: ProductVariant | null
+): string[] {
+  // If active variant has media images, use them
+  if (activeVariant?.media && activeVariant.media.length > 0) {
+    const urls = activeVariant.media.map((m) => m.url).filter(Boolean);
+    if (urls.length > 0) return urls;
+  }
+
+  // If active variant has a thumbnail
+  if (activeVariant?.thumbnail) {
+    return [activeVariant.thumbnail];
+  }
+
+  // Fallback to product images
   if (product.images && product.images.length > 0) {
     return product.images;
   }

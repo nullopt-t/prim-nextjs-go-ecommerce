@@ -6,6 +6,7 @@ import { cartService } from "@/services/cart";
 export interface CartContextItem {
   id: string;
   productId?: string;
+  productSlug?: string;
   variantId?: string;
   productName: { ar?: string; en?: string } | string;
   productBrand?: string;
@@ -97,6 +98,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return {
         id: String(item.id),
         productId: item.productId,
+        productSlug: item.productSlug || item.slug,
         variantId: item.variantId,
         productName: typeof title === "object" ? title : { en: title, ar: title },
         productBrand: item.brand || item.productBrand || "PRIM",

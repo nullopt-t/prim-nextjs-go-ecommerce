@@ -6,12 +6,13 @@ import { Trash2 } from "lucide-react";
 import { LazyImage } from "@/components/ui/lazyImage";
 import { CartItemData } from "@/features/cart/types";
 import { useCart } from "@/hooks/useCart";
+import { Link } from "@/i18n/navigation";
 import { toast } from "sonner";
 import { useState } from "react";
 
 export default function OrderBox({ orderDetails }: { orderDetails: CartItemData }) {
   const t = useTranslations("cart");
-  const { updateCartItem, removeFromCart } = useCart();
+  const { updateCartItem, removeFromCart, closeCart } = useCart();
   const [isDeleting, setIsDeleting] = useState(false);
 
   const productName = typeof orderDetails.productName === "object"
@@ -58,14 +59,27 @@ export default function OrderBox({ orderDetails }: { orderDetails: CartItemData 
     }
   };
 
+  const productSlug = orderDetails.productSlug || orderDetails.productId || orderDetails.id;
+  const productHref = productSlug
+    ? `/products/${productSlug}?${new URLSearchParams({
+        ...(orderDetails.variantId ? { variant: orderDetails.variantId } : {}),
+        ...(orderDetails.color ? { color: orderDetails.color } : {}),
+      }).toString()}`
+    : "/products";
+
   return (
     <div className={`flex gap-4 border border-border rounded-2xl p-4 bg-card hover:border-accent-brand/50 transition-all ${isDeleting ? "opacity-50 pointer-events-none" : ""}`}>
-      <div className="w-20 sm:w-24 shrink-0 rounded-xl overflow-hidden aspect-square border border-border/50 bg-secondary/20 relative">
+      <Link
+        href={productHref}
+        onClick={closeCart}
+        className="w-20 sm:w-24 shrink-0 rounded-xl overflow-hidden aspect-square border border-border/50 bg-secondary/20 relative group/img cursor-pointer"
+        aria-label={`View ${productName}`}
+      >
         <LazyImage
           src={imgSrc}
           alt={productName}
           containerClassName="w-full h-full"
-          imageClassName="rounded-xl object-cover object-center w-full h-full"
+          imageClassName="rounded-xl object-cover object-center w-full h-full group-hover/img:scale-105 transition-transform duration-200"
         />
         {isOutOfStock && (
           <div className="absolute inset-0 bg-background/80 backdrop-blur-2xs flex items-center justify-center p-1 text-center">
@@ -74,14 +88,18 @@ export default function OrderBox({ orderDetails }: { orderDetails: CartItemData 
             </span>
           </div>
         )}
-      </div>
+      </Link>
 
       <div className="flex flex-col flex-1 min-w-0 justify-between">
         <div className="flex justify-between items-start gap-2">
           <div className="flex flex-col min-w-0">
-            <p className="font-semibold text-foreground text-base truncate">
+            <Link
+              href={productHref}
+              onClick={closeCart}
+              className="font-semibold text-foreground text-base truncate hover:text-accent-brand transition-colors cursor-pointer"
+            >
               {productName}
-            </p>
+            </Link>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
               <span>{orderDetails.productBrand || "PRIM"}</span>
               {orderDetails.color && (
