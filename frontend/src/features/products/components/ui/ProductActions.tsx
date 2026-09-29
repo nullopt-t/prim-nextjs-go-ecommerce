@@ -100,17 +100,12 @@ export function ProductActions({
                   role="radio"
                   aria-checked={isSelected}
                   onClick={() => onSelectColor(idx)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all cursor-pointer flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all cursor-pointer ${
                     isSelected
                       ? "border-foreground bg-foreground text-background shadow-xs font-semibold"
                       : "border-border bg-card text-foreground hover:bg-secondary/70 hover:border-border"
                   }`}
                 >
-                  <span
-                    className={`size-2.5 rounded-full shrink-0 ${
-                      isSelected ? "bg-background" : "bg-muted-foreground/60"
-                    }`}
-                  />
                   <span>{color.name}</span>
                 </button>
               );
