@@ -86,7 +86,16 @@
       "allCategories": "جميع الفئات",
       "account": "الحساب",
       "wishlist": "المفضلة",
-      "cart": "سلة التسوق"
+      "cart": "سلة التسوق",
+      "orders": "طلباتي",
+      "settings": "الإعدادات",
+      "signIn": "تسجيل الدخول",
+      "signOut": "تسجيل الخروج",
+      "preferences": "التفضيلات",
+      "language": "اللغة",
+      "theme": "المظهر",
+      "dark": "داكن",
+      "light": "فاتح"
     },
     "filters": {
       "title": "الفلاتر",

@@ -86,7 +86,16 @@
       "allCategories": "All categories",
       "account": "Account",
       "wishlist": "Wishlist",
-      "cart": "Shopping Cart"
+      "cart": "Shopping Cart",
+      "orders": "My Orders",
+      "settings": "Settings",
+      "signIn": "Sign In",
+      "signOut": "Sign Out",
+      "preferences": "Preferences",
+      "language": "Language",
+      "theme": "Theme",
+      "dark": "Dark",
+      "light": "Light"
     },
     "filters": {
       "title": "Filters",
