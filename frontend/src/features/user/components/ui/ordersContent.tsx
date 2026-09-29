@@ -157,8 +157,8 @@ export default function OrdersContent() {
         if (cancelled) return;
         const raw: Order[] = res?.data?.orders ?? res?.orders ?? res ?? [];
         setOrders(raw);
-      } catch (err: any) {
-        if (!cancelled) setError(err?.message || "Failed to load orders.");
+      } catch (err: unknown) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load orders.");
       } finally {
         if (!cancelled) setLoading(false);
       }

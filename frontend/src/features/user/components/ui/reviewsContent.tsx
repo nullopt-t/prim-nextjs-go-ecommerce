@@ -63,8 +63,8 @@ function ReviewCard({
       await userService.deleteReview(review.id);
       toast.success("Review deleted.");
       onDelete(review.id);
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to delete review.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete review.");
     } finally {
       setDeleting(false);
     }
@@ -139,8 +139,8 @@ export default function ReviewsContent() {
         if (cancelled) return;
         const raw: Review[] = Array.isArray(res) ? res : res?.data ?? [];
         setReviews(raw);
-      } catch (err: any) {
-        if (!cancelled) setError(err?.message || "Failed to load reviews.");
+      } catch (err: unknown) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load reviews.");
       } finally {
         if (!cancelled) setLoading(false);
       }

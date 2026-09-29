@@ -142,8 +142,8 @@ export default function OverviewContent() {
 
         setOrders(rawOrders);
         setReviewCount(rawReviews.length);
-      } catch (err: any) {
-        if (!cancelled) setError(err?.message || "Failed to load data.");
+      } catch (err: unknown) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load data.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -191,6 +191,8 @@ export default function OverviewContent() {
       {/* Stats grid */}
       {loading ? (
         <StatsSkeleton />
+      ) : error ? (
+        <p className="text-destructive text-sm">Error: {error}</p>
       ) : (
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           {stats.map((stat) => (

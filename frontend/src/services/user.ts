@@ -29,19 +29,22 @@ export const userService = {
   deleteSession: (id: string) => api.delete(`/api/v1/auth/sessions/${id}`),
 
   // Addresses — @todo Not yet implemented on the backend
-  getAddresses: () => api.get("/api/v1/addresses"),
-  createAddress: (payload: Record<string, unknown>) =>
-    api.post("/api/v1/addresses", payload),
-  updateAddress: (id: string, payload: Record<string, unknown>) =>
-    api.patch(`/api/v1/addresses/${id}`, payload),
-  deleteAddress: (id: string) => api.delete(`/api/v1/addresses/${id}`),
+  getAddresses: (_payload?: Record<string, unknown>) =>
+    Promise.reject(new Error("Address management is not yet available.")),
+  createAddress: (_payload: Record<string, unknown>) =>
+    Promise.reject(new Error("Address management is not yet available.")),
+  updateAddress: (_id: string, _payload: Record<string, unknown>) =>
+    Promise.reject(new Error("Address management is not yet available.")),
+  deleteAddress: (_id: string) =>
+    Promise.reject(new Error("Address management is not yet available.")),
 
   // Payment methods — @todo Not yet implemented on the backend
-  getPaymentMethods: () => api.get("/api/v1/payment-methods"),
-  createPaymentMethod: (payload: Record<string, unknown>) =>
-    api.post("/api/v1/payment-methods", payload),
-  deletePaymentMethod: (id: string) =>
-    api.delete(`/api/v1/payment-methods/${id}`),
-  setDefaultPaymentMethod: (id: string) =>
-    api.patch(`/api/v1/payment-methods/${id}/default`),
+  getPaymentMethods: () =>
+    Promise.reject(new Error("Payment method management is not yet available.")),
+  createPaymentMethod: (_payload: Record<string, unknown>) =>
+    Promise.reject(new Error("Payment method management is not yet available.")),
+  deletePaymentMethod: (_id: string) =>
+    Promise.reject(new Error("Payment method management is not yet available.")),
+  setDefaultPaymentMethod: (_id: string) =>
+    Promise.reject(new Error("Payment method management is not yet available.")),
 };

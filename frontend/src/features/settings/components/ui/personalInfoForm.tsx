@@ -33,8 +33,8 @@ function SessionsSection() {
         if (cancelled) return;
         const raw: Session[] = Array.isArray(res) ? res : res?.data ?? [];
         setSessions(raw);
-      } catch (err: any) {
-        if (!cancelled) setError(err?.message || "Failed to load sessions.");
+      } catch (err: unknown) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load sessions.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -51,8 +51,8 @@ function SessionsSection() {
       await userService.deleteSession(id);
       setSessions((prev) => prev.filter((s) => s.id !== id));
       toast.success("Session removed.");
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to remove session.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to remove session.");
     }
   };
 
