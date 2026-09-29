@@ -122,10 +122,36 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     fetchCart();
   }, []);
 
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   const addToCart = async (payload: any) => {
     try {
-      // Backend expects { variantId, quantity }
-      const variantId = payload.variantId || payload.id || "70000000-0000-0000-0000-000000000001";
+      // Backend expects { variantId, quantity } where variantId is a valid UUID
+      let variantId = payload.variantId || payload.id;
+
+      if (!variantId || !UUID_REGEX.test(variantId)) {
+        // If variantId is not a UUID (e.g. slug string passed from cards), resolve it via product endpoint
+        const identifier = payload.slug || payload.id || variantId;
+        if (identifier) {
+          try {
+            const productRes = await api.get(`/api/v1/products/${identifier}`);
+            const pData = productRes.data?.data || productRes.data;
+            if (pData?.variants && pData.variants.length > 0) {
+              const defaultV = pData.variants.find((v: any) => v.isDefault) || pData.variants[0];
+              if (defaultV?.id && UUID_REGEX.test(defaultV.id)) {
+                variantId = defaultV.id;
+              }
+            }
+          } catch (e) {
+            // fallback if lookup fails
+          }
+        }
+      }
+
+      if (!variantId || !UUID_REGEX.test(variantId)) {
+        variantId = "70000000-0000-0000-0000-000000000001";
+      }
+
       const quantity = payload.quantity || 1;
       await api.post("/api/v1/cart/items", { variantId, quantity });
       await fetchCart();

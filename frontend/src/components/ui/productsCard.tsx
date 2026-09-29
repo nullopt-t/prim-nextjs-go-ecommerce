@@ -72,7 +72,8 @@ export function ProductsCard({
       const defaultVariant = (cardDetails.variants && cardDetails.variants[0]) || null;
       const payload = {
         id: String(cardDetails.id),
-        variantId: defaultVariant?.id || String(cardDetails.id),
+        slug: cardDetails.slug || String(cardDetails.id),
+        variantId: defaultVariant?.id || cardDetails.defaultVariantId,
         productName: cardDetails.product,
         productPrice: typeof cardDetails.price === "number" ? `$${cardDetails.price.toFixed(2)}` : String(cardDetails.price),
         img: typeof cardDetails.img === "string" ? cardDetails.img : "/placeholder-product.png",
