@@ -40,9 +40,72 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
 
   const total = Math.max(0, subtotal - discount + shippingCost);
 
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-3">
+        {/* Compact Free Shipping Notice */}
+        {subtotal > 0 && !isFreeShipping && (
+          <div className="flex items-center justify-between text-xs text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-lg border border-border/40">
+            <span className="flex items-center gap-1.5 text-foreground truncate">
+              <Truck className="size-3 text-accent-brand shrink-0" />
+              <span>Add <strong className="text-accent-brand">${remainingForFreeShipping.toFixed(2)}</strong> for free shipping</span>
+            </span>
+            <span className="text-[11px] font-semibold">{Math.round(shippingProgress)}%</span>
+          </div>
+        )}
+        {subtotal > 0 && isFreeShipping && (
+          <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 font-medium">
+            <Truck className="size-3 shrink-0" />
+            <span>You unlocked Free Shipping!</span>
+          </div>
+        )}
+
+        {/* Minimal Subtotal & Total Line */}
+        <div className="flex items-baseline justify-between pt-1">
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground">
+              {t("orderSummary.total", { defaultMessage: "Total" })}
+            </span>
+            <span className="text-xl font-bold text-foreground tracking-tight">
+              ${total.toFixed(2)}
+            </span>
+          </div>
+
+          <div className="text-end text-xs text-muted-foreground">
+            {discount > 0 ? (
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium block">
+                -${discount.toFixed(2)} discount
+              </span>
+            ) : null}
+            <span>
+              {isFreeShipping ? "Free Shipping" : `+$${shippingCost.toFixed(2)} shipping`}
+            </span>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <CustomButton
+          text={`${t("orderSummary.checkout", { defaultMessage: "Proceed to Checkout" })}`}
+          className="py-3 text-sm font-semibold w-full shadow-xs rounded-xl"
+          disabled={!cartItems || cartItems.length === 0}
+          onClick={() => {
+            closeCart();
+            router.push("/checkout");
+          }}
+        />
+
+        {/* Micro Security Trust text */}
+        <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/80">
+          <ShieldCheck className="size-3 text-emerald-600" />
+          <span>Encrypted checkout</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`border border-border rounded-2xl bg-card shadow-xs flex flex-col ${compact ? "p-4" : "p-6"}`}>
-      <h3 className={`font-semibold text-foreground ${compact ? "text-base mb-3" : "text-lg mb-4"}`}>
+    <div className="border border-border rounded-2xl bg-card shadow-xs flex flex-col p-6">
+      <h3 className="font-semibold text-foreground text-lg mb-4">
         {t("orderSummary.title", { defaultMessage: "Order Summary" })}
       </h3>
 

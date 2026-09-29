@@ -76,7 +76,7 @@ export function CartSidebar() {
         </div>
 
         {hasItems && (
-          <div className="p-4 border-t border-border bg-card">
+          <div className="p-3.5 sm:p-4 border-t border-border/80 bg-background/95 backdrop-blur-md shadow-lg">
             <PaymentBox compact={true} />
           </div>
         )}
