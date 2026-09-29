@@ -43,7 +43,7 @@ export function ProductsCard({
   const tHome = useTranslations("home");
   const tCommon = useTranslations("common");
   const locale = useLocale();
-  const { addToCart, openCart } = useCartContext();
+  const { addToCart } = useCartContext();
 
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
@@ -88,7 +88,6 @@ export function ProductsCard({
             ? `تمت إضافة "${productName}" إلى سلة التسوق!`
             : `Added "${productName}" to your cart!`
         );
-        openCart();
         setTimeout(() => setJustAdded(false), 2000);
       } else {
         toast.error(res.error || (locale === "ar" ? "فشل إضافة المنتج إلى السلة" : "Failed to add to cart"));

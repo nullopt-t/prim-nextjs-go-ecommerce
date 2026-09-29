@@ -65,7 +65,6 @@ export default function WishlistContent() {
       });
     }
     toast.success("Added all wishlist items to cart!");
-    openCart();
   };
 
   return (

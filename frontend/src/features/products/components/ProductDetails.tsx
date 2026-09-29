@@ -179,7 +179,6 @@ export function ProductDetails() {
     setIsAdding(false);
     if (res.success) {
       toast.success(`Added ${quantity}x ${productName} to your cart!`);
-      openCart();
     } else {
       toast.error(res.error || "Failed to add to cart");
     }
