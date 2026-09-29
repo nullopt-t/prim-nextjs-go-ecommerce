@@ -23,6 +23,8 @@ export interface CardDetails {
   oldPrice?: number | string;
   discountPercentage?: string;
   variants?: any[];
+  /** Fallback variant ID used when no variants array is present */
+  defaultVariantId?: string;
   brand?: string;
   inStock?: boolean;
 }
