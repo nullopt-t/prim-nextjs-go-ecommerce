@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import FormButton from "@/features/auth/components/ui/formButton";
 import FormTitle from "@/features/auth/components/ui/formTitle";
 import FormSubtitle from "@/features/auth/components/ui/formSubtitle";
@@ -38,7 +38,6 @@ export default function Form({
   const [canResend, setCanResend] = useState(false);
   const [isResending, setIsResending] = useState(false);
 
-  // Timer countdown for OTP resend
   useEffect(() => {
     if (formType !== "verify") return;
     if (resendCooldown <= 0) {
@@ -75,11 +74,9 @@ export default function Form({
   };
 
   return (
-    <div className="w-full">
-      <div className="mb-2">
+    <div className="w-full flex flex-col gap-5">
+      <div className="flex flex-col gap-1">
         <FormTitle type={formType} />
-      </div>
-      <div className="mb-6">
         <FormSubtitle
           type={formType}
           email={formType === "verify" ? userEmail || inputs.email : undefined}
@@ -88,18 +85,18 @@ export default function Form({
       </div>
 
       <form
-        className="flex flex-col gap-5"
+        className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
           handleSubmit(formType, inputs);
         }}
       >
-        {/* Email input for login / register */}
+        {/* Email input for login */}
         {(formType === "login" || formType === "register") && (
-          <label className="block">
-            <span className="block font-medium text-foreground mb-2 text-sm">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-foreground">
               {t("sign.emailLabel")}
-            </span>
+            </label>
             <FormInput
               inputObj={{
                 type: "email",
@@ -109,16 +106,16 @@ export default function Form({
                 disabled: isLoading,
               }}
             />
-          </label>
+          </div>
         )}
 
-        {/* Segmented OTP input for verify */}
+        {/* OTP input for verify */}
         {formType === "verify" && (
-          <div className="flex flex-col gap-3">
-            <label className="block">
-              <span className="block font-medium text-foreground mb-2 text-sm">
+          <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-foreground">
                 {t("verify.codeLabel")}
-              </span>
+              </label>
               <OtpInput
                 value={inputs.code}
                 onChange={handleCode}
@@ -126,30 +123,27 @@ export default function Form({
                 disabled={isLoading}
                 autoFocus
               />
-            </label>
+            </div>
 
-            {/* Resend actions */}
-            <div className="flex items-center justify-between text-xs sm:text-sm pt-1 text-muted-foreground">
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
               {canResend ? (
                 <button
                   type="button"
                   onClick={handleResend}
                   disabled={isResending || isLoading}
-                  className="inline-flex items-center gap-1.5 text-accent-brand hover:underline font-medium cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-1 text-accent-brand hover:underline font-medium cursor-pointer disabled:opacity-50"
                 >
-                  <RotateCw className={`size-3.5 ${isResending ? "animate-spin" : ""}`} />
+                  <RotateCw className={`size-3 ${isResending ? "animate-spin" : ""}`} />
                   <span>{t("verify.resend")}</span>
                 </button>
               ) : (
-                <span className="text-muted-foreground/75">
-                  {t("verify.resendIn", { seconds: resendCooldown })}
-                </span>
+                <span>{t("verify.resendIn", { seconds: resendCooldown })}</span>
               )}
             </div>
           </div>
         )}
 
-        <div className="mt-2">
+        <div className="pt-1">
           <FormButton
             type={formType}
             payload={inputs}

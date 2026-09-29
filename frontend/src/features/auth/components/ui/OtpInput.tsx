@@ -19,7 +19,6 @@ export default function OtpInput({
 }: OtpInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Split current value into array of single chars padded with empty strings
   const digits = Array.from({ length }, (_, i) => value[i] || "");
 
   useEffect(() => {
@@ -31,14 +30,12 @@ export default function OtpInput({
   const handleChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const rawVal = e.target.value.replace(/\D/g, "");
     if (!rawVal) {
-      // Cleared the input
       const newDigits = [...digits];
       newDigits[index] = "";
       onChange(newDigits.join(""));
       return;
     }
 
-    // Handle single digit or pasted digits
     const chars = rawVal.split("");
     const newDigits = [...digits];
 
@@ -49,7 +46,6 @@ export default function OtpInput({
     const nextValue = newDigits.join("");
     onChange(nextValue);
 
-    // Focus next empty or next adjacent input
     const nextIndex = Math.min(index + chars.length, length - 1);
     inputRefs.current[nextIndex]?.focus();
   };
@@ -57,7 +53,6 @@ export default function OtpInput({
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace") {
       if (!digits[index] && index > 0) {
-        // Move back and clear previous
         const newDigits = [...digits];
         newDigits[index - 1] = "";
         onChange(newDigits.join(""));
@@ -87,7 +82,7 @@ export default function OtpInput({
   };
 
   return (
-    <div className="flex items-center justify-between gap-2 sm:gap-3 dir-ltr" dir="ltr">
+    <div className="flex items-center justify-between gap-2 dir-ltr" dir="ltr">
       {digits.map((digit, idx) => (
         <input
           key={idx}
@@ -105,11 +100,11 @@ export default function OtpInput({
           onPaste={handlePaste}
           onFocus={(e) => e.target.select()}
           aria-label={`Digit ${idx + 1}`}
-          className={`w-11 h-13 sm:w-13 sm:h-15 text-center text-xl sm:text-2xl font-bold rounded-md border bg-background text-foreground transition-all outline-none shadow-xs
+          className={`w-11 h-12 text-center text-lg font-semibold rounded-md border bg-background text-foreground transition-colors outline-none
             ${
               digit
-                ? "border-accent-brand ring-2 ring-accent-brand/20 bg-accent-brand/5"
-                : "border-border hover:border-foreground/30 focus:border-accent-brand focus:ring-2 focus:ring-accent-brand/25"
+                ? "border-accent-brand ring-1 ring-accent-brand"
+                : "border-border focus:border-accent-brand focus:ring-1 focus:ring-accent-brand"
             }
             ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-text"}
           `}

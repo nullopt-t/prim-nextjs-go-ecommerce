@@ -1,43 +1,62 @@
 "use client";
 
-import Image from "next/image";
-import AuthImage from "@/assets/imgs/auth.png";
-import { Sparkles } from "lucide-react";
+import { Link } from "@/i18n/navigation";
+import { Sparkles, House, Moon, Sun } from "lucide-react";
+import { useTheme } from "@/context/theme";
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
+  const { theme, toggle } = useTheme();
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 min-h-screen bg-background text-foreground selection:bg-accent-brand/20">
-      {/* Form side */}
-      <div className="flex flex-col justify-center items-center px-4 sm:px-8 md:px-12 lg:px-16 py-8 sm:py-12 min-h-screen overflow-y-auto">
-        <div className="w-full max-w-md">
-          {/* Brand header badge */}
-          <div className="flex items-center gap-2 mb-8">
-            <div className="size-9 rounded-md bg-accent-brand/10 border border-accent-brand/25 flex items-center justify-center text-accent-brand">
-              <Sparkles className="size-5" />
-            </div>
-            <span className="font-black text-xl tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-              PRIM
-            </span>
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 md:p-8 selection:bg-accent-brand/20">
+      {/* Top clean navigation bar */}
+      <header className="w-full max-w-5xl mx-auto flex items-center justify-between py-2">
+        <Link
+          href="/"
+          className="flex items-center gap-2 hover:opacity-85 transition-opacity"
+        >
+          <div className="size-8 rounded-md bg-accent-brand text-white flex items-center justify-center shadow-xs">
+            <Sparkles className="size-4" />
           </div>
+          <span className="font-bold text-lg tracking-tight text-foreground">
+            PRIM
+          </span>
+        </Link>
 
-          <div className="bg-card/40 backdrop-blur-xs rounded-md border border-border/60 p-6 sm:p-8 shadow-xs">
-            {children}
-          </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/"
+            aria-label="Home"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors inline-flex items-center justify-center"
+          >
+            <House className="size-4" />
+          </Link>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label="Toggle theme"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors cursor-pointer inline-flex items-center justify-center"
+          >
+            {theme === "light" ? (
+              <Sun className="size-4" />
+            ) : (
+              <Moon className="size-4" />
+            )}
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* Decorative / Brand Image Side */}
-      <div className="hidden lg:relative lg:block w-full h-full min-h-screen bg-muted/30 overflow-hidden">
-        <Image
-          src={AuthImage}
-          alt="Authentication banner"
-          fill
-          priority
-          sizes="50vw"
-          className="object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent pointer-events-none" />
-      </div>
+      {/* Main centered card */}
+      <main className="w-full flex-1 flex items-center justify-center py-8">
+        <div className="w-full max-w-[420px] bg-card border border-border rounded-md p-6 sm:p-8 shadow-xs">
+          {children}
+        </div>
+      </main>
+
+      {/* Bottom subtle footer */}
+      <footer className="w-full max-w-5xl mx-auto text-center py-2 text-xs text-muted-foreground">
+        © {new Date().getFullYear()} PRIM. All rights reserved.
+      </footer>
     </div>
   );
 }

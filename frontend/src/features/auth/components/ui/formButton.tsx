@@ -30,7 +30,7 @@ export default function FormButton({
     <button
       type="submit"
       disabled={isLoading || disabled}
-      className="relative flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-md py-3.5 px-6 font-semibold text-sm sm:text-base capitalize hover:bg-primary/90 active:scale-[0.99] transition-all shadow-sm cursor-pointer w-full disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+      className="w-full h-11 rounded-md bg-primary text-primary-foreground font-medium text-sm transition-colors hover:bg-primary/90 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       onClick={(e) => {
         e.preventDefault();
         if (!isLoading && !disabled) {
@@ -38,7 +38,7 @@ export default function FormButton({
         }
       }}
     >
-      {isLoading && <Loader2 className="size-4.5 animate-spin" />}
+      {isLoading && <Loader2 className="size-4 animate-spin" />}
       <span>{buttonTxt}</span>
     </button>
   );
