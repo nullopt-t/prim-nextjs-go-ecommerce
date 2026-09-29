@@ -16,34 +16,34 @@ export default function MobileNav() {
   };
 
   return (
-    <div className="md:hidden mb-4 -mx-4 px-4 overflow-x-auto">
-      <div className="flex gap-1 border-b border-border pb-0 min-w-max">
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-card/95 backdrop-blur-sm border-t border-border pb-safe">
+      <div className="flex items-stretch overflow-x-auto scrollbar-none">
         {navLinks.map((item) => {
           const isActive = pathname === item.path;
           return (
             <Link
               key={item.id}
               href={item.path}
-              className={`px-4 py-2 flex-shrink-0 flex flex-col items-center gap-0.5 text-[10px] font-medium transition-colors border-b-2 -mb-px ${
+              className={`flex-1 min-w-[56px] flex flex-col items-center justify-center gap-0.5 py-2.5 px-1 text-[10px] font-medium transition-colors ${
                 isActive
-                  ? "text-accent-brand border-accent-brand"
-                  : "text-muted-foreground border-transparent hover:text-foreground"
+                  ? "text-accent-brand"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <item.icon className="size-4" />
-              <span>{item.label}</span>
+              <item.icon className={`size-5 ${isActive ? "text-accent-brand" : ""}`} />
+              <span className="truncate w-full text-center leading-tight">{item.label}</span>
             </Link>
           );
         })}
         <button
           type="button"
           onClick={handleLogout}
-          className="px-4 py-2 flex-shrink-0 flex flex-col items-center gap-0.5 text-[10px] font-medium text-destructive border-b-2 border-transparent -mb-px cursor-pointer transition-colors hover:opacity-80"
+          className="flex-1 min-w-[56px] flex flex-col items-center justify-center gap-0.5 py-2.5 px-1 text-[10px] font-medium text-destructive cursor-pointer transition-colors hover:opacity-80"
         >
-          <LogOut className="size-4" />
-          <span>Logout</span>
+          <LogOut className="size-5" />
+          <span className="truncate w-full text-center leading-tight">Logout</span>
         </button>
       </div>
-    </div>
+    </nav>
   );
 }
