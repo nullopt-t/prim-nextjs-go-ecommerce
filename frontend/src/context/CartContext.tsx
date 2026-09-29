@@ -25,6 +25,17 @@ export interface CouponData {
   message?: string;
 }
 
+export interface AddToCartPayload {
+  id?: string;
+  variantId?: string;
+  slug?: string;
+  quantity?: number;
+  productName?: { ar?: string; en?: string } | string;
+  productPrice?: string | number;
+  img?: string;
+  color?: string;
+}
+
 interface CartContextType {
   cartItems: CartContextItem[];
   cartSummary: {
@@ -43,7 +54,7 @@ interface CartContextType {
   toggleCart: () => void;
   applyCoupon: (code: string) => Promise<{ success: boolean; coupon?: CouponData; error?: string }>;
   removeCoupon: () => void;
-  addToCart: (payload: any) => Promise<{ success: boolean; error?: string }>;
+  addToCart: (payload: AddToCartPayload) => Promise<{ success: boolean; error?: string }>;
   updateCartItem: (id: string, quantity: number) => Promise<{ success: boolean; error?: string }>;
   removeFromCart: (id: string) => Promise<{ success: boolean; error?: string }>;
   clearCart: () => Promise<{ success: boolean; error?: string }>;
@@ -128,7 +139,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  const addToCart = async (payload: any) => {
+  const addToCart = async (payload: AddToCartPayload) => {
     try {
       // Backend expects { variantId, quantity } where variantId is a valid UUID
       let variantId = payload.variantId || payload.id;

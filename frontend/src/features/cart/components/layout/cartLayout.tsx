@@ -4,7 +4,7 @@ import { useCart } from "@/hooks/useCart";
 import CartTitle from "@/features/cart/components/ui/cartTitle";
 import PaymentBox from "@/features/cart/components/ui/paymentBox";
 import OrdersGrid from "@/features/cart/components/ui/ordersGrid";
-import Copoun from "@/features/cart/components/ui/copoun";
+import Coupon from "@/features/cart/components/ui/coupon";
 
 export default function CartLayout() {
   const { cartItems, loading } = useCart();
@@ -17,7 +17,7 @@ export default function CartLayout() {
         <div className="flex flex-col lg:flex-row gap-8 items-start">
           <div className="w-full lg:w-2/3 flex flex-col gap-6">
             <OrdersGrid />
-            <Copoun />
+            <Coupon />
           </div>
           <div className="w-full lg:w-1/3 sticky top-24">
             <PaymentBox />

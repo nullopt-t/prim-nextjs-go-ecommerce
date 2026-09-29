@@ -7,7 +7,7 @@ import { useCart } from "@/hooks/useCart";
 import { Tag, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
-export default function Copoun() {
+export default function Coupon() {
   const t = useTranslations("cart");
   const { appliedCoupon, applyCoupon, removeCoupon } = useCart();
   const [code, setCode] = useState("");

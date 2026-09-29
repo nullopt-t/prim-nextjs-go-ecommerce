@@ -7,6 +7,8 @@ import { useCart } from "@/hooks/useCart";
 import { useRouter } from "@/i18n/navigation";
 import { Truck, Sparkles, ShieldCheck } from "lucide-react";
 
+import { calculateCartTotals } from "@/features/cart/domain/cartCalculations";
+
 export default function PaymentBox({ compact = false }: { compact?: boolean }) {
   const t = useTranslations("cart");
   const { cartItems, appliedCoupon, closeCart } = useCart();
@@ -16,29 +18,15 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
     return null;
   }
 
-  const subtotal = cartItems.reduce(
-    (acc, item) =>
-      acc +
-      (parseFloat(String(item.productPrice || "").replace(/[^0-9.-]+/g, "") || "0") *
-        (item.quantity || 1)),
-    0
-  );
-
-  // Discount calculation
-  let discount = 0;
-  if (appliedCoupon?.discountPercent) {
-    discount = (subtotal * appliedCoupon.discountPercent) / 100;
-  } else if (appliedCoupon?.fixedDiscount) {
-    discount = appliedCoupon.fixedDiscount;
-  }
-
-  const shippingThreshold = 150;
-  const isFreeShipping = subtotal >= shippingThreshold || appliedCoupon?.freeShipping;
-  const shippingCost = isFreeShipping || subtotal === 0 ? 0 : 9.99;
-  const remainingForFreeShipping = Math.max(0, shippingThreshold - subtotal);
-  const shippingProgress = Math.min(100, (subtotal / shippingThreshold) * 100);
-
-  const total = Math.max(0, subtotal - discount + shippingCost);
+  const {
+    subtotal,
+    discount,
+    shippingCost,
+    isFreeShipping,
+    remainingForFreeShipping,
+    shippingProgress,
+    total,
+  } = calculateCartTotals(cartItems, appliedCoupon);
 
   if (compact) {
     return (
