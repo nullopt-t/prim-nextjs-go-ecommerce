@@ -54,26 +54,24 @@ export function ProductReviews({
 
             {/* Rating Bars */}
             <div className="flex flex-col gap-2 mb-8">
-              {[
-                { starVal: 5, pct: 72 },
-                { starVal: 4, pct: 18 },
-                { starVal: 3, pct: 6 },
-                { starVal: 2, pct: 2 },
-                { starVal: 1, pct: 2 },
-              ].map((bar) => (
-                <div key={bar.starVal} className="flex items-center gap-3 text-sm">
-                  <span className="w-12 text-accent-brand hover:underline cursor-pointer font-medium whitespace-nowrap">
-                    {bar.starVal} star
-                  </span>
-                  <div className="flex-1 h-4 bg-secondary/50 rounded-full overflow-hidden border border-border/50">
-                    <div
-                      className="h-full bg-amber-400 rounded-full"
-                      style={{ width: `${bar.pct}%` }}
-                    />
+              {[5, 4, 3, 2, 1].map((starVal) => {
+                const count = reviews.filter((r) => Math.round(r.rating) === starVal).length;
+                const pct = reviews.length > 0 ? Math.round((count / reviews.length) * 100) : 0;
+                return (
+                  <div key={starVal} className="flex items-center gap-3 text-sm">
+                    <span className="w-12 text-accent-brand hover:underline cursor-pointer font-medium whitespace-nowrap">
+                      {starVal} star
+                    </span>
+                    <div className="flex-1 h-3.5 bg-secondary/50 rounded-full overflow-hidden border border-border/50">
+                      <div
+                        className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="w-10 text-right text-xs text-muted-foreground">{pct}%</span>
                   </div>
-                  <span className="w-10 text-right text-muted-foreground">{bar.pct}%</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="border-t border-border pt-6">
@@ -155,7 +153,13 @@ export function ProductReviews({
 
           {/* Reviews list */}
           <div className="lg:col-span-8 flex flex-col gap-8">
-            {visibleReviews.map((review) => (
+            {reviews.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground bg-secondary/20 rounded-xl border border-dashed border-border p-8">
+                <p className="font-medium text-foreground text-base mb-1">No reviews yet</p>
+                <p className="text-sm max-w-xs">Be the first to share your experience with this product.</p>
+              </div>
+            ) : (
+              visibleReviews.map((review) => (
               <div key={review.id} className="flex flex-col border-b border-border/50 pb-8 last:border-0 last:pb-0">
                 <div className="flex items-center gap-3 mb-2">
                   {review.avatar ? (
@@ -201,7 +205,7 @@ export function ProductReviews({
                   </span>
                 </div>
               </div>
-            ))}
+            )))}
 
             {reviews.length > 2 && (
               <button

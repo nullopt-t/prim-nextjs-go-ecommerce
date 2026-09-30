@@ -49,6 +49,13 @@ export function ProductActions({
   onToggleWishlist,
   onShare,
 }: ProductActionsProps) {
+  const formatPrice = (val?: number) => {
+    if (val === undefined || isNaN(val)) return "0";
+    return val.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  };
+
+  const currencyPrefix = currency && currency.length > 1 ? `${currency} ` : currency;
+
   return (
     <div className="flex flex-col">
       <div className="flex flex-col gap-2 mb-4">
@@ -71,11 +78,11 @@ export function ProductActions({
 
       <div className="flex items-end gap-3 mb-6">
         <span className="text-4xl font-bold text-foreground">
-          {currency}{price}
+          {currencyPrefix}{formatPrice(price)}
         </span>
-        {oldPrice && (
+        {oldPrice !== undefined && oldPrice > price && (
           <span className="text-xl text-muted-foreground line-through mb-1">
-            {currency}{oldPrice}
+            {currencyPrefix}{formatPrice(oldPrice)}
           </span>
         )}
       </div>

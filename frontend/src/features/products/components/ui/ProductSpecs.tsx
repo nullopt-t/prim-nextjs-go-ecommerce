@@ -3,31 +3,38 @@ import { Truck, ShieldCheck } from "lucide-react";
 interface ProductSpecsProps {
   productName: string;
   category: string;
+  brand?: string;
+  description?: string;
+  attributes?: Record<string, any>;
 }
 
-export function ProductSpecs({ productName, category }: ProductSpecsProps) {
+export function ProductSpecs({ productName, category, brand, description, attributes }: ProductSpecsProps) {
+  const displayBrand = brand || productName.split(" ")[0] || "PRIM";
+
   return (
     <div className="mt-20 flex flex-col gap-16">
       {/* Description Section */}
       <section>
         <h2 className="text-2xl font-bold text-foreground mb-6">Description</h2>
         <div className="prose prose-sm max-w-none text-muted-foreground bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm">
-          <p>
-            Enhance your lifestyle with this exceptional product. Built with premium materials 
-            and cutting-edge technology, it delivers outstanding performance and reliability. 
-            Whether you're a professional or enthusiast, you'll appreciate the attention to 
-            detail and superior build quality.
-          </p>
-          <p className="mt-4">
-            Every component has been carefully selected to ensure longevity and maximum satisfaction. 
-            The intuitive design means you spend less time figuring it out and more time enjoying it.
-          </p>
-          <ul className="mt-4 space-y-2">
-            <li>High-quality materials for lasting durability</li>
-            <li>Ergonomic design for maximum comfort</li>
-            <li>Advanced features for enhanced productivity</li>
-            <li>Eco-friendly packaging and sustainable production</li>
-          </ul>
+          {description ? (
+            <p className="whitespace-pre-line leading-relaxed text-foreground/90">{description}</p>
+          ) : (
+            <>
+              <p>
+                Enhance your lifestyle with the {productName}. Built with premium materials 
+                and cutting-edge technology, it delivers outstanding performance and reliability. 
+                Whether you're a professional or enthusiast, you'll appreciate the attention to 
+                detail and superior build quality.
+              </p>
+              <ul className="mt-4 space-y-2">
+                <li>High-quality materials for lasting durability</li>
+                <li>Ergonomic design for maximum comfort</li>
+                <li>Advanced features for enhanced productivity</li>
+                <li>Eco-friendly packaging and sustainable production</li>
+              </ul>
+            </>
+          )}
         </div>
       </section>
 
@@ -38,27 +45,26 @@ export function ProductSpecs({ productName, category }: ProductSpecsProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-4 text-sm">
             <div className="flex justify-between py-3 border-b border-border/50">
               <span className="text-muted-foreground">Brand</span>
-              <span className="font-medium text-foreground">{productName.split(" ")[0]}</span>
+              <span className="font-medium text-foreground">{displayBrand}</span>
             </div>
             <div className="flex justify-between py-3 border-b border-border/50">
               <span className="text-muted-foreground">Category</span>
               <span className="font-medium text-foreground capitalize">{category.replace("-", " ")}</span>
             </div>
-            <div className="flex justify-between py-3 border-b border-border/50">
-              <span className="text-muted-foreground">Model Year</span>
-              <span className="font-medium text-foreground">2026</span>
-            </div>
+            {attributes &&
+              Object.entries(attributes).map(([key, val]) => (
+                <div key={key} className="flex justify-between py-3 border-b border-border/50">
+                  <span className="text-muted-foreground capitalize">{key}</span>
+                  <span className="font-medium text-foreground">{String(val)}</span>
+                </div>
+              ))}
             <div className="flex justify-between py-3 border-b border-border/50">
               <span className="text-muted-foreground">Condition</span>
               <span className="font-medium text-foreground">Brand New</span>
             </div>
             <div className="flex justify-between py-3 border-b border-border/50">
-              <span className="text-muted-foreground">Weight</span>
-              <span className="font-medium text-foreground">1.2 kg</span>
-            </div>
-            <div className="flex justify-between py-3 border-b border-border/50">
-              <span className="text-muted-foreground">Dimensions</span>
-              <span className="font-medium text-foreground">20 x 15 x 5 cm</span>
+              <span className="text-muted-foreground">Warranty</span>
+              <span className="font-medium text-foreground">1 Year Manufacturer</span>
             </div>
           </div>
         </div>

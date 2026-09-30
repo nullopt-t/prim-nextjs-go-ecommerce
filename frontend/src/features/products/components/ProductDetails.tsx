@@ -32,7 +32,7 @@ export function ProductDetails() {
 
   const { products: allProducts, loading: allLoading } = useAllProducts();
   const { product, loading: productLoading } = useProductBySlug(id);
-  const { addToCart, openCart } = useCartContext();
+  const { addToCart } = useCartContext();
 
   const [activeImage, setActiveImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState(0);
@@ -40,6 +40,15 @@ export function ProductDetails() {
   const [isAdding, setIsAdding] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
+
+  // Check wishlist status on mount or product load
+  useEffect(() => {
+    if (!product?.id) return;
+    wishlistService.getItems().then((items) => {
+      const found = items.some((item: any) => String(item.id) === String(product.id));
+      setIsWishlisted(found);
+    }).catch(() => {});
+  }, [product?.id]);
 
   // Synchronize variant/color from URL search params (e.g. ?variant=... or ?color=...)
   useEffect(() => {
@@ -159,8 +168,28 @@ export function ProductDetails() {
     setActiveImage(0);
   };
 
-  const currentPrice = activeVariant?.price ? activeVariant.price / 100 : product.price;
-  const currentOldPrice = product.oldPrice;
+  const resolvePrice = (val: any): number => {
+    if (typeof val === "number" && !isNaN(val)) return val;
+    if (!val) return 0;
+    const parsed = parseFloat(String(val).replace(/[^0-9.-]+/g, ""));
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  const activeVariantPrice = (activeVariant as any)?.extractedPrice ?? activeVariant?.price;
+  const numVariantPrice = resolvePrice(activeVariantPrice);
+  const numProductPrice = resolvePrice((product as any)?.extractedPrice ?? product.price);
+  const currentPrice = numVariantPrice > 0 ? numVariantPrice : numProductPrice;
+
+  const activeVariantOldPrice = (activeVariant as any)?.extractedOriginalPrice ?? (activeVariant as any)?.oldPrice ?? (activeVariant as any)?.originalPrice;
+  const numVariantOldPrice = resolvePrice(activeVariantOldPrice);
+  const numProductOldPrice = resolvePrice((product as any)?.extractedOriginalPrice ?? product.oldPrice ?? (product as any)?.originalPrice);
+  const rawOldPrice = numVariantOldPrice > 0 ? numVariantOldPrice : numProductOldPrice;
+  const currentOldPrice = rawOldPrice > currentPrice ? rawOldPrice : undefined;
+
+  const calculatedDiscount = currentOldPrice && currentOldPrice > currentPrice
+    ? `${Math.round(((currentOldPrice - currentPrice) / currentOldPrice) * 100)}%`
+    : undefined;
+  const discountPercentage = product.discountPercentage || calculatedDiscount;
 
   const handleAddToCart = async () => {
     if (!isVariantInStock) return;
@@ -187,10 +216,12 @@ export function ProductDetails() {
   const handleBuyNow = async () => {
     if (!isVariantInStock) return;
     setIsAdding(true);
+    const variantId = activeVariant?.id || String(product.id);
     const payload = {
       id: String(product.id),
+      variantId,
       productName: product.product,
-      productPrice: `$${product.price}`,
+      productPrice: `$${currentPrice}`,
       img: images[0],
       quantity,
       color: (product.colors || [])[selectedColor]?.name || "Default",
@@ -294,7 +325,7 @@ export function ProductDetails() {
           productName={productName}
           activeImage={activeImage}
           onSelectImage={setActiveImage}
-          discountPercentage={product.discountPercentage}
+          discountPercentage={discountPercentage}
         />
 
         <ProductActions
@@ -322,7 +353,13 @@ export function ProductDetails() {
       </div>
 
       {/* Specifications & Shipping Sections */}
-      <ProductSpecs productName={productName} category={product.category} />
+      <ProductSpecs
+        productName={productName}
+        category={product.category}
+        brand={typeof product.brand === "string" ? product.brand : product.brand?.name}
+        description={product.description}
+        attributes={activeVariant?.attributes}
+      />
 
       {/* Reviews Section */}
       <div className="mt-16">

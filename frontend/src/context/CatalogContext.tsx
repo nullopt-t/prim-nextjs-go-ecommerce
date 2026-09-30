@@ -87,6 +87,26 @@ export function normalizeProduct(raw: any) {
     : (raw.category?.name || raw.categories?.[0]?.name || "General");
   const categoryId = raw.category?.id || raw.categories?.[0]?.id || "";
 
+  const variants = Array.isArray(raw.variants)
+    ? raw.variants.map((v: any) => {
+        const vPrice = v.extractedPrice !== undefined
+          ? Number(v.extractedPrice)
+          : (typeof v.price === "number"
+              ? v.price
+              : parseFloat(String(v.price || "0").replace(/[^0-9.-]+/g, "")) || priceNum);
+        const vOldPrice = v.extractedOriginalPrice !== undefined
+          ? Number(v.extractedOriginalPrice)
+          : (v.originalPrice || v.oldPrice ? parseFloat(String(v.originalPrice || v.oldPrice).replace(/[^0-9.-]+/g, "")) : undefined);
+        return {
+          ...v,
+          price: vPrice,
+          extractedPrice: vPrice,
+          oldPrice: vOldPrice,
+          extractedOriginalPrice: vOldPrice,
+        };
+      })
+    : [];
+
   return {
     ...raw,
     id,
@@ -96,6 +116,7 @@ export function normalizeProduct(raw: any) {
     img,
     images,
     colors,
+    variants,
     price: priceNum,
     oldPrice: oldPriceNum,
     discountPercentage,

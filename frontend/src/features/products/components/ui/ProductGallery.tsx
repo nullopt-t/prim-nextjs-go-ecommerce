@@ -28,7 +28,7 @@ export function ProductGallery({
           imageClassName="object-cover object-center w-full h-full"
         />
         {discountPercentage && (
-          <span className="absolute top-4 left-4 bg-destructive text-white px-3 py-1 rounded-full text-sm font-semibold shadow-sm">
+          <span className="absolute top-4 start-4 bg-destructive text-white px-3 py-1 rounded-full text-sm font-semibold shadow-sm">
             {discountPercentage} OFF
           </span>
         )}
