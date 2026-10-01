@@ -104,7 +104,7 @@ export default function WishlistContent() {
               : "Explore our catalog and save the items you love by clicking the heart icon."}
           </p>
           <Link
-            href={!isAuthenticated ? "/sign-in" : "/products"}
+            href={!isAuthenticated ? "/auth" : "/products"}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-brand text-white text-sm font-medium hover:opacity-90 transition-opacity"
           >
             <span>{!isAuthenticated ? (locale === "ar" ? "تسجيل الدخول" : "Sign In") : (locale === "ar" ? "تصفح المنتجات" : "Explore Products")}</span>
