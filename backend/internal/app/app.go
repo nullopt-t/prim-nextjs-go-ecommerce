@@ -10,6 +10,7 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/review"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/tag"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/variant"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/wishlist"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/checkout"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/http/swagger"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
@@ -229,6 +230,13 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	cartRouter := cart.NewRouter(cartHandler, app.config.KeysCfg)
 	cartRouter.MapRoutes(v1)
 
+	// wishlist
+	wishlistRepo := wishlist.NewWishlistRepository()
+	wishlistService := wishlist.NewService(txRunner, wishlistRepo, productService, objectService, app.logger)
+	wishlistHandler := wishlist.NewHandler(wishlistService)
+	wishlistRouter := wishlist.NewRouter(wishlistHandler, app.config.KeysCfg)
+	wishlistRouter.MapRoutes(v1)
+
 	authHandler := auth.NewAuthHandler(
 		authService,
 		sessionService,
@@ -403,13 +411,19 @@ func (app *App) Run() error {
 	router := gin.Default()
 	app.setupRoutes(router)
 
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetHTTP2(true)
+	protocols.SetUnencryptedHTTP2(true)
+
 	app.server = &http.Server{
-		Addr:    fmt.Sprintf(":%s", app.config.SvPort),
-		Handler: router,
+		Addr:      fmt.Sprintf(":%s", app.config.SvPort),
+		Handler:   router,
+		Protocols: protocols,
 	}
 
 	app.logger.Info(
-		"Server started",
+		"Server started with HTTP/1.1 and HTTP/2 (h2c) support",
 		log.Meta{
 			"URL":  fmt.Sprintf("http://localhost:%s", app.config.SvPort),
 			"Port": app.config.SvPort,

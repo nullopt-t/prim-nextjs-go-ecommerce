@@ -2126,6 +2126,428 @@
                     }
                 }
             }
+        },
+        "/wishlist": {
+            "get": {
+                "description": "Returns a paginated list of products saved in the authenticated user's wishlist.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wishlist"
+                ],
+                "summary": "List wishlist items",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Wishlist items retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/WishlistItemResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Saves a product to the authenticated user's wishlist.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wishlist"
+                ],
+                "summary": "Add a product to wishlist",
+                "parameters": [
+                    {
+                        "description": "Product to wishlist payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AddToWishlistRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Product added to wishlist successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/WishlistItemResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or product not published",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Product already in wishlist",
+                        "schema": {
+                            "$ref": "#/definitions/ConflictErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Clears all items from the authenticated user's wishlist. If productId or itemId query parameter is provided, removes only that product or item.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wishlist"
+                ],
+                "summary": "Clear wishlist or delete specific item/product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Optional product UUID to remove",
+                        "name": "productId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional item UUID to remove",
+                        "name": "itemId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Wishlist updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Item not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/wishlist/check/{productId}": {
+            "get": {
+                "description": "Checks whether a specific product is saved in the authenticated user's wishlist.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wishlist"
+                ],
+                "summary": "Check if product is in wishlist",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product UUID",
+                        "name": "productId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Wishlist status checked successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/WishlistCheckResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid product id",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/wishlist/count": {
+            "get": {
+                "description": "Returns the total number of items saved in the authenticated user's wishlist.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wishlist"
+                ],
+                "summary": "Get wishlist item count",
+                "responses": {
+                    "200": {
+                        "description": "Wishlist count retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/WishlistCountResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/wishlist/items/{id}": {
+            "delete": {
+                "description": "Deletes a specific wishlist item by its record UUID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wishlist"
+                ],
+                "summary": "Remove item from wishlist",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Wishlist Item UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Item removed from wishlist successfully",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid item id",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Wishlist item not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/wishlist/products/{productId}": {
+            "delete": {
+                "description": "Deletes a product from the user's wishlist by the product UUID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wishlist"
+                ],
+                "summary": "Remove product from wishlist",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product UUID",
+                        "name": "productId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product removed from wishlist successfully",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid product id",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product not found in wishlist",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -2145,6 +2567,19 @@
                     "description": "Product Variant UUID to add to the cart",
                     "type": "string",
                     "example": "70000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "AddToWishlistRequest": {
+            "type": "object",
+            "required": [
+                "productId"
+            ],
+            "properties": {
+                "productId": {
+                    "description": "Product UUID to save to wishlist",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
                 }
             }
         },
@@ -2260,6 +2695,21 @@
         "CartItemResponse": {
             "type": "object",
             "properties": {
+                "attributes": {
+                    "description": "Variant attributes",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "availableStock": {
+                    "description": "Live salable quantity available in inventory",
+                    "type": "integer",
+                    "example": 15
+                },
+                "color": {
+                    "description": "Selected SKU Variant Color",
+                    "type": "string",
+                    "example": "Midnight"
+                },
                 "id": {
                     "description": "Unique Cart Item record UUID",
                     "type": "string",
@@ -2274,6 +2724,11 @@
                     "description": "Parent Product UUID",
                     "type": "string",
                     "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "productSlug": {
+                    "description": "Product Slug for storefront routing",
+                    "type": "string",
+                    "example": "macbook-air-15-m3"
                 },
                 "quantity": {
                     "description": "Selected quantity units in cart",
@@ -2809,6 +3264,14 @@
                     "description": "Brand name",
                     "type": "string",
                     "example": "Apple"
+                },
+                "category": {
+                    "description": "Category information",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/PublicCategoryResponse"
+                        }
+                    ]
                 },
                 "currency": {
                     "description": "Currency ISO code",
@@ -3507,6 +3970,139 @@
                 },
                 "email": {
                     "type": "string"
+                }
+            }
+        },
+        "WishlistCheckResponse": {
+            "type": "object",
+            "properties": {
+                "inWishlist": {
+                    "description": "True if the product is currently saved in the user's wishlist",
+                    "type": "boolean",
+                    "example": true
+                },
+                "wishlistItemId": {
+                    "description": "Wishlist item UUID if present",
+                    "type": "string",
+                    "example": "030553cd-712a-4950-913f-6c26fdd6a2b5"
+                }
+            }
+        },
+        "WishlistCountResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "description": "Total count of items currently in the user's wishlist",
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
+        "WishlistItemResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "Timestamp when item was added to wishlist (RFC3339)",
+                    "type": "string",
+                    "example": "2026-08-23T16:26:25Z"
+                },
+                "id": {
+                    "description": "Wishlist Item record UUID",
+                    "type": "string",
+                    "example": "030553cd-712a-4950-913f-6c26fdd6a2b5"
+                },
+                "product": {
+                    "description": "Hydrated Product details",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/WishlistProductResponse"
+                        }
+                    ]
+                },
+                "productId": {
+                    "description": "Saved Product UUID",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "userId": {
+                    "description": "Customer UUID owning this wishlist item",
+                    "type": "string",
+                    "example": "10000000-0000-0000-0000-000000000002"
+                }
+            }
+        },
+        "WishlistProductResponse": {
+            "type": "object",
+            "properties": {
+                "brandName": {
+                    "description": "Brand display name",
+                    "type": "string",
+                    "example": "Apple"
+                },
+                "categoryName": {
+                    "description": "Primary category name",
+                    "type": "string",
+                    "example": "Laptops"
+                },
+                "currency": {
+                    "description": "Currency ISO code",
+                    "type": "string",
+                    "example": "USD"
+                },
+                "description": {
+                    "description": "Detailed product description",
+                    "type": "string",
+                    "example": "Supercharged by M3 Pro or M3 Max."
+                },
+                "extractedOriginalPrice": {
+                    "description": "Numeric original crossed-out price",
+                    "type": "number",
+                    "example": 2999
+                },
+                "extractedPrice": {
+                    "description": "Numeric active display price",
+                    "type": "number",
+                    "example": 2499
+                },
+                "id": {
+                    "description": "Product database UUID",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "inStock": {
+                    "description": "Salable inventory availability",
+                    "type": "boolean",
+                    "example": true
+                },
+                "originalPrice": {
+                    "description": "Formatted original crossed-out price",
+                    "type": "string",
+                    "example": "$2999.00"
+                },
+                "price": {
+                    "description": "Formatted active display price",
+                    "type": "string",
+                    "example": "$2499.00"
+                },
+                "productType": {
+                    "description": "Product type: simple or variable",
+                    "type": "string",
+                    "example": "variable"
+                },
+                "slug": {
+                    "description": "URL-friendly unique slug",
+                    "type": "string",
+                    "example": "macbook-pro-16"
+                },
+                "thumbnailUrl": {
+                    "description": "Product display image public URL",
+                    "type": "string",
+                    "example": "https://example.com/thumb.jpg"
+                },
+                "title": {
+                    "description": "Product display title",
+                    "type": "string",
+                    "example": "MacBook Pro 16\""
                 }
             }
         }

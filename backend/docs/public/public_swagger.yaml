@@ -14,6 +14,15 @@ definitions:
     - quantity
     - variantId
     type: object
+  AddToWishlistRequest:
+    properties:
+      productId:
+        description: Product UUID to save to wishlist
+        example: 60000000-0000-0000-0000-000000000001
+        type: string
+    required:
+    - productId
+    type: object
   AddressRequest:
     properties:
       city:
@@ -92,6 +101,18 @@ definitions:
     type: object
   CartItemResponse:
     properties:
+      attributes:
+        additionalProperties: {}
+        description: Variant attributes
+        type: object
+      availableStock:
+        description: Live salable quantity available in inventory
+        example: 15
+        type: integer
+      color:
+        description: Selected SKU Variant Color
+        example: Midnight
+        type: string
       id:
         description: Unique Cart Item record UUID
         example: 030553cd-712a-4950-913f-6c26fdd6a2b5
@@ -103,6 +124,10 @@ definitions:
       productId:
         description: Parent Product UUID
         example: 60000000-0000-0000-0000-000000000001
+        type: string
+      productSlug:
+        description: Product Slug for storefront routing
+        example: macbook-air-15-m3
         type: string
       quantity:
         description: Selected quantity units in cart
@@ -489,6 +514,10 @@ definitions:
         description: Brand name
         example: Apple
         type: string
+      category:
+        allOf:
+        - $ref: '#/definitions/PublicCategoryResponse'
+        description: Category information
       currency:
         description: Currency ISO code
         example: USD
@@ -1002,6 +1031,106 @@ definitions:
     required:
     - code
     - email
+    type: object
+  WishlistCheckResponse:
+    properties:
+      inWishlist:
+        description: True if the product is currently saved in the user's wishlist
+        example: true
+        type: boolean
+      wishlistItemId:
+        description: Wishlist item UUID if present
+        example: 030553cd-712a-4950-913f-6c26fdd6a2b5
+        type: string
+    type: object
+  WishlistCountResponse:
+    properties:
+      count:
+        description: Total count of items currently in the user's wishlist
+        example: 5
+        type: integer
+    type: object
+  WishlistItemResponse:
+    properties:
+      createdAt:
+        description: Timestamp when item was added to wishlist (RFC3339)
+        example: "2026-08-23T16:26:25Z"
+        type: string
+      id:
+        description: Wishlist Item record UUID
+        example: 030553cd-712a-4950-913f-6c26fdd6a2b5
+        type: string
+      product:
+        allOf:
+        - $ref: '#/definitions/WishlistProductResponse'
+        description: Hydrated Product details
+      productId:
+        description: Saved Product UUID
+        example: 60000000-0000-0000-0000-000000000001
+        type: string
+      userId:
+        description: Customer UUID owning this wishlist item
+        example: 10000000-0000-0000-0000-000000000002
+        type: string
+    type: object
+  WishlistProductResponse:
+    properties:
+      brandName:
+        description: Brand display name
+        example: Apple
+        type: string
+      categoryName:
+        description: Primary category name
+        example: Laptops
+        type: string
+      currency:
+        description: Currency ISO code
+        example: USD
+        type: string
+      description:
+        description: Detailed product description
+        example: Supercharged by M3 Pro or M3 Max.
+        type: string
+      extractedOriginalPrice:
+        description: Numeric original crossed-out price
+        example: 2999
+        type: number
+      extractedPrice:
+        description: Numeric active display price
+        example: 2499
+        type: number
+      id:
+        description: Product database UUID
+        example: 60000000-0000-0000-0000-000000000001
+        type: string
+      inStock:
+        description: Salable inventory availability
+        example: true
+        type: boolean
+      originalPrice:
+        description: Formatted original crossed-out price
+        example: $2999.00
+        type: string
+      price:
+        description: Formatted active display price
+        example: $2499.00
+        type: string
+      productType:
+        description: 'Product type: simple or variable'
+        example: variable
+        type: string
+      slug:
+        description: URL-friendly unique slug
+        example: macbook-pro-16
+        type: string
+      thumbnailUrl:
+        description: Product display image public URL
+        example: https://example.com/thumb.jpg
+        type: string
+      title:
+        description: Product display title
+        example: MacBook Pro 16"
+        type: string
     type: object
 host: localhost:8080
 info:
@@ -2353,6 +2482,277 @@ paths:
       summary: Get variant details by SKU
       tags:
       - Product Variants
+  /wishlist:
+    delete:
+      description: Clears all items from the authenticated user's wishlist. If productId
+        or itemId query parameter is provided, removes only that product or item.
+      parameters:
+      - description: Optional product UUID to remove
+        in: query
+        name: productId
+        type: string
+      - description: Optional item UUID to remove
+        in: query
+        name: itemId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Wishlist updated successfully
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Item not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Clear wishlist or delete specific item/product
+      tags:
+      - Wishlist
+    get:
+      description: Returns a paginated list of products saved in the authenticated
+        user's wishlist.
+      parameters:
+      - example: 1
+        in: query
+        name: page
+        type: integer
+      - example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        example:
+        - name
+        - -created_at
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Wishlist items retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/WishlistItemResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/Page'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: List wishlist items
+      tags:
+      - Wishlist
+    post:
+      consumes:
+      - application/json
+      description: Saves a product to the authenticated user's wishlist.
+      parameters:
+      - description: Product to wishlist payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/AddToWishlistRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Product added to wishlist successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/WishlistItemResponse'
+              type: object
+        "400":
+          description: Invalid input or product not published
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Product not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "409":
+          description: Product already in wishlist
+          schema:
+            $ref: '#/definitions/ConflictErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Add a product to wishlist
+      tags:
+      - Wishlist
+  /wishlist/check/{productId}:
+    get:
+      description: Checks whether a specific product is saved in the authenticated
+        user's wishlist.
+      parameters:
+      - description: Product UUID
+        in: path
+        name: productId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Wishlist status checked successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/WishlistCheckResponse'
+              type: object
+        "400":
+          description: Invalid product id
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Check if product is in wishlist
+      tags:
+      - Wishlist
+  /wishlist/count:
+    get:
+      description: Returns the total number of items saved in the authenticated user's
+        wishlist.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Wishlist count retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/WishlistCountResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Get wishlist item count
+      tags:
+      - Wishlist
+  /wishlist/items/{id}:
+    delete:
+      description: Deletes a specific wishlist item by its record UUID.
+      parameters:
+      - description: Wishlist Item UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Item removed from wishlist successfully
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Invalid item id
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Wishlist item not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Remove item from wishlist
+      tags:
+      - Wishlist
+  /wishlist/products/{productId}:
+    delete:
+      description: Deletes a product from the user's wishlist by the product UUID.
+      parameters:
+      - description: Product UUID
+        in: path
+        name: productId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Product removed from wishlist successfully
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Invalid product id
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Product not found in wishlist
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Remove product from wishlist
+      tags:
+      - Wishlist
 security:
 - BearerAuth: []
 securityDefinitions:
