@@ -19,6 +19,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter, usePathname, Link } from "@/i18n/navigation";
 import { useCart } from "@/hooks/useCart";
 import { useAuthContext } from "@/context/AuthContext";
+import { useWishlist } from "@/hooks/useWishlist";
 
 export function HeaderActions() {
 	const { theme, toggle } = useTheme();
@@ -27,6 +28,7 @@ export function HeaderActions() {
 	const pathname = usePathname();
 	const { cartItems, openCart } = useCart();
 	const { user, isAuthenticated, logout } = useAuthContext();
+	const { wishlistCount } = useWishlist();
 	const t = useTranslations("common.header");
 
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -159,8 +161,15 @@ export function HeaderActions() {
 								onClick={() => setIsMenuOpen(false)}
 								className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
 							>
-								<Heart className="size-4 text-muted-foreground" />
+								<div className="relative">
+									<Heart className="size-4 text-muted-foreground" />
+								</div>
 								<span>{t("wishlist")}</span>
+								{wishlistCount > 0 && (
+									<span className="ms-auto text-[10px] px-1.5 py-0.2 bg-accent-brand/10 text-accent-brand font-semibold rounded-full">
+										{wishlistCount}
+									</span>
+								)}
 							</Link>
 
 							{isAuthenticated && (

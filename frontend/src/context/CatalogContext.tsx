@@ -6,19 +6,23 @@ import { catalogService } from "@/services/catalog";
 export function normalizeProduct(raw: any) {
   if (!raw) return null;
 
-  // Handle both backend Go format and legacy mock format
-  const id = raw.id || raw.slug || "";
-  const slug = raw.slug || raw.id || "";
-  const titleStr = typeof raw.title === "string" 
-    ? raw.title 
-    : (raw.product?.en || raw.product?.ar || raw.name || "Product");
+  // Handle both backend Go format, WishlistItem envelope, and legacy mock format
+  const isWishlistItem = Boolean(raw.product && typeof raw.product === "object" && (raw.product.title || raw.product.slug));
+  const p = isWishlistItem ? raw.product : raw;
+  const wishlistItemId = isWishlistItem ? raw.id : (raw.wishlistItemId || undefined);
+
+  const id = p.id || raw.productId || p.slug || raw.id || "";
+  const slug = p.slug || raw.slug || id;
+  const titleStr = typeof p.title === "string" 
+    ? p.title 
+    : (p.product?.en || p.product?.ar || p.name || raw.title || "Product");
 
   const product = {
-    en: typeof raw.product?.en === "string" ? raw.product.en : titleStr,
-    ar: typeof raw.product?.ar === "string" ? raw.product.ar : titleStr,
+    en: typeof p.product?.en === "string" ? p.product.en : titleStr,
+    ar: typeof p.product?.ar === "string" ? p.product.ar : titleStr,
   };
 
-  const img = raw.thumbnail || raw.img || raw.image || (raw.images && raw.images[0]) || "/placeholder-product.png";
+  const img = p.thumbnailUrl || p.thumbnail || p.img || p.image || (p.images && p.images[0]) || raw.thumbnail || raw.img || "/placeholder-product.png";
   
   // Price formatting
   const priceNum = raw.extractedPrice !== undefined
@@ -110,6 +114,8 @@ export function normalizeProduct(raw: any) {
   return {
     ...raw,
     id,
+    productId: id,
+    wishlistItemId,
     slug,
     product,
     title: titleStr,

@@ -7,10 +7,13 @@ import { Stars } from "@/components/ui/stars";
 import { Heart, ShoppingBag, Check } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useCartContext } from "@/context/CartContext";
+import { useWishlist } from "@/hooks/useWishlist";
 import { toast } from "sonner";
 
 export interface CardDetails {
   id: string | number;
+  productId?: string;
+  wishlistItemId?: string;
   slug?: string;
   img: string | StaticImageData;
   product: {
@@ -46,10 +49,12 @@ export function ProductsCard({
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const { addToCart } = useCartContext();
+  const { isWishlisted: checkIsWishlisted, toggleWishlist } = useWishlist();
 
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
-  const [isLiked, setIsLiked] = useState(isWishlist);
+  const targetProductId = String(cardDetails.productId || cardDetails.id);
+  const isLiked = isWishlist || checkIsWishlisted(targetProductId);
 
   const productName =
     typeof cardDetails.product === "object"
@@ -101,7 +106,7 @@ export function ProductsCard({
     }
   };
 
-  const handleWishlistClick = (e: React.MouseEvent) => {
+  const handleWishlistClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -110,13 +115,7 @@ export function ProductsCard({
       return;
     }
 
-    const nextState = !isLiked;
-    setIsLiked(nextState);
-    if (nextState) {
-      toast.success(locale === "ar" ? `تمت الإضافة للمفضلة` : `Saved to wishlist!`);
-    } else {
-      toast.info(locale === "ar" ? `تمت الإزالة من المفضلة` : `Removed from wishlist`);
-    }
+    await toggleWishlist(targetProductId, productName);
   };
 
   return (

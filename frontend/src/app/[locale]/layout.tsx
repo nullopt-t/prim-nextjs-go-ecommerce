@@ -33,6 +33,7 @@ export function generateStaticParams() {
 import { CartProvider } from "@/context/CartContext";
 import { CatalogProvider } from "@/context/CatalogContext";
 import { AuthProvider } from "@/context/AuthContext";
+import { WishlistProvider } from "@/context/WishlistContext";
 
 import { CartSidebar } from "@/components/ui/cartSidebar";
 
@@ -63,12 +64,14 @@ export default async function RootLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
             <AuthProvider>
-              <CatalogProvider>
-                <CartProvider>
-                  {children}
-                  <CartSidebar />
-                </CartProvider>
-              </CatalogProvider>
+              <WishlistProvider>
+                <CatalogProvider>
+                  <CartProvider>
+                    {children}
+                    <CartSidebar />
+                  </CartProvider>
+                </CatalogProvider>
+              </WishlistProvider>
             </AuthProvider>
           </ThemeProvider>
         </NextIntlClientProvider>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuthContext } from "@/context/AuthContext";
+import { useWishlist } from "@/hooks/useWishlist";
 import { Link } from "@/i18n/navigation";
 import { userService } from "@/services/user";
 import {
@@ -110,6 +111,7 @@ function TableSkeleton() {
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function OverviewContent() {
   const { user } = useAuthContext();
+  const { wishlistCount } = useWishlist();
   const firstName = user?.name?.split(" ")[0] || "there";
 
   const [greeting, setGreeting] = useState("Welcome");
@@ -178,7 +180,7 @@ export default function OverviewContent() {
   const stats = [
     { id: "total-orders", icon: Package, label: "Total Orders", value: totalOrders, color: "text-blue-500" },
     { id: "pending", icon: Clock, label: "Pending", value: pendingOrders, color: "text-amber-500" },
-    { id: "wishlist", icon: Heart, label: "Wishlist", value: 0, color: "text-rose-500" },
+    { id: "wishlist", icon: Heart, label: "Wishlist", value: wishlistCount, color: "text-rose-500" },
     { id: "reviews", icon: Star, label: "Reviews", value: reviewCount, color: "text-yellow-500" },
   ];
 

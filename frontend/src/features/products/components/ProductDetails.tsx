@@ -9,7 +9,7 @@ import SectionTitle from "@/features/home/components/ui/sectionTitle";
 import { useAllProducts, useProductBySlug } from "@/hooks/useCatalog";
 import { useCartContext } from "@/context/CartContext";
 import { catalogService } from "@/services/catalog";
-import { wishlistService } from "@/services/wishlist";
+import { useWishlist } from "@/hooks/useWishlist";
 import { toast } from "sonner";
 
 import { ProductReview } from "../types";
@@ -33,22 +33,15 @@ export function ProductDetails() {
   const { products: allProducts, loading: allLoading } = useAllProducts();
   const { product, loading: productLoading } = useProductBySlug(id);
   const { addToCart } = useCartContext();
+  const { isWishlisted: checkIsWishlisted, toggleWishlist } = useWishlist();
 
   const [activeImage, setActiveImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
 
-  // Check wishlist status on mount or product load
-  useEffect(() => {
-    if (!product?.id) return;
-    wishlistService.getItems().then((items) => {
-      const found = items.some((item: any) => String(item.id) === String(product.id));
-      setIsWishlisted(found);
-    }).catch(() => {});
-  }, [product?.id]);
+  const isWishlisted = checkIsWishlisted(String(product?.id));
 
   // Synchronize variant/color from URL search params (e.g. ?variant=... or ?color=...)
   useEffect(() => {
@@ -236,24 +229,8 @@ export function ProductDetails() {
   };
 
   const handleToggleWishlist = async () => {
-    try {
-      if (!isWishlisted) {
-        await wishlistService.addItem({
-          id: String(product.id),
-          productName: product.product,
-          productPrice: `$${product.price}`,
-          img: images[0],
-        });
-        setIsWishlisted(true);
-        toast.success(`Saved ${productName} to your wishlist!`);
-      } else {
-        await wishlistService.removeItem(product.id);
-        setIsWishlisted(false);
-        toast.info(`Removed ${productName} from wishlist`);
-      }
-    } catch {
-      toast.error("Failed to update wishlist");
-    }
+    if (!product?.id) return;
+    await toggleWishlist(String(product.id), productName);
   };
 
   const handleShare = () => {
