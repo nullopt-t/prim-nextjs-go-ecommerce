@@ -14,6 +14,7 @@ export interface CardDetails {
   id: string | number;
   productId?: string;
   wishlistItemId?: string;
+  variantId?: string;
   slug?: string;
   img: string | StaticImageData;
   product: {
@@ -54,14 +55,17 @@ export function ProductsCard({
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const targetProductId = String(cardDetails.productId || cardDetails.id);
-  const isLiked = isWishlist || checkIsWishlisted(targetProductId);
+  const isLiked = isWishlist || checkIsWishlisted(targetProductId, cardDetails.variantId);
 
   const productName =
     typeof cardDetails.product === "object"
       ? (locale === "ar" ? cardDetails.product.ar || cardDetails.product.en : cardDetails.product.en || cardDetails.product.ar)
       : String(cardDetails.product || "Product");
 
-  const productTarget = cardDetails.slug || String(cardDetails.id);
+  const baseProductTarget = cardDetails.slug || String(cardDetails.id);
+  const productHref = cardDetails.variantId
+    ? `/products/${baseProductTarget}?variant=${encodeURIComponent(cardDetails.variantId)}`
+    : `/products/${baseProductTarget}`;
 
   const handleCartClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -124,7 +128,7 @@ export function ProductsCard({
         {/* Thumbnail & Badges */}
         <div className="relative aspect-square w-full bg-secondary/40 overflow-hidden">
           <Link
-            href={`/products/${productTarget}`}
+            href={productHref}
             className="block w-full h-full"
           >
             {typeof cardDetails.img === "string" ? (
@@ -150,25 +154,23 @@ export function ProductsCard({
             </span>
           )}
 
-          {/* Wishlist Button */}
-          <button
-            type="button"
-            onClick={handleWishlistClick}
-            aria-label="Wishlist"
-            className={`absolute top-2.5 ltr:right-2.5 rtl:left-2.5 flex items-center justify-center rounded-full size-7.5 transition-all shadow-xs cursor-pointer ${
-              isLiked
-                ? "bg-accent-brand text-white hover:bg-accent-brand/90 scale-105"
-                : "bg-background/90 text-foreground hover:bg-accent-brand hover:text-white backdrop-blur-xs"
-            }`}
-          >
-            <Heart className={`size-3.5 ${isLiked ? "fill-current" : ""}`} />
-          </button>
+          {/* Wishlist Button (Only displayed on wishlist page for removal if needed, hidden on general listings) */}
+          {isWishlist && (
+            <button
+              type="button"
+              onClick={handleWishlistClick}
+              aria-label="Wishlist"
+              className="absolute top-2.5 ltr:right-2.5 rtl:left-2.5 flex items-center justify-center rounded-full size-7.5 transition-all shadow-xs cursor-pointer bg-accent-brand text-white hover:bg-accent-brand/90 scale-105"
+            >
+              <Heart className="size-3.5 fill-current" />
+            </button>
+          )}
         </div>
 
         {/* Content details */}
         <div className="p-2.5 sm:p-3 text-left rtl:text-right">
           <Link
-            href={`/products/${productTarget}`}
+            href={productHref}
             className="block group/title"
           >
             <h4 className="font-semibold text-xs sm:text-sm text-foreground group-hover/title:text-accent-brand transition-colors line-clamp-1">

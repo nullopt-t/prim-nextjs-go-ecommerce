@@ -24,27 +24,32 @@ export function normalizeProduct(raw: any) {
 
   const img = p.thumbnailUrl || p.thumbnail || p.img || p.image || (p.images && p.images[0]) || raw.thumbnail || raw.img || "/placeholder-product.png";
   
-  // Price formatting
-  const priceNum = raw.extractedPrice !== undefined
-    ? Number(raw.extractedPrice)
-    : (typeof raw.price === "number" ? raw.price : parseFloat(String(raw.price || "0").replace(/[^0-9.-]+/g, "")) || 0);
+  // Price formatting - check p (inner product if wishlistItem, or raw) then fallback to raw
+  const rawPrice = p.extractedPrice !== undefined ? p.extractedPrice : raw.extractedPrice;
+  const priceNum = rawPrice !== undefined
+    ? Number(rawPrice)
+    : (typeof (p.price ?? raw.price) === "number"
+        ? (p.price ?? raw.price)
+        : parseFloat(String(p.price || raw.price || "0").replace(/[^0-9.-]+/g, "")) || 0);
 
-  const oldPriceNum = raw.extractedOriginalPrice !== undefined
-    ? Number(raw.extractedOriginalPrice)
-    : (raw.originalPrice || raw.oldPrice ? parseFloat(String(raw.originalPrice || raw.oldPrice).replace(/[^0-9.-]+/g, "")) : undefined);
+  const rawOldPrice = p.extractedOriginalPrice !== undefined ? p.extractedOriginalPrice : raw.extractedOriginalPrice;
+  const rawOrigPriceStr = p.originalPrice || raw.originalPrice || p.oldPrice || raw.oldPrice;
+  const oldPriceNum = rawOldPrice !== undefined
+    ? Number(rawOldPrice)
+    : (rawOrigPriceStr ? parseFloat(String(rawOrigPriceStr).replace(/[^0-9.-]+/g, "")) : undefined);
 
-  let discountPercentage = raw.discountPercentage;
+  let discountPercentage = p.discountPercentage || raw.discountPercentage;
   if (!discountPercentage && oldPriceNum && oldPriceNum > priceNum) {
     discountPercentage = `${Math.round(((oldPriceNum - priceNum) / oldPriceNum) * 100)}%`;
   }
 
-  const stars = raw.rating?.averageRating !== undefined 
-    ? raw.rating.averageRating 
-    : (raw.stars !== undefined ? Number(raw.stars) : 4.5);
+  const stars = (p.rating?.averageRating ?? raw.rating?.averageRating) !== undefined 
+    ? (p.rating?.averageRating ?? raw.rating?.averageRating)
+    : ((p.stars ?? raw.stars) !== undefined ? Number(p.stars ?? raw.stars) : 4.5);
 
-  const reviews = raw.rating?.reviewCount !== undefined
-    ? raw.rating.reviewCount
-    : (raw.reviews !== undefined ? Number(raw.reviews) : 0);
+  const reviews = (p.rating?.reviewCount ?? raw.rating?.reviewCount) !== undefined
+    ? (p.rating?.reviewCount ?? raw.rating?.reviewCount)
+    : ((p.reviews ?? raw.reviews) !== undefined ? Number(p.reviews ?? raw.reviews) : 0);
 
   const variantMedia: string[] = [];
   if (Array.isArray(raw.variants)) {
@@ -111,11 +116,14 @@ export function normalizeProduct(raw: any) {
       })
     : [];
 
+  const variantId = raw.variantId || p.variantId || undefined;
+
   return {
     ...raw,
     id,
     productId: id,
     wishlistItemId,
+    variantId,
     slug,
     product,
     title: titleStr,
@@ -130,8 +138,10 @@ export function normalizeProduct(raw: any) {
     reviews,
     inStock,
     stockCount,
-    brand: typeof raw.brand === "string" ? raw.brand : raw.brand?.name || "PRIM",
-    category: categoryName,
+    brand: typeof (p.brand ?? raw.brand) === "string" 
+      ? (p.brand ?? raw.brand) 
+      : (p.brandName || p.brand?.name || raw.brand?.name || "PRIM"),
+    category: categoryName || p.categoryName || "General",
     categoryId,
   };
 }

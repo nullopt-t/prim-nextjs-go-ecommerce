@@ -52,7 +52,7 @@ export default function WishlistContent() {
     if (item.wishlistItemId) {
       await removeWishlistItem(item.wishlistItemId, productName);
     } else {
-      await removeFromWishlist(String(item.productId || item.id), productName);
+      await removeFromWishlist(String(item.productId || item.id), item.variantId, productName);
     }
   };
 

@@ -30,11 +30,11 @@ func (r *WishlistRepository) Create(
 	item *model.WishlistItem,
 ) error {
 	query := `
-		INSERT INTO wishlist_items (id, user_id, product_id, created_at)
-		VALUES ($1, $2, $3, now())
+		INSERT INTO wishlist_items (id, user_id, product_id, variant_id, created_at)
+		VALUES ($1, $2, $3, $4, now())
 		RETURNING created_at
 	`
-	return qe.QueryRow(ctx, query, item.ID, item.UserID, item.ProductID).Scan(&item.CreatedAt)
+	return qe.QueryRow(ctx, query, item.ID, item.UserID, item.ProductID, item.VariantID).Scan(&item.CreatedAt)
 }
 
 func (r *WishlistRepository) GetByID(
@@ -48,6 +48,7 @@ func (r *WishlistRepository) GetByID(
 			wi.id,
 			wi.user_id,
 			wi.product_id,
+			wi.variant_id,
 			wi.created_at,
 			p.title,
 			p.slug,
@@ -56,8 +57,11 @@ func (r *WishlistRepository) GetByID(
 			p.status,
 			b.name AS brand_name,
 			c.name AS category_name,
-			COALESCE(so.bucket, vso.bucket) AS thumb_bucket,
-			COALESCE(so.object_key, vso.object_key) AS thumb_key,
+			COALESCE(vso.bucket, so.bucket) AS thumb_bucket,
+			COALESCE(vso.object_key, so.object_key) AS thumb_key,
+			pv.id AS variant_id_val,
+			pv.title AS variant_title,
+			pv.sku AS variant_sku,
 			pv.price AS variant_price,
 			pv.crossed_out_price AS variant_crossed_out_price,
 			pv.currency AS variant_currency,
@@ -65,6 +69,7 @@ func (r *WishlistRepository) GetByID(
 				EXISTS (
 					SELECT 1 FROM product_variants v
 					WHERE v.product_id = p.id AND v.deleted_at IS NULL
+					  AND (wi.variant_id IS NULL OR v.id = wi.variant_id)
 					  AND COALESCE((SELECT SUM(il.quantity) FROM inventory_ledgers il WHERE il.variant_id = v.id), 0) > 0
 				),
 				false
@@ -74,7 +79,11 @@ func (r *WishlistRepository) GetByID(
 		LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL
 		LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL
 		LEFT JOIN storage_objects so ON p.thumbnail_object_id = so.id
-		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_default = true AND pv.deleted_at IS NULL
+		LEFT JOIN product_variants pv ON pv.id = COALESCE(
+			wi.variant_id,
+			(SELECT def.id FROM product_variants def WHERE def.product_id = p.id AND def.is_default = true AND def.deleted_at IS NULL LIMIT 1),
+			(SELECT first_v.id FROM product_variants first_v WHERE first_v.product_id = p.id AND first_v.deleted_at IS NULL ORDER BY first_v.created_at ASC LIMIT 1)
+		)
 		LEFT JOIN storage_objects vso ON pv.thumbnail_object_id = vso.id
 		WHERE wi.id = $1 AND wi.user_id = $2
 	`
@@ -100,6 +109,7 @@ func (r *WishlistRepository) GetByUserAndProduct(
 			wi.id,
 			wi.user_id,
 			wi.product_id,
+			wi.variant_id,
 			wi.created_at,
 			p.title,
 			p.slug,
@@ -108,8 +118,11 @@ func (r *WishlistRepository) GetByUserAndProduct(
 			p.status,
 			b.name AS brand_name,
 			c.name AS category_name,
-			COALESCE(so.bucket, vso.bucket) AS thumb_bucket,
-			COALESCE(so.object_key, vso.object_key) AS thumb_key,
+			COALESCE(vso.bucket, so.bucket) AS thumb_bucket,
+			COALESCE(vso.object_key, so.object_key) AS thumb_key,
+			pv.id AS variant_id_val,
+			pv.title AS variant_title,
+			pv.sku AS variant_sku,
 			pv.price AS variant_price,
 			pv.crossed_out_price AS variant_crossed_out_price,
 			pv.currency AS variant_currency,
@@ -117,6 +130,7 @@ func (r *WishlistRepository) GetByUserAndProduct(
 				EXISTS (
 					SELECT 1 FROM product_variants v
 					WHERE v.product_id = p.id AND v.deleted_at IS NULL
+					  AND (wi.variant_id IS NULL OR v.id = wi.variant_id)
 					  AND COALESCE((SELECT SUM(il.quantity) FROM inventory_ledgers il WHERE il.variant_id = v.id), 0) > 0
 				),
 				false
@@ -126,7 +140,11 @@ func (r *WishlistRepository) GetByUserAndProduct(
 		LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL
 		LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL
 		LEFT JOIN storage_objects so ON p.thumbnail_object_id = so.id
-		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_default = true AND pv.deleted_at IS NULL
+		LEFT JOIN product_variants pv ON pv.id = COALESCE(
+			wi.variant_id,
+			(SELECT def.id FROM product_variants def WHERE def.product_id = p.id AND def.is_default = true AND def.deleted_at IS NULL LIMIT 1),
+			(SELECT first_v.id FROM product_variants first_v WHERE first_v.product_id = p.id AND first_v.deleted_at IS NULL ORDER BY first_v.created_at ASC LIMIT 1)
+		)
 		LEFT JOIN storage_objects vso ON pv.thumbnail_object_id = vso.id
 		WHERE wi.user_id = $1 AND wi.product_id = $2
 	`
@@ -186,6 +204,7 @@ func (r *WishlistRepository) ListByUser(
 			wi.id,
 			wi.user_id,
 			wi.product_id,
+			wi.variant_id,
 			wi.created_at,
 			p.title,
 			p.slug,
@@ -194,8 +213,11 @@ func (r *WishlistRepository) ListByUser(
 			p.status,
 			b.name AS brand_name,
 			c.name AS category_name,
-			COALESCE(so.bucket, vso.bucket) AS thumb_bucket,
-			COALESCE(so.object_key, vso.object_key) AS thumb_key,
+			COALESCE(vso.bucket, so.bucket) AS thumb_bucket,
+			COALESCE(vso.object_key, so.object_key) AS thumb_key,
+			pv.id AS variant_id_val,
+			pv.title AS variant_title,
+			pv.sku AS variant_sku,
 			pv.price AS variant_price,
 			pv.crossed_out_price AS variant_crossed_out_price,
 			pv.currency AS variant_currency,
@@ -203,6 +225,7 @@ func (r *WishlistRepository) ListByUser(
 				EXISTS (
 					SELECT 1 FROM product_variants v
 					WHERE v.product_id = p.id AND v.deleted_at IS NULL
+					  AND (wi.variant_id IS NULL OR v.id = wi.variant_id)
 					  AND COALESCE((SELECT SUM(il.quantity) FROM inventory_ledgers il WHERE il.variant_id = v.id), 0) > 0
 				),
 				false
@@ -212,7 +235,11 @@ func (r *WishlistRepository) ListByUser(
 		LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL
 		LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL
 		LEFT JOIN storage_objects so ON p.thumbnail_object_id = so.id
-		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_default = true AND pv.deleted_at IS NULL
+		LEFT JOIN product_variants pv ON pv.id = COALESCE(
+			wi.variant_id,
+			(SELECT def.id FROM product_variants def WHERE def.product_id = p.id AND def.is_default = true AND def.deleted_at IS NULL LIMIT 1),
+			(SELECT first_v.id FROM product_variants first_v WHERE first_v.product_id = p.id AND first_v.deleted_at IS NULL ORDER BY first_v.created_at ASC LIMIT 1)
+		)
 		LEFT JOIN storage_objects vso ON pv.thumbnail_object_id = vso.id
 		WHERE wi.user_id = $1
 		%s
@@ -278,7 +305,20 @@ func (r *WishlistRepository) DeleteByProduct(
 	qe database.QueryExecutor,
 	userID uuid.UUID,
 	productID uuid.UUID,
+	variantID *uuid.UUID,
 ) error {
+	if variantID != nil {
+		query := `DELETE FROM wishlist_items WHERE user_id = $1 AND product_id = $2 AND variant_id = $3`
+		tag, err := qe.Exec(ctx, query, userID, productID, *variantID)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return pgx.ErrNoRows
+		}
+		return nil
+	}
+
 	query := `DELETE FROM wishlist_items WHERE user_id = $1 AND product_id = $2`
 	tag, err := qe.Exec(ctx, query, userID, productID)
 	if err != nil {
@@ -305,10 +345,19 @@ func (r *WishlistRepository) Exists(
 	qe database.QueryExecutor,
 	userID uuid.UUID,
 	productID uuid.UUID,
+	variantID *uuid.UUID,
 ) (bool, *uuid.UUID, error) {
-	query := `SELECT id FROM wishlist_items WHERE user_id = $1 AND product_id = $2`
+	var query string
 	var id uuid.UUID
-	err := qe.QueryRow(ctx, query, userID, productID).Scan(&id)
+	var err error
+
+	if variantID != nil {
+		query = `SELECT id FROM wishlist_items WHERE user_id = $1 AND product_id = $2 AND variant_id = $3`
+		err = qe.QueryRow(ctx, query, userID, productID, *variantID).Scan(&id)
+	} else {
+		query = `SELECT id FROM wishlist_items WHERE user_id = $1 AND product_id = $2 LIMIT 1`
+		err = qe.QueryRow(ctx, query, userID, productID).Scan(&id)
+	}
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return false, nil, nil
@@ -331,6 +380,9 @@ func scanWishlistItem(scanner rowScanner) (*model.WishlistItem, error) {
 		categoryName  *string
 		thumbBucket   *string
 		thumbKey      *string
+		variantIDVal  *uuid.UUID
+		variantTitle  *string
+		variantSKU    *string
 		price         *int64
 		crossedPrice  *int64
 		currency      *string
@@ -341,6 +393,7 @@ func scanWishlistItem(scanner rowScanner) (*model.WishlistItem, error) {
 		&item.ID,
 		&item.UserID,
 		&item.ProductID,
+		&item.VariantID,
 		&item.CreatedAt,
 		&item.ProductTitle,
 		&item.ProductSlug,
@@ -351,6 +404,9 @@ func scanWishlistItem(scanner rowScanner) (*model.WishlistItem, error) {
 		&categoryName,
 		&thumbBucket,
 		&thumbKey,
+		&variantIDVal,
+		&variantTitle,
+		&variantSKU,
 		&price,
 		&crossedPrice,
 		&currency,
@@ -366,6 +422,11 @@ func scanWishlistItem(scanner rowScanner) (*model.WishlistItem, error) {
 	item.CategoryName = categoryName
 	item.ThumbnailBucket = thumbBucket
 	item.ThumbnailKey = thumbKey
+	if item.VariantID == nil && variantIDVal != nil {
+		item.VariantID = variantIDVal
+	}
+	item.VariantTitle = variantTitle
+	item.VariantSKU = variantSKU
 	item.Price = price
 	item.CrossedOutPrice = crossedPrice
 	item.Currency = currency

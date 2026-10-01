@@ -9,10 +9,10 @@ interface WishlistContextType {
   wishlistItems: WishlistItem[];
   wishlistCount: number;
   loading: boolean;
-  isWishlisted: (productId: string) => boolean;
-  toggleWishlist: (productId: string, productName?: string) => Promise<boolean>;
-  addToWishlist: (productId: string, productName?: string) => Promise<boolean>;
-  removeFromWishlist: (productId: string, productName?: string) => Promise<boolean>;
+  isWishlisted: (productId: string, variantId?: string) => boolean;
+  toggleWishlist: (productId: string, variantId?: string, productName?: string) => Promise<boolean>;
+  addToWishlist: (productId: string, variantId?: string, productName?: string) => Promise<boolean>;
+  removeFromWishlist: (productId: string, variantId?: string, productName?: string) => Promise<boolean>;
   removeWishlistItem: (itemId: string, productName?: string) => Promise<boolean>;
   clearWishlist: () => Promise<boolean>;
   refreshWishlist: () => Promise<void>;
@@ -31,6 +31,12 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     wishlistItems.forEach((item) => {
       if (item.productId) set.add(String(item.productId));
       if (item.product?.id) set.add(String(item.product.id));
+      if (item.product?.slug) set.add(String(item.product.slug));
+      if (item.variantId) {
+        set.add(`${item.productId}:${item.variantId}`);
+        if (item.product?.id) set.add(`${item.product.id}:${item.variantId}`);
+        if (item.product?.slug) set.add(`${item.product.slug}:${item.variantId}`);
+      }
     });
     return set;
   }, [wishlistItems]);
@@ -62,21 +68,24 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   }, [refreshWishlist]);
 
   const isWishlisted = useCallback(
-    (productId: string) => {
+    (productId: string, variantId?: string) => {
       if (!productId) return false;
+      if (variantId) {
+        return productIdsSet.has(`${productId}:${variantId}`);
+      }
       return productIdsSet.has(String(productId));
     },
     [productIdsSet]
   );
 
-  const addToWishlist = async (productId: string, productName?: string): Promise<boolean> => {
+  const addToWishlist = async (productId: string, variantId?: string, productName?: string): Promise<boolean> => {
     if (!isAuthenticated) {
       toast.error("Please sign in to save items to your wishlist");
       return false;
     }
 
     try {
-      const res = await wishlistService.addItem(productId);
+      const res = await wishlistService.addItem(productId, variantId);
       if (res?.data) {
         setWishlistItems((prev) => [res.data, ...prev]);
         setWishlistCount((c) => c + 1);
@@ -91,17 +100,23 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const removeFromWishlist = async (productId: string, productName?: string): Promise<boolean> => {
+  const removeFromWishlist = async (productId: string, variantId?: string, productName?: string): Promise<boolean> => {
     if (!isAuthenticated) return false;
 
     // Optimistic update
     setWishlistItems((prev) =>
-      prev.filter((i) => String(i.productId) !== String(productId) && String(i.product?.id) !== String(productId))
+      prev.filter((i) => {
+        const matchesProduct = String(i.productId) === String(productId) || String(i.product?.id) === String(productId) || String(i.product?.slug) === String(productId);
+        if (variantId) {
+          return !(matchesProduct && String(i.variantId) === String(variantId));
+        }
+        return !matchesProduct;
+      })
     );
     setWishlistCount((c) => Math.max(0, c - 1));
 
     try {
-      await wishlistService.removeByProductId(productId);
+      await wishlistService.removeByProductId(productId, variantId);
       toast.info(productName ? `Removed "${productName}" from wishlist` : "Removed from wishlist");
       return true;
     } catch (err: any) {
@@ -129,11 +144,11 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const toggleWishlist = async (productId: string, productName?: string): Promise<boolean> => {
-    if (isWishlisted(productId)) {
-      return removeFromWishlist(productId, productName);
+  const toggleWishlist = async (productId: string, variantId?: string, productName?: string): Promise<boolean> => {
+    if (isWishlisted(productId, variantId)) {
+      return removeFromWishlist(productId, variantId, productName);
     } else {
-      return addToWishlist(productId, productName);
+      return addToWishlist(productId, variantId, productName);
     }
   };
 

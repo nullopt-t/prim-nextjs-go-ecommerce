@@ -60,6 +60,7 @@ type WishlistHTTPTestSuite struct {
 
 	categoryID uuid.UUID
 	product1ID uuid.UUID
+	product1Variant2ID uuid.UUID
 	product2ID uuid.UUID
 	product3ID uuid.UUID
 	prodMock   *mockProductService
@@ -156,11 +157,26 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 	`, v1ID, s.product1ID, "SKU-MBP-16", "Space Black", int64(249900), int64(299900))
 	require.NoError(s.T(), err)
 
-	// Add inventory ledger for product 1
+	// Add inventory ledger for product 1 variant 1
 	_, err = s.db.Exec(ctx, `
 		INSERT INTO inventory_ledgers (id, variant_id, quantity, reason)
 		VALUES ($1, $2, 10, 'restock')
 	`, uuid.New(), v1ID)
+	require.NoError(s.T(), err)
+
+	// Product 1 Variant 2 (Silver)
+	s.product1Variant2ID = uuid.New()
+	_, err = s.db.Exec(ctx, `
+		INSERT INTO product_variants (id, product_id, sku, title, price, crossed_out_price, currency, is_default)
+		VALUES ($1, $2, $3, $4, $5, $6, 'USD', false)
+	`, s.product1Variant2ID, s.product1ID, "SKU-MBP-16-SILVER", "Silver", int64(269900), int64(319900))
+	require.NoError(s.T(), err)
+
+	// Add inventory ledger for product 1 variant 2
+	_, err = s.db.Exec(ctx, `
+		INSERT INTO inventory_ledgers (id, variant_id, quantity, reason)
+		VALUES ($1, $2, 5, 'restock')
+	`, uuid.New(), s.product1Variant2ID)
 	require.NoError(s.T(), err)
 
 	s.prodMock.products[s.product1ID] = &model.Product{
@@ -573,6 +589,57 @@ func (s *WishlistHTTPTestSuite) TestClearWishlist_WithQueryProductId() {
 	s.Equal(1, countResp.Data.Count)
 }
 
+func (s *WishlistHTTPTestSuite) TestAddToWishlist_WithSpecificVariant() {
+	_, token := s.createTestUser()
+
+	body, _ := json.Marshal(map[string]any{
+		"productId": s.product1ID.String(),
+		"variantId": s.product1Variant2ID.String(),
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	s.router.ServeHTTP(w, req)
+	s.Require().Equal(http.StatusCreated, w.Code)
+
+	var resp struct {
+		Data wishlist.WishlistItemResponse `json:"data"`
+	}
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	s.Require().NoError(err)
+
+	s.Equal(s.product1ID.String(), resp.Data.ProductID)
+	s.Require().NotNil(resp.Data.VariantID)
+	s.Equal(s.product1Variant2ID.String(), *resp.Data.VariantID)
+	s.Require().NotNil(resp.Data.Product.VariantTitle)
+	s.Equal("Silver", *resp.Data.Product.VariantTitle)
+	s.Require().NotNil(resp.Data.Product.VariantSKU)
+	s.Equal("SKU-MBP-16-SILVER", *resp.Data.Product.VariantSKU)
+	s.Require().NotNil(resp.Data.Product.Price)
+	s.Equal("$2699.00", *resp.Data.Product.Price)
+	s.Require().NotNil(resp.Data.Product.OriginalPrice)
+	s.Equal("$3199.00", *resp.Data.Product.OriginalPrice)
+
+	// Test check wishlist endpoint with variantId
+	checkReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/wishlist/check/%s?variantId=%s", s.product1ID.String(), s.product1Variant2ID.String()), nil)
+	checkReq.Header.Set("Authorization", "Bearer "+token)
+	checkW := httptest.NewRecorder()
+	s.router.ServeHTTP(checkW, checkReq)
+	s.Require().Equal(http.StatusOK, checkW.Code)
+
+	var checkResp struct {
+		Data wishlist.WishlistCheckResponse `json:"data"`
+	}
+	err = json.Unmarshal(checkW.Body.Bytes(), &checkResp)
+	s.Require().NoError(err)
+	s.True(checkResp.Data.InWishlist)
+	s.Require().NotNil(checkResp.Data.WishlistItemID)
+	s.Equal(resp.Data.ID, *checkResp.Data.WishlistItemID)
+}
+
 func TestWishlistHTTPTestSuite(t *testing.T) {
 	suite.Run(t, new(WishlistHTTPTestSuite))
 }
+

@@ -14,15 +14,20 @@ type WishlistItem struct {
 	UserID uuid.UUID `db:"user_id"`
 	// ProductID is the saved Product UUID.
 	ProductID uuid.UUID `db:"product_id"`
+	// VariantID is the optional specific variant UUID saved in the wishlist.
+	VariantID *uuid.UUID `db:"variant_id"`
 	// CreatedAt is the timestamp when the item was added to the wishlist.
 	CreatedAt time.Time `db:"created_at"`
 
-	// Populated Product and Media fields
+	// Populated Product, Variant and Media fields
 	ProductTitle       string
 	ProductSlug        string
 	ProductDescription *string
 	ProductType        ProductType
 	ProductStatus      PublicationStatus
+	VariantTitle       *string
+	VariantSKU         *string
+	VariantAttributes  []byte
 	BrandName          *string
 	CategoryName       *string
 	ThumbnailBucket    *string

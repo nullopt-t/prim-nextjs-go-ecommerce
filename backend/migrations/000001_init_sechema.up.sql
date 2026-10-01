@@ -490,13 +490,18 @@ CREATE TABLE IF NOT EXISTS wishlist_items (
     id            uuid NOT NULL,
     user_id       uuid NOT NULL,
     product_id    uuid NOT NULL,
+    variant_id    uuid NULL,
     created_at    timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (id),
     FOREIGN KEY (user_id) REFERENCES users (id),
     FOREIGN KEY (product_id) REFERENCES products (id),
-    UNIQUE (user_id, product_id)
+    FOREIGN KEY (variant_id) REFERENCES product_variants (id) ON DELETE SET NULL
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wishlist_items_user_product_variant
+    ON wishlist_items (user_id, product_id, COALESCE(variant_id, '00000000-0000-0000-0000-000000000000'::uuid));
+
 CREATE INDEX IF NOT EXISTS idx_wishlist_items_user_id ON wishlist_items (user_id);
+CREATE INDEX IF NOT EXISTS idx_wishlist_items_variant_id ON wishlist_items (variant_id);
 
 COMMIT;

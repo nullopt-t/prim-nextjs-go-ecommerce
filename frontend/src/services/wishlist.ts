@@ -15,11 +15,15 @@ export interface WishlistProduct {
   extractedOriginalPrice?: number;
   currency?: string;
   inStock: boolean;
+  variantId?: string;
+  variantTitle?: string;
+  variantSku?: string;
 }
 
 export interface WishlistItem {
   id: string;
   productId: string;
+  variantId?: string;
   userId: string;
   createdAt: string;
   product: WishlistProduct;
@@ -57,18 +61,31 @@ export const wishlistService = {
   getCount: () =>
     api.get<WishlistCountResponse>("/api/v1/wishlist/count"),
 
-  checkInWishlist: (productId: string) =>
-    api.get<WishlistCheckResponse>(`/api/v1/wishlist/check/${productId}`),
+  checkInWishlist: (productId: string, variantId?: string) =>
+    api.get<WishlistCheckResponse>(
+      `/api/v1/wishlist/check/${productId}${variantId ? `?variantId=${encodeURIComponent(variantId)}` : ""}`
+    ),
 
-  addItem: (productId: string) =>
-    api.post<{ data: WishlistItem }>("/api/v1/wishlist", { productId }),
+  addItem: (productId: string, variantId?: string) =>
+    api.post<{ data: WishlistItem }>("/api/v1/wishlist", {
+      productId,
+      ...(variantId ? { variantId } : {}),
+    }),
 
   removeItem: (itemId: string) =>
     api.delete<{ message: string }>(`/api/v1/wishlist/items/${itemId}`),
 
-  removeByProductId: (productId: string) =>
-    api.delete<{ message: string }>(`/api/v1/wishlist/products/${productId}`),
+  removeByProductId: (productId: string, variantId?: string) =>
+    api.delete<{ message: string }>(
+      `/api/v1/wishlist/products/${productId}${variantId ? `?variantId=${encodeURIComponent(variantId)}` : ""}`
+    ),
 
-  clearWishlist: () =>
-    api.delete<{ message: string }>("/api/v1/wishlist"),
+  clearWishlist: (params?: { productId?: string; variantId?: string; itemId?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.productId) query.set("productId", params.productId);
+    if (params?.variantId) query.set("variantId", params.variantId);
+    if (params?.itemId) query.set("itemId", params.itemId);
+    const qs = query.toString();
+    return api.delete<{ message: string }>(`/api/v1/wishlist${qs ? `?${qs}` : ""}`);
+  },
 };

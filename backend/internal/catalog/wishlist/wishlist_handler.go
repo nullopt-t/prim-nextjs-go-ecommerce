@@ -24,6 +24,8 @@ func NewHandler(s *WishlistService) *WishlistHandler {
 type AddToWishlistRequest struct {
 	// Product UUID to save to wishlist
 	ProductID string `json:"productId" binding:"required,uuid" example:"60000000-0000-0000-0000-000000000001"`
+	// Optional specific product variant UUID to save
+	VariantID *string `json:"variantId,omitempty" binding:"omitempty,uuid" example:"70000000-0000-0000-0000-000000000001"`
 }
 
 type WishlistProductResponse struct {
@@ -55,6 +57,10 @@ type WishlistProductResponse struct {
 	Currency *string `json:"currency,omitempty" example:"USD"`
 	// Salable inventory availability
 	InStock bool `json:"inStock" example:"true"`
+	// Variant specific details
+	VariantID *string `json:"variantId,omitempty" example:"70000000-0000-0000-0000-000000000001"`
+	VariantTitle *string `json:"variantTitle,omitempty" example:"Space Black"`
+	VariantSKU *string `json:"variantSku,omitempty" example:"SKU-MBP-16"`
 }
 
 type WishlistItemResponse struct {
@@ -62,6 +68,8 @@ type WishlistItemResponse struct {
 	ID string `json:"id" example:"030553cd-712a-4950-913f-6c26fdd6a2b5"`
 	// Saved Product UUID
 	ProductID string `json:"productId" example:"60000000-0000-0000-0000-000000000001"`
+	// Saved Variant UUID if specific variant was selected
+	VariantID *string `json:"variantId,omitempty" example:"70000000-0000-0000-0000-000000000001"`
 	// Customer UUID owning this wishlist item
 	UserID string `json:"userId" example:"10000000-0000-0000-0000-000000000002"`
 	// Timestamp when item was added to wishlist (RFC3339)
@@ -106,6 +114,7 @@ func mapWishlistItemResponse(item *model.WishlistItem) WishlistItemResponse {
 		origPriceStr     *string
 		extractedOrigVal *float64
 		currency         = "USD"
+		variantIDStr     *string
 	)
 
 	if item.Currency != nil && *item.Currency != "" {
@@ -126,9 +135,15 @@ func mapWishlistItemResponse(item *model.WishlistItem) WishlistItemResponse {
 		extractedOrigVal = &eop
 	}
 
+	if item.VariantID != nil {
+		vStr := item.VariantID.String()
+		variantIDStr = &vStr
+	}
+
 	return WishlistItemResponse{
 		ID:        item.ID.String(),
 		ProductID: item.ProductID.String(),
+		VariantID: variantIDStr,
 		UserID:    item.UserID.String(),
 		CreatedAt: item.CreatedAt.Format(time.RFC3339),
 		Product: WishlistProductResponse{
@@ -146,6 +161,9 @@ func mapWishlistItemResponse(item *model.WishlistItem) WishlistItemResponse {
 			ExtractedOriginalPrice: extractedOrigVal,
 			Currency:               &currency,
 			InStock:                item.InStock,
+			VariantID:              variantIDStr,
+			VariantTitle:           item.VariantTitle,
+			VariantSKU:             item.VariantSKU,
 		},
 	}
 }
@@ -178,13 +196,23 @@ func (h *WishlistHandler) AddToWishlist(c *gin.Context) {
 		return
 	}
 
+	var variantID *uuid.UUID
+	if req.VariantID != nil && *req.VariantID != "" {
+		vID, err := uuid.Parse(*req.VariantID)
+		if err != nil {
+			_ = c.Error(apierr.ErrValidationFailed("invalid variant id"))
+			return
+		}
+		variantID = &vID
+	}
+
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	item, err := h.service.AddToWishlist(c.Request.Context(), userID, productID)
+	item, err := h.service.AddToWishlist(c.Request.Context(), userID, productID, variantID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -264,10 +292,11 @@ func (h *WishlistHandler) GetWishlistCount(c *gin.Context) {
 // CheckInWishlist godoc
 //
 //	@Summary		Check if product is in wishlist
-//	@Description	Checks whether a specific product is saved in the authenticated user's wishlist.
+//	@Description	Checks whether a specific product (or variant) is saved in the authenticated user's wishlist.
 //	@Tags			Wishlist
 //	@Produce		json
 //	@Param			productId	path		string											true	"Product UUID"
+//	@Param			variantId	query		string											false	"Optional Variant UUID"
 //	@Success		200			{object}	api.DataResponse{data=WishlistCheckResponse}	"Wishlist status checked successfully"
 //	@Failure		400			{object}	api.BadRequestErrorResponse						"Invalid product id"
 //	@Failure		401			{object}	api.UnauthorizedErrorResponse					"Unauthorized"
@@ -281,13 +310,23 @@ func (h *WishlistHandler) CheckInWishlist(c *gin.Context) {
 		return
 	}
 
+	var variantID *uuid.UUID
+	if vIDStr := c.Query("variantId"); vIDStr != "" {
+		vID, err := uuid.Parse(vIDStr)
+		if err != nil {
+			_ = c.Error(apierr.ErrBadRequest("invalid variant id").WithCode(apierr.CodeInvalidInput))
+			return
+		}
+		variantID = &vID
+	}
+
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	inWishlist, itemID, err := h.service.CheckInWishlist(c.Request.Context(), userID, productID)
+	inWishlist, itemID, err := h.service.CheckInWishlist(c.Request.Context(), userID, productID, variantID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -343,10 +382,11 @@ func (h *WishlistHandler) RemoveItem(c *gin.Context) {
 // RemoveByProductID godoc
 //
 //	@Summary		Remove product from wishlist
-//	@Description	Deletes a product from the user's wishlist by the product UUID.
+//	@Description	Deletes a product from the user's wishlist by the product UUID (and optional variantId).
 //	@Tags			Wishlist
 //	@Produce		json
 //	@Param			productId	path		string					true	"Product UUID"
+//	@Param			variantId	query		string					false	"Optional Variant UUID"
 //	@Success		200			{object}	api.MessageResponse		"Product removed from wishlist successfully"
 //	@Failure		400			{object}	api.BadRequestErrorResponse	"Invalid product id"
 //	@Failure		401			{object}	api.UnauthorizedErrorResponse	"Unauthorized"
@@ -361,13 +401,23 @@ func (h *WishlistHandler) RemoveByProductID(c *gin.Context) {
 		return
 	}
 
+	var variantID *uuid.UUID
+	if vIDStr := c.Query("variantId"); vIDStr != "" {
+		vID, err := uuid.Parse(vIDStr)
+		if err != nil {
+			_ = c.Error(apierr.ErrBadRequest("invalid variant id").WithCode(apierr.CodeInvalidInput))
+			return
+		}
+		variantID = &vID
+	}
+
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	if err := h.service.RemoveByProductID(c.Request.Context(), userID, productID); err != nil {
+	if err := h.service.RemoveByProductID(c.Request.Context(), userID, productID, variantID); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -382,6 +432,7 @@ func (h *WishlistHandler) RemoveByProductID(c *gin.Context) {
 //	@Tags			Wishlist
 //	@Produce		json
 //	@Param			productId	query		string					false	"Optional product UUID to remove"
+//	@Param			variantId	query		string					false	"Optional variant UUID to remove"
 //	@Param			itemId		query		string					false	"Optional item UUID to remove"
 //	@Success		200			{object}	api.MessageResponse		"Wishlist updated successfully"
 //	@Failure		400			{object}	api.BadRequestErrorResponse	"Invalid input"
@@ -402,7 +453,16 @@ func (h *WishlistHandler) ClearWishlist(c *gin.Context) {
 			_ = c.Error(apierr.ErrBadRequest("invalid product id").WithCode(apierr.CodeInvalidInput))
 			return
 		}
-		if err := h.service.RemoveByProductID(c.Request.Context(), userID, productID); err != nil {
+		var variantID *uuid.UUID
+		if vIDStr := c.Query("variantId"); vIDStr != "" {
+			vID, err := uuid.Parse(vIDStr)
+			if err != nil {
+				_ = c.Error(apierr.ErrBadRequest("invalid variant id").WithCode(apierr.CodeInvalidInput))
+				return
+			}
+			variantID = &vID
+		}
+		if err := h.service.RemoveByProductID(c.Request.Context(), userID, productID, variantID); err != nil {
 			_ = c.Error(err)
 			return
 		}

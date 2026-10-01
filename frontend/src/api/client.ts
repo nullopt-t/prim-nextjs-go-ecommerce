@@ -1,5 +1,9 @@
 const getBaseUrl = () => {
-  return process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:8081";
+  // In the browser, use relative paths to leverage Next.js rewrite proxy (same-origin cookies)
+  if (typeof window !== "undefined") {
+    return "";
+  }
+  return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
 };
 
 const getSessionId = () => {

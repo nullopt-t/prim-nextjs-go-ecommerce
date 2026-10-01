@@ -36,6 +36,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 
 import { CartSidebar } from "@/components/ui/cartSidebar";
+import { Toaster } from "sonner";
 
 export default async function RootLayout({
   children,
@@ -74,6 +75,7 @@ export default async function RootLayout({
               </WishlistProvider>
             </AuthProvider>
           </ThemeProvider>
+          <Toaster richColors position="bottom-right" />
         </NextIntlClientProvider>
       </body>
     </html>

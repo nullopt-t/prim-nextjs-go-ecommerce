@@ -41,8 +41,6 @@ export function ProductDetails() {
   const [isAdding, setIsAdding] = useState(false);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
 
-  const isWishlisted = checkIsWishlisted(String(product?.id));
-
   // Synchronize variant/color from URL search params (e.g. ?variant=... or ?color=...)
   useEffect(() => {
     if (!product) return;
@@ -155,6 +153,12 @@ export function ProductDetails() {
   const { activeVariant, availableStock, isVariantInStock } = resolveProductStock(product, selectedColor);
   const images = resolveProductImages(product, activeVariant);
 
+  const isWishlisted = Boolean(
+    activeVariant?.id
+      ? checkIsWishlisted(String(product?.id), activeVariant.id) || checkIsWishlisted(String(product?.slug), activeVariant.id)
+      : (product?.id && checkIsWishlisted(String(product.id))) || (product?.slug && checkIsWishlisted(String(product.slug)))
+  );
+
   // When selected color changes, reset active image to 0 to show the new variant's main photo
   const handleSelectColor = (idx: number) => {
     setSelectedColor(idx);
@@ -230,7 +234,7 @@ export function ProductDetails() {
 
   const handleToggleWishlist = async () => {
     if (!product?.id) return;
-    await toggleWishlist(String(product.id), productName);
+    await toggleWishlist(String(product.id), activeVariant?.id, productName);
   };
 
   const handleShare = () => {

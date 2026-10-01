@@ -17,7 +17,7 @@ export function ProductsGrid({
     <div className={`grid ${className} gap-3 sm:gap-4 md:gap-5`}>
       {products.map((item) => (
         <ProductsCard
-          key={item.id}
+          key={item.wishlistItemId || (item.variantId ? `${item.id}-${item.variantId}` : item.id)}
           cardDetails={item}
           isWishlist={isWishlist}
           onRemove={onRemoveItem ? () => onRemoveItem(item) : undefined}

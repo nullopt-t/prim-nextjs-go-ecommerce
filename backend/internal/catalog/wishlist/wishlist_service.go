@@ -49,6 +49,7 @@ func (s *WishlistService) AddToWishlist(
 	ctx context.Context,
 	userID uuid.UUID,
 	productID uuid.UUID,
+	variantID *uuid.UUID,
 ) (*model.WishlistItem, error) {
 	if s.productService != nil {
 		prod, err := s.productService.GetByID(ctx, productID)
@@ -75,6 +76,7 @@ func (s *WishlistService) AddToWishlist(
 		ID:        uuid.New(),
 		UserID:    userID,
 		ProductID: productID,
+		VariantID: variantID,
 	}
 
 	var createdItem *model.WishlistItem
@@ -172,13 +174,14 @@ func (s *WishlistService) CheckInWishlist(
 	ctx context.Context,
 	userID uuid.UUID,
 	productID uuid.UUID,
+	variantID *uuid.UUID,
 ) (bool, *uuid.UUID, error) {
 	var exists bool
 	var itemID *uuid.UUID
 	var err error
 
 	err = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
-		exists, itemID, err = s.repo.Exists(ctx, db, userID, productID)
+		exists, itemID, err = s.repo.Exists(ctx, db, userID, productID, variantID)
 		return err
 	})
 
@@ -223,11 +226,12 @@ func (s *WishlistService) RemoveByProductID(
 	ctx context.Context,
 	userID uuid.UUID,
 	productID uuid.UUID,
+	variantID *uuid.UUID,
 ) error {
 	var apiErr *apierr.APIError
 
 	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
-		err := s.repo.DeleteByProduct(ctx, tx, userID, productID)
+		err := s.repo.DeleteByProduct(ctx, tx, userID, productID, variantID)
 		if err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrNotFound) {
