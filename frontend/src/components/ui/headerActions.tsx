@@ -20,6 +20,7 @@ import { useRouter, usePathname, Link } from "@/i18n/navigation";
 import { useCart } from "@/hooks/useCart";
 import { useAuthContext } from "@/context/AuthContext";
 import { useWishlist } from "@/hooks/useWishlist";
+import { NotificationsDropdown } from "@/components/ui/notificationsDropdown";
 
 export function HeaderActions() {
 	const { theme, toggle } = useTheme();
@@ -87,7 +88,10 @@ export function HeaderActions() {
 				)}
 			</button>
 
-			{/* 2. User Menu & Settings Dropdown */}
+			{/* 2. Notifications Center */}
+			{isAuthenticated && <NotificationsDropdown />}
+
+			{/* 3. User Menu & Settings Dropdown */}
 			<div className="relative" ref={dropdownRef}>
 				<button
 					type="button"

@@ -34,6 +34,7 @@ import { CartProvider } from "@/context/CartContext";
 import { CatalogProvider } from "@/context/CatalogContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { WishlistProvider } from "@/context/WishlistContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 
 import { CartSidebar } from "@/components/ui/cartSidebar";
 import { Toaster } from "sonner";
@@ -66,12 +67,14 @@ export default async function RootLayout({
           <ThemeProvider>
             <AuthProvider>
               <WishlistProvider>
-                <CatalogProvider>
-                  <CartProvider>
-                    {children}
-                    <CartSidebar />
-                  </CartProvider>
-                </CatalogProvider>
+                <NotificationProvider>
+                  <CatalogProvider>
+                    <CartProvider>
+                      {children}
+                      <CartSidebar />
+                    </CartProvider>
+                  </CatalogProvider>
+                </NotificationProvider>
               </WishlistProvider>
             </AuthProvider>
           </ThemeProvider>
