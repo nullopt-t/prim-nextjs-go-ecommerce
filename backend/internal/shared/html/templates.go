@@ -27,7 +27,16 @@ func NewRenderer() (*Renderer, error) {
 func (r *Renderer) Render(name string, data any) (string, error) {
 	var buf bytes.Buffer
 
-	err := r.templates.ExecuteTemplate(&buf, name+".html", data)
+	target := name + ".html"
+	if r.templates.Lookup(target) == nil {
+		// Fallback to .en.html if specific localized template is missing
+		fallback := name + ".en.html"
+		if r.templates.Lookup(fallback) != nil {
+			target = fallback
+		}
+	}
+
+	err := r.templates.ExecuteTemplate(&buf, target, data)
 	if err != nil {
 		return "", err
 	}

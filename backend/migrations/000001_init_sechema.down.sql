@@ -1,6 +1,7 @@
 BEGIN;
 
 -- Drop dependent / join / child tables first
+DROP TABLE IF EXISTS user_notifications CASCADE;
 DROP TABLE IF EXISTS wishlist_items CASCADE;
 DROP TABLE IF EXISTS variant_media CASCADE;
 DROP TABLE IF EXISTS product_tag_assignments CASCADE;

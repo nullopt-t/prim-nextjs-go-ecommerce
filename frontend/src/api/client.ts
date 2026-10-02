@@ -16,15 +16,24 @@ const getSessionId = () => {
   return sid;
 };
 
+const getActiveLocale = () => {
+  if (typeof window === "undefined") return "en";
+  const path = window.location.pathname;
+  if (path.startsWith("/ar") || path === "/ar") return "ar";
+  return "en";
+};
+
 export async function request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = endpoint.startsWith("http") ? endpoint : `${getBaseUrl()}${endpoint}`;
   
   const sessionId = getSessionId();
+  const locale = getActiveLocale();
 
   const response = await fetch(url, {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      "Accept-Language": locale,
       ...(sessionId ? { "X-Session-ID": sessionId } : {}),
       ...options.headers,
     },

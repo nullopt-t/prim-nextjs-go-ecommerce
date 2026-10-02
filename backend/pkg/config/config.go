@@ -23,6 +23,11 @@ type RedisConfig struct {
 	DB       int    `yaml:"db" env:"REDIS_DB" env-default:"0"`
 }
 
+type KafkaConfig struct {
+	Brokers []string `yaml:"brokers" env:"KAFKA_BROKERS" env-separator:"," env-default:"localhost:9092"`
+	GroupID string   `yaml:"group_id" env:"KAFKA_GROUP_ID" env-default:"prim-notification-workers"`
+}
+
 type SMTPConfig struct {
 	Host     string `yaml:"host" env:"SMTP_HOST" env-default:""`
 	Port     int    `yaml:"port" env:"SMTP_PORT" env-default:"0"`
@@ -80,6 +85,7 @@ type Config struct {
 	ClientCfg      ClientConfig    `yaml:"client"`
 	DBCfg          DatabaseConfig  `yaml:"database"`
 	RedisCfg       RedisConfig     `yaml:"redis"`
+	KafkaCfg       KafkaConfig     `yaml:"kafka"`
 	SMTPCfg        SMTPConfig      `yaml:"smtp"`
 	KeysCfg        Secrets         `yaml:"secrets"`
 	SvPort         string          `yaml:"port" env:"HTTP_PORT" env-default:"8080"`

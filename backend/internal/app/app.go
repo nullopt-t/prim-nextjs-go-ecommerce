@@ -17,7 +17,6 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/notifier"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/object"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/order"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
 	"github.com/minio/minio-go/v7"
@@ -28,6 +27,7 @@ import (
 	"time"
 
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
+	brokerkafka "github.com/m-mahmoud-alsaid/prim-backend/pkg/broker/kafka"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
@@ -51,6 +51,9 @@ type App struct {
 	// database
 	db *database.DB
 
+	// kafka producer
+	kafkaProducer *brokerkafka.Producer
+
 	// minio
 	minioClient *minio.Client
 
@@ -65,6 +68,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	// setup middlewares
 	router.Use(middleware.ErrorHandler(app.logger))
 	router.Use(middleware.CORS(app.config.AllowedOrigins...))
+	router.Use(middleware.Locale())
 
 	v1 := router.Group("/api/v1")
 	router.GET("/health", func(c *gin.Context) {
@@ -77,15 +81,9 @@ func (app *App) setupRoutes(router *gin.Engine) {
 
 	txRunner := database.NewTxRunner(app.db)
 
-	jobQueue := job.NewJobQueue(
-		app.redisClient,
-		job.EmailQueue,
-	)
-
-	notifier := notifier.NewEmailNotifier(
-		jobQueue,
-		app.logger,
-	)
+	kafkaCfg := brokerkafka.DefaultConfig(app.config.KafkaCfg.Brokers, app.config.KafkaCfg.GroupID)
+	app.kafkaProducer = brokerkafka.NewProducer(kafkaCfg)
+	notifier := notifier.NewKafkaNotifier(app.kafkaProducer, app.logger)
 
 	rateLimiter := security.NewRateLimiter(
 		app.redisClient,
@@ -270,6 +268,12 @@ func (app *App) setupRoutes(router *gin.Engine) {
 
 	userRouter.MapRoutes(v1)
 
+	notificationRepo := user.NewNotificationRepository()
+	notificationService := user.NewNotificationService(txRunner, notificationRepo, app.logger)
+	notificationHandler := user.NewNotificationHandler(notificationService)
+	notificationRouter := user.NewNotificationRouter(notificationHandler, app.config.KeysCfg)
+	notificationRouter.MapRoutes(v1)
+
 	// order
 	orderRepo := order.NewRepository()
 	orderService := order.NewService(txRunner, orderRepo, app.logger)
@@ -300,6 +304,10 @@ func (app *App) Shutdown() {
 
 	if app.db != nil {
 		app.db.Close()
+	}
+
+	if app.kafkaProducer != nil {
+		_ = app.kafkaProducer.Close()
 	}
 
 	app.logger.Debug("Graceful Shutdown")

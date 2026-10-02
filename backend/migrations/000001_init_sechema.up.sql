@@ -504,4 +504,31 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_wishlist_items_user_product_variant
 CREATE INDEX IF NOT EXISTS idx_wishlist_items_user_id ON wishlist_items (user_id);
 CREATE INDEX IF NOT EXISTS idx_wishlist_items_variant_id ON wishlist_items (variant_id);
 
+
+-- =====================================================================
+-- NOTIFICATIONS
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS user_notifications (
+    id          uuid NOT NULL,
+    user_id     uuid NOT NULL,
+    title       jsonb NOT NULL,
+    message     jsonb NOT NULL,
+    category    varchar(50) NOT NULL DEFAULT 'system',
+    action_url  text NULL,
+    metadata    jsonb NULL,
+    read_at     timestamptz NULL,
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (id),
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user_unread 
+    ON user_notifications (user_id, read_at) 
+    WHERE read_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user_created 
+    ON user_notifications (user_id, created_at DESC);
+
 COMMIT;
+
