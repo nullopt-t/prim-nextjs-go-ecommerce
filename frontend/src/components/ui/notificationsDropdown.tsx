@@ -23,6 +23,7 @@ export function NotificationsDropdown() {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    refresh,
   } = useNotifications();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -30,6 +31,13 @@ export function NotificationsDropdown() {
   const locale = useLocale();
   const router = useRouter();
   const t = useTranslations("common.header");
+
+  const handleToggle = () => {
+    if (!isOpen) {
+      refresh();
+    }
+    setIsOpen((prev) => !prev);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -79,7 +87,7 @@ export function NotificationsDropdown() {
       {/* Bell Trigger Button */}
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={handleToggle}
         aria-label={t("notifications")}
         aria-expanded={isOpen}
         className={`size-9 sm:size-10 rounded-xl transition-all relative flex items-center justify-center cursor-pointer border shadow-2xs ${

@@ -22,21 +22,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const fetchUnreadCount = useCallback(async () => {
-    if (!isAuthenticated) {
-      setUnreadCount(0);
-      return;
-    }
-    try {
-      const res = await notificationService.getUnreadCount();
-      if (res && res.data) {
-        setUnreadCount(res.data.count);
-      }
-    } catch {
-      // Quiet fail on network hiccups
-    }
-  }, [isAuthenticated]);
-
   const fetchNotifications = useCallback(async () => {
     if (!isAuthenticated) {
       setNotifications([]);
@@ -55,6 +40,27 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   }, [isAuthenticated]);
 
+  const fetchUnreadCount = useCallback(async () => {
+    if (!isAuthenticated) {
+      setUnreadCount(0);
+      return;
+    }
+    try {
+      const res = await notificationService.getUnreadCount();
+      if (res && res.data) {
+        setUnreadCount((prevCount) => {
+          if (res.data.count !== prevCount) {
+            // Count changed: automatically fetch fresh notifications!
+            fetchNotifications();
+          }
+          return res.data.count;
+        });
+      }
+    } catch {
+      // Quiet fail on network hiccups
+    }
+  }, [isAuthenticated, fetchNotifications]);
+
   const refresh = useCallback(async () => {
     await Promise.all([fetchUnreadCount(), fetchNotifications()]);
   }, [fetchUnreadCount, fetchNotifications]);
@@ -62,8 +68,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (isAuthenticated) {
       refresh();
-      // Periodically refresh unread count every 30s
-      const interval = setInterval(fetchUnreadCount, 30000);
+      // Periodically check unread count every 15s
+      const interval = setInterval(fetchUnreadCount, 15000);
       return () => clearInterval(interval);
     } else {
       setNotifications([]);
