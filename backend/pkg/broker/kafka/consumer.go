@@ -15,11 +15,16 @@ type Consumer struct {
 
 // NewConsumer creates a consumer connected to a specific topic and groupID.
 func NewConsumer(cfg Config, topic string) *Consumer {
+	groupID := cfg.GroupID
+	if groupID != "" {
+		groupID = fmt.Sprintf("%s-%s", groupID, topic)
+	}
+
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        cfg.Brokers,
-		GroupID:        cfg.GroupID,
+		GroupID:        groupID,
 		Topic:          topic,
-		MinBytes:       10e3,            // 10KB
+		MinBytes:       1,               // 1 byte for instant processing
 		MaxBytes:       10e6,            // 10MB
 		MaxWait:        500 * time.Millisecond,
 		CommitInterval: 0,               // 0 = manual commits for at-least-once delivery
