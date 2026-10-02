@@ -96,6 +96,29 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  # ─── Notification Worker (Go / Air hot-reload) ──────────
+  worker:
+    build:
+      context: ./backend
+      dockerfile: docker/Dockerfile.dev
+    volumes:
+      - ./backend:/app
+      - go-mod-cache:/go/pkg/mod
+    command: air -c configs/air.worker.toml
+    env_file:
+      - ./backend/.env
+    environment:
+      <<: *app-env
+      GOMAXPROCS: 2
+      GOPROXY: "https://proxy.golang.org,https://goproxy.io,direct"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   # ─── PostgreSQL ─────────────────────────────────────────
   postgres:

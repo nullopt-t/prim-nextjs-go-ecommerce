@@ -27,6 +27,9 @@ logs:
 logs-api:
 	$(COMPOSE) logs -f api
 
+logs-worker:
+	$(COMPOSE) logs -f worker
+
 logs-frontend:
 	$(COMPOSE) logs -f frontend
 
