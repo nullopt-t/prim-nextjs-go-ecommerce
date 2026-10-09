@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useAuthContext } from "@/context/AuthContext";
 import { userService } from "@/services/user";
-import { Lock, Monitor, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -76,32 +75,29 @@ function SessionsSection() {
               key={session.id}
               className="bg-card border border-border rounded-lg px-4 py-3 flex items-center justify-between gap-3 shadow-sm"
             >
-              <div className="flex items-center gap-3">
-                <Monitor className="size-4 text-muted-foreground shrink-0" />
-                <div className="flex flex-col">
-                  <span className="text-sm text-foreground font-medium">
-                    {session.userAgent
-                      ? session.userAgent.slice(0, 60) + (session.userAgent.length > 60 ? "…" : "")
-                      : "Unknown device"}
-                    {session.isCurrent && (
-                      <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-accent-brand/10 text-accent-brand">
-                        Current
-                      </span>
-                    )}
-                  </span>
-                  {session.ipAddress && (
-                    <span className="text-xs text-muted-foreground">{session.ipAddress}</span>
+              <div className="flex flex-col">
+                <span className="text-sm text-foreground font-medium">
+                  {session.userAgent
+                    ? session.userAgent.slice(0, 60) + (session.userAgent.length > 60 ? "…" : "")
+                    : "Unknown device"}
+                  {session.isCurrent && (
+                    <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-accent-brand/10 text-accent-brand">
+                      Current
+                    </span>
                   )}
-                </div>
+                </span>
+                {session.ipAddress && (
+                  <span className="text-xs text-muted-foreground">{session.ipAddress}</span>
+                )}
               </div>
               <button
                 type="button"
                 onClick={() => handleDelete(session.id)}
                 disabled={session.isCurrent}
                 aria-label="Remove session"
-                className="h-9 px-3 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                className="text-xs font-medium text-destructive hover:underline transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <Trash2 className="size-4" />
+                Remove
               </button>
             </div>
           ))}
@@ -144,17 +140,14 @@ export default function PersonalInfoForm() {
           <label htmlFor="email" className="text-sm font-medium text-foreground">
             Email Address
           </label>
-          <div className="relative">
-            <input
-              id="email"
-              type="email"
-              value={user?.email || ""}
-              readOnly
-              disabled
-              className="h-10 w-full rounded-md border border-border bg-input-background px-3 pr-10 text-sm text-foreground placeholder:text-muted-foreground disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none transition"
-            />
-            <Lock className="absolute right-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/60" />
-          </div>
+          <input
+            id="email"
+            type="email"
+            value={user?.email || ""}
+            readOnly
+            disabled
+            className="h-10 w-full rounded-md border border-border bg-input-background px-3 text-sm text-foreground placeholder:text-muted-foreground disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none transition"
+          />
           <p className="text-xs text-muted-foreground">
             Email cannot be changed. Contact support to update.
           </p>

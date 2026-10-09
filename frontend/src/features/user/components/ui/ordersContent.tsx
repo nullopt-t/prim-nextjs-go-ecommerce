@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link } from "@/i18n/navigation";
 import { userService } from "@/services/user";
 import { LazyImage } from "@/components/ui/lazyImage";
+import { useTranslations, useLocale } from "next-intl";
 import {
   Package,
   Store,
@@ -138,245 +139,148 @@ function OrderSkeleton() {
   );
 }
 
-// ── Amazon-style Order Box ─────────────────────────────────────────────────────
-function AmazonOrderBox({ order, defaultExpanded = false }: { order: Order; defaultExpanded?: boolean }) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+// ── Order Card (Clickable Card with Product Thumbnails, No Extra Buttons) ─────
+function OrderCard({ order }: { order: Order }) {
+  const t = useTranslations("orders");
+  const locale = useLocale();
   const statusCfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending;
-  const StatusIcon = statusCfg.icon;
 
-  const formattedDate = new Date(order.createdAt).toLocaleDateString(undefined, {
-    month: "long",
+  const formattedDate = new Date(order.createdAt).toLocaleDateString(locale, {
+    month: "short",
     day: "numeric",
     year: "numeric",
   });
 
   const totalFormatted = `${(order.totalAmount / 100).toFixed(2)} ${order.currency.toUpperCase()}`;
   const shortOrderId = order.id.slice(0, 8).toUpperCase();
-
   const items = order.items ?? [];
   const destinationAddress = formatAddress(order.shippingAddress);
 
-  // Clean, non-repetitive status text
-  let statusMessage = "";
-  if (order.status === "delivered") {
-    statusMessage = "Package was handed directly to resident or placed in secure location";
-  } else if (order.status === "shipped") {
-    statusMessage = "Package is in transit with the logistics carrier";
-  } else if (order.status === "processing") {
-    statusMessage = "Package is being prepared and packed for shipment";
-  } else if (order.status === "cancelled") {
-    statusMessage = "Order was cancelled and payment charge was refunded";
-  } else {
-    statusMessage = "Order received and queued for fulfillment";
-  }
+  // Extract snapshots, image icons, and product link targets
+  const itemSnapshots = items.map((it) => {
+    const snap = parseSnapshot(it.productSnapshot);
+    const title = snap.title || snap.name || "Product";
+    const rawImg = snap.image || snap.thumbnailUrl || snap.thumbnail || snap.img;
+    let img = rawImg || "/placeholder-product.png";
+    if (rawImg && !rawImg.startsWith("http") && !rawImg.startsWith("/")) {
+      img = `http://localhost:9000/catalog/${rawImg}`;
+    }
+    const productHref = snap.slug ? `/products/${snap.slug}` : snap.productId ? `/products/${snap.productId}` : null;
+    return { title, img, quantity: it.quantity, productHref };
+  });
 
   return (
-    <div className="bg-card border border-border rounded-xl sm:rounded-2xl overflow-hidden shadow-xs transition-all duration-200 hover:shadow-md hover:border-border/80">
-      {/* ── Responsive Order Header Card ── */}
-      <div className="bg-secondary/40 border-b border-border p-3.5 sm:px-5 sm:py-4">
-        {/* Mobile top summary line */}
-        <div className="flex sm:hidden items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-border/60 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-foreground">#{shortOrderId}</span>
-            <span className="text-muted-foreground">•</span>
-            <span className="text-muted-foreground">{formattedDate}</span>
-          </div>
-          <div className="flex items-center gap-2">
+    <div className="group relative bg-card border border-border hover:border-accent-brand/50 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-all duration-200">
+      {/* Background card link to order details */}
+      <Link
+        href={`/user/orders/${order.id}`}
+        className="absolute inset-0 z-0 rounded-2xl"
+        aria-label={`View order ${shortOrderId}`}
+      />
+
+      <div className="relative z-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3.5 border-b border-border/50 pointer-events-none">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="font-mono font-bold text-sm text-foreground group-hover:text-accent-brand transition-colors">
+            #{shortOrderId}
+          </span>
+          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${statusCfg.badgeClass}`}>
+            {t(`status.${order.status}`)}
+          </span>
+          <span className="text-xs text-muted-foreground">•</span>
+          <span className="text-xs text-muted-foreground">
+            {formattedDate}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-4 text-xs">
+          <div>
+            <span className="text-muted-foreground">{t("card.total")}: </span>
             <span className="font-bold text-foreground text-sm">{totalFormatted}</span>
-            <button
-              type="button"
-              onClick={() => setExpanded((prev) => !prev)}
-              aria-expanded={expanded}
-              aria-label={expanded ? "Collapse order details" : "Expand order details"}
-              className="p-1 rounded-md bg-secondary hover:bg-secondary/80 text-foreground cursor-pointer"
-            >
-              {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative z-1 pt-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Item image thumbnails / icons (clickable to product page) */}
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="flex items-center -space-x-2.5 rtl:space-x-reverse shrink-0">
+            {itemSnapshots.slice(0, 4).map((it, idx) => {
+              const thumbnailElement = (
+                <div
+                  className="size-12 rounded-xl bg-secondary/80 border-2 border-card overflow-hidden shrink-0 shadow-2xs hover:scale-110 hover:z-10 transition-all duration-200 cursor-pointer"
+                  title={it.title}
+                >
+                  <img
+                    src={it.img}
+                    alt={it.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              );
+
+              return it.productHref ? (
+                <Link
+                  key={idx}
+                  href={it.productHref}
+                  className="relative z-10 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {thumbnailElement}
+                </Link>
+              ) : (
+                <div key={idx} className="relative shrink-0">
+                  {thumbnailElement}
+                </div>
+              );
+            })}
+            {itemSnapshots.length > 4 && (
+              <div className="size-12 rounded-xl bg-secondary border-2 border-card flex items-center justify-center text-xs font-semibold text-muted-foreground shrink-0 shadow-2xs">
+                +{itemSnapshots.length - 4}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col min-w-0 text-xs">
+            <span className="font-semibold text-foreground truncate pointer-events-none">
+              {itemSnapshots.length} {itemSnapshots.length === 1 ? "item" : "items"}
+            </span>
+            <div className="text-muted-foreground truncate max-w-md flex flex-wrap items-center gap-1">
+              {itemSnapshots.map((it, idx) => (
+                <span key={idx}>
+                  {it.productHref ? (
+                    <Link
+                      href={it.productHref}
+                      className="relative z-10 hover:text-accent-brand hover:underline transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {it.title}
+                    </Link>
+                  ) : (
+                    it.title
+                  )}
+                  {idx < itemSnapshots.length - 1 && ", "}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Desktop & tablet header grid */}
-        <div className="hidden sm:flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
-          <div className="flex flex-wrap items-center gap-6 sm:gap-10">
-            <div>
-              <span className="block uppercase text-[10px] font-semibold tracking-wider text-muted-foreground/80">
-                Order Placed
-              </span>
-              <span className="font-medium text-foreground text-xs mt-0.5 block">
-                {formattedDate}
-              </span>
-            </div>
-
-            <div>
-              <span className="block uppercase text-[10px] font-semibold tracking-wider text-muted-foreground/80">
-                Total
-              </span>
-              <span className="font-semibold text-foreground text-xs mt-0.5 block">
-                {totalFormatted}
-              </span>
-            </div>
-
-            <div>
-              <span className="block uppercase text-[10px] font-semibold tracking-wider text-muted-foreground/80">
-                Shipped To
-              </span>
-              <span
-                className="font-medium text-foreground text-xs mt-0.5 block truncate max-w-[240px]"
-                title={destinationAddress || order.customerEmail}
-              >
-                {destinationAddress || order.customerEmail}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 ml-auto">
-            <div className="text-right">
-              <span className="block uppercase text-[10px] font-semibold tracking-wider text-muted-foreground/80">
-                Order Number
-              </span>
-              <span className="text-xs font-semibold text-foreground block mt-0.5">
-                #{shortOrderId}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setExpanded((prev) => !prev)}
-              aria-expanded={expanded}
-              aria-label={expanded ? "Collapse order details" : "Expand order details"}
-              className="p-1.5 rounded-lg bg-secondary/80 hover:bg-secondary text-foreground hover:text-accent-brand transition-colors cursor-pointer border border-border/60 ml-1 shrink-0"
-            >
-              {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile destination address note */}
         {destinationAddress && (
-          <div className="sm:hidden text-[11px] text-muted-foreground flex items-center gap-1.5 truncate">
-            <span className="font-medium text-foreground/80 shrink-0">Ship to:</span>
-            <span className="truncate">{destinationAddress}</span>
+          <div className="text-xs text-muted-foreground truncate max-w-xs self-start md:self-center pointer-events-none">
+            <span>{t("card.shippedTo")}: </span>
+            <span className="font-medium text-foreground">{destinationAddress}</span>
           </div>
         )}
       </div>
-
-      {/* ── Status Banner (Touch-friendly accordion bar) ── */}
-      <button
-        type="button"
-        onClick={() => setExpanded((prev) => !prev)}
-        className="w-full text-left p-3 sm:px-5 sm:py-3.5 bg-background/50 border-b border-border/60 flex items-center justify-between gap-2.5 hover:bg-secondary/20 transition-colors cursor-pointer"
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold shrink-0 ${statusCfg.badgeClass}`}>
-            <StatusIcon className="size-3.5 shrink-0" />
-            <span>{statusCfg.label}</span>
-          </span>
-          <span className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate hidden xs:inline">
-            • {statusMessage}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1.5 text-xs shrink-0 text-muted-foreground">
-          <span className="hidden sm:inline">{items.length} item{items.length !== 1 ? "s" : ""} •</span>
-          <span className="text-accent-brand font-semibold text-xs">
-            {expanded ? "Hide" : "Details"}
-          </span>
-          <div className="sm:hidden text-accent-brand">
-            {expanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-          </div>
-        </div>
-      </button>
-
-      {/* ── Order Line Items List ── */}
-      {expanded && (
-        <div className="divide-y divide-border/60 p-3.5 sm:p-5 space-y-4 sm:space-y-5 animate-in fade-in-50 duration-200">
-          {items.map((item) => {
-            const snap = parseSnapshot(item.productSnapshot);
-            const title = snap.title || snap.name || "Purchased Item";
-            const imgSrc = resolveItemImage(snap);
-            const itemPrice = `${(item.priceAtPurchase / 100).toFixed(2)} ${order.currency.toUpperCase()}`;
-
-            return (
-              <div
-                key={item.id}
-                className="pt-4 first:pt-0 flex flex-col md:flex-row md:items-start justify-between gap-3.5 sm:gap-5"
-              >
-                {/* Product Thumbnail & Details */}
-                <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
-                  <div className="size-16 sm:size-24 rounded-lg sm:rounded-xl border border-border/70 bg-secondary/30 overflow-hidden shrink-0 relative aspect-square flex items-center justify-center">
-                    {imgSrc ? (
-                      <LazyImage
-                        src={imgSrc}
-                        alt={title}
-                        containerClassName="w-full h-full"
-                        imageClassName="w-full h-full object-cover object-center"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-1 sm:p-2 bg-secondary/50 text-muted-foreground/60 text-center">
-                        <Package className="size-6 sm:size-8 text-muted-foreground/50 mb-0.5" />
-                        <span className="text-[9px] sm:text-[10px] font-medium leading-tight text-muted-foreground/70">
-                          Record
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <h4 className="font-semibold text-xs sm:text-sm text-foreground line-clamp-2 leading-snug">
-                      {title}
-                    </h4>
-
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">
-                        Quantity: {item.quantity}
-                      </span>
-                      <span>•</span>
-                      <span className="font-semibold text-accent-brand">
-                        {itemPrice}
-                      </span>
-                    </div>
-
-                    {order.status === "delivered" && (
-                      <div className="inline-flex items-center gap-1 text-[11px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-medium pt-0.5">
-                        <CheckCircle2 className="size-3.5" />
-                        <span>Verified Delivery</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action Buttons for this item (Grid on mobile, stacked on desktop) */}
-                <div className="grid grid-cols-2 md:flex md:flex-col items-stretch gap-2 shrink-0 md:w-44 pt-1 md:pt-0">
-                  <Link
-                    href="/products"
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg sm:rounded-xl text-xs font-semibold bg-accent-brand text-accent-brand-foreground hover:opacity-90 transition-all shadow-xs"
-                  >
-                    <RotateCcw className="size-3.5" />
-                    <span>Buy Again</span>
-                  </Link>
-
-                  <Link
-                    href="/user/reviews"
-                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg sm:rounded-xl text-xs font-medium bg-secondary hover:bg-secondary/80 text-foreground border border-border transition-all shadow-xs"
-                  >
-                    <Star className="size-3.5 text-amber-500" />
-                    <span>Review</span>
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────────
 export default function OrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations("orders");
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -440,17 +344,16 @@ export default function OrdersContent() {
       {/* ── Page Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Your Orders</h1>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">{t("title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Track packages, check receipt details, or reorder previous items.
+            {t("subtitle")}
           </p>
         </div>
         <Link
           href="/products"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground transition-all border border-border shrink-0 self-start sm:self-auto shadow-xs"
+          className="px-4 py-2 rounded-xl text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground transition-all border border-border shrink-0 self-start sm:self-auto shadow-xs"
         >
-          <Store className="size-3.5 text-accent-brand" />
-          <span>Continue Shopping</span>
+          {t("continueShopping")}
         </Link>
       </div>
 
@@ -458,24 +361,24 @@ export default function OrdersContent() {
       <div className="bg-card border border-border rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Search by order number or product name */}
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground rtl:left-auto rtl:right-3.5" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search your orders by product name or order number..."
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-secondary/40 border border-border text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30 transition-all"
+            placeholder={t("searchPlaceholder")}
+            className="w-full pl-10 pr-4 rtl:pl-4 rtl:pr-10 py-2 rounded-xl bg-secondary/40 border border-border text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30 transition-all"
           />
         </div>
 
         {/* Status filter buttons */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
           {[
-            { id: "all", label: "All Orders" },
-            { id: "delivered", label: "Delivered" },
-            { id: "shipped", label: "Shipped" },
-            { id: "processing", label: "Processing" },
-            { id: "cancelled", label: "Cancelled" },
+            { id: "all", label: t("tabs.all") },
+            { id: "delivered", label: t("tabs.delivered") },
+            { id: "shipped", label: t("tabs.shipped") },
+            { id: "processing", label: t("tabs.processing") },
+            { id: "cancelled", label: t("tabs.cancelled") },
           ].map((tab) => {
             const active = selectedStatus === tab.id;
             return (
@@ -510,43 +413,22 @@ export default function OrdersContent() {
         <div className="bg-card border border-border rounded-2xl p-12 flex flex-col items-center justify-center text-center gap-3 shadow-xs">
           <Package className="size-12 text-muted-foreground/40" />
           <h3 className="font-semibold text-foreground text-base">
-            {searchQuery || selectedStatus !== "all"
-              ? "No orders match your search or filter"
-              : "No orders placed yet"}
+            {t("empty.title")}
           </h3>
           <p className="text-xs text-muted-foreground max-w-sm">
-            {searchQuery || selectedStatus !== "all"
-              ? "Try clearing your search query or selecting 'All Orders'."
-              : "Explore our collection and find what you need today."}
+            {t("empty.subtitle")}
           </p>
-          {searchQuery || selectedStatus !== "all" ? (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedStatus("all");
-              }}
-              className="mt-2 text-xs font-semibold px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground border border-border cursor-pointer transition-colors"
-            >
-              Reset Filters
-            </button>
-          ) : (
-            <Link
-              href="/products"
-              className="mt-2 text-xs font-semibold px-4 py-2.5 rounded-xl bg-accent-brand text-accent-brand-foreground hover:opacity-90 transition-all shadow-xs"
-            >
-              Start Shopping
-            </Link>
-          )}
+          <Link
+            href="/products"
+            className="mt-2 text-xs font-semibold px-4 py-2.5 rounded-xl bg-accent-brand text-accent-brand-foreground hover:opacity-90 transition-all shadow-xs"
+          >
+            {t("empty.action")}
+          </Link>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {filteredOrders.map((order, idx) => (
-            <AmazonOrderBox
-              key={order.id}
-              order={order}
-              defaultExpanded={idx === 0}
-            />
+          {filteredOrders.map((order) => (
+            <OrderCard key={order.id} order={order} />
           ))}
         </div>
       )}

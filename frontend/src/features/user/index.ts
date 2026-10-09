@@ -1,5 +1,6 @@
 export { default as UserLayout } from "./components/layout/userLayout";
 export { default as OverviewContent } from "./components/ui/overviewContent";
 export { default as OrdersContent } from "./components/ui/ordersContent";
+export { default as OrderDetailsContent } from "./components/ui/orderDetailsContent";
 export { default as ReviewsContent } from "./components/ui/reviewsContent";
 export { default as AddressesContent } from "./components/ui/addressesContent";

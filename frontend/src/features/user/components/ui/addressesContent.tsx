@@ -4,16 +4,6 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAddresses } from "@/hooks/useUserAccount";
 import {
-  MapPin,
-  Plus,
-  Trash2,
-  Edit2,
-  CheckCircle2,
-  Building,
-  Home,
-  Briefcase,
-  Phone,
-  AlertCircle,
   X,
   Loader2,
 } from "lucide-react";
@@ -45,13 +35,6 @@ const INITIAL_FORM: AddressFormData = {
   country: "Egypt",
   isDefault: false,
 };
-
-function getLabelIcon(label?: string) {
-  const l = (label || "").toLowerCase();
-  if (l.includes("work") || l.includes("office")) return Briefcase;
-  if (l.includes("building") || l.includes("warehouse")) return Building;
-  return Home;
-}
 
 export default function AddressesContent() {
   const t = useTranslations("addresses");
@@ -171,34 +154,29 @@ export default function AddressesContent() {
         </div>
         <button
           onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent-brand text-white text-sm font-semibold hover:bg-accent-brand/90 transition-all shadow-xs cursor-pointer shrink-0"
+          className="px-4 py-2 rounded-xl bg-accent-brand text-white text-xs font-semibold hover:bg-accent-brand/90 transition-all shadow-xs cursor-pointer shrink-0"
         >
-          <Plus className="size-4" />
-          <span>{t("addAddress")}</span>
+          {t("addAddress")}
         </button>
       </div>
 
       {/* Error Banner */}
       {error && (
-        <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-3">
-          <AlertCircle className="size-4.5 shrink-0" />
+        <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
           <p>{error}</p>
         </div>
       )}
 
       {/* Loading Skeleton */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-56 rounded-2xl bg-secondary/50 animate-pulse border border-border/60" />
           ))}
         </div>
       ) : addresses.length === 0 ? (
         /* Empty State */
-        <div className="bg-card border border-border/80 rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-4 max-w-lg mx-auto my-6 shadow-xs">
-          <div className="size-16 rounded-2xl bg-secondary/80 flex items-center justify-center text-muted-foreground">
-            <MapPin className="size-8" />
-          </div>
+        <div className="bg-card border border-border rounded-xl p-10 text-center flex flex-col items-center justify-center gap-3 max-w-md mx-auto my-6 shadow-xs">
           <div>
             <h3 className="text-base font-semibold text-foreground">{t("noAddresses")}</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">
@@ -207,30 +185,26 @@ export default function AddressesContent() {
           </div>
           <button
             onClick={openAddModal}
-            className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-brand text-white text-sm font-medium hover:bg-accent-brand/90 transition-all shadow-xs cursor-pointer"
+            className="mt-2 px-4 py-2 rounded-xl bg-accent-brand text-white text-xs font-semibold hover:bg-accent-brand/90 transition-all shadow-xs cursor-pointer"
           >
-            <Plus className="size-4" />
-            <span>{t("addAddress")}</span>
+            {t("addAddress")}
           </button>
         </div>
       ) : (
         /* Address Grid */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
-          {/* Add New Address Card Placeholder (Amazon style) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* Add New Address Card Placeholder */}
           <div
             onClick={openAddModal}
-            className="min-h-[220px] rounded-2xl border-2 border-dashed border-border/80 hover:border-accent-brand/60 hover:bg-accent-brand/5 transition-all p-6 flex flex-col items-center justify-center text-center gap-2 cursor-pointer group"
+            className="min-h-[180px] rounded-2xl border-2 border-dashed border-border hover:border-foreground/40 hover:bg-secondary/30 transition-all p-6 flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer group"
           >
-            <div className="size-12 rounded-full bg-secondary group-hover:bg-accent-brand/10 group-hover:text-accent-brand flex items-center justify-center text-muted-foreground transition-colors">
-              <Plus className="size-6" />
-            </div>
             <span className="font-semibold text-sm text-foreground group-hover:text-accent-brand transition-colors">
-              {t("addAddress")}
+              + {t("addAddress")}
             </span>
+            <span className="text-xs text-muted-foreground">Add a new delivery destination</span>
           </div>
 
           {addresses.map((addr) => {
-            const Icon = getLabelIcon(addr.label);
             const isDefault = addr.isDefault;
 
             return (
@@ -245,13 +219,11 @@ export default function AddressesContent() {
                 <div>
                   {/* Top Bar with Label & Default Badge */}
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-secondary text-foreground capitalize">
-                      <Icon className="size-3.5 text-accent-brand" />
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-secondary text-foreground capitalize tracking-wide">
                       {addr.label ? (addr.label.toLowerCase() === "home" ? t("labels.home") : addr.label.toLowerCase() === "office" ? t("labels.office") : addr.label) : t("labels.other")}
                     </span>
                     {isDefault && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-accent-brand bg-accent-brand/10 border border-accent-brand/20 px-2.5 py-0.5 rounded-full">
-                        <CheckCircle2 className="size-3" />
+                      <span className="text-[11px] font-semibold text-accent-brand bg-accent-brand/10 border border-accent-brand/20 px-2.5 py-0.5 rounded-full">
                         {t("defaultBadge")}
                       </span>
                     )}
@@ -274,9 +246,8 @@ export default function AddressesContent() {
                     <p className="text-muted-foreground font-medium">{addr.country}</p>
 
                     {addr.phone && (
-                      <p className="text-xs text-muted-foreground/80 flex items-center gap-1.5 pt-2">
-                        <Phone className="size-3 text-muted-foreground" />
-                        <span>{addr.phone}</span>
+                      <p className="text-xs text-muted-foreground pt-1 font-mono">
+                        {addr.phone}
                       </p>
                     )}
                   </div>
@@ -287,22 +258,17 @@ export default function AddressesContent() {
                   <div className="flex items-center gap-3 font-medium">
                     <button
                       onClick={() => openEditModal(addr)}
-                      className="text-foreground hover:text-accent-brand inline-flex items-center gap-1 cursor-pointer transition-colors"
+                      className="text-foreground hover:text-accent-brand cursor-pointer transition-colors"
                     >
-                      <Edit2 className="size-3.5" />
-                      <span>{t("edit")}</span>
+                      {t("edit")}
                     </button>
                     <span className="text-border">|</span>
                     <button
                       disabled={deletingId === addr.id}
                       onClick={() => handleDelete(addr.id)}
-                      className="text-muted-foreground hover:text-destructive inline-flex items-center gap-1 cursor-pointer transition-colors disabled:opacity-50"
+                      className="text-muted-foreground hover:text-destructive cursor-pointer transition-colors disabled:opacity-50 inline-flex items-center gap-1"
                     >
-                      {deletingId === addr.id ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="size-3.5" />
-                      )}
+                      {deletingId === addr.id && <Loader2 className="size-3 animate-spin" />}
                       <span>{t("remove")}</span>
                     </button>
                   </div>

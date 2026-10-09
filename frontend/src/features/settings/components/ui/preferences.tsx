@@ -5,26 +5,20 @@ import { Toggle } from "@/components/ui/Toggle";
 import { useTheme } from "@/context/theme";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { useLocale } from "next-intl";
-import { Languages, Moon, Sun, Bell } from "lucide-react";
-
 interface PreferenceRowProps {
-  icon: React.ElementType;
   label: string;
   description?: string;
   right: React.ReactNode;
 }
 
-function PreferenceRow({ icon: Icon, label, description, right }: PreferenceRowProps) {
+function PreferenceRow({ label, description, right }: PreferenceRowProps) {
   return (
-    <div className="flex items-center justify-between py-3 border-b border-border last:border-0 gap-4">
-      <div className="flex items-center gap-3 min-w-0">
-        <Icon className="size-4 text-muted-foreground shrink-0" />
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-foreground">{label}</p>
-          {description && (
-            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-          )}
-        </div>
+    <div className="flex items-center justify-between py-3.5 border-b border-border last:border-0 gap-4">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        )}
       </div>
       <div className="shrink-0">{right}</div>
     </div>
@@ -47,7 +41,6 @@ export default function Preferences() {
     <div className="flex flex-col">
       {/* Language */}
       <PreferenceRow
-        icon={Languages}
         label="Language"
         description="Switch between English and Arabic"
         right={
@@ -80,7 +73,6 @@ export default function Preferences() {
 
       {/* Dark mode */}
       <PreferenceRow
-        icon={theme === "dark" ? Moon : Sun}
         label="Dark Mode"
         description="Switch between light and dark theme"
         right={
@@ -93,7 +85,6 @@ export default function Preferences() {
 
       {/* Email notifications */}
       <PreferenceRow
-        icon={Bell}
         label="Email Notifications"
         description="Receive order updates via email"
         right={

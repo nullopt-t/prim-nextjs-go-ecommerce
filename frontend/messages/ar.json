@@ -119,11 +119,15 @@
     },
     "header": {
       "account": "الحساب",
+      "accountHub": "نظرة عامة على الحساب",
+      "addresses": "العناوين المحفوظة",
       "allCategories": "جميع الفئات",
       "cart": "سلة التسوق",
       "clear": "مسح",
       "close": "إغلاق",
       "dark": "داكن",
+      "groupAccount": "الحساب والأمان",
+      "groupShopping": "الطلبات والتسوق",
       "home": "الرئيسية",
       "language": "اللغة",
       "light": "فاتح",
@@ -131,16 +135,18 @@
       "noNotifications": "لا توجد إشعارات بعد",
       "notifications": "الإشعارات",
       "orders": "طلباتي",
+      "payment": "طرق الدفع",
       "popularCategories": "الفئات الشائعة",
       "preferences": "التفضيلات",
+      "reviews": "تقييماتي",
       "search": "بحث",
       "searchPlaceholder": "ابحث عن منتجات، علامات تجارية، أو فئات...",
       "searchProducts": "البحث عن المنتجات",
-      "settings": "الإعدادات",
+      "settings": "تسجيل الدخول والأمان",
       "signIn": "تسجيل الدخول",
       "signOut": "تسجيل الخروج",
       "theme": "المظهر",
-      "wishlist": "المفضلة"
+      "wishlist": "قائمة الرغبات"
     }
   },
   "home": {
@@ -319,5 +325,175 @@
       "postalCode": "الرمز البريدي المعتمد لمنطقتك السكنية",
       "country": "دولة الشحن لتحديد مسار الشحن والجمارك"
     }
+  },
+  "userNav": {
+    "overview": "نظرة عامة",
+    "orders": "الطلبات",
+    "addresses": "العناوين",
+    "payment": "الدفع",
+    "reviews": "المراجعات",
+    "store": "المتجر",
+    "wishlist": "المفضلة",
+    "settings": "الإعدادات"
+  },
+  "overview": {
+    "heading": "نظرة عامة على الحساب",
+    "title": "{greeting}، {name}",
+    "subtitle": "ملخص فوري لطلباتك، شحناتك، وبيانات حسابك الشخصي.",
+    "greetings": {
+      "morning": "صباح الخير",
+      "afternoon": "مساء الخير",
+      "evening": "مساء الخير",
+      "default": "أهلاً بك"
+    },
+    "defaultUser": "عميلنا العزيز",
+    "browseCatalog": "تصفح المنتجات",
+    "storefront": "المتجر الرئيسي",
+    "metrics": {
+      "totalOrders": "إجمالي الطلبات",
+      "inProgress": "قيد التوصيل",
+      "delivered": "تم التسليم",
+      "savedWishlist": "المفضلة المحفوظة",
+      "lifetime": "الكل",
+      "activeTracking": "تتبع مستمر",
+      "completed": "مكتملة",
+      "viewItems": "عرض العناصر"
+    },
+    "shipment": {
+      "recentShipment": "أحدث شحنة",
+      "purchasedItems": "المنتجات المشتراة",
+      "moreItems": "+{count} أخرى",
+      "buyAgain": "شراء مجدداً",
+      "viewOrder": "عرض الطلب",
+      "order": "طلب"
+    },
+    "recentOrders": {
+      "title": "أحدث الطلبات",
+      "subtitle": "سجل المعاملات وتفاصيل الشحنات الأخيرة",
+      "viewAll": "عرض الكل ({count})",
+      "empty": "لا توجد طلبات مسجلة مؤخراً.",
+      "itemCount": "{count} عنصر",
+      "itemCountPlural": "{count} عناصر",
+      "details": "التفاصيل",
+      "columns": {
+        "order": "رقم الطلب",
+        "placedOn": "تاريخ الطلب",
+        "items": "العناصر",
+        "total": "الإجمالي",
+        "status": "الحالة",
+        "actions": "الإجراءات"
+      }
+    },
+    "accountOverview": {
+      "title": "نظرة عامة على الحساب",
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "security": "الحماية",
+      "protected": "محمي",
+      "reviews": "تقييمات المنتجات",
+      "reviewsPublished": "{count} منشورة",
+      "editSettings": "تعديل الإعدادات والتفضيلات"
+    },
+    "shortcuts": {
+      "title": "روابط سريعة",
+      "trackPackages": "تتبع الطرود والشحنات",
+      "manageAddresses": "إدارة عناوين التوصيل",
+      "viewWishlist": "عرض المنتجات المفضلة ({count})",
+      "billingMethods": "طرق الدفع والفواتير",
+      "myReviews": "تقييماتي للمنتجات"
+    }
+  },
+  "orders": {
+    "title": "طلباتك",
+    "subtitle": "تتبع شحناتك، اطلع على إيصالات الشراء، أو أعد طلب منتجاتك السابقة.",
+    "continueShopping": "متابعة التسوق",
+    "searchPlaceholder": "ابحث في طلباتك باسم المنتج أو رقم الطلب...",
+    "tabs": {
+      "all": "جميع الطلبات",
+      "delivered": "تم التوصيل",
+      "shipped": "تم الشحن",
+      "processing": "قيد المعالجة",
+      "cancelled": "ملغاة"
+    },
+    "status": {
+      "pending": "تم استلام الطلب",
+      "processing": "جاري تجهيز الشحنة",
+      "shipped": "في الطريق للتوصيل",
+      "delivered": "تم التسليم",
+      "cancelled": "ملغي"
+    },
+    "empty": {
+      "title": "لا توجد طلبات",
+      "subtitle": "لم تقم بطلب أي منتجات تطابق هذا البحث حتى الآن.",
+      "action": "تصفح المنتجات"
+    },
+    "card": {
+      "orderPlaced": "تاريخ الطلب",
+      "total": "الإجمالي",
+      "shippedTo": "الشحن إلى",
+      "orderNumber": "رقم الطلب",
+      "quantity": "الكمية: {count}",
+      "verifiedDelivery": "تسليم موثق",
+      "buyAgain": "شراء مجدداً",
+      "writeReview": "كتابة مراجعة",
+      "record": "سجل",
+      "viewDetails": "عرض التفاصيل"
+    }
+  },
+  "userReviews": {
+    "title": "مراجعاتي",
+    "subtitle": "إدارة مراجعاتك وتقييماتك للمنتجات.",
+    "status": {
+      "pending": "قيد المراجعة",
+      "approved": "معتمدة",
+      "rejected": "مرفوضة"
+    },
+    "empty": {
+      "title": "لا توجد مراجعات حتى الآن",
+      "subtitle": "لم تقم بتقييم أي منتجات حتى الآن.",
+      "action": "تصفح المنتجات"
+    },
+    "delete": "حذف",
+    "deleting": "جاري الحذف...",
+    "showMore": "عرض المزيد",
+    "showLess": "عرض أقل",
+    "toastDeleted": "تم حذف المراجعة.",
+    "toastFailed": "فشل حذف المراجعة."
+  },
+  "payment": {
+    "title": "طرق الدفع",
+    "subtitle": "إدارة خيارات الدفع والفواتير الخاصة بك.",
+    "comingSoonTitle": "الميزة قادمة قريباً",
+    "comingSoonDesc": "نعمل حالياً على تطوير هذه الميزة. ستتوفر إدارة البطاقات وطرق الدفع قريباً."
+  },
+  "orderDetails": {
+    "backToOrders": "الرجوع إلى الطلبات",
+    "orderTitle": "طلب رقم #{id}",
+    "placedOn": "تم الطلب بتاريخ {date}",
+    "status": "حالة الطلب",
+    "timeline": {
+      "placed": "تم استلام الطلب",
+      "processing": "قيد التجهيز",
+      "shipped": "تم الشحن",
+      "delivered": "تم التسليم",
+      "cancelled": "ملغي"
+    },
+    "deliveryAddress": "عنوان التوصيل",
+    "paymentSummary": "ملخص الفاتورة",
+    "subtotal": "إجمالي المنتجات",
+    "discount": "الخصم",
+    "shipping": "تكلفة الشحن",
+    "freeShipping": "مجاني",
+    "total": "المجموع الكلي",
+    "itemsTitle": "منتجات الطلب ({count})",
+    "buyAgain": "شراء مجدداً",
+    "writeReview": "كتابة مراجعة",
+    "quantity": "الكمية: {count}",
+    "unitPrice": "سعر القطعة: {price}",
+    "customer": "بيانات العميل",
+    "loading": "جاري تحميل تفاصيل الطلب...",
+    "notFound": "الطلب غير موجود",
+    "notFoundDesc": "تعذر العثور على الطلب المطلوب أو ليس لديك صلاحية الوصول إليه.",
+    "error": "فشل تحميل تفاصيل الطلب"
   }
 }

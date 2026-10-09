@@ -24,6 +24,13 @@ const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
 export const metadata: Metadata = {
   title: "PRIM - Premium Audio & Wearables",
   description: "E-Commerce store for audio gear, wearables, and accessories",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
 export function generateStaticParams() {

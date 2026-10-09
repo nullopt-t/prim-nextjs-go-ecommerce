@@ -158,44 +158,67 @@ export function HeaderActions() {
 							)}
 						</div>
 
-						{/* Primary Navigation Links */}
-						<div className="py-1 px-1.5 text-xs font-medium space-y-0.5">
-							<Link
-								href="/wishlist"
-								onClick={() => setIsMenuOpen(false)}
-								className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
-							>
-								<div className="relative">
-									<Heart className="size-4 text-muted-foreground" />
+						{/* Primary Navigation Links — Grouped by Context */}
+						<div className="py-1 px-1.5 text-xs font-medium space-y-1">
+							{/* Context Group 1: Shopping */}
+							<div>
+								<span className="block px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+									{t("groupShopping")}
+								</span>
+								<div className="space-y-0.5">
+									<Link
+										href="/wishlist"
+										onClick={() => setIsMenuOpen(false)}
+										className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
+									>
+										<Heart className="size-4 text-muted-foreground shrink-0" />
+										<span>{t("wishlist")}</span>
+										{wishlistCount > 0 && (
+											<span className="ms-auto text-[10px] px-1.5 py-0.2 bg-accent-brand/10 text-accent-brand font-semibold rounded-full">
+												{wishlistCount}
+											</span>
+										)}
+									</Link>
+
+									{isAuthenticated && (
+										<Link
+											href="/user/orders"
+											onClick={() => setIsMenuOpen(false)}
+											className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
+										>
+											<Package className="size-4 text-muted-foreground shrink-0" />
+											<span>{t("orders")}</span>
+										</Link>
+									)}
 								</div>
-								<span>{t("wishlist")}</span>
-								{wishlistCount > 0 && (
-									<span className="ms-auto text-[10px] px-1.5 py-0.2 bg-accent-brand/10 text-accent-brand font-semibold rounded-full">
-										{wishlistCount}
-									</span>
-								)}
-							</Link>
+							</div>
 
+							{/* Context Group 2: Account & Security */}
 							{isAuthenticated && (
-								<>
-									<Link
-										href="/user/orders"
-										onClick={() => setIsMenuOpen(false)}
-										className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
-									>
-										<Package className="size-4 text-muted-foreground" />
-										<span>{t("orders")}</span>
-									</Link>
+								<div className="border-t border-border/50 pt-1 mt-1">
+									<span className="block px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+										{t("groupAccount")}
+									</span>
+									<div className="space-y-0.5">
+										<Link
+											href="/user/overview"
+											onClick={() => setIsMenuOpen(false)}
+											className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
+										>
+											<User className="size-4 text-muted-foreground shrink-0" />
+											<span>{t("accountHub")}</span>
+										</Link>
 
-									<Link
-										href="/user/settings"
-										onClick={() => setIsMenuOpen(false)}
-										className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
-									>
-										<Settings className="size-4 text-muted-foreground" />
-										<span>{t("settings")}</span>
-									</Link>
-								</>
+										<Link
+											href="/user/settings"
+											onClick={() => setIsMenuOpen(false)}
+											className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
+										>
+											<Settings className="size-4 text-muted-foreground shrink-0" />
+											<span>{t("settings")}</span>
+										</Link>
+									</div>
+								</div>
 							)}
 						</div>
 

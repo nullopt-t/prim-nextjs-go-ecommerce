@@ -119,11 +119,15 @@
     },
     "header": {
       "account": "Account",
+      "accountHub": "Account Overview",
+      "addresses": "Saved Addresses",
       "allCategories": "All categories",
       "cart": "Shopping Cart",
       "clear": "Clear",
       "close": "Close",
       "dark": "Dark",
+      "groupAccount": "Account & Security",
+      "groupShopping": "Orders & Shopping",
       "home": "Home",
       "language": "Language",
       "light": "Light",
@@ -131,12 +135,14 @@
       "noNotifications": "No notifications yet",
       "notifications": "Notifications",
       "orders": "My Orders",
+      "payment": "Payment Methods",
       "popularCategories": "Popular Categories",
       "preferences": "Preferences",
+      "reviews": "My Reviews",
       "search": "Search",
       "searchPlaceholder": "Search products, brands, or categories...",
       "searchProducts": "Search products",
-      "settings": "Settings",
+      "settings": "Login & Security",
       "signIn": "Sign In",
       "signOut": "Sign Out",
       "theme": "Theme",
@@ -319,5 +325,175 @@
       "postalCode": "Official postal or ZIP code for your delivery zone",
       "country": "Destination country for customs and courier routing"
     }
+  },
+  "userNav": {
+    "overview": "Overview",
+    "orders": "Orders",
+    "addresses": "Addresses",
+    "payment": "Payment",
+    "reviews": "Reviews",
+    "store": "Store",
+    "wishlist": "Wishlist",
+    "settings": "Settings"
+  },
+  "overview": {
+    "heading": "Account Overview",
+    "title": "{greeting}, {name}",
+    "subtitle": "Real-time summary of your orders, shipments, and account credentials.",
+    "greetings": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening",
+      "default": "Welcome"
+    },
+    "defaultUser": "Customer",
+    "browseCatalog": "Browse catalog",
+    "storefront": "Storefront",
+    "metrics": {
+      "totalOrders": "Total orders",
+      "inProgress": "In progress",
+      "delivered": "Delivered",
+      "savedWishlist": "Saved wishlist",
+      "lifetime": "lifetime",
+      "activeTracking": "active tracking",
+      "completed": "completed",
+      "viewItems": "view items"
+    },
+    "shipment": {
+      "recentShipment": "Recent Shipment",
+      "purchasedItems": "Purchased items",
+      "moreItems": "+{count} more",
+      "buyAgain": "Buy again",
+      "viewOrder": "View order",
+      "order": "Order"
+    },
+    "recentOrders": {
+      "title": "Recent Orders",
+      "subtitle": "Detailed transactions and delivery records",
+      "viewAll": "View all ({count})",
+      "empty": "No recent orders recorded.",
+      "itemCount": "{count} item",
+      "itemCountPlural": "{count} items",
+      "details": "Details",
+      "columns": {
+        "order": "Order #",
+        "placedOn": "Placed On",
+        "items": "Items",
+        "total": "Total",
+        "status": "Status",
+        "actions": "Actions"
+      }
+    },
+    "accountOverview": {
+      "title": "Account Overview",
+      "name": "Name",
+      "email": "Email",
+      "security": "Security",
+      "protected": "Protected",
+      "reviews": "Product reviews",
+      "reviewsPublished": "{count} published",
+      "editSettings": "Edit settings & preferences"
+    },
+    "shortcuts": {
+      "title": "Direct Shortcuts",
+      "trackPackages": "Track Packages & Shipments",
+      "manageAddresses": "Manage Delivery Addresses",
+      "viewWishlist": "View Saved Wishlist ({count})",
+      "billingMethods": "Billing & Payment Methods",
+      "myReviews": "My Product Reviews"
+    }
+  },
+  "orders": {
+    "title": "Your Orders",
+    "subtitle": "Track packages, check receipt details, or reorder previous items.",
+    "continueShopping": "Continue shopping",
+    "searchPlaceholder": "Search your orders by product name or order number...",
+    "tabs": {
+      "all": "All Orders",
+      "delivered": "Delivered",
+      "shipped": "Shipped",
+      "processing": "Processing",
+      "cancelled": "Cancelled"
+    },
+    "status": {
+      "pending": "Order Placed",
+      "processing": "Preparing for Dispatch",
+      "shipped": "Shipped / On the way",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "empty": {
+      "title": "No orders found",
+      "subtitle": "You haven't placed any orders matching this criteria yet.",
+      "action": "Explore Products"
+    },
+    "card": {
+      "orderPlaced": "Order Placed",
+      "total": "Total",
+      "shippedTo": "Shipped To",
+      "orderNumber": "Order Number",
+      "quantity": "Quantity: {count}",
+      "verifiedDelivery": "Verified Delivery",
+      "buyAgain": "Buy again",
+      "writeReview": "Write review",
+      "record": "Record",
+      "viewDetails": "View Details"
+    }
+  },
+  "userReviews": {
+    "title": "My Reviews",
+    "subtitle": "Manage your product reviews.",
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "empty": {
+      "title": "No reviews yet",
+      "subtitle": "You haven't reviewed any products yet.",
+      "action": "Browse Products"
+    },
+    "delete": "Delete",
+    "deleting": "Deleting...",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "toastDeleted": "Review deleted.",
+    "toastFailed": "Failed to delete review."
+  },
+  "payment": {
+    "title": "Payment Methods",
+    "subtitle": "Manage your payment options and billing settings.",
+    "comingSoonTitle": "Feature Coming Soon",
+    "comingSoonDesc": "We're working on this feature. Payment method management will be available soon."
+  },
+  "orderDetails": {
+    "backToOrders": "Back to orders",
+    "orderTitle": "Order #{id}",
+    "placedOn": "Placed on {date}",
+    "status": "Order Status",
+    "timeline": {
+      "placed": "Order Placed",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "deliveryAddress": "Delivery Address",
+    "paymentSummary": "Payment Summary",
+    "subtotal": "Items Subtotal",
+    "discount": "Discount",
+    "shipping": "Shipping Fee",
+    "freeShipping": "Free",
+    "total": "Grand Total",
+    "itemsTitle": "Order Items ({count})",
+    "buyAgain": "Buy again",
+    "writeReview": "Write review",
+    "quantity": "Qty: {count}",
+    "unitPrice": "Unit Price: {price}",
+    "customer": "Customer Contact",
+    "loading": "Loading order details...",
+    "notFound": "Order not found",
+    "notFoundDesc": "The requested order could not be located or you don't have access to it.",
+    "error": "Failed to load order details"
   }
 }

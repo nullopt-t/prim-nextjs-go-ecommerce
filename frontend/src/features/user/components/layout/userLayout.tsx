@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useAuthContext } from "@/context/AuthContext";
 import { useRouter, usePathname } from "@/i18n/navigation";
-import UserSideBar from "@/features/user/components/ui/sideBar";
+import UserTopTabs from "@/features/user/components/ui/userTopTabs";
 import MobileNav from "@/features/user/components/ui/mobileNav";
 import { Loader2 } from "lucide-react";
 
@@ -34,12 +34,9 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <>
-      <div className="w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-8">
-        {/* Desktop: sidebar + content */}
-        <div className="flex flex-row gap-6">
-          <UserSideBar />
-          <main className="flex-1 min-w-0">{children}</main>
-        </div>
+      <div className="w-full px-4 sm:px-6 lg:px-10 py-5 sm:py-8 pb-24 md:pb-12">
+        <UserTopTabs />
+        <main className="w-full">{children}</main>
       </div>
       {/* Fixed bottom nav — mobile only */}
       <MobileNav />

@@ -1,16 +1,19 @@
 "use client";
 
 import { usePathname, Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { Blocks, Package, Heart, Store } from "lucide-react";
+
 const mobileTabs = [
-  { id: "store", icon: Store, label: "Store", path: "/" },
-  { id: "overview", icon: Blocks, label: "Overview", path: "/user/overview" },
-  { id: "orders", icon: Package, label: "Orders", path: "/user/orders" },
-  { id: "wishlist", icon: Heart, label: "Wishlist", path: "/user/wishlist" },
-];
+  { id: "store", icon: Store, key: "store", path: "/" },
+  { id: "overview", icon: Blocks, key: "overview", path: "/user/overview" },
+  { id: "orders", icon: Package, key: "orders", path: "/user/orders" },
+  { id: "wishlist", icon: Heart, key: "wishlist", path: "/user/wishlist" },
+] as const;
 
 export default function MobileNav() {
   const pathname = usePathname();
+  const t = useTranslations("userNav");
 
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-card/95 backdrop-blur-sm border-t border-border pb-safe">
@@ -28,7 +31,7 @@ export default function MobileNav() {
               }`}
             >
               <item.icon className={`size-5 ${isActive ? "text-accent-brand" : ""}`} />
-              <span className="truncate leading-none">{item.label}</span>
+              <span className="truncate leading-none">{t(item.key)}</span>
             </Link>
           );
         })}

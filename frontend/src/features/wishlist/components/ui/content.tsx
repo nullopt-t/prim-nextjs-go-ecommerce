@@ -9,7 +9,6 @@ import { useAuthContext } from "@/context/AuthContext";
 import { useCartContext } from "@/context/CartContext";
 import { toast } from "sonner";
 import { normalizeProduct } from "@/context/CatalogContext";
-import { Heart, Trash2, ArrowRight, ShoppingBag } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 
 export default function WishlistContent() {
@@ -68,10 +67,9 @@ export default function WishlistContent() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => clearWishlist()}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+              className="px-3 py-2 text-xs font-medium text-destructive hover:underline transition-colors"
             >
-              <Trash2 className="size-4" />
-              <span>{locale === "ar" ? "مسح الكل" : "Clear All"}</span>
+              {locale === "ar" ? "مسح الكل" : "Clear All"}
             </button>
             <div className="w-full sm:w-44 h-10 bg-primary text-primary-foreground hover:opacity-90 font-medium rounded-md">
               <CustomButton text={t("addToCart")} onClick={handleAddAllToCart} />
@@ -87,14 +85,11 @@ export default function WishlistContent() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-4 text-center border border-dashed border-border rounded-2xl bg-card/50">
-          <div className="size-16 rounded-full bg-accent-brand/10 flex items-center justify-center text-accent-brand mb-4">
-            <Heart className="size-8 stroke-[1.5]" />
-          </div>
-          <h3 className="text-lg font-semibold text-foreground mb-1">
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center border border-dashed border-border rounded-lg bg-card">
+          <h3 className="text-base font-semibold text-foreground mb-1">
             {locale === "ar" ? "قائمة رغباتك فارغة" : "Your wishlist is empty"}
           </h3>
-          <p className="text-sm text-muted-foreground max-w-sm mb-6">
+          <p className="text-sm text-muted-foreground max-w-sm mb-5">
             {!isAuthenticated
               ? locale === "ar"
                 ? "قم بتسجيل الدخول لحفظ منتجاتك المفضلة ومزامنتها عبر جميع أجهزتك."
@@ -105,10 +100,9 @@ export default function WishlistContent() {
           </p>
           <Link
             href={!isAuthenticated ? "/auth" : "/products"}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-brand text-white text-sm font-medium hover:opacity-90 transition-opacity"
+            className="inline-flex items-center px-4 py-2 rounded-md bg-accent-brand text-white text-sm font-medium hover:opacity-90 transition-opacity"
           >
             <span>{!isAuthenticated ? (locale === "ar" ? "تسجيل الدخول" : "Sign In") : (locale === "ar" ? "تصفح المنتجات" : "Explore Products")}</span>
-            <ArrowRight className="size-4 rtl:rotate-180" />
           </Link>
         </div>
       ) : (

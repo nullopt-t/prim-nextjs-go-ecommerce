@@ -981,7 +981,23 @@ for p_idx, prod in enumerate(products):
         orders_data.append((o_id, u_id, u_email, shipping_addr, shipping_addr, 'delivered', None, 0, v_price, 'USD'))
         
         # Order Item
-        p_snap = {"title": p_title, "sku": v_sku, "price": v_price}
+        v_thumb_obj_id = target_var[9]
+        # Find object_key from storage_objects for this thumb_id
+        thumb_key = None
+        for so in storage_objects:
+            if so[0] == v_thumb_obj_id:
+                thumb_key = so[2]
+                break
+        thumb_url = f"http://localhost:9000/catalog/{thumb_key}" if thumb_key else f"http://localhost:9000/catalog/products/{prod[3]}.jpg"
+        p_snap = {
+            "title": p_title,
+            "sku": v_sku,
+            "price": v_price,
+            "image": thumb_url,
+            "thumbnailUrl": thumb_url,
+            "slug": prod[3],
+            "productId": p_id,
+        }
         order_items_data.append((oi_id, o_id, v_id, 1, v_price, p_snap))
         
         # Payment
