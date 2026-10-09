@@ -5,7 +5,7 @@ export function Faqs() {
   const t = useTranslations("common.footer");
   return (
     <MainLayout>
-      <div className="max-w-4xl mx-auto flex flex-col gap-6">
+      <div className="w-full flex flex-col gap-6 py-4 sm:py-6">
         <h1 className="text-3xl md:text-4xl font-bold text-foreground">
           {t("faqs", { defaultMessage: "Frequently Asked Questions" })}
         </h1>

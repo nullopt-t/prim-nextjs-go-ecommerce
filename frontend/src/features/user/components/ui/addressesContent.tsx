@@ -188,7 +188,7 @@ export default function AddressesContent() {
 
       {/* Loading Skeleton */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-56 rounded-2xl bg-secondary/50 animate-pulse border border-border/60" />
           ))}
@@ -215,7 +215,7 @@ export default function AddressesContent() {
         </div>
       ) : (
         /* Address Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
           {/* Add New Address Card Placeholder (Amazon style) */}
           <div
             onClick={openAddModal}

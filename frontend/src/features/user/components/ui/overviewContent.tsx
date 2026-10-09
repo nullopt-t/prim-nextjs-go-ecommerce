@@ -146,7 +146,7 @@ const tbHeaders = ["Order #", "Placed On", "Items", "Total", "Status", "Actions"
 // ── Skeletons ──────────────────────────────────────────────────────────────────
 function HubSkeleton() {
   return (
-    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="animate-pulse bg-secondary/60 rounded-xl h-28" />
       ))}
@@ -397,7 +397,7 @@ export default function OverviewContent() {
         {loading ? (
           <HubSkeleton />
         ) : (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
             {amazonHubCards.map((card) => (
               <Link
                 key={card.id}

@@ -84,7 +84,7 @@ export function PortalManager() {
       </header>
 
       {/* Hero Section */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-12 flex flex-col justify-center">
+      <main className="flex-1 w-full px-3 sm:px-6 lg:px-8 py-12 flex flex-col justify-center">
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-brand/10 text-accent-brand text-xs font-semibold border border-accent-brand/20 mb-1">
             <Layers className="size-3.5" />

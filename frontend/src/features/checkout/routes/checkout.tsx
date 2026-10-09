@@ -300,7 +300,7 @@ export function Checkout() {
 	];
 
 	return (
-		<div className="max-w-6xl mx-auto py-8 sm:py-12 px-4">
+		<div className="w-full py-4 sm:py-8">
 				
 				{/* Step Progress Bar */}
 				<div className="mb-10">

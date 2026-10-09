@@ -7,7 +7,7 @@ export default function CategoriesLayout() {
   const t = useTranslations("common");
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8">
+    <div className="w-full py-4 sm:py-8 flex flex-col gap-8">
       <div className="flex flex-col gap-2 mb-4">
         <h1 className="text-3xl md:text-4xl font-bold text-foreground">
           {t("nav.categories", { defaultMessage: "Categories" })}

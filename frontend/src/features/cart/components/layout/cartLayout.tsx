@@ -11,7 +11,7 @@ export default function CartLayout() {
   const hasItems = !loading && cartItems && cartItems.length > 0;
 
   return (
-    <div className="max-w-5xl mx-auto flex flex-col gap-8 py-6">
+    <div className="w-full flex flex-col gap-8 py-4 sm:py-6">
       <CartTitle />
       {hasItems ? (
         <div className="flex flex-col lg:flex-row gap-8 items-start">

@@ -13,7 +13,7 @@ export function AdminSettings() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Store Configuration</h1>
