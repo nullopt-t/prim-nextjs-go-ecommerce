@@ -242,34 +242,71 @@
     "writeReview": "Write a customer review"
   },
   "settings": {
-    "settings": {
-      "dangerZone": "Danger Zone",
+    "title": "Account Settings",
+    "subtitle": "Manage your personal information, preferences, and active sessions.",
+    "personalInfo": {
+      "title": "Personal Information",
+      "subtitle": "Your registered account identity and contact details.",
+      "notice": "Profile updates are currently disabled. Contact support to update details.",
+      "displayName": "Display Name",
+      "email": "Email Address",
+      "emailNotice": "Email is tied to your account identity and cannot be edited directly.",
+      "phone": "Phone Number",
+      "notSet": "Not set",
+      "phoneNotice": "Contact customer support to update your verified phone number.",
+      "saveChanges": "Save Changes"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "subtitle": "Customize your interface language, theme, and notifications.",
+      "language": "Interface Language",
+      "languageDesc": "Switch between English and Arabic",
       "darkMode": "Dark Mode",
+      "darkModeDesc": "Switch between light and dark theme",
+      "notifications": "Email Notifications",
+      "notificationsDesc": "Receive order status updates and curated product news"
+    },
+    "sessions": {
+      "title": "Active Sessions",
+      "unknownDevice": "Unknown device",
+      "current": "Current device",
+      "remove": "Revoke Session",
+      "empty": "No other active sessions detected.",
+      "error": "Failed to load active sessions.",
+      "removedSuccess": "Session revoked successfully."
+    },
+    "danger": {
+      "title": "Danger Zone",
+      "subtitle": "Irreversible and sensitive account actions.",
+      "signOutAll": "Sign Out Everywhere",
+      "signOutAllDesc": "Immediately invalidate all active browser sessions across all devices.",
+      "signOutAllButton": "Sign Out All",
       "deleteAccount": "Delete Account",
-      "description": "Manage your account preferences.",
-      "email": "Email",
-      "emailNotifications": "Email notifications",
-      "firstName": "First Name",
-      "language": "Language",
-      "lastName": "Last Name",
-      "logout": "Logout",
-      "personalInformation": "Personal Information",
-      "phone": "Phone",
-      "placeholders": {
-        "email": "Enter your email",
-        "firstName": "Enter your first name",
-        "lastName": "Enter your last name",
-        "phone": "Enter your phone number"
-      },
-      "preferences": "Preferences",
-      "saveChanges": "Save Changes",
-      "title": "Settings"
+      "deleteAccountDesc": "Permanently erase your account and all associated order history. This cannot be undone.",
+      "deleteAccountButton": "Delete Account",
+      "deleteNotice": "Self-service account deletion is not available. Please reach out to support."
     }
   },
   "wishlist": {
-    "addToCart": "Add all to Cart",
-    "savedItems": "{count} saved items",
-    "title": "Wishlist"
+    "title": "Your Wishlist",
+    "savedItems": "{count, plural, =0 {No items saved} =1 {1 saved item} other {# saved items}}",
+    "clearAll": "Clear All",
+    "clearConfirm": "Are you sure you want to remove all saved items?",
+    "addAllToCart": "Add all to Cart",
+    "addingAll": "Adding...",
+    "continueShopping": "Continue Shopping",
+    "empty": {
+      "title": "Your wishlist is empty",
+      "guestSubtitle": "Sign in to save your favorite products and sync them across all your devices.",
+      "userSubtitle": "You haven't saved any items yet. Explore the store and click the heart icon to save items for later.",
+      "signIn": "Sign In",
+      "browseCatalog": "Explore Products"
+    },
+    "toast": {
+      "addedAll": "Added {count} items to your cart",
+      "cleared": "Wishlist cleared successfully",
+      "itemRemoved": "\"{name}\" removed from wishlist"
+    }
   },
   "addresses": {
     "title": "Addresses",
@@ -281,30 +318,48 @@
     "setAsDefault": "Set as default",
     "remove": "Remove",
     "edit": "Edit",
+    "actions": "Actions",
     "cancel": "Cancel",
     "saveChanges": "Save Changes",
     "submitAdd": "Add Address",
     "noAddresses": "No addresses saved yet",
     "noAddressesDesc": "Add your home or work address for faster, one-click checkout.",
     "confirmDelete": "Are you sure you want to remove this address?",
+    "deleteDialogTitle": "Delete Delivery Address",
+    "deleteDialogDesc": "Are you sure you want to remove this address? You won't be able to select it for future checkouts.",
+    "confirmDeleteAction": "Yes, Delete Address",
+    "validationError": "Please fill in all mandatory fields (Name, Street address, City, Country)",
+    "failedToUpdate": "Failed to update address",
+    "failedToAdd": "Failed to add address",
+    "failedToSetDefault": "Failed to set default address",
+    "failedToDelete": "Failed to delete address",
     "addedSuccess": "Address added successfully",
     "updatedSuccess": "Address updated successfully",
     "defaultSuccess": "Default delivery address updated",
     "removedSuccess": "Address removed",
+    "phoneCopied": "Phone number copied to clipboard",
     "labels": {
       "addressLabel": "Address Label",
       "home": "Home",
       "office": "Office",
       "other": "Other",
       "fullName": "Recipient Full Name *",
-      "phone": "Contact Phone Number",
+      "recipient": "Recipient",
+      "street": "Address",
+      "phone": "Phone",
+      "defaultShipping": "Default Shipping Address",
       "line1": "Street Address & Building *",
       "line2": "Apartment, Floor, Landmark (Optional)",
       "city": "City *",
+      "cityLabel": "City",
       "state": "State / Region",
       "postalCode": "Postal Code",
       "country": "Country *",
-      "makeDefault": "Make this my default shipping address"
+      "countryLabel": "Country",
+      "makeDefault": "Make this my default shipping address",
+      "fillMyInfo": "Fill with my account details",
+      "isGift": "This is a gift / send to someone else",
+      "isGiftDesc": "Courier will deliver to this recipient instead of you"
     },
     "placeholders": {
       "fullName": "e.g. John Doe",

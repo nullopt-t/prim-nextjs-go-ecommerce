@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Toggle } from "@/components/ui/Toggle";
 import { useTheme } from "@/context/theme";
 import { useRouter, usePathname } from "@/i18n/navigation";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+
 interface PreferenceRowProps {
   label: string;
   description?: string;
@@ -13,11 +14,11 @@ interface PreferenceRowProps {
 
 function PreferenceRow({ label, description, right }: PreferenceRowProps) {
   return (
-    <div className="flex items-center justify-between py-3.5 border-b border-border last:border-0 gap-4">
+    <div className="flex items-center justify-between py-3.5 border-b border-border/70 last:border-0 gap-4">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-xs sm:text-sm font-medium text-foreground">{label}</p>
         {description && (
-          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+          <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">{description}</p>
         )}
       </div>
       <div className="shrink-0">{right}</div>
@@ -31,6 +32,7 @@ export default function Preferences() {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
+  const t = useTranslations("settings.preferences");
 
   const toggleLang = () => {
     const nextLocale = locale === "en" ? "ar" : "en";
@@ -38,16 +40,16 @@ export default function Preferences() {
   };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col max-w-2xl">
       {/* Language */}
       <PreferenceRow
-        label="Language"
-        description="Switch between English and Arabic"
+        label={t("language")}
+        description={t("languageDesc")}
         right={
           <button
             type="button"
             onClick={toggleLang}
-            className="flex items-center overflow-hidden rounded-full border border-border text-xs font-medium h-7"
+            className="flex items-center overflow-hidden rounded-full border border-border text-xs font-semibold h-7 shadow-2xs"
           >
             <span
               className={`px-3 py-1 transition-colors ${
@@ -73,24 +75,24 @@ export default function Preferences() {
 
       {/* Dark mode */}
       <PreferenceRow
-        label="Dark Mode"
-        description="Switch between light and dark theme"
+        label={t("darkMode")}
+        description={t("darkModeDesc")}
         right={
           <Toggle
             isEnabled={theme === "dark"}
-            onChange={() => toggle()}
+            onChange={toggle}
           />
         }
       />
 
       {/* Email notifications */}
       <PreferenceRow
-        label="Email Notifications"
-        description="Receive order updates via email"
+        label={t("notifications")}
+        description={t("notificationsDesc")}
         right={
           <Toggle
             isEnabled={emailNotification}
-            onChange={(e) => setEmailNotification(e.target.checked)}
+            onChange={() => setEmailNotification(!emailNotification)}
           />
         }
       />

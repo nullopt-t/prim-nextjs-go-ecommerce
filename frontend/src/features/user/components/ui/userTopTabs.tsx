@@ -9,6 +9,7 @@ export const accountTabKeys = [
   { id: "address", key: "addresses", path: "/user/address" },
   { id: "payment", key: "payment", path: "/user/payment" },
   { id: "reviews", key: "reviews", path: "/user/reviews" },
+  { id: "settings", key: "settings", path: "/user/settings" },
 ] as const;
 
 export default function UserTopTabs() {

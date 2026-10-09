@@ -7,20 +7,7 @@ import { LazyImage } from "@/components/ui/lazyImage";
 import { useTranslations, useLocale } from "next-intl";
 import {
   Package,
-  Store,
   Search,
-  Truck,
-  RotateCcw,
-  Star,
-  CheckCircle2,
-  Clock,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  Receipt,
-  Eye,
-  SlidersHorizontal,
-  ExternalLink,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -94,32 +81,27 @@ function resolveItemImage(snap: ParsedSnapshot): string {
 
 const STATUS_CONFIG: Record<
   Order["status"],
-  { label: string; badgeClass: string; icon: typeof CheckCircle2 }
+  { label: string; badgeClass: string }
 > = {
   pending: {
     label: "Order Placed",
     badgeClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
-    icon: Clock,
   },
   processing: {
     label: "Preparing for Dispatch",
     badgeClass: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20",
-    icon: Package,
   },
   shipped: {
     label: "Shipped / On the way",
     badgeClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20",
-    icon: Truck,
   },
   delivered: {
     label: "Delivered",
     badgeClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
-    icon: CheckCircle2,
   },
   cancelled: {
     label: "Cancelled",
     badgeClass: "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20",
-    icon: RotateCcw,
   },
 };
 
@@ -357,21 +339,9 @@ export default function OrdersContent() {
         </Link>
       </div>
 
-      {/* ── Filter & Search Toolbar (Amazon style) ── */}
-      <div className="bg-card border border-border rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        {/* Search by order number or product name */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground rtl:left-auto rtl:right-3.5" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="w-full pl-10 pr-4 rtl:pl-4 rtl:pr-10 py-2 rounded-xl bg-secondary/40 border border-border text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30 transition-all"
-          />
-        </div>
-
-        {/* Status filter buttons */}
+      {/* ── Seamless Filter & Search Strip (No Boxed Card) ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border/60">
+        {/* Status filter tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
           {[
             { id: "all", label: t("tabs.all") },
@@ -386,16 +356,28 @@ export default function OrdersContent() {
                 key={tab.id}
                 type="button"
                 onClick={() => setSelectedStatus(tab.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs transition-colors shrink-0 cursor-pointer ${
                   active
-                    ? "bg-accent-brand text-accent-brand-foreground shadow-xs font-semibold"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    ? "bg-foreground text-background font-semibold shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/70"
                 }`}
               >
                 {tab.label}
               </button>
             );
           })}
+        </div>
+
+        {/* Compact search input */}
+        <div className="relative w-full md:w-72 shrink-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none rtl:left-auto rtl:right-3" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            className="w-full pl-8.5 pr-3 rtl:pl-3 rtl:pr-8.5 py-1.5 rounded-lg bg-secondary/40 border border-border/80 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40 focus:ring-1 focus:ring-foreground/20 transition-all"
+          />
         </div>
       </div>
 
