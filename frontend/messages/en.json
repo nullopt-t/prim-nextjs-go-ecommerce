@@ -1,244 +1,268 @@
 {
   "about": {
+    "belief": {
+      "description": "We started PRIM because we were tired of shopping experiences that felt complicated, expensive, and impersonal. We believed there was a better way — a way to bring together thousands of trusted sellers, millions of products, and a platform that actually felt good to use. Since 2020, we've grown from a small team of five to a global marketplace serving customers in over 190 countries. But our core belief hasn't changed: shopping should be simple, honest, and built for people — not algorithms.",
+      "title": "What We Believe"
+    },
+    "developers": {
+      "backend": "Backend Developer",
+      "frontend": "Frontend Developer",
+      "title": "Developers"
+    },
     "hero": {
       "badge": "Our Story",
-      "title": "Built for everyone, everywhere.",
-      "description": "PRIM was founded with a single belief: great products should be accessible to everyone, delivered with care."
-    },
-    "belief": {
-      "title": "What We Believe",
-      "description": "We started PRIM because we were tired of shopping experiences that felt complicated, expensive, and impersonal. We believed there was a better way — a way to bring together thousands of trusted sellers, millions of products, and a platform that actually felt good to use. Since 2020, we've grown from a small team of five to a global marketplace serving customers in over 190 countries. But our core belief hasn't changed: shopping should be simple, honest, and built for people — not algorithms."
+      "description": "PRIM was founded with a single belief: great products should be accessible to everyone, delivered with care.",
+      "title": "Built for everyone, everywhere."
     },
     "values": {
       "quality": {
-        "title": "Quality",
-        "description": "Every product is vetted for excellence before it reaches you."
-      },
-      "speed": {
-        "title": "Speed",
-        "description": "Same-day dispatch and next-day delivery across the region."
-      },
-      "trust": {
-        "title": "Trust",
-        "description": "Transparent pricing, honest reviews, and no hidden fees."
+        "description": "Every product is vetted for excellence before it reaches you.",
+        "title": "Quality"
       },
       "simplicity": {
-        "title": "Simplicity",
-        "description": "Shopping should feel effortless — we obsess over the details."
+        "description": "Shopping should feel effortless — we obsess over the details.",
+        "title": "Simplicity"
+      },
+      "speed": {
+        "description": "Same-day dispatch and next-day delivery across the region.",
+        "title": "Speed"
+      },
+      "trust": {
+        "description": "Transparent pricing, honest reviews, and no hidden fees.",
+        "title": "Trust"
       }
-    },
-    "developers": {
-      "title": "Developers",
-      "frontend": "Frontend Developer",
-      "backend": "Backend Developer"
     }
   },
   "auth": {
     "sign": {
-      "title": "Get Started",
-      "subtitle": "Enter your email to sign in or create a new account.",
       "emailLabel": "Email Address",
       "emailPlaceholder": "name@example.com",
-      "signButton": "Continue"
+      "signButton": "Continue",
+      "subtitle": "Enter your email to sign in or create a new account.",
+      "title": "Get Started"
     },
     "verify": {
-      "title": "Verify OTP Code",
-      "subtitle": "We sent a 6-digit verification code to your email. Enter it below to proceed.",
+      "changeEmail": "Change email",
       "codeLabel": "Verification Code",
       "codePlaceholder": "Enter 6-digit code",
-      "verifyButton": "Verify & Continue",
       "resend": "Resend Code",
       "resendIn": "Resend code in {seconds}s",
-      "changeEmail": "Change email",
-      "sentTo": "Code sent to:"
+      "sentTo": "Code sent to:",
+      "subtitle": "We sent a 6-digit verification code to your email. Enter it below to proceed.",
+      "title": "Verify OTP Code",
+      "verifyButton": "Verify & Continue"
     }
   },
   "cart": {
     "cart": {
-      "title": "Your Cart",
       "item": "{count} item",
-      "items": "{count} items"
+      "items": "{count} items",
+      "title": "Your Cart"
+    },
+    "coupon": {
+      "apply": "Apply",
+      "available": "Available codes:",
+      "placeholder": "Enter your coupon"
+    },
+    "empty": {
+      "action": "Start Shopping",
+      "description": "Looks like you haven't added anything to your cart yet. Discover trending products and premium gear.",
+      "title": "Your cart is empty"
+    },
+    "orderSummary": {
+      "checkout": "Proceed to Checkout",
+      "free": "Free",
+      "shipping": "Shipping",
+      "subtotal": "Subtotal",
+      "tax": "Tax (8%)",
+      "title": "Order Summary",
+      "total": "Total"
     },
     "product": {
       "remove": "Remove"
-    },
-    "coupon": {
-      "placeholder": "Enter your coupon",
-      "apply": "Apply",
-      "available": "Available codes:"
-    },
-    "orderSummary": {
-      "title": "Order Summary",
-      "subtotal": "Subtotal",
-      "shipping": "Shipping",
-      "free": "Free",
-      "tax": "Tax (8%)",
-      "total": "Total",
-      "checkout": "Proceed to Checkout"
-    },
-    "empty": {
-      "title": "Your cart is empty",
-      "description": "Looks like you haven't added anything to your cart yet. Discover trending products and premium gear.",
-      "action": "Start Shopping"
     }
   },
   "common": {
     "currency": "$",
+    "filters": {
+      "allCategories": "All Categories",
+      "andUp": "& up",
+      "apply": "Apply Filters",
+      "availability": "Availability",
+      "brands": "Brands",
+      "category": "Category",
+      "clearAll": "Clear all",
+      "discount": "Discount",
+      "discountMore": "{percent}% or more",
+      "filterAndRefine": "Filter & Refine",
+      "inStockOnly": "In stock only",
+      "ratings": "Ratings",
+      "title": "Filters"
+    },
+    "footer": {
+      "aboutUs": "About Us",
+      "blog": "Blog",
+      "careers": "Careers",
+      "company": "Company",
+      "contactUs": "Contact Us",
+      "copyright": "© {year} PRIM. All rights reserved.",
+      "faqs": "FAQS",
+      "footerDescription": "Your one-stop destination for everything you need. Quality products, fast delivery, and exceptional service since 2020.",
+      "press": "Press",
+      "returns": "Returns",
+      "shipping": "Shipping",
+      "shop": "Shop",
+      "sizeGuide": "size guide",
+      "support": "Support",
+      "sustainability": "Sustainability",
+      "trackOrders": "Track Orders"
+    },
     "header": {
+      "account": "Account",
+      "allCategories": "All categories",
+      "cart": "Shopping Cart",
+      "clear": "Clear",
+      "close": "Close",
+      "dark": "Dark",
+      "home": "Home",
+      "language": "Language",
+      "light": "Light",
+      "markAllRead": "Mark all as read",
+      "noNotifications": "No notifications yet",
+      "notifications": "Notifications",
+      "orders": "My Orders",
+      "popularCategories": "Popular Categories",
+      "preferences": "Preferences",
       "search": "Search",
       "searchPlaceholder": "Search products, brands, or categories...",
       "searchProducts": "Search products",
-      "popularCategories": "Popular Categories",
-      "close": "Close",
-      "clear": "Clear",
-      "home": "Home",
-      "allCategories": "All categories",
-      "account": "Account",
-      "wishlist": "Wishlist",
-      "notifications": "Notifications",
-      "noNotifications": "No notifications yet",
-      "markAllRead": "Mark all as read",
-      "cart": "Shopping Cart",
-      "orders": "My Orders",
       "settings": "Settings",
       "signIn": "Sign In",
       "signOut": "Sign Out",
-      "preferences": "Preferences",
-      "language": "Language",
       "theme": "Theme",
-      "dark": "Dark",
-      "light": "Light"
-    },
-    "filters": {
-      "title": "Filters",
-      "clearAll": "Clear all",
-      "filterAndRefine": "Filter & Refine",
-      "apply": "Apply Filters",
-      "category": "Category",
-      "allCategories": "All Categories",
-      "brands": "Brands",
-      "ratings": "Ratings",
-      "andUp": "& up",
-      "availability": "Availability",
-      "inStockOnly": "In stock only",
-      "discount": "Discount",
-      "discountMore": "{percent}% or more"
-    },
-    "footer": {
-      "shop": "Shop",
-      "support": "Support",
-      "company": "Company",
-      "contactUs": "Contact Us",
-      "faqs": "FAQS",
-      "shipping": "Shipping",
-      "returns": "Returns",
-      "trackOrders": "Track Orders",
-      "sizeGuide": "size guide",
-      "aboutUs": "About Us",
-      "careers": "Careers",
-      "press": "Press",
-      "sustainability": "Sustainability",
-      "blog": "Blog",
-      "copyright": "© {year} PRIM. All rights reserved.",
-      "footerDescription": "Your one-stop destination for everything you need. Quality products, fast delivery, and exceptional service since 2020."
+      "wishlist": "Wishlist"
     }
   },
   "home": {
-    "hero": {
-      "badge": "New Season — {year}",
-      "title": "Everything you need, ",
-      "delivered": "delivered.",
-      "description": "Discover thousands of products from trusted brands, all in one place. Fast shipping, easy returns, and unbeatable prices.",
-      "shopNow": "Shop now",
-      "viewDeals": "View deals",
-      "slides": {
-        "slide1": {
-          "tag": "Featured Collection",
-          "title": "Next-Gen Audio & Gear",
-          "highlight": "Pure Sound.",
-          "desc": "Immerse yourself with premium acoustic performance and noise-canceling headphones crafted for daily focus.",
-          "cta": "Explore Audio"
-        },
-        "slide2": {
-          "tag": "Special Offers",
-          "title": "Smart Tech Essentials",
-          "highlight": "Up to 40% Off.",
-          "desc": "Upgrade your desk setup with ultra-slim mechanical keyboards, ergonomic monitors, and precision accessories.",
-          "cta": "Shop Tech Deals"
-        },
-        "slide3": {
-          "tag": "New Arrivals",
-          "title": "Minimalist Lifestyle",
-          "highlight": "Designed to Last.",
-          "desc": "Timeless watches, handcrafted leather bags, and sleek everyday carry items built with modern utility.",
-          "cta": "Discover More"
-        }
-      }
-    },
     "categories": {
-      "title": "Categories",
-      "seeAll": "See all"
+      "seeAll": "See all",
+      "title": "Categories"
     },
     "featuredProducts": {
       "title": "Featured Products"
     },
-    "recentlyViewed": {
-      "title": "Recently Viewed"
+    "hero": {
+      "badge": "New Season — {year}",
+      "delivered": "delivered.",
+      "description": "Discover thousands of products from trusted brands, all in one place. Fast shipping, easy returns, and unbeatable prices.",
+      "shopNow": "Shop now",
+      "slides": {
+        "slide1": {
+          "cta": "Explore Audio",
+          "desc": "Immerse yourself with premium acoustic performance and noise-canceling headphones crafted for daily focus.",
+          "highlight": "Pure Sound.",
+          "tag": "Featured Collection",
+          "title": "Next-Gen Audio & Gear"
+        },
+        "slide2": {
+          "cta": "Shop Tech Deals",
+          "desc": "Upgrade your desk setup with ultra-slim mechanical keyboards, ergonomic monitors, and precision accessories.",
+          "highlight": "Up to 40% Off.",
+          "tag": "Special Offers",
+          "title": "Smart Tech Essentials"
+        },
+        "slide3": {
+          "cta": "Discover More",
+          "desc": "Timeless watches, handcrafted leather bags, and sleek everyday carry items built with modern utility.",
+          "highlight": "Designed to Last.",
+          "tag": "New Arrivals",
+          "title": "Minimalist Lifestyle"
+        }
+      },
+      "title": "Everything you need, ",
+      "viewDeals": "View deals"
     },
     "product": {
       "addToCart": "Add to cart"
+    },
+    "recentlyViewed": {
+      "title": "Recently Viewed"
     }
   },
   "notFound": {
-    "title": "Page Not Found",
+    "button": "Back to Home",
+    "products": "Browse Products",
     "subtitle": "The page you're looking for doesn't exist or may have been moved.",
-    "home": "Back to Home",
-    "products": "Browse Products"
+    "title": "Page Not Found"
   },
   "reviews": {
+    "addHeadline": "Add a headline",
+    "addWrittenReview": "Add a written review",
+    "beTheFirst": "Be the first to share your experience with this product.",
+    "cancel": "Cancel",
+    "contentPlaceholder": "What did you like or dislike? What did you use this product for?",
+    "customerReviews": "Customer Reviews",
+    "errors": {
+      "alreadyExists": "A review has already been submitted for this purchase.",
+      "notEligible": "You can only review products you have purchased and received (delivered).",
+      "unauthorized": "Please log in to submit a review."
+    },
+    "globalRatings": "{count} global ratings",
+    "headlinePlaceholder": "What's most important to know?",
+    "helpful": "Helpful",
+    "missingProduct": "Product information is missing. Please refresh and try again.",
+    "noReviewsYet": "No reviews yet",
+    "outOfFive": "{stars} out of 5",
+    "peopleFoundHelpful": "{count} people found this helpful",
+    "rating": "Rating",
+    "reviewThisProduct": "Review this product",
     "reviews": {
-      "title": "Your Reviews",
-      "description": "Reviews you've written about your purchases.",
       "commented": "Commented",
+      "delete": "Delete",
+      "description": "Reviews you've written about your purchases.",
       "editReview": "Edit Review",
-      "delete": "Delete"
-    }
+      "title": "Your Reviews"
+    },
+    "shareThoughts": "Share your thoughts with other customers",
+    "showLess": "Show less",
+    "showMore": "Show more",
+    "starLabel": "{star} star",
+    "submit": "Submit",
+    "submitFailed": "Failed to submit review.",
+    "submitPending": "Review submitted! It will appear once approved by moderation.",
+    "submitSuccess": "Review submitted successfully!",
+    "submitting": "Submitting...",
+    "verifiedPurchase": "Verified Purchase",
+    "writeReview": "Write a customer review"
   },
   "settings": {
     "settings": {
-      "title": "Settings",
+      "dangerZone": "Danger Zone",
+      "darkMode": "Dark Mode",
+      "deleteAccount": "Delete Account",
       "description": "Manage your account preferences.",
-      "personalInformation": "Personal Information",
-      "firstName": "First Name",
-      "lastName": "Last Name",
       "email": "Email",
+      "emailNotifications": "Email notifications",
+      "firstName": "First Name",
+      "language": "Language",
+      "lastName": "Last Name",
+      "logout": "Logout",
+      "personalInformation": "Personal Information",
       "phone": "Phone",
       "placeholders": {
+        "email": "Enter your email",
         "firstName": "Enter your first name",
         "lastName": "Enter your last name",
-        "email": "Enter your email",
         "phone": "Enter your phone number"
       },
-      "saveChanges": "Save Changes",
       "preferences": "Preferences",
-      "language": "Language",
-      "darkMode": "Dark Mode",
-      "emailNotifications": "Email notifications",
-      "dangerZone": "Danger Zone",
-      "logout": "Logout",
-      "deleteAccount": "Delete Account"
+      "saveChanges": "Save Changes",
+      "title": "Settings"
     }
   },
   "wishlist": {
-    "title": "Wishlist",
+    "addToCart": "Add all to Cart",
     "savedItems": "{count} saved items",
-    "addToCart": "Add all to Cart"
-  },
-  "notFound": {
-    "title": "Page Not Found",
-    "subtitle": "The page you're looking for doesn't exist or may have been moved.",
-    "button": "Back to Home",
-    "home": "Back to Home",
-    "products": "Browse Products"
+    "title": "Wishlist"
   }
 }

@@ -23,12 +23,16 @@ func NewNotificationRouter(
 
 func (r *NotificationRouter) MapRoutes(v1 *gin.RouterGroup) {
 	group := v1.Group("/user/notifications")
-	group.Use(middleware.Authenticate(r.secrets, false))
 	{
-		group.GET("", r.handler.GetMyNotifications)
-		group.GET("/unread-count", r.handler.GetUnreadCount)
-		group.PATCH("/:id/read", r.handler.MarkAsRead)
-		group.PATCH("/mark-all-read", r.handler.MarkAllAsRead)
-		group.DELETE("/:id", r.handler.DeleteNotification)
+		group.GET("/unread-count", middleware.Authenticate(r.secrets, true), r.handler.GetUnreadCount)
+
+		protected := group.Group("")
+		protected.Use(middleware.Authenticate(r.secrets, false))
+		{
+			protected.GET("", r.handler.GetMyNotifications)
+			protected.PATCH("/:id/read", r.handler.MarkAsRead)
+			protected.PATCH("/mark-all-read", r.handler.MarkAllAsRead)
+			protected.DELETE("/:id", r.handler.DeleteNotification)
+		}
 	}
 }

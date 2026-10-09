@@ -1,12 +1,12 @@
 "use client";
 
 import { usePathname, Link } from "@/i18n/navigation";
-import { Blocks, Package, Heart, Settings } from "lucide-react";
+import { Blocks, Package, Heart, Store } from "lucide-react";
 const mobileTabs = [
+  { id: "store", icon: Store, label: "Store", path: "/" },
   { id: "overview", icon: Blocks, label: "Overview", path: "/user/overview" },
   { id: "orders", icon: Package, label: "Orders", path: "/user/orders" },
   { id: "wishlist", icon: Heart, label: "Wishlist", path: "/user/wishlist" },
-  { id: "settings", icon: Settings, label: "Settings", path: "/user/settings" },
 ];
 
 export default function MobileNav() {

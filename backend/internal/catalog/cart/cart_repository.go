@@ -139,7 +139,8 @@ func (r *CartRepository) GetItemByID(
 	query := `
 		SELECT id, cart_id, variant_id, quantity, price_at_purchase, currency, carted_at, deleted_at
 		FROM cart_items
-		WHERE cart_id = $1 AND id = $2 AND deleted_at IS NULL
+		WHERE cart_id = $1 AND (id = $2 OR variant_id = $2) AND deleted_at IS NULL
+		LIMIT 1
 	`
 	row := qe.QueryRow(ctx, query, cartID, itemID)
 	item := &model.CartItem{}
@@ -221,7 +222,7 @@ func (r *CartRepository) UpdateItemQuantity(
 	query := `
 		UPDATE cart_items
 		SET quantity = $1
-		WHERE id = $2 AND cart_id = $3 AND deleted_at IS NULL
+		WHERE (id = $2 OR variant_id = $2) AND cart_id = $3 AND deleted_at IS NULL
 	`
 	tag, err := qe.Exec(ctx, query, quantity, itemID, cartID)
 	if err != nil {
@@ -241,7 +242,7 @@ func (r *CartRepository) RemoveItem(
 ) error {
 	query := `
 		DELETE FROM cart_items
-		WHERE id = $1 AND cart_id = $2
+		WHERE (id = $1 OR variant_id = $1) AND cart_id = $2
 	`
 	tag, err := qe.Exec(ctx, query, itemID, cartID)
 	if err != nil {

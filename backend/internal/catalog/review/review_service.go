@@ -66,13 +66,16 @@ func (s *ReviewService) CreateReview(
 				return apierr.ErrNotFound("order item not found")
 			}
 			if pv.CustomerID == nil || *pv.CustomerID != in.UserID {
-				return apierr.ErrForbidden("you can only review products from your own orders")
+				return apierr.ErrForbidden("you can only review products from your own orders").
+					WithCode(errcode.CodeReviewNotEligible)
 			}
 			if pv.ProductID != in.ProductID {
-				return apierr.ErrBadRequest("order item does not belong to the specified product")
+				return apierr.ErrBadRequest("order item does not belong to the specified product").
+					WithCode(errcode.CodeReviewNotEligible)
 			}
 			if pv.OrderStatus == model.OrderStatusCanceled || pv.OrderStatus == model.OrderStatusRefunded {
-				return apierr.ErrBadRequest("cannot review items from canceled or refunded orders")
+				return apierr.ErrBadRequest("cannot review items from canceled or refunded orders").
+					WithCode(errcode.CodeReviewNotEligible)
 			}
 		} else {
 			// Auto-resolve eligible delivered purchase for this user and product
@@ -81,7 +84,8 @@ func (s *ReviewService) CreateReview(
 				return apierr.ErrInternalError("failed to verify purchase eligibility").Wrap(err)
 			}
 			if eligibleID == uuid.Nil {
-				return apierr.ErrForbidden("you can only review products you have purchased and received (delivered)")
+				return apierr.ErrForbidden("you can only review products you have purchased and received (delivered)").
+					WithCode(errcode.CodeReviewNotEligible)
 			}
 			targetOrderItemID = eligibleID
 		}

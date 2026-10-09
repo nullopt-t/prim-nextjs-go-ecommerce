@@ -29,6 +29,7 @@ export function ProductDetails() {
   const navigate = useRouter();
   const locale = useLocale();
   const t = useTranslations("common");
+  const tReviews = useTranslations("reviews");
 
   const { products: allProducts, loading: allLoading } = useAllProducts();
   const { product, loading: productLoading } = useProductBySlug(id);
@@ -246,19 +247,62 @@ export function ProductDetails() {
     }
   };
 
-  const handleAddReview = (newReviewData: Omit<ProductReview, "id" | "date" | "helpful" | "verified">) => {
-    const newRev: ProductReview = {
-      ...newReviewData,
-      id: Date.now(),
-      date: `Reviewed on ${new Date().toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })}`,
-      helpful: 0,
-      verified: true,
-    };
-    setReviews((prev) => [newRev, ...prev]);
+  const handleAddReview = async (newReviewData: { rating: number; title: string; content: string }) => {
+    if (!product?.id) {
+      toast.error(tReviews("missingProduct"));
+      return false;
+    }
+
+    try {
+      const res: any = await catalogService.submitReview({
+        productId: String(product.id),
+        rating: newReviewData.rating,
+        title: newReviewData.title,
+        body: newReviewData.content,
+      });
+
+      const serverReview = res?.data || res;
+      const status = serverReview?.status || "pending";
+
+      if (status === "pending") {
+        toast.success(tReviews("submitPending"));
+      } else {
+        toast.success(tReviews("submitSuccess"));
+      }
+
+      const newRev: ProductReview = {
+        id: serverReview?.id || Date.now(),
+        author: "You",
+        avatar: null,
+        rating: newReviewData.rating,
+        title: newReviewData.title,
+        content: newReviewData.content,
+        date: `Reviewed on ${new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}`,
+        helpful: 0,
+        verified: true,
+      };
+
+      setReviews((prev) => [newRev, ...prev]);
+      return true;
+    } catch (err: any) {
+      const errCode = err?.response?.data?.code;
+      const statusCode = err?.response?.status;
+
+      if (errCode === "REVIEW_NOT_ELIGIBLE") {
+        toast.error(tReviews("errors.notEligible"));
+      } else if (errCode === "REVIEW_ALREADY_EXISTS" || statusCode === 409) {
+        toast.error(tReviews("errors.alreadyExists"));
+      } else if (statusCode === 401) {
+        toast.error(tReviews("errors.unauthorized"));
+      } else {
+        toast.error(tReviews("submitFailed"));
+      }
+      return false;
+    }
   };
 
   const handleVoteHelpful = (reviewId: string | number) => {

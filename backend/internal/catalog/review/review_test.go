@@ -281,6 +281,25 @@ func (s *ReviewHTTPTestSuite) TestHTTP_01_CreateReview_SuccessAndValidation() {
 	s.Require().NoError(json.Unmarshal(wAuto.Body.Bytes(), &autoResp))
 	s.Equal(autoOrderItemID.String(), autoResp.Data.OrderItemID)
 	s.Equal(s.productID.String(), autoResp.Data.ProductID)
+
+	// 5. Reject Review when customer has not purchased or received the product
+	_, unpurchasedToken := s.createTestUser("customer")
+	unpurchasedTitle := "Trying to review unpurchased product"
+	unpurchasedBody, _ := json.Marshal(review.CreateReviewRequest{
+		ProductID: s.productID.String(),
+		Rating:    5,
+		Title:     &unpurchasedTitle,
+	})
+	wNotEligible := httptest.NewRecorder()
+	reqNotEligible := httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(unpurchasedBody))
+	reqNotEligible.Header.Set("Content-Type", "application/json")
+	reqNotEligible.Header.Set("Authorization", "Bearer "+unpurchasedToken)
+	s.router.ServeHTTP(wNotEligible, reqNotEligible)
+
+	s.Require().Equal(http.StatusForbidden, wNotEligible.Code)
+	var notEligibleErr StrictErrorEnvelope
+	s.Require().NoError(json.Unmarshal(wNotEligible.Body.Bytes(), &notEligibleErr))
+	s.Equal("REVIEW_NOT_ELIGIBLE", notEligibleErr.Code)
 }
 
 

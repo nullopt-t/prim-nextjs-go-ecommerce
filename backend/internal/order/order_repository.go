@@ -199,6 +199,11 @@ func (r *Repository) GetOrdersByCustomerID(
 			return nil, fmt.Errorf("unmarshal billing address: %w", err)
 		}
 
+		items, err := r.GetOrderItems(ctx, qe, o.ID)
+		if err == nil {
+			o.Items = items
+		}
+
 		orders = append(orders, o)
 	}
 

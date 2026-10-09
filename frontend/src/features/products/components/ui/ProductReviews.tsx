@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { User, ThumbsUp } from "lucide-react";
 import { Stars } from "@/components/ui/stars";
-import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { ProductReview } from "../../types";
 
 interface ProductReviewsProps {
   stars?: number;
   reviewsCount?: number;
   reviews: ProductReview[];
-  onAddReview: (review: Omit<ProductReview, "id" | "date" | "helpful" | "verified">) => void;
+  onAddReview: (review: { rating: number; title: string; content: string }) => Promise<boolean | void> | void;
   onVoteHelpful: (reviewId: string | number) => void;
 }
 
@@ -19,38 +19,44 @@ export function ProductReviews({
   onAddReview,
   onVoteHelpful,
 }: ProductReviewsProps) {
+  const t = useTranslations("reviews");
   const [isExpanded, setIsExpanded] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({ rating: 0, title: "", content: "" });
 
-  const handleSubmit = () => {
-    if (!form.rating || !form.title.trim() || !form.content.trim()) return;
-    onAddReview({
-      author: "You",
-      avatar: null,
-      rating: form.rating,
-      title: form.title.trim(),
-      content: form.content.trim(),
-    });
-    setForm({ rating: 0, title: "", content: "" });
-    setIsFormOpen(false);
-    toast.success("Review submitted!");
+  const handleSubmit = async () => {
+    if (!form.rating || !form.title.trim() || !form.content.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const res = await onAddReview({
+        rating: form.rating,
+        title: form.title.trim(),
+        content: form.content.trim(),
+      });
+      if (res !== false) {
+        setForm({ rating: 0, title: "", content: "" });
+        setIsFormOpen(false);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const visibleReviews = isExpanded ? reviews : reviews.slice(0, 2);
 
   return (
     <section>
-      <h2 className="text-2xl font-bold text-foreground mb-6">Customer Reviews</h2>
+      <h2 className="text-2xl font-bold text-foreground mb-6">{t("customerReviews")}</h2>
       <div className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* Summary / Rating breakdown */}
           <div className="lg:col-span-4 flex flex-col">
             <div className="flex items-center gap-4 mb-4">
               <Stars starsNum={stars} />
-              <span className="text-xl font-bold text-foreground">{stars} out of 5</span>
+              <span className="text-xl font-bold text-foreground">{t("outOfFive", { stars })}</span>
             </div>
-            <p className="text-sm text-muted-foreground mb-6">{reviewsCount} global ratings</p>
+            <p className="text-sm text-muted-foreground mb-6">{t("globalRatings", { count: reviewsCount })}</p>
 
             {/* Rating Bars */}
             <div className="flex flex-col gap-2 mb-8">
@@ -60,7 +66,7 @@ export function ProductReviews({
                 return (
                   <div key={starVal} className="flex items-center gap-3 text-sm">
                     <span className="w-12 text-accent-brand hover:underline cursor-pointer font-medium whitespace-nowrap">
-                      {starVal} star
+                      {t("starLabel", { star: starVal })}
                     </span>
                     <div className="flex-1 h-3.5 bg-secondary/50 rounded-full overflow-hidden border border-border/50">
                       <div
@@ -75,20 +81,20 @@ export function ProductReviews({
             </div>
 
             <div className="border-t border-border pt-6">
-              <h4 className="font-bold text-foreground mb-2">Review this product</h4>
-              <p className="text-sm text-muted-foreground mb-4">Share your thoughts with other customers</p>
+              <h4 className="font-bold text-foreground mb-2">{t("reviewThisProduct")}</h4>
+              <p className="text-sm text-muted-foreground mb-4">{t("shareThoughts")}</p>
               {!isFormOpen ? (
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(true)}
                   className="w-full py-2 px-4 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 border border-border shadow-sm text-sm font-medium transition-colors cursor-pointer"
                 >
-                  Write a customer review
+                  {t("writeReview")}
                 </button>
               ) : (
                 <div className="flex flex-col gap-4 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-foreground">Rating</label>
+                    <label className="text-sm font-semibold text-foreground">{t("rating")}</label>
                     <div className="flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -106,10 +112,10 @@ export function ProductReviews({
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-foreground">Add a headline</label>
+                    <label className="text-sm font-semibold text-foreground">{t("addHeadline")}</label>
                     <input
                       type="text"
-                      placeholder="What's most important to know?"
+                      placeholder={t("headlinePlaceholder")}
                       className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-accent-brand focus:border-transparent transition-all"
                       value={form.title}
                       onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -117,9 +123,9 @@ export function ProductReviews({
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-foreground">Add a written review</label>
+                    <label className="text-sm font-semibold text-foreground">{t("addWrittenReview")}</label>
                     <textarea
-                      placeholder="What did you like or dislike? What did you use this product for?"
+                      placeholder={t("contentPlaceholder")}
                       className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-accent-brand focus:border-transparent transition-all"
                       value={form.content}
                       onChange={(e) => setForm({ ...form, content: e.target.value })}
@@ -135,15 +141,15 @@ export function ProductReviews({
                       }}
                       className="flex-1 py-2 px-4 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 border border-border shadow-sm text-sm font-medium transition-colors cursor-pointer"
                     >
-                      Cancel
+                      {t("cancel")}
                     </button>
                     <button
                       type="button"
                       onClick={handleSubmit}
                       className="flex-1 py-2 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                      disabled={!form.rating || !form.title.trim() || !form.content.trim()}
+                      disabled={!form.rating || !form.title.trim() || !form.content.trim() || isSubmitting}
                     >
-                      Submit
+                      {isSubmitting ? t("submitting") : t("submit")}
                     </button>
                   </div>
                 </div>
@@ -155,8 +161,8 @@ export function ProductReviews({
           <div className="lg:col-span-8 flex flex-col gap-8">
             {reviews.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground bg-secondary/20 rounded-xl border border-dashed border-border p-8">
-                <p className="font-medium text-foreground text-base mb-1">No reviews yet</p>
-                <p className="text-sm max-w-xs">Be the first to share your experience with this product.</p>
+                <p className="font-medium text-foreground text-base mb-1">{t("noReviewsYet")}</p>
+                <p className="text-sm max-w-xs">{t("beTheFirst")}</p>
               </div>
             ) : (
               visibleReviews.map((review) => (
@@ -180,7 +186,7 @@ export function ProductReviews({
                 <p className="text-xs text-muted-foreground mb-2">{review.date}</p>
 
                 {review.verified && (
-                  <p className="text-xs font-semibold text-accent-brand mb-3">Verified Purchase</p>
+                  <p className="text-xs font-semibold text-accent-brand mb-3">{t("verifiedPurchase")}</p>
                 )}
 
                 <p className="text-sm text-foreground leading-relaxed mb-4">
@@ -198,10 +204,10 @@ export function ProductReviews({
                     }`}
                   >
                     <ThumbsUp className={`size-3.5 ${review.userVoted ? "fill-current" : ""}`} />
-                    Helpful
+                    {t("helpful")}
                   </button>
                   <span className="text-xs text-muted-foreground">
-                    {review.helpful} people found this helpful
+                    {t("peopleFoundHelpful", { count: review.helpful })}
                   </span>
                 </div>
               </div>
@@ -213,7 +219,7 @@ export function ProductReviews({
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="mt-4 w-full sm:w-auto self-center py-2 px-6 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 border border-border shadow-sm text-sm font-medium transition-colors cursor-pointer"
               >
-                {isExpanded ? "Show less" : "Show more"}
+                {isExpanded ? t("showLess") : t("showMore")}
               </button>
             )}
           </div>

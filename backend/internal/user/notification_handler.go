@@ -113,9 +113,15 @@ func (h *NotificationHandler) GetMyNotifications(c *gin.Context) {
 //	@Failure		401	{object}	api.UnauthorizedErrorResponse
 //	@Router			/user/notifications/unread-count [get]
 func (h *NotificationHandler) GetUnreadCount(c *gin.Context) {
+	_, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusOK, api.DataResponse{Data: NotificationCountResponse{Count: 0}})
+		return
+	}
+
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		_ = c.Error(err)
+		c.JSON(http.StatusOK, api.DataResponse{Data: NotificationCountResponse{Count: 0}})
 		return
 	}
 

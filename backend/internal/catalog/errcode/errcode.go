@@ -27,6 +27,7 @@ const (
 	CodeReservationExpired        = "INVENTORY_RESERVATION_EXPIRED"
 	CodeReviewAlreadyExists       = "REVIEW_ALREADY_EXISTS"
 	CodeReviewNotFound            = "REVIEW_NOT_FOUND"
+	CodeReviewNotEligible         = "REVIEW_NOT_ELIGIBLE"
 	CodeWishlistItemNotFound      = "WISHLIST_ITEM_NOT_FOUND"
 	CodeWishlistItemAlreadyExists = "WISHLIST_ITEM_ALREADY_EXISTS"
 )

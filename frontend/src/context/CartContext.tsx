@@ -169,8 +169,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       await fetchCart(false);
       return { success: true };
     } catch (err: any) {
-      // 4. Rollback on failure
-      setCartItems(previousItems);
+      // 4. If the item was not found on the server (stale cart / re-seeded session), sync authoritative state
+      await fetchCart(false);
       return { success: false, error: err.message };
     }
   };
@@ -184,7 +184,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       await fetchCart(false);
       return { success: true };
     } catch (err: any) {
-      setCartItems(previousItems);
+      // If already deleted or stale, re-sync with backend
+      await fetchCart(false);
       return { success: false, error: err.message };
     }
   };
