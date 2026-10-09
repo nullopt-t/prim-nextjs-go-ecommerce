@@ -26,15 +26,22 @@ export function LoginView() {
     try {
       setIsLoading(true);
       const res = await startChallenge({ email: payload.email.trim() });
+      const searchParams = new URLSearchParams(window.location.search);
+      const redirect = searchParams.get("redirect");
+      const targetUrl = redirect ? `/auth/verify?redirect=${encodeURIComponent(redirect)}` : "/auth/verify";
+
       if (res.success) {
         toast.success("Verification code sent to your email!");
-        router.push("/auth/verify");
+        router.push(targetUrl);
       } else {
         // Fallback navigation if offline or demo mode
-        router.push("/auth/verify");
+        router.push(targetUrl);
       }
     } catch {
-      router.push("/auth/verify");
+      const searchParams = new URLSearchParams(window.location.search);
+      const redirect = searchParams.get("redirect");
+      const targetUrl = redirect ? `/auth/verify?redirect=${encodeURIComponent(redirect)}` : "/auth/verify";
+      router.push(targetUrl);
     } finally {
       setIsLoading(false);
     }

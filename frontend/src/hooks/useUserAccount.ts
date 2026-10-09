@@ -10,8 +10,8 @@ export function useAddresses() {
 
   const fetchAddresses = useCallback(async () => {
     try {
-      const data = await userService.getAddresses();
-      setAddresses(data || []);
+      const res: any = await userService.getAddresses();
+      setAddresses(res?.data || res || []);
     } catch (err: any) {
       setError(err?.message || "Failed to load addresses");
     } finally {
@@ -25,9 +25,9 @@ export function useAddresses() {
 
   const addAddress = async (payload: any) => {
     try {
-      const newAddr = await userService.createAddress(payload);
+      const res: any = await userService.createAddress(payload);
       await fetchAddresses();
-      return { success: true, data: newAddr };
+      return { success: true, data: res?.data || res };
     } catch (err: any) {
       return { success: false, error: err?.message };
     }
@@ -35,9 +35,19 @@ export function useAddresses() {
 
   const updateAddress = async (id: string, payload: any) => {
     try {
-      const updated = await userService.updateAddress(id, payload);
+      const res: any = await userService.updateAddress(id, payload);
       await fetchAddresses();
-      return { success: true, data: updated };
+      return { success: true, data: res?.data || res };
+    } catch (err: any) {
+      return { success: false, error: err?.message };
+    }
+  };
+
+  const setDefaultAddress = async (id: string) => {
+    try {
+      const res: any = await userService.setDefaultAddress(id);
+      await fetchAddresses();
+      return { success: true, data: res?.data || res };
     } catch (err: any) {
       return { success: false, error: err?.message };
     }
@@ -60,6 +70,7 @@ export function useAddresses() {
     refreshAddresses: fetchAddresses,
     addAddress,
     updateAddress,
+    setDefaultAddress,
     deleteAddress,
   };
 }

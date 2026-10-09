@@ -23,7 +23,51 @@ const getActiveLocale = () => {
   return "en";
 };
 
-export async function request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+let isRefreshing = false;
+let refreshSubscribers: ((ok: boolean) => void)[] = [];
+
+function subscribeTokenRefresh(cb: (ok: boolean) => void) {
+  refreshSubscribers.push(cb);
+}
+
+function onRefreshed(ok: boolean) {
+  refreshSubscribers.forEach((cb) => cb(ok));
+  refreshSubscribers = [];
+}
+
+async function trySilentRefresh(): Promise<boolean> {
+  try {
+    const refreshUrl = `${getBaseUrl()}/api/v1/auth/refresh`;
+    const res = await fetch(refreshUrl, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function handleAuthRedirect() {
+  if (typeof window === "undefined") return;
+  const path = window.location.pathname;
+  // Prevent redirect loops if already on auth pages
+  if (path.includes("/auth")) return;
+
+  const locale = getActiveLocale();
+  const authUrl = locale === "ar" ? "/ar/auth" : "/auth";
+  const returnParam = encodeURIComponent(window.location.pathname + window.location.search);
+  window.location.href = `${authUrl}?redirect=${returnParam}`;
+}
+
+export async function request<T = any>(
+  endpoint: string,
+  options: RequestInit = {},
+  isRetry = false
+): Promise<T> {
   const url = endpoint.startsWith("http") ? endpoint : `${getBaseUrl()}${endpoint}`;
   
   const sessionId = getSessionId();
@@ -39,6 +83,42 @@ export async function request<T = any>(endpoint: string, options: RequestInit = 
     },
     ...options,
   });
+
+  if (response.status === 401) {
+    const isAuthEndpoint =
+      endpoint.includes("/auth/refresh") ||
+      endpoint.includes("/auth/challenge") ||
+      endpoint.includes("/auth/logout");
+
+    // Don't intercept calls to auth lifecycle endpoints or already retried calls
+    if (!isRetry && !isAuthEndpoint) {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        const refreshed = await trySilentRefresh();
+        isRefreshing = false;
+        onRefreshed(refreshed);
+
+        if (refreshed) {
+          // Retry the original request with fresh access cookie
+          return request<T>(endpoint, options, true);
+        } else {
+          // Refresh failed - session revoked or expired
+          handleAuthRedirect();
+        }
+      } else {
+        // Queue this request until ongoing refresh finishes
+        const refreshed = await new Promise<boolean>((resolve) => {
+          subscribeTokenRefresh((ok) => resolve(ok));
+        });
+
+        if (refreshed) {
+          return request<T>(endpoint, options, true);
+        } else {
+          handleAuthRedirect();
+        }
+      }
+    }
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

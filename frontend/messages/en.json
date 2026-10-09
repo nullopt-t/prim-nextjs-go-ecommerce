@@ -264,5 +264,60 @@
     "addToCart": "Add all to Cart",
     "savedItems": "{count} saved items",
     "title": "Wishlist"
+  },
+  "addresses": {
+    "title": "Addresses",
+    "subtitle": "Manage your delivery destinations and default shipping address.",
+    "addAddress": "Add New Address",
+    "editAddress": "Edit Address",
+    "addNewDelivery": "Add New Delivery Address",
+    "defaultBadge": "Default",
+    "setAsDefault": "Set as default",
+    "remove": "Remove",
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "saveChanges": "Save Changes",
+    "submitAdd": "Add Address",
+    "noAddresses": "No addresses saved yet",
+    "noAddressesDesc": "Add your home or work address for faster, one-click checkout.",
+    "confirmDelete": "Are you sure you want to remove this address?",
+    "addedSuccess": "Address added successfully",
+    "updatedSuccess": "Address updated successfully",
+    "defaultSuccess": "Default delivery address updated",
+    "removedSuccess": "Address removed",
+    "labels": {
+      "addressLabel": "Address Label",
+      "home": "Home",
+      "office": "Office",
+      "other": "Other",
+      "fullName": "Recipient Full Name *",
+      "phone": "Contact Phone Number",
+      "line1": "Street Address & Building *",
+      "line2": "Apartment, Floor, Landmark (Optional)",
+      "city": "City *",
+      "state": "State / Region",
+      "postalCode": "Postal Code",
+      "country": "Country *",
+      "makeDefault": "Make this my default shipping address"
+    },
+    "placeholders": {
+      "fullName": "e.g. John Doe",
+      "phone": "+20 10 1234 5678",
+      "line1": "Street name, building number, suite",
+      "line2": "Apt 4B, 3rd floor, near Central Park",
+      "city": "Cairo",
+      "state": "Cairo Governorate",
+      "postalCode": "11511",
+      "country": "Select or search country..."
+    },
+    "hints": {
+      "fullName": "Name of the person receiving the package at delivery",
+      "phone": "Used by the courier driver to coordinate drop-off",
+      "line1": "Street name, building number, or house number",
+      "line2": "Apartment number, suite, floor, or nearby landmark",
+      "city": "Town, municipality, or metropolitan area",
+      "postalCode": "Official postal or ZIP code for your delivery zone",
+      "country": "Destination country for customs and courier routing"
+    }
   }
 }

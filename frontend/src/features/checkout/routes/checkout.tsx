@@ -23,6 +23,7 @@ import {
 	PackageCheck,
 	Pencil
 } from "lucide-react";
+import { CountrySelect } from "@/components/ui/CountrySelect";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -32,10 +33,13 @@ function generateOrderCode() {
 
 function resolveShippingAddress(isCustom, custom, addresses, effectiveId) {
 	if (isCustom || !addresses || addresses.length === 0) {
-		return `${custom.name ? custom.name + " - " : ""}${custom.street}, ${custom.city}`;
+		return `${custom.name ? custom.name + " - " : ""}${custom.street}, ${custom.city}${custom.country ? ", " + custom.country : ""}`;
 	}
 	const addr = addresses.find((a) => a.id === effectiveId);
-	return addr ? `${addr.name} - ${addr.street}, ${addr.city}, ${addr.country}` : "";
+	if (!addr) return "";
+	const name = addr.fullName || addr.name || "";
+	const street = addr.line1 ? `${addr.line1}${addr.line2 ? ", " + addr.line2 : ""}` : addr.street || "";
+	return `${name ? name + " - " : ""}${street}, ${addr.city}, ${addr.country}`;
 }
 
 function resolvePaymentLabel(paymentType, cards, effectiveCardId, newCardData) {
@@ -65,6 +69,7 @@ export function Checkout() {
 		name: "",
 		street: "",
 		city: "",
+		country: "Egypt",
 		phone: "",
 	});
 
@@ -413,23 +418,28 @@ export function Checkout() {
 													>
 														<div>
 															<div className="flex items-center justify-between mb-2">
-																<span className="font-semibold text-foreground text-sm flex items-center gap-1.5">
+																<span className="font-semibold text-foreground text-sm flex items-center gap-1.5 capitalize">
 																	<MapPin className="size-3.5 text-accent-brand" />
-																	{addr.type}
+																	{addr.label || addr.type || "Delivery Address"}
 																</span>
 																{isSelected ? (
 																	<span className="size-2.5 rounded-full bg-accent-brand"></span>
 																) : (
 																	addr.isDefault && (
-																		<span className="text-[10px] font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-md">Default</span>
+																		<span className="text-[10px] font-medium text-accent-brand bg-accent-brand/10 border border-accent-brand/20 px-2 py-0.5 rounded-md">Default</span>
 																	)
 																)}
 															</div>
-															<p className="text-xs font-semibold text-foreground mb-1">{addr.name}</p>
-															<p className="text-xs text-muted-foreground leading-relaxed">{addr.street}</p>
-															<p className="text-xs text-muted-foreground">{addr.city}, {addr.country}</p>
+															<p className="text-xs font-semibold text-foreground mb-1">{addr.fullName || addr.name}</p>
+															<p className="text-xs text-muted-foreground leading-relaxed">
+																{addr.line1 || addr.street}
+																{addr.line2 ? `, ${addr.line2}` : ""}
+															</p>
+															<p className="text-xs text-muted-foreground">{addr.city}{addr.state ? `, ${addr.state}` : ""}, {addr.country}</p>
 														</div>
-														<span className="text-[11px] text-muted-foreground mt-3 font-medium">{addr.phone}</span>
+														{addr.phone && (
+															<span className="text-[11px] text-muted-foreground mt-3 font-medium">{addr.phone}</span>
+														)}
 													</div>
 												);
 											})}
@@ -477,6 +487,15 @@ export function Checkout() {
 													placeholder="+20 100 123 4567"
 													value={customAddress.phone}
 													onChange={(e) => setCustomAddress({ ...customAddress, phone: e.target.value })}
+												/>
+											</div>
+											<div className="flex flex-col gap-1.5 sm:col-span-2">
+												<label className="text-xs font-medium text-foreground">Country *</label>
+												<CountrySelect
+													value={customAddress.country}
+													onChange={(countryName) =>
+														setCustomAddress({ ...customAddress, country: countryName })
+													}
 												/>
 											</div>
 										</div>

@@ -32,8 +32,8 @@ func NewJWTManager(
 }
 
 const (
-	AccessTokenExpiration  = 15 * time.Minute
-	RefreshTokenExpiration = 24 * time.Hour
+	AccessTokenExpiration  = 2 * time.Hour
+	RefreshTokenExpiration = 30 * 24 * time.Hour
 )
 
 func RandomToken() (string, error) {

@@ -121,7 +121,7 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 }
 
 const (
-	AccessTokenCookieMaxAge  = 900            // 15 minutes
+	AccessTokenCookieMaxAge  = 2 * 3600       // 2 hours
 	RefreshTokenCookieMaxAge = 30 * 24 * 3600 // 30 days
 	SessionCookieMaxAge      = 30 * 24 * 3600 // 30 days
 )

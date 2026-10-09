@@ -37,7 +37,10 @@ export function VerifyView() {
       });
       if (res.success) {
         toast.success("Welcome back!");
-        router.push("/user/overview");
+        const searchParams = new URLSearchParams(window.location.search);
+        const redirectParam = searchParams.get("redirect");
+        const destination = redirectParam ? decodeURIComponent(redirectParam) : "/user/overview";
+        router.push(destination as any);
       } else {
         toast.error(res.error || "Invalid verification code");
       }

@@ -274,6 +274,12 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	notificationRouter := user.NewNotificationRouter(notificationHandler, app.config.KeysCfg)
 	notificationRouter.MapRoutes(v1)
 
+	addressRepo := user.NewAddressRepository()
+	addressService := user.NewAddressService(txRunner, addressRepo, app.logger)
+	addressHandler := user.NewAddressHandler(addressService)
+	addressRouter := user.NewAddressRouter(addressHandler, app.config.KeysCfg)
+	addressRouter.MapRoutes(v1)
+
 	// order
 	orderRepo := order.NewRepository()
 	orderService := order.NewService(txRunner, orderRepo, app.logger)

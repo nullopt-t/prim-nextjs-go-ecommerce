@@ -28,15 +28,16 @@ export const userService = {
   getSessions: () => api.get("/api/v1/auth/sessions"),
   deleteSession: (id: string) => api.delete(`/api/v1/auth/sessions/${id}`),
 
-  // Addresses — @todo Not yet implemented on the backend
-  getAddresses: (_payload?: Record<string, unknown>) =>
-    Promise.reject(new Error("Address management is not yet available.")),
-  createAddress: (_payload: Record<string, unknown>) =>
-    Promise.reject(new Error("Address management is not yet available.")),
-  updateAddress: (_id: string, _payload: Record<string, unknown>) =>
-    Promise.reject(new Error("Address management is not yet available.")),
-  deleteAddress: (_id: string) =>
-    Promise.reject(new Error("Address management is not yet available.")),
+  // Addresses
+  getAddresses: () => api.get("/api/v1/user/addresses"),
+  getAddressById: (id: string) => api.get(`/api/v1/user/addresses/${id}`),
+  createAddress: (payload: Record<string, unknown>) =>
+    api.post("/api/v1/user/addresses", payload),
+  updateAddress: (id: string, payload: Record<string, unknown>) =>
+    api.put(`/api/v1/user/addresses/${id}`, payload),
+  setDefaultAddress: (id: string) =>
+    api.patch(`/api/v1/user/addresses/${id}/default`),
+  deleteAddress: (id: string) => api.delete(`/api/v1/user/addresses/${id}`),
 
   // Payment methods — @todo Not yet implemented on the backend
   getPaymentMethods: () =>
