@@ -55,13 +55,13 @@ func NewHandler(checkoutService *CheckoutService) *CheckoutHandler {
 func (h *CheckoutHandler) Checkout(c *gin.Context) {
 	userIDVal, exists := c.Get("userID")
 	if !exists {
-		_ = c.Error(apierr.ErrUnauthorized("Authentication required"))
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
 		return
 	}
 
 	customerID, ok := userIDVal.(uuid.UUID)
 	if !ok {
-		_ = c.Error(apierr.ErrUnauthorized("Invalid user identity"))
+		_ = c.Error(apierr.UnauthorizedError("Invalid user identity"))
 		return
 	}
 

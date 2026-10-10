@@ -18,6 +18,7 @@ require (
 	github.com/nullopt-t/errs v0.0.0-20260803143755-a57a0d38ef33
 	github.com/nyaruka/phonenumbers v1.8.0
 	github.com/redis/go-redis/v9 v9.20.0
+	github.com/segmentio/kafka-go v0.4.51
 	github.com/stretchr/testify v1.11.1
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
@@ -106,7 +107,6 @@ require (
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.59.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
-	github.com/segmentio/kafka-go v0.4.51 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.6 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/tinylib/msgp v1.6.1 // indirect

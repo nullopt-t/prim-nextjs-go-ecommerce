@@ -67,12 +67,12 @@ func (ts *TagService) GetTagByID(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return nil, apierr.ErrNotFound("Product tag not found").
+			return nil, apierr.NotFoundError("Product tag not found").
 				WithCode(errcode.CodeTagNotFound).
 				Wrap(err)
 
 		default:
-			return nil, apierr.ErrInternalError("Failed to fetch product tag").
+			return nil, apierr.InternalServerError("Failed to fetch product tag").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
@@ -96,7 +96,7 @@ func (ts *TagService) UpdateTag(
 	if in.Name != nil {
 		name := strings.TrimSpace(*in.Name)
 		if name == "" {
-			return apierr.ErrBadRequest("Validation error").
+			return apierr.BadRequestError("Validation error").
 				WithCode(apierr.CodeValidationFailed).
 				WithFields(api.FieldError{
 					Field:   "name",
@@ -140,7 +140,7 @@ func (ts *TagService) ListTags(
 	})
 
 	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to list product tags").
+		return nil, apierr.InternalServerError("Failed to list product tags").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
@@ -164,7 +164,7 @@ func (ts *TagService) DeleteTagByID(
 	tagID uuid.UUID,
 ) error {
 	if tagID == uuid.Nil {
-		return apierr.ErrBadRequest("Tag ID is required").
+		return apierr.BadRequestError("Tag ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -185,7 +185,7 @@ func (ts *TagService) ReplaceProductTags(
 	tagIDs []uuid.UUID,
 ) error {
 	if productID == uuid.Nil {
-		return apierr.ErrBadRequest("Product ID is required").
+		return apierr.BadRequestError("Product ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -205,7 +205,7 @@ func (ts *TagService) GetTagsByProductID(
 	productID uuid.UUID,
 ) ([]*model.ProductTag, error) {
 	if productID == uuid.Nil {
-		return nil, apierr.ErrBadRequest("Product ID is required").
+		return nil, apierr.BadRequestError("Product ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -230,19 +230,19 @@ func (ts *TagService) handleError(err error, defaultMsg string) error {
 	mappedErr := database.MapError(err)
 	switch {
 	case errors.Is(mappedErr, database.ErrNotFound):
-		return apierr.ErrNotFound("Product tag not found").
+		return apierr.NotFoundError("Product tag not found").
 			WithCode(errcode.CodeTagNotFound).
 			Wrap(err)
 	case errors.Is(mappedErr, database.ErrConflict):
-		return apierr.ErrConflict("A tag with this name already exists").
+		return apierr.ConflictError("A tag with this name already exists").
 			WithCode(errcode.CodeTagAlreadyExists).
 			Wrap(err)
 	case errors.Is(mappedErr, database.ErrInvalidInput):
-		return apierr.ErrBadRequest("Invalid input provided").
+		return apierr.BadRequestError("Invalid input provided").
 			WithCode(apierr.CodeInvalidInput).
 			Wrap(err)
 	default:
-		return apierr.ErrInternalError(defaultMsg).
+		return apierr.InternalServerError(defaultMsg).
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()

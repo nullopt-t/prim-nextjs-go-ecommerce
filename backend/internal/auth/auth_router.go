@@ -43,7 +43,6 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		middleware.RateLimit(r.limiter, "rate_limit:auth:start",
 			r.rateLimitCfg.AuthStartRequests,
 			r.rateLimitCfg.AuthStartWindow,
-			r.logger,
 		),
 		r.authHandler.StartChallenge)
 
@@ -51,7 +50,6 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		middleware.RateLimit(r.limiter, "rate_limit:auth:resend",
 			r.rateLimitCfg.AuthResendRequests,
 			r.rateLimitCfg.AuthResendWindow,
-			r.logger,
 		),
 		r.authHandler.ResendChallenge)
 
@@ -59,7 +57,6 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		middleware.RateLimit(r.limiter, "rate_limit:auth:verify",
 			r.rateLimitCfg.AuthVerifyRequests,
 			r.rateLimitCfg.AuthVerifyWindow,
-			r.logger,
 		),
 		r.authHandler.VerifyChallenge)
 

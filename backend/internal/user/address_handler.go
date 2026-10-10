@@ -105,7 +105,7 @@ func (h *AddressHandler) GetAddress(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("invalid address id").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.BadRequestError("invalid address id").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
@@ -138,7 +138,7 @@ func (h *AddressHandler) CreateAddress(c *gin.Context) {
 
 	var req CreateAddressInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		_ = c.Error(apierr.ErrBadRequest("invalid request payload").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.BadRequestError("invalid request payload").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
@@ -174,13 +174,13 @@ func (h *AddressHandler) UpdateAddress(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("invalid address id").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.BadRequestError("invalid address id").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
 	var req UpdateAddressInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		_ = c.Error(apierr.ErrBadRequest("invalid request payload").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.BadRequestError("invalid request payload").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
@@ -213,7 +213,7 @@ func (h *AddressHandler) SetDefaultAddress(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("invalid address id").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.BadRequestError("invalid address id").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
@@ -246,7 +246,7 @@ func (h *AddressHandler) DeleteAddress(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("invalid address id").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.BadRequestError("invalid address id").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 

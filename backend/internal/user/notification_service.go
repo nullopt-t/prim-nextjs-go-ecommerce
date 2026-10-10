@@ -57,7 +57,7 @@ func (s *NotificationService) GetMyNotifications(
 		return err
 	})
 	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to fetch notifications").Wrap(err)
+		return nil, apierr.InternalServerError("Failed to fetch notifications").Wrap(err)
 	}
 
 	page := pagination.NewPage(q.Page, q.PageSize, total)
@@ -76,7 +76,7 @@ func (s *NotificationService) GetUnreadCount(
 		return err
 	})
 	if err != nil {
-		return 0, apierr.ErrInternalError("Failed to fetch unread notification count").Wrap(err)
+		return 0, apierr.InternalServerError("Failed to fetch unread notification count").Wrap(err)
 	}
 	return count, nil
 }
@@ -90,7 +90,7 @@ func (s *NotificationService) MarkAsRead(
 		err := s.repo.MarkAsRead(ctx, db, id, userID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return apierr.ErrNotFound("Notification not found")
+				return apierr.NotFoundError("Notification not found")
 			}
 			return err
 		}
@@ -101,7 +101,7 @@ func (s *NotificationService) MarkAsRead(
 		if errors.As(err, &apiErr) {
 			return apiErr
 		}
-		return apierr.ErrInternalError("Failed to mark notification as read").Wrap(err)
+		return apierr.InternalServerError("Failed to mark notification as read").Wrap(err)
 	}
 	return nil
 }
@@ -118,7 +118,7 @@ func (s *NotificationService) MarkAllAsRead(
 		return err
 	})
 	if err != nil {
-		return 0, apierr.ErrInternalError("Failed to mark notifications as read").Wrap(err)
+		return 0, apierr.InternalServerError("Failed to mark notifications as read").Wrap(err)
 	}
 	return count, nil
 }
@@ -132,7 +132,7 @@ func (s *NotificationService) DeleteNotification(
 		err := s.repo.Delete(ctx, db, id, userID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return apierr.ErrNotFound("Notification not found")
+				return apierr.NotFoundError("Notification not found")
 			}
 			return err
 		}
@@ -143,7 +143,7 @@ func (s *NotificationService) DeleteNotification(
 		if errors.As(err, &apiErr) {
 			return apiErr
 		}
-		return apierr.ErrInternalError("Failed to delete notification").Wrap(err)
+		return apierr.InternalServerError("Failed to delete notification").Wrap(err)
 	}
 	return nil
 }

@@ -28,7 +28,7 @@ func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
 			return
 		}
 		if role.(string) != strings.ToLower(string(requiredRole)) {
-			_ = c.Error(apierr.ErrForbidden("Insufficient permissions").WithCode(apierr.CodeForbidden))
+			_ = c.Error(apierr.ForbiddenError("Insufficient permissions").WithCode(apierr.CodeForbidden))
 			c.Abort()
 			return
 		}

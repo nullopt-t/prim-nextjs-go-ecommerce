@@ -93,7 +93,7 @@ type WishlistCountResponse struct {
 func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
 	userIDVal, exists := c.Get("userID")
 	if !exists {
-		return uuid.Nil, apierr.ErrUnauthorized("unauthorized")
+		return uuid.Nil, apierr.UnauthorizedError("unauthorized")
 	}
 	if id, ok := userIDVal.(uuid.UUID); ok {
 		return id, nil
@@ -104,7 +104,7 @@ func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
 			return id, nil
 		}
 	}
-	return uuid.Nil, apierr.ErrUnauthorized("invalid user identifier in context")
+	return uuid.Nil, apierr.UnauthorizedError("invalid user identifier in context")
 }
 
 func mapWishlistItemResponse(item *model.WishlistItem) WishlistItemResponse {
@@ -186,13 +186,13 @@ func mapWishlistItemResponse(item *model.WishlistItem) WishlistItemResponse {
 func (h *WishlistHandler) AddToWishlist(c *gin.Context) {
 	var req AddToWishlistRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		_ = c.Error(apierr.ErrInvalidPayload("invalid request payload"))
+		_ = c.Error(apierr.InvalidPayloadError("invalid request payload"))
 		return
 	}
 
 	productID, err := uuid.Parse(req.ProductID)
 	if err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid product id"))
+		_ = c.Error(apierr.ValidationFailedError("invalid product id"))
 		return
 	}
 
@@ -200,7 +200,7 @@ func (h *WishlistHandler) AddToWishlist(c *gin.Context) {
 	if req.VariantID != nil && *req.VariantID != "" {
 		vID, err := uuid.Parse(*req.VariantID)
 		if err != nil {
-			_ = c.Error(apierr.ErrValidationFailed("invalid variant id"))
+			_ = c.Error(apierr.ValidationFailedError("invalid variant id"))
 			return
 		}
 		variantID = &vID
@@ -235,7 +235,7 @@ func (h *WishlistHandler) AddToWishlist(c *gin.Context) {
 func (h *WishlistHandler) GetMyWishlist(c *gin.Context) {
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid query parameters"))
+		_ = c.Error(apierr.ValidationFailedError("invalid query parameters"))
 		return
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
@@ -306,7 +306,7 @@ func (h *WishlistHandler) CheckInWishlist(c *gin.Context) {
 	productIDStr := c.Param("productId")
 	productID, err := uuid.Parse(productIDStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("invalid product id").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.BadRequestError("invalid product id").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
@@ -314,7 +314,7 @@ func (h *WishlistHandler) CheckInWishlist(c *gin.Context) {
 	if vIDStr := c.Query("variantId"); vIDStr != "" {
 		vID, err := uuid.Parse(vIDStr)
 		if err != nil {
-			_ = c.Error(apierr.ErrBadRequest("invalid variant id").WithCode(apierr.CodeInvalidInput))
+			_ = c.Error(apierr.BadRequestError("invalid variant id").WithCode(apierr.CodeInvalidInput))
 			return
 		}
 		variantID = &vID
@@ -361,7 +361,7 @@ func (h *WishlistHandler) RemoveItem(c *gin.Context) {
 	idStr := c.Param("id")
 	itemID, err := uuid.Parse(idStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("invalid wishlist item id").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.BadRequestError("invalid wishlist item id").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
@@ -397,7 +397,7 @@ func (h *WishlistHandler) RemoveByProductID(c *gin.Context) {
 	productIDStr := c.Param("productId")
 	productID, err := uuid.Parse(productIDStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("invalid product id").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.BadRequestError("invalid product id").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
@@ -405,7 +405,7 @@ func (h *WishlistHandler) RemoveByProductID(c *gin.Context) {
 	if vIDStr := c.Query("variantId"); vIDStr != "" {
 		vID, err := uuid.Parse(vIDStr)
 		if err != nil {
-			_ = c.Error(apierr.ErrBadRequest("invalid variant id").WithCode(apierr.CodeInvalidInput))
+			_ = c.Error(apierr.BadRequestError("invalid variant id").WithCode(apierr.CodeInvalidInput))
 			return
 		}
 		variantID = &vID
@@ -450,14 +450,14 @@ func (h *WishlistHandler) ClearWishlist(c *gin.Context) {
 	if pIDStr := c.Query("productId"); pIDStr != "" {
 		productID, err := uuid.Parse(pIDStr)
 		if err != nil {
-			_ = c.Error(apierr.ErrBadRequest("invalid product id").WithCode(apierr.CodeInvalidInput))
+			_ = c.Error(apierr.BadRequestError("invalid product id").WithCode(apierr.CodeInvalidInput))
 			return
 		}
 		var variantID *uuid.UUID
 		if vIDStr := c.Query("variantId"); vIDStr != "" {
 			vID, err := uuid.Parse(vIDStr)
 			if err != nil {
-				_ = c.Error(apierr.ErrBadRequest("invalid variant id").WithCode(apierr.CodeInvalidInput))
+				_ = c.Error(apierr.BadRequestError("invalid variant id").WithCode(apierr.CodeInvalidInput))
 				return
 			}
 			variantID = &vID
@@ -473,7 +473,7 @@ func (h *WishlistHandler) ClearWishlist(c *gin.Context) {
 	if iIDStr := c.Query("itemId"); iIDStr != "" {
 		itemID, err := uuid.Parse(iIDStr)
 		if err != nil {
-			_ = c.Error(apierr.ErrBadRequest("invalid item id").WithCode(apierr.CodeInvalidInput))
+			_ = c.Error(apierr.BadRequestError("invalid item id").WithCode(apierr.CodeInvalidInput))
 			return
 		}
 		if err := h.service.RemoveItem(c.Request.Context(), userID, itemID); err != nil {

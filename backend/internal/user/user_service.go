@@ -72,9 +72,9 @@ func (s *UserService) GetUserByID(
 		if err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrNotFound) {
-				return apierr.ErrNotFound("User not found")
+				return apierr.NotFoundError("User not found")
 			}
-			return apierr.ErrInternalError("Failed to fetch user").Wrap(err)
+			return apierr.InternalServerError("Failed to fetch user").Wrap(err)
 		}
 		user = u
 		return nil
@@ -92,9 +92,9 @@ func (s *UserService) GetUserByIdentifier(
 		if err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrNotFound) {
-				return apierr.ErrNotFound("User not found")
+				return apierr.NotFoundError("User not found")
 			}
-			return apierr.ErrInternalError("Failed to fetch user").Wrap(err)
+			return apierr.InternalServerError("Failed to fetch user").Wrap(err)
 		}
 		user = u
 		return nil

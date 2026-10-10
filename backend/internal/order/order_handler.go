@@ -129,13 +129,13 @@ func NewHandler(orderService *OrderService) *OrderHandler {
 func (h *OrderHandler) GetOrders(c *gin.Context) {
 	userIDVal, exists := c.Get("userID")
 	if !exists {
-		_ = c.Error(apierr.ErrUnauthorized("Authentication required"))
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
 		return
 	}
 
 	customerID, ok := userIDVal.(uuid.UUID)
 	if !ok {
-		_ = c.Error(apierr.ErrUnauthorized("Invalid user identity"))
+		_ = c.Error(apierr.UnauthorizedError("Invalid user identity"))
 		return
 	}
 
@@ -172,7 +172,7 @@ func (h *OrderHandler) GetOrderByID(c *gin.Context) {
 	idParam := c.Param("id")
 	orderID, err := uuid.Parse(idParam)
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("Invalid order ID").WithFields(api.FieldError{
+		_ = c.Error(apierr.BadRequestError("Invalid order ID").WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid order UUID format",
 		}))
@@ -207,7 +207,7 @@ func (h *OrderHandler) GetOrderByID(c *gin.Context) {
 func (h *OrderHandler) UpdateOrderStatus(c *gin.Context) {
 	orderID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("Invalid order ID").WithFields(api.FieldError{
+		_ = c.Error(apierr.BadRequestError("Invalid order ID").WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid order UUID format",
 		}))

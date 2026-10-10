@@ -78,7 +78,7 @@ func (h *NotificationHandler) GetMyNotifications(c *gin.Context) {
 
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid query parameters"))
+		_ = c.Error(apierr.ValidationFailedError("invalid query parameters"))
 		return
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 5, MaxPageSize: 10})
@@ -153,7 +153,7 @@ func (h *NotificationHandler) MarkAsRead(c *gin.Context) {
 
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("invalid notification id").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.BadRequestError("invalid notification id").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
@@ -208,7 +208,7 @@ func (h *NotificationHandler) DeleteNotification(c *gin.Context) {
 
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("invalid notification id").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.BadRequestError("invalid notification id").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
@@ -223,7 +223,7 @@ func (h *NotificationHandler) DeleteNotification(c *gin.Context) {
 func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
 	val, exists := c.Get("userID")
 	if !exists {
-		return uuid.Nil, apierr.ErrUnauthorized("unauthorized")
+		return uuid.Nil, apierr.UnauthorizedError("unauthorized")
 	}
 	if id, ok := val.(uuid.UUID); ok {
 		return id, nil
@@ -234,5 +234,5 @@ func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
 			return id, nil
 		}
 	}
-	return uuid.Nil, apierr.ErrUnauthorized("invalid user identifier in context")
+	return uuid.Nil, apierr.UnauthorizedError("invalid user identifier in context")
 }

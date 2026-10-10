@@ -112,13 +112,6 @@ func (ae *APIError) LogValue() slog.Value {
 	return slog.GroupValue(attrs...)
 }
 
-// --- Predefined API Error Constructors ---
-
-// ErrBadRequest creates a 400 Bad Request error.
-func ErrBadRequest(message string) *APIError {
-	return New(http.StatusBadRequest, message).WithCode(CodeBadRequest)
-}
-
 // BadRequestError creates a 400 Bad Request error with default or custom message.
 func BadRequestError(message ...string) *APIError {
 	msg := "Bad request"
@@ -126,11 +119,6 @@ func BadRequestError(message ...string) *APIError {
 		msg = message[0]
 	}
 	return New(http.StatusBadRequest, msg).WithCode(CodeBadRequest)
-}
-
-// ErrNotFound creates a 404 Not Found error.
-func ErrNotFound(message string) *APIError {
-	return New(http.StatusNotFound, message).WithCode(CodeNotFound)
 }
 
 // NotFoundError creates a 404 Not Found error with default or custom message.
@@ -142,11 +130,6 @@ func NotFoundError(message ...string) *APIError {
 	return New(http.StatusNotFound, msg).WithCode(CodeNotFound)
 }
 
-// ErrUnauthorized creates a 401 Unauthorized error.
-func ErrUnauthorized(message string) *APIError {
-	return New(http.StatusUnauthorized, message).WithCode(CodeUnauthorized)
-}
-
 // UnauthorizedError creates a 401 Unauthorized error with default or custom message.
 func UnauthorizedError(message ...string) *APIError {
 	msg := "Unauthorized access"
@@ -154,11 +137,6 @@ func UnauthorizedError(message ...string) *APIError {
 		msg = message[0]
 	}
 	return New(http.StatusUnauthorized, msg).WithCode(CodeUnauthorized)
-}
-
-// ErrForbidden creates a 403 Forbidden error.
-func ErrForbidden(message string) *APIError {
-	return New(http.StatusForbidden, message).WithCode(CodeForbidden)
 }
 
 // ForbiddenError creates a 403 Forbidden error with default or custom message.
@@ -170,11 +148,6 @@ func ForbiddenError(message ...string) *APIError {
 	return New(http.StatusForbidden, msg).WithCode(CodeForbidden)
 }
 
-// ErrConflict creates a 409 Conflict error.
-func ErrConflict(message string) *APIError {
-	return New(http.StatusConflict, message).WithCode(CodeResourceConflict)
-}
-
 // ConflictError creates a 409 Conflict error with default or custom message.
 func ConflictError(message ...string) *APIError {
 	msg := "Resource conflict"
@@ -184,27 +157,27 @@ func ConflictError(message ...string) *APIError {
 	return New(http.StatusConflict, msg).WithCode(CodeResourceConflict)
 }
 
-// ErrInternalError creates a 500 Internal Server Error.
-func ErrInternalError(message ...string) *APIError {
+// InternalServerError creates a 500 Internal Server Error with default or custom message.
+func InternalServerError(message ...string) *APIError {
 	msg := "Internal server error"
 	if len(message) > 0 && message[0] != "" {
 		msg = message[0]
 	}
 	return New(http.StatusInternalServerError, msg).WithCode(CodeInternalError)
+
 }
 
-// InternalServerError creates a 500 Internal Server Error with default or custom message.
-func InternalServerError(message ...string) *APIError {
-	return ErrInternalError(message...)
+// TooManyRequestsError creates a 429 Too Many Requests error	 with default or custom message.
+func TooManyRequestsError(message ...string) *APIError {
+	msg := "Too many requests"
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+	return New(http.StatusTooManyRequests, msg).WithCode(CodeRateLimitExceeded)
 }
 
-// ErrInvalidUUID creates a 400 Bad Request error for invalid UUID syntax.
-func ErrInvalidUUID() *APIError {
-	return New(http.StatusBadRequest, "Invalid UUID format").WithCode(CodeInvalidInput)
-}
-
-// ErrInvalidPayload creates a 400 Bad Request error for malformed request payloads.
-func ErrInvalidPayload(message ...string) *APIError {
+// InvalidPayloadError creates a 400 Bad Request error for malformed request payloads.
+func InvalidPayloadError(message ...string) *APIError {
 	msg := "Invalid request payload"
 	if len(message) > 0 && message[0] != "" {
 		msg = message[0]
@@ -212,11 +185,21 @@ func ErrInvalidPayload(message ...string) *APIError {
 	return New(http.StatusBadRequest, msg).WithCode(CodeInvalidPayload)
 }
 
-// ErrValidationFailed creates a 400 Bad Request error for field validation failures.
-func ErrValidationFailed(message ...string) *APIError {
+// ValidationFailedError creates a 400 Bad Request error for field validation failures.
+func ValidationFailedError(message ...string) *APIError {
 	msg := "Validation failed"
 	if len(message) > 0 && message[0] != "" {
 		msg = message[0]
 	}
 	return New(http.StatusBadRequest, msg).WithCode(CodeValidationFailed)
 }
+
+// InvalidUUIDError creates a 400 Bad Request error for invalid UUID syntax.
+func InvalidUUIDError(message ...string) *APIError {
+	msg := "Invalid UUID format"
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+	return New(http.StatusBadRequest, msg).WithCode(CodeInvalidInput)
+}
+

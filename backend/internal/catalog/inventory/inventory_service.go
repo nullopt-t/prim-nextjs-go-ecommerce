@@ -51,18 +51,18 @@ func (s *InventoryService) AdjustStock(
 	in AdjustStockInput,
 ) (*model.InventoryStock, error) {
 	if in.VariantID == uuid.Nil {
-		return nil, apierr.ErrBadRequest("Variant ID is required").
+		return nil, apierr.BadRequestError("Variant ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
 	if in.Quantity == 0 {
-		return nil, apierr.ErrBadRequest("Quantity adjustment cannot be zero").
+		return nil, apierr.BadRequestError("Quantity adjustment cannot be zero").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
 	reason, err := model.ParseInventoryReason(in.Reason)
 	if err != nil {
-		return nil, apierr.ErrBadRequest("Invalid inventory reason: " + in.Reason).
+		return nil, apierr.BadRequestError("Invalid inventory reason: " + in.Reason).
 			WithCode(errcode.CodeInvalidInventoryReason).
 			Wrap(err)
 	}
@@ -80,7 +80,7 @@ func (s *InventoryService) AdjustStock(
 		}
 
 		if in.Quantity < 0 && (currentStock.OnHandQuantity+in.Quantity < 0) {
-			return apierr.ErrBadRequest(
+			return apierr.BadRequestError(
 				fmt.Sprintf("Insufficient on-hand inventory (%d) for adjustment (%d)", currentStock.OnHandQuantity, in.Quantity),
 			).WithCode(errcode.CodeInsufficientInventory)
 		}
@@ -108,11 +108,11 @@ func (s *InventoryService) AdjustStock(
 		mappedErr := database.MapError(txErr)
 		switch {
 		case errors.Is(mappedErr, database.ErrForeignKeyViolation), errors.Is(mappedErr, database.ErrNotFound):
-			return nil, apierr.ErrBadRequest("Referenced variant does not exist").
+			return nil, apierr.BadRequestError("Referenced variant does not exist").
 				WithCode(errcode.CodeVariantNotFound).
 				Wrap(txErr)
 		default:
-			return nil, apierr.ErrInternalError("Failed to adjust inventory").
+			return nil, apierr.InternalServerError("Failed to adjust inventory").
 				WithCode(apierr.CodeInternalError).
 				Wrap(txErr).
 				WithStack()
@@ -127,7 +127,7 @@ func (s *InventoryService) GetStockByVariantID(
 	variantID uuid.UUID,
 ) (*model.InventoryStock, error) {
 	if variantID == uuid.Nil {
-		return nil, apierr.ErrBadRequest("Variant ID is required").
+		return nil, apierr.BadRequestError("Variant ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -142,11 +142,11 @@ func (s *InventoryService) GetStockByVariantID(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return nil, apierr.ErrNotFound("Variant not found").
+			return nil, apierr.NotFoundError("Variant not found").
 				WithCode(errcode.CodeVariantNotFound).
 				Wrap(err)
 		default:
-			return nil, apierr.ErrInternalError("Failed to get variant inventory stock").
+			return nil, apierr.InternalServerError("Failed to get variant inventory stock").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
@@ -172,7 +172,7 @@ func (s *InventoryService) GetStockForVariants(
 	})
 
 	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to get inventory stock for variants").
+		return nil, apierr.InternalServerError("Failed to get inventory stock for variants").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
@@ -187,7 +187,7 @@ func (s *InventoryService) ListVariantLedgers(
 	q *pagination.ListQuery,
 ) (*pagination.PagedResult[model.InventoryLedger], error) {
 	if variantID == uuid.Nil {
-		return nil, apierr.ErrBadRequest("Variant ID is required").
+		return nil, apierr.BadRequestError("Variant ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -199,7 +199,7 @@ func (s *InventoryService) ListVariantLedgers(
 	})
 
 	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to list inventory ledgers").
+		return nil, apierr.InternalServerError("Failed to list inventory ledgers").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
@@ -221,12 +221,12 @@ func (s *InventoryService) ReserveStock(
 	in ReserveStockInput,
 ) (*model.InventoryReservation, error) {
 	if in.VariantID == uuid.Nil {
-		return nil, apierr.ErrBadRequest("Variant ID is required").
+		return nil, apierr.BadRequestError("Variant ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
 	if in.Quantity <= 0 {
-		return nil, apierr.ErrBadRequest("Reservation quantity must be positive").
+		return nil, apierr.BadRequestError("Reservation quantity must be positive").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -249,7 +249,7 @@ func (s *InventoryService) ReserveStock(
 		}
 
 		if stock.AvailableQuantity < in.Quantity {
-			return apierr.ErrBadRequest(
+			return apierr.BadRequestError(
 				fmt.Sprintf("Insufficient available stock (%d) for reservation (%d)", stock.AvailableQuantity, in.Quantity),
 			).WithCode(errcode.CodeInsufficientInventory)
 		}
@@ -294,11 +294,11 @@ func (s *InventoryService) ReserveStock(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrForeignKeyViolation), errors.Is(mappedErr, database.ErrNotFound):
-			return nil, apierr.ErrBadRequest("Referenced variant does not exist").
+			return nil, apierr.BadRequestError("Referenced variant does not exist").
 				WithCode(errcode.CodeVariantNotFound).
 				Wrap(err)
 		default:
-			return nil, apierr.ErrInternalError("Failed to reserve inventory").
+			return nil, apierr.InternalServerError("Failed to reserve inventory").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
@@ -313,7 +313,7 @@ func (s *InventoryService) ReleaseReservation(
 	reservationID uuid.UUID,
 ) error {
 	if reservationID == uuid.Nil {
-		return apierr.ErrBadRequest("Reservation ID is required").
+		return apierr.BadRequestError("Reservation ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -325,11 +325,11 @@ func (s *InventoryService) ReleaseReservation(
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return apierr.ErrNotFound("Inventory reservation not found").
+			return apierr.NotFoundError("Inventory reservation not found").
 				WithCode(errcode.CodeReservationNotFound).
 				Wrap(err)
 		default:
-			return apierr.ErrInternalError("Failed to release reservation").
+			return apierr.InternalServerError("Failed to release reservation").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
@@ -344,7 +344,7 @@ func (s *InventoryService) ReleaseCartReservations(
 	cartID uuid.UUID,
 ) error {
 	if cartID == uuid.Nil {
-		return apierr.ErrBadRequest("Cart ID is required").
+		return apierr.BadRequestError("Cart ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -353,7 +353,7 @@ func (s *InventoryService) ReleaseCartReservations(
 	})
 
 	if err != nil {
-		return apierr.ErrInternalError("Failed to release cart reservations").
+		return apierr.InternalServerError("Failed to release cart reservations").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
@@ -373,7 +373,7 @@ func (s *InventoryService) ReleaseExpiredReservations(
 	})
 
 	if err != nil {
-		return 0, apierr.ErrInternalError("Failed to release expired reservations").
+		return 0, apierr.InternalServerError("Failed to release expired reservations").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
@@ -387,7 +387,7 @@ func (s *InventoryService) CommitReservation(
 	reservationID uuid.UUID,
 ) error {
 	if reservationID == uuid.Nil {
-		return apierr.ErrBadRequest("Reservation ID is required").
+		return apierr.BadRequestError("Reservation ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -398,12 +398,12 @@ func (s *InventoryService) CommitReservation(
 		}
 
 		if res.ReleasedAt != nil {
-			return apierr.ErrBadRequest("Reservation has already been released").
+			return apierr.BadRequestError("Reservation has already been released").
 				WithCode(errcode.CodeReservationExpired)
 		}
 
 		if time.Now().After(res.ExpiresAt) {
-			return apierr.ErrBadRequest("Reservation has expired").
+			return apierr.BadRequestError("Reservation has expired").
 				WithCode(errcode.CodeReservationExpired)
 		}
 
@@ -426,7 +426,7 @@ func (s *InventoryService) CommitReservation(
 		if errors.As(err, &apiErr) {
 			return apiErr
 		}
-		return apierr.ErrInternalError("Failed to commit reservation").
+		return apierr.InternalServerError("Failed to commit reservation").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()

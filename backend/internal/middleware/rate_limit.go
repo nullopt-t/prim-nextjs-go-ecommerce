@@ -2,12 +2,10 @@ package middleware
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 )
 
 type RateLimiter interface {
@@ -20,25 +18,18 @@ func RateLimit(
 	keyPrefix string,
 	limit int64,
 	window time.Duration,
-	logger log.Logger,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if limiter == nil {
-			c.Next()
-			return
-		}
-		
 		key := keyPrefix + ":" + c.ClientIP()
 		allowed, err := limiter.Allow(c.Request.Context(), key, limit, window)
 		if err != nil {
-			logger.Error("rate limit error", log.Meta{"error": err})
-			_ = c.Error(apierr.New(http.StatusInternalServerError, "Internal Server Error"))
+			_ = c.Error(apierr.InternalServerError().Wrap(err))
 			c.Abort()
 			return
 		}
 		
 		if !allowed {
-			_ = c.Error(apierr.New(http.StatusTooManyRequests, "Too many requests").WithCode(apierr.CodeRateLimitExceeded))
+			_ = c.Error(apierr.TooManyRequestsError())
 			c.Abort()
 			return
 		}

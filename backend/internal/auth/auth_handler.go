@@ -254,7 +254,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 	}
 
 	if refreshToken == "" {
-		_ = c.Error(apierr.ErrBadRequest("Refresh token is required").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.BadRequestError("Refresh token is required").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 

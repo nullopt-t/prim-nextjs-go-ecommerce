@@ -90,7 +90,7 @@ func (bh *BrandHandler) CreateBrand(c *gin.Context) {
 
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
-		_ = c.Error(apierr.ErrBadRequest("Brand name is required").WithCode(apierr.CodeValidationFailed))
+		_ = c.Error(apierr.BadRequestError("Brand name is required").WithCode(apierr.CodeValidationFailed))
 		return
 	}
 
@@ -130,7 +130,7 @@ func (bh *BrandHandler) GetBrandByID(c *gin.Context) {
 	brandID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(
-			apierr.ErrInvalidUUID().WithFields(
+			apierr.InvalidUUIDError().WithFields(
 				api.FieldError{
 					Field:   "brand_id",
 					Message: "invalid brand UUID format",
@@ -173,7 +173,7 @@ func (bh *BrandHandler) UpdateBrand(c *gin.Context) {
 	brandID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(
-			apierr.ErrInvalidUUID().WithFields(
+			apierr.InvalidUUIDError().WithFields(
 				api.FieldError{
 					Field:   "brand_id",
 					Message: "invalid brand UUID format",
@@ -224,7 +224,7 @@ func (bh *BrandHandler) DeleteBrandByID(c *gin.Context) {
 	brandID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(
-			apierr.ErrInvalidUUID().WithFields(
+			apierr.InvalidUUIDError().WithFields(
 				api.FieldError{
 					Field:   "brand_id",
 					Message: "invalid brand UUID format",
@@ -347,7 +347,7 @@ func (bh *BrandHandler) UploadBrandLogo(c *gin.Context) {
 	brandID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(
-			apierr.ErrInvalidUUID().WithFields(
+			apierr.InvalidUUIDError().WithFields(
 				api.FieldError{
 					Field:   "brand_id",
 					Message: "invalid brand UUID format",
@@ -359,7 +359,7 @@ func (bh *BrandHandler) UploadBrandLogo(c *gin.Context) {
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("file is required").WithCode(apierr.CodeInvalidInput))
+		_ = c.Error(apierr.BadRequestError("file is required").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 

@@ -53,20 +53,20 @@ func (bs *BrandService) handleError(err error, fallbackMsg string) error {
 	mappedErr := database.MapError(err)
 	switch {
 	case errors.Is(mappedErr, database.ErrNotFound):
-		return apierr.ErrNotFound("Brand not found").
+		return apierr.NotFoundError("Brand not found").
 			WithCode(errcode.CodeBrandNotFound)
 	case errors.Is(mappedErr, database.ErrConflict):
-		return apierr.ErrConflict("A brand with this name already exists").
+		return apierr.ConflictError("A brand with this name already exists").
 			WithCode(errcode.CodeBrandAlreadyExists)
 	case errors.Is(mappedErr, database.ErrForeignKeyViolation):
-		return apierr.ErrBadRequest("Referenced logo storage object does not exist").
+		return apierr.BadRequestError("Referenced logo storage object does not exist").
 			WithCode(errcode.CodeLogoStorageObjectNotFound).
 			WithFields(api.FieldError{
 				Field:   "logo_object_id",
 				Message: "storage object reference is invalid",
 			})
 	default:
-		return apierr.ErrInternalError(fallbackMsg).
+		return apierr.InternalServerError(fallbackMsg).
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
@@ -143,7 +143,7 @@ func (bs *BrandService) UpdateBrand(
 	if in.Name != nil {
 		name := strings.TrimSpace(*in.Name)
 		if name == "" {
-			return apierr.ErrBadRequest("Validation error").
+			return apierr.BadRequestError("Validation error").
 				WithCode(apierr.CodeValidationFailed).
 				WithFields(api.FieldError{
 					Field:   "name",
@@ -229,7 +229,7 @@ func (bs *BrandService) DeleteBrandByID(
 	id uuid.UUID,
 ) error {
 	if id == uuid.Nil {
-		return apierr.ErrBadRequest("Brand ID is required").
+		return apierr.BadRequestError("Brand ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -239,7 +239,7 @@ func (bs *BrandService) DeleteBrandByID(
 
 	if err != nil {
 		if errors.Is(err, database.ErrConflict) {
-			return apierr.ErrConflict("Brand is currently in use and cannot be deleted").
+			return apierr.ConflictError("Brand is currently in use and cannot be deleted").
 				WithCode(errcode.CodeBrandInUse)
 		}
 		return bs.handleError(err, "Failed to delete brand")
@@ -254,24 +254,24 @@ func (bs *BrandService) UploadBrandLogo(
 	file *multipart.FileHeader,
 ) (*string, error) {
 	if brandID == uuid.Nil {
-		return nil, apierr.ErrBadRequest("Brand ID is required").WithCode(apierr.CodeInvalidInput)
+		return nil, apierr.BadRequestError("Brand ID is required").WithCode(apierr.CodeInvalidInput)
 	}
 	if file == nil {
-		return nil, apierr.ErrBadRequest("File is required").WithCode(apierr.CodeInvalidInput)
+		return nil, apierr.BadRequestError("File is required").WithCode(apierr.CodeInvalidInput)
 	}
 
 	src, err := file.Open()
 	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to open file").Wrap(err)
+		return nil, apierr.InternalServerError("Failed to open file").Wrap(err)
 	}
 	defer func() { _ = src.Close() }()
 
 	contentType, err := fileUtil.DetectContentType(src)
 	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to detect content type").Wrap(err)
+		return nil, apierr.InternalServerError("Failed to detect content type").Wrap(err)
 	}
 	if !strings.HasPrefix(contentType, "image/") {
-		return nil, apierr.ErrBadRequest("Only image files are allowed").WithCode(apierr.CodeInvalidInput)
+		return nil, apierr.BadRequestError("Only image files are allowed").WithCode(apierr.CodeInvalidInput)
 	}
 
 	// Fetch existing brand to check for old logo
@@ -290,7 +290,7 @@ func (bs *BrandService) UploadBrandLogo(
 
 	obj, err := bs.objectService.UploadObject(ctx, contentType, file.Size, "catalog", src)
 	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to upload logo").Wrap(err)
+		return nil, apierr.InternalServerError("Failed to upload logo").Wrap(err)
 	}
 
 	// Update the brand

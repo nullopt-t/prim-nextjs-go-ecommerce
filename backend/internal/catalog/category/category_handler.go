@@ -148,7 +148,7 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 func (h *CategoryHandler) GetCategoryByID(c *gin.Context) {
 	categoryID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().
+		_ = c.Error(apierr.InvalidUUIDError().
 			WithFields(api.FieldError{
 				Field:   "id",
 				Message: "invalid category UUID format",
@@ -279,7 +279,7 @@ type UpdateCategoryRequest struct {
 func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 	categoryID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().
+		_ = c.Error(apierr.InvalidUUIDError().
 			WithFields(api.FieldError{
 				Field:   "id",
 				Message: "invalid category UUID format",

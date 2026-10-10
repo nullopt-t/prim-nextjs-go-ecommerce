@@ -112,7 +112,7 @@ func mapRatingSummaryResponse(s *model.RatingSummary) RatingSummaryResponse {
 func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
 	userIDVal, exists := c.Get("userID")
 	if !exists {
-		return uuid.Nil, apierr.ErrUnauthorized("unauthorized")
+		return uuid.Nil, apierr.UnauthorizedError("unauthorized")
 	}
 	if id, ok := userIDVal.(uuid.UUID); ok {
 		return id, nil
@@ -123,7 +123,7 @@ func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
 			return id, nil
 		}
 	}
-	return uuid.Nil, apierr.ErrUnauthorized("invalid user identifier in context")
+	return uuid.Nil, apierr.UnauthorizedError("invalid user identifier in context")
 }
 
 // CreateReview godoc
@@ -144,13 +144,13 @@ func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
 func (h *ReviewHandler) CreateReview(c *gin.Context) {
 	var req CreateReviewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		_ = c.Error(apierr.ErrInvalidPayload("invalid request payload"))
+		_ = c.Error(apierr.InvalidPayloadError("invalid request payload"))
 		return
 	}
 
 	productID, err := uuid.Parse(req.ProductID)
 	if err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid product id"))
+		_ = c.Error(apierr.ValidationFailedError("invalid product id"))
 		return
 	}
 
@@ -158,7 +158,7 @@ func (h *ReviewHandler) CreateReview(c *gin.Context) {
 	if req.OrderItemID != nil && *req.OrderItemID != "" {
 		parsedID, err := uuid.Parse(*req.OrderItemID)
 		if err != nil {
-			_ = c.Error(apierr.ErrValidationFailed("invalid order item id"))
+			_ = c.Error(apierr.ValidationFailedError("invalid order item id"))
 			return
 		}
 		orderItemID = &parsedID
@@ -207,7 +207,7 @@ func (h *ReviewHandler) GetMyReviews(c *gin.Context) {
 
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid query parameters"))
+		_ = c.Error(apierr.ValidationFailedError("invalid query parameters"))
 		return
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
@@ -255,13 +255,13 @@ func (h *ReviewHandler) CheckEligibility(c *gin.Context) {
 
 	productIDStr := c.Query("productId")
 	if productIDStr == "" {
-		_ = c.Error(apierr.ErrValidationFailed("productId is required"))
+		_ = c.Error(apierr.ValidationFailedError("productId is required"))
 		return
 	}
 
 	productID, err := uuid.Parse(productIDStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid productId format"))
+		_ = c.Error(apierr.ValidationFailedError("invalid productId format"))
 		return
 	}
 
@@ -294,7 +294,7 @@ func (h *ReviewHandler) GetReviewByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid review id"))
+		_ = c.Error(apierr.ValidationFailedError("invalid review id"))
 		return
 	}
 
@@ -327,7 +327,7 @@ func (h *ReviewHandler) UpdateReview(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid review id"))
+		_ = c.Error(apierr.ValidationFailedError("invalid review id"))
 		return
 	}
 
@@ -339,7 +339,7 @@ func (h *ReviewHandler) UpdateReview(c *gin.Context) {
 
 	var req UpdateReviewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		_ = c.Error(apierr.ErrInvalidPayload("invalid request payload"))
+		_ = c.Error(apierr.InvalidPayloadError("invalid request payload"))
 		return
 	}
 
@@ -374,7 +374,7 @@ func (h *ReviewHandler) DeleteReview(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid review id"))
+		_ = c.Error(apierr.ValidationFailedError("invalid review id"))
 		return
 	}
 
@@ -411,7 +411,7 @@ func (h *ReviewHandler) DeleteReview(c *gin.Context) {
 func (h *ReviewHandler) AdminListReviews(c *gin.Context) {
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid query parameters"))
+		_ = c.Error(apierr.ValidationFailedError("invalid query parameters"))
 		return
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
@@ -487,7 +487,7 @@ func (h *ReviewHandler) AdminGetReviewByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid review id"))
+		_ = c.Error(apierr.ValidationFailedError("invalid review id"))
 		return
 	}
 
@@ -520,19 +520,19 @@ func (h *ReviewHandler) UpdateReviewStatus(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid review id"))
+		_ = c.Error(apierr.ValidationFailedError("invalid review id"))
 		return
 	}
 
 	var req UpdateReviewStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		_ = c.Error(apierr.ErrInvalidPayload("invalid request payload"))
+		_ = c.Error(apierr.InvalidPayloadError("invalid request payload"))
 		return
 	}
 
 	status, err := model.ParseReviewStatus(req.Status)
 	if err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid status"))
+		_ = c.Error(apierr.ValidationFailedError("invalid status"))
 		return
 	}
 
@@ -563,7 +563,7 @@ func (h *ReviewHandler) AdminDeleteReview(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid review id"))
+		_ = c.Error(apierr.ValidationFailedError("invalid review id"))
 		return
 	}
 

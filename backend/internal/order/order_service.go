@@ -50,7 +50,7 @@ func NewService(
 
 func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*model.Order, error) {
 	if len(in.Items) == 0 {
-		return nil, apierr.ErrBadRequest("Order must contain at least one item").WithCode(errcode.CodeEmptyOrderItems)
+		return nil, apierr.BadRequestError("Order must contain at least one item").WithCode(errcode.CodeEmptyOrderItems)
 	}
 
 	var createdOrder *model.Order
@@ -118,11 +118,11 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrConflict):
-			return nil, apierr.ErrConflict("Order conflict").
+			return nil, apierr.ConflictError("Order conflict").
 				WithCode(errcode.CodeOrderAlreadyExists).
 				Wrap(err)
 		default:
-			return nil, apierr.ErrInternalError("Failed to create order").
+			return nil, apierr.InternalServerError("Failed to create order").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
@@ -147,10 +147,10 @@ func (s *OrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.O
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return nil, apierr.ErrNotFound("Order not found").
+			return nil, apierr.NotFoundError("Order not found").
 				WithCode(errcode.CodeOrderNotFound)
 		default:
-			return nil, apierr.ErrInternalError("Failed to fetch order").
+			return nil, apierr.InternalServerError("Failed to fetch order").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()
@@ -171,7 +171,7 @@ func (s *OrderService) GetCustomerOrders(ctx context.Context, customerID uuid.UU
 	})
 
 	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to fetch customer orders").
+		return nil, apierr.InternalServerError("Failed to fetch customer orders").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
@@ -191,10 +191,10 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
-			return apierr.ErrNotFound("Order not found").
+			return apierr.NotFoundError("Order not found").
 				WithCode(errcode.CodeOrderNotFound)
 		default:
-			return apierr.ErrInternalError("Failed to update order status").
+			return apierr.InternalServerError("Failed to update order status").
 				WithCode(apierr.CodeInternalError).
 				Wrap(err).
 				WithStack()

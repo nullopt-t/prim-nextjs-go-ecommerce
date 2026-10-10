@@ -64,7 +64,7 @@ func (s *CartService) GetOrCreateCart(
 		case sessionID != nil:
 			cart, err = s.cartRepo.GetCartBySessionID(ctx, tx, *sessionID)
 		default:
-			return apierr.ErrBadRequest("User ID or Session ID is required").
+			return apierr.BadRequestError("User ID or Session ID is required").
 				WithCode(apierr.CodeInvalidInput)
 		}
 
@@ -142,13 +142,13 @@ func (s *CartService) AddItem(
 	quantity int,
 ) (*model.Cart, error) {
 	if quantity <= 0 {
-		return nil, apierr.ErrBadRequest("Quantity must be greater than zero").
+		return nil, apierr.BadRequestError("Quantity must be greater than zero").
 			WithCode(errcode.CodeInvalidQuantity)
 	}
 
 	v, err := s.variantService.GetVariantByID(ctx, variantID)
 	if err != nil {
-		return nil, apierr.ErrNotFound("Variant not found").
+		return nil, apierr.NotFoundError("Variant not found").
 			WithCode(errcode.CodeVariantNotFound).
 			Wrap(err)
 	}
@@ -158,7 +158,7 @@ func (s *CartService) AddItem(
 		stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, v.ID)
 		if stockErr == nil && stock != nil {
 			if stock.AvailableQuantity < quantity {
-				return nil, apierr.ErrBadRequest("Insufficient inventory available").
+				return nil, apierr.BadRequestError("Insufficient inventory available").
 					WithCode(errcode.CodeInsufficientInventory)
 			}
 		}
@@ -183,7 +183,7 @@ func (s *CartService) AddItem(
 		case sessionID != nil:
 			cart, err = s.cartRepo.GetCartBySessionID(ctx, tx, *sessionID)
 		default:
-			return apierr.ErrBadRequest("User ID or Session ID is required").
+			return apierr.BadRequestError("User ID or Session ID is required").
 				WithCode(apierr.CodeInvalidInput)
 		}
 
@@ -209,7 +209,7 @@ func (s *CartService) AddItem(
 			if s.inventoryService != nil {
 				stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, v.ID)
 				if stockErr == nil && stock != nil && stock.AvailableQuantity < newQty {
-					return apierr.ErrBadRequest("Insufficient inventory available").
+					return apierr.BadRequestError("Insufficient inventory available").
 						WithCode(errcode.CodeInsufficientInventory)
 				}
 			}
@@ -236,7 +236,7 @@ func (s *CartService) AddItem(
 		if errors.As(txErr, &apiErr) {
 			return nil, apiErr
 		}
-		return nil, apierr.ErrInternalError("Failed to add item to cart").
+		return nil, apierr.InternalServerError("Failed to add item to cart").
 			WithCode(apierr.CodeInternalError).
 			Wrap(txErr).
 			WithStack()
@@ -253,7 +253,7 @@ func (s *CartService) UpdateCartItemQuantity(
 	quantity int,
 ) (*model.Cart, error) {
 	if quantity <= 0 {
-		return nil, apierr.ErrBadRequest("Quantity must be greater than zero").
+		return nil, apierr.BadRequestError("Quantity must be greater than zero").
 			WithCode(errcode.CodeInvalidQuantity)
 	}
 
@@ -271,7 +271,7 @@ func (s *CartService) UpdateCartItemQuantity(
 		if s.inventoryService != nil {
 			stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, item.VariantID)
 			if stockErr == nil && stock != nil && stock.AvailableQuantity < quantity {
-				return apierr.ErrBadRequest("Insufficient inventory available").
+				return apierr.BadRequestError("Insufficient inventory available").
 					WithCode(errcode.CodeInsufficientInventory)
 			}
 		}
@@ -285,11 +285,11 @@ func (s *CartService) UpdateCartItemQuantity(
 			return nil, apiErr
 		}
 		if errors.Is(database.MapError(err), database.ErrNotFound) {
-			return nil, apierr.ErrNotFound("Cart item not found").
+			return nil, apierr.NotFoundError("Cart item not found").
 				WithCode(errcode.CodeCartItemNotFound).
 				Wrap(err)
 		}
-		return nil, apierr.ErrInternalError("Failed to update cart item quantity").
+		return nil, apierr.InternalServerError("Failed to update cart item quantity").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
@@ -315,11 +315,11 @@ func (s *CartService) RemoveCartItem(
 
 	if err != nil {
 		if errors.Is(database.MapError(err), database.ErrNotFound) {
-			return nil, apierr.ErrNotFound("Cart item not found").
+			return nil, apierr.NotFoundError("Cart item not found").
 				WithCode(errcode.CodeCartItemNotFound).
 				Wrap(err)
 		}
-		return nil, apierr.ErrInternalError("Failed to remove cart item").
+		return nil, apierr.InternalServerError("Failed to remove cart item").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
@@ -343,7 +343,7 @@ func (s *CartService) ClearCart(
 	})
 
 	if err != nil {
-		return apierr.ErrInternalError("Failed to clear cart").
+		return apierr.InternalServerError("Failed to clear cart").
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()
@@ -401,7 +401,7 @@ func (s *CartService) MergeGuestCart(
 			if s.inventoryService != nil {
 				stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, item.VariantID)
 				if stockErr == nil && stock != nil && stock.AvailableQuantity < targetQty {
-					return apierr.ErrBadRequest("Insufficient inventory available for variant").
+					return apierr.BadRequestError("Insufficient inventory available for variant").
 						WithCode(errcode.CodeInsufficientInventory)
 				}
 			}
@@ -434,7 +434,7 @@ func (s *CartService) MergeGuestCart(
 		if errors.As(err, &apiErr) {
 			return apiErr
 		}
-		return apierr.ErrInternalError("Failed to merge guest cart").
+		return apierr.InternalServerError("Failed to merge guest cart").
 			WithCode(errcode.CodeMergeCartFailed).
 			Wrap(err).
 			WithStack()

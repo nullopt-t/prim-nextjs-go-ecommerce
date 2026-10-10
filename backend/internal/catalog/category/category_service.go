@@ -40,7 +40,7 @@ func (cs *CategoryService) CreateCategory(
 ) (*model.ProductCategory, error) {
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
-		return nil, apierr.ErrBadRequest("Invalid category parameters").
+		return nil, apierr.BadRequestError("Invalid category parameters").
 			WithCode(apierr.CodeValidationFailed).
 			WithFields(api.FieldError{
 				Field:   "name",
@@ -129,7 +129,7 @@ func (cs *CategoryService) UpdateCategory(
 	input UpdateCategoryInput,
 ) error {
 	if categoryID == uuid.Nil {
-		return apierr.ErrBadRequest("Category ID is required").
+		return apierr.BadRequestError("Category ID is required").
 			WithCode(apierr.CodeInvalidInput)
 	}
 
@@ -138,7 +138,7 @@ func (cs *CategoryService) UpdateCategory(
 	if input.Name != nil {
 		trimmedName := strings.TrimSpace(*input.Name)
 		if trimmedName == "" {
-			return apierr.ErrBadRequest("Validation failed").
+			return apierr.BadRequestError("Validation failed").
 				WithCode(apierr.CodeValidationFailed).
 				WithFields(api.FieldError{
 					Field:   "name",
@@ -152,7 +152,7 @@ func (cs *CategoryService) UpdateCategory(
 		parentID := *input.ParentID
 
 		if parentID == categoryID {
-			return apierr.ErrBadRequest("A category cannot be set as its own parent").
+			return apierr.BadRequestError("A category cannot be set as its own parent").
 				WithCode(errcode.CodeInvalidCategoryHierarchy).
 				WithFields(api.FieldError{
 					Field:   "parent_id",
@@ -163,13 +163,13 @@ func (cs *CategoryService) UpdateCategory(
 		if parentID != uuid.Nil {
 			isDescendant, err := cs.isDescendant(ctx, categoryID, parentID)
 			if err != nil {
-				return apierr.ErrInternalError("Failed to validate category hierarchy").
+				return apierr.InternalServerError("Failed to validate category hierarchy").
 					WithCode(apierr.CodeInternalError).
 					Wrap(err).
 					WithStack()
 			}
 			if isDescendant {
-				return apierr.ErrBadRequest("Cannot set a descendant category as parent").
+				return apierr.BadRequestError("Cannot set a descendant category as parent").
 					WithCode(errcode.CodeCyclicCategoryHierarchy).
 					WithFields(api.FieldError{
 						Field:   "parent_id",
@@ -257,15 +257,15 @@ func (cs *CategoryService) handleError(err error, defaultMsg string) error {
 	mappedErr := database.MapError(err)
 	switch {
 	case errors.Is(mappedErr, database.ErrNotFound):
-		return apierr.ErrNotFound("Category not found").
+		return apierr.NotFoundError("Category not found").
 			WithCode(errcode.CodeCategoryNotFound).
 			Wrap(err)
 	case errors.Is(mappedErr, database.ErrConflict):
-		return apierr.ErrConflict("Category already exists").
+		return apierr.ConflictError("Category already exists").
 			WithCode(errcode.CodeCategoryAlreadyExists).
 			Wrap(err)
 	case errors.Is(mappedErr, database.ErrForeignKeyViolation):
-		return apierr.ErrBadRequest("The specified parent category does not exist").
+		return apierr.BadRequestError("The specified parent category does not exist").
 			WithCode(errcode.CodeParentCategoryNotFound).
 			Wrap(err).
 			WithFields(api.FieldError{
@@ -273,11 +273,11 @@ func (cs *CategoryService) handleError(err error, defaultMsg string) error {
 				Message: "referenced category does not exist",
 			})
 	case errors.Is(mappedErr, database.ErrInvalidInput):
-		return apierr.ErrBadRequest("Invalid input provided").
+		return apierr.BadRequestError("Invalid input provided").
 			WithCode(apierr.CodeInvalidInput).
 			Wrap(err)
 	default:
-		return apierr.ErrInternalError(defaultMsg).
+		return apierr.InternalServerError(defaultMsg).
 			WithCode(apierr.CodeInternalError).
 			Wrap(err).
 			WithStack()

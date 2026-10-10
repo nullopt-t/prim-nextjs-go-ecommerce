@@ -129,7 +129,7 @@ func (th *TagHandler) GetTagByID(c *gin.Context) {
 	tagID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(
-			apierr.ErrInvalidUUID().WithFields(
+			apierr.InvalidUUIDError().WithFields(
 				api.FieldError{
 					Field:   "tag_id",
 					Message: "invalid tag UUID format",
@@ -172,7 +172,7 @@ func (th *TagHandler) UpdateTagByID(c *gin.Context) {
 	tagID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(
-			apierr.ErrInvalidUUID().WithFields(
+			apierr.InvalidUUIDError().WithFields(
 				api.FieldError{
 					Field:   "tag_id",
 					Message: "invalid tag UUID format",
@@ -222,7 +222,7 @@ func (th *TagHandler) DeleteTagByID(c *gin.Context) {
 	tagID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(
-			apierr.ErrInvalidUUID().WithFields(
+			apierr.InvalidUUIDError().WithFields(
 				api.FieldError{
 					Field:   "tag_id",
 					Message: "invalid tag UUID format",

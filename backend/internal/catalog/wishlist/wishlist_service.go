@@ -58,16 +58,16 @@ func (s *WishlistService) AddToWishlist(
 			if errors.As(err, &apiErr) {
 				return nil, apiErr
 			}
-			return nil, apierr.ErrNotFound("Product not found").
+			return nil, apierr.NotFoundError("Product not found").
 				WithCode(errcode.CodeProductNotFound).
 				Wrap(err)
 		}
 		if prod == nil {
-			return nil, apierr.ErrNotFound("Product not found").
+			return nil, apierr.NotFoundError("Product not found").
 				WithCode(errcode.CodeProductNotFound)
 		}
 		if prod.Status != model.PublicationStatusPublished {
-			return nil, apierr.ErrBadRequest("Product is not available for wishlisting").
+			return nil, apierr.BadRequestError("Product is not available for wishlisting").
 				WithCode(apierr.CodeInvalidInput)
 		}
 	}
@@ -86,24 +86,24 @@ func (s *WishlistService) AddToWishlist(
 		if err := s.repo.Create(ctx, tx, newItem); err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrConflict) {
-				return apierr.ErrConflict("Product already in wishlist").
+				return apierr.ConflictError("Product already in wishlist").
 					WithCode(errcode.CodeWishlistItemAlreadyExists)
 			}
 			if errors.Is(mappedErr, database.ErrForeignKeyViolation) {
-				return apierr.ErrNotFound("Product not found").
+				return apierr.NotFoundError("Product not found").
 					WithCode(errcode.CodeProductNotFound)
 			}
-			return apierr.ErrInternalError("Failed to add product to wishlist").
+			return apierr.InternalServerError("Failed to add product to wishlist").
 				Wrap(err)
 		}
 
 		item, err := s.repo.GetByID(ctx, tx, newItem.ID, userID)
 		if err != nil {
-			return apierr.ErrInternalError("Failed to retrieve created wishlist item").
+			return apierr.InternalServerError("Failed to retrieve created wishlist item").
 				Wrap(err)
 		}
 		if item == nil {
-			return apierr.ErrNotFound("Wishlist item not found").
+			return apierr.NotFoundError("Wishlist item not found").
 				WithCode(errcode.CodeWishlistItemNotFound)
 		}
 
@@ -116,7 +116,7 @@ func (s *WishlistService) AddToWishlist(
 		if errors.As(err, &apiErr) {
 			return nil, apiErr
 		}
-		return nil, apierr.ErrInternalError("Failed to add product to wishlist").
+		return nil, apierr.InternalServerError("Failed to add product to wishlist").
 			Wrap(err)
 	}
 
@@ -138,7 +138,7 @@ func (s *WishlistService) GetMyWishlist(
 	})
 
 	if err != nil {
-		return nil, apierr.ErrInternalError("Failed to retrieve wishlist").Wrap(err)
+		return nil, apierr.InternalServerError("Failed to retrieve wishlist").Wrap(err)
 	}
 
 	itemPtrs := make([]*model.WishlistItem, len(items))
@@ -164,7 +164,7 @@ func (s *WishlistService) GetWishlistCount(
 	})
 
 	if err != nil {
-		return 0, apierr.ErrInternalError("Failed to count wishlist items").Wrap(err)
+		return 0, apierr.InternalServerError("Failed to count wishlist items").Wrap(err)
 	}
 
 	return count, nil
@@ -186,7 +186,7 @@ func (s *WishlistService) CheckInWishlist(
 	})
 
 	if err != nil {
-		return false, nil, apierr.ErrInternalError("Failed to check wishlist status").Wrap(err)
+		return false, nil, apierr.InternalServerError("Failed to check wishlist status").Wrap(err)
 	}
 
 	return exists, itemID, nil
@@ -204,10 +204,10 @@ func (s *WishlistService) RemoveItem(
 		if err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrNotFound) {
-				return apierr.ErrNotFound("Wishlist item not found").
+				return apierr.NotFoundError("Wishlist item not found").
 					WithCode(errcode.CodeWishlistItemNotFound)
 			}
-			return apierr.ErrInternalError("Failed to remove item from wishlist").Wrap(err)
+			return apierr.InternalServerError("Failed to remove item from wishlist").Wrap(err)
 		}
 		return nil
 	})
@@ -216,7 +216,7 @@ func (s *WishlistService) RemoveItem(
 		if errors.As(err, &apiErr) {
 			return apiErr
 		}
-		return apierr.ErrInternalError("Failed to remove item from wishlist").Wrap(err)
+		return apierr.InternalServerError("Failed to remove item from wishlist").Wrap(err)
 	}
 
 	return nil
@@ -235,10 +235,10 @@ func (s *WishlistService) RemoveByProductID(
 		if err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrNotFound) {
-				return apierr.ErrNotFound("Product not found in wishlist").
+				return apierr.NotFoundError("Product not found in wishlist").
 					WithCode(errcode.CodeWishlistItemNotFound)
 			}
-			return apierr.ErrInternalError("Failed to remove product from wishlist").Wrap(err)
+			return apierr.InternalServerError("Failed to remove product from wishlist").Wrap(err)
 		}
 		return nil
 	})
@@ -247,7 +247,7 @@ func (s *WishlistService) RemoveByProductID(
 		if errors.As(err, &apiErr) {
 			return apiErr
 		}
-		return apierr.ErrInternalError("Failed to remove product from wishlist").Wrap(err)
+		return apierr.InternalServerError("Failed to remove product from wishlist").Wrap(err)
 	}
 
 	return nil
@@ -262,7 +262,7 @@ func (s *WishlistService) ClearWishlist(
 	})
 
 	if err != nil {
-		return apierr.ErrInternalError("Failed to clear wishlist").Wrap(err)
+		return apierr.InternalServerError("Failed to clear wishlist").Wrap(err)
 	}
 
 	return nil

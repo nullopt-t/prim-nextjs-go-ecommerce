@@ -46,7 +46,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 	}
 
 	if len(cartData.Items) == 0 {
-		return nil, apierr.ErrBadRequest("Cart is empty").WithCode("EMPTY_CART")
+		return nil, apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
 	}
 
 	var items []order.CreateOrderItemInput

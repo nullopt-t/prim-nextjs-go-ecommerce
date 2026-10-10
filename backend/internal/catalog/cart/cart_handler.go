@@ -278,7 +278,7 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 	itemID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
+		_ = c.Error(apierr.BadRequestError("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
 		return
 	}
 
@@ -315,7 +315,7 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 func (h *CartHandler) RemoveItem(c *gin.Context) {
 	itemID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
+		_ = c.Error(apierr.BadRequestError("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
 		return
 	}
 

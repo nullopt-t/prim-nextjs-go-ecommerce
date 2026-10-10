@@ -66,7 +66,7 @@ func (s *AddressService) ListAddresses(ctx context.Context, userID uuid.UUID) ([
 	})
 	if err != nil {
 		s.logger.Error("failed to list user addresses", log.Meta{"userId": userID, "error": err.Error()})
-		return nil, apierr.ErrInternalError("Failed to list addresses").Wrap(err)
+		return nil, apierr.InternalServerError("Failed to list addresses").Wrap(err)
 	}
 	return addresses, nil
 }
@@ -81,10 +81,10 @@ func (s *AddressService) GetAddress(ctx context.Context, id, userID uuid.UUID) (
 	})
 	if err != nil {
 		if errors.Is(err, ErrAddressNotFound) {
-			return nil, apierr.ErrNotFound("Address not found")
+			return nil, apierr.NotFoundError("Address not found")
 		}
 		s.logger.Error("failed to get user address", log.Meta{"id": id, "userId": userID, "error": err.Error()})
-		return nil, apierr.ErrInternalError("Failed to retrieve address").Wrap(err)
+		return nil, apierr.InternalServerError("Failed to retrieve address").Wrap(err)
 	}
 	return address, nil
 }
@@ -92,16 +92,16 @@ func (s *AddressService) GetAddress(ctx context.Context, id, userID uuid.UUID) (
 // CreateAddress creates a new address. If it's the user's first address or marked isDefault, it atomically unsets previous defaults.
 func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in *CreateAddressInput) (*model.UserAddress, error) {
 	if strings.TrimSpace(in.FullName) == "" {
-		return nil, apierr.ErrBadRequest("Full name is required").WithCode(apierr.CodeInvalidInput)
+		return nil, apierr.BadRequestError("Full name is required").WithCode(apierr.CodeInvalidInput)
 	}
 	if strings.TrimSpace(in.Line1) == "" {
-		return nil, apierr.ErrBadRequest("Address line 1 is required").WithCode(apierr.CodeInvalidInput)
+		return nil, apierr.BadRequestError("Address line 1 is required").WithCode(apierr.CodeInvalidInput)
 	}
 	if strings.TrimSpace(in.City) == "" {
-		return nil, apierr.ErrBadRequest("City is required").WithCode(apierr.CodeInvalidInput)
+		return nil, apierr.BadRequestError("City is required").WithCode(apierr.CodeInvalidInput)
 	}
 	if strings.TrimSpace(in.Country) == "" {
-		return nil, apierr.ErrBadRequest("Country is required").WithCode(apierr.CodeInvalidInput)
+		return nil, apierr.BadRequestError("Country is required").WithCode(apierr.CodeInvalidInput)
 	}
 
 	address := &model.UserAddress{
@@ -140,7 +140,7 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 
 	if err != nil {
 		s.logger.Error("failed to create user address", log.Meta{"userId": userID, "error": err.Error()})
-		return nil, apierr.ErrInternalError("Failed to create address").Wrap(err)
+		return nil, apierr.InternalServerError("Failed to create address").Wrap(err)
 	}
 
 	return address, nil
@@ -149,16 +149,16 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 // UpdateAddress updates an existing address.
 func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID, in *UpdateAddressInput) (*model.UserAddress, error) {
 	if strings.TrimSpace(in.FullName) == "" {
-		return nil, apierr.ErrBadRequest("Full name is required").WithCode(apierr.CodeInvalidInput)
+		return nil, apierr.BadRequestError("Full name is required").WithCode(apierr.CodeInvalidInput)
 	}
 	if strings.TrimSpace(in.Line1) == "" {
-		return nil, apierr.ErrBadRequest("Address line 1 is required").WithCode(apierr.CodeInvalidInput)
+		return nil, apierr.BadRequestError("Address line 1 is required").WithCode(apierr.CodeInvalidInput)
 	}
 	if strings.TrimSpace(in.City) == "" {
-		return nil, apierr.ErrBadRequest("City is required").WithCode(apierr.CodeInvalidInput)
+		return nil, apierr.BadRequestError("City is required").WithCode(apierr.CodeInvalidInput)
 	}
 	if strings.TrimSpace(in.Country) == "" {
-		return nil, apierr.ErrBadRequest("Country is required").WithCode(apierr.CodeInvalidInput)
+		return nil, apierr.BadRequestError("Country is required").WithCode(apierr.CodeInvalidInput)
 	}
 
 	var updated *model.UserAddress
@@ -198,10 +198,10 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 
 	if err != nil {
 		if errors.Is(err, ErrAddressNotFound) {
-			return nil, apierr.ErrNotFound("Address not found")
+			return nil, apierr.NotFoundError("Address not found")
 		}
 		s.logger.Error("failed to update user address", log.Meta{"id": id, "userId": userID, "error": err.Error()})
-		return nil, apierr.ErrInternalError("Failed to update address").Wrap(err)
+		return nil, apierr.InternalServerError("Failed to update address").Wrap(err)
 	}
 
 	return updated, nil
@@ -233,10 +233,10 @@ func (s *AddressService) SetDefaultAddress(ctx context.Context, id, userID uuid.
 
 	if err != nil {
 		if errors.Is(err, ErrAddressNotFound) {
-			return nil, apierr.ErrNotFound("Address not found")
+			return nil, apierr.NotFoundError("Address not found")
 		}
 		s.logger.Error("failed to set default address", log.Meta{"id": id, "userId": userID, "error": err.Error()})
-		return nil, apierr.ErrInternalError("Failed to set default address").Wrap(err)
+		return nil, apierr.InternalServerError("Failed to set default address").Wrap(err)
 	}
 
 	return address, nil
@@ -272,10 +272,10 @@ func (s *AddressService) DeleteAddress(ctx context.Context, id, userID uuid.UUID
 
 	if err != nil {
 		if errors.Is(err, ErrAddressNotFound) {
-			return apierr.ErrNotFound("Address not found")
+			return apierr.NotFoundError("Address not found")
 		}
 		s.logger.Error("failed to delete user address", log.Meta{"id": id, "userId": userID, "error": err.Error()})
-		return apierr.ErrInternalError("Failed to delete address").Wrap(err)
+		return apierr.InternalServerError("Failed to delete address").Wrap(err)
 	}
 
 	return nil

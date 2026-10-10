@@ -516,7 +516,7 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 
 	categoryID, err := uuid.Parse(body.CategoryID)
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 			Field:   "category_id",
 			Message: "invalid category UUID format",
 		}))
@@ -533,7 +533,7 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 	if body.BrandID != nil {
 		brandID, err := uuid.Parse(*body.BrandID)
 		if err != nil {
-			_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+			_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 				Field:   "brand_id",
 				Message: "invalid brand UUID format",
 			}))
@@ -763,7 +763,7 @@ func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
 func (h *ProductHandler) ListProductReviews(c *gin.Context) {
 	slug := c.Param("slug")
 	if slug == "" {
-		_ = c.Error(apierr.ErrValidationFailed("slug is required"))
+		_ = c.Error(apierr.ValidationFailedError("slug is required"))
 		return
 	}
 
@@ -776,7 +776,7 @@ func (h *ProductHandler) ListProductReviews(c *gin.Context) {
 
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
-		_ = c.Error(apierr.ErrValidationFailed("invalid query parameters"))
+		_ = c.Error(apierr.ValidationFailedError("invalid query parameters"))
 		return
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
@@ -826,7 +826,7 @@ func (h *ProductHandler) ListProductReviews(c *gin.Context) {
 func (h *ProductHandler) GetProductRatingSummary(c *gin.Context) {
 	slug := c.Param("slug")
 	if slug == "" {
-		_ = c.Error(apierr.ErrValidationFailed("slug is required"))
+		_ = c.Error(apierr.ValidationFailedError("slug is required"))
 		return
 	}
 
@@ -866,7 +866,7 @@ func (h *ProductHandler) GetProductRatingSummary(c *gin.Context) {
 func (h *ProductHandler) GetProductByID(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -1046,7 +1046,7 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -1067,7 +1067,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	if body.Title != nil {
 		cleanTitle := strings.TrimSpace(*body.Title)
 		if cleanTitle == "" {
-			_ = c.Error(apierr.ErrBadRequest("Title cannot be empty").WithCode(apierr.CodeValidationFailed))
+			_ = c.Error(apierr.BadRequestError("Title cannot be empty").WithCode(apierr.CodeValidationFailed))
 			return
 		}
 		input.Title = &cleanTitle
@@ -1081,7 +1081,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	if body.BrandID != nil {
 		parsedBrand, err := uuid.Parse(*body.BrandID)
 		if err != nil {
-			_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+			_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 				Field:   "brand_id",
 				Message: "invalid brand UUID format",
 			}))
@@ -1093,7 +1093,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	if body.CategoryID != nil {
 		parsedCat, err := uuid.Parse(*body.CategoryID)
 		if err != nil {
-			_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+			_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 				Field:   "category_id",
 				Message: "invalid category UUID format",
 			}))
@@ -1133,7 +1133,7 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 func (h *ProductHandler) PublishProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -1165,7 +1165,7 @@ func (h *ProductHandler) PublishProduct(c *gin.Context) {
 func (h *ProductHandler) ArchiveProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -1197,7 +1197,7 @@ func (h *ProductHandler) ArchiveProduct(c *gin.Context) {
 func (h *ProductHandler) SoftDeleteProduct(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -1228,7 +1228,7 @@ func (h *ProductHandler) SoftDeleteProduct(c *gin.Context) {
 func (h *ProductHandler) UploadProductThumbnail(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -1237,7 +1237,7 @@ func (h *ProductHandler) UploadProductThumbnail(c *gin.Context) {
 
 	mfile, err := c.FormFile("file")
 	if err != nil {
-		_ = c.Error(apierr.ErrBadRequest("file is required").
+		_ = c.Error(apierr.BadRequestError("file is required").
 			WithCode(apierr.CodeFileRequired))
 		return
 	}
@@ -1275,7 +1275,7 @@ func (h *ProductHandler) UploadProductThumbnail(c *gin.Context) {
 func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -1352,7 +1352,7 @@ func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 func (h *ProductHandler) SetDefaultVariant(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -1367,7 +1367,7 @@ func (h *ProductHandler) SetDefaultVariant(c *gin.Context) {
 
 	variantID, err := uuid.Parse(body.VariantID)
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 			Field:   "variant_id",
 			Message: "invalid variant UUID format",
 		}))
@@ -1399,7 +1399,7 @@ func (h *ProductHandler) SetDefaultVariant(c *gin.Context) {
 func (h *ProductHandler) PutProductTags(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -1416,7 +1416,7 @@ func (h *ProductHandler) PutProductTags(c *gin.Context) {
 	for _, idStr := range body.TagIDs {
 		parsed, err := uuid.Parse(idStr)
 		if err != nil {
-			_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+			_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 				Field:   "tag_ids",
 				Message: "invalid UUID in tag list",
 			}))
@@ -1451,7 +1451,7 @@ func (h *ProductHandler) PutProductTags(c *gin.Context) {
 func (h *ProductHandler) PutProductCategories(c *gin.Context) {
 	productID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
@@ -1466,7 +1466,7 @@ func (h *ProductHandler) PutProductCategories(c *gin.Context) {
 
 	categoryID, err := uuid.Parse(body.CategoryID)
 	if err != nil {
-		_ = c.Error(apierr.ErrInvalidUUID().WithFields(api.FieldError{
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
 			Field:   "category_id",
 			Message: "invalid category UUID format",
 		}))
