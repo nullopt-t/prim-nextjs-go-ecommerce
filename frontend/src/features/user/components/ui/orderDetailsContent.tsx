@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { userService } from "@/services/user";
 import { LazyImage } from "@/components/ui/lazyImage";
+import { normalizeMediaUrl } from "@/utils/media";
 import { useTranslations, useLocale } from "next-intl";
 
 interface OrderItem {
@@ -52,11 +53,8 @@ interface ParsedSnapshot {
 }
 
 function resolveItemImage(snap: ParsedSnapshot): string {
-  if (snap.img) return snap.img;
-  if (snap.image) return snap.image;
-  if (snap.thumbnail) return snap.thumbnail;
-  if (snap.thumbnailUrl) return snap.thumbnailUrl;
-  return "";
+  const raw = snap.img || snap.image || snap.thumbnail || snap.thumbnailUrl;
+  return normalizeMediaUrl(raw);
 }
 
 function parseSnapshot(snapshot?: string): ParsedSnapshot {

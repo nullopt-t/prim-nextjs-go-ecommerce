@@ -264,8 +264,6 @@ type ProductReviewResponse struct {
 	Title *string `json:"title,omitempty" example:"Unbelievable performance!"`
 	// Review text narrative
 	Body *string `json:"body,omitempty" example:"The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."`
-	// Moderation state: pending, approved, rejected
-	Status string `json:"status" example:"approved"`
 	// Submission timestamp (RFC3339)
 	CreatedAt string `json:"createdAt" example:"2026-08-13T07:56:17Z"`
 	// Last modified timestamp (RFC3339)
@@ -801,7 +799,6 @@ func (h *ProductHandler) ListProductReviews(c *gin.Context) {
 			Rating:      rv.Rating,
 			Title:       rv.Title,
 			Body:        rv.Body,
-			Status:      rv.Status.String(),
 			CreatedAt:   rv.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:   rv.UpdatedAt.Format(time.RFC3339),
 		})

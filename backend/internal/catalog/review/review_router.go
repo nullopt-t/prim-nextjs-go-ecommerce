@@ -28,6 +28,7 @@ func (r *ReviewRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	{
 		user.POST("", r.rh.CreateReview)
 		user.GET("/me", r.rh.GetMyReviews)
+		user.GET("/eligibility", r.rh.CheckEligibility)
 		user.GET("/:id", r.rh.GetReviewByID)
 		user.PATCH("/:id", r.rh.UpdateReview)
 		user.DELETE("/:id", r.rh.DeleteReview)

@@ -229,6 +229,55 @@ func (h *ReviewHandler) GetMyReviews(c *gin.Context) {
 	})
 }
 
+// ReviewEligibilityResponse defines the review eligibility status
+type ReviewEligibilityResponse struct {
+	CanReview bool `json:"canReview"`
+}
+
+// CheckEligibility godoc
+//
+//	@Summary		Check review eligibility
+//	@Description	Checks whether the authenticated user has purchased and received the product and can review it.
+//	@Tags			Reviews
+//	@Produce		json
+//	@Param			productId	query		string												true	"Product UUID"
+//	@Success		200			{object}	api.DataResponse{data=ReviewEligibilityResponse}	"Eligibility status"
+//	@Failure		400			{object}	api.BadRequestErrorResponse							"Invalid product ID"
+//	@Failure		401			{object}	api.UnauthorizedErrorResponse						"Unauthorized"
+//	@Failure		500			{object}	api.InternalServerErrorResponse						"Internal server error"
+//	@Router			/reviews/eligibility [get]
+func (h *ReviewHandler) CheckEligibility(c *gin.Context) {
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	productIDStr := c.Query("productId")
+	if productIDStr == "" {
+		_ = c.Error(apierr.ErrValidationFailed("productId is required"))
+		return
+	}
+
+	productID, err := uuid.Parse(productIDStr)
+	if err != nil {
+		_ = c.Error(apierr.ErrValidationFailed("invalid productId format"))
+		return
+	}
+
+	canReview, err := h.service.CheckReviewEligibility(c.Request.Context(), userID, productID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{
+		Data: ReviewEligibilityResponse{
+			CanReview: canReview,
+		},
+	})
+}
+
 // GetReviewByID godoc
 //
 //	@Summary		Get review by ID

@@ -1,7 +1,5 @@
 "use client";
 
-import { useAuthContext } from "@/context/AuthContext";
-import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 
 interface DangerRowProps {
@@ -23,30 +21,10 @@ function DangerRow({ title, description, action }: DangerRowProps) {
 }
 
 export default function DangerZone() {
-  const { logout } = useAuthContext();
-  const router = useRouter();
   const t = useTranslations("settings.danger");
 
-  const handleLogoutAll = async () => {
-    await logout();
-    router.push("/auth");
-  };
-
   return (
-    <div className="flex flex-col max-w-2xl">
-      <DangerRow
-        title={t("signOutAll")}
-        description={t("signOutAllDesc")}
-        action={
-          <button
-            type="button"
-            onClick={handleLogoutAll}
-            className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors shadow-2xs"
-          >
-            {t("signOutAllButton")}
-          </button>
-        }
-      />
+    <div className="flex flex-col w-full">
       <DangerRow
         title={t("deleteAccount")}
         description={t("deleteAccountDesc")}

@@ -110,7 +110,7 @@ func (s *ReviewService) CreateReview(
 			Rating:      in.Rating,
 			Title:       in.Title,
 			Body:        in.Body,
-			Status:      model.ReviewStatusPending,
+			Status:      model.ReviewStatusApproved,
 		}
 
 		if err := s.repo.Create(ctx, tx, rv); err != nil {
@@ -324,5 +324,26 @@ func (s *ReviewService) ListReviews(
 
 	page := pagination.NewPage(q.Page, q.PageSize, total)
 	return pagination.NewPagedResult(reviewPtrs, page), nil
+}
+
+// CheckReviewEligibility verifies if a customer has a delivered, unreviewed order item for a product.
+func (s *ReviewService) CheckReviewEligibility(
+	ctx context.Context,
+	userID uuid.UUID,
+	productID uuid.UUID,
+) (bool, error) {
+	var eligibleID uuid.UUID
+	var err error
+
+	err = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		eligibleID, err = s.repo.FindEligibleOrderItem(ctx, db, userID, productID)
+		return err
+	})
+
+	if err != nil {
+		return false, apierr.ErrInternalError("failed to verify review eligibility").Wrap(err)
+	}
+
+	return eligibleID != uuid.Nil, nil
 }
 

@@ -23,6 +23,9 @@ import { ProductActions } from "./ui/ProductActions";
 import { ProductSpecs } from "./ui/ProductSpecs";
 import { ProductReviews } from "./ui/ProductReviews";
 
+import { useAuthContext } from "@/context/AuthContext";
+import { userService } from "@/services/user";
+
 export function ProductDetails() {
   const { id } = useParams();
   const searchParams = useSearchParams();
@@ -30,6 +33,7 @@ export function ProductDetails() {
   const locale = useLocale();
   const t = useTranslations("common");
   const tReviews = useTranslations("reviews");
+  const { user } = useAuthContext();
 
   const { products: allProducts, loading: allLoading } = useAllProducts();
   const { product, loading: productLoading } = useProductBySlug(id);
@@ -41,6 +45,7 @@ export function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [canReview, setCanReview] = useState(false);
 
   // Synchronize variant/color from URL search params (e.g. ?variant=... or ?color=...)
   useEffect(() => {
@@ -86,14 +91,16 @@ export function ProductDetails() {
 
     catalogService
       .getProductReviews(cleanSlug)
-      .then((res: any) => {
+      .then((publicRes: any) => {
         if (!isMounted) return;
-        const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
-        if (list.length > 0) {
-          const mapped: ProductReview[] = list.map((r: any) => ({
+        const publicList = Array.isArray(publicRes) ? publicRes : Array.isArray(publicRes?.data) ? publicRes.data : [];
+
+        const mapped: ProductReview[] = publicList.map((r: any) => {
+          const isOwn = user?.id && String(r.userId) === String(user.id);
+          return {
             id: r.id,
-            author: r.user?.name || "Customer",
-            avatar: r.user?.avatar || null,
+            author: isOwn ? (user.name || "You") : r.user?.name || "Customer",
+            avatar: isOwn ? null : r.user?.avatar || null,
             rating: r.rating || 5,
             date: r.createdAt
               ? new Date(r.createdAt).toLocaleDateString("en-US", {
@@ -106,9 +113,10 @@ export function ProductDetails() {
             content: r.body || r.content || "",
             helpful: r.helpful || 0,
             verified: true,
-          }));
-          setReviews(mapped);
-        }
+          };
+        });
+
+        setReviews(mapped);
       })
       .catch((err) => {
         console.error("Failed to load product reviews:", err);
@@ -117,7 +125,31 @@ export function ProductDetails() {
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [id, user, product?.id]);
+
+  // Check if current logged-in user is eligible to review this product via dedicated endpoint
+  useEffect(() => {
+    let isMounted = true;
+    if (!user || !product?.id) {
+      setCanReview(false);
+      return;
+    }
+
+    catalogService
+      .checkReviewEligibility(String(product.id))
+      .then((res: any) => {
+        if (!isMounted) return;
+        const eligible = Boolean(res?.data?.canReview ?? res?.canReview);
+        setCanReview(eligible);
+      })
+      .catch(() => {
+        if (isMounted) setCanReview(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, product?.id]);
 
   const similarProducts = useMemo(() => {
     if (!product || !allProducts) return [];
@@ -262,13 +294,7 @@ export function ProductDetails() {
       });
 
       const serverReview = res?.data || res;
-      const status = serverReview?.status || "pending";
-
-      if (status === "pending") {
-        toast.success(tReviews("submitPending"));
-      } else {
-        toast.success(tReviews("submitSuccess"));
-      }
+      toast.success(tReviews("submitSuccess"));
 
       const newRev: ProductReview = {
         id: serverReview?.id || Date.now(),
@@ -287,6 +313,7 @@ export function ProductDetails() {
       };
 
       setReviews((prev) => [newRev, ...prev]);
+      setCanReview(false);
       return true;
     } catch (err: any) {
       const errCode = err?.response?.data?.code;
@@ -357,7 +384,7 @@ export function ProductDetails() {
           productCategory={product.category}
           productName={productName}
           stars={product.stars}
-          reviewsCount={product.reviews}
+          reviewsCount={reviews.length || product.reviews || 0}
           price={currentPrice}
           oldPrice={currentOldPrice}
           currency={t("currency")}
@@ -390,8 +417,9 @@ export function ProductDetails() {
       <div className="mt-16">
         <ProductReviews
           stars={product.stars}
-          reviewsCount={product.reviews}
+          reviewsCount={reviews.length || product.reviews || 0}
           reviews={reviews}
+          canReview={canReview}
           onAddReview={handleAddReview}
           onVoteHelpful={handleVoteHelpful}
         />

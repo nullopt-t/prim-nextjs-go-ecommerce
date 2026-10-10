@@ -244,6 +244,7 @@
   "settings": {
     "title": "Account Settings",
     "subtitle": "Manage your personal information, preferences, and active sessions.",
+    "backToSettings": "Back to Settings",
     "personalInfo": {
       "title": "Personal Information",
       "subtitle": "Your registered account identity and contact details.",
@@ -268,19 +269,20 @@
     },
     "sessions": {
       "title": "Active Sessions",
+      "subtitle": "Manage and revoke active login sessions on your devices.",
       "unknownDevice": "Unknown device",
       "current": "Current device",
       "remove": "Revoke Session",
       "empty": "No other active sessions detected.",
       "error": "Failed to load active sessions.",
-      "removedSuccess": "Session revoked successfully."
+      "removedSuccess": "Session revoked successfully.",
+      "signOutAll": "Sign Out Everywhere",
+      "signOutAllDesc": "Immediately invalidate all active browser sessions across all devices.",
+      "signOutAllButton": "Sign Out All Devices"
     },
     "danger": {
       "title": "Danger Zone",
       "subtitle": "Irreversible and sensitive account actions.",
-      "signOutAll": "Sign Out Everywhere",
-      "signOutAllDesc": "Immediately invalidate all active browser sessions across all devices.",
-      "signOutAllButton": "Sign Out All",
       "deleteAccount": "Delete Account",
       "deleteAccountDesc": "Permanently erase your account and all associated order history. This cannot be undone.",
       "deleteAccountButton": "Delete Account",
@@ -382,7 +384,7 @@
     }
   },
   "userNav": {
-    "overview": "Overview",
+    "overview": "You",
     "orders": "Orders",
     "addresses": "Addresses",
     "payment": "Payment",
@@ -448,6 +450,37 @@
       "reviews": "Product reviews",
       "reviewsPublished": "{count} published",
       "editSettings": "Edit settings & preferences"
+    },
+    "yourOrders": {
+      "title": "Open Orders & Tracking",
+      "seeAll": "View all orders",
+      "empty": "You have no active orders in progress.",
+      "startShopping": "Start shopping"
+    },
+    "buyAgain": {
+      "title": "Buy Again",
+      "subtitle": "Order again from your previous purchases"
+    },
+    "yourLists": {
+      "title": "Your Lists & Wishlist",
+      "seeAll": "See full wishlist",
+      "empty": "No items saved in your wishlist yet.",
+      "exploreProducts": "Explore products"
+    },
+    "accountShortcuts": {
+      "title": "Your Account",
+      "orders": "Your Orders",
+      "ordersDesc": "Track, return, or buy items again",
+      "wishlist": "Wishlist",
+      "wishlistDesc": "Saved products and gift ideas",
+      "addresses": "Your Addresses",
+      "addressesDesc": "Manage delivery and pickup addresses",
+      "payment": "Your Payments",
+      "paymentDesc": "Manage payment options and cards",
+      "reviews": "Your Reviews",
+      "reviewsDesc": "Customer feedback you've written",
+      "settings": "Login & Security",
+      "settingsDesc": "Password, preferences, active sessions"
     },
     "shortcuts": {
       "title": "Direct Shortcuts",

@@ -2,13 +2,24 @@
 
 import { usePathname, Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { Blocks, Package, Heart, Store } from "lucide-react";
+import { User, Settings, Store } from "lucide-react";
 
-const mobileTabs = [
+export const mobileNavTabs = [
   { id: "store", icon: Store, key: "store", path: "/" },
-  { id: "overview", icon: Blocks, key: "overview", path: "/user/overview" },
-  { id: "orders", icon: Package, key: "orders", path: "/user/orders" },
-  { id: "wishlist", icon: Heart, key: "wishlist", path: "/user/wishlist" },
+  {
+    id: "you",
+    icon: User,
+    key: "overview",
+    path: "/user/overview",
+    matchPrefixes: ["/user/overview", "/user/orders", "/user/address", "/user/wishlist", "/user/payment", "/user/reviews"],
+  },
+  {
+    id: "settings",
+    icon: Settings,
+    key: "settings",
+    path: "/user/settings",
+    matchPrefixes: ["/user/settings"],
+  },
 ] as const;
 
 export default function MobileNav() {
@@ -16,22 +27,39 @@ export default function MobileNav() {
   const t = useTranslations("userNav");
 
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-card/95 backdrop-blur-sm border-t border-border pb-safe">
-      <div className="grid grid-cols-4 items-center">
-        {mobileTabs.map((item) => {
-          const isActive = pathname === item.path;
+    <nav
+      aria-label="Mobile bottom navigation"
+      className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-card/95 backdrop-blur-md border-t border-border shadow-lg pb-safe"
+    >
+      <div className="grid grid-cols-3 w-full items-center px-3 py-2">
+        {mobileNavTabs.map((item) => {
+          const isActive =
+            item.id === "store"
+              ? pathname === "/"
+              : item.matchPrefixes.some(
+                  (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+                );
+
+          const Icon = item.icon;
+
           return (
             <Link
               key={item.id}
               href={item.path}
-              className={`flex flex-col items-center justify-center gap-1 py-2.5 px-1 text-[11px] font-medium transition-colors ${
+              className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl text-xs transition-all cursor-pointer ${
                 isActive
-                  ? "text-accent-brand"
+                  ? "text-accent-brand font-semibold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <item.icon className={`size-5 ${isActive ? "text-accent-brand" : ""}`} />
-              <span className="truncate leading-none">{t(item.key)}</span>
+              <div
+                className={`flex items-center justify-center size-8 rounded-full transition-colors ${
+                  isActive ? "bg-accent-brand/10 text-accent-brand" : ""
+                }`}
+              >
+                <Icon className="size-5" />
+              </div>
+              <span className="truncate leading-none text-[11px]">{t(item.key)}</span>
             </Link>
           );
         })}

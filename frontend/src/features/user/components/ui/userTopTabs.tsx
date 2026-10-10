@@ -17,10 +17,10 @@ export default function UserTopTabs() {
   const t = useTranslations("userNav");
 
   return (
-    <div className="w-full border-b border-border mb-6">
+    <div className="hidden md:block w-full border-b border-border mb-6">
       <nav aria-label="Account navigation" className="flex items-center gap-6 overflow-x-auto scrollbar-none -mb-px">
         {accountTabKeys.map((tab) => {
-          const isActive = pathname === tab.path;
+          const isActive = pathname === tab.path || pathname.startsWith(`${tab.path}/`);
 
           return (
             <Link

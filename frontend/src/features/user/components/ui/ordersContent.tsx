@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link } from "@/i18n/navigation";
 import { userService } from "@/services/user";
 import { LazyImage } from "@/components/ui/lazyImage";
+import { normalizeMediaUrl } from "@/utils/media";
 import { useTranslations, useLocale } from "next-intl";
 import {
   Package,
@@ -143,10 +144,7 @@ function OrderCard({ order }: { order: Order }) {
     const snap = parseSnapshot(it.productSnapshot);
     const title = snap.title || snap.name || "Product";
     const rawImg = snap.image || snap.thumbnailUrl || snap.thumbnail || snap.img;
-    let img = rawImg || "/placeholder-product.png";
-    if (rawImg && !rawImg.startsWith("http") && !rawImg.startsWith("/")) {
-      img = `http://localhost:9000/catalog/${rawImg}`;
-    }
+    const img = normalizeMediaUrl(rawImg);
     const productHref = snap.slug ? `/products/${snap.slug}` : snap.productId ? `/products/${snap.productId}` : null;
     return { title, img, quantity: it.quantity, productHref };
   });

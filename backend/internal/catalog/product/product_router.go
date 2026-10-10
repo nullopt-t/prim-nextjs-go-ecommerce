@@ -54,7 +54,12 @@ func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	{
 		public.GET("", r.ph.GetAllProducts)
 		public.GET("/:slug", r.ph.GetProductBySlug)
-		public.GET("/:slug/reviews", r.ph.ListProductReviews)
-		public.GET("/:slug/reviews/summary", r.ph.GetProductRatingSummary)
+	}
+
+	reviewsGroup := vgroup.Group("/products")
+	reviewsGroup.Use(middleware.NoCache())
+	{
+		reviewsGroup.GET("/:slug/reviews", r.ph.ListProductReviews)
+		reviewsGroup.GET("/:slug/reviews/summary", r.ph.GetProductRatingSummary)
 	}
 }

@@ -2,10 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { useAuthContext } from "@/context/AuthContext";
-import { useWishlist } from "@/hooks/useWishlist";
 import { Link } from "@/i18n/navigation";
 import { userService } from "@/services/user";
+import { wishlistService, WishlistItem } from "@/services/wishlist";
 import { useTranslations, useLocale } from "next-intl";
+import {
+  Package,
+  Heart,
+  MapPin,
+  CreditCard,
+  Star,
+  Settings,
+  ChevronRight,
+  ChevronLeft,
+  ArrowRight,
+  ArrowLeft,
+  ShoppingBag,
+  ExternalLink,
+  RotateCcw,
+  CheckCircle2,
+  Clock,
+  Truck,
+} from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface OrderItem {
@@ -28,7 +46,8 @@ interface Order {
   updatedAt: string;
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+import { normalizeMediaUrl } from "@/utils/media";
+
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";
@@ -36,77 +55,76 @@ function getGreeting() {
   return "Good evening";
 }
 
-function parseSnapshot(snapshot?: string): { title?: string; name?: string; sku?: string } {
-  if (!snapshot) return {};
+function parseSnapshot(snapshot?: string): { title: string; img: string } {
+  if (!snapshot) return { title: "Product", img: "/placeholder-product.png" };
   try {
-    return JSON.parse(snapshot) ?? {};
+    const snap = JSON.parse(snapshot) ?? {};
+    const title = snap.title || snap.name || "Product";
+    const rawImg = snap.image || snap.thumbnailUrl || snap.thumbnail || snap.img;
+    const img = normalizeMediaUrl(rawImg);
+    return { title, img };
   } catch {
-    return {};
+    return { title: "Product", img: "/placeholder-product.png" };
   }
 }
 
 const STATUS_BADGE: Record<
   Order["status"],
-  { label: string; className: string }
+  { label: string; icon: typeof Clock; className: string }
 > = {
   pending: {
     label: "Pending",
-    className: "text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-200/50",
+    icon: Clock,
+    className: "text-amber-600 bg-amber-500/10 border-amber-500/20",
   },
   processing: {
     label: "Processing",
-    className: "text-blue-600 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200/50",
+    icon: Clock,
+    className: "text-blue-600 bg-blue-500/10 border-blue-500/20",
   },
   shipped: {
     label: "Shipped",
-    className: "text-violet-600 bg-violet-50 dark:bg-violet-950/30 dark:text-violet-400 border border-violet-200/50",
+    icon: Truck,
+    className: "text-violet-600 bg-violet-500/10 border-violet-500/20",
   },
   delivered: {
     label: "Delivered",
-    className: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50",
+    icon: CheckCircle2,
+    className: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20",
   },
   cancelled: {
     label: "Cancelled",
-    className: "text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400 border border-red-200/50",
+    icon: Clock,
+    className: "text-destructive bg-destructive/10 border-destructive/20",
   },
 };
 
-
-
-const tbHeaders = ["Order #", "Placed On", "Items", "Total", "Status", "Actions"];
-
-function TableSkeleton() {
-  return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-xs">
-      <div className="animate-pulse bg-secondary/50 h-10 border-b border-border" />
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="animate-pulse bg-secondary/40 rounded-lg h-14 mx-4 my-2.5" />
-      ))}
-    </div>
-  );
-}
-
-// ── Component ──────────────────────────────────────────────────────────────────
 export default function OverviewContent() {
   const { user } = useAuthContext();
-  const { wishlistCount } = useWishlist();
   const t = useTranslations("overview");
   const locale = useLocale();
+  const isRtl = locale === "ar";
+  const Chevron = isRtl ? ChevronLeft : ChevronRight;
+  const Arrow = isRtl ? ArrowLeft : ArrowRight;
+
   const [orders, setOrders] = useState<Order[]>([]);
+  const [wishlistPreview, setWishlistPreview] = useState<WishlistItem[]>([]);
+  const [wishlistCount, setWishlistCount] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
+  const [addressCount, setAddressCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       setLoading(true);
-      setError(null);
       try {
-        const [ordersRes, reviewsRes] = await Promise.all([
-          userService.getOrders(),
-          userService.getMyReviews(),
+        const [ordersRes, reviewsRes, addressesRes, wishlistRes] = await Promise.all([
+          userService.getOrders().catch(() => ({ data: [] })),
+          userService.getMyReviews().catch(() => ({ data: [] })),
+          userService.getAddresses().catch(() => ({ data: [] })),
+          wishlistService.getItems(1, 4).catch(() => ({ data: [], meta: { totalItems: 0 } })),
         ]);
 
         if (cancelled) return;
@@ -123,10 +141,21 @@ export default function OverviewContent() {
           ? reviewsRes
           : [];
 
+        const rawAddresses: unknown[] = Array.isArray(addressesRes?.data)
+          ? addressesRes.data
+          : Array.isArray(addressesRes)
+          ? addressesRes
+          : [];
+
+        const rawWishlist: WishlistItem[] = Array.isArray(wishlistRes?.data)
+          ? wishlistRes.data
+          : [];
+
         setOrders(rawOrders);
         setReviewCount(rawReviews.length);
-      } catch (err: unknown) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load data.");
+        setAddressCount(rawAddresses.length);
+        setWishlistPreview(rawWishlist);
+        setWishlistCount(wishlistRes?.meta?.totalItems ?? rawWishlist.length);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -138,320 +167,294 @@ export default function OverviewContent() {
     };
   }, []);
 
-  // Sorting & highlights
   const sortedOrders = [...orders].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
-  const latestOrder = sortedOrders[0] ?? null;
-  const recentOrders = sortedOrders.slice(0, 5);
+  // Current active orders waiting for fulfillment or delivery
+  const activeOrders = sortedOrders.filter(
+    (o) => o.status === "pending" || o.status === "processing" || o.status === "shipped"
+  );
+  const activeOrdersPreview = activeOrders.slice(0, 4);
 
-  const deliveredCount = orders.filter((o) => o.status === "delivered").length;
-  const inTransitCount = orders.filter(
-    (o) => o.status === "processing" || o.status === "shipped" || o.status === "pending"
-  ).length;
-
-
-  const localizedTbHeaders = [
-    t("recentOrders.columns.order"),
-    t("recentOrders.columns.placedOn"),
-    t("recentOrders.columns.items"),
-    t("recentOrders.columns.total"),
-    t("recentOrders.columns.status"),
-    t("recentOrders.columns.actions"),
+  // Secondary account shortcuts: if there are no active in-progress orders,
+  // include an Orders tile here so the user can easily access their past/all orders.
+  const secondaryAccountTiles = [
+    ...(activeOrders.length === 0
+      ? [
+          {
+            id: "orders",
+            title: t("accountShortcuts.orders"),
+            desc: t("accountShortcuts.ordersDesc"),
+            href: "/user/orders",
+            icon: Package,
+          },
+        ]
+      : []),
+    {
+      id: "addresses",
+      title: t("accountShortcuts.addresses"),
+      desc: t("accountShortcuts.addressesDesc"),
+      badge: addressCount > 0 ? `${addressCount}` : undefined,
+      href: "/user/address",
+      icon: MapPin,
+    },
+    {
+      id: "payment",
+      title: t("accountShortcuts.payment"),
+      desc: t("accountShortcuts.paymentDesc"),
+      href: "/user/payment",
+      icon: CreditCard,
+    },
+    {
+      id: "reviews",
+      title: t("accountShortcuts.reviews"),
+      desc: t("accountShortcuts.reviewsDesc"),
+      badge: reviewCount > 0 ? `${reviewCount}` : undefined,
+      href: "/user/reviews",
+      icon: Star,
+    },
+    {
+      id: "settings",
+      title: t("accountShortcuts.settings"),
+      desc: t("accountShortcuts.settingsDesc"),
+      href: "/user/settings",
+      icon: Settings,
+    },
   ];
 
   return (
-    <div className="w-full flex flex-col gap-6 pb-12">
-      {/* ── Top Header Strip ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/70 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            {t("heading")}
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-2.5 shrink-0">
-          <Link
-            href="/products"
-            className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-secondary hover:bg-secondary/80 text-foreground border border-border transition-colors"
-          >
-            {t("browseCatalog")}
-          </Link>
-          <Link
-            href="/"
-            className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-accent-brand text-white hover:opacity-90 transition-opacity"
-          >
-            {t("storefront")}
-          </Link>
+    <div className="w-full flex flex-col gap-6 pb-16">
+      {/* ── 1. Greeting & Identity Card ── */}
+      <div className="bg-card border border-border/80 rounded-2xl p-4.5 sm:p-5 shadow-2xs flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="size-11 sm:size-12 rounded-full bg-accent-brand/10 text-accent-brand flex items-center justify-center font-bold text-base sm:text-lg border border-accent-brand/20 shrink-0">
+            {(user?.name || "U")[0]?.toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight truncate">
+              {t("title", { greeting: getGreeting(), name: user?.name || t("defaultUser") })}
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5 truncate font-mono">
+              {user?.email || "—"}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* ── High-Density Metrics Ribbon ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-card border border-border rounded-xl p-4 shadow-2xs flex flex-col justify-between">
-          <span className="text-xs font-medium text-muted-foreground">{t("metrics.totalOrders")}</span>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-bold tracking-tight text-foreground">{orders.length}</span>
-            <span className="text-[11px] text-muted-foreground">{t("metrics.lifetime")}</span>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-xl p-4 shadow-2xs flex flex-col justify-between">
-          <span className="text-xs font-medium text-muted-foreground">{t("metrics.inProgress")}</span>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-bold tracking-tight text-foreground">{inTransitCount}</span>
-            <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">{t("metrics.activeTracking")}</span>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-xl p-4 shadow-2xs flex flex-col justify-between">
-          <span className="text-xs font-medium text-muted-foreground">{t("metrics.delivered")}</span>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-bold tracking-tight text-foreground">{deliveredCount}</span>
-            <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">{t("metrics.completed")}</span>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-xl p-4 shadow-2xs flex flex-col justify-between">
-          <span className="text-xs font-medium text-muted-foreground">{t("metrics.savedWishlist")}</span>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="text-2xl font-bold tracking-tight text-foreground">{wishlistCount}</span>
-            <Link href="/user/wishlist" className="text-[11px] text-accent-brand hover:underline font-medium">
-              {t("metrics.viewItems")}
+      {/* ── 2. Open Orders Sub-Section with Live Preview (Hidden when no active orders) ── */}
+      {(loading || activeOrdersPreview.length > 0) && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
+                {t("yourOrders.title")}
+              </h2>
+              {activeOrders.length > 0 && (
+                <span className="text-xs text-muted-foreground">({activeOrders.length})</span>
+              )}
+            </div>
+            <Link
+              href="/user/orders"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-accent-brand hover:underline"
+            >
+              <span>{t("yourOrders.seeAll")}</span>
+              <Arrow className="size-3.5" />
             </Link>
           </div>
-        </div>
-      </div>
 
-      {/* ── Two-Column Widescreen Split ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (8 cols): Active Shipment Spotlight & Recent Orders Table */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
-          {/* Active / Latest Order Spotlight Card */}
-          {latestOrder && (
-            <div className="bg-card border border-border rounded-xl p-5 shadow-2xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-border">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    {t("shipment.recentShipment")}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[latestOrder.status]?.className}`}>
-                    {STATUS_BADGE[latestOrder.status]?.label ?? latestOrder.status}
-                  </span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {t("shipment.order")} <span className="font-mono font-semibold text-foreground">#{latestOrder.id.slice(0, 8).toUpperCase()}</span> • {new Date(latestOrder.createdAt).toLocaleDateString(locale)}
-                </div>
-              </div>
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="animate-pulse bg-secondary/50 rounded-2xl aspect-square border border-border/60" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {activeOrdersPreview.map((order) => {
+                const items = order.items ?? [];
+                const snaps = items.map((it) => parseSnapshot(it.productSnapshot));
+                const firstSnap = snaps[0] ?? { title: "Product", img: "/placeholder-product.png" };
 
-              <div className="pt-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground mb-1">{t("shipment.purchasedItems")}</p>
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {(latestOrder.items ?? []).map((item) => {
-                      const snap = parseSnapshot(item.productSnapshot);
-                      return snap.title || snap.name || "Item";
-                    }).slice(0, 3).join(", ")}
-                    {(latestOrder.items?.length ?? 0) > 3 && ` ${t("shipment.moreItems", { count: (latestOrder.items?.length ?? 0) - 3 })}`}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
+                return (
                   <Link
-                    href="/products"
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary hover:bg-secondary/80 text-foreground border border-border transition-colors"
+                    key={order.id}
+                    href={`/user/orders/${order.id}`}
+                    className="group relative block aspect-square w-full rounded-2xl bg-secondary/35 border border-border/80 hover:border-accent-brand/50 p-2.5 overflow-hidden shadow-2xs hover:shadow-xs transition-all"
                   >
-                    {t("shipment.buyAgain")}
+                    {items.length <= 1 ? (
+                      // Single item: fills the card cleanly
+                      <div className="w-full h-full rounded-xl overflow-hidden bg-background border border-border/40">
+                        <img
+                          src={firstSnap.img}
+                          alt={firstSnap.title}
+                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    ) : items.length === 2 ? (
+                      // 2 items: large angled overlapping pile filling card
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        {/* Back / 2nd item */}
+                        <div className="absolute w-[76%] h-[76%] rounded-2xl overflow-hidden bg-background border border-border/80 shadow-xs rotate-6 translate-x-3 -translate-y-2 group-hover:rotate-10 group-hover:translate-x-4 transition-transform duration-300">
+                          <img
+                            src={snaps[1]?.img}
+                            alt={snaps[1]?.title}
+                            className="w-full h-full object-cover object-center"
+                          />
+                        </div>
+                        {/* Front / 1st item */}
+                        <div className="relative w-[76%] h-[76%] rounded-2xl overflow-hidden bg-background border border-border shadow-md -rotate-4 -translate-x-3 translate-y-2 group-hover:-rotate-6 group-hover:-translate-x-4 transition-transform duration-300 z-10">
+                          <img
+                            src={snaps[0]?.img}
+                            alt={snaps[0]?.title}
+                            className="w-full h-full object-cover object-center"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      // 3+ items: large fanned 3-card pile filling card generously
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        {/* Back 3rd card */}
+                        <div className="absolute w-[72%] h-[72%] rounded-2xl overflow-hidden bg-background border border-border/70 shadow-xs rotate-12 translate-x-4 -translate-y-2.5 opacity-90 group-hover:rotate-16 transition-transform duration-300">
+                          <img
+                            src={snaps[2]?.img}
+                            alt={snaps[2]?.title}
+                            className="w-full h-full object-cover object-center"
+                          />
+                        </div>
+                        {/* Middle 2nd card */}
+                        <div className="absolute w-[72%] h-[72%] rounded-2xl overflow-hidden bg-background border border-border/90 shadow-sm -rotate-8 -translate-x-3 translate-y-0.5 group-hover:-rotate-12 transition-transform duration-300 z-5">
+                          <img
+                            src={snaps[1]?.img}
+                            alt={snaps[1]?.title}
+                            className="w-full h-full object-cover object-center"
+                          />
+                        </div>
+                        {/* Front 1st card */}
+                        <div className="relative w-[72%] h-[72%] rounded-2xl overflow-hidden bg-background border border-border shadow-md rotate-2 translate-y-2 group-hover:rotate-0 transition-transform duration-300 z-10">
+                          <img
+                            src={snaps[0]?.img}
+                            alt={snaps[0]?.title}
+                            className="w-full h-full object-cover object-center"
+                          />
+                        </div>
+                        {/* Count badge for overflow */}
+                        {items.length > 3 && (
+                          <div className="absolute bottom-2 end-2 z-20">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-background/95 backdrop-blur-md border border-border text-foreground shadow-sm">
+                              +{items.length - 3}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </Link>
-                  <Link
-                    href={`/user/orders/${latestOrder.id}`}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent-brand text-white hover:opacity-90 transition-opacity"
-                  >
-                    {t("shipment.viewOrder")}
-                  </Link>
-                </div>
-              </div>
+                );
+              })}
             </div>
           )}
+        </div>
+      )}
 
-          {/* Recent Orders Table */}
-          <div className="bg-card border border-border rounded-xl overflow-hidden shadow-2xs">
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-bold text-foreground tracking-tight">{t("recentOrders.title")}</h2>
-                <p className="text-xs text-muted-foreground">{t("recentOrders.subtitle")}</p>
-              </div>
-              <Link
-                href="/user/orders"
-                className="text-xs font-medium text-accent-brand hover:underline"
-              >
-                {t("recentOrders.viewAll", { count: orders.length })}
-              </Link>
-            </div>
-
-            {loading ? (
-              <TableSkeleton />
-            ) : error ? (
-              <div className="p-4 border-destructive/20 bg-destructive/10 text-destructive text-sm">
-                {error}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left rtl:text-right">
-                  <thead className="bg-secondary/40 border-b border-border">
-                    <tr>
-                      {localizedTbHeaders.map((th, idx) => (
-                        <th
-                          key={idx}
-                          className="px-4 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider"
-                        >
-                          {th}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {recentOrders.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-xs text-muted-foreground">
-                          {t("recentOrders.empty")}
-                        </td>
-                      </tr>
-                    ) : (
-                      recentOrders.map((order) => {
-                        const badge = STATUS_BADGE[order.status] ?? STATUS_BADGE.pending;
-                        const dateStr = new Date(order.createdAt).toLocaleDateString(locale, {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        });
-                        const itemsCount = order.items?.length ?? 0;
-                        const itemsLabel = itemsCount === 1 
-                          ? t("recentOrders.itemCount", { count: itemsCount })
-                          : t("recentOrders.itemCountPlural", { count: itemsCount });
-
-                        return (
-                          <tr
-                            key={order.id}
-                            className="text-xs hover:bg-secondary/30 transition-colors"
-                          >
-                            <td className="px-4 py-3 text-foreground font-semibold font-mono">
-                              #{order.id.slice(0, 8).toUpperCase()}
-                            </td>
-                            <td className="px-4 py-3 text-muted-foreground">
-                              {dateStr}
-                            </td>
-                            <td className="px-4 py-3 text-foreground">
-                              {itemsLabel}
-                            </td>
-                            <td className="px-4 py-3 text-foreground font-semibold">
-                              {(order.totalAmount / 100).toFixed(2)} {order.currency.toUpperCase()}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${badge.className}`}
-                              >
-                                {badge.label}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <Link
-                                href={`/user/orders/${order.id}`}
-                                className="text-accent-brand hover:underline font-medium"
-                              >
-                                {t("recentOrders.details")}
-                              </Link>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
+      {/* ── 3. Your Wishlist Sub-Section with Live Product Preview ── */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
+              {t("yourLists.title")}
+            </h2>
+            {wishlistCount > 0 && (
+              <span className="text-xs text-muted-foreground">({wishlistCount})</span>
             )}
           </div>
+          <Link
+            href="/user/wishlist"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-accent-brand hover:underline"
+          >
+            <span>{t("yourLists.seeAll")}</span>
+            <Arrow className="size-3.5" />
+          </Link>
         </div>
 
-        {/* Right Column (4 cols): Quick Direct Access, Security & Details Panel */}
-        <div className="lg:col-span-4 flex flex-col gap-4">
-          {/* Account Profile Summary Card */}
-          <div className="bg-card border border-border rounded-xl p-4.5 shadow-2xs">
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">
-              {t("accountOverview.title")}
-            </h3>
-            <div className="space-y-2.5 text-xs">
-              <div className="flex items-center justify-between pb-2 border-b border-border/60">
-                <span className="text-muted-foreground">{t("accountOverview.name")}</span>
-                <span className="font-medium text-foreground">{user?.name || t("defaultUser")}</span>
-              </div>
-              <div className="flex items-center justify-between pb-2 border-b border-border/60">
-                <span className="text-muted-foreground">{t("accountOverview.email")}</span>
-                <span className="font-mono text-foreground truncate max-w-[180px]">{user?.email || "—"}</span>
-              </div>
-              <div className="flex items-center justify-between pb-2 border-b border-border/60">
-                <span className="text-muted-foreground">{t("accountOverview.security")}</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium">{t("accountOverview.protected")}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t("accountOverview.reviews")}</span>
-                <span className="font-medium text-foreground">{t("accountOverview.reviewsPublished", { count: reviewCount })}</span>
-              </div>
+        {wishlistPreview.length === 0 ? (
+          <div className="bg-card border border-dashed border-border/80 rounded-2xl p-8 text-center flex flex-col items-center justify-center gap-2.5">
+            <div className="size-10 rounded-full bg-secondary flex items-center justify-center text-muted-foreground">
+              <Heart className="size-5" />
             </div>
-
-            <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
-              <Link
-                href="/user/settings"
-                className="text-xs text-accent-brand hover:underline font-medium"
-              >
-                {t("accountOverview.editSettings")}
-              </Link>
-            </div>
+            <p className="text-xs text-muted-foreground">{t("yourLists.empty")}</p>
+            <Link
+              href="/products"
+              className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground border border-border text-xs font-semibold transition-colors"
+            >
+              <ExternalLink className="size-3.5" />
+              <span>{t("yourLists.exploreProducts")}</span>
+            </Link>
           </div>
+        ) : (
+          <div className="grid grid-cols-4 gap-2 sm:gap-3 max-w-xl">
+            {wishlistPreview.map((item) => {
+              const product = item.product;
+              const imgSrc = normalizeMediaUrl(product?.thumbnailUrl);
 
-          {/* Quick Shortcuts Side Panel */}
-          <div className="bg-card border border-border rounded-xl p-4.5 shadow-2xs">
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">
-              {t("shortcuts.title")}
-            </h3>
-            <div className="flex flex-col divide-y divide-border/60 text-xs">
-              <Link
-                href="/user/orders"
-                className="py-2.5 flex items-center justify-between text-foreground hover:text-accent-brand transition-colors font-medium group"
-              >
-                <span>{t("shortcuts.trackPackages")}</span>
-                <span className="text-muted-foreground group-hover:text-accent-brand transition-transform rtl:rotate-180">→</span>
-              </Link>
-              <Link
-                href="/user/address"
-                className="py-2.5 flex items-center justify-between text-foreground hover:text-accent-brand transition-colors font-medium group"
-              >
-                <span>{t("shortcuts.manageAddresses")}</span>
-                <span className="text-muted-foreground group-hover:text-accent-brand transition-transform rtl:rotate-180">→</span>
-              </Link>
-              <Link
-                href="/user/wishlist"
-                className="py-2.5 flex items-center justify-between text-foreground hover:text-accent-brand transition-colors font-medium group"
-              >
-                <span>{t("shortcuts.viewWishlist", { count: wishlistCount })}</span>
-                <span className="text-muted-foreground group-hover:text-accent-brand transition-transform rtl:rotate-180">→</span>
-              </Link>
-              <Link
-                href="/user/payment"
-                className="py-2.5 flex items-center justify-between text-foreground hover:text-accent-brand transition-colors font-medium group"
-              >
-                <span>{t("shortcuts.billingMethods")}</span>
-                <span className="text-muted-foreground group-hover:text-accent-brand transition-transform rtl:rotate-180">→</span>
-              </Link>
-              <Link
-                href="/user/reviews"
-                className="py-2.5 flex items-center justify-between text-foreground hover:text-accent-brand transition-colors font-medium group"
-              >
-                <span>{t("shortcuts.myReviews")}</span>
-                <span className="text-muted-foreground group-hover:text-accent-brand transition-transform rtl:rotate-180">→</span>
-              </Link>
-            </div>
+              return (
+                <Link
+                  key={item.id}
+                  href={`/products/${product?.slug || product?.id}`}
+                  title={product?.title}
+                  className="group block aspect-square w-full rounded-2xl bg-secondary/50 border border-border/80 hover:border-accent-brand/50 overflow-hidden shadow-2xs hover:shadow-xs transition-all"
+                >
+                  <img
+                    src={imgSrc}
+                    alt={product?.title || "Product"}
+                    className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-300"
+                  />
+                </Link>
+              );
+            })}
           </div>
+        )}
+      </div>
+
+      {/* ── 4. Account Management & Preferences Tiles ── */}
+      <div className="flex flex-col gap-3">
+        <h2 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
+          {t("accountShortcuts.title")}
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {secondaryAccountTiles.map((card) => {
+            const Icon = card.icon;
+
+            return (
+              <Link
+                key={card.id}
+                href={card.href}
+                className="group bg-card border border-border/80 hover:border-accent-brand/50 rounded-xl p-3.5 sm:p-4 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between gap-3 cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="size-9 rounded-xl bg-secondary group-hover:bg-accent-brand/10 text-foreground group-hover:text-accent-brand flex items-center justify-center shrink-0 border border-border/60 transition-colors">
+                    <Icon className="size-4.5" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs sm:text-sm font-semibold text-foreground group-hover:text-accent-brand transition-colors truncate">
+                        {card.title}
+                      </span>
+                      {card.badge && (
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-secondary text-muted-foreground border border-border">
+                          {card.badge}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                      {card.desc}
+                    </span>
+                  </div>
+                </div>
+
+                <Chevron className="size-4 text-muted-foreground group-hover:text-accent-brand group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-all shrink-0" />
+              </Link>
+            );
+          })}
         </div>
       </div>
     </div>

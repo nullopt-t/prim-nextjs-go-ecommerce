@@ -37,6 +37,8 @@ export const catalogService = {
   getProductRatingSummary: (slug: string) => api.get(`/api/v1/products/${slug}/reviews/summary`),
   submitReview: (payload: { productId: string; rating: number; title?: string; body?: string }) =>
     api.post("/api/v1/reviews", payload),
+  checkReviewEligibility: (productId: string) =>
+    api.get<{ canReview: boolean }>(`/api/v1/reviews/eligibility?productId=${productId}`),
   createProduct: (payload: any) => api.post("/api/v1/products", payload),
   updateProduct: (id: string, payload: any) => api.patch(`/api/v1/products/${id}`, payload),
   deleteProduct: (id: string) => api.delete(`/api/v1/products/${id}`),

@@ -8,6 +8,7 @@ interface ProductReviewsProps {
   stars?: number;
   reviewsCount?: number;
   reviews: ProductReview[];
+  canReview?: boolean;
   onAddReview: (review: { rating: number; title: string; content: string }) => Promise<boolean | void> | void;
   onVoteHelpful: (reviewId: string | number) => void;
 }
@@ -16,6 +17,7 @@ export function ProductReviews({
   stars = 5,
   reviewsCount = 0,
   reviews,
+  canReview = false,
   onAddReview,
   onVoteHelpful,
 }: ProductReviewsProps) {
@@ -43,7 +45,7 @@ export function ProductReviews({
     }
   };
 
-  const visibleReviews = isExpanded ? reviews : reviews.slice(0, 2);
+  const visibleReviews = isExpanded ? reviews : reviews.slice(0, 5);
 
   return (
     <section>
@@ -80,81 +82,83 @@ export function ProductReviews({
               })}
             </div>
 
-            <div className="border-t border-border pt-6">
-              <h4 className="font-bold text-foreground mb-2">{t("reviewThisProduct")}</h4>
-              <p className="text-sm text-muted-foreground mb-4">{t("shareThoughts")}</p>
-              {!isFormOpen ? (
-                <button
-                  type="button"
-                  onClick={() => setIsFormOpen(true)}
-                  className="w-full py-2 px-4 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 border border-border shadow-sm text-sm font-medium transition-colors cursor-pointer"
-                >
-                  {t("writeReview")}
-                </button>
-              ) : (
-                <div className="flex flex-col gap-4 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-foreground">{t("rating")}</label>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setForm({ ...form, rating: star })}
-                          className={`text-2xl transition-colors hover:scale-110 cursor-pointer ${
-                            form.rating >= star ? "text-amber-400" : "text-border"
-                          }`}
-                        >
-                          ★
-                        </button>
-                      ))}
+            {canReview && (
+              <div className="border-t border-border pt-6">
+                <h4 className="font-bold text-foreground mb-2">{t("reviewThisProduct")}</h4>
+                <p className="text-sm text-muted-foreground mb-4">{t("shareThoughts")}</p>
+                {!isFormOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsFormOpen(true)}
+                    className="w-full py-2 px-4 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 border border-border shadow-sm text-sm font-medium transition-colors cursor-pointer"
+                  >
+                    {t("writeReview")}
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-4 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-semibold text-foreground">{t("rating")}</label>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setForm({ ...form, rating: star })}
+                            className={`text-2xl transition-colors hover:scale-110 cursor-pointer ${
+                              form.rating >= star ? "text-amber-400" : "text-border"
+                            }`}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-semibold text-foreground">{t("addHeadline")}</label>
+                      <input
+                        type="text"
+                        placeholder={t("headlinePlaceholder")}
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-accent-brand focus:border-transparent transition-all"
+                        value={form.title}
+                        onChange={(e) => setForm({ ...form, title: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm font-semibold text-foreground">{t("addWrittenReview")}</label>
+                      <textarea
+                        placeholder={t("contentPlaceholder")}
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-accent-brand focus:border-transparent transition-all"
+                        value={form.content}
+                        onChange={(e) => setForm({ ...form, content: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="flex gap-3 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsFormOpen(false);
+                          setForm({ rating: 0, title: "", content: "" });
+                        }}
+                        className="flex-1 py-2 px-4 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 border border-border shadow-sm text-sm font-medium transition-colors cursor-pointer"
+                      >
+                        {t("cancel")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSubmit}
+                        className="flex-1 py-2 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        disabled={!form.rating || !form.title.trim() || !form.content.trim() || isSubmitting}
+                      >
+                        {isSubmitting ? t("submitting") : t("submit")}
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-foreground">{t("addHeadline")}</label>
-                    <input
-                      type="text"
-                      placeholder={t("headlinePlaceholder")}
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-accent-brand focus:border-transparent transition-all"
-                      value={form.title}
-                      onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-foreground">{t("addWrittenReview")}</label>
-                    <textarea
-                      placeholder={t("contentPlaceholder")}
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-accent-brand focus:border-transparent transition-all"
-                      value={form.content}
-                      onChange={(e) => setForm({ ...form, content: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="flex gap-3 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsFormOpen(false);
-                        setForm({ rating: 0, title: "", content: "" });
-                      }}
-                      className="flex-1 py-2 px-4 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 border border-border shadow-sm text-sm font-medium transition-colors cursor-pointer"
-                    >
-                      {t("cancel")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSubmit}
-                      className="flex-1 py-2 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                      disabled={!form.rating || !form.title.trim() || !form.content.trim() || isSubmitting}
-                    >
-                      {isSubmitting ? t("submitting") : t("submit")}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Reviews list */}
@@ -213,7 +217,7 @@ export function ProductReviews({
               </div>
             )))}
 
-            {reviews.length > 2 && (
+            {reviews.length > 5 && (
               <button
                 type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
