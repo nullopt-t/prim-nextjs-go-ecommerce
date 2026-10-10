@@ -25,9 +25,10 @@ func Locale() gin.HandlerFunc {
 
 		resolvedLocale := DefaultLocale
 		normalized := strings.ToLower(strings.TrimSpace(lang))
-		if strings.HasPrefix(normalized, "ar") {
+		switch {
+		case strings.HasPrefix(normalized, LocaleAR):
 			resolvedLocale = LocaleAR
-		} else if strings.HasPrefix(normalized, "en") {
+		case strings.HasPrefix(normalized, LocaleEN):
 			resolvedLocale = LocaleEN
 		}
 
