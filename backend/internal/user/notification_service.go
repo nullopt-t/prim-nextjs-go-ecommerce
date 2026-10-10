@@ -48,7 +48,7 @@ func (s *NotificationService) GetMyNotifications(
 	unreadOnly bool,
 	q *pagination.ListQuery,
 ) (*pagination.PagedResult[model.UserNotification], error) {
-	var items []model.UserNotification
+	var items []*model.UserNotification
 	var total int
 
 	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
@@ -60,13 +60,8 @@ func (s *NotificationService) GetMyNotifications(
 		return nil, apierr.ErrInternalError("Failed to fetch notifications").Wrap(err)
 	}
 
-	itemPtrs := make([]*model.UserNotification, len(items))
-	for i := range items {
-		itemPtrs[i] = &items[i]
-	}
-
 	page := pagination.NewPage(q.Page, q.PageSize, total)
-	return pagination.NewPagedResult(itemPtrs, page), nil
+	return pagination.NewPagedResult(items, page), nil
 }
 
 // GetUnreadCount returns the number of unread alerts for the customer badge.

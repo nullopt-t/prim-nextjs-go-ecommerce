@@ -21,6 +21,7 @@ func NewNotificationRouter(
 	}
 }
 
+// MapRoutes maps the notification routes to the router.
 func (r *NotificationRouter) MapRoutes(v1 *gin.RouterGroup) {
 	group := v1.Group("/user/notifications")
 	{

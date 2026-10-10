@@ -60,7 +60,7 @@ func (r *NotificationRepository) ListByUser(
 	userID uuid.UUID,
 	unreadOnly bool,
 	q *pagination.ListQuery,
-) ([]model.UserNotification, int, error) {
+) ([]*model.UserNotification, int, error) {
 	var countQuery string
 	if unreadOnly {
 		countQuery = `SELECT COUNT(*) FROM user_notifications WHERE user_id = $1 AND read_at IS NULL`
@@ -74,7 +74,7 @@ func (r *NotificationRepository) ListByUser(
 	}
 
 	if total == 0 {
-		return []model.UserNotification{}, 0, nil
+		return []*model.UserNotification{}, 0, nil
 	}
 
 	var selectQuery string
@@ -102,7 +102,7 @@ func (r *NotificationRepository) ListByUser(
 	}
 	defer rows.Close()
 
-	items := make([]model.UserNotification, 0, q.PageSize)
+	items := make([]*model.UserNotification, 0, q.PageSize)
 	for rows.Next() {
 		var item model.UserNotification
 		if err := rows.Scan(
@@ -118,7 +118,7 @@ func (r *NotificationRepository) ListByUser(
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan user notification: %w", err)
 		}
-		items = append(items, item)
+		items = append(items, &item)
 	}
 
 	return items, total, rows.Err()

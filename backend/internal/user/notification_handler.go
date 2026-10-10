@@ -81,7 +81,7 @@ func (h *NotificationHandler) GetMyNotifications(c *gin.Context) {
 		_ = c.Error(apierr.ErrValidationFailed("invalid query parameters"))
 		return
 	}
-	q.Process(pagination.QueryOptions{DefaultPageSize: 15, MaxPageSize: 50})
+	q.Process(pagination.QueryOptions{DefaultPageSize: 5, MaxPageSize: 10})
 
 	unreadOnly := c.Query("unreadOnly") == "true"
 	locale := middleware.GetLocale(c)
