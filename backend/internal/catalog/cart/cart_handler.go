@@ -172,8 +172,8 @@ const GuestSessionCookieMaxAge = 30 * 24 * 3600 // 30 days
 
 // extractUserAndSession attempts to identify the current cart owner.
 // It checks the gin context for an authenticated user ID.
-// If the user is unauthenticated, it checks for an existing session ID in headers or cookies.
-// If neither exists, it generates a new anonymous session ID and sets it as a cookie for future requests.
+// If the user is unauthenticated, it checks for an existing session ID in the cookie.
+// If none exists, it generates a new anonymous session ID and sets it as a cookie for future requests.
 func (h *CartHandler) extractUserAndSession(c *gin.Context) (*uuid.UUID, *string) {
 	var userID *uuid.UUID
 	var sessionID *string
@@ -185,12 +185,10 @@ func (h *CartHandler) extractUserAndSession(c *gin.Context) (*uuid.UUID, *string
 		}
 	}
 
-	// Look for existing session ID in header, then fallback to cookie
-	sess := c.GetHeader("X-Session-ID")
-	if sess == "" {
-		if cookieSess, err := c.Cookie("session_id"); err == nil && cookieSess != "" {
-			sess = cookieSess
-		}
+	// Look for existing session ID in cookie
+	var sess string
+	if cookieSess, err := c.Cookie("session_id"); err == nil && cookieSess != "" {
+		sess = cookieSess
 	}
 
 	// Use existing session if found, otherwise create a new guest session if not authenticated
@@ -211,7 +209,6 @@ func (h *CartHandler) extractUserAndSession(c *gin.Context) (*uuid.UUID, *string
 //	@Description	Fetches the current user's or guest session's shopping cart and item details.
 //	@Tags			Cart
 //	@Produce		json
-//	@Param			X-Session-ID	header		string								false	"Guest Session ID"
 //	@Success		200				{object}	api.DataResponse{data=CartResponse}	"Cart details"
 //	@Failure		400				{object}	api.BadRequestErrorResponse			"Invalid input or missing session"
 //	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
@@ -235,7 +232,6 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 //	@Tags			Cart
 //	@Accept			json
 //	@Produce		json
-//	@Param			X-Session-ID	header		string								false	"Guest Session ID"
 //	@Param			body			body		AddItemRequest						true	"Item variant and quantity"
 //	@Success		200				{object}	api.DataResponse{data=CartResponse}	"Updated cart"
 //	@Failure		400				{object}	api.BadRequestErrorResponse			"Validation error"
@@ -268,7 +264,6 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			id				path		string								true	"Cart Item UUID"
-//	@Param			X-Session-ID	header		string								false	"Guest Session ID"
 //	@Param			body			body		UpdateQuantityRequest				true	"New quantity"
 //	@Success		200				{object}	api.DataResponse{data=CartResponse}	"Updated cart"
 //	@Failure		400				{object}	api.BadRequestErrorResponse			"Validation error or invalid UUID"
@@ -306,7 +301,6 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 //	@Tags			Cart
 //	@Produce		json
 //	@Param			id				path		string								true	"Cart Item UUID"
-//	@Param			X-Session-ID	header		string								false	"Guest Session ID"
 //	@Success		200				{object}	api.DataResponse{data=CartResponse}	"Updated cart"
 //	@Failure		400				{object}	api.BadRequestErrorResponse			"Invalid item ID"
 //	@Failure		404				{object}	api.NotFoundErrorResponse			"Cart item not found"
@@ -336,7 +330,6 @@ func (h *CartHandler) RemoveItem(c *gin.Context) {
 //	@Description	Removes all items from the current cart.
 //	@Tags			Cart
 //	@Produce		json
-//	@Param			X-Session-ID	header	string	false	"Guest Session ID"
 //	@Success		204				"Cart cleared"
 //	@Failure		500				{object}	api.InternalServerErrorResponse	"Internal server error"
 //	@Router			/cart [delete]

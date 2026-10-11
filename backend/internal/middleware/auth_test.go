@@ -101,4 +101,51 @@ func TestAuthenticate(t *testing.T) {
 		assert.Equal(t, expectedSessionID, capturedSessionID)
 		assert.Equal(t, "admin", capturedUserRole)
 	})
+
+	t.Run("OptionalAuthenticate allows unauthenticated request without error", func(t *testing.T) {
+		store := &mockSessionStore{}
+		r := gin.New()
+		r.Use(middleware.OptionalAuthenticate(store))
+		var capturedUserID any
+		r.GET("/test-optional", func(c *gin.Context) {
+			capturedUserID, _ = c.Get("userID")
+			c.Status(http.StatusOK)
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/test-optional", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Nil(t, capturedUserID)
+	})
+
+	t.Run("OptionalAuthenticate sets user context when valid cookie is present", func(t *testing.T) {
+		expectedUserID := uuid.New()
+		expectedSessionID := "sess-opt-123"
+		store := &mockSessionStore{
+			getSessionByIDFunc: func(ctx context.Context, sessionID string) (*model.UserSession, error) {
+				return &model.UserSession{
+					ID:       expectedSessionID,
+					UserID:   expectedUserID,
+					UserRole: "customer",
+				}, nil
+			},
+		}
+		r := gin.New()
+		r.Use(middleware.OptionalAuthenticate(store))
+		var capturedUserID any
+		r.GET("/test-optional", func(c *gin.Context) {
+			capturedUserID, _ = c.Get("userID")
+			c.Status(http.StatusOK)
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/test-optional", nil)
+		req.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: expectedSessionID})
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, expectedUserID, capturedUserID)
+	})
 }

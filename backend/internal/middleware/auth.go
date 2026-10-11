@@ -75,3 +75,30 @@ func Authenticate(sessionStore SessionStore) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// OptionalAuthenticate attempts to authenticate via the session cookie if present,
+// setting user context without aborting or returning 401 if unauthenticated or absent.
+func OptionalAuthenticate(sessionStore SessionStore) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var sessionID string
+
+		if cookie, err := c.Cookie(SessionCookieName); err == nil && cookie != "" {
+			sessionID = cookie
+		}
+
+		if sessionID != "" {
+			if session, err := sessionStore.GetSessionByID(c.Request.Context(), sessionID); err == nil && session != nil {
+				c.Set("sessionID", session.ID)
+				c.Set("userID", session.UserID)
+				if session.UserRole != "" {
+					c.Set("userRole", session.UserRole)
+				} else {
+					c.Set("userRole", "customer")
+				}
+			}
+		}
+
+		c.Next()
+	}
+}
+

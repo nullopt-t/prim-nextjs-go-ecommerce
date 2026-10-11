@@ -215,7 +215,7 @@ func (s *CartHTTPTestSuite) TestHTTP_GetCart_InitialEmptySchema() {
 	sessionID := "sess_" + uuid.NewString()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
-	req.Header.Set("X-Session-ID", sessionID)
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	w := httptest.NewRecorder()
 
 	s.router.ServeHTTP(w, req)
@@ -257,7 +257,7 @@ func (s *CartHTTPTestSuite) TestHTTP_AddItem_SuccessAndStrictItemSchema() {
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Session-ID", sessionID)
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	w := httptest.NewRecorder()
 
 	s.router.ServeHTTP(w, req)
@@ -295,7 +295,7 @@ func (s *CartHTTPTestSuite) TestHTTP_AddItem_InvalidPayloads() {
 	badBody1 := []byte(`{"quantity": 2}`)
 	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(badBody1))
 	req1.Header.Set("Content-Type", "application/json")
-	req1.Header.Set("X-Session-ID", sessionID)
+	req1.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	w1 := httptest.NewRecorder()
 	s.router.ServeHTTP(w1, req1)
 	s.Require().Equal(http.StatusBadRequest, w1.Code)
@@ -309,7 +309,7 @@ func (s *CartHTTPTestSuite) TestHTTP_AddItem_InvalidPayloads() {
 	badBody2 := []byte(`{"variantId": "00000000-0000-0000-0000-000000000001", "quantity": 0}`)
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(badBody2))
 	req2.Header.Set("Content-Type", "application/json")
-	req2.Header.Set("X-Session-ID", sessionID)
+	req2.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	w2 := httptest.NewRecorder()
 	s.router.ServeHTTP(w2, req2)
 	s.Require().Equal(http.StatusBadRequest, w2.Code)
@@ -321,7 +321,7 @@ func (s *CartHTTPTestSuite) TestHTTP_AddItem_InvalidPayloads() {
 	})
 	req3 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(badBody3))
 	req3.Header.Set("Content-Type", "application/json")
-	req3.Header.Set("X-Session-ID", sessionID)
+	req3.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	w3 := httptest.NewRecorder()
 	s.router.ServeHTTP(w3, req3)
 	s.Require().Equal(http.StatusNotFound, w3.Code)
@@ -342,7 +342,7 @@ func (s *CartHTTPTestSuite) TestHTTP_UpdateItemQuantity_SuccessAndInsufficientSt
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(addBody))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Session-ID", sessionID)
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	w := httptest.NewRecorder()
 	s.router.ServeHTTP(w, req)
 	s.Require().Equal(http.StatusOK, w.Code)
@@ -358,7 +358,7 @@ func (s *CartHTTPTestSuite) TestHTTP_UpdateItemQuantity_SuccessAndInsufficientSt
 	})
 	reqExceed := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(exceedAddBody))
 	reqExceed.Header.Set("Content-Type", "application/json")
-	reqExceed.Header.Set("X-Session-ID", sessionID)
+	reqExceed.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	wExceed := httptest.NewRecorder()
 	s.router.ServeHTTP(wExceed, reqExceed)
 	s.Require().Equal(http.StatusBadRequest, wExceed.Code)
@@ -373,7 +373,7 @@ func (s *CartHTTPTestSuite) TestHTTP_UpdateItemQuantity_SuccessAndInsufficientSt
 	})
 	reqUpdateExceed := httptest.NewRequest(http.MethodPatch, "/api/v1/cart/items/"+itemID, bytes.NewReader(updateExceedBody))
 	reqUpdateExceed.Header.Set("Content-Type", "application/json")
-	reqUpdateExceed.Header.Set("X-Session-ID", sessionID)
+	reqUpdateExceed.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	wUpdateExceed := httptest.NewRecorder()
 	s.router.ServeHTTP(wUpdateExceed, reqUpdateExceed)
 
@@ -388,7 +388,7 @@ func (s *CartHTTPTestSuite) TestHTTP_UpdateItemQuantity_SuccessAndInsufficientSt
 	})
 	reqValidUpdate := httptest.NewRequest(http.MethodPatch, "/api/v1/cart/items/"+itemID, bytes.NewReader(validUpdateBody))
 	reqValidUpdate.Header.Set("Content-Type", "application/json")
-	reqValidUpdate.Header.Set("X-Session-ID", sessionID)
+	reqValidUpdate.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	wValidUpdate := httptest.NewRecorder()
 	s.router.ServeHTTP(wValidUpdate, reqValidUpdate)
 
@@ -414,7 +414,7 @@ func (s *CartHTTPTestSuite) TestHTTP_RemoveItemAndClearCart() {
 	b1, _ := json.Marshal(cart.AddItemRequest{VariantID: v1, Quantity: 1})
 	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(b1))
 	req1.Header.Set("Content-Type", "application/json")
-	req1.Header.Set("X-Session-ID", sessionID)
+	req1.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	w1 := httptest.NewRecorder()
 	s.router.ServeHTTP(w1, req1)
 	s.Require().Equal(http.StatusOK, w1.Code)
@@ -427,14 +427,14 @@ func (s *CartHTTPTestSuite) TestHTTP_RemoveItemAndClearCart() {
 	b2, _ := json.Marshal(cart.AddItemRequest{VariantID: v2, Quantity: 2})
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(b2))
 	req2.Header.Set("Content-Type", "application/json")
-	req2.Header.Set("X-Session-ID", sessionID)
+	req2.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	w2 := httptest.NewRecorder()
 	s.router.ServeHTTP(w2, req2)
 	s.Require().Equal(http.StatusOK, w2.Code)
 
 	// 1. DELETE /api/v1/cart/items/:id (Remove item 1)
 	reqRemove := httptest.NewRequest(http.MethodDelete, "/api/v1/cart/items/"+item1ID, nil)
-	reqRemove.Header.Set("X-Session-ID", sessionID)
+	reqRemove.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	wRemove := httptest.NewRecorder()
 	s.router.ServeHTTP(wRemove, reqRemove)
 
@@ -448,7 +448,7 @@ func (s *CartHTTPTestSuite) TestHTTP_RemoveItemAndClearCart() {
 
 	// 2. DELETE /api/v1/cart (Clear remaining items)
 	reqClear := httptest.NewRequest(http.MethodDelete, "/api/v1/cart", nil)
-	reqClear.Header.Set("X-Session-ID", sessionID)
+	reqClear.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	wClear := httptest.NewRecorder()
 	s.router.ServeHTTP(wClear, reqClear)
 
@@ -457,7 +457,7 @@ func (s *CartHTTPTestSuite) TestHTTP_RemoveItemAndClearCart() {
 
 	// 3. Verify cart is empty via GET
 	reqGet := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
-	reqGet.Header.Set("X-Session-ID", sessionID)
+	reqGet.AddCookie(&http.Cookie{Name: "session_id", Value: sessionID})
 	wGet := httptest.NewRecorder()
 	s.router.ServeHTTP(wGet, reqGet)
 
@@ -491,7 +491,7 @@ func (s *CartHTTPTestSuite) createAuthenticatedUser() (uuid.UUID, string) {
 }
 
 func (s *CartHTTPTestSuite) TestHTTP_GuestCart_CookieGenerationAndPersistence() {
-	// When a guest request has no X-Session-ID header and no cookie,
+	// When a guest request has no cookie,
 	// the handler should auto-generate a guest session ID and set the session_id cookie.
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
 	w := httptest.NewRecorder()
@@ -558,7 +558,7 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MultipleGuestsAreIsolated() {
 	b1, _ := json.Marshal(cart.AddItemRequest{VariantID: v1, Quantity: 1})
 	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(b1))
 	req1.Header.Set("Content-Type", "application/json")
-	req1.Header.Set("X-Session-ID", session1)
+	req1.AddCookie(&http.Cookie{Name: "session_id", Value: session1})
 	w1 := httptest.NewRecorder()
 	s.router.ServeHTTP(w1, req1)
 	s.Require().Equal(http.StatusOK, w1.Code)
@@ -567,14 +567,14 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MultipleGuestsAreIsolated() {
 	b2, _ := json.Marshal(cart.AddItemRequest{VariantID: v2, Quantity: 2})
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(b2))
 	req2.Header.Set("Content-Type", "application/json")
-	req2.Header.Set("X-Session-ID", session2)
+	req2.AddCookie(&http.Cookie{Name: "session_id", Value: session2})
 	w2 := httptest.NewRecorder()
 	s.router.ServeHTTP(w2, req2)
 	s.Require().Equal(http.StatusOK, w2.Code)
 
 	// Fetch guest 1 cart
 	reqGet1 := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
-	reqGet1.Header.Set("X-Session-ID", session1)
+	reqGet1.AddCookie(&http.Cookie{Name: "session_id", Value: session1})
 	wGet1 := httptest.NewRecorder()
 	s.router.ServeHTTP(wGet1, reqGet1)
 	var resp1 StrictDataEnvelope[cart.CartResponse]
@@ -585,7 +585,7 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MultipleGuestsAreIsolated() {
 
 	// Fetch guest 2 cart
 	reqGet2 := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
-	reqGet2.Header.Set("X-Session-ID", session2)
+	reqGet2.AddCookie(&http.Cookie{Name: "session_id", Value: session2})
 	wGet2 := httptest.NewRecorder()
 	s.router.ServeHTTP(wGet2, reqGet2)
 	var resp2 StrictDataEnvelope[cart.CartResponse]
@@ -609,7 +609,7 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MergeIntoUserCart() {
 	b1, _ := json.Marshal(cart.AddItemRequest{VariantID: v1, Quantity: 2})
 	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(b1))
 	req1.Header.Set("Content-Type", "application/json")
-	req1.Header.Set("X-Session-ID", guestSessionID)
+	req1.AddCookie(&http.Cookie{Name: "session_id", Value: guestSessionID})
 	w1 := httptest.NewRecorder()
 	s.router.ServeHTTP(w1, req1)
 	s.Require().Equal(http.StatusOK, w1.Code)
@@ -617,7 +617,7 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MergeIntoUserCart() {
 	b2, _ := json.Marshal(cart.AddItemRequest{VariantID: v2, Quantity: 1})
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(b2))
 	req2.Header.Set("Content-Type", "application/json")
-	req2.Header.Set("X-Session-ID", guestSessionID)
+	req2.AddCookie(&http.Cookie{Name: "session_id", Value: guestSessionID})
 	w2 := httptest.NewRecorder()
 	s.router.ServeHTTP(w2, req2)
 	s.Require().Equal(http.StatusOK, w2.Code)
@@ -679,7 +679,7 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MergeIntoUserCart() {
 
 	// 5. Verify the guest cart record was deleted after merge
 	reqGuestAfter := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
-	reqGuestAfter.Header.Set("X-Session-ID", guestSessionID)
+	reqGuestAfter.AddCookie(&http.Cookie{Name: "session_id", Value: guestSessionID})
 	wGuestAfter := httptest.NewRecorder()
 	s.router.ServeHTTP(wGuestAfter, reqGuestAfter)
 

@@ -126,36 +126,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const fetchCart = useCallback(async (isInitial: boolean = false) => {
-    if (!isAuthenticated) {
-      setCartItems([]);
-      setCartSummary({
-        subtotal: 0,
-        discount: 0,
-        shipping: 0,
-        tax: 0,
-        total: 0,
-      });
-      setLoading(false);
-      setErrorMsg(null);
-      return;
-    }
-
     if (isInitial) setLoading(true);
     try {
       const res = await cartService.getCart();
       normalizeCartData(res);
       setErrorMsg(null);
     } catch (err: any) {
-      if (err.message?.includes("Unauthorized") || err.message?.includes("401")) {
-        setCartItems([]);
-        setErrorMsg(null);
-      } else {
-        setErrorMsg(err.message || "Failed to load cart");
-      }
+      setErrorMsg(err.message || "Failed to load cart");
     } finally {
       if (isInitial) setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, []);
 
   useEffect(() => {
     if (!authLoading) {

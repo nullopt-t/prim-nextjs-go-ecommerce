@@ -174,11 +174,14 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 		return
 	}
 
-	// Merge guest cart if a session cookie is present
+	// Merge guest cart if a guest session cookie is present
 	guestSessionID, err := c.Cookie("session_id")
 	if err == nil && guestSessionID != "" && h.cartMerger != nil {
 		if mergeErr := h.cartMerger.MergeGuestCart(c.Request.Context(), guestSessionID, authResult.UserID); mergeErr != nil {
 			h.logger.Error("Failed to merge guest cart", log.Meta{"error": mergeErr, "session_id": guestSessionID, "user_id": authResult.UserID})
+		} else {
+			// Clear guest session cookie upon successful merge
+			c.SetCookie("session_id", "", -1, "/", "", h.isProduction, true)
 		}
 	}
 

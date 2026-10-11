@@ -19,7 +19,7 @@ func NewRouter(handler *CartHandler, sessionStore middleware.SessionStore) *Cart
 
 func (r *CartRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	cartGroup := vgroup.Group("/cart")
-	cartGroup.Use(middleware.Authenticate(r.sessionStore))
+	cartGroup.Use(middleware.OptionalAuthenticate(r.sessionStore))
 	{
 		cartGroup.GET("", r.handler.GetCart)
 		cartGroup.DELETE("", r.handler.ClearCart)

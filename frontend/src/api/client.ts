@@ -6,16 +6,6 @@ const getBaseUrl = () => {
   return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
 };
 
-const getSessionId = () => {
-  if (typeof window === "undefined") return "";
-  let sid = localStorage.getItem("prim_guest_session_id");
-  if (!sid) {
-    sid = "guest-" + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-    localStorage.setItem("prim_guest_session_id", sid);
-  }
-  return sid;
-};
-
 const getActiveLocale = () => {
   if (typeof window === "undefined") return "en";
   const path = window.location.pathname;
@@ -41,7 +31,6 @@ export async function request<T = any>(
 ): Promise<T> {
   const url = endpoint.startsWith("http") ? endpoint : `${getBaseUrl()}${endpoint}`;
   
-  const sessionId = getSessionId();
   const locale = getActiveLocale();
 
   const response = await fetch(url, {
@@ -49,7 +38,6 @@ export async function request<T = any>(
     headers: {
       "Content-Type": "application/json",
       "Accept-Language": locale,
-      ...(sessionId ? { "X-Session-ID": sessionId } : {}),
       ...options.headers,
     },
     ...options,
@@ -57,10 +45,11 @@ export async function request<T = any>(
 
   if (response.status === 401) {
     const isAuthEndpoint =
+      endpoint.includes("/auth/me") ||
       endpoint.includes("/auth/challenge") ||
       endpoint.includes("/auth/logout");
 
-    // If session is expired or invalid on protected resource, redirect to login
+    // Do not hijack browser navigation on probe/auth checks
     if (!isAuthEndpoint) {
       handleAuthRedirect();
     }
