@@ -235,263 +235,130 @@ export default function AddressesContent() {
           </button>
         </div>
       ) : (
-        /* Unified Address Table Container */
-        <div className="bg-card border border-border rounded-xl overflow-hidden shadow-2xs">
-          {/* Desktop Table View */}
-          <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full text-left rtl:text-right border-collapse">
-              <thead>
-                <tr className="bg-secondary/40 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  <th className="py-2 px-3.5 w-[110px] shrink-0">{t("labels.addressLabel")}</th>
-                  <th className="py-2 px-3.5 w-[150px] shrink-0">{t("labels.recipient")}</th>
-                  <th className="py-2 px-3.5">{t("labels.street")}</th>
-                  <th className="py-2 px-3.5 w-[140px] shrink-0">{t("labels.cityLabel")}</th>
-                  <th className="py-2 px-3.5 w-[90px] shrink-0">{t("labels.postalCode")}</th>
-                  <th className="py-2 px-3.5 w-[110px] shrink-0">{t("labels.countryLabel")}</th>
-                  <th className="py-2 px-3.5 w-[160px] shrink-0">{t("labels.phone")}</th>
-                  <th className="py-2 px-3.5 w-[130px] shrink-0 text-end">
-                    <span className="sr-only">{t("actions")}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border text-xs">
-                {addresses.map((addr) => {
-                  const isDefault = addr.isDefault;
-                  const labelKey = addr.label ? addr.label.toLowerCase() : "other";
-                  const localizedLabel =
-                    labelKey === "home"
-                      ? t("labels.home")
-                      : labelKey === "office" || labelKey === "work"
-                      ? t("labels.office")
-                      : labelKey === "other"
-                      ? t("labels.other")
-                      : addr.label;
+        /* Address Cards Grid Styled like Auth Cart Preview */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {addresses.map((addr) => {
+            const isDefault = addr.isDefault;
 
-                  return (
-                    <tr
-                      key={addr.id}
-                      className={`transition-colors ${
-                        isDefault ? "bg-accent-brand/[0.02]" : "hover:bg-secondary/20"
-                      }`}
-                    >
-                      {/* Label + Default Badge */}
-                      <td className="py-2 px-3.5 align-middle whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-secondary text-foreground capitalize tracking-wide">
-                            {localizedLabel}
-                          </span>
-                          {isDefault && (
-                            <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded-full inline-flex items-center gap-0.5">
-                              <Check className="size-2.5" />
-                              <span>{t("defaultBadge")}</span>
-                            </span>
-                          )}
-                        </div>
-                      </td>
+            return (
+              <div
+                key={addr.id}
+                className={`group relative flex flex-col justify-between p-3.5 sm:p-4 rounded-xl border transition-all duration-200 shadow-2xs ${
+                  isDefault
+                    ? "bg-secondary/40 border-accent-brand/40 shadow-xs"
+                    : "bg-secondary/30 hover:bg-secondary/50 border-border/50 hover:border-accent-brand/30"
+                }`}
+              >
+                {/* Top: Icon Thumbnail, Recipient & Label, Default Badge */}
+                <div className="flex items-start gap-3">
+                  {/* Address Icon Box (matching product thumbnail from auth cart) */}
+                  <div className="size-11 rounded-lg bg-background border border-border/60 overflow-hidden shrink-0 flex items-center justify-center p-1 text-muted-foreground shadow-2xs group-hover:text-accent-brand transition-colors">
+                    <MapPin className="size-5" />
+                  </div>
 
-                      {/* Recipient */}
-                      <td className="py-2 px-3.5 align-middle whitespace-nowrap">
-                        <span className="font-semibold text-foreground text-sm tracking-tight block">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-semibold text-foreground text-xs sm:text-sm truncate">
                           {addr.fullName}
                         </span>
-                      </td>
-
-                      {/* Street (Uses full remaining horizontal space on one line) */}
-                      <td className="py-2 px-3.5 align-middle">
-                        <span className="text-foreground/90 leading-normal block" title={[addr.line1, addr.line2].filter(Boolean).join(", ")}>
-                          {[addr.line1, addr.line2].filter(Boolean).join(", ") || "—"}
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground uppercase shrink-0">
+                          {(() => {
+                            const labelKey = addr.label ? addr.label.toLowerCase() : "other";
+                            return labelKey === "home"
+                              ? t("labels.home")
+                              : labelKey === "office" || labelKey === "work"
+                              ? t("labels.office")
+                              : labelKey === "other"
+                              ? t("labels.other")
+                              : addr.label;
+                          })()}
                         </span>
-                      </td>
+                      </div>
 
-                      {/* City & State */}
-                      <td className="py-2 px-3.5 align-middle whitespace-nowrap">
-                        <span className="text-foreground/90 font-medium block">
-                          {[addr.city, addr.state].filter(Boolean).join(" / ") || "—"}
+                      {isDefault && (
+                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full inline-flex items-center gap-1 shrink-0">
+                          <Check className="size-2.5" />
+                          <span>{t("defaultBadge")}</span>
                         </span>
-                      </td>
-
-                      {/* Postal Code */}
-                      <td className="py-2 px-3.5 align-middle font-mono text-muted-foreground whitespace-nowrap">
-                        {addr.postalCode || "—"}
-                      </td>
-
-                      {/* Country */}
-                      <td className="py-2 px-3.5 align-middle font-medium text-foreground/90 whitespace-nowrap">
-                        {addr.country || "—"}
-                      </td>
-
-                      {/* Phone with Click to Copy */}
-                      <td className="py-2 px-3.5 align-middle whitespace-nowrap">
-                        {addr.phone ? (
-                          <button
-                            type="button"
-                            onClick={() => copyPhoneToClipboard(addr.id, addr.phone)}
-                            className="group/phone inline-flex items-center flex-nowrap gap-1.5 px-2 py-0.5 rounded-md hover:bg-secondary transition-colors cursor-pointer text-muted-foreground hover:text-foreground text-xs whitespace-nowrap"
-                            title={t("phoneCopied")}
-                          >
-                            <span className="font-mono tabular-nums tracking-wide whitespace-nowrap inline-block [direction:ltr] [unicode-bidi:isolate]">
-                              {addr.phone}
-                            </span>
-                            {copiedPhoneId === addr.id ? (
-                              <Check className="size-3 text-emerald-500 shrink-0" />
-                            ) : (
-                              <Copy className="size-3 opacity-0 group-hover/phone:opacity-60 transition-opacity shrink-0" />
-                            )}
-                          </button>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-2 px-3.5 align-middle text-end">
-                        <div className="flex items-center gap-1.5 justify-end">
-                          {!isDefault && (
-                            <button
-                              disabled={settingDefaultId === addr.id}
-                              onClick={() => handleSetDefault(addr.id)}
-                              className="px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
-                            >
-                              {settingDefaultId === addr.id && (
-                                <Loader2 className="size-3 animate-spin" />
-                              )}
-                              <span>{t("setAsDefault")}</span>
-                            </button>
-                          )}
-                          <button
-                            onClick={() => openEditModal(addr)}
-                            className="p-1.5 rounded-lg text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-secondary transition-colors cursor-pointer inline-flex items-center gap-1"
-                            title={t("edit")}
-                            aria-label={t("edit")}
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
-                          <button
-                            disabled={deletingId === addr.id}
-                            onClick={() => promptDelete(addr)}
-                            className="p-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
-                            title={t("remove")}
-                            aria-label={t("remove")}
-                          >
-                            {deletingId === addr.id ? (
-                              <Loader2 className="size-3.5 animate-spin" />
-                            ) : (
-                              <Trash2 className="size-3.5" />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile / Tablet Compact Stack View */}
-          <div className="block lg:hidden divide-y divide-border">
-            {addresses.map((addr) => {
-              const isDefault = addr.isDefault;
-
-              return (
-                <div
-                  key={addr.id}
-                  className={`p-3 space-y-2 transition-colors ${
-                    isDefault ? "bg-accent-brand/[0.02]" : "hover:bg-secondary/20"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-foreground text-sm">
-                        {addr.fullName}
-                      </span>
-                      <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-secondary text-foreground capitalize">
-                        {(() => {
-                          const labelKey = addr.label ? addr.label.toLowerCase() : "other";
-                          return labelKey === "home"
-                            ? t("labels.home")
-                            : labelKey === "office" || labelKey === "work"
-                            ? t("labels.office")
-                            : labelKey === "other"
-                            ? t("labels.other")
-                            : addr.label;
-                        })()}
-                      </span>
-                    </div>
-                    {isDefault && (
-                      <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded-full inline-flex items-center gap-0.5">
-                        <Check className="size-2.5" />
-                        <span>{t("defaultBadge")}</span>
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    <p className="text-foreground/90 font-medium">
-                      {[addr.line1, addr.line2].filter(Boolean).join(", ")}
-                    </p>
-                    <p>
-                      {[addr.city, addr.state, addr.postalCode, addr.country].filter(Boolean).join("، ")}
-                    </p>
-                    {addr.phone && (
-                      <button
-                        type="button"
-                        onClick={() => copyPhoneToClipboard(addr.id, addr.phone)}
-                        className="inline-flex items-center gap-1.5 pt-0.5 text-muted-foreground hover:text-foreground cursor-pointer text-xs"
-                      >
-                        <span className="font-mono tabular-nums [direction:ltr] [unicode-bidi:isolate]">
-                          {addr.phone}
-                        </span>
-                        {copiedPhoneId === addr.id ? (
-                          <Check className="size-3 text-emerald-500 shrink-0" />
-                        ) : (
-                          <Copy className="size-3 opacity-60 shrink-0" />
-                        )}
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="pt-1.5 border-t border-border/50 flex items-center justify-between gap-2">
-                    <div>
-                      {!isDefault && (
-                        <button
-                          disabled={settingDefaultId === addr.id}
-                          onClick={() => handleSetDefault(addr.id)}
-                          className="text-xs font-semibold text-accent-brand hover:underline cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
-                        >
-                          {settingDefaultId === addr.id && (
-                            <Loader2 className="size-3 animate-spin" />
-                          )}
-                          <span>{t("setAsDefault")}</span>
-                        </button>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openEditModal(addr)}
-                        className="px-2.5 py-1 rounded-lg text-xs font-medium text-foreground hover:bg-secondary cursor-pointer inline-flex items-center gap-1"
-                      >
-                        <Pencil className="size-3.5" />
-                        <span>{t("edit")}</span>
-                      </button>
-                      <button
-                        disabled={deletingId === addr.id}
-                        onClick={() => promptDelete(addr)}
-                        className="px-2.5 py-1 rounded-lg text-xs font-medium text-destructive hover:bg-destructive/10 cursor-pointer inline-flex items-center gap-1"
-                      >
-                        {deletingId === addr.id ? (
-                          <Loader2 className="size-3 animate-spin" />
-                        ) : (
-                          <Trash2 className="size-3.5" />
-                        )}
-                        <span>{t("remove")}</span>
-                      </button>
-                    </div>
+
+                    {/* Street & Location */}
+                    <p className="text-xs text-foreground/90 font-medium line-clamp-1 mt-1">
+                      {[addr.line1, addr.line2].filter(Boolean).join(", ")}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                      {[addr.city, addr.state, addr.postalCode, addr.country].filter(Boolean).join("، ")}
+                    </p>
+
+                    {/* Phone with copy */}
+                    {addr.phone && (
+                      <div className="mt-1">
+                        <button
+                          type="button"
+                          onClick={() => copyPhoneToClipboard(addr.id, addr.phone)}
+                          className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground cursor-pointer text-[11px] transition-colors"
+                        >
+                          <span className="font-mono tabular-nums [direction:ltr] [unicode-bidi:isolate]">
+                            {addr.phone}
+                          </span>
+                          {copiedPhoneId === addr.id ? (
+                            <Check className="size-3 text-emerald-500 shrink-0" />
+                          ) : (
+                            <Copy className="size-3 opacity-60 hover:opacity-100 shrink-0" />
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Bottom Actions Bar */}
+                <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between gap-2">
+                  <div>
+                    {!isDefault && (
+                      <button
+                        type="button"
+                        disabled={settingDefaultId === addr.id}
+                        onClick={() => handleSetDefault(addr.id)}
+                        className="text-xs font-semibold text-accent-brand hover:underline cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
+                      >
+                        {settingDefaultId === addr.id && (
+                          <Loader2 className="size-3 animate-spin" />
+                        )}
+                        <span>{t("setAsDefault")}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(addr)}
+                      className="px-2.5 py-1 rounded-md text-xs font-medium text-foreground hover:bg-secondary cursor-pointer inline-flex items-center gap-1 transition-colors"
+                    >
+                      <Pencil className="size-3" />
+                      <span>{t("edit")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={deletingId === addr.id}
+                      onClick={() => promptDelete(addr)}
+                      className="px-2.5 py-1 rounded-md text-xs font-medium text-destructive hover:bg-destructive/10 cursor-pointer inline-flex items-center gap-1 transition-colors disabled:opacity-40"
+                    >
+                      {deletingId === addr.id ? (
+                        <Loader2 className="size-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-3" />
+                      )}
+                      <span>{t("remove")}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

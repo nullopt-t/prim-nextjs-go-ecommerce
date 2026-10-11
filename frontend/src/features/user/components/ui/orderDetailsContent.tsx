@@ -206,94 +206,92 @@ export default function OrderDetailsContent() {
       {/* ── Two-Column Details Layout ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column (8 cols): Line Items List */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
-          <div className="bg-card border border-border rounded-xl p-5 shadow-2xs">
-            <h2 className="text-sm font-bold text-foreground mb-4">
-              {t("itemsTitle", { count: items.length })}
-            </h2>
+        <div className="lg:col-span-8 flex flex-col gap-3.5">
+          <h2 className="text-sm font-bold text-foreground">
+            {t("itemsTitle", { count: items.length })}
+          </h2>
 
-            <div className="divide-y divide-border/60">
-              {items.map((item) => {
-                const snap = parseSnapshot(item.productSnapshot);
-                const title = snap.title || snap.name || "Purchased Product";
-                const imgSrc = resolveItemImage(snap);
-                const itemPrice = `${(item.priceAtPurchase / 100).toFixed(2)} ${order.currency.toUpperCase()}`;
-                const productTarget = snap.slug || snap.productId;
-                const productHref = productTarget ? `/products/${productTarget}` : null;
+          <div className="flex flex-col gap-2.5">
+            {items.map((item) => {
+              const snap = parseSnapshot(item.productSnapshot);
+              const title = snap.title || snap.name || "Purchased Product";
+              const imgSrc = resolveItemImage(snap);
+              const itemPrice = `${(item.priceAtPurchase / 100).toFixed(2)} ${order.currency.toUpperCase()}`;
+              const productTarget = snap.slug || snap.productId;
+              const productHref = productTarget ? `/products/${productTarget}` : null;
 
-                const imageBlock = (
-                  <div className="size-16 rounded-lg border border-border/80 bg-secondary/30 overflow-hidden shrink-0 aspect-square flex items-center justify-center transition-transform hover:scale-105">
-                    {imgSrc ? (
-                      <LazyImage
-                        src={imgSrc}
-                        alt={title}
-                        containerClassName="w-full h-full"
-                        imageClassName="w-full h-full object-cover object-center"
-                      />
+              const imageBlock = (
+                <div className="size-11 rounded-lg bg-background border border-border/60 overflow-hidden shrink-0 flex items-center justify-center p-1 shadow-2xs hover:scale-105 transition-transform duration-200">
+                  {imgSrc ? (
+                    <LazyImage
+                      src={imgSrc}
+                      alt={title}
+                      containerClassName="w-full h-full"
+                      imageClassName="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground font-medium">Item</span>
+                  )}
+                </div>
+              );
+
+              return (
+                <div
+                  key={item.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-3.5 rounded-xl bg-secondary/30 border border-border/50 hover:bg-secondary/40 transition-colors shadow-2xs"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {productHref ? (
+                      <Link href={productHref} className="shrink-0 focus:outline-none">
+                        {imageBlock}
+                      </Link>
                     ) : (
-                      <span className="text-[10px] text-muted-foreground">Product</span>
+                      imageBlock
                     )}
-                  </div>
-                );
 
-                return (
-                  <div
-                    key={item.id}
-                    className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="min-w-0 flex-1">
                       {productHref ? (
-                        <Link href={productHref} className="shrink-0 focus:outline-none">
-                          {imageBlock}
+                        <Link
+                          href={productHref}
+                          className="text-xs sm:text-sm font-semibold text-foreground hover:text-accent-brand transition-colors line-clamp-1 block focus:outline-none"
+                        >
+                          {title}
                         </Link>
                       ) : (
-                        imageBlock
+                        <p className="text-xs sm:text-sm font-semibold text-foreground line-clamp-1">{title}</p>
                       )}
-
-                      <div className="min-w-0 flex-1">
-                        {productHref ? (
-                          <Link
-                            href={productHref}
-                            className="text-sm font-semibold text-foreground hover:text-accent-brand transition-colors line-clamp-1 block focus:outline-none"
-                          >
-                            {title}
-                          </Link>
-                        ) : (
-                          <p className="text-sm font-semibold text-foreground line-clamp-1">{title}</p>
-                        )}
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                          <span>{t("quantity", { count: item.quantity })}</span>
-                          <span>•</span>
-                          <span className="font-semibold text-foreground">{itemPrice}</span>
-                        </div>
+                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                        <span>{t("quantity", { count: item.quantity })}</span>
+                        <span>•</span>
+                        <span className="font-bold text-foreground text-xs">{itemPrice}</span>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                      <Link
-                        href="/products"
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary hover:bg-secondary/80 text-foreground border border-border transition-colors"
-                      >
-                        {t("buyAgain")}
-                      </Link>
-                      <Link
-                        href="/user/reviews"
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary hover:bg-secondary/80 text-foreground border border-border transition-colors"
-                      >
-                        {t("writeReview")}
-                      </Link>
-                    </div>
                   </div>
-                );
-              })}
-            </div>
+
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <Link
+                      href="/products"
+                      className="px-2.5 py-1 rounded-md text-xs font-medium bg-background hover:bg-secondary text-foreground border border-border/70 transition-colors shadow-2xs"
+                    >
+                      {t("buyAgain")}
+                    </Link>
+                    <Link
+                      href="/user/reviews"
+                      className="px-2.5 py-1 rounded-md text-xs font-medium bg-background hover:bg-secondary text-foreground border border-border/70 transition-colors shadow-2xs"
+                    >
+                      {t("writeReview")}
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
         {/* Right Column (4 cols): Delivery Destination & Order Summary */}
-        <div className="lg:col-span-4 flex flex-col gap-4">
+        <div className="lg:col-span-4 flex flex-col gap-3.5">
           {/* Order Summary */}
-          <div className="bg-card border border-border rounded-xl p-4.5 shadow-2xs">
+          <div className="bg-secondary/30 border border-border/50 rounded-xl p-4 shadow-2xs">
             <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">
               {t("paymentSummary")}
             </h3>
@@ -306,28 +304,28 @@ export default function OrderDetailsContent() {
                 <span className="text-muted-foreground">{t("shipping")}</span>
                 <span className="text-emerald-600 dark:text-emerald-400 font-medium">{t("freeShipping")}</span>
               </div>
-              <div className="border-t border-border pt-2 mt-2 flex items-center justify-between font-bold text-sm">
+              <div className="border-t border-border/50 pt-2.5 mt-2.5 flex items-center justify-between font-bold text-xs sm:text-sm">
                 <span className="text-foreground">{t("total")}</span>
-                <span className="text-foreground">{subtotal} {order.currency.toUpperCase()}</span>
+                <span className="text-foreground font-mono">{subtotal} {order.currency.toUpperCase()}</span>
               </div>
             </div>
           </div>
 
           {/* Delivery Details */}
-          <div className="bg-card border border-border rounded-xl p-4.5 shadow-2xs">
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">
+          <div className="bg-secondary/30 border border-border/50 rounded-xl p-4 shadow-2xs">
+            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-2.5">
               {t("deliveryAddress")}
             </h3>
             <div className="space-y-1 text-xs">
               {formattedAddress ? (
-                <p className="text-foreground leading-relaxed">{formattedAddress}</p>
+                <p className="text-foreground/90 font-medium leading-relaxed">{formattedAddress}</p>
               ) : (
                 <p className="text-muted-foreground">—</p>
               )}
             </div>
 
-            <div className="border-t border-border mt-3 pt-3">
-              <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+            <div className="border-t border-border/50 mt-3 pt-2.5">
+              <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
                 {t("customer")}
               </h4>
               <p className="text-xs font-mono text-foreground truncate">{order.customerEmail}</p>

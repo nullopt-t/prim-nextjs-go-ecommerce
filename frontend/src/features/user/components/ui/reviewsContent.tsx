@@ -40,7 +40,7 @@ const STATUS_BADGE: Record<Review["status"], { key: string; className: string }>
 
 // ── Skeleton card ──────────────────────────────────────────────────────────────
 function ReviewSkeleton() {
-  return <div className="animate-pulse bg-secondary rounded-lg h-32 w-full" />;
+  return <div className="animate-pulse bg-secondary/40 rounded-xl h-28 w-full border border-border/40" />;
 }
 
 // ── Single review card ─────────────────────────────────────────────────────────
@@ -73,17 +73,20 @@ function ReviewCard({
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg shadow-sm p-4 flex flex-col gap-3">
+    <div className="bg-secondary/30 hover:bg-secondary/40 border border-border/50 rounded-xl shadow-2xs p-3.5 sm:p-4 flex flex-col gap-2.5 transition-colors">
       {/* Top row */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <Stars starsNum={review.rating} />
+        <div className="flex flex-col gap-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <Stars starsNum={review.rating} />
+            <span className="text-[11px] text-muted-foreground">• {date}</span>
+          </div>
           {review.title && (
-            <p className="text-sm font-semibold text-foreground">{review.title}</p>
+            <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{review.title}</p>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${badgeCfg.className}`}>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${badgeCfg.className}`}>
             {t(`status.${badgeCfg.key}`)}
           </span>
           <button
@@ -91,7 +94,7 @@ function ReviewCard({
             onClick={handleDelete}
             disabled={deleting}
             aria-label="Delete review"
-            className="text-xs font-medium text-destructive hover:underline transition disabled:opacity-50"
+            className="text-xs font-medium text-destructive hover:underline transition disabled:opacity-40 cursor-pointer"
           >
             {deleting ? t("deleting") : t("delete")}
           </button>
@@ -102,7 +105,7 @@ function ReviewCard({
       {review.body && (
         <div>
           <p
-            className={`text-sm text-muted-foreground ${bodyTruncated ? "line-clamp-3" : ""}`}
+            className={`text-xs text-muted-foreground leading-relaxed ${bodyTruncated ? "line-clamp-3" : ""}`}
           >
             {review.body}
           </p>
@@ -110,16 +113,13 @@ function ReviewCard({
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="text-xs text-accent-brand hover:underline mt-1"
+              className="text-xs font-medium text-accent-brand hover:underline mt-1 cursor-pointer"
             >
               {expanded ? t("showLess") : t("showMore")}
             </button>
           )}
         </div>
       )}
-
-      {/* Date */}
-      <p className="text-xs text-muted-foreground">{date}</p>
     </div>
   );
 }

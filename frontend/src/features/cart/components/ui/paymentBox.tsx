@@ -92,8 +92,8 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div className="border border-border rounded-2xl bg-card shadow-xs flex flex-col p-6">
-      <h3 className="font-semibold text-foreground text-lg mb-4">
+    <div className="border border-border/50 rounded-xl bg-secondary/30 shadow-2xs flex flex-col p-5 sm:p-6">
+      <h3 className="font-semibold text-foreground text-base mb-4">
         {t("orderSummary.title", { defaultMessage: "Order Summary" })}
       </h3>
 

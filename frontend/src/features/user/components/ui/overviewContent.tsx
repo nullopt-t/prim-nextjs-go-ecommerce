@@ -393,11 +393,11 @@ export default function OverviewContent() {
               <Link
                 key={card.id}
                 href={card.href}
-                className="group bg-card border border-border/80 hover:border-accent-brand/50 rounded-xl p-3.5 sm:p-4 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between gap-3 cursor-pointer"
+                className="group bg-secondary/30 hover:bg-secondary/50 border border-border/50 hover:border-accent-brand/40 rounded-xl p-3.5 sm:p-4 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between gap-3 cursor-pointer"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="size-9 rounded-xl bg-secondary group-hover:bg-accent-brand/10 text-foreground group-hover:text-accent-brand flex items-center justify-center shrink-0 border border-border/60 transition-colors">
-                    <Icon className="size-4.5" />
+                  <div className="size-11 rounded-lg bg-background border border-border/60 text-foreground group-hover:text-accent-brand flex items-center justify-center shrink-0 p-1 shadow-2xs transition-colors">
+                    <Icon className="size-5" />
                   </div>
                   <div className="flex flex-col min-w-0">
                     <div className="flex items-center gap-2">

@@ -8,7 +8,6 @@ import { normalizeMediaUrl } from "@/utils/media";
 import { useTranslations, useLocale } from "next-intl";
 import {
   Package,
-  Search,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -150,50 +149,50 @@ function OrderCard({ order }: { order: Order }) {
   });
 
   return (
-    <div className="group relative bg-card border border-border hover:border-accent-brand/50 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-all duration-200">
+    <div className="group relative bg-secondary/30 hover:bg-secondary/50 border border-border/50 hover:border-accent-brand/40 rounded-xl p-3.5 sm:p-4 shadow-2xs transition-all duration-200">
       {/* Background card link to order details */}
       <Link
         href={`/user/orders/${order.id}`}
-        className="absolute inset-0 z-0 rounded-2xl"
+        className="absolute inset-0 z-0 rounded-xl"
         aria-label={`View order ${shortOrderId}`}
       />
 
-      <div className="relative z-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3.5 border-b border-border/50 pointer-events-none">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <span className="font-mono font-bold text-sm text-foreground group-hover:text-accent-brand transition-colors">
+      <div className="relative z-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-border/50 pointer-events-none">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono font-bold text-xs sm:text-sm text-foreground group-hover:text-accent-brand transition-colors">
             #{shortOrderId}
           </span>
-          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${statusCfg.badgeClass}`}>
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${statusCfg.badgeClass}`}>
             {t(`status.${order.status}`)}
           </span>
-          <span className="text-xs text-muted-foreground">•</span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-[11px] text-muted-foreground">•</span>
+          <span className="text-[11px] text-muted-foreground">
             {formattedDate}
           </span>
         </div>
 
-        <div className="flex items-center gap-4 text-xs">
+        <div className="flex items-center gap-3 text-xs">
           <div>
-            <span className="text-muted-foreground">{t("card.total")}: </span>
-            <span className="font-bold text-foreground text-sm">{totalFormatted}</span>
+            <span className="text-muted-foreground text-[11px]">{t("card.total")}: </span>
+            <span className="font-bold text-foreground text-xs sm:text-sm">{totalFormatted}</span>
           </div>
         </div>
       </div>
 
-      <div className="relative z-1 pt-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Item image thumbnails / icons (clickable to product page) */}
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="flex items-center -space-x-2.5 rtl:space-x-reverse shrink-0">
+      <div className="relative z-1 pt-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Item image thumbnails / icons */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center -space-x-2 rtl:space-x-reverse shrink-0">
             {itemSnapshots.slice(0, 4).map((it, idx) => {
               const thumbnailElement = (
                 <div
-                  className="size-12 rounded-xl bg-secondary/80 border-2 border-card overflow-hidden shrink-0 shadow-2xs hover:scale-110 hover:z-10 transition-all duration-200 cursor-pointer"
+                  className="size-11 rounded-lg bg-background border border-border/60 overflow-hidden shrink-0 flex items-center justify-center p-1 shadow-2xs hover:scale-105 transition-transform duration-200 cursor-pointer"
                   title={it.title}
                 >
                   <img
                     src={it.img}
                     alt={it.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 </div>
               );
@@ -214,17 +213,17 @@ function OrderCard({ order }: { order: Order }) {
               );
             })}
             {itemSnapshots.length > 4 && (
-              <div className="size-12 rounded-xl bg-secondary border-2 border-card flex items-center justify-center text-xs font-semibold text-muted-foreground shrink-0 shadow-2xs">
+              <div className="size-11 rounded-lg bg-background border border-border/60 flex items-center justify-center text-[11px] font-bold text-muted-foreground shrink-0 shadow-2xs">
                 +{itemSnapshots.length - 4}
               </div>
             )}
           </div>
 
           <div className="flex flex-col min-w-0 text-xs">
-            <span className="font-semibold text-foreground truncate pointer-events-none">
+            <span className="font-semibold text-foreground text-xs truncate pointer-events-none">
               {itemSnapshots.length} {itemSnapshots.length === 1 ? "item" : "items"}
             </span>
-            <div className="text-muted-foreground truncate max-w-md flex flex-wrap items-center gap-1">
+            <div className="text-[11px] text-muted-foreground truncate max-w-md flex flex-wrap items-center gap-1 mt-0.5">
               {itemSnapshots.map((it, idx) => (
                 <span key={idx}>
                   {it.productHref ? (
@@ -246,7 +245,7 @@ function OrderCard({ order }: { order: Order }) {
         </div>
 
         {destinationAddress && (
-          <div className="text-xs text-muted-foreground truncate max-w-xs self-start md:self-center pointer-events-none">
+          <div className="text-[11px] text-muted-foreground truncate max-w-xs self-start md:self-center pointer-events-none">
             <span>{t("card.shippedTo")}: </span>
             <span className="font-medium text-foreground">{destinationAddress}</span>
           </div>
@@ -261,10 +260,6 @@ export default function OrdersContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations("orders");
-
-  // Search & Filter state
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -294,89 +289,20 @@ export default function OrdersContent() {
     };
   }, []);
 
-  // Filtered orders
-  const filteredOrders = useMemo(() => {
-    return orders
-      .filter((order) => {
-        if (selectedStatus !== "all" && order.status !== selectedStatus) {
-          return false;
-        }
-
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const matchId = order.id.toLowerCase().includes(q);
-          const matchItems = (order.items ?? []).some((item) => {
-            const snap = parseSnapshot(item.productSnapshot);
-            const title = (snap.title || snap.name || "").toLowerCase();
-            const sku = (snap.sku || "").toLowerCase();
-            return title.includes(q) || sku.includes(q);
-          });
-          return matchId || matchItems;
-        }
-
-        return true;
-      })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [orders, selectedStatus, searchQuery]);
+  const sortedOrders = useMemo(() => {
+    return [...orders].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [orders]);
 
   return (
     <div className="flex flex-col gap-6 pb-10">
       {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t("subtitle")}
-          </p>
-        </div>
-        <Link
-          href="/products"
-          className="px-4 py-2 rounded-xl text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground transition-all border border-border shrink-0 self-start sm:self-auto shadow-xs"
-        >
-          {t("continueShopping")}
-        </Link>
-      </div>
-
-      {/* ── Seamless Filter & Search Strip (No Boxed Card) ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border/60">
-        {/* Status filter tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-          {[
-            { id: "all", label: t("tabs.all") },
-            { id: "delivered", label: t("tabs.delivered") },
-            { id: "shipped", label: t("tabs.shipped") },
-            { id: "processing", label: t("tabs.processing") },
-            { id: "cancelled", label: t("tabs.cancelled") },
-          ].map((tab) => {
-            const active = selectedStatus === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setSelectedStatus(tab.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs transition-colors shrink-0 cursor-pointer ${
-                  active
-                    ? "bg-foreground text-background font-semibold shadow-2xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/70"
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Compact search input */}
-        <div className="relative w-full md:w-72 shrink-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none rtl:left-auto rtl:right-3" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="w-full pl-8.5 pr-3 rtl:pl-3 rtl:pr-8.5 py-1.5 rounded-lg bg-secondary/40 border border-border/80 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40 focus:ring-1 focus:ring-foreground/20 transition-all"
-          />
-        </div>
+      <div className="pb-4 border-b border-border/60">
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">{t("title")}</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          {t("subtitle")}
+        </p>
       </div>
 
       {/* ── Orders Content ── */}
@@ -389,7 +315,7 @@ export default function OrdersContent() {
         <div className="p-4 rounded-xl border border-destructive/20 bg-destructive/10 text-destructive text-sm">
           {error}
         </div>
-      ) : filteredOrders.length === 0 ? (
+      ) : sortedOrders.length === 0 ? (
         <div className="bg-card border border-border rounded-2xl p-12 flex flex-col items-center justify-center text-center gap-3 shadow-xs">
           <Package className="size-12 text-muted-foreground/40" />
           <h3 className="font-semibold text-foreground text-base">
@@ -407,7 +333,7 @@ export default function OrdersContent() {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {filteredOrders.map((order) => (
+          {sortedOrders.map((order) => (
             <OrderCard key={order.id} order={order} />
           ))}
         </div>
