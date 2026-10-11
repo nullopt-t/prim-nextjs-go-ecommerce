@@ -5,15 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
-
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
-
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 )
 
 type UserService interface {
@@ -42,22 +37,17 @@ type Notifier interface {
 	) error
 }
 
-type Tokens struct {
-	AccessToken  string
-	RefreshToken string
-	SessionID    string
-	UserID       uuid.UUID
+type SessionAuthResult struct {
+	SessionID string
+	UserID    uuid.UUID
 }
 
 type AuthService struct {
-	jwtService       *jwt.JWTManager
 	challengeService *ChallengeService
 	userService      UserService
 	sessionService   *SessionService
 	logger           log.Logger
-	redisClient      *redis.Client
 	notifier         Notifier
-	secrets          config.Secrets
 }
 
 func NewAuthService(
@@ -65,81 +55,18 @@ func NewAuthService(
 	challengeService *ChallengeService,
 	userService UserService,
 	sessionService *SessionService,
-	jwtService *jwt.JWTManager,
-	redisClient *redis.Client,
 	notifier Notifier,
-	secrets config.Secrets,
 ) *AuthService {
 	return &AuthService{
-		jwtService:       jwtService,
 		challengeService: challengeService,
 		userService:      userService,
 		sessionService:   sessionService,
 		logger:           logger,
-		redisClient:      redisClient,
 		notifier:         notifier,
-		secrets:          secrets,
 	}
 }
 
-func (s *AuthService) RotateToken(
-	ctx context.Context,
-	refreshToken string,
-) (string, string, error) {
-	claims, err := s.jwtService.VerifyToken(
-		refreshToken,
-		s.secrets.JwtRefreshTokenSecretKey,
-	)
-	if err != nil {
-		return "", "", apierr.New(http.StatusUnauthorized, "Invalid refresh token").WithCode(apierr.CodeUnauthorized)
-	}
 
-	user, err := s.userService.GetUserByID(
-		ctx,
-		claims.UserID,
-	)
-	if err != nil {
-		return "", "", err
-	}
-
-	if claims.SessionID != "" {
-		session, err := s.sessionService.GetSessionByID(ctx, claims.SessionID)
-		if err != nil {
-			return "", "", apierr.New(http.StatusUnauthorized, "Session expired or revoked").WithCode(apierr.CodeUnauthorized)
-		}
-		
-		if session.CurrentRefreshJTI != claims.ID {
-			// Replay detected! Delete session to protect user.
-			_ = s.sessionService.DeleteSessionByID(ctx, user.ID, claims.SessionID)
-			s.logger.Warn("refresh token replay detected, session revoked", log.Meta{"user_id": user.ID.String(), "session_id": claims.SessionID})
-			return "", "", apierr.New(http.StatusUnauthorized, "Invalid token replay detected").WithCode(apierr.CodeUnauthorized)
-		}
-	}
-
-	newClaims := &jwt.UserClaims{
-		UserID:    user.ID,
-		UserRole:  (*string)(user.Role),
-		SessionID: claims.SessionID,
-	}
-
-	accessToken, newRefreshToken, err := s.jwtService.GenerateTokenPair(
-		newClaims,
-	)
-	if err != nil {
-		s.logger.Error("failed to generate token pair during rotation", log.Meta{"error": err})
-		return "", "", err
-	}
-
-	if claims.SessionID != "" {
-		if err := s.sessionService.UpdateRefreshJTI(ctx, claims.SessionID, newClaims.ID); err != nil {
-			s.logger.Error("failed to update session JTI", log.Meta{"error": err, "session_id": claims.SessionID})
-		}
-	}
-
-	s.logger.Info("token rotated successfully", log.Meta{"user_id": user.ID.String()})
-
-	return accessToken, newRefreshToken, nil
-}
 
 func (s *AuthService) GetUserByID(
 	ctx context.Context,
@@ -190,7 +117,7 @@ func (s *AuthService) VerifyChallenge(
 	code string,
 	userAgent string,
 	ipAddress string,
-) (*Tokens, error) {
+) (*SessionAuthResult, error) {
 	challenge, err := s.challengeService.Get(
 		ctx,
 		identifier,
@@ -251,31 +178,17 @@ func (s *AuthService) VerifyChallenge(
 		return nil, err
 	}
 
-	sess, sErr := s.sessionService.CreateSession(ctx, user.ID, SessionTypeAuthenticated, userAgent, ipAddress)
+	role := "customer"
+	if user.Role != nil {
+		role = string(*user.Role)
+	}
+
+	sess, sErr := s.sessionService.CreateSession(ctx, user.ID, role, SessionTypeAuthenticated, userAgent, ipAddress)
 	sessionID := ""
 	if sErr == nil && sess != nil {
 		sessionID = sess.ID
 	} else if sErr != nil {
 		s.logger.Error("failed to create session", log.Meta{"error": sErr, "user_id": user.ID.String()})
-	}
-
-	claims := &jwt.UserClaims{
-		UserID:    user.ID,
-		UserRole:  (*string)(user.Role),
-		SessionID: sessionID,
-	}
-
-	accessToken, refreshToken, err := s.jwtService.GenerateTokenPair(
-		claims,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	if sessionID != "" {
-		if err := s.sessionService.UpdateRefreshJTI(ctx, sessionID, claims.ID); err != nil {
-			s.logger.Error("failed to update session JTI", log.Meta{"error": err, "session_id": sessionID})
-		}
 	}
 
 	s.logger.Info("user successfully authenticated", log.Meta{
@@ -284,10 +197,8 @@ func (s *AuthService) VerifyChallenge(
 		"session_id": sessionID,
 	})
 
-	return &Tokens{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		SessionID:    sessionID,
-		UserID:       user.ID,
+	return &SessionAuthResult{
+		SessionID: sessionID,
+		UserID:    user.ID,
 	}, nil
 }

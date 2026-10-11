@@ -8,6 +8,8 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 )
 
+const RateLimitPrefix = "rate_limit"
+
 type RateLimiter interface {
 	Allow(ctx context.Context, key string, limit int64, window time.Duration) (bool, error)
 }
@@ -20,7 +22,7 @@ func RateLimit(
 	window time.Duration,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		key := keyPrefix + ":" + c.ClientIP()
+		key := RateLimitPrefix + ":" + keyPrefix + ":" + c.ClientIP()
 		allowed, err := limiter.Allow(c.Request.Context(), key, limit, window)
 		if err != nil {
 			_ = c.Error(apierr.InternalServerError().Wrap(err))

@@ -17,7 +17,6 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/notifier"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/object"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/order"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
 	"github.com/minio/minio-go/v7"
 
@@ -96,9 +95,6 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		app.logger,
 	)
 
-	jwtService := jwt.NewJWTManager(
-		app.config.KeysCfg,
-	)
 
 	challengeService := auth.NewChallengeService(
 		app.redisClient,
@@ -119,10 +115,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		challengeService,
 		userService,
 		sessionService,
-		jwtService,
-		app.redisClient,
 		notifier,
-		app.config.KeysCfg,
 	)
 
 	objectRepository := object.NewRepository()
@@ -141,10 +134,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	brandHandler := brand.NewHandler(
 		brandService,
 	)
-	brandRouter := brand.NewRouter(
-		brandHandler,
-		app.config.KeysCfg,
-	)
+	brandRouter := brand.NewRouter(brandHandler, sessionService)
 	brandRouter.MapRoutes(v1)
 
 	tagRepo := tag.NewRepository()
@@ -155,10 +145,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	tagHandler := tag.NewHandler(
 		tagService,
 	)
-	tagRouter := tag.NewRouter(
-		tagHandler,
-		app.config.KeysCfg,
-	)
+	tagRouter := tag.NewRouter(tagHandler, sessionService)
 	tagRouter.MapRoutes(v1)
 
 	categoryRepo := category.NewRepository()
@@ -169,10 +156,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	categoryHandler := category.NewHandler(
 		categoryService,
 	)
-	categoryRouter := category.NewRouter(
-		categoryHandler,
-		app.config.KeysCfg,
-	)
+	categoryRouter := category.NewRouter(categoryHandler, sessionService)
 	categoryRouter.MapRoutes(v1)
 
 	// inventory
@@ -193,14 +177,14 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	)
 
 	variantHandler := variant.NewHandler(variantService)
-	variantRouter := variant.NewRouter(variantHandler, app.config.KeysCfg)
+	variantRouter := variant.NewRouter(variantHandler, sessionService)
 	variantRouter.MapRoutes(v1)
 
 	// review
 	reviewRepo := review.NewReviewRepository()
 	reviewService := review.NewService(txRunner, reviewRepo)
 	reviewHandler := review.NewHandler(reviewService)
-	reviewRouter := review.NewRouter(reviewHandler, app.config.KeysCfg)
+	reviewRouter := review.NewRouter(reviewHandler, sessionService)
 	reviewRouter.MapRoutes(v1)
 
 	// product
@@ -218,21 +202,21 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		reviewService,
 	)
 	productHandler := product.NewHandler(productService)
-	productRouter := product.NewRouter(productHandler, app.config.KeysCfg)
+	productRouter := product.NewRouter(productHandler, sessionService)
 	productRouter.MapRoutes(v1)
 
 	// cart
 	cartRepo := cart.NewRepository()
 	cartService := cart.NewService(txRunner, cartRepo, variantService, productService, inventoryService)
 	cartHandler := cart.NewHandler(cartService)
-	cartRouter := cart.NewRouter(cartHandler, app.config.KeysCfg)
+	cartRouter := cart.NewRouter(cartHandler, sessionService)
 	cartRouter.MapRoutes(v1)
 
 	// wishlist
 	wishlistRepo := wishlist.NewWishlistRepository()
 	wishlistService := wishlist.NewService(txRunner, wishlistRepo, productService, objectService, app.logger)
 	wishlistHandler := wishlist.NewHandler(wishlistService)
-	wishlistRouter := wishlist.NewRouter(wishlistHandler, app.config.KeysCfg)
+	wishlistRouter := wishlist.NewRouter(wishlistHandler, sessionService)
 	wishlistRouter.MapRoutes(v1)
 
 	authHandler := auth.NewAuthHandler(
@@ -249,7 +233,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		app.config.KeysCfg,
 		rateLimiter,
 		app.logger,
-		app.redisClient,
+		sessionService,
 		app.config.RateLimitCfg,
 	)
 	authRouter.MapRoutes(v1)
@@ -261,36 +245,33 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		app.logger,
 	)
 
-	userRouter := user.NewRouter(
-		userHandler,
-		app.config,
-	)
+	userRouter := user.NewRouter(userHandler, sessionService)
 
 	userRouter.MapRoutes(v1)
 
 	notificationRepo := user.NewNotificationRepository()
 	notificationService := user.NewNotificationService(txRunner, notificationRepo, app.logger)
 	notificationHandler := user.NewNotificationHandler(notificationService)
-	notificationRouter := user.NewNotificationRouter(notificationHandler, app.config.KeysCfg)
+	notificationRouter := user.NewNotificationRouter(notificationHandler, sessionService)
 	notificationRouter.MapRoutes(v1)
 
 	addressRepo := user.NewAddressRepository()
 	addressService := user.NewAddressService(txRunner, addressRepo, app.logger)
 	addressHandler := user.NewAddressHandler(addressService)
-	addressRouter := user.NewAddressRouter(addressHandler, app.config.KeysCfg)
+	addressRouter := user.NewAddressRouter(addressHandler, sessionService)
 	addressRouter.MapRoutes(v1)
 
 	// order
 	orderRepo := order.NewRepository()
 	orderService := order.NewService(txRunner, orderRepo, app.logger)
 	orderHandler := order.NewHandler(orderService)
-	orderRouter := order.NewRouter(orderHandler, app.config.KeysCfg)
+	orderRouter := order.NewRouter(orderHandler, sessionService)
 	orderRouter.MapRoutes(v1)
 
 	// checkout
 	checkoutService := checkout.NewService(cartService, orderService)
 	checkoutHandler := checkout.NewHandler(checkoutService)
-	checkoutRouter := checkout.NewRouter(checkoutHandler, app.config.KeysCfg)
+	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionService)
 	checkoutRouter.MapRoutes(v1)
 }
 

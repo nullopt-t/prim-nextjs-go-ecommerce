@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { cartService } from "@/services/cart";
+import { useAuthContext } from "@/context/AuthContext";
 
 export interface CartContextItem {
   id: string;
@@ -65,6 +66,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user, loading: authLoading } = useAuthContext();
   const [cartItems, setCartItems] = useState<CartContextItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartSummary, setCartSummary] = useState({
@@ -124,21 +126,42 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const fetchCart = useCallback(async (isInitial: boolean = false) => {
+    if (!isAuthenticated) {
+      setCartItems([]);
+      setCartSummary({
+        subtotal: 0,
+        discount: 0,
+        shipping: 0,
+        tax: 0,
+        total: 0,
+      });
+      setLoading(false);
+      setErrorMsg(null);
+      return;
+    }
+
     if (isInitial) setLoading(true);
     try {
       const res = await cartService.getCart();
       normalizeCartData(res);
       setErrorMsg(null);
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to load cart");
+      if (err.message?.includes("Unauthorized") || err.message?.includes("401")) {
+        setCartItems([]);
+        setErrorMsg(null);
+      } else {
+        setErrorMsg(err.message || "Failed to load cart");
+      }
     } finally {
       if (isInitial) setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    fetchCart(true);
-  }, [fetchCart]);
+    if (!authLoading) {
+      fetchCart(true);
+    }
+  }, [authLoading, user, fetchCart]);
 
   const addToCart = async (payload: AddToCartPayload) => {
     try {

@@ -3,28 +3,27 @@ package review
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
 type ReviewRouter struct {
-	rh      *ReviewHandler
-	secrets config.Secrets
+	rh           *ReviewHandler
+	sessionStore middleware.SessionStore
 }
 
 func NewRouter(
 	rh *ReviewHandler,
-	secrets config.Secrets,
+	sessionStore middleware.SessionStore,
 ) *ReviewRouter {
 	return &ReviewRouter{
-		rh:      rh,
-		secrets: secrets,
+		rh:           rh,
+		sessionStore: sessionStore,
 	}
 }
 
 func (r *ReviewRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	// User endpoints (Authenticated customer)
 	user := vgroup.Group("/reviews")
-	user.Use(middleware.Authenticate(r.secrets, false))
+	user.Use(middleware.Authenticate(r.sessionStore))
 	{
 		user.POST("", r.rh.CreateReview)
 		user.GET("/me", r.rh.GetMyReviews)
@@ -36,7 +35,7 @@ func (r *ReviewRouter) MapRoutes(vgroup *gin.RouterGroup) {
 
 	// Admin endpoints (Moderation)
 	admin := vgroup.Group("/admin/reviews")
-	admin.Use(middleware.Authenticate(r.secrets, false))
+	admin.Use(middleware.Authenticate(r.sessionStore))
 	{
 		admin.GET("", r.rh.AdminListReviews)
 		admin.GET("/:id", r.rh.AdminGetReviewByID)

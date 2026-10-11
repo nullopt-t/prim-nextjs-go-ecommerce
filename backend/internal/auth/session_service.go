@@ -8,28 +8,21 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
 	"github.com/redis/go-redis/v9"
 )
 
-type SessionType string
+type SessionType = model.SessionType
 
 const (
-	SessionTypeGuest         SessionType = "guest"
-	SessionTypeAuthenticated SessionType = "authenticated"
+	SessionTypeGuest         = model.SessionTypeGuest
+	SessionTypeAuthenticated = model.SessionTypeAuthenticated
 )
 
-type UserSession struct {
-	ID                string      `json:"id"`
-	UserID            uuid.UUID   `json:"userId"`
-	Type              SessionType `json:"type"`
-	CurrentRefreshJTI string      `json:"currentRefreshJti"`
-	UserAgent         string      `json:"userAgent"`
-	IPAddress         string      `json:"ipAddress"`
-	CreatedAt         time.Time   `json:"createdAt"`
-	LastActive        time.Time   `json:"lastActive"`
-}
+type UserSession = model.UserSession
+
 
 type SessionService struct {
 	redisClient *redis.Client
@@ -52,6 +45,7 @@ func NewSessionService(
 func (s *SessionService) CreateSession(
 	ctx context.Context,
 	userID uuid.UUID,
+	userRole string,
 	sessionType SessionType,
 	userAgent string,
 	ipAddress string,
@@ -62,6 +56,7 @@ func (s *SessionService) CreateSession(
 	sess := &UserSession{
 		ID:         sessionID,
 		UserID:     userID,
+		UserRole:   userRole,
 		Type:       sessionType,
 		UserAgent:  userAgent,
 		IPAddress:  ipAddress,
@@ -138,29 +133,24 @@ func (s *SessionService) GetSessionByID(
 	if err := json.Unmarshal([]byte(val), &sess); err != nil {
 		return nil, err
 	}
+
+	// Auto-refresh session if last activity was more than half the session TTL ago (or at least 1 hour ago)
+	refreshThreshold := s.sessionTTL / 2
+	if refreshThreshold < time.Hour && s.sessionTTL >= time.Hour {
+		refreshThreshold = time.Hour
+	} else if refreshThreshold < time.Minute {
+		refreshThreshold = 10 * time.Second
+	}
+
+	now := time.Now().UTC()
+	if now.Sub(sess.LastActive) >= refreshThreshold {
+		sess.LastActive = now
+		if updatedData, err := json.Marshal(sess); err == nil {
+			_ = s.redisClient.Set(ctx, sessKey, updatedData, s.sessionTTL).Err()
+		}
+	}
+
 	return &sess, nil
-}
-
-func (s *SessionService) UpdateRefreshJTI(
-	ctx context.Context,
-	sessionID string,
-	jti string,
-) error {
-	sess, err := s.GetSessionByID(ctx, sessionID)
-	if err != nil {
-		return err
-	}
-
-	sess.CurrentRefreshJTI = jti
-	sess.LastActive = time.Now().UTC()
-	data, err := json.Marshal(sess)
-	if err != nil {
-		return err
-	}
-
-	sessKey := fmt.Sprintf("auth:session:%s", sessionID)
-	// Refresh TTL as well
-	return s.redisClient.Set(ctx, sessKey, data, s.sessionTTL).Err()
 }
 
 func (s *SessionService) DeleteSessionByID(

@@ -3,24 +3,23 @@ package cart
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
 type CartRouter struct {
-	handler *CartHandler
-	secrets config.Secrets
+	handler      *CartHandler
+	sessionStore middleware.SessionStore
 }
 
-func NewRouter(handler *CartHandler, secrets config.Secrets) *CartRouter {
+func NewRouter(handler *CartHandler, sessionStore middleware.SessionStore) *CartRouter {
 	return &CartRouter{
-		handler: handler,
-		secrets: secrets,
+		handler:      handler,
+		sessionStore: sessionStore,
 	}
 }
 
 func (r *CartRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	cartGroup := vgroup.Group("/cart")
-	cartGroup.Use(middleware.Authenticate(r.secrets, true))
+	cartGroup.Use(middleware.Authenticate(r.sessionStore))
 	{
 		cartGroup.GET("", r.handler.GetCart)
 		cartGroup.DELETE("", r.handler.ClearCart)

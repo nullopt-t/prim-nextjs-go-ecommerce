@@ -3,25 +3,24 @@ package tag
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
 type TagRouter struct {
-	th      *TagHandler
-	secrets config.Secrets
+	th           *TagHandler
+	sessionStore middleware.SessionStore
 }
 
-func NewRouter(h *TagHandler, secrets config.Secrets) *TagRouter {
+func NewRouter(h *TagHandler, sessionStore middleware.SessionStore) *TagRouter {
 	return &TagRouter{
-		th:      h,
-		secrets: secrets,
+		th:           h,
+		sessionStore: sessionStore,
 	}
 }
 
 func (tr *TagRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	admin := vgroup.Group("/admin/tags")
 	admin.Use(
-		middleware.Authenticate(tr.secrets, true),
+		middleware.Authenticate(tr.sessionStore),
 	)
 	{
 		admin.GET("", tr.th.AdminListTags)

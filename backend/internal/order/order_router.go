@@ -4,25 +4,24 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
 type OrderRouter struct {
-	handler *OrderHandler
-	secrets config.Secrets
+	handler      *OrderHandler
+	sessionStore middleware.SessionStore
 }
 
-func NewRouter(handler *OrderHandler, secrets config.Secrets) *OrderRouter {
+func NewRouter(handler *OrderHandler, sessionStore middleware.SessionStore) *OrderRouter {
 	return &OrderRouter{
-		handler: handler,
-		secrets: secrets,
+		handler:      handler,
+		sessionStore: sessionStore,
 	}
 }
 
 func (r *OrderRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	admin := vgroup.Group("/admin/orders")
 	admin.Use(
-		middleware.Authenticate(r.secrets, true),
+		middleware.Authenticate(r.sessionStore),
 		middleware.Authorize(model.AdminRole),
 	)
 	{
@@ -31,7 +30,7 @@ func (r *OrderRouter) MapRoutes(vgroup *gin.RouterGroup) {
 
 	ordersGroup := vgroup.Group("/orders")
 	{
-		ordersGroup.GET("", middleware.Authenticate(r.secrets, true), r.handler.GetOrders)
-		ordersGroup.GET("/:id", middleware.Authenticate(r.secrets, true), r.handler.GetOrderByID)
+		ordersGroup.GET("", middleware.Authenticate(r.sessionStore), r.handler.GetOrders)
+		ordersGroup.GET("/:id", middleware.Authenticate(r.sessionStore), r.handler.GetOrderByID)
 	}
 }

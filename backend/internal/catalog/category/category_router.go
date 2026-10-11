@@ -3,21 +3,20 @@ package category
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
 type CategoryRouter struct {
-	chandler *CategoryHandler
-	secrets  config.Secrets
+	chandler     *CategoryHandler
+	sessionStore middleware.SessionStore
 }
 
 func NewRouter(
 	h *CategoryHandler,
-	secrets config.Secrets,
+	sessionStore middleware.SessionStore,
 ) *CategoryRouter {
 	return &CategoryRouter{
-		chandler: h,
-		secrets:  secrets,
+		chandler:     h,
+		sessionStore: sessionStore,
 	}
 }
 
@@ -32,7 +31,7 @@ func (cr *CategoryRouter) MapRoutes(
 
 	admin := vgroup.Group("/admin/categories")
 	admin.Use(
-		middleware.Authenticate(cr.secrets, true),
+		middleware.Authenticate(cr.sessionStore),
 	)
 	{
 		admin.GET("", cr.chandler.ListAdminCategories)

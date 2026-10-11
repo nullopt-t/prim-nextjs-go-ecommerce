@@ -23,34 +23,6 @@ const getActiveLocale = () => {
   return "en";
 };
 
-let isRefreshing = false;
-let refreshSubscribers: ((ok: boolean) => void)[] = [];
-
-function subscribeTokenRefresh(cb: (ok: boolean) => void) {
-  refreshSubscribers.push(cb);
-}
-
-function onRefreshed(ok: boolean) {
-  refreshSubscribers.forEach((cb) => cb(ok));
-  refreshSubscribers = [];
-}
-
-async function trySilentRefresh(): Promise<boolean> {
-  try {
-    const refreshUrl = `${getBaseUrl()}/api/v1/auth/refresh`;
-    const res = await fetch(refreshUrl, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
 function handleAuthRedirect() {
   if (typeof window === "undefined") return;
   const path = window.location.pathname;
@@ -65,8 +37,7 @@ function handleAuthRedirect() {
 
 export async function request<T = any>(
   endpoint: string,
-  options: RequestInit = {},
-  isRetry = false
+  options: RequestInit = {}
 ): Promise<T> {
   const url = endpoint.startsWith("http") ? endpoint : `${getBaseUrl()}${endpoint}`;
   
@@ -86,37 +57,12 @@ export async function request<T = any>(
 
   if (response.status === 401) {
     const isAuthEndpoint =
-      endpoint.includes("/auth/refresh") ||
       endpoint.includes("/auth/challenge") ||
       endpoint.includes("/auth/logout");
 
-    // Don't intercept calls to auth lifecycle endpoints or already retried calls
-    if (!isRetry && !isAuthEndpoint) {
-      if (!isRefreshing) {
-        isRefreshing = true;
-        const refreshed = await trySilentRefresh();
-        isRefreshing = false;
-        onRefreshed(refreshed);
-
-        if (refreshed) {
-          // Retry the original request with fresh access cookie
-          return request<T>(endpoint, options, true);
-        } else {
-          // Refresh failed - session revoked or expired
-          handleAuthRedirect();
-        }
-      } else {
-        // Queue this request until ongoing refresh finishes
-        const refreshed = await new Promise<boolean>((resolve) => {
-          subscribeTokenRefresh((ok) => resolve(ok));
-        });
-
-        if (refreshed) {
-          return request<T>(endpoint, options, true);
-        } else {
-          handleAuthRedirect();
-        }
-      }
+    // If session is expired or invalid on protected resource, redirect to login
+    if (!isAuthEndpoint) {
+      handleAuthRedirect();
     }
   }
 

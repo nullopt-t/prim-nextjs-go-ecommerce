@@ -54,10 +54,12 @@ func main() {
 
 	// 3. Initialize Mailer & HTML Template Renderer
 	mailer := mail.NewMailer(&mail.Config{
-		Host:     cfg.SMTPCfg.Host,
-		Port:     cfg.SMTPCfg.Port,
-		Username: cfg.SMTPCfg.Username,
-		Password: cfg.SMTPCfg.Password,
+		Host:      cfg.SMTPCfg.Host,
+		Port:      cfg.SMTPCfg.Port,
+		Username:  cfg.SMTPCfg.Username,
+		Password:  cfg.SMTPCfg.Password,
+		FromEmail: cfg.SMTPCfg.FromEmail,
+		FromName:  cfg.SMTPCfg.FromName,
 	})
 
 	renderer, err := html.NewRenderer()

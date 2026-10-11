@@ -12,20 +12,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/auth"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/cart"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/inventory"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/variant"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	redisContainer "github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
@@ -56,10 +58,11 @@ type CartHTTPTestSuite struct {
 	productService   *dummyProductService
 	cartService      *cart.CartService
 	handler          *cart.CartHandler
-	router           *gin.Engine
-	categoryID       uuid.UUID
-	productID        uuid.UUID
-	secrets          config.Secrets
+	router         *gin.Engine
+	categoryID     uuid.UUID
+	productID      uuid.UUID
+	redisContainer *redisContainer.RedisContainer
+	redisClient    *redis.Client
 }
 
 func (s *CartHTTPTestSuite) SetupSuite() {
@@ -132,17 +135,28 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	s.cartRepo = cart.NewRepository()
 	s.cartService = cart.NewService(s.txRunner, s.cartRepo, s.variantService, s.productService, s.inventoryService)
 	s.handler = cart.NewHandler(s.cartService)
-	s.secrets = config.Secrets{
-		JwtAccessTokenSecretKey:  "cart_test_access_key",
-		JwtRefreshTokenSecretKey: "cart_test_refresh_key",
-	}
+
+	// Start Redis Container
+	rContainer, err := redisContainer.Run(ctx, "redis:7-alpine")
+	require.NoError(s.T(), err)
+	s.redisContainer = rContainer
+
+	redisHost, err := rContainer.Host(ctx)
+	require.NoError(s.T(), err)
+	redisPort, err := rContainer.MappedPort(ctx, "6379")
+	require.NoError(s.T(), err)
+
+	s.redisClient = redis.NewClient(&redis.Options{
+		Addr: redisHost + ":" + redisPort.Port(),
+	})
 
 	gin.SetMode(gin.TestMode)
 	s.router = gin.New()
 	s.router.Use(gin.Recovery())
 	s.router.Use(middleware.ErrorHandler(logger))
 
-	cartRouter := cart.NewRouter(s.handler, s.secrets)
+	sessionService := auth.NewSessionService(s.redisClient, logger, time.Hour)
+	cartRouter := cart.NewRouter(s.handler, sessionService)
 	v1 := s.router.Group("/api/v1")
 	cartRouter.MapRoutes(v1)
 }
@@ -150,6 +164,12 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 func (s *CartHTTPTestSuite) TearDownSuite() {
 	if s.db != nil {
 		s.db.Close()
+	}
+	if s.redisClient != nil {
+		_ = s.redisClient.Close()
+	}
+	if s.redisContainer != nil {
+		_ = s.redisContainer.Terminate(context.Background())
 	}
 	if s.pgContainer != nil {
 		_ = s.pgContainer.Terminate(context.Background())
@@ -457,15 +477,17 @@ func (s *CartHTTPTestSuite) createAuthenticatedUser() (uuid.UUID, string) {
 	`, userID, "user_"+userID.String()+"@example.com", "Test User")
 	s.Require().NoError(err)
 
-	jwtManager := jwt.NewJWTManager(s.secrets)
-	role := "customer"
-	accessToken, err := jwtManager.GenerateAccessToken(&jwt.UserClaims{
-		UserID:   userID,
-		UserRole: &role,
+	sessID := "sess_" + uuid.NewString()
+	data, err := json.Marshal(map[string]any{
+		"id":       sessID,
+		"userId":   userID,
+		"userRole": "customer",
 	})
 	s.Require().NoError(err)
+	err = s.redisClient.Set(context.Background(), "auth:session:"+sessID, data, time.Hour).Err()
+	s.Require().NoError(err)
 
-	return userID, accessToken
+	return userID, sessID
 }
 
 func (s *CartHTTPTestSuite) TestHTTP_GuestCart_CookieGenerationAndPersistence() {

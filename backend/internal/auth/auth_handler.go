@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/validation"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
@@ -14,15 +15,12 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
 )
 
-type RefreshTokenRequest struct {
-	RefreshToken string `json:"refreshToken"`
-}
-
 type MeResponse struct {
-	ID        uuid.UUID `json:"id,omitempty"`
-	Role      string    `json:"role,omitempty"`
-	Status    string    `json:"status,omitempty"`
-	CreatedAt time.Time `json:"createdAt,omitzero"`
+	ID         uuid.UUID `json:"id,omitempty"`
+	Identifier string    `json:"identifier,omitempty"`
+	Role       string    `json:"role,omitempty"`
+	Status     string    `json:"status,omitempty"`
+	CreatedAt  time.Time `json:"createdAt,omitzero"`
 }
 
 type Handler struct {
@@ -121,29 +119,23 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 }
 
 const (
-	AccessTokenCookieMaxAge  = 2 * 3600       // 2 hours
-	RefreshTokenCookieMaxAge = 30 * 24 * 3600 // 30 days
-	SessionCookieMaxAge      = 30 * 24 * 3600 // 30 days
+	SessionCookieMaxAge = 30 * 24 * 3600 // 30 days
 )
 
-func (h *Handler) setAuthCookies(c *gin.Context, accessToken, refreshToken, sessionID string) {
+func (h *Handler) setAuthCookies(c *gin.Context, sessionID string) {
 	c.SetSameSite(http.SameSiteLaxMode)
-	if accessToken != "" {
-		c.SetCookie("access_token", accessToken, AccessTokenCookieMaxAge, "/", "", h.isProduction, true)
-	}
-	if refreshToken != "" {
-		c.SetCookie("refresh_token", refreshToken, RefreshTokenCookieMaxAge, "/", "", h.isProduction, true)
-	}
 	if sessionID != "" {
-		c.SetCookie("session_id", sessionID, SessionCookieMaxAge, "/", "", h.isProduction, true)
+		c.SetCookie(middleware.SessionCookieName, sessionID, SessionCookieMaxAge, "/", "", h.isProduction, true)
 	}
 }
 
 func (h *Handler) clearAuthCookies(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(middleware.SessionCookieName, "", -1, "/", "", h.isProduction, true)
+	// Clear legacy cookies if they linger in the browser
+	c.SetCookie("session_id", "", -1, "/", "", h.isProduction, true)
 	c.SetCookie("access_token", "", -1, "/", "", h.isProduction, true)
 	c.SetCookie("refresh_token", "", -1, "/", "", h.isProduction, true)
-	c.SetCookie("session_id", "", -1, "/", "", h.isProduction, true)
 }
 
 // VerifyChallenge godoc
@@ -170,7 +162,7 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 	ctx := c.Request.Context()
 	userAgent := c.GetHeader("User-Agent")
 	ipAddress := c.ClientIP()
-	tokens, err := h.authService.VerifyChallenge(
+	authResult, err := h.authService.VerifyChallenge(
 		ctx,
 		req.Email,
 		req.Code,
@@ -185,12 +177,12 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 	// Merge guest cart if a session cookie is present
 	guestSessionID, err := c.Cookie("session_id")
 	if err == nil && guestSessionID != "" && h.cartMerger != nil {
-		if mergeErr := h.cartMerger.MergeGuestCart(c.Request.Context(), guestSessionID, tokens.UserID); mergeErr != nil {
-			h.logger.Error("Failed to merge guest cart", log.Meta{"error": mergeErr, "session_id": guestSessionID, "user_id": tokens.UserID})
+		if mergeErr := h.cartMerger.MergeGuestCart(c.Request.Context(), guestSessionID, authResult.UserID); mergeErr != nil {
+			h.logger.Error("Failed to merge guest cart", log.Meta{"error": mergeErr, "session_id": guestSessionID, "user_id": authResult.UserID})
 		}
 	}
 
-	h.setAuthCookies(c, tokens.AccessToken, tokens.RefreshToken, tokens.SessionID)
+	h.setAuthCookies(c, authResult.SessionID)
 
 	c.Status(http.StatusNoContent)
 }
@@ -230,52 +222,7 @@ func (h *Handler) ResendChallenge(c *gin.Context) {
 	})
 }
 
-// Refresh godoc
-//
-//	@Summary		Rotate refresh token and issue new access and refresh tokens.
-//	@Description	Rotate refresh token and issue new access and refresh tokens.
-//	@Tags			Auth
-//	@Accept			json
-//	@Produce		json
-//	@Param			refresh_token	body		RefreshTokenRequest	false	"Refresh Token"
-//	@Success		200				{object}	api.SuccessResponse
-//	@Failure		400				{object}	api.BadReqResponse
-//	@Failure		401				{object}	api.UnauthorizedResponse
-//	@Failure		429				{object}	api.ErrorResponse
-//	@Failure		500				{object}	api.InternalServerErrorResponse
-//	@Router			/auth/refresh [post]
-func (h *Handler) Refresh(c *gin.Context) {
-	refreshToken := ""
-	var req RefreshTokenRequest
-	if err := c.ShouldBindJSON(&req); err == nil && req.RefreshToken != "" {
-		refreshToken = req.RefreshToken
-	} else if cookie, err := c.Cookie("refresh_token"); err == nil && cookie != "" {
-		refreshToken = cookie
-	}
 
-	if refreshToken == "" {
-		_ = c.Error(apierr.BadRequestError("Refresh token is required").WithCode(apierr.CodeInvalidInput))
-		return
-	}
-
-	accessToken, newRefreshToken, err := h.authService.RotateToken(
-		c.Request.Context(),
-		refreshToken,
-	)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	h.setAuthCookies(c, accessToken, newRefreshToken, "")
-
-	c.JSON(
-		http.StatusOK,
-		api.SuccessResponse{
-			Message: "Token refreshed successfully",
-		},
-	)
-}
 
 // GetMe godoc
 //
@@ -296,13 +243,20 @@ func (h *Handler) GetMe(c *gin.Context) {
 		return
 	}
 
+	var roleStr string
+	if user.Role != nil {
+		roleStr = string(*user.Role)
+	}
+
 	c.JSON(
 		http.StatusOK,
 		api.DataResponse{
 			Data: MeResponse{
-				ID:     user.ID,
-				Status: string(user.Status),
-				Role:   string(*user.Role),
+				ID:         user.ID,
+				Identifier: user.Identifier,
+				Status:     string(user.Status),
+				Role:       roleStr,
+				CreatedAt:  user.CreatedAt,
 			},
 		},
 	)

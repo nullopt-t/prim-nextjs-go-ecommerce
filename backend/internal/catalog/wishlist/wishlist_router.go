@@ -3,27 +3,26 @@ package wishlist
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
 type WishlistRouter struct {
-	handler *WishlistHandler
-	secrets config.Secrets
+	handler      *WishlistHandler
+	sessionStore middleware.SessionStore
 }
 
 func NewRouter(
 	handler *WishlistHandler,
-	secrets config.Secrets,
+	sessionStore middleware.SessionStore,
 ) *WishlistRouter {
 	return &WishlistRouter{
-		handler: handler,
-		secrets: secrets,
+		handler:      handler,
+		sessionStore: sessionStore,
 	}
 }
 
 func (r *WishlistRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	wishlistGroup := vgroup.Group("/wishlist")
-	wishlistGroup.Use(middleware.Authenticate(r.secrets, false))
+	wishlistGroup.Use(middleware.Authenticate(r.sessionStore))
 	{
 		wishlistGroup.POST("", r.handler.AddToWishlist)
 		wishlistGroup.POST("/items", r.handler.AddToWishlist)

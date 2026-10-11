@@ -3,24 +3,23 @@ package checkout
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
 type CheckoutRouter struct {
-	handler *CheckoutHandler
-	secrets config.Secrets
+	handler      *CheckoutHandler
+	sessionStore middleware.SessionStore
 }
 
-func NewRouter(handler *CheckoutHandler, secrets config.Secrets) *CheckoutRouter {
+func NewRouter(handler *CheckoutHandler, sessionStore middleware.SessionStore) *CheckoutRouter {
 	return &CheckoutRouter{
-		handler: handler,
-		secrets: secrets,
+		handler:      handler,
+		sessionStore: sessionStore,
 	}
 }
 
 func (r *CheckoutRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	group := vgroup.Group("/checkout")
-	group.Use(middleware.Authenticate(r.secrets, false))
+	group.Use(middleware.Authenticate(r.sessionStore))
 	{
 		group.POST("", r.handler.Checkout)
 	}

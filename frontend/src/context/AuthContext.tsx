@@ -4,9 +4,11 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import { authService } from "@/services/auth";
 
 export interface User {
-  id: string | number;
+  id: string;
   email: string;
   name: string;
+  role?: string;
+  status?: string;
   phone?: string;
   avatar?: string;
 }
@@ -24,6 +26,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function formatUserData(rawData: any): User | null {
+  const d = rawData?.data || rawData;
+  if (!d || !d.id) return null;
+
+  const email = d.identifier || d.email || "";
+  const name = d.name || (email ? email.split("@")[0] : "User");
+
+  return {
+    id: String(d.id),
+    email,
+    name,
+    role: d.role,
+    status: d.status,
+    phone: d.phone,
+    avatar: d.avatar,
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       const data = await authService.getMe();
-      setUser(data);
+      setUser(formatUserData(data));
     } catch {
       setUser(null);
     } finally {
@@ -66,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res: any = await authService.verifyChallenge(payload);
       if (res?.user) {
-        setUser(res.user);
+        setUser(formatUserData(res.user));
       } else {
         await fetchUser();
       }

@@ -5,15 +5,14 @@ import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
-	"github.com/redis/go-redis/v9"
 )
 
 type Router struct {
-	authHandler  *Handler
-	secrets      config.Secrets
-	limiter      middleware.RateLimiter
-	logger       log.Logger
-	redisClient  *redis.Client
+	authHandler     *Handler
+	secrets         config.Secrets
+	limiter         middleware.RateLimiter
+	logger          log.Logger
+	sessionStore middleware.SessionStore
 	rateLimitCfg config.RateLimitConfig
 }
 
@@ -22,7 +21,7 @@ func NewRouter(
 	secrets config.Secrets,
 	limiter middleware.RateLimiter,
 	logger log.Logger,
-	redisClient *redis.Client,
+	sessionStore middleware.SessionStore,
 	rateLimitCfg config.RateLimitConfig,
 ) *Router {
 	return &Router{
@@ -30,7 +29,7 @@ func NewRouter(
 		secrets:      secrets,
 		limiter:      limiter,
 		logger:       logger,
-		redisClient:  redisClient,
+		sessionStore: sessionStore,
 		rateLimitCfg: rateLimitCfg,
 	}
 }
@@ -40,31 +39,29 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	challenge := auth.Group("/challenge")
 
 	challenge.POST("/start",
-		middleware.RateLimit(r.limiter, "rate_limit:auth:start",
+		middleware.RateLimit(r.limiter, "auth:start",
 			r.rateLimitCfg.AuthStartRequests,
 			r.rateLimitCfg.AuthStartWindow,
 		),
 		r.authHandler.StartChallenge)
 
 	challenge.POST("/resend",
-		middleware.RateLimit(r.limiter, "rate_limit:auth:resend",
+		middleware.RateLimit(r.limiter, "auth:resend",
 			r.rateLimitCfg.AuthResendRequests,
 			r.rateLimitCfg.AuthResendWindow,
 		),
 		r.authHandler.ResendChallenge)
 
 	challenge.POST("/verify",
-		middleware.RateLimit(r.limiter, "rate_limit:auth:verify",
+		middleware.RateLimit(r.limiter, "auth:verify",
 			r.rateLimitCfg.AuthVerifyRequests,
 			r.rateLimitCfg.AuthVerifyWindow,
 		),
 		r.authHandler.VerifyChallenge)
 
-	auth.POST("/refresh", r.authHandler.Refresh)
 
 	// protected
-	auth.Use(middleware.Authenticate(r.secrets))
-	auth.Use(middleware.StrictSessionCheck(r.redisClient))
+	auth.Use(middleware.Authenticate(r.sessionStore))
 	auth.GET("/me", r.authHandler.GetMe)
 	auth.GET("/sessions", r.authHandler.GetSessions)
 	auth.DELETE("/sessions/:id", r.authHandler.DeleteSessionByID)

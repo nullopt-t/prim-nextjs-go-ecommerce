@@ -2,11 +2,15 @@ package auth_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"time"
 
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/auth"
+	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
 )
 
 func (s *AuthTestSuite) authenticateAndGetCookies(email string) []*http.Cookie {
@@ -62,65 +66,14 @@ func (s *AuthTestSuite) TestSession_MissingSession() {
 	s.Require().Equal(http.StatusUnauthorized, w.Code)
 }
 
-func (s *AuthTestSuite) TestSession_RefreshTokenRotation() {
-	cookies := s.authenticateAndGetCookies("refresh@example.com")
 
-	var oldAccessToken, oldRefreshToken string
-	for _, c := range cookies {
-		if c.Name == "access_token" {
-			oldAccessToken = c.Value
-		}
-		if c.Name == "refresh_token" {
-			oldRefreshToken = c.Value
-		}
-	}
-	s.Require().NotEmpty(oldAccessToken)
-	s.Require().NotEmpty(oldRefreshToken)
-
-	// Refresh via Cookie
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/refresh", nil)
-	for _, c := range cookies {
-		req.AddCookie(c)
-	}
-
-	w := httptest.NewRecorder()
-	s.router.ServeHTTP(w, req)
-
-	s.Require().Equal(http.StatusOK, w.Code)
-
-	newCookies := w.Result().Cookies()
-	var newAccessToken, newRefreshToken string
-	for _, c := range newCookies {
-		if c.Name == "access_token" {
-			newAccessToken = c.Value
-		}
-		if c.Name == "refresh_token" {
-			newRefreshToken = c.Value
-		}
-	}
-
-	s.Require().NotEmpty(newAccessToken)
-	s.Require().NotEmpty(newRefreshToken)
-	s.Require().NotEqual(oldAccessToken, newAccessToken, "Access token should be rotated")
-	s.Require().NotEqual(oldRefreshToken, newRefreshToken, "Refresh token should be rotated")
-}
-
-func (s *AuthTestSuite) TestSession_InvalidRefreshToken() {
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/refresh", nil)
-	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "invalid.token.here"})
-
-	w := httptest.NewRecorder()
-	s.router.ServeHTTP(w, req)
-
-	s.Require().Equal(http.StatusUnauthorized, w.Code)
-}
 
 func (s *AuthTestSuite) TestSession_Logout() {
 	cookies := s.authenticateAndGetCookies("logout@example.com")
 
 	var sessionID string
 	for _, c := range cookies {
-		if c.Name == "session_id" {
+		if c.Name == middleware.SessionCookieName {
 			sessionID = c.Value
 		}
 	}
@@ -183,26 +136,56 @@ func (s *AuthTestSuite) TestSession_Logout_SubsequentMe() {
 	s.Require().Equal(http.StatusUnauthorized, wMe.Code)
 }
 
-func (s *AuthTestSuite) TestSession_RefreshTokenReplay() {
-	cookies := s.authenticateAndGetCookies("replay@example.com")
-
-	// First Refresh
-	req1, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/refresh", nil)
+func (s *AuthTestSuite) TestSession_AutoRefresh() {
+	cookies := s.authenticateAndGetCookies("refresh_test@example.com")
+	var sessionID string
 	for _, c := range cookies {
-		req1.AddCookie(c)
+		if c.Name == middleware.SessionCookieName {
+			sessionID = c.Value
+		}
 	}
-	w1 := httptest.NewRecorder()
-	s.router.ServeHTTP(w1, req1)
-	s.Require().Equal(http.StatusOK, w1.Code)
+	s.Require().NotEmpty(sessionID)
 
-	// Second Refresh (Replay with same old cookies)
-	req2, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/refresh", nil)
+	ctx := context.Background()
+	sessKey := fmt.Sprintf("auth:session:%s", sessionID)
+
+	// Simulate older session where LastActive was 20 days ago and TTL was decreased
+	val, err := s.redisClient.Get(ctx, sessKey).Result()
+	s.Require().NoError(err)
+
+	var sess auth.UserSession
+	err = json.Unmarshal([]byte(val), &sess)
+	s.Require().NoError(err)
+
+	oldTime := time.Now().UTC().Add(-20 * 24 * time.Hour)
+	sess.LastActive = oldTime
+	modifiedData, _ := json.Marshal(sess)
+
+	// Set low TTL in redis to simulate aging session
+	err = s.redisClient.Set(ctx, sessKey, modifiedData, 10*24*time.Hour).Err()
+	s.Require().NoError(err)
+
+	// Make authenticated request
+	req, _ := http.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
 	for _, c := range cookies {
-		req2.AddCookie(c)
+		req.AddCookie(c)
 	}
-	w2 := httptest.NewRecorder()
-	s.router.ServeHTTP(w2, req2)
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+	s.Require().Equal(http.StatusOK, w.Code)
 
-	// Should be rejected (401)
-	s.Require().Equal(http.StatusUnauthorized, w2.Code)
+	// Verify that LastActive was refreshed and TTL was reset to full SessionTTL
+	updatedVal, err := s.redisClient.Get(ctx, sessKey).Result()
+	s.Require().NoError(err)
+
+	var refreshedSess auth.UserSession
+	err = json.Unmarshal([]byte(updatedVal), &refreshedSess)
+	s.Require().NoError(err)
+
+	s.Require().True(refreshedSess.LastActive.After(oldTime), "LastActive should have been refreshed")
+
+	ttl, err := s.redisClient.TTL(ctx, sessKey).Result()
+	s.Require().NoError(err)
+	s.Require().Greater(ttl, 25*24*time.Hour, "Session TTL in redis should have been extended to full duration")
 }
+

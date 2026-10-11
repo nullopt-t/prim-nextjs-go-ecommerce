@@ -3,28 +3,27 @@ package product
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
 type ProductRouter struct {
-	ph      *ProductHandler
-	secrets config.Secrets
+	ph           *ProductHandler
+	sessionStore middleware.SessionStore
 }
 
 func NewRouter(
 	ph *ProductHandler,
-	secrets config.Secrets,
+	sessionStore middleware.SessionStore,
 ) *ProductRouter {
 	return &ProductRouter{
-		ph:      ph,
-		secrets: secrets,
+		ph:           ph,
+		sessionStore: sessionStore,
 	}
 }
 
 func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	admin := vgroup.Group("/admin/products")
 	admin.Use(
-		middleware.Authenticate(r.secrets, true),
+		middleware.Authenticate(r.sessionStore),
 	)
 	{
 		admin.POST("", r.ph.CreateProductAsDraft)

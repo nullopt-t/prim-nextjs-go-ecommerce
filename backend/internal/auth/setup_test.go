@@ -18,7 +18,6 @@ import (
 
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/auth"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/jwt"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
 	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
@@ -126,17 +125,12 @@ func (s *AuthTestSuite) SetupSuite() {
 		JwtAccessTokenSecretKey:  "access",
 		JwtRefreshTokenSecretKey: "refresh",
 	}
-	jwtService := jwt.NewJWTManager(secrets)
-
 	authService := auth.NewAuthService(
 		logger,
 		challengeService,
 		userService,
 		sessionService,
-		jwtService,
-		s.redisClient,
 		s.notifier,
-		secrets,
 	)
 
 	// 5. Setup Gin Router
@@ -155,7 +149,7 @@ func (s *AuthTestSuite) SetupSuite() {
 		secrets,
 		rateLimiter,
 		logger,
-		s.redisClient,
+		sessionService,
 		config.RateLimitConfig{
 			AuthStartRequests:  5,
 			AuthStartWindow:    time.Minute,

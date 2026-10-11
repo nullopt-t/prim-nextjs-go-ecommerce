@@ -25,3 +25,4 @@ func PublicCache(maxAgeSeconds int) gin.HandlerFunc {
 		c.Next()
 	}
 }
+

@@ -3,21 +3,20 @@ package brand
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
 type Router struct {
-	bh      *BrandHandler
-	secrets config.Secrets
+	bh           *BrandHandler
+	sessionStore middleware.SessionStore
 }
 
 func NewRouter(
 	h *BrandHandler,
-	secrets config.Secrets,
+	sessionStore middleware.SessionStore,
 ) *Router {
 	return &Router{
-		bh:      h,
-		secrets: secrets,
+		bh:           h,
+		sessionStore: sessionStore,
 	}
 }
 
@@ -32,7 +31,7 @@ func (r *Router) MapRoutes(
 
 	admin := vgroup.Group("/admin/brands")
 	admin.Use(
-		middleware.Authenticate(r.secrets, true),
+		middleware.Authenticate(r.sessionStore),
 	)
 	{
 		admin.POST("", r.bh.CreateBrand)

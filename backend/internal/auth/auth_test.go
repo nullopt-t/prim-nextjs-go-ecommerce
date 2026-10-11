@@ -140,18 +140,10 @@ func (s *AuthTestSuite) TestFullAuthFlow_HappyPath() {
 
 	s.Require().Equal(http.StatusNoContent, wVerify.Code)
 
-	// Assert cookies are set
+	// Assert single session cookie is set
 	cookies := wVerify.Header().Values("Set-Cookie")
-	s.Require().GreaterOrEqual(len(cookies), 3, "Should set access_token, refresh_token, and session_id cookies")
-
-	hasAccessToken := false
-	for _, cookie := range cookies {
-		if strings.HasPrefix(cookie, "access_token=") {
-			hasAccessToken = true
-			break
-		}
-	}
-	s.Require().True(hasAccessToken, "access_token cookie should be present")
+	s.Require().Equal(1, len(cookies), "Should set exactly one session cookie")
+	s.Require().True(strings.HasPrefix(cookies[0], "_prim_session="), "_prim_session cookie should be present")
 }
 
 func (s *AuthTestSuite) TestVerifyChallenge_InvalidOTP() {

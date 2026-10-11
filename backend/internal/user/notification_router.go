@@ -3,21 +3,20 @@ package user
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
 type NotificationRouter struct {
-	handler *NotificationHandler
-	secrets config.Secrets
+	handler      *NotificationHandler
+	sessionStore middleware.SessionStore
 }
 
 func NewNotificationRouter(
 	handler *NotificationHandler,
-	secrets config.Secrets,
+	sessionStore middleware.SessionStore,
 ) *NotificationRouter {
 	return &NotificationRouter{
-		handler: handler,
-		secrets: secrets,
+		handler:      handler,
+		sessionStore: sessionStore,
 	}
 }
 
@@ -25,10 +24,10 @@ func NewNotificationRouter(
 func (r *NotificationRouter) MapRoutes(v1 *gin.RouterGroup) {
 	group := v1.Group("/user/notifications")
 	{
-		group.GET("/unread-count", middleware.Authenticate(r.secrets, true), r.handler.GetUnreadCount)
+		group.GET("/unread-count", middleware.Authenticate(r.sessionStore), r.handler.GetUnreadCount)
 
 		protected := group.Group("")
-		protected.Use(middleware.Authenticate(r.secrets, false))
+		protected.Use(middleware.Authenticate(r.sessionStore))
 		{
 			protected.GET("", r.handler.GetMyNotifications)
 			protected.PATCH("/:id/read", r.handler.MarkAsRead)

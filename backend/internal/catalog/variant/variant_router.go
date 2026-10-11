@@ -3,18 +3,17 @@ package variant
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
 type VariantRouter struct {
-	vh      *VariantHandler
-	secrets config.Secrets
+	vh           *VariantHandler
+	sessionStore middleware.SessionStore
 }
 
-func NewRouter(vh *VariantHandler, secrets config.Secrets) *VariantRouter {
+func NewRouter(vh *VariantHandler, sessionStore middleware.SessionStore) *VariantRouter {
 	return &VariantRouter{
-		vh:      vh,
-		secrets: secrets,
+		vh:           vh,
+		sessionStore: sessionStore,
 	}
 }
 
@@ -37,7 +36,7 @@ func (vr *VariantRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	// Admin routes
 	admin := vgroup.Group("/admin")
 	admin.Use(
-		middleware.Authenticate(vr.secrets),
+		middleware.Authenticate(vr.sessionStore),
 	)
 	{
 		admin.PATCH("/variants/:id", vr.vh.UpdateVariantByID)

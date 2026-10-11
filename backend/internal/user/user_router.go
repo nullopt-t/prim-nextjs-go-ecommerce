@@ -2,7 +2,6 @@ package user
 
 import (
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,21 +13,21 @@ type UserHandler interface {
 }
 
 type Router struct {
-	handler UserHandler
-	config  config.Config
+	handler      UserHandler
+	sessionStore middleware.SessionStore
 }
 
-func NewRouter(handler UserHandler, config config.Config) *Router {
+func NewRouter(handler UserHandler, sessionStore middleware.SessionStore) *Router {
 	return &Router{
-		handler: handler,
-		config:  config,
+		handler:      handler,
+		sessionStore: sessionStore,
 	}
 }
 
 func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	users := vgroup.Group("/users")
 	users.Use(
-		middleware.Authenticate(r.config.KeysCfg),
+		middleware.Authenticate(r.sessionStore),
 	)
 
 	users.GET("", r.handler.GetAllUsers)

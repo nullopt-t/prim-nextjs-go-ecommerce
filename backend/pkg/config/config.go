@@ -29,10 +29,12 @@ type KafkaConfig struct {
 }
 
 type SMTPConfig struct {
-	Host     string `yaml:"host" env:"SMTP_HOST" env-default:""`
-	Port     int    `yaml:"port" env:"SMTP_PORT" env-default:"0"`
-	Username string `yaml:"username" env:"SMTP_USERNAME" env-default:""`
-	Password string `yaml:"password" env:"SMTP_PASSWORD" env-default:""`
+	Host      string `yaml:"host" env:"SMTP_HOST" env-default:""`
+	Port      int    `yaml:"port" env:"SMTP_PORT" env-default:"0"`
+	Username  string `yaml:"username" env:"SMTP_USERNAME" env-default:""`
+	Password  string `yaml:"password" env:"SMTP_PASSWORD" env-default:""`
+	FromEmail string `yaml:"from_email" env:"SMTP_FROM_EMAIL" env-default:""`
+	FromName  string `yaml:"from_name" env:"SMTP_FROM_NAME" env-default:"Prim"`
 }
 
 type Secrets struct {

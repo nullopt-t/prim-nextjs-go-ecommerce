@@ -3,27 +3,26 @@ package user
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
 )
 
 type AddressRouter struct {
-	handler *AddressHandler
-	secrets config.Secrets
+	handler      *AddressHandler
+	sessionStore middleware.SessionStore
 }
 
 func NewAddressRouter(
 	handler *AddressHandler,
-	secrets config.Secrets,
+	sessionStore middleware.SessionStore,
 ) *AddressRouter {
 	return &AddressRouter{
-		handler: handler,
-		secrets: secrets,
+		handler:      handler,
+		sessionStore: sessionStore,
 	}
 }
 
 func (r *AddressRouter) MapRoutes(v1 *gin.RouterGroup) {
 	group := v1.Group("/user/addresses")
-	group.Use(middleware.Authenticate(r.secrets, false))
+	group.Use(middleware.Authenticate(r.sessionStore))
 	{
 		group.GET("", r.handler.ListAddresses)
 		group.POST("", r.handler.CreateAddress)

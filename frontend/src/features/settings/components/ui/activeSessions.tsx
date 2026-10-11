@@ -13,6 +13,7 @@ interface Session {
   userAgent?: string;
   ipAddress?: string;
   createdAt?: string;
+  lastActive?: string;
   lastSeenAt?: string;
   isCurrent?: boolean;
 }
@@ -147,10 +148,10 @@ export default function ActiveSessions() {
 
                       <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
                         {session.ipAddress && <span>{session.ipAddress}</span>}
-                        {session.lastSeenAt && (
+                        {(session.lastActive || session.lastSeenAt) && (
                           <>
                             <span>•</span>
-                            <span>{new Date(session.lastSeenAt).toLocaleDateString()}</span>
+                            <span>{new Date((session.lastActive || session.lastSeenAt)!).toLocaleDateString()}</span>
                           </>
                         )}
                       </div>
