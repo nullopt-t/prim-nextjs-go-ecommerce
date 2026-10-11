@@ -16,13 +16,13 @@ import (
 	redisContainer "github.com/testcontainers/testcontainers-go/modules/redis"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/auth"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/security"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/internal/auth"
+	"github.com/nullopt-t/prim-backend/internal/middleware"
+	"github.com/nullopt-t/prim-backend/internal/user"
+	"github.com/nullopt-t/prim-backend/pkg/api/security"
+	"github.com/nullopt-t/prim-backend/pkg/config"
+	"github.com/nullopt-t/prim-backend/pkg/database"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
 type mockNotifier struct {

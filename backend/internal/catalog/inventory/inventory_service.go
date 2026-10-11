@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/catalog/errcode"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/pagination"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/internal/catalog/errcode"
+	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
+	"github.com/nullopt-t/prim-backend/pkg/database"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
 type InventoryService struct {

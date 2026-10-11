@@ -12,20 +12,20 @@ export default function Team() {
 
   const ContArr: Contributor[] = [
     {
-      id: "m-mahmoud-alsaid",
+      id: "nullopt-t",
       name: "Mohamed Mahmoud",
       img: MohamedImg,
       imgAlt: "Mohamed photo",
       role: "developers.frontend",
       links: [
         {
-          id: "m-mahmoud-alsaid-linkedin",
-          link: "https://www.linkedin.com/in/m-mahmoud-alsaid/",
+          id: "nullopt-t-linkedin",
+          link: "https://www.linkedin.com/in/nullopt-t/",
           icon: FaLinkedinIn,
         },
         {
-          id: "m-mahmoud-alsaid-github",
-          link: "https://github.com/m-mahmoud-alsaid",
+          id: "nullopt-t-github",
+          link: "https://github.com/nullopt-t",
           icon: FaGithub,
         },
       ],

@@ -1,8 +1,8 @@
 package job
 
 import (
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/config"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 
 	"context"
 	"fmt"

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
+	"github.com/nullopt-t/prim-backend/pkg/config"
 
 	_jwt "github.com/golang-jwt/jwt/v5"
 )

@@ -3,7 +3,7 @@ package html_test
 import (
 	"testing"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/html"
+	"github.com/nullopt-t/prim-backend/internal/shared/html"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

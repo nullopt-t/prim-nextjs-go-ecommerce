@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 )
 
 func ValidationError(c *gin.Context, err error) {

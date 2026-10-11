@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/api"
+	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
 func ErrorHandler(logger log.Logger) gin.HandlerFunc {

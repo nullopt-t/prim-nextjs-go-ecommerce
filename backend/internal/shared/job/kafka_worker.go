@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/broker/kafka"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/broker/kafka"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
 type EventHandlerFunc func(ctx context.Context, event *NotificationEvent) error

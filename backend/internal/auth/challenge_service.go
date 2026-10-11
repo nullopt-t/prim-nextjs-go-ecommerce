@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/crypto"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
+	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/crypto"
+	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/utils"
 	"github.com/redis/go-redis/v9"
 )
 

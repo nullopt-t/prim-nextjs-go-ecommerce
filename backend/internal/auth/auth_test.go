@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 
 	"github.com/google/uuid"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/auth"
+	"github.com/nullopt-t/prim-backend/internal/auth"
 )
 
 func (s *AuthTestSuite) TestStartChallenge_HappyPath() {

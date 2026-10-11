@@ -3,7 +3,7 @@ package utils_test
 import (
 	"testing"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/utils"
+	"github.com/nullopt-t/prim-backend/pkg/utils"
 	"github.com/stretchr/testify/assert"
 )
 

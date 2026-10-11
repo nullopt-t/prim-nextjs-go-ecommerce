@@ -8,15 +8,15 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/notifier"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/html"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/user"
-	brokerkafka "github.com/m-mahmoud-alsaid/prim-backend/pkg/broker/kafka"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/database"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/mail"
+	"github.com/nullopt-t/prim-backend/internal/notifier"
+	"github.com/nullopt-t/prim-backend/internal/shared/html"
+	"github.com/nullopt-t/prim-backend/internal/shared/job"
+	"github.com/nullopt-t/prim-backend/internal/user"
+	brokerkafka "github.com/nullopt-t/prim-backend/pkg/broker/kafka"
+	"github.com/nullopt-t/prim-backend/pkg/config"
+	"github.com/nullopt-t/prim-backend/pkg/database"
+	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/mail"
 )
 
 func main() {

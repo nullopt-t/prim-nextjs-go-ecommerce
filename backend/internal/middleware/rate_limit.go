@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 )
 
 const RateLimitPrefix = "rate_limit"

@@ -2,9 +2,9 @@ package auth
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/internal/middleware"
+	"github.com/nullopt-t/prim-backend/pkg/config"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
 type Router struct {

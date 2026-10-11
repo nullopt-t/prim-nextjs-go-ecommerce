@@ -1,4 +1,4 @@
-module github.com/m-mahmoud-alsaid/prim-backend
+module github.com/nullopt-t/prim-backend
 
 go 1.26.5
 

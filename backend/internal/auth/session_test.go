@@ -9,8 +9,8 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/auth"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
+	"github.com/nullopt-t/prim-backend/internal/auth"
+	"github.com/nullopt-t/prim-backend/internal/middleware"
 )
 
 func (s *AuthTestSuite) authenticateAndGetCookies(email string) []*http.Cookie {

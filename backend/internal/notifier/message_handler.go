@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/model"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/html"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/html"
+	"github.com/nullopt-t/prim-backend/internal/shared/job"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
 type Mailer interface {

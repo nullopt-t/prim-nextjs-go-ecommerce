@@ -28,9 +28,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	_ "github.com/m-mahmoud-alsaid/prim-backend/docs/admin"
-	_ "github.com/m-mahmoud-alsaid/prim-backend/docs/public"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/app"
+	_ "github.com/nullopt-t/prim-backend/docs/admin"
+	_ "github.com/nullopt-t/prim-backend/docs/public"
+	"github.com/nullopt-t/prim-backend/internal/app"
 )
 
 func main() {

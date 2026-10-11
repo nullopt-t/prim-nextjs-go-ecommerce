@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/config"
+	"github.com/nullopt-t/prim-backend/pkg/config"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"

@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/middleware"
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/broker/kafka"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/internal/middleware"
+	"github.com/nullopt-t/prim-backend/internal/shared/job"
+	"github.com/nullopt-t/prim-backend/pkg/broker/kafka"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
 // SendInAppInput contains all parameters needed to trigger a localized in-app alert.

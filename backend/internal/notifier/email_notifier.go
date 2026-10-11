@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/internal/shared/job"
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/internal/shared/job"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
 type EmailNotifier struct {

@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/m-mahmoud-alsaid/prim-backend/pkg/api"
+	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/errs"
 )
 
