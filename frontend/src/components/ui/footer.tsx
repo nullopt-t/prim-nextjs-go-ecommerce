@@ -1,11 +1,3 @@
-"use client";
-
-import {
-  FaInstagram,
-  FaSquareFacebook,
-  FaSquareXTwitter,
-  FaTiktok,
-} from "react-icons/fa6";
 import { Brand } from "@/components/ui/Brand";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -17,129 +9,79 @@ export function Footer() {
 
   const sections = [
     {
-      id: "shop-pp",
+      id: "shop-section",
       title: "footer.shop",
       content: [
         {
-          id: "cat_1",
-          slug: "audio",
-          name: "Audio",
-          path: "/products?category=audio",
+          id: "cat_all",
+          nameKey: "footer.allProducts",
+          path: "/products",
         },
         {
-          id: "cat_2",
-          slug: "wearables",
-          name: "Wearables",
-          path: "/products?category=wearables",
+          id: "cat_cats",
+          nameKey: "footer.categories",
+          path: "/categories",
         },
         {
-          id: "cat_3",
-          slug: "desk-setup",
-          name: "Desk Setup",
-          path: "/products?category=desk-setup",
+          id: "cat_wishlist",
+          nameKey: "footer.wishlist",
+          path: "/wishlist",
         },
       ],
     },
     {
-      id: "support-pp",
+      id: "support-section",
       title: "footer.support",
       content: [
         {
-          id: "supp_1",
-          name: "footer.contactUs",
-          path: "/about",
+          id: "supp_contact",
+          nameKey: "footer.contactUs",
+          path: "/contact",
         },
         {
-          id: "supp_2",
-          name: "footer.faqs",
-          path: "/about",
+          id: "supp_faqs",
+          nameKey: "footer.faqs",
+          path: "/faqs",
         },
         {
-          id: "supp_3",
-          name: "footer.shipping",
-          path: "/about",
+          id: "supp_shipping",
+          nameKey: "footer.shipping",
+          path: "/shipping",
         },
         {
-          id: "supp_4",
-          name: "footer.returns",
-          path: "/about",
-        },
-        {
-          id: "supp_5",
-          name: "footer.trackOrders",
-          path: "/user/orders",
-        },
-        {
-          id: "supp_6",
-          name: "footer.sizeGuide",
-          path: "/about",
+          id: "supp_returns",
+          nameKey: "footer.returns",
+          path: "/returns",
         },
       ],
     },
     {
-      id: "company-pp",
+      id: "platform-section",
       title: "footer.company",
       content: [
         {
-          id: "comp_1",
-          name: "footer.aboutUs",
+          id: "comp_about",
+          nameKey: "footer.aboutUs",
           path: "/about",
         },
         {
-          id: "comp_2",
-          name: "footer.careers",
-          path: "/about",
+          id: "comp_orders",
+          nameKey: "footer.trackOrders",
+          path: "/user/orders",
         },
         {
-          id: "comp_3",
-          name: "footer.press",
-          path: "/about",
-        },
-        {
-          id: "comp_4",
-          name: "footer.sustainability",
-          path: "/about",
-        },
-        {
-          id: "comp_5",
-          name: "footer.blog",
-          path: "/about",
+          id: "comp_vendor",
+          nameKey: "footer.vendorPortal",
+          path: "/vendor",
         },
       ],
-    },
-  ];
-
-  const social = [
-    {
-      id: "insta-1",
-      name: "Instagram",
-      href: "https://instagram.com",
-      icon: FaInstagram,
-    },
-    {
-      id: "x-1",
-      name: "X (Twitter)",
-      href: "https://x.com",
-      icon: FaSquareXTwitter,
-    },
-    {
-      id: "tik-1",
-      name: "TikTok",
-      href: "https://tiktok.com",
-      icon: FaTiktok,
-    },
-    {
-      id: "facebook-1",
-      name: "Facebook",
-      href: "https://facebook.com",
-      icon: FaSquareFacebook,
     },
   ];
 
   return (
-    <footer className="bg-footer text-white mt-auto border-t border-border/20">
+    <footer className="bg-secondary/40 text-foreground mt-auto border-t border-border/60 transition-colors">
       <div className="w-full px-3 sm:px-6 lg:px-8 py-10 md:py-14">
-        <div className="mb-10 flex flex-col gap-10 md:flex-row text-white text-txt-sm md:text-txt-md lg:text-txt-lg">
+        <div className="mb-10 flex flex-col gap-10 md:flex-row text-txt-sm md:text-txt-md lg:text-txt-lg">
           <div className="flex-1 max-w-sm">
             <Brand />
             <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
@@ -148,7 +90,7 @@ export function Footer() {
           </div>
           {sections.map((value) => (
             <div key={value.id} className="flex-1">
-              <p className="mb-4 text-base font-bold capitalize text-white">
+              <p className="mb-4 text-base font-bold text-foreground">
                 {t(value.title)}
               </p>
               <div className="flex flex-col gap-2.5">
@@ -156,35 +98,18 @@ export function Footer() {
                   <Link
                     href={content.path}
                     key={content.id}
-                    className="capitalize text-muted-foreground hover:text-accent-brand text-sm transition-colors cursor-pointer"
+                    className="text-muted-foreground hover:text-accent-brand text-sm transition-colors cursor-pointer"
                   >
-                    {content.name.startsWith("footer.")
-                      ? t(content.name)
-                      : content.name}
+                    {t(content.nameKey)}
                   </Link>
                 ))}
               </div>
             </div>
           ))}
         </div>
-        <hr className="border-border/40 text-muted-foreground mb-6" />
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-muted-foreground text-xs sm:text-sm">
+        <hr className="border-border/60 text-muted-foreground mb-6" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-muted-foreground text-xs sm:text-sm">
           <p>{t("footer.copyright", { year: currentDate })}</p>
-
-          <div className="flex gap-4">
-            {social.map((value) => (
-              <a
-                key={value.id}
-                href={value.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={value.name}
-                className="text-muted-foreground hover:text-accent-brand transition-colors"
-              >
-                <value.icon className="size-5" />
-              </a>
-            ))}
-          </div>
         </div>
       </div>
     </footer>
