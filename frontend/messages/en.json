@@ -160,6 +160,19 @@
     }
   },
   "home": {
+    "dealsBanner": {
+      "badge": "Daily Deals",
+      "limitedTime": "Ending Soon",
+      "headline": "Up to 60% off top electronics, fashion & gear",
+      "subtext": "Verified sellers, unbeatable daily bargains, and free standard delivery on eligible items.",
+      "couponTitle": "Extra 15% Off",
+      "couponDesc": "Use coupon at checkout",
+      "shippingTitle": "Free Delivery",
+      "shippingDesc": "On qualifying orders",
+      "guaranteeTitle": "Money Back",
+      "guaranteeDesc": "100% Buyer guarantee",
+      "cta": "Shop All Deals"
+    },
     "categories": {
       "seeAll": "See all",
       "title": "Categories"

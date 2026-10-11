@@ -23,13 +23,12 @@ interface SlideData {
   descKey: string;
   ctaKey: string;
   link: string;
-  badgeIcon: any;
-  visualIcon: any;
-  accentColor: string;
-  accentBg: string;
-  accentBorder: string;
-  badgeColor: string;
-  decorGradient: string;
+  productImage: string;
+  productAlt: string;
+  badgeText: string;
+  bannerBg: string;
+  badgeBg: string;
+  ctaClass: string;
 }
 
 const SLIDES: SlideData[] = [
@@ -41,13 +40,12 @@ const SLIDES: SlideData[] = [
     descKey: "slides.slide1.desc",
     ctaKey: "slides.slide1.cta",
     link: "/products",
-    badgeIcon: Sparkles,
-    visualIcon: Headphones,
-    accentColor: "text-accent-brand",
-    accentBg: "bg-accent-brand",
-    accentBorder: "border-accent-brand/40",
-    badgeColor: "bg-accent-brand/15 text-accent-brand border-accent-brand/30",
-    decorGradient: "from-accent-brand/20 via-transparent to-transparent",
+    productImage: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=85&w=800",
+    productAlt: "Premium Wireless Headphones",
+    badgeText: "DEAL OF THE DAY",
+    bannerBg: "bg-[#f7f7f7] dark:bg-secondary/40",
+    badgeBg: "bg-red-600 text-white",
+    ctaClass: "bg-foreground text-background hover:bg-foreground/90",
   },
   {
     id: "slide2",
@@ -57,13 +55,12 @@ const SLIDES: SlideData[] = [
     descKey: "slides.slide2.desc",
     ctaKey: "slides.slide2.cta",
     link: "/products",
-    badgeIcon: Sparkles,
-    visualIcon: Laptop,
-    accentColor: "text-sky-500 dark:text-sky-400",
-    accentBg: "bg-sky-500",
-    accentBorder: "border-sky-500/40",
-    badgeColor: "bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30",
-    decorGradient: "from-sky-500/20 via-transparent to-transparent",
+    productImage: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&q=85&w=800",
+    productAlt: "Custom Mechanical Keyboards",
+    badgeText: "TOP TECH PICK",
+    bannerBg: "bg-[#eef2f6] dark:bg-secondary/40",
+    badgeBg: "bg-sky-600 text-white",
+    ctaClass: "bg-foreground text-background hover:bg-foreground/90",
   },
   {
     id: "slide3",
@@ -73,13 +70,12 @@ const SLIDES: SlideData[] = [
     descKey: "slides.slide3.desc",
     ctaKey: "slides.slide3.cta",
     link: "/products",
-    badgeIcon: Sparkles,
-    visualIcon: Watch,
-    accentColor: "text-emerald-500 dark:text-emerald-400",
-    accentBg: "bg-emerald-500",
-    accentBorder: "border-emerald-500/40",
-    badgeColor: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-    decorGradient: "from-emerald-500/20 via-transparent to-transparent",
+    productImage: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=85&w=800",
+    productAlt: "Smart Lifestyle Watch",
+    badgeText: "CERTIFIED REFURBISHED",
+    bannerBg: "bg-[#f5f5f0] dark:bg-secondary/40",
+    badgeBg: "bg-emerald-700 text-white",
+    ctaClass: "bg-foreground text-background hover:bg-foreground/90",
   },
 ];
 
@@ -111,94 +107,79 @@ export default function Hero() {
   }, [isPlaying, nextSlide, currentIndex]);
 
   const activeSlide = SLIDES[currentIndex];
-  const VisualIcon = activeSlide.visualIcon;
-  const BadgeIcon = activeSlide.badgeIcon;
 
   return (
     <div
-      className="relative w-full rounded-3xl overflow-hidden border border-border/70 bg-card shadow-sm hover:shadow-md transition-shadow group/hero"
+      className={`relative w-full rounded-2xl overflow-hidden border border-border/60 transition-colors duration-500 group/hero ${activeSlide.bannerBg}`}
       onMouseEnter={() => setIsPlaying(false)}
       onMouseLeave={() => setIsPlaying(true)}
       aria-roledescription="carousel"
-      aria-label="Promotions Carousel"
+      aria-label="Promotions Billboard"
     >
-      {/* Dynamic ambient backdrop light */}
-      <div
-        className={`pointer-events-none absolute -top-32 -right-32 size-96 rounded-full blur-3xl opacity-30 transition-all duration-700 bg-linear-to-br ${activeSlide.decorGradient}`}
-      />
-      <div
-        className={`pointer-events-none absolute -bottom-32 -left-32 size-96 rounded-full blur-3xl opacity-20 transition-all duration-700 bg-linear-to-tr ${activeSlide.decorGradient}`}
-      />
-
-      {/* Main slide display */}
-      <div className="relative z-10 px-5 py-6 sm:px-8 sm:py-8 md:px-10 md:py-10 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 min-h-[300px] md:min-h-[340px]">
-        {/* Text column */}
-        <div className="flex-1 max-w-xl text-left rtl:text-right">
-          {/* Tag pill */}
-          <div
-            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-semibold uppercase tracking-wider mb-2.5 transition-colors ${activeSlide.badgeColor}`}
-          >
-            <BadgeIcon className="size-3.5" />
-            <span>{t(activeSlide.tagKey)}</span>
+      {/* Billboard Main Layout: Clean split with typography and cutout photography */}
+      <div className="relative px-6 py-8 sm:px-10 sm:py-10 md:px-14 md:py-12 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-12 min-h-[290px] sm:min-h-[320px]">
+        {/* Left Column: Direct editorial copy */}
+        <div className="flex-1 max-w-lg text-left rtl:text-right z-10">
+          {/* Promotional badge */}
+          <div className="inline-flex items-center gap-2 mb-3">
+            <span
+              className={`px-2.5 py-0.5 rounded text-[11px] font-black tracking-wider uppercase ${activeSlide.badgeBg}`}
+            >
+              {activeSlide.badgeText}
+            </span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              {t(activeSlide.tagKey)}
+            </span>
           </div>
 
-          {/* Heading */}
-          <h1 className="text-xl xs:text-2xl sm:text-3xl md:text-4xl font-black text-foreground tracking-tight leading-tight mb-2">
+          {/* High-contrast solid headline */}
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[42px] font-black text-foreground tracking-tight leading-tight mb-2.5">
             <span>{t(activeSlide.titleKey)} </span>
-            <span className={`block sm:inline ${activeSlide.accentColor}`}>
+            <span className="block text-foreground/80 font-extrabold text-xl sm:text-2xl md:text-3xl mt-0.5">
               {t(activeSlide.highlightKey)}
             </span>
           </h1>
 
-          {/* Description */}
-          <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed mb-5 max-w-lg line-clamp-2 sm:line-clamp-3">
+          {/* Clean concise description */}
+          <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed mb-6 max-w-md line-clamp-2">
             {t(activeSlide.descKey)}
           </p>
 
-          {/* CTA Actions */}
-          <div className="flex flex-wrap items-center gap-3">
-            <Link href={activeSlide.link} className="inline-block">
-              <div
-                className={`px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow-xs hover:shadow-md transition-all flex items-center gap-2 cursor-pointer hover:-translate-y-0.5 ${activeSlide.accentBg}`}
-              >
-                <span>{t(activeSlide.ctaKey)}</span>
-                <ArrowRight className="size-4 rtl:rotate-180" />
-              </div>
+          {/* Clean pill CTA */}
+          <div className="flex items-center gap-3">
+            <Link
+              href={activeSlide.link}
+              className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold shadow-xs transition-transform hover:-translate-y-0.5 cursor-pointer ${activeSlide.ctaClass}`}
+            >
+              <span>{t(activeSlide.ctaKey)}</span>
+              <ArrowRight className="size-4 rtl:rotate-180" />
             </Link>
 
-            <Link href="/products" className="inline-block">
-              <div className="px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm text-foreground bg-secondary/80 hover:bg-secondary border border-border/60 transition-all hover:-translate-y-0.5 cursor-pointer">
-                {t("viewDeals")}
-              </div>
+            <Link
+              href="/products"
+              className="text-xs sm:text-sm font-semibold text-foreground hover:underline underline-offset-4 px-2 py-1"
+            >
+              {t("viewDeals")}
             </Link>
           </div>
         </div>
 
-        {/* Visual column with interactive highlight card */}
-        <div className="w-full md:w-auto shrink-0 flex items-center justify-center">
-          <div className="relative size-44 sm:size-52 md:size-56 rounded-2xl bg-secondary/40 border border-border/60 p-4 flex flex-col items-center justify-center text-center shadow-inner group/card">
-            {/* Subtle inner decorative glow */}
-            <div className="absolute inset-2.5 rounded-xl border border-dashed border-border/50 pointer-events-none" />
-
-            <div className="relative z-10 size-16 sm:size-20 md:size-24 rounded-2xl bg-card border border-border/80 shadow-xs flex items-center justify-center text-foreground transition-transform duration-500 group-hover/card:scale-105">
-              <VisualIcon className={`size-8 sm:size-10 md:size-12 transition-colors ${activeSlide.accentColor}`} />
-            </div>
-
-            <div className="relative z-10 mt-3 text-center">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
-                PRIM Exclusive
-              </span>
-              <p className="text-xs font-semibold text-foreground mt-0.5">
-                Curated Collection
-              </p>
-            </div>
+        {/* Right Column: Genuine crisp product photography in clean framing */}
+        <div className="w-full md:w-auto shrink-0 flex items-center justify-center z-10">
+          <div className="relative size-56 sm:size-64 md:size-72 rounded-2xl overflow-hidden bg-background border border-border/50 shadow-md group-hover/hero:shadow-lg transition-all duration-300 flex items-center justify-center p-3">
+            <img
+              key={activeSlide.id}
+              src={activeSlide.productImage}
+              alt={activeSlide.productAlt}
+              className="w-full h-full object-cover rounded-xl transition-transform duration-500 ease-out group-hover/hero:scale-102"
+            />
           </div>
         </div>
       </div>
 
-      {/* Bottom controls bar: Slide indicators, prev/next arrows & play/pause */}
-      <div className="relative z-10 px-5 py-2.5 bg-secondary/30 border-t border-border/50 flex items-center justify-between gap-4">
-        {/* Slide indicators / pagination */}
+      {/* Bottom controls: Clean dot indicators and pause/arrow buttons */}
+      <div className="relative px-6 py-2.5 bg-background/60 dark:bg-background/40 backdrop-blur-xs border-t border-border/40 flex items-center justify-between gap-4">
+        {/* Pagination Dots */}
         <div className="flex items-center gap-2">
           {SLIDES.map((slide, idx) => {
             const isActive = idx === currentIndex;
@@ -207,40 +188,40 @@ export default function Hero() {
                 key={slide.id}
                 onClick={() => setCurrentIndex(idx)}
                 aria-label={`Go to slide ${idx + 1}`}
-                className={`h-2 rounded-full transition-all duration-300 ${
+                className={`h-2 rounded-full transition-all duration-200 cursor-pointer ${
                   isActive
-                    ? `w-8 ${slide.accentBg}`
-                    : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                    ? "w-7 bg-foreground"
+                    : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60"
                 }`}
               />
             );
           })}
         </div>
 
-        {/* Carousel controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Playback & Navigation Controls */}
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => setIsPlaying((prev) => !prev)}
-            aria-label={isPlaying ? "Pause autoplay" : "Play autoplay"}
-            className="size-8 rounded-lg border border-border/60 hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            aria-label={isPlaying ? "Pause carousel" : "Play carousel"}
+            className="size-7 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
-            {isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5 ml-0.5" />}
+            {isPlaying ? <Pause className="size-3" /> : <Play className="size-3 ml-0.5" />}
           </button>
 
           <button
             onClick={prevSlide}
             aria-label="Previous slide"
-            className="size-8 rounded-lg border border-border/60 hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="size-7 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
-            <ChevronLeft className="size-4 rtl:rotate-180" />
+            <ChevronLeft className="size-3.5 rtl:rotate-180" />
           </button>
 
           <button
             onClick={nextSlide}
             aria-label="Next slide"
-            className="size-8 rounded-lg border border-border/60 hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="size-7 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
-            <ChevronRight className="size-4 rtl:rotate-180" />
+            <ChevronRight className="size-3.5 rtl:rotate-180" />
           </button>
         </div>
       </div>
