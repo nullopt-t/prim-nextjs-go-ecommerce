@@ -65,15 +65,15 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
             {sidebarOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
 
-          <div className="flex items-center gap-2">
-            <div className="size-8 rounded-lg bg-accent-brand flex items-center justify-center text-white font-bold text-sm shadow-xs">
-              P
-            </div>
+          <Link href="/" className="flex items-center gap-2 group hover:opacity-90 transition-opacity">
+            <span dir="ltr" className="font-black text-xl tracking-tighter text-foreground">
+              PRI<span className="text-accent-brand">M</span>
+            </span>
             <div className="hidden sm:flex flex-col">
-              <span className="font-bold text-sm leading-tight text-foreground">PRIM Admin</span>
-              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Enterprise Console</span>
+              <span className="font-bold text-xs leading-tight text-foreground">Admin</span>
+              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Console</span>
             </div>
-          </div>
+          </Link>
 
           <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground ml-6 bg-secondary/50 px-3 py-1.5 rounded-full border border-border">
             <span>Admin</span>

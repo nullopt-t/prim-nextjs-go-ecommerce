@@ -5,6 +5,7 @@ import { useAuthContext } from "@/context/AuthContext";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import UserTopTabs from "@/features/user/components/ui/userTopTabs";
 import MobileNav from "@/features/user/components/ui/mobileNav";
+import { Header, Footer } from "@/components/ui";
 import { Loader2 } from "lucide-react";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
@@ -33,14 +34,16 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <>
-      <div className="w-full px-4 sm:px-6 lg:px-10 py-5 sm:py-8 pb-24 md:pb-12">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
+      <Header />
+      <div className="w-full px-4 sm:px-6 lg:px-10 py-5 sm:py-8 pb-24 md:pb-12 flex-1">
         <UserTopTabs />
         <main className="w-full">{children}</main>
       </div>
       {/* Fixed bottom nav — mobile only */}
       <MobileNav />
-    </>
+      <Footer />
+    </div>
   );
 }
 

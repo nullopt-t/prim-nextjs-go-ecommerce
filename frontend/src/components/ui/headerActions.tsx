@@ -174,11 +174,6 @@ export function HeaderActions() {
 										>
 											<Heart className="size-4 text-muted-foreground shrink-0" />
 											<span>{t("wishlist")}</span>
-											{wishlistCount > 0 && (
-												<span className="ms-auto text-[10px] px-1.5 py-0.2 bg-accent-brand/10 text-accent-brand font-semibold rounded-full">
-													{wishlistCount}
-												</span>
-											)}
 										</Link>
 
 										<Link

@@ -124,7 +124,7 @@ export default function OverviewContent() {
           userService.getOrders().catch(() => ({ data: [] })),
           userService.getMyReviews().catch(() => ({ data: [] })),
           userService.getAddresses().catch(() => ({ data: [] })),
-          wishlistService.getItems(1, 4).catch(() => ({ data: [], meta: { totalItems: 0 } })),
+          wishlistService.getItems(1, 6).catch(() => ({ data: [], meta: { totalItems: 0 } })),
         ]);
 
         if (cancelled) return;
@@ -194,7 +194,6 @@ export default function OverviewContent() {
       id: "addresses",
       title: t("accountShortcuts.addresses"),
       desc: t("accountShortcuts.addressesDesc"),
-      badge: addressCount > 0 ? `${addressCount}` : undefined,
       href: "/user/address",
       icon: MapPin,
     },
@@ -209,7 +208,6 @@ export default function OverviewContent() {
       id: "reviews",
       title: t("accountShortcuts.reviews"),
       desc: t("accountShortcuts.reviewsDesc"),
-      badge: reviewCount > 0 ? `${reviewCount}` : undefined,
       href: "/user/reviews",
       icon: Star,
     },
@@ -224,35 +222,13 @@ export default function OverviewContent() {
 
   return (
     <div className="w-full flex flex-col gap-6 pb-16">
-      {/* ── 1. Greeting & Identity Card ── */}
-      <div className="bg-card border border-border/80 rounded-2xl p-4.5 sm:p-5 shadow-2xs flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="size-11 sm:size-12 rounded-full bg-accent-brand/10 text-accent-brand flex items-center justify-center font-bold text-base sm:text-lg border border-accent-brand/20 shrink-0">
-            {(user?.name || "U")[0]?.toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight truncate">
-              {t("title", { greeting: getGreeting(), name: user?.name || t("defaultUser") })}
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5 truncate font-mono">
-              {user?.email || "—"}
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* ── 2. Open Orders Sub-Section with Live Preview (Hidden when no active orders) ── */}
       {(loading || activeOrdersPreview.length > 0) && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-baseline gap-2">
-              <h2 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
-                {t("yourOrders.title")}
-              </h2>
-              {activeOrders.length > 0 && (
-                <span className="text-xs text-muted-foreground">({activeOrders.length})</span>
-              )}
-            </div>
+            <h2 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
+              {t("yourOrders.title")}
+            </h2>
             <Link
               href="/user/orders"
               className="inline-flex items-center gap-1 text-xs font-semibold text-accent-brand hover:underline"
@@ -337,14 +313,6 @@ export default function OverviewContent() {
                             className="w-full h-full object-cover object-center"
                           />
                         </div>
-                        {/* Count badge for overflow */}
-                        {items.length > 3 && (
-                          <div className="absolute bottom-2 end-2 z-20">
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-background/95 backdrop-blur-md border border-border text-foreground shadow-sm">
-                              +{items.length - 3}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     )}
                   </Link>
@@ -358,14 +326,9 @@ export default function OverviewContent() {
       {/* ── 3. Your Wishlist Sub-Section with Live Product Preview ── */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-baseline gap-2">
-            <h2 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
-              {t("yourLists.title")}
-            </h2>
-            {wishlistCount > 0 && (
-              <span className="text-xs text-muted-foreground">({wishlistCount})</span>
-            )}
-          </div>
+          <h2 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
+            {t("yourLists.title")}
+          </h2>
           <Link
             href="/user/wishlist"
             className="inline-flex items-center gap-1 text-xs font-semibold text-accent-brand hover:underline"
@@ -390,8 +353,8 @@ export default function OverviewContent() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-2 sm:gap-3 max-w-xl">
-            {wishlistPreview.map((item) => {
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 sm:gap-3 max-w-2xl">
+            {wishlistPreview.map((item, index) => {
               const product = item.product;
               const imgSrc = normalizeMediaUrl(product?.thumbnailUrl);
 
@@ -400,7 +363,9 @@ export default function OverviewContent() {
                   key={item.id}
                   href={`/products/${product?.slug || product?.id}`}
                   title={product?.title}
-                  className="group block aspect-square w-full rounded-2xl bg-secondary/50 border border-border/80 hover:border-accent-brand/50 overflow-hidden shadow-2xs hover:shadow-xs transition-all"
+                  className={`group aspect-square w-full rounded-2xl bg-secondary/50 border border-border/80 hover:border-accent-brand/50 overflow-hidden shadow-2xs hover:shadow-xs transition-all ${
+                    index >= 4 ? "hidden sm:block" : "block"
+                  }`}
                 >
                   <img
                     src={imgSrc}
@@ -439,11 +404,6 @@ export default function OverviewContent() {
                       <span className="text-xs sm:text-sm font-semibold text-foreground group-hover:text-accent-brand transition-colors truncate">
                         {card.title}
                       </span>
-                      {card.badge && (
-                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-secondary text-muted-foreground border border-border">
-                          {card.badge}
-                        </span>
-                      )}
                     </div>
                     <span className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
                       {card.desc}
