@@ -69,8 +69,9 @@ type ResendChallengeRequest struct {
 }
 
 type VerifyChallengeRequest struct {
-	Email string `json:"email" binding:"required,email"`
-	Code  string `json:"code" binding:"required,len=6,numeric"`
+	Email     string `json:"email" binding:"required,email"`
+	Code      string `json:"code" binding:"required,len=6,numeric"`
+	MergeCart *bool  `json:"merge_cart,omitempty"`
 }
 
 // StartChallenge godoc
@@ -174,13 +175,19 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 		return
 	}
 
-	// Merge guest cart if a guest session cookie is present
+	// Merge guest cart if a guest session cookie is present and merging is enabled (defaults to true)
+	shouldMerge := req.MergeCart == nil || *req.MergeCart
 	guestSessionID, err := c.Cookie("session_id")
-	if err == nil && guestSessionID != "" && h.cartMerger != nil {
-		if mergeErr := h.cartMerger.MergeGuestCart(c.Request.Context(), guestSessionID, authResult.UserID); mergeErr != nil {
-			h.logger.Error("Failed to merge guest cart", log.Meta{"error": mergeErr, "session_id": guestSessionID, "user_id": authResult.UserID})
-		} else {
-			// Clear guest session cookie upon successful merge
+	if err == nil && guestSessionID != "" {
+		if shouldMerge && h.cartMerger != nil {
+			if mergeErr := h.cartMerger.MergeGuestCart(c.Request.Context(), guestSessionID, authResult.UserID); mergeErr != nil {
+				h.logger.Error("Failed to merge guest cart", log.Meta{"error": mergeErr, "session_id": guestSessionID, "user_id": authResult.UserID})
+			} else {
+				// Clear guest session cookie upon successful merge
+				c.SetCookie("session_id", "", -1, "/", "", h.isProduction, true)
+			}
+		} else if !shouldMerge {
+			// User opted out of merging: clear guest session cookie to keep account cart pristine
 			c.SetCookie("session_id", "", -1, "/", "", h.isProduction, true)
 		}
 	}

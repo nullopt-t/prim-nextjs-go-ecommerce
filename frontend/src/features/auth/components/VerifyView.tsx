@@ -4,23 +4,38 @@ import { useState, useEffect } from "react";
 import Form from "@/features/auth/components/ui/form";
 import { useRouter } from "@/i18n/navigation";
 import { useAuthContext } from "@/context/AuthContext";
+import { useCart } from "@/hooks/useCart";
+import { GuestCartPreview } from "./ui/GuestCartPreview";
 import { validateOtpCode } from "../utils/validation";
 import { toast } from "sonner";
 
 export function VerifyView() {
   const router = useRouter();
   const { verifyChallenge, resendChallenge } = useAuthContext();
+  const { cartItems } = useCart();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState<string>("");
+  const [mergeCart, setMergeCart] = useState(true);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const stored = sessionStorage.getItem("identifier");
-      if (stored) {
-        setEmail(stored);
+      const storedEmail = sessionStorage.getItem("identifier");
+      if (storedEmail) {
+        setEmail(storedEmail);
+      }
+      const storedMerge = sessionStorage.getItem("merge_cart");
+      if (storedMerge !== null) {
+        setMergeCart(storedMerge === "true");
       }
     }
   }, []);
+
+  const handleToggleMerge = (val: boolean) => {
+    setMergeCart(val);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("merge_cart", String(val));
+    }
+  };
 
   const handleSubmit = async (_type: string, payload: { code: string }) => {
     const { isValid, error } = validateOtpCode(payload.code);
@@ -34,12 +49,18 @@ export function VerifyView() {
       const res = await verifyChallenge({
         email: email || undefined,
         code: payload.code.trim(),
+        mergeCart,
       });
       if (res.success) {
         toast.success("Welcome back!");
+        // Clear auth temp storage
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("identifier");
+          sessionStorage.removeItem("merge_cart");
+        }
         const searchParams = new URLSearchParams(window.location.search);
         const redirectParam = searchParams.get("redirect");
-        const destination = redirectParam ? decodeURIComponent(redirectParam) : "/user/overview";
+        const destination = redirectParam ? decodeURIComponent(redirectParam) : "/";
         router.push(destination as any);
       } else {
         toast.error(res.error || "Invalid verification code");
@@ -72,14 +93,36 @@ export function VerifyView() {
     router.push("/auth");
   };
 
+  const hasGuestItems = cartItems && cartItems.length > 0;
+
   return (
-    <Form
-      formType="verify"
-      handleSubmit={handleSubmit}
-      isLoading={isLoading}
-      userEmail={email}
-      onResendOtp={handleResendOtp}
-      onEditEmail={handleEditEmail}
-    />
+    <div
+      className={`w-full ${
+        hasGuestItems
+          ? "max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-14 items-start"
+          : "max-w-[420px] mx-auto"
+      }`}
+    >
+      <div className={`w-full ${hasGuestItems ? "lg:col-span-2" : ""}`}>
+        <Form
+          formType="verify"
+          handleSubmit={handleSubmit}
+          isLoading={isLoading}
+          userEmail={email}
+          onResendOtp={handleResendOtp}
+          onEditEmail={handleEditEmail}
+        />
+      </div>
+
+      {hasGuestItems && (
+        <div className="lg:col-span-3">
+          <GuestCartPreview
+            mergeCart={mergeCart}
+            onToggleMerge={handleToggleMerge}
+          />
+        </div>
+      )}
+    </div>
   );
 }
+

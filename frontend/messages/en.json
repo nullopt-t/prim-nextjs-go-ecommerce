@@ -51,6 +51,16 @@
       "subtitle": "We sent a 6-digit verification code to your email. Enter it below to proceed.",
       "title": "Verify OTP Code",
       "verifyButton": "Verify & Continue"
+    },
+    "guestCart": {
+      "title": "Your current selection",
+      "subtitle": "Items selected before sign-in",
+      "mergeLabel": "Keep items in your account",
+      "mergeDescription": "Save your selected items to continue shopping seamlessly.",
+      "total": "Estimated Total",
+      "remove": "Remove",
+      "removed": "Item removed from selection",
+      "unitsAvailable": "Only {count} units available"
     }
   },
   "cart": {

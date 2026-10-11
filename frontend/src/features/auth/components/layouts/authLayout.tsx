@@ -1,60 +1,51 @@
 "use client";
 
+import { Brand } from "@/components/ui/Brand";
 import { Link } from "@/i18n/navigation";
-import { Sparkles, House, Moon, Sun } from "lucide-react";
+import { House, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/context/theme";
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   const { theme, toggle } = useTheme();
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between p-4 sm:p-6 md:p-8 selection:bg-accent-brand/20">
-      {/* Top clean navigation bar */}
-      <header className="w-full max-w-5xl mx-auto flex items-center justify-between py-2">
-        <Link
-          href="/"
-          className="flex items-center gap-2 hover:opacity-85 transition-opacity"
-        >
-          <div className="size-8 rounded-md bg-accent-brand text-white flex items-center justify-center shadow-xs">
-            <Sparkles className="size-4" />
-          </div>
-          <span className="font-bold text-lg tracking-tight text-foreground">
-            PRIM
-          </span>
-        </Link>
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between selection:bg-accent-brand/20">
+      {/* Top header taking the exact same properties as Main Header (h-15 sm:h-16, px-3 sm:px-6 lg:px-8, no margins) */}
+      <header className="sticky top-0 z-50 w-full bg-background/85 backdrop-blur-md border-b border-border/80 shadow-xs transition-colors">
+        <div className="w-full px-3 sm:px-6 lg:px-8 h-15 sm:h-16 flex items-center justify-between">
+          <Brand />
 
-        <div className="flex items-center gap-2">
-          <Link
-            href="/"
-            aria-label="Home"
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors inline-flex items-center justify-center"
-          >
-            <House className="size-4" />
-          </Link>
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label="Toggle theme"
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors cursor-pointer inline-flex items-center justify-center"
-          >
-            {theme === "light" ? (
-              <Sun className="size-4" />
-            ) : (
-              <Moon className="size-4" />
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/"
+              aria-label="Home"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors inline-flex items-center justify-center cursor-pointer"
+            >
+              <House className="size-4" />
+            </Link>
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label="Toggle theme"
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors cursor-pointer inline-flex items-center justify-center"
+            >
+              {theme === "light" ? (
+                <Sun className="size-4" />
+              ) : (
+                <Moon className="size-4" />
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Main centered card */}
-      <main className="w-full flex-1 flex items-center justify-center py-8">
-        <div className="w-full max-w-[420px] bg-card border border-border rounded-md p-6 sm:p-8 shadow-xs">
-          {children}
-        </div>
+      {/* Main flat content taking exact main layout padding properties (px-3 sm:px-6 lg:px-8 py-4 sm:py-6) */}
+      <main className="w-full px-3 sm:px-6 lg:px-8 py-6 sm:py-10 flex-1 flex flex-col justify-center">
+        {children}
       </main>
 
-      {/* Bottom subtle footer */}
-      <footer className="w-full max-w-5xl mx-auto text-center py-2 text-xs text-muted-foreground">
+      {/* Bottom footer matching exact header horizontal padding */}
+      <footer className="w-full px-3 sm:px-6 lg:px-8 text-center py-4 text-xs text-muted-foreground border-t border-border/50">
         © {new Date().getFullYear()} PRIM. All rights reserved.
       </footer>
     </div>

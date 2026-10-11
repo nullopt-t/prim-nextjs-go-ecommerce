@@ -10,6 +10,7 @@ export interface AuthChallengePayload {
 export interface AuthVerifyPayload {
   email?: string;
   code: string;
+  mergeCart?: boolean;
 }
 
 export type AuthFormType = "login" | "verify" | "register";

@@ -19,7 +19,7 @@ interface AuthContextType {
   loading: boolean;
   startChallenge: (payload: { email: string }) => Promise<{ success: boolean; error?: string }>;
   resendChallenge: (payload: { email: string }) => Promise<{ success: boolean; error?: string }>;
-  verifyChallenge: (payload: { email?: string; code: string }) => Promise<{ success: boolean; error?: string }>;
+  verifyChallenge: (payload: { email?: string; code: string; mergeCart?: boolean }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
 }
@@ -82,9 +82,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const verifyChallenge = async (payload: { email?: string; code: string }) => {
+  const verifyChallenge = async (payload: { email?: string; code: string; mergeCart?: boolean }) => {
     try {
-      const res: any = await authService.verifyChallenge(payload);
+      const res: any = await authService.verifyChallenge({
+        email: payload.email,
+        code: payload.code,
+        ...(payload.mergeCart !== undefined ? { merge_cart: payload.mergeCart } : {}),
+      });
       if (res?.user) {
         setUser(formatUserData(res.user));
       } else {
