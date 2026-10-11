@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { useAuthContext } from "@/context/AuthContext";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import UserTopTabs from "@/features/user/components/ui/userTopTabs";
+import SettingsTopTabs from "@/features/user/components/ui/settingsTopTabs";
+import OrderDetailsTopNav from "@/features/user/components/ui/orderDetailsTopNav";
 import MobileNav from "@/features/user/components/ui/mobileNav";
 import { Header, Footer } from "@/components/ui";
 import { Loader2 } from "lucide-react";
@@ -33,11 +35,25 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     return null;
   }
 
+  const isSettings = pathname.startsWith("/user/settings");
+  // Check if inside order details sub-page: /user/orders/[id]
+  const isOrderDetails = /^\/user\/orders\/[^/]+$/.test(pathname);
+
+  const centerContent = isSettings ? (
+    <SettingsTopTabs />
+  ) : isOrderDetails ? (
+    <OrderDetailsTopNav />
+  ) : (
+    <UserTopTabs />
+  );
+
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
-      <Header />
-      <div className="w-full px-4 sm:px-6 lg:px-10 py-5 sm:py-8 pb-24 md:pb-12 flex-1">
-        <UserTopTabs />
+      <Header
+        centerContent={centerContent}
+        actionsContext={isSettings ? "settings" : "default"}
+      />
+      <div className="w-full px-3 sm:px-6 lg:px-8 py-5 sm:py-8 pb-24 md:pb-12 flex-1">
         <main className="w-full">{children}</main>
       </div>
       {/* Fixed bottom nav — mobile only */}

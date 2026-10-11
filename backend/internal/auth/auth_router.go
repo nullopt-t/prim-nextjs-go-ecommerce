@@ -64,6 +64,7 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	auth.Use(middleware.Authenticate(r.sessionStore))
 	auth.GET("/me", r.authHandler.GetMe)
 	auth.GET("/sessions", r.authHandler.GetSessions)
+	auth.DELETE("/sessions", r.authHandler.DeleteAllSessions)
 	auth.DELETE("/sessions/:id", r.authHandler.DeleteSessionByID)
 	auth.POST("/logout", r.authHandler.Logout)
 }

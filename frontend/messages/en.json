@@ -288,7 +288,11 @@
       "removedSuccess": "Session revoked successfully.",
       "signOutAll": "Sign Out Everywhere",
       "signOutAllDesc": "Immediately invalidate all active browser sessions across all devices.",
-      "signOutAllButton": "Sign Out All Devices"
+      "signOutAllButton": "Sign Out All Devices",
+      "confirmSignOutAllTitle": "Sign out of all devices?",
+      "confirmSignOutAllDesc": "You will be signed out from every active browser and device, including this current session. You will need to log back in.",
+      "confirmSignOutAllAction": "Yes, Sign Out Everywhere",
+      "cancel": "Cancel"
     },
     "danger": {
       "title": "Danger Zone",

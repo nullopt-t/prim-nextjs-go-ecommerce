@@ -68,14 +68,18 @@ export default function ActiveSessions() {
     }
   };
 
+  const [showConfirmAll, setShowConfirmAll] = useState(false);
+
   const handleLogoutAll = async () => {
     setLoggingOutAll(true);
     try {
+      await userService.deleteAllSessions();
       await logout();
       router.push("/auth");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to sign out");
       setLoggingOutAll(false);
+      setShowConfirmAll(false);
     }
   };
 
@@ -187,7 +191,7 @@ export default function ActiveSessions() {
         </div>
         <button
           type="button"
-          onClick={handleLogoutAll}
+          onClick={() => setShowConfirmAll(true)}
           disabled={loggingOutAll}
           className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors shadow-2xs shrink-0 cursor-pointer disabled:opacity-50"
         >
@@ -195,6 +199,47 @@ export default function ActiveSessions() {
           <span>{t("signOutAllButton")}</span>
         </button>
       </div>
+
+      {/* ── Confirmation Modal ── */}
+      {showConfirmAll && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl bg-card border border-border p-5 shadow-xl space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-3.5">
+              <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive shrink-0">
+                <LogOut className="size-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-semibold text-foreground text-sm">
+                  {t("confirmSignOutAllTitle")}
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t("confirmSignOutAllDesc")}
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={loggingOutAll}
+                onClick={() => setShowConfirmAll(false)}
+                className="px-4 py-2 rounded-xl border border-border/80 text-xs font-semibold text-muted-foreground hover:bg-secondary cursor-pointer transition-colors"
+              >
+                {t("cancel")}
+              </button>
+              <button
+                type="button"
+                disabled={loggingOutAll}
+                onClick={handleLogoutAll}
+                className="px-4 py-2 rounded-xl bg-destructive text-destructive-foreground text-xs font-bold hover:bg-destructive/90 cursor-pointer transition-colors disabled:opacity-50 inline-flex items-center gap-1.5 shadow-xs"
+              >
+                {loggingOutAll && <RefreshCw className="size-3.5 animate-spin" />}
+                <span>{t("confirmSignOutAllAction")}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

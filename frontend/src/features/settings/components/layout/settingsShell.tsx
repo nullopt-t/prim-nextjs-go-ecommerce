@@ -102,7 +102,7 @@ interface SettingsShellProps {
   isSubPage?: boolean;
 }
 
-export default function SettingsShell({ children, activeId, isSubPage = false }: SettingsShellProps) {
+export default function SettingsShell({ children, isSubPage = false }: SettingsShellProps) {
   const t = useTranslations("settings");
   const locale = useLocale();
   const isRtl = locale === "ar";
@@ -110,29 +110,18 @@ export default function SettingsShell({ children, activeId, isSubPage = false }:
 
   return (
     <div className="w-full flex flex-col pb-12">
-      {/* ── Page Header Strip ── */}
-      <div className="pb-3 border-b border-border/60 mb-4 flex flex-col gap-2">
-        {/* Mobile "Back to Settings" button shown when inside a sub-page */}
-        {isSubPage && (
-          <div className="sm:hidden">
-            <Link
-              href="/user/settings"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-accent-brand hover:underline cursor-pointer"
-            >
-              <BackIcon className="size-3.5" />
-              <span>{t("backToSettings")}</span>
-            </Link>
-          </div>
-        )}
-
-        <div className="flex flex-col">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{t("subtitle")}</p>
+      {/* Mobile-only "Back to Settings" strip when inside a sub-page */}
+      {isSubPage && (
+        <div className="sm:hidden pb-3 border-b border-border/60 mb-4">
+          <Link
+            href="/user/settings"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-accent-brand hover:underline cursor-pointer"
+          >
+            <BackIcon className="size-3.5" />
+            <span>{t("backToSettings")}</span>
+          </Link>
         </div>
-      </div>
-
-      {/* ── Desktop Sub Pages Navigation Bar ── */}
-      <SettingsSubNav activeId={activeId} />
+      )}
 
       {/* ── Sub Page Content ── */}
       <div className="w-full">{children}</div>

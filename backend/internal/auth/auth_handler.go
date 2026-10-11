@@ -318,6 +318,29 @@ func (h *Handler) DeleteSessionByID(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// DeleteAllSessions godoc
+//
+//	@Summary		Revoke all active user sessions
+//	@Description	Revokes and deletes all active sessions from Redis and clears auth cookies.
+//	@Tags			Auth
+//	@Produce		json
+//	@Success		204	"No Content"
+//	@Failure		401	{object}	api.UnauthorizedResponse
+//	@Failure		500	{object}	api.InternalServerErrorResponse
+//	@Router			/auth/sessions [delete]
+func (h *Handler) DeleteAllSessions(c *gin.Context) {
+	userID := c.MustGet("userID").(uuid.UUID)
+
+	err := h.sessionService.DeleteAllSessions(c.Request.Context(), userID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	h.clearAuthCookies(c)
+	c.Status(http.StatusNoContent)
+}
+
 // Logout godoc
 //
 //	@Summary		Logout

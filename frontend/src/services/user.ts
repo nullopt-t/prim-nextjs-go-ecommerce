@@ -27,6 +27,7 @@ export const userService = {
   // Sessions
   getSessions: () => api.get("/api/v1/auth/sessions"),
   deleteSession: (id: string) => api.delete(`/api/v1/auth/sessions/${id}`),
+  deleteAllSessions: () => api.delete("/api/v1/auth/sessions"),
 
   // Addresses
   getAddresses: () => api.get("/api/v1/user/addresses"),

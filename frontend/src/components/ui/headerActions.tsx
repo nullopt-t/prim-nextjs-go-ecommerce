@@ -22,7 +22,11 @@ import { useAuthContext } from "@/context/AuthContext";
 import { useWishlist } from "@/hooks/useWishlist";
 import { NotificationsDropdown } from "@/components/ui/notificationsDropdown";
 
-export function HeaderActions() {
+interface HeaderActionsProps {
+	context?: "default" | "settings";
+}
+
+export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 	const { theme, toggle } = useTheme();
 	const locale = useLocale();
 	const router = useRouter();
@@ -31,6 +35,8 @@ export function HeaderActions() {
 	const { user, isAuthenticated, logout } = useAuthContext();
 	const { wishlistCount } = useWishlist();
 	const t = useTranslations("common.header");
+
+	const isSettingsContext = context === "settings";
 
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const dropdownRef = useRef<HTMLDivElement>(null);
@@ -73,20 +79,22 @@ export function HeaderActions() {
 
 	return (
 		<div className="flex items-center gap-2 sm:gap-2.5">
-			{/* 1. Shopping Cart Button */}
-			<button
-				type="button"
-				onClick={openCart}
-				aria-label={t("cart")}
-				className="size-9 sm:size-10 rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all relative flex items-center justify-center cursor-pointer border border-border/40 hover:border-accent-brand/40 shadow-2xs"
-			>
-				<ShoppingCart className="size-4.5 sm:size-5" />
-				{cartCount > 0 && (
-					<span className="absolute -top-1 ltr:-right-1 rtl:-left-1 min-w-[18px] h-4.5 px-1 bg-accent-brand text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-xs ring-2 ring-background animate-in zoom-in duration-150">
-						{cartCount}
-					</span>
-				)}
-			</button>
+			{/* 1. Shopping Cart Button (Hidden in Settings context to isolate console feel) */}
+			{!isSettingsContext && (
+				<button
+					type="button"
+					onClick={openCart}
+					aria-label={t("cart")}
+					className="size-9 sm:size-10 rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all relative flex items-center justify-center cursor-pointer border border-border/40 hover:border-accent-brand/40 shadow-2xs"
+				>
+					<ShoppingCart className="size-4.5 sm:size-5" />
+					{cartCount > 0 && (
+						<span className="absolute -top-1 ltr:-right-1 rtl:-left-1 min-w-[18px] h-4.5 px-1 bg-accent-brand text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-xs ring-2 ring-background animate-in zoom-in duration-150">
+							{cartCount}
+						</span>
+					)}
+				</button>
+			)}
 
 			{/* 2. Notifications Center */}
 			{isAuthenticated && <NotificationsDropdown />}
@@ -161,37 +169,41 @@ export function HeaderActions() {
 						{/* Primary Navigation Links — Grouped by Context */}
 						{isAuthenticated && (
 							<div className="py-1 px-1.5 text-xs font-medium space-y-1">
-								{/* Context Group 1: Shopping */}
-								<div>
-									<span className="block px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-										{t("groupShopping")}
-									</span>
-									<div className="space-y-0.5">
-										<Link
-											href="/wishlist"
-											onClick={() => setIsMenuOpen(false)}
-											className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
-										>
-											<Heart className="size-4 text-muted-foreground shrink-0" />
-											<span>{t("wishlist")}</span>
-										</Link>
+								{/* Context Group 1: Shopping (Hidden in Settings context) */}
+								{!isSettingsContext && (
+									<div>
+										<span className="block px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+											{t("groupShopping")}
+										</span>
+										<div className="space-y-0.5">
+											<Link
+												href="/wishlist"
+												onClick={() => setIsMenuOpen(false)}
+												className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
+											>
+												<Heart className="size-4 text-muted-foreground shrink-0" />
+												<span>{t("wishlist")}</span>
+											</Link>
 
-										<Link
-											href="/user/orders"
-											onClick={() => setIsMenuOpen(false)}
-											className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
-										>
-											<Package className="size-4 text-muted-foreground shrink-0" />
-											<span>{t("orders")}</span>
-										</Link>
+											<Link
+												href="/user/orders"
+												onClick={() => setIsMenuOpen(false)}
+												className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
+											>
+												<Package className="size-4 text-muted-foreground shrink-0" />
+												<span>{t("orders")}</span>
+											</Link>
+										</div>
 									</div>
-								</div>
+								)}
 
 								{/* Context Group 2: Account & Security */}
-								<div className="border-t border-border/50 pt-1 mt-1">
-									<span className="block px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-										{t("groupAccount")}
-									</span>
+								<div className={!isSettingsContext ? "border-t border-border/50 pt-1 mt-1" : ""}>
+									{!isSettingsContext && (
+										<span className="block px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+											{t("groupAccount")}
+										</span>
+									)}
 									<div className="space-y-0.5">
 										<Link
 											href="/user/overview"
@@ -202,14 +214,16 @@ export function HeaderActions() {
 											<span>{t("accountHub")}</span>
 										</Link>
 
-										<Link
-											href="/user/settings"
-											onClick={() => setIsMenuOpen(false)}
-											className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
-										>
-											<Settings className="size-4 text-muted-foreground shrink-0" />
-											<span>{t("settings")}</span>
-										</Link>
+										{!isSettingsContext && (
+											<Link
+												href="/user/settings"
+												onClick={() => setIsMenuOpen(false)}
+												className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
+											>
+												<Settings className="size-4 text-muted-foreground shrink-0" />
+												<span>{t("settings")}</span>
+											</Link>
+										)}
 									</div>
 								</div>
 							</div>

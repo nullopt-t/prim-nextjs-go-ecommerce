@@ -17,26 +17,27 @@ export default function UserTopTabs() {
   const t = useTranslations("userNav");
 
   return (
-    <div className="hidden md:block w-full border-b border-border mb-6">
-      <nav aria-label="Account navigation" className="flex items-center gap-6 overflow-x-auto scrollbar-none -mb-px">
-        {accountTabKeys.map((tab) => {
-          const isActive = pathname === tab.path || pathname.startsWith(`${tab.path}/`);
+    <nav
+      aria-label="Account navigation"
+      className="flex items-center gap-1 sm:gap-2 lg:gap-3.5 overflow-x-auto scrollbar-none px-2"
+    >
+      {accountTabKeys.map((tab) => {
+        const isActive = pathname === tab.path || pathname.startsWith(`${tab.path}/`);
 
-          return (
-            <Link
-              key={tab.id}
-              href={tab.path}
-              className={`py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors duration-150 ${
-                isActive
-                  ? "border-foreground text-foreground font-semibold"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-              }`}
-            >
-              {t(tab.key)}
-            </Link>
-          );
-        })}
-      </nav>
-    </div>
+        return (
+          <Link
+            key={tab.id}
+            href={tab.path}
+            className={`py-1 px-1.5 text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ${
+              isActive
+                ? "text-foreground font-bold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t(tab.key)}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

@@ -173,3 +173,31 @@ func (s *SessionService) DeleteSessionByID(
 	s.logger.Info("session successfully deleted", log.Meta{"user_id": userID.String(), "session_id": sessionID})
 	return nil
 }
+
+func (s *SessionService) DeleteAllSessions(
+	ctx context.Context,
+	userID uuid.UUID,
+) error {
+	userSetKey := fmt.Sprintf("auth:user_sessions:%s", userID.String())
+
+	sessionIDs, err := s.redisClient.SMembers(ctx, userSetKey).Result()
+	if err != nil {
+		s.logger.Error("failed to get user sessions for deletion", log.Meta{"error": err, "user_id": userID.String()})
+		return err
+	}
+
+	pipe := s.redisClient.Pipeline()
+	for _, sid := range sessionIDs {
+		sessKey := fmt.Sprintf("auth:session:%s", sid)
+		pipe.Del(ctx, sessKey)
+	}
+	pipe.Del(ctx, userSetKey)
+
+	if _, err := pipe.Exec(ctx); err != nil {
+		s.logger.Error("failed to execute pipeline deleting all user sessions", log.Meta{"error": err, "user_id": userID.String()})
+		return err
+	}
+
+	s.logger.Info("all user sessions successfully deleted", log.Meta{"user_id": userID.String(), "count": len(sessionIDs)})
+	return nil
+}
