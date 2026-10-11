@@ -20,9 +20,9 @@ export function useFetch<T = any>(
         if (!isCancelled) {
           setData(result);
         }
-      } catch (error) {
+      } catch (error: any) {
         if (!isCancelled) {
-          setErrorMsg(error);
+          setErrorMsg(error?.message || (typeof error === "string" ? error : "An error occurred"));
         }
       } finally {
         if (!isCancelled) {
@@ -44,8 +44,8 @@ export function useFetch<T = any>(
       const result = await fetcher(endpoint);
       setData(result);
       return result;
-    } catch (error) {
-      setErrorMsg(error);
+    } catch (error: any) {
+      setErrorMsg(error?.message || (typeof error === "string" ? error : "An error occurred"));
       throw error;
     } finally {
       setLoading(false);

@@ -209,7 +209,8 @@ export function Checkout() {
 			toast.success("Order confirmed successfully!");
 			window.scrollTo({ top: 0, behavior: "smooth" });
 		} else {
-			toast.error(result.error || "Failed to place order");
+			const errorMsg = typeof result.error === "string" ? result.error : result.error?.message || "Failed to place order";
+			toast.error(errorMsg);
 		}
 	};
 

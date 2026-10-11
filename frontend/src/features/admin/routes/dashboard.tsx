@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
 import {
   DollarSign,
@@ -44,8 +44,13 @@ export function AdminDashboard() {
   const navigate = useRouter();
   const [timeframe, setTimeframe] = useState("monthly");
   
-  const products = getLocalAdminData("products", INITIAL_PRODUCTS);
-  const orders = getLocalAdminData("orders", INITIAL_ORDERS);
+  const [products, setProducts] = useState(INITIAL_PRODUCTS);
+  const [orders, setOrders] = useState(INITIAL_ORDERS);
+
+  useEffect(() => {
+    setProducts(getLocalAdminData("products", INITIAL_PRODUCTS));
+    setOrders(getLocalAdminData("orders", INITIAL_ORDERS));
+  }, []);
 
   // Compute live low stock products
   const lowStockItems = products.filter(

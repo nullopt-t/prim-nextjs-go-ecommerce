@@ -15,8 +15,9 @@ export function useMutation<T = any, A extends any[] = any[]>(
       const result = await mutationFn(...args);
       return { success: true, data: result };
     } catch (error: any) {
-      setErrorMsg(error?.message || "An error occurred");
-      return { success: false, error };
+      const msg = error?.message || (typeof error === "string" ? error : "An error occurred");
+      setErrorMsg(msg);
+      return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
