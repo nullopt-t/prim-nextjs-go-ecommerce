@@ -35,7 +35,6 @@ type CheckoutInput struct {
 	CustomerID      uuid.UUID
 	CustomerEmail   string
 	ShippingAddress model.Address
-	BillingAddress  model.Address
 	CouponID        *uuid.UUID
 }
 
@@ -112,7 +111,6 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		CustomerID:      &in.CustomerID,
 		CustomerEmail:   in.CustomerEmail,
 		ShippingAddress: in.ShippingAddress,
-		BillingAddress:  in.BillingAddress,
 		CouponID:        in.CouponID,
 		DiscountAmount:  totalDiscount,
 		Currency:        currency,

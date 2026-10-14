@@ -42,7 +42,6 @@ type OrderResponse struct {
 	CustomerID      *string             `json:"customerId,omitempty"`
 	CustomerEmail   string              `json:"customerEmail"`
 	ShippingAddress AddressResponse     `json:"shippingAddress"`
-	BillingAddress  AddressResponse     `json:"billingAddress"`
 	Status          model.OrderStatus   `json:"status"`
 	CouponID        *string             `json:"couponId,omitempty"`
 	DiscountAmount  int64               `json:"discountAmount"`
@@ -63,13 +62,6 @@ func mapOrderResponse(o *model.Order) OrderResponse {
 			State:      o.ShippingAddress.State,
 			PostalCode: o.ShippingAddress.PostalCode,
 			Country:    o.ShippingAddress.Country,
-		},
-		BillingAddress: AddressResponse{
-			Street:     o.BillingAddress.Street,
-			City:       o.BillingAddress.City,
-			State:      o.BillingAddress.State,
-			PostalCode: o.BillingAddress.PostalCode,
-			Country:    o.BillingAddress.Country,
 		},
 		Status:         o.Status,
 		DiscountAmount: o.DiscountAmount,

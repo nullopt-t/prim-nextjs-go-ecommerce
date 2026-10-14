@@ -28,7 +28,6 @@ interface Order {
   id: string;
   customerEmail: string;
   shippingAddress?: Address;
-  billingAddress?: Address;
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
   totalAmount: number;
   discountAmount: number;

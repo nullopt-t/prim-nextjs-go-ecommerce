@@ -20,6 +20,7 @@ export interface CartContextItem {
 }
 
 export interface CouponData {
+  id?: string;
   code: string;
   discountPercent?: number;
   fixedDiscount?: number;

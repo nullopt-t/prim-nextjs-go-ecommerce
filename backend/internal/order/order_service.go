@@ -23,7 +23,6 @@ type CreateOrderInput struct {
 	CustomerID      *uuid.UUID
 	CustomerEmail   string
 	ShippingAddress model.Address
-	BillingAddress  model.Address
 	CouponID        *uuid.UUID
 	DiscountAmount  int64
 	Currency        string
@@ -86,7 +85,6 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 			CustomerID:      in.CustomerID,
 			CustomerEmail:   in.CustomerEmail,
 			ShippingAddress: in.ShippingAddress,
-			BillingAddress:  in.BillingAddress,
 			Status:          model.OrderStatusPending,
 			CouponID:        in.CouponID,
 			DiscountAmount:  in.DiscountAmount,

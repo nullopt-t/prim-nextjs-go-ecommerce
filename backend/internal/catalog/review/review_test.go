@@ -181,9 +181,9 @@ func (s *ReviewHTTPTestSuite) createDeliveredOrder(userID uuid.UUID) uuid.UUID {
 	addrJSON := `{"street": "123 Main St", "city": "Cairo", "state": "Cairo", "country": "EG"}`
 
 	_, err := s.db.Exec(ctx, `
-		INSERT INTO orders (id, customer_id, customer_email, shipping_address, billing_address, status, total_amount, currency)
-		VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, 'delivered', 29999, 'USD')
-	`, orderID, userID, "customer@example.com", addrJSON, addrJSON)
+		INSERT INTO orders (id, customer_id, customer_email, shipping_address, status, total_amount, currency)
+		VALUES ($1, $2, $3, $4::jsonb, 'delivered', 29999, 'USD')
+	`, orderID, userID, "customer@example.com", addrJSON)
 	s.Require().NoError(err)
 
 	snapshotJSON := `{"title": "ANC Headphones Pro", "price": 29999}`

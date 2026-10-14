@@ -28,16 +28,12 @@ func (r *Repository) CreateOrder(
 	if err != nil {
 		return fmt.Errorf("marshal shipping address: %w", err)
 	}
-	billingJSON, err := json.Marshal(o.BillingAddress)
-	if err != nil {
-		return fmt.Errorf("marshal billing address: %w", err)
-	}
 
 	query := `
 		INSERT INTO orders (
-			id, customer_id, customer_email, shipping_address, billing_address,
+			id, customer_id, customer_email, shipping_address,
 			status, coupon_id, discount_amount, total_amount, currency, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
 		RETURNING created_at, updated_at
 	`
 	err = qe.QueryRow(
@@ -47,7 +43,6 @@ func (r *Repository) CreateOrder(
 		o.CustomerID,
 		o.CustomerEmail,
 		shippingJSON,
-		billingJSON,
 		o.Status,
 		o.CouponID,
 		o.DiscountAmount,
@@ -109,7 +104,7 @@ func (r *Repository) GetOrderByID(
 	id uuid.UUID,
 ) (*model.Order, error) {
 	query := `
-		SELECT id, customer_id, customer_email, shipping_address, billing_address,
+		SELECT id, customer_id, customer_email, shipping_address,
 		       status, coupon_id, discount_amount, total_amount, currency, created_at, updated_at
 		FROM orders
 		WHERE id = $1
@@ -117,14 +112,13 @@ func (r *Repository) GetOrderByID(
 	row := qe.QueryRow(ctx, query, id)
 
 	var o model.Order
-	var shippingBytes, billingBytes []byte
+	var shippingBytes []byte
 
 	err := row.Scan(
 		&o.ID,
 		&o.CustomerID,
 		&o.CustomerEmail,
 		&shippingBytes,
-		&billingBytes,
 		&o.Status,
 		&o.CouponID,
 		&o.DiscountAmount,
@@ -139,9 +133,6 @@ func (r *Repository) GetOrderByID(
 
 	if err := json.Unmarshal(shippingBytes, &o.ShippingAddress); err != nil {
 		return nil, fmt.Errorf("unmarshal shipping address: %w", err)
-	}
-	if err := json.Unmarshal(billingBytes, &o.BillingAddress); err != nil {
-		return nil, fmt.Errorf("unmarshal billing address: %w", err)
 	}
 
 	items, err := r.GetOrderItems(ctx, qe, o.ID)
@@ -158,7 +149,7 @@ func (r *Repository) GetOrdersByCustomerID(
 	customerID uuid.UUID,
 ) ([]model.Order, error) {
 	query := `
-		SELECT id, customer_id, customer_email, shipping_address, billing_address,
+		SELECT id, customer_id, customer_email, shipping_address,
 		       status, coupon_id, discount_amount, total_amount, currency, created_at, updated_at
 		FROM orders
 		WHERE customer_id = $1
@@ -173,14 +164,13 @@ func (r *Repository) GetOrdersByCustomerID(
 	orders := make([]model.Order, 0)
 	for rows.Next() {
 		var o model.Order
-		var shippingBytes, billingBytes []byte
+		var shippingBytes []byte
 
 		if err := rows.Scan(
 			&o.ID,
 			&o.CustomerID,
 			&o.CustomerEmail,
 			&shippingBytes,
-			&billingBytes,
 			&o.Status,
 			&o.CouponID,
 			&o.DiscountAmount,
@@ -194,9 +184,6 @@ func (r *Repository) GetOrdersByCustomerID(
 
 		if err := json.Unmarshal(shippingBytes, &o.ShippingAddress); err != nil {
 			return nil, fmt.Errorf("unmarshal shipping address: %w", err)
-		}
-		if err := json.Unmarshal(billingBytes, &o.BillingAddress); err != nil {
-			return nil, fmt.Errorf("unmarshal billing address: %w", err)
 		}
 
 		items, err := r.GetOrderItems(ctx, qe, o.ID)

@@ -374,7 +374,6 @@ CREATE TABLE IF NOT EXISTS orders (
     customer_id         uuid NULL,
     customer_email      text NOT NULL,
     shipping_address    jsonb NOT NULL,
-    billing_address     jsonb NOT NULL,
     status              order_status NOT NULL DEFAULT 'pending',
     coupon_id           uuid NULL,
     discount_amount     bigint NOT NULL DEFAULT 0,

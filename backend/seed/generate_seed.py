@@ -978,7 +978,7 @@ for p_idx, prod in enumerate(products):
         
         # Order
         shipping_addr = {"name": u_name, "line1": "123 Market St", "city": "San Francisco", "postal_code": "94103", "country": "USA"}
-        orders_data.append((o_id, u_id, u_email, shipping_addr, shipping_addr, 'delivered', None, 0, v_price, 'USD'))
+        orders_data.append((o_id, u_id, u_email, shipping_addr, 'delivered', None, 0, v_price, 'USD'))
         
         # Order Item
         v_thumb_obj_id = target_var[9]
@@ -1014,8 +1014,8 @@ for p_idx, prod in enumerate(products):
 
 
 # Insert Orders
-lines.append("INSERT INTO orders (id, customer_id, customer_email, shipping_address, billing_address, status, coupon_id, discount_amount, total_amount, currency, created_at, updated_at) VALUES")
-val_rows = [f"({esc(o[0])}, {esc(o[1])}, {esc(o[2])}, {json_esc(o[3])}, {json_esc(o[4])}, {esc(o[5])}, {esc(o[6])}, {o[7]}, {o[8]}, {esc(o[9])}, now() - INTERVAL '25 days', now() - INTERVAL '20 days')" for o in orders_data]
+lines.append("INSERT INTO orders (id, customer_id, customer_email, shipping_address, status, coupon_id, discount_amount, total_amount, currency, created_at, updated_at) VALUES")
+val_rows = [f"({esc(o[0])}, {esc(o[1])}, {esc(o[2])}, {json_esc(o[3])}, {esc(o[4])}, {esc(o[5])}, {o[6]}, {o[7]}, {esc(o[8])}, now() - INTERVAL '25 days', now() - INTERVAL '20 days')" for o in orders_data]
 lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 
 # 18. order_items

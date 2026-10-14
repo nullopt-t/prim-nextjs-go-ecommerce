@@ -66,8 +66,6 @@ type Order struct {
 	CustomerEmail string
 	// ShippingAddress is the destination address for physical parcel delivery.
 	ShippingAddress Address
-	// BillingAddress is the payment card billing address.
-	BillingAddress Address
 	// Status is the current fulfillment lifecycle state.
 	Status OrderStatus
 	// CouponID is the optional applied coupon promotion UUID.

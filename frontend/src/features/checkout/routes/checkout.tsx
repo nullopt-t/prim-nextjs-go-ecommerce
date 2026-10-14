@@ -42,6 +42,36 @@ function resolveShippingAddress(isCustom, custom, addresses, effectiveId) {
 	return `${name ? name + " - " : ""}${street}, ${addr.city}, ${addr.country}`;
 }
 
+function resolveStructuredAddress(isCustom, custom, addresses, effectiveId) {
+	if (isCustom || !addresses || addresses.length === 0) {
+		return {
+			street: custom.street || "Main Street",
+			city: custom.city || "Cairo",
+			state: custom.state || "",
+			postalCode: custom.postalCode || "00000",
+			country: custom.country || "Egypt",
+		};
+	}
+	const addr = addresses.find((a) => a.id === effectiveId);
+	if (!addr) {
+		return {
+			street: "Main Street",
+			city: "Cairo",
+			state: "",
+			postalCode: "00000",
+			country: "Egypt",
+		};
+	}
+	const street = addr.line1 ? `${addr.line1}${addr.line2 ? ", " + addr.line2 : ""}` : addr.street || "Main Street";
+	return {
+		street: street,
+		city: addr.city || "Cairo",
+		state: addr.state || "",
+		postalCode: addr.postalCode || addr.zipCode || "00000",
+		country: addr.country || "Egypt",
+	};
+}
+
 function resolvePaymentLabel(paymentType, cards, effectiveCardId, newCardData) {
 	if (paymentType === "saved-card") {
 		const card = cards?.find((c) => c.id === effectiveCardId);
@@ -75,7 +105,7 @@ export function Checkout() {
 
 	const [shippingSpeed, setShippingSpeed] = useState("standard"); // 'standard' | 'express'
 	const [deliveryNotes, setDeliveryNotes] = useState("");
-	const [paymentType, setPaymentType] = useState("saved-card"); // 'saved-card' | 'new-card' | 'cod' | 'apple-pay'
+	const [paymentType, setPaymentType] = useState("cod"); // default to COD
 	const [selectedCardId, setSelectedCardId] = useState("");
 
 	const [newCardData, setNewCardData] = useState({
@@ -179,33 +209,27 @@ export function Checkout() {
 		}
 
 		const finalShippingAddress = resolvedAddressString;
-		const paymentMethodLabel = resolvePaymentLabel(paymentType, cards, effectiveCardId, newCardData);
+		const structuredShippingAddress = resolveStructuredAddress(isCustomAddress, customAddress, addresses, effectiveAddressId);
 
 		const orderPayload = {
-			items: cartItems,
-			address: finalShippingAddress,
-			shippingMethod: shippingSpeed === "express" ? "Express Priority ($15.00)" : "Standard Delivery (Free)",
-			shipping: shippingCost === 0 ? "Free" : `$${shippingCost.toFixed(2)}`,
-			paymentMethod: paymentMethodLabel,
-			deliveryNotes: deliveryNotes.trim() || undefined,
-			subtotal: `$${subtotal.toFixed(2)}`,
-			discount: discount > 0 ? `-$${discount.toFixed(2)}` : null,
-			total: `$${finalTotal.toFixed(2)}`
+			shippingAddress: structuredShippingAddress,
+			couponId: appliedCoupon?.id || undefined,
 		};
 
 		const result = await checkout(orderPayload);
 
 		if (result.success) {
 			if (refreshCart) await refreshCart();
+			const orderData = result.data || {};
 			const randomOrderCode = generateOrderCode();
-			const fallbackOrder = {
-				id: `ORD-${randomOrderCode}`,
-				trackingNumber: `PRM-${randomOrderCode}`,
+			const completedOrderInfo = {
+				id: orderData.orderId || `ORD-${randomOrderCode}`,
+				trackingNumber: `PRM-${orderData.orderId ? orderData.orderId.slice(0, 8).toUpperCase() : randomOrderCode}`,
 				total: `$${finalTotal.toFixed(2)}`,
 				shippingAddress: finalShippingAddress,
 				date: "Today",
 			};
-			setCompletedOrder(result.data || fallbackOrder);
+			setCompletedOrder(completedOrderInfo);
 			toast.success("Order confirmed successfully!");
 			window.scrollTo({ top: 0, behavior: "smooth" });
 		} else {

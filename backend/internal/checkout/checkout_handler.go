@@ -15,14 +15,13 @@ type AddressRequest struct {
 	Street     string `json:"street" binding:"required"`
 	City       string `json:"city" binding:"required"`
 	State      string `json:"state"`
-	PostalCode string `json:"postalCode" binding:"required"`
+	PostalCode string `json:"postalCode"`
 	Country    string `json:"country" binding:"required"`
 }
 
 type CheckoutRequest struct {
-	CustomerEmail   string         `json:"customerEmail" binding:"required,email"`
+	CustomerEmail   string         `json:"customerEmail,omitempty"`
 	ShippingAddress AddressRequest `json:"shippingAddress" binding:"required"`
-	BillingAddress  AddressRequest `json:"billingAddress" binding:"required"`
 	CouponID        *uuid.UUID     `json:"couponId,omitempty"`
 }
 
@@ -71,24 +70,19 @@ func (h *CheckoutHandler) Checkout(c *gin.Context) {
 		return
 	}
 
+	shippingAddr := model.Address{
+		Street:     req.ShippingAddress.Street,
+		City:       req.ShippingAddress.City,
+		State:      req.ShippingAddress.State,
+		PostalCode: req.ShippingAddress.PostalCode,
+		Country:    req.ShippingAddress.Country,
+	}
+
 	in := &CheckoutInput{
-		CustomerID:    customerID,
-		CustomerEmail: req.CustomerEmail,
-		ShippingAddress: model.Address{
-			Street:     req.ShippingAddress.Street,
-			City:       req.ShippingAddress.City,
-			State:      req.ShippingAddress.State,
-			PostalCode: req.ShippingAddress.PostalCode,
-			Country:    req.ShippingAddress.Country,
-		},
-		BillingAddress: model.Address{
-			Street:     req.BillingAddress.Street,
-			City:       req.BillingAddress.City,
-			State:      req.BillingAddress.State,
-			PostalCode: req.BillingAddress.PostalCode,
-			Country:    req.BillingAddress.Country,
-		},
-		CouponID: req.CouponID,
+		CustomerID:      customerID,
+		CustomerEmail:   req.CustomerEmail,
+		ShippingAddress: shippingAddr,
+		CouponID:        req.CouponID,
 	}
 
 	createdOrder, err := h.checkoutService.Checkout(c.Request.Context(), in)

@@ -33,7 +33,6 @@ export function AdminOrders() {
                 paymentStatus: so.paymentStatus || "Paid",
                 items: so.items || so.orderItems?.length || 1,
                 shippingAddress: so.shippingAddress || "123 Main St, New York, NY",
-                billingAddress: so.billingAddress || so.shippingAddress || "123 Main St, New York, NY",
                 paymentMethod: so.paymentMethod || "Credit Card",
                 trackingNumber: so.trackingNumber || "TRK-PRM-9921",
                 itemsList: so.orderItems || so.itemsList || [],

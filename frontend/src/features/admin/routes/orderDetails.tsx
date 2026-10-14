@@ -36,7 +36,6 @@ export function AdminOrderDetails() {
               paymentStatus: remoteOrder.paymentStatus || "Paid",
               items: remoteOrder.items || remoteOrder.orderItems?.length || 1,
               shippingAddress: remoteOrder.shippingAddress || "123 Main St, New York, NY",
-              billingAddress: remoteOrder.billingAddress || remoteOrder.shippingAddress || "123 Main St, New York, NY",
               paymentMethod: remoteOrder.paymentMethod || "Credit Card",
               trackingNumber: remoteOrder.trackingNumber || "TRK-PRM-9921",
               itemsList: remoteOrder.orderItems || remoteOrder.itemsList || [],
