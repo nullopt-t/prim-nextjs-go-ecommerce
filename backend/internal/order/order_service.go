@@ -200,3 +200,31 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 	}
 	return nil
 }
+
+func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID uuid.UUID) error {
+	return s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
+		ord, err := s.orderRepo.GetOrderByID(ctx, tx, id)
+		if err != nil {
+			mappedErr := database.MapError(err)
+			if errors.Is(mappedErr, database.ErrNotFound) {
+				return apierr.NotFoundError("Order not found").WithCode(errcode.CodeOrderNotFound)
+			}
+			return apierr.InternalServerError("Failed to fetch order").Wrap(err)
+		}
+
+		if ord.CustomerID == nil || *ord.CustomerID != customerID {
+			return apierr.ForbiddenError("You are not authorized to cancel this order")
+		}
+
+		if ord.Status != model.OrderStatusPending {
+			return apierr.BadRequestError("Order cannot be cancelled in its current state").WithCode("INVALID_ORDER_STATUS")
+		}
+
+		note := "Cancelled by customer"
+		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, id, model.OrderStatusCanceled); err != nil {
+			return err
+		}
+		return s.orderRepo.AddStatusHistory(ctx, tx, id, model.OrderStatusCanceled, &note)
+	})
+}
+

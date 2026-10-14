@@ -221,3 +221,50 @@ func (h *OrderHandler) UpdateOrderStatus(c *gin.Context) {
 		Message: "Order status updated successfully",
 	})
 }
+
+// CancelOrder godoc
+//
+//	@Summary		Cancel order
+//	@Description	Allows a customer to cancel their order if it is in pending or confirmed status.
+//	@Tags			Orders
+//	@Produce		json
+//	@Param			id	path		string							true	"Order UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse		"Invalid UUID or order cannot be cancelled"
+//	@Failure		401	{object}	api.UnauthorizedErrorResponse	"Authentication required"
+//	@Failure		403	{object}	api.ForbiddenErrorResponse		"Not authorized to cancel this order"
+//	@Failure		404	{object}	api.NotFoundErrorResponse		"Order not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200	{object}	api.MessageResponse				"Cancellation confirmation"
+//	@Router			/orders/{id}/cancel [post]
+func (h *OrderHandler) CancelOrder(c *gin.Context) {
+	userIDVal, exists := c.Get("userID")
+	if !exists {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	customerID, ok := userIDVal.(uuid.UUID)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Invalid user identity"))
+		return
+	}
+
+	orderID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid order ID").WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid order UUID format",
+		}))
+		return
+	}
+
+	if err := h.orderService.CancelOrder(c.Request.Context(), orderID, customerID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{
+		Message: "Order cancelled successfully",
+	})
+}
+

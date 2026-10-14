@@ -32,5 +32,6 @@ func (r *OrderRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	{
 		ordersGroup.GET("", middleware.Authenticate(r.sessionStore), r.handler.GetOrders)
 		ordersGroup.GET("/:id", middleware.Authenticate(r.sessionStore), r.handler.GetOrderByID)
+		ordersGroup.POST("/:id/cancel", middleware.Authenticate(r.sessionStore), r.handler.CancelOrder)
 	}
 }

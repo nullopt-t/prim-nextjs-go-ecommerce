@@ -10,6 +10,7 @@ export const userService = {
   // Orders
   getOrders: () => api.get("/api/v1/orders"),
   getOrderById: (id: string) => api.get(`/api/v1/orders/${id}`),
+  cancelOrder: (id: string) => api.post(`/api/v1/orders/${id}/cancel`),
 
   // Reviews
   getMyReviews: () => api.get("/api/v1/reviews/me"),

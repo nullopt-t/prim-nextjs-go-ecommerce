@@ -7,6 +7,7 @@ import { userService } from "@/services/user";
 import { LazyImage } from "@/components/ui/lazyImage";
 import { normalizeMediaUrl } from "@/utils/media";
 import { useTranslations, useLocale } from "next-intl";
+import { toast } from "sonner";
 
 interface OrderItem {
   id: string;
@@ -102,6 +103,21 @@ export default function OrderDetailsContent() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancelOrder = async () => {
+    if (!order || !id) return;
+    setCancelling(true);
+    try {
+      await userService.cancelOrder(String(id));
+      setOrder({ ...order, status: "cancelled" });
+      toast.success("Order cancelled successfully");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel order");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -193,6 +209,16 @@ export default function OrderDetailsContent() {
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
+          {order.status === "pending" && (
+            <button
+              type="button"
+              onClick={handleCancelOrder}
+              disabled={cancelling}
+              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 border border-red-500/20 transition-colors disabled:opacity-50"
+            >
+              {cancelling ? "Cancelling..." : "Cancel Order"}
+            </button>
+          )}
           <Link
             href="/products"
             className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-accent-brand text-white hover:opacity-90 transition-opacity shadow-xs"
