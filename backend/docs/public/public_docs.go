@@ -2841,14 +2841,9 @@ const docTemplatepublic = `{
         "CheckoutRequest": {
             "type": "object",
             "required": [
-                "billingAddress",
-                "customerEmail",
                 "shippingAddress"
             ],
             "properties": {
-                "billingAddress": {
-                    "$ref": "#/definitions/AddressRequest"
-                },
                 "couponId": {
                     "type": "string"
                 },
@@ -3050,9 +3045,6 @@ const docTemplatepublic = `{
         "OrderResponse": {
             "type": "object",
             "properties": {
-                "billingAddress": {
-                    "$ref": "#/definitions/AddressResponse"
-                },
                 "couponId": {
                     "type": "string"
                 },

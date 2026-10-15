@@ -521,8 +521,6 @@ definitions:
     type: object
   CheckoutRequest:
     properties:
-      billingAddress:
-        $ref: '#/definitions/AddressRequest'
       couponId:
         type: string
       customerEmail:
@@ -530,8 +528,6 @@ definitions:
       shippingAddress:
         $ref: '#/definitions/AddressRequest'
     required:
-    - billingAddress
-    - customerEmail
     - shippingAddress
     type: object
   CheckoutResponse:
@@ -897,8 +893,6 @@ definitions:
     type: object
   OrderResponse:
     properties:
-      billingAddress:
-        $ref: '#/definitions/AddressResponse'
       couponId:
         type: string
       createdAt:
