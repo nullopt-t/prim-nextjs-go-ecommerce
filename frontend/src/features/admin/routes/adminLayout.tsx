@@ -14,10 +14,8 @@ import {
   CreditCard,
   Percent,
   Settings,
-  Store,
   Menu,
   X,
-  Bell,
   ChevronRight,
   ChevronDown,
   User,
@@ -110,32 +108,17 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate.push("/home")}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors cursor-pointer"
-          >
-            <Store className="size-3.5 text-accent-brand" />
-            <span className="hidden sm:inline">Storefront</span>
-          </button>
-
-          <div className="h-4 w-px bg-border"></div>
-
-          <button className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground relative">
-            <Bell className="size-4.5" />
-            <span className="absolute top-1.5 right-1.5 size-2 bg-accent-brand rounded-full"></span>
-          </button>
-
           {/* Account Dropdown */}
           <div className="relative" ref={userMenuRef}>
             <button
               type="button"
               onClick={() => setUserMenuOpen((prev) => !prev)}
-              className="flex items-center gap-2.5 pl-2 border-l border-border hover:opacity-85 transition-opacity cursor-pointer"
+              className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-secondary/70 transition-colors cursor-pointer"
             >
               <div className="size-8 rounded-full bg-accent-brand/10 border border-accent-brand/30 text-accent-brand flex items-center justify-center font-bold text-xs uppercase">
                 {user?.email ? user.email.slice(0, 2) : "SA"}
               </div>
-              <div className="hidden xl:flex flex-col text-left">
+              <div className="hidden sm:flex flex-col text-left">
                 <span className="text-xs font-semibold text-foreground leading-none">
                   {user?.name || (user?.role === "superadmin" ? "Superadmin" : "Administrator")}
                 </span>
