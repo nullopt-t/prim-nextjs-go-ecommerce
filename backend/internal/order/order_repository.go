@@ -252,3 +252,109 @@ func (r *Repository) UpdateOrderStatus(
 	}
 	return nil
 }
+
+type OrderListFilter struct {
+	CustomerID *uuid.UUID
+	Status     *string
+	Limit      int
+	Offset     int
+}
+
+func (r *Repository) ListOrders(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	filter OrderListFilter,
+) ([]model.Order, error) {
+	query := `
+		SELECT id, customer_id, customer_email, shipping_address,
+		       status, coupon_id, discount_amount, total_amount, currency, created_at, updated_at
+		FROM orders
+		WHERE 1=1
+	`
+	args := []any{}
+	i := 1
+
+	if filter.CustomerID != nil {
+		query += fmt.Sprintf(" AND customer_id = $%d", i)
+		args = append(args, *filter.CustomerID)
+		i++
+	}
+
+	if filter.Status != nil && *filter.Status != "" {
+		query += fmt.Sprintf(" AND status = $%d::order_status", i)
+		args = append(args, *filter.Status)
+		i++
+	}
+
+	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", i, i+1)
+	args = append(args, filter.Limit, filter.Offset)
+
+	rows, err := qe.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list orders: %w", err)
+	}
+	defer rows.Close()
+
+	var orders []model.Order
+	for rows.Next() {
+		var o model.Order
+		var shippingBytes []byte
+
+		if err := rows.Scan(
+			&o.ID,
+			&o.CustomerID,
+			&o.CustomerEmail,
+			&shippingBytes,
+			&o.Status,
+			&o.CouponID,
+			&o.DiscountAmount,
+			&o.TotalAmount,
+			&o.Currency,
+			&o.CreatedAt,
+			&o.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan order: %w", err)
+		}
+
+		_ = json.Unmarshal(shippingBytes, &o.ShippingAddress)
+
+		items, err := r.GetOrderItems(ctx, qe, o.ID)
+		if err == nil {
+			o.Items = items
+		}
+
+		orders = append(orders, o)
+	}
+
+	return orders, rows.Err()
+}
+
+func (r *Repository) CountOrders(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	filter OrderListFilter,
+) (int, error) {
+	query := `SELECT COUNT(*) FROM orders WHERE 1=1`
+	args := []any{}
+	i := 1
+
+	if filter.CustomerID != nil {
+		query += fmt.Sprintf(" AND customer_id = $%d", i)
+		args = append(args, *filter.CustomerID)
+		i++
+	}
+
+	if filter.Status != nil && *filter.Status != "" {
+		query += fmt.Sprintf(" AND status = $%d::order_status", i)
+		args = append(args, *filter.Status)
+		i++
+	}
+
+	var count int
+	if err := qe.QueryRow(ctx, query, args...).Scan(&count); err != nil {
+		return 0, fmt.Errorf("count orders: %w", err)
+	}
+
+	return count, nil
+}
+

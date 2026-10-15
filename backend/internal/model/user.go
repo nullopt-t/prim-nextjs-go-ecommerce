@@ -12,11 +12,15 @@ type UserRole string
 
 const (
 	// SuperRole designates the system superadministrator with unrestricted platform access.
-	SuperRole UserRole = "super"
+	SuperRole UserRole = "superadmin"
 	// AdminRole designates staff members with store and catalog management permissions.
 	AdminRole UserRole = "admin"
+	// SupportRole designates staff members with customer service and support permissions.
+	SupportRole UserRole = "support"
 	// VendorRole designates merchant/seller partners with localized product access.
 	VendorRole UserRole = "vendor"
+	// CustomerRole designates standard shoppers.
+	CustomerRole UserRole = "customer"
 )
 
 // AccountStatus represents the state of a customer or staff user account.
@@ -40,8 +44,12 @@ type User struct {
 
 	// Identifier is the primary authentication handle (e.g. email address or phone).
 	Identifier string
+	// FullName is the user's display name.
+	FullName *string
 	// Role is the administrative role tier (nil for regular store customers).
 	Role *UserRole
+	// IsEmailVerified indicates whether the user confirmed their email address.
+	IsEmailVerified bool
 
 	// EmailVerifiedAt is the timestamp when the user confirmed email ownership.
 	EmailVerifiedAt *time.Time

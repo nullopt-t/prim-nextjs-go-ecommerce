@@ -25,6 +25,8 @@ func (r *OrderRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		middleware.Authorize(model.AdminRole),
 	)
 	{
+		admin.GET("", r.handler.AdminListOrders)
+		admin.GET("/:id", r.handler.AdminGetOrderByID)
 		admin.PATCH("/:id/status", r.handler.UpdateOrderStatus)
 	}
 

@@ -177,6 +177,57 @@ func (s *OrderService) GetCustomerOrders(ctx context.Context, customerID uuid.UU
 	return orders, nil
 }
 
+func (s *OrderService) ListOrders(
+	ctx context.Context,
+	customerID *uuid.UUID,
+	status *string,
+	page int,
+	pageSize int,
+) ([]model.Order, *pagination.Page, error) {
+	var orders []model.Order
+	var pageMeta *pagination.Page
+
+	err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		if pageSize <= 0 {
+			pageSize = 10
+		}
+		if page <= 0 {
+			page = 1
+		}
+		offset := (page - 1) * pageSize
+
+		filter := OrderListFilter{
+			CustomerID: customerID,
+			Status:     status,
+			Limit:      pageSize,
+			Offset:     offset,
+		}
+
+		totalCount, err := s.orderRepo.CountOrders(ctx, db, filter)
+		if err != nil {
+			return err
+		}
+
+		res, err := s.orderRepo.ListOrders(ctx, db, filter)
+		if err != nil {
+			return err
+		}
+
+		orders = res
+		pageMeta = pagination.NewPage(page, pageSize, totalCount)
+		return nil
+	})
+
+	if err != nil {
+		return nil, nil, apierr.InternalServerError("Failed to list orders").
+			WithCode(apierr.CodeInternalError).
+			Wrap(err).
+			WithStack()
+	}
+
+	return orders, pageMeta, nil
+}
+
 func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, status model.OrderStatus, notes *string) error {
 	err := s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
 		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, id, status); err != nil {

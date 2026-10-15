@@ -21,7 +21,7 @@ BEGIN
         CREATE TYPE product_type AS ENUM ('simple', 'variable');
     END IF;
     IF to_regtype('user_role') IS NULL THEN
-        CREATE TYPE user_role AS ENUM ('customer', 'admin', 'support');
+        CREATE TYPE user_role AS ENUM ('customer', 'vendor', 'support', 'admin', 'superadmin');
     END IF;
     IF to_regtype('order_status') IS NULL THEN
         CREATE TYPE order_status AS ENUM ('pending', 'paid', 'processing', 'shipped', 'delivered', 'canceled', 'refunded');

@@ -25,28 +25,47 @@ type UserByEmailRequest struct {
 }
 
 type UserURIParam struct {
-	UserID uuid.UUID `json:"id" validate:"required,uuid"`
+	UserID uuid.UUID `uri:"id" json:"id" binding:"required"`
+}
+
+type UpdateUserRoleRequest struct {
+	Role string `json:"role" binding:"required"`
+}
+
+type UpdateUserStatusRequest struct {
+	Status         string     `json:"status" binding:"required"`
+	SuspendedUntil *time.Time `json:"suspendedUntil,omitempty"`
 }
 
 type UserResponse struct {
-	ID             uuid.UUID  `json:"id,omitempty"`
-	Email          string     `json:"email,omitempty"`
-	Phone          *string    `json:"phone,omitempty"`
-	Status         string     `json:"status,omitempty"`
-	SuspendedUntil *time.Time `json:"suspendedUntil,omitempty"`
-	LockedUntil    *time.Time `json:"lockedUntil,omitzero"`
-	CreatedAt      time.Time  `json:"createdAt,omitzero"`
-	UpdatedAt      time.Time  `json:"updatedAt,omitzero"`
+	ID              uuid.UUID  `json:"id"`
+	Email           string     `json:"email"`
+	FullName        *string    `json:"fullName,omitempty"`
+	Role            string     `json:"role"`
+	IsEmailVerified bool       `json:"isEmailVerified"`
+	Status          string     `json:"status"`
+	SuspendedUntil  *time.Time `json:"suspendedUntil,omitempty"`
+	LockedUntil     *time.Time `json:"lockedUntil,omitempty"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
 }
 
 func ToUserResponse(user model.User) UserResponse {
+	roleStr := "customer"
+	if user.Role != nil {
+		roleStr = string(*user.Role)
+	}
 	return UserResponse{
-		ID:             user.ID,
-		Status:         string(user.Status),
-		SuspendedUntil: user.SuspendedUntil,
-		LockedUntil:    user.LockedUntil,
-		CreatedAt:      user.CreatedAt,
-		UpdatedAt:      user.UpdatedAt,
+		ID:              user.ID,
+		Email:           user.Identifier,
+		FullName:        user.FullName,
+		Role:            roleStr,
+		IsEmailVerified: user.IsEmailVerified,
+		Status:          string(user.Status),
+		SuspendedUntil:  user.SuspendedUntil,
+		LockedUntil:     user.LockedUntil,
+		CreatedAt:       user.CreatedAt,
+		UpdatedAt:       user.UpdatedAt,
 	}
 }
 
@@ -82,7 +101,7 @@ func NewHandler(
 
 func (h *Handler) GetUserByID(c *gin.Context) {
 	var uri UserURIParam
-	if err := c.ShouldBindJSON(&uri); err != nil {
+	if err := c.ShouldBindUri(&uri); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
@@ -99,12 +118,7 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 	c.JSON(
 		http.StatusOK,
 		api.SuccessResponse{
-			Data: UserResponse{
-				ID:          user.ID,
-				LockedUntil: user.LockedUntil,
-				CreatedAt:   user.CreatedAt,
-				UpdatedAt:   user.UpdatedAt,
-			},
+			Data: ToUserResponse(*user),
 		},
 	)
 }
@@ -116,17 +130,29 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 		return
 	}
 
-	if q.PageSize == 0 {
-		q.PageSize = 5
+	if q.PageSize <= 0 {
+		q.PageSize = 10
 	}
 
-	if q.Page == 0 {
+	if q.Page <= 0 {
 		q.Page = 1
+	}
+
+	var rolePtr *string
+	if r := c.Query("role"); r != "" {
+		rolePtr = &r
+	}
+
+	var statusPtr *string
+	if s := c.Query("status"); s != "" {
+		statusPtr = &s
 	}
 
 	users, page, err := h.userService.GetAllUsers(
 		c.Request.Context(),
 		q,
+		rolePtr,
+		statusPtr,
 	)
 	if err != nil {
 		_ = c.Error(err)
@@ -136,7 +162,7 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 	c.JSON(
 		http.StatusOK,
 		api.SuccessResponse{
-			Data: ToUserListResponse(users),
+			Data: ToUserListResponse(users).Users,
 			Meta: page,
 		},
 	)
@@ -165,3 +191,104 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 		},
 	)
 }
+
+func (h *Handler) UpdateUserRole(c *gin.Context) {
+	var uri UserURIParam
+	if err := c.ShouldBindUri(&uri); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	var req UpdateUserRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	callerIDVal, exists := c.Get("userID")
+	if !exists {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+	callerID := callerIDVal.(uuid.UUID)
+
+	if err := h.userService.UpdateUserRole(
+		c.Request.Context(),
+		uri.UserID,
+		model.UserRole(req.Role),
+		callerID,
+	); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{
+		Message: "User role updated successfully",
+	})
+}
+
+func (h *Handler) UpdateAccountStatus(c *gin.Context) {
+	var uri UserURIParam
+	if err := c.ShouldBindUri(&uri); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	var req UpdateUserStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	callerIDVal, exists := c.Get("userID")
+	if !exists {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+	callerID := callerIDVal.(uuid.UUID)
+
+	if err := h.userService.UpdateAccountStatus(
+		c.Request.Context(),
+		uri.UserID,
+		model.AccountStatus(req.Status),
+		req.SuspendedUntil,
+		callerID,
+	); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{
+		Message: "User status updated successfully",
+	})
+}
+
+func (h *Handler) RevokeUserSessions(c *gin.Context) {
+	var uri UserURIParam
+	if err := c.ShouldBindUri(&uri); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	callerIDVal, exists := c.Get("userID")
+	if !exists {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+	callerID := callerIDVal.(uuid.UUID)
+
+	if err := h.userService.RevokeAllUserSessions(
+		c.Request.Context(),
+		uri.UserID,
+		callerID,
+	); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{
+		Message: "User sessions revoked successfully",
+	})
+}
+
+

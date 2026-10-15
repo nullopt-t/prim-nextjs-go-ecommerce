@@ -109,6 +109,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		app.logger,
 		app.config.AuthCfg.SessionTTL,
 	)
+	userService.SetSessionManager(sessionService)
 
 	authService := auth.NewAuthService(
 		app.logger,

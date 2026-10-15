@@ -24,20 +24,34 @@ type SessionStore interface {
 	GetSessionByID(ctx context.Context, sessionID string) (*model.UserSession, error)
 }
 
-func Authorize(requiredRole model.UserRole) gin.HandlerFunc {
+// Authorize verifies that the authenticated user possesses one of the allowed roles.
+// Users with SuperRole ("superadmin") automatically pass any staff-level check.
+func Authorize(allowedRoles ...model.UserRole) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		role, ok := c.Get("userRole")
+		roleVal, ok := c.Get("userRole")
 		if !ok {
 			_ = c.Error(apierr.UnauthorizedError())
 			c.Abort()
 			return
 		}
-		if role.(string) != strings.ToLower(string(requiredRole)) {
-			_ = c.Error(apierr.ForbiddenError())
-			c.Abort()
+
+		userRole := strings.ToLower(roleVal.(string))
+
+		// Superadmin has universal clearance across administrative checkpoints
+		if userRole == string(model.SuperRole) {
+			c.Next()
 			return
 		}
-		c.Next()
+
+		for _, allowed := range allowedRoles {
+			if userRole == strings.ToLower(string(allowed)) {
+				c.Next()
+				return
+			}
+		}
+
+		_ = c.Error(apierr.ForbiddenError("Insufficient permissions"))
+		c.Abort()
 	}
 }
 

@@ -268,3 +268,74 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 	})
 }
 
+func (h *OrderHandler) AdminListOrders(c *gin.Context) {
+	var q pagination.ListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	if q.PageSize <= 0 {
+		q.PageSize = 10
+	}
+	if q.Page <= 0 {
+		q.Page = 1
+	}
+
+	var customerIDPtr *uuid.UUID
+	if cidStr := c.Query("customerId"); cidStr != "" {
+		if parsed, err := uuid.Parse(cidStr); err == nil {
+			customerIDPtr = &parsed
+		}
+	}
+
+	var statusPtr *string
+	if s := c.Query("status"); s != "" {
+		statusPtr = &s
+	}
+
+	orders, page, err := h.orderService.ListOrders(
+		c.Request.Context(),
+		customerIDPtr,
+		statusPtr,
+		q.Page,
+		q.PageSize,
+	)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	ordersRes := make([]OrderResponse, 0, len(orders))
+	for i := range orders {
+		ordersRes = append(ordersRes, mapOrderResponse(&orders[i]))
+	}
+
+	c.JSON(http.StatusOK, api.SuccessResponse{
+		Data: ordersRes,
+		Meta: page,
+	})
+}
+
+func (h *OrderHandler) AdminGetOrderByID(c *gin.Context) {
+	orderID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid order ID").WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid order UUID format",
+		}))
+		return
+	}
+
+	ord, err := h.orderService.GetOrderByID(c.Request.Context(), orderID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{
+		Data: mapOrderResponse(ord),
+	})
+}
+
+
