@@ -19,17 +19,29 @@ import {
   ChevronDown,
   User,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Sun,
+  Moon,
+  Languages
 } from "lucide-react";
+import { useTheme } from "@/context/theme";
+import { useLocale } from "next-intl";
 
 export function AdminLayout({ children }: { children?: React.ReactNode }) {
   const { user, logout } = useAuthContext();
+  const { theme, toggle: toggleTheme } = useTheme();
+  const locale = useLocale();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const navigate = useRouter();
   const pathname = usePathname();
   const location = { pathname };
+
+  const toggleLanguage = () => {
+    const nextLocale = locale === "en" ? "ar" : "en";
+    navigate.replace(pathname, { locale: nextLocale });
+  };
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -90,7 +102,30 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
           </Link>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Theme Switcher Button */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="size-9 rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all flex items-center justify-center cursor-pointer border border-border/40 hover:border-accent-brand/40 shadow-2xs"
+            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+            title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+          >
+            {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+          </button>
+
+          {/* Language Switcher Button */}
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            className="h-9 px-2.5 rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all flex items-center gap-1.5 cursor-pointer border border-border/40 hover:border-accent-brand/40 shadow-2xs font-semibold text-xs"
+            aria-label="Switch Language"
+            title={locale === "en" ? "تغيير إلى العربية" : "Switch to English"}
+          >
+            <Languages className="size-3.5" />
+            <span className="uppercase">{locale === "en" ? "AR" : "EN"}</span>
+          </button>
+
           {/* Account Dropdown */}
           <div className="relative" ref={userMenuRef}>
             <button
@@ -111,7 +146,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
             </button>
 
             {userMenuOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-background border border-border rounded-2xl shadow-xl z-50 overflow-hidden py-1.5 animate-in fade-in-0 zoom-in-95 duration-100">
+              <div className="absolute right-0 rtl:left-0 rtl:right-auto mt-2 w-64 bg-background border border-border rounded-2xl shadow-xl z-50 overflow-hidden py-1.5 animate-in fade-in-0 zoom-in-95 duration-100">
                 <div className="px-4 py-3 border-b border-border/70 bg-secondary/20">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-xs text-foreground truncate">{user?.name || "Superadmin"}</p>
@@ -123,6 +158,36 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                 </div>
 
                 <div className="p-1.5 space-y-0.5 text-xs font-medium">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleTheme();
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      {theme === "light" ? <Moon className="size-4 text-muted-foreground" /> : <Sun className="size-4 text-muted-foreground" />}
+                      <span>Theme</span>
+                    </div>
+                    <span className="text-[11px] font-semibold text-muted-foreground capitalize">{theme}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleLanguage();
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Languages className="size-4 text-muted-foreground" />
+                      <span>Language</span>
+                    </div>
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase">{locale === "en" ? "العربية" : "English"}</span>
+                  </button>
+
+                  <div className="my-1 border-t border-border/50"></div>
+
                   <Link
                     href="/user/overview"
                     onClick={() => setUserMenuOpen(false)}

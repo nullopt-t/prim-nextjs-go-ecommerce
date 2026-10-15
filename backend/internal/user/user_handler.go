@@ -101,15 +101,15 @@ func NewHandler(
 }
 
 func (h *Handler) GetUserByID(c *gin.Context) {
-	var uri UserURIParam
-	if err := c.ShouldBindUri(&uri); err != nil {
-		validation.ValidationError(c, err)
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid user ID"))
 		return
 	}
 
 	user, err := h.userService.GetUserByID(
 		c.Request.Context(),
-		uri.UserID,
+		userID,
 	)
 	if err != nil {
 		_ = c.Error(err)
@@ -170,15 +170,15 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 }
 
 func (h *Handler) DeleteUser(c *gin.Context) {
-	var uri UserURIParam
-	if err := c.ShouldBindUri(&uri); err != nil {
-		validation.ValidationError(c, err)
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid user ID"))
 		return
 	}
 
-	err := h.userService.DeleteUserByID(
+	err = h.userService.DeleteUserByID(
 		c.Request.Context(),
-		uri.UserID,
+		userID,
 	)
 	if err != nil {
 		_ = c.Error(err)
@@ -194,9 +194,9 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 }
 
 func (h *Handler) UpdateUserRole(c *gin.Context) {
-	var uri UserURIParam
-	if err := c.ShouldBindUri(&uri); err != nil {
-		validation.ValidationError(c, err)
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid user ID"))
 		return
 	}
 
@@ -215,7 +215,7 @@ func (h *Handler) UpdateUserRole(c *gin.Context) {
 
 	if err := h.userService.UpdateUserRole(
 		c.Request.Context(),
-		uri.UserID,
+		userID,
 		model.UserRole(req.Role),
 		callerID,
 	); err != nil {
@@ -229,9 +229,9 @@ func (h *Handler) UpdateUserRole(c *gin.Context) {
 }
 
 func (h *Handler) UpdateAccountStatus(c *gin.Context) {
-	var uri UserURIParam
-	if err := c.ShouldBindUri(&uri); err != nil {
-		validation.ValidationError(c, err)
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid user ID"))
 		return
 	}
 
@@ -250,7 +250,7 @@ func (h *Handler) UpdateAccountStatus(c *gin.Context) {
 
 	if err := h.userService.UpdateAccountStatus(
 		c.Request.Context(),
-		uri.UserID,
+		userID,
 		model.AccountStatus(req.Status),
 		req.SuspendedUntil,
 		callerID,
@@ -265,9 +265,9 @@ func (h *Handler) UpdateAccountStatus(c *gin.Context) {
 }
 
 func (h *Handler) RevokeUserSessions(c *gin.Context) {
-	var uri UserURIParam
-	if err := c.ShouldBindUri(&uri); err != nil {
-		validation.ValidationError(c, err)
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid user ID"))
 		return
 	}
 
@@ -280,7 +280,7 @@ func (h *Handler) RevokeUserSessions(c *gin.Context) {
 
 	if err := h.userService.RevokeAllUserSessions(
 		c.Request.Context(),
-		uri.UserID,
+		userID,
 		callerID,
 	); err != nil {
 		_ = c.Error(err)
