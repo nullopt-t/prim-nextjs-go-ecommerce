@@ -16,7 +16,6 @@ import {
   Settings,
   Menu,
   X,
-  ChevronRight,
   ChevronDown,
   User,
   LogOut,
@@ -67,16 +66,6 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
     { name: "Settings", path: "/admin/settings", icon: Settings },
   ];
 
-  // Helper to get active page title
-  const getActiveTitle = () => {
-    const currentPath = location.pathname;
-    if (currentPath.startsWith("/admin/orders/")) return "Order Details";
-    const found = navItems.find((item) =>
-      item.exact ? currentPath === item.path : currentPath.startsWith(item.path)
-    );
-    return found ? found.name : "Admin Control Panel";
-  };
-
   return (
     <div className="min-h-screen bg-muted/20 text-foreground flex flex-col font-sans">
       {/* Top Bar */}
@@ -99,12 +88,6 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
               <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Console</span>
             </div>
           </Link>
-
-          <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground ml-6 bg-secondary/50 px-3 py-1.5 rounded-full border border-border">
-            <span>Admin</span>
-            <ChevronRight className="size-3" />
-            <span className="font-semibold text-foreground">{getActiveTitle()}</span>
-          </div>
         </div>
 
         <div className="flex items-center gap-3">
