@@ -13,6 +13,8 @@ import {
 	Sun,
 	Moon,
 	ChevronDown,
+	Shield,
+	ShieldAlert,
 } from "lucide-react";
 import { useTheme } from "@/context/theme";
 import { useLocale, useTranslations } from "next-intl";
@@ -143,9 +145,16 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 						<div className="px-4 py-2.5 border-b border-border/60">
 							{isAuthenticated && user ? (
 								<div>
-									<p className="font-semibold text-foreground text-sm truncate">
-										{user.name || "Customer"}
-									</p>
+									<div className="flex items-center justify-between gap-2">
+										<p className="font-semibold text-foreground text-sm truncate">
+											{user.name || "Customer"}
+										</p>
+										{(user.role === "admin" || user.role === "superadmin") && (
+											<span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+												{user.role}
+											</span>
+										)}
+									</div>
 									<p className="text-muted-foreground text-xs truncate">{user.email}</p>
 								</div>
 							) : (
@@ -165,6 +174,31 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 								</div>
 							)}
 						</div>
+
+						{/* Administrative Access Group (For Admin and Superadmin) */}
+						{isAuthenticated && (user?.role === "admin" || user?.role === "superadmin") && (
+							<div className="p-1.5 border-b border-border/60 bg-purple-500/5">
+								<Link
+									href="/admin/customers"
+									onClick={() => setIsMenuOpen(false)}
+									className="flex items-center justify-between px-3 py-2 rounded-xl bg-purple-500/15 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30 text-xs font-bold transition-all shadow-2xs"
+								>
+									<span className="flex items-center gap-2">
+										{user.role === "superadmin" ? (
+											<ShieldAlert className="size-4 text-purple-600 dark:text-purple-400" />
+										) : (
+											<Shield className="size-4 text-purple-600 dark:text-purple-400" />
+										)}
+										<span>
+											{user.role === "superadmin" ? "Superadmin Console" : "Admin Console"}
+										</span>
+									</span>
+									<span className="text-[10px] uppercase font-bold tracking-wider opacity-80">
+										Enter →
+									</span>
+								</Link>
+							</div>
+						)}
 
 						{/* Primary Navigation Links — Grouped by Context */}
 						{isAuthenticated && (
