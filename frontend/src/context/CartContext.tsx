@@ -62,6 +62,7 @@ interface CartContextType {
   removeFromCart: (id: string) => Promise<{ success: boolean; error?: string }>;
   clearCart: () => Promise<{ success: boolean; error?: string }>;
   refreshCart: () => Promise<void>;
+  resetCart: () => void;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -84,6 +85,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
   const toggleCart = () => setIsCartOpen((prev) => !prev);
+
+  const resetCart = useCallback(() => {
+    setCartItems([]);
+    setCartSummary({
+      subtotal: 0,
+      discount: 0,
+      shipping: 0,
+      tax: 0,
+      total: 0,
+    });
+    setAppliedCoupon(null);
+  }, []);
 
   const normalizeCartData = (res: any) => {
     const rawCart = res?.data || res || {};
@@ -122,6 +135,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         shipping: (rawCart.summary.shipping || 0) / 100,
         tax: (rawCart.summary.tax || 0) / 100,
         total: (rawCart.summary.total || 0) / 100,
+      });
+    } else {
+      setCartSummary({
+        subtotal: 0,
+        discount: 0,
+        shipping: 0,
+        tax: 0,
+        total: 0,
       });
     }
   };
@@ -242,6 +263,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         removeFromCart,
         clearCart,
         refreshCart: () => fetchCart(false),
+        resetCart,
       }}
     >
       {children}

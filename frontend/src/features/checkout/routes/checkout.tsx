@@ -83,7 +83,7 @@ function resolvePaymentLabel(paymentType, cards, effectiveCardId, newCardData) {
 }
 
 export function Checkout() {
-	const { cartItems, refreshCart, appliedCoupon } = useCart();
+	const { cartItems, refreshCart, resetCart, appliedCoupon } = useCart();
 	const { checkout, loading: placingOrder } = useCheckout();
 	const { addresses } = useAddresses();
 	const { cards } = usePaymentMethods();
@@ -219,6 +219,7 @@ export function Checkout() {
 		const result = await checkout(orderPayload);
 
 		if (result.success) {
+			if (resetCart) resetCart();
 			if (refreshCart) await refreshCart();
 			const orderData = result.data || {};
 			const randomOrderCode = generateOrderCode();

@@ -259,6 +259,7 @@ func (r *CartRepository) ClearCart(
 	qe database.QueryExecutor,
 	cartID uuid.UUID,
 ) error {
+	// TODO : mark it as deleted and delete it in the background 
 	query := `
 		DELETE FROM cart_items
 		WHERE cart_id = $1
