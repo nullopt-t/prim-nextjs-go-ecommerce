@@ -42,4 +42,18 @@ export const catalogService = {
   createProduct: (payload: any) => api.post("/api/v1/products", payload),
   updateProduct: (id: string, payload: any) => api.patch(`/api/v1/products/${id}`, payload),
   deleteProduct: (id: string) => api.delete(`/api/v1/products/${id}`),
+
+  // Category Admin
+  createCategory: (payload: { name: string; parentId?: string }) =>
+    api.post("/api/v1/admin/categories", payload),
+  updateCategory: (id: string, payload: { name?: string; parentId?: string }) =>
+    api.patch(`/api/v1/admin/categories/${id}`, payload),
+
+  // Brand Admin
+  createBrand: (payload: { name: string; link?: string }) =>
+    api.post("/api/v1/admin/brands", payload),
+  updateBrand: (id: string, payload: { name?: string; link?: string }) =>
+    api.patch(`/api/v1/admin/brands/${id}`, payload),
+  deleteBrand: (id: string) =>
+    api.delete(`/api/v1/admin/brands/${id}`),
 };

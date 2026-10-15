@@ -1,21 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UploadCloud, Search, Trash2, Copy, Check, Eye, X } from "lucide-react";
-import { INITIAL_MEDIA, getLocalAdminData, setLocalAdminData } from "../data/mockAdminData";
+import { adminService } from "@/services/admin";
 import { toast } from "sonner";
 
 export function AdminMedia() {
-  const [mediaList, setMediaList] = useState(() => getLocalAdminData("media", INITIAL_MEDIA));
+  const [mediaList, setMediaList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [copiedId, setCopiedId] = useState(null);
-  const [previewItem, setPreviewItem] = useState(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [previewItem, setPreviewItem] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const saveMedia = (updated) => {
-    setMediaList(updated);
-    setLocalAdminData("media", updated);
+  const loadMedia = async () => {
+    try {
+      setLoading(true);
+      const res: any = await adminService.getMedia({ pageSize: 50 });
+      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setMediaList(list.map((m: any) => ({
+        id: m.id,
+        name: m.objectKey || `media-${m.id.slice(0, 8)}`,
+        size: `${((m.fileSize || 500000) / (1024 * 1024)).toFixed(1)} MB`,
+        type: (m.contentType || "").includes("image") ? "Image" : "Media",
+        dimensions: "1200x1200",
+        url: m.url || `http://localhost:9000/${m.bucket || "product-media"}/${m.objectKey}`,
+        uploadedAt: m.createdAt ? m.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10)
+      })));
+    } catch {
+      toast.error("Failed to load media assets from server");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSimulateUpload = (e) => {
+  useEffect(() => {
+    loadMedia();
+  }, []);
+
+  const handleSimulateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -27,25 +48,25 @@ export function AdminMedia() {
         size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
         type: file.type.includes("image") ? "Image" : "Document",
         dimensions: "1200x1200",
-        url: URL.createObjectURL(file) || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80",
+        url: URL.createObjectURL(file),
         uploadedAt: new Date().toISOString().split("T")[0]
       };
-      saveMedia([newMedia, ...mediaList]);
+      setMediaList([newMedia, ...mediaList]);
       setIsUploading(false);
       toast.success("File uploaded to media library!");
     }, 800);
   };
 
-  const handleCopyUrl = (url, id) => {
+  const handleCopyUrl = (url: string, id: string) => {
     navigator.clipboard.writeText(url);
     setCopiedId(id);
     toast.success("Media URL copied to clipboard!");
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: string) => {
     if (confirm("Delete this media asset?")) {
-      saveMedia(mediaList.filter((m) => m.id !== id));
+      setMediaList(mediaList.filter((m) => m.id !== id));
       toast.success("Media file deleted");
     }
   };

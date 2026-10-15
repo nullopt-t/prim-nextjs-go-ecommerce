@@ -18,6 +18,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/user"
+	"github.com/nullopt-t/prim-backend/internal/admin"
 	"github.com/minio/minio-go/v7"
 
 	"context"
@@ -274,6 +275,13 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	checkoutHandler := checkout.NewHandler(checkoutService)
 	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionService)
 	checkoutRouter.MapRoutes(v1)
+
+	// admin backoffice
+	adminRepo := admin.NewRepository()
+	adminService := admin.NewService(txRunner, adminRepo)
+	adminHandler := admin.NewHandler(adminService)
+	adminRouter := admin.NewRouter(adminHandler, sessionService)
+	adminRouter.MapRoutes(v1)
 }
 
 func (app *App) Shutdown() {

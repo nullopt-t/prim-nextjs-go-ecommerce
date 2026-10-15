@@ -1,109 +1,101 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, X } from "lucide-react";
-import { INITIAL_PROMOTIONS, getLocalAdminData, setLocalAdminData } from "../data/mockAdminData";
-import { promotionService } from "@/services/promotions";
+import { adminService } from "@/services/admin";
 import { toast } from "sonner";
 
 export function AdminPromotions() {
-  const [promotions, setPromotions] = useState(() => getLocalAdminData("promotions", INITIAL_PROMOTIONS));
+  const [promotions, setPromotions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchPromos = async () => {
-      try {
-        const remotePromos = await promotionService.getPromotions();
-        if (isMounted && Array.isArray(remotePromos) && remotePromos.length > 0) {
-          setPromotions((current) => {
-            const merged = [...current];
-            remotePromos.forEach((rp) => {
-              const existingIdx = merged.findIndex((m) => m.code === rp.code || m.id === rp.id);
-              if (existingIdx >= 0) {
-                merged[existingIdx] = { ...merged[existingIdx], ...rp };
-              } else {
-                merged.unshift(rp);
-              }
-            });
-            setLocalAdminData("promotions", merged);
-            return merged;
-          });
-        }
-      } catch {
-        // Fallback to local admin data
-      }
-    };
+  const loadPromos = async () => {
+    try {
+      setLoading(true);
+      const res: any = await adminService.getPromotions();
+      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setPromotions(list.map((p: any) => ({
+        id: p.id,
+        code: p.code,
+        type: p.discountType === "percentage" ? "Percentage" : "Fixed Amount",
+        value: p.discountType === "percentage" ? `${p.discountValue}%` : `$${(p.discountValue / 100).toFixed(2)}`,
+        discountPercent: p.discountType === "percentage" ? p.discountValue : 0,
+        fixedDiscount: p.discountType === "fixed_amount" ? p.discountValue / 100 : 0,
+        usageLimit: p.usageLimit || 500,
+        currentUsage: 12,
+        status: p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : "Active",
+        startDate: p.startsAt ? p.startsAt.slice(0, 10) : "2026-09-01",
+        endDate: p.expiresAt ? p.expiresAt.slice(0, 10) : "2026-12-31"
+      })));
+    } catch {
+      toast.error("Failed to load promotions from server");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchPromos();
-    return () => { isMounted = false; };
+  useEffect(() => {
+    loadPromos();
   }, []);
 
   const [formData, setFormData] = useState({
     code: "",
     type: "Percentage",
-    value: "15%",
+    value: "15",
     usageLimit: 200,
     startDate: "2026-08-01",
     endDate: "2026-12-31"
   });
 
-  const savePromotions = (updated) => {
-    setPromotions(updated);
-    setLocalAdminData("promotions", updated);
+  const handleToggleStatus = async (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === "Active" ? "disabled" : "active";
+    try {
+      await adminService.updatePromotionStatus(id, nextStatus);
+      toast.success("Promotion status updated!");
+      loadPromos();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to update status");
+    }
   };
 
-  const handleToggleStatus = (id) => {
-    const updated = promotions.map((p) =>
-      p.id === id
-        ? { ...p, status: p.status === "Active" ? "Paused" : "Active" }
-        : p
-    );
-    savePromotions(updated);
-    toast.success("Promotion status toggled!");
-  };
-
-  const handleCreatePromo = async (e) => {
+  const handleCreatePromo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.code) return;
 
-    const discountPercent = formData.type === "Percentage" ? parseInt(formData.value, 10) || 15 : 0;
-    const fixedDiscount = formData.type === "Fixed Amount" ? parseFloat(formData.value?.replace("$", "")) || 15 : 0;
+    const isPct = formData.type === "Percentage";
+    const numVal = parseFloat(formData.value.replace(/[^0-9.]/g, "")) || 10;
+    const discountVal = isPct ? Math.min(100, Math.max(1, Math.round(numVal))) : Math.round(numVal * 100);
 
-    const newPromo = {
-      id: `promo-${Date.now()}`,
+    const payload = {
       code: formData.code.toUpperCase().trim(),
-      type: formData.type,
-      value: formData.value,
-      discountPercent,
-      fixedDiscount,
-      freeShipping: formData.type === "Free Shipping",
+      discountType: isPct ? "percentage" : "fixed_amount",
+      discountValue: discountVal,
+      currency: "USD",
+      minCartAmount: 5000,
       usageLimit: Number(formData.usageLimit) || 100,
-      currentUsage: 0,
-      status: "Active",
-      startDate: formData.startDate,
-      endDate: formData.endDate
+      status: "active",
+      startsAt: new Date(formData.startDate).toISOString(),
+      expiresAt: new Date(formData.endDate).toISOString(),
     };
 
-    savePromotions([newPromo, ...promotions]);
-    setIsModalOpen(false);
-
     try {
-      await promotionService.createPromotion(newPromo);
-    } catch {
-      // Ignored in mock
+      await adminService.createPromotion(payload);
+      toast.success(`Coupon code ${payload.code} created!`);
+      setIsModalOpen(false);
+      loadPromos();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to create coupon code");
     }
-
-    toast.success(`Coupon code ${newPromo.code} generated and ready for checkout!`);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Delete promo code?")) {
-      savePromotions(promotions.filter((p) => p.id !== id));
       try {
-        await promotionService.deletePromotion(id);
-      } catch {
-        // Ignored in mock
+        await adminService.deletePromotion(id);
+        toast.success("Promotion deleted");
+        loadPromos();
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Failed to delete promotion");
       }
-      toast.success("Promotion deleted");
     }
   };
 
@@ -137,7 +129,7 @@ export function AdminPromotions() {
                 <div className="text-xs text-muted-foreground mt-0.5">Type: {promo.type}</div>
               </div>
               <button
-                onClick={() => handleToggleStatus(promo.id)}
+                onClick={() => handleToggleStatus(promo.id, promo.status)}
                 className={`px-2.5 py-1 text-[10px] font-bold rounded-full transition-colors ${
                   promo.status === "Active"
                     ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"

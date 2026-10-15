@@ -7,28 +7,33 @@ import {
   Trash2,
   X
 } from "lucide-react";
-import {
-  INITIAL_PRODUCTS,
-  INITIAL_CATEGORIES,
-  INITIAL_BRANDS,
-  getLocalAdminData,
-  setLocalAdminData
-} from "../data/mockAdminData";
 import { catalogService } from "@/services/catalog";
 import { useCatalogContext } from "@/context/CatalogContext";
 import { toast } from "sonner";
 
 export function AdminProducts() {
-  const [products, setProducts] = useState(() => getLocalAdminData("products", INITIAL_PRODUCTS));
-  const categories = getLocalAdminData("categories", INITIAL_CATEGORIES);
-  const brands = getLocalAdminData("brands", INITIAL_BRANDS);
+  const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { refreshCatalog } = useCatalogContext() || {};
 
-  useEffect(() => {
-    let isMounted = true;
-    catalogService.getProducts().then((res) => {
-      if (!isMounted) return;
-      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+  const loadAll = async () => {
+    try {
+      setLoading(true);
+      const [prodsRes, catsRes, brandsRes]: [any, any, any] = await Promise.all([
+        catalogService.getProducts({ pageSize: 100 }),
+        catalogService.getCategories(100),
+        catalogService.getBrands(100)
+      ]);
+
+      const catList = Array.isArray(catsRes) ? catsRes : (Array.isArray(catsRes?.data) ? catsRes.data : []);
+      setCategories(catList);
+
+      const brandList = Array.isArray(brandsRes) ? brandsRes : (Array.isArray(brandsRes?.data) ? brandsRes.data : []);
+      setBrands(brandList);
+
+      const list = Array.isArray(prodsRes) ? prodsRes : (Array.isArray(prodsRes?.data) ? prodsRes.data : []);
       if (list.length > 0) {
         const formatted = list.map((p: any) => {
           let categoryName = "Electronics";
@@ -66,9 +71,15 @@ export function AdminProducts() {
         });
         setProducts(formatted);
       }
-    }).catch(() => {});
+    } catch {
+      toast.error("Failed to load catalog products");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return () => { isMounted = false; };
+  useEffect(() => {
+    loadAll();
   }, []);
 
   const [search, setSearch] = useState("");
@@ -90,9 +101,8 @@ export function AdminProducts() {
     image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80"
   });
 
-  const saveProductsToState = (updated) => {
+  const saveProductsToState = (updated: any[]) => {
     setProducts(updated);
-    setLocalAdminData("products", updated);
   };
 
   const handleOpenCreateModal = () => {

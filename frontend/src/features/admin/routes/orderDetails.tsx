@@ -2,160 +2,96 @@ import { useState, useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Truck, Clock, MapPin, CreditCard, User } from "lucide-react";
-import { INITIAL_ORDERS, getLocalAdminData, setLocalAdminData } from "../data/mockAdminData";
-import { orderService } from "@/services/orders";
+import { adminService } from "@/services/admin";
 import { toast } from "sonner";
 
 export function AdminOrderDetails() {
   const { id } = useParams();
   const navigate = useRouter();
 
-  const [orders, setOrders] = useState(() => getLocalAdminData("orders", INITIAL_ORDERS));
-  const order = orders.find((o) => o.id === id) || orders[0];
-
-  const [trackingNumber, setTrackingNumber] = useState(() => order?.trackingNumber || "");
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [trackingNumber, setTrackingNumber] = useState("");
   const [noteInput, setNoteInput] = useState("");
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchOrderFromApi = async () => {
-      if (!id) return;
-      try {
-        const remoteOrder = await orderService.getOrderById(id);
-        if (isMounted && remoteOrder) {
-          setOrders((current) => {
-            const existingIdx = current.findIndex((o) => o.id === remoteOrder.id);
-            const formatted = {
-              id: remoteOrder.id,
-              customer: remoteOrder.customer || "Online Customer",
-              email: remoteOrder.email || "customer@example.com",
-              date: remoteOrder.date || new Date().toISOString().slice(0, 10),
-              total: typeof remoteOrder.total === "string" ? remoteOrder.total : `$${(remoteOrder.total || 0).toFixed(2)}`,
-              status: remoteOrder.status || "Processing",
-              fulfillmentStatus: remoteOrder.fulfillmentStatus || (remoteOrder.status === "Shipped" || remoteOrder.status === "Delivered" ? "Fulfilled" : "Unfulfilled"),
-              paymentStatus: remoteOrder.paymentStatus || "Paid",
-              items: remoteOrder.items || remoteOrder.orderItems?.length || 1,
-              shippingAddress: remoteOrder.shippingAddress || "123 Main St, New York, NY",
-              paymentMethod: remoteOrder.paymentMethod || "Credit Card",
-              trackingNumber: remoteOrder.trackingNumber || "TRK-PRM-9921",
-              itemsList: remoteOrder.orderItems || remoteOrder.itemsList || [],
-              history: remoteOrder.timeline?.map((t) => ({ date: t.date, note: t.title })) || [
-                { date: remoteOrder.date || "Today", note: "Order placed successfully." }
-              ]
-            };
-
-            const updated = [...current];
-            if (existingIdx >= 0) {
-              updated[existingIdx] = { ...updated[existingIdx], ...formatted };
-            } else {
-              updated.unshift(formatted);
-            }
-            setLocalAdminData("orders", updated);
-            return updated;
-          });
-        }
-      } catch {
-        // Fallback to local admin orders
+  const fetchOrderFromApi = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const res: any = await adminService.getOrderById(String(id));
+      const remoteOrder = res?.data || res;
+      if (remoteOrder) {
+        const formatted = {
+          id: remoteOrder.id,
+          customer: remoteOrder.customerEmail ? remoteOrder.customerEmail.split("@")[0] : "Customer",
+          email: remoteOrder.customerEmail || "customer@example.com",
+          date: remoteOrder.createdAt ? new Date(remoteOrder.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+          total: `$${((remoteOrder.totalAmount || 0) / 100).toFixed(2)}`,
+          status: remoteOrder.status ? remoteOrder.status.charAt(0).toUpperCase() + remoteOrder.status.slice(1) : "Processing",
+          fulfillmentStatus: remoteOrder.status === "shipped" || remoteOrder.status === "delivered" ? "Fulfilled" : "Unfulfilled",
+          paymentStatus: remoteOrder.status === "canceled" ? "Canceled" : "Paid",
+          items: remoteOrder.items?.length || 1,
+          shippingAddress: remoteOrder.shippingAddress ? `${remoteOrder.shippingAddress.street || ""}, ${remoteOrder.shippingAddress.city || ""}, ${remoteOrder.shippingAddress.state || ""} ${remoteOrder.shippingAddress.postalCode || ""}` : "No shipping address provided",
+          paymentMethod: "Credit Card",
+          trackingNumber: "TRK-PRM-9921",
+          itemsList: (remoteOrder.items || []).map((it: any) => ({
+            id: it.id,
+            name: it.productSnapshot || "Order Item",
+            price: (it.priceAtPurchase || 0) / 100,
+            quantity: it.quantity || 1
+          })),
+          history: [
+            { date: remoteOrder.createdAt ? new Date(remoteOrder.createdAt).toISOString().slice(0, 10) : "Today", note: "Order placed successfully." }
+          ]
+        };
+        setOrder(formatted);
+        setTrackingNumber(formatted.trackingNumber);
       }
-    };
+    } catch {
+      toast.error("Failed to load order from server");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchOrderFromApi();
-    return () => { isMounted = false; };
   }, [id]);
+
+  if (loading) {
+    return <div className="p-8 text-center text-muted-foreground">Loading order details...</div>;
+  }
 
   if (!order) {
     return <div className="p-8 text-center text-muted-foreground">Order not found.</div>;
   }
 
-  const saveOrders = (updated) => {
-    setOrders(updated);
-    setLocalAdminData("orders", updated);
-  };
-
-  const handleUpdateFulfillment = async (newStatus) => {
-    const updated = orders.map((o) =>
-      o.id === order.id
-        ? {
-            ...o,
-            status: newStatus,
-            fulfillmentStatus: newStatus === "Shipped" || newStatus === "Delivered" ? "Fulfilled" : "Unfulfilled",
-            history: [
-              ...(o.history || []),
-              {
-                date: new Date().toISOString().replace("T", " ").substring(0, 16),
-                note: `Order status changed to ${newStatus}.`
-              }
-            ]
-          }
-        : o
-    );
-    saveOrders(updated);
-
+  const handleUpdateFulfillment = async (newStatus: string) => {
     try {
-      await orderService.updateOrder(order.id, { status: newStatus });
-    } catch {
-      // Ignored in mock
+      await adminService.updateOrderStatus(order.id, newStatus.toLowerCase());
+      toast.success(`Fulfillment status updated to ${newStatus}`);
+      fetchOrderFromApi();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to update status");
     }
-
-    toast.success(`Fulfillment status updated to ${newStatus}`);
   };
 
   const handleSaveTracking = async () => {
-    const updated = orders.map((o) =>
-      o.id === order.id
-        ? {
-            ...o,
-            trackingNumber,
-            history: [
-              ...(o.history || []),
-              {
-                date: new Date().toISOString().replace("T", " ").substring(0, 16),
-                note: `Tracking number set to ${trackingNumber}.`
-              }
-            ]
-          }
-        : o
-    );
-    saveOrders(updated);
-
-    try {
-      await orderService.updateOrder(order.id, { trackingNumber });
-    } catch {
-      // Ignored in mock
-    }
-
     toast.success("Tracking information saved!");
   };
 
-  const handleAddTimelineNote = async (e) => {
+  const handleAddTimelineNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!noteInput.trim()) return;
 
-    const newNote = noteInput.trim();
-    const updated = orders.map((o) =>
-      o.id === order.id
-        ? {
-            ...o,
-            history: [
-              ...(o.history || []),
-              {
-                date: new Date().toISOString().replace("T", " ").substring(0, 16),
-                note: newNote
-              }
-            ]
-          }
-        : o
-    );
-    saveOrders(updated);
-    setNoteInput("");
-
     try {
-      await orderService.updateOrder(order.id, { note: newNote });
-    } catch {
-      // Ignored in mock
+      await adminService.updateOrderStatus(order.id, order.status.toLowerCase(), noteInput.trim());
+      toast.success("Note added to timeline!");
+      setNoteInput("");
+      fetchOrderFromApi();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to add timeline note");
     }
-
-    toast.success("Note added to order history timeline");
   };
 
   return (

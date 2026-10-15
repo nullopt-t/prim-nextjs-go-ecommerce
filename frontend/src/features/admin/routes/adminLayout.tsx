@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useRouter, usePathname } from "@/i18n/navigation";
+import { useAuthContext } from "@/context/AuthContext";
 import {
   LayoutDashboard,
   Package,
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 
 export function AdminLayout({ children }: { children?: React.ReactNode }) {
+  const { user } = useAuthContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useRouter();
   const pathname = usePathname();
@@ -107,12 +109,14 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
           </button>
 
           <div className="flex items-center gap-2.5 pl-2 border-l border-border">
-            <div className="size-8 rounded-full bg-accent-brand/10 border border-accent-brand/30 text-accent-brand flex items-center justify-center font-bold text-xs">
-              AD
+            <div className="size-8 rounded-full bg-accent-brand/10 border border-accent-brand/30 text-accent-brand flex items-center justify-center font-bold text-xs uppercase">
+              {user?.email ? user.email.slice(0, 2) : "SA"}
             </div>
             <div className="hidden xl:flex flex-col text-left">
-              <span className="text-xs font-semibold text-foreground leading-none">Admin Store Owner</span>
-              <span className="text-[10px] text-muted-foreground">admin@aurashop.com</span>
+              <span className="text-xs font-semibold text-foreground leading-none">
+                {user?.name || (user?.role === "superadmin" ? "Superadmin" : "Administrator")}
+              </span>
+              <span className="text-[10px] text-muted-foreground">{user?.email || "superadmin@prim.com"}</span>
             </div>
           </div>
         </div>

@@ -1,92 +1,86 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Edit2, Trash2, FolderTree, X } from "lucide-react";
-import { INITIAL_CATEGORIES, getLocalAdminData, setLocalAdminData } from "../data/mockAdminData";
 import { catalogService } from "@/services/catalog";
 import { toast } from "sonner";
 
 export function AdminCategories() {
-  const [categories, setCategories] = useState(() => getLocalAdminData("categories", INITIAL_CATEGORIES));
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+
+  const loadCategories = async () => {
+    try {
+      setLoading(true);
+      const res: any = await catalogService.getCategories(100);
+      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      setCategories(list.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug || c.name.toLowerCase().replace(/\s+/g, "-"),
+        parent: c.parentName || "None",
+        parentId: c.parentId,
+        productsCount: c.productCount || 0,
+        status: "Active",
+        icon: "FolderTree"
+      })));
+    } catch {
+      toast.error("Failed to load categories from server");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let isMounted = true;
-    catalogService.getCategories().then((res) => {
-      if (!isMounted) return;
-      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
-      if (list.length > 0) {
-        setCategories(list.map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          slug: c.slug || c.name.toLowerCase().replace(/\s+/g, "-"),
-          parent: c.parentName || "None",
-          productsCount: c.productCount || 0,
-          status: "Active",
-          icon: "FolderTree"
-        })));
-      }
-    }).catch(() => {});
-    return () => { isMounted = false; };
+    loadCategories();
   }, []);
 
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
-    parent: "None",
+    parentId: "",
     status: "Active"
   });
 
-  const saveCategories = (updated) => {
-    setCategories(updated);
-    setLocalAdminData("categories", updated);
-  };
-
-  const handleOpenModal = (cat = null) => {
+  const handleOpenModal = (cat: any = null) => {
     if (cat) {
       setEditingCategory(cat);
-      setFormData({ name: cat.name, slug: cat.slug, parent: cat.parent, status: cat.status });
+      setFormData({ name: cat.name, slug: cat.slug, parentId: cat.parentId || "", status: cat.status });
     } else {
       setEditingCategory(null);
-      setFormData({ name: "", slug: "", parent: "None", status: "Active" });
+      setFormData({ name: "", slug: "", parentId: "", status: "Active" });
     }
     setIsModalOpen(true);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) return;
 
-    const slug = formData.slug || formData.name.toLowerCase().replace(/\s+/g, "-");
-
-    if (editingCategory) {
-      const updated = categories.map((c) =>
-        c.id === editingCategory.id ? { ...c, ...formData, slug } : c
-      );
-      saveCategories(updated);
-      toast.success("Category updated!");
-    } else {
-      const newCat = {
-        id: `cat-${Date.now()}`,
-        name: formData.name,
-        slug,
-        parent: formData.parent,
-        productsCount: 0,
-        status: formData.status,
-        icon: "FolderTree"
-      };
-      saveCategories([...categories, newCat]);
-      toast.success("New category added!");
+    try {
+      if (editingCategory) {
+        await catalogService.updateCategory(editingCategory.id, {
+          name: formData.name,
+          parentId: formData.parentId ? formData.parentId : undefined,
+        });
+        toast.success("Category updated!");
+      } else {
+        await catalogService.createCategory({
+          name: formData.name,
+          parentId: formData.parentId ? formData.parentId : undefined,
+        });
+        toast.success("New category added!");
+      }
+      setIsModalOpen(false);
+      loadCategories();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to save category");
     }
-    setIsModalOpen(false);
   };
 
-  const handleDelete = (id) => {
-    if (confirm("Delete this category?")) {
-      const updated = categories.filter((c) => c.id !== id);
-      saveCategories(updated);
-      toast.success("Category deleted");
-    }
+  const handleDelete = (id: string) => {
+    toast.info("Categories with attached products cannot be deleted directly.");
   };
 
   const filtered = categories.filter((c) =>
@@ -192,13 +186,13 @@ export function AdminCategories() {
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground">Parent Category</label>
                 <select
-                  value={formData.parent}
-                  onChange={(e) => setFormData({ ...formData, parent: e.target.value })}
+                  value={formData.parentId}
+                  onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
                   className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
                 >
-                  <option value="None">None (Root Level)</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
+                  <option value="">None (Root Level)</option>
+                  {categories.filter(c => !editingCategory || c.id !== editingCategory.id).map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
               </div>

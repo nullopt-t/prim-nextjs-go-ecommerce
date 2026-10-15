@@ -1,14 +1,36 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Save, Key, Truck, Store } from "lucide-react";
-import { INITIAL_SETTINGS, getLocalAdminData, setLocalAdminData } from "../data/mockAdminData";
 import { toast } from "sonner";
 
-export function AdminSettings() {
-  const [settings, setSettings] = useState(() => getLocalAdminData("settings", INITIAL_SETTINGS));
+const DEFAULT_SETTINGS = {
+  storeName: "PRIM Superstore",
+  storeEmail: "support@prim.com",
+  currency: "USD ($)",
+  taxRate: 8.5,
+  shippingFlatRate: 15.00,
+  freeShippingThreshold: 150.00,
+  stripePublicKey: "pk_test_prim_live_publishable_key_9921",
+  webhookSecret: "whsec_prim_live_webhook_secret_8812"
+};
 
-  const handleSave = (e) => {
+export function AdminSettings() {
+  const [settings, setSettings] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("prim_admin_settings");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {}
+      }
+    }
+    return DEFAULT_SETTINGS;
+  });
+
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setLocalAdminData("settings", settings);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("prim_admin_settings", JSON.stringify(settings));
+    }
     toast.success("Store configuration saved successfully!");
   };
 

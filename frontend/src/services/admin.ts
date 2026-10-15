@@ -95,4 +95,78 @@ export const adminService = {
   updateOrderStatus: async (id: string, status: string, notes?: string): Promise<{ message: string }> => {
     return api.patch<{ message: string }>(`/api/v1/admin/orders/${id}/status`, { status, notes });
   },
+
+  // Dashboard Overview
+  getDashboard: async (): Promise<any> => {
+    return api.get(`/api/v1/admin/dashboard`);
+  },
+
+  // Promotions
+  getPromotions: async (): Promise<any> => {
+    return api.get(`/api/v1/admin/promotions`);
+  },
+
+  createPromotion: async (payload: any): Promise<any> => {
+    return api.post(`/api/v1/admin/promotions`, payload);
+  },
+
+  updatePromotionStatus: async (id: string, status: string): Promise<any> => {
+    return api.patch(`/api/v1/admin/promotions/${id}/status`, { status });
+  },
+
+  deletePromotion: async (id: string): Promise<any> => {
+    return api.delete(`/api/v1/admin/promotions/${id}`);
+  },
+
+  // Payments
+  getPayments: async (params?: { page?: number; pageSize?: number }): Promise<any> => {
+    const query = new URLSearchParams();
+    if (params?.page) query.set("page", String(params.page));
+    if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+    const qs = query.toString();
+    return api.get(`/api/v1/admin/payments${qs ? `?${qs}` : ""}`);
+  },
+
+  refundPayment: async (id: string): Promise<any> => {
+    return api.post(`/api/v1/admin/payments/${id}/refund`, {});
+  },
+
+  // Media Library
+  getMedia: async (params?: { page?: number; pageSize?: number }): Promise<any> => {
+    const query = new URLSearchParams();
+    if (params?.page) query.set("page", String(params.page));
+    if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+    const qs = query.toString();
+    return api.get(`/api/v1/admin/media${qs ? `?${qs}` : ""}`);
+  },
+
+  // Attributes
+  getAttributes: async (): Promise<any> => {
+    return api.get(`/api/v1/admin/attributes`);
+  },
+
+  createAttribute: async (payload: any): Promise<any> => {
+    return api.post(`/api/v1/admin/attributes`, payload);
+  },
+
+  deleteAttribute: async (id: string): Promise<any> => {
+    return api.delete(`/api/v1/admin/attributes/${id}`);
+  },
+
+  // Inventory
+  getInventory: async (params?: { page?: number; pageSize?: number }): Promise<any> => {
+    const query = new URLSearchParams();
+    if (params?.page) query.set("page", String(params.page));
+    if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+    const qs = query.toString();
+    return api.get(`/api/v1/admin/inventory${qs ? `?${qs}` : ""}`);
+  },
+
+  getInventoryLedgers: async (limit?: number): Promise<any> => {
+    return api.get(`/api/v1/admin/inventory/ledgers${limit ? `?limit=${limit}` : ""}`);
+  },
+
+  adjustInventory: async (variantId: string, quantity: number, reason: string): Promise<any> => {
+    return api.post(`/api/v1/admin/inventory/variants/${variantId}/adjust`, { quantity, reason });
+  },
 };

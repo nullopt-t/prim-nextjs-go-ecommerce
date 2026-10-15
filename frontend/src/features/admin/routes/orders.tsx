@@ -1,97 +1,62 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { Search, Filter, Eye } from "lucide-react";
-import { INITIAL_ORDERS, getLocalAdminData, setLocalAdminData } from "../data/mockAdminData";
-import { orderService } from "@/services/orders";
+import { adminService } from "@/services/admin";
 import { toast } from "sonner";
 
 export function AdminOrders() {
   const navigate = useRouter();
-  const [orders, setOrders] = useState(() => getLocalAdminData("orders", INITIAL_ORDERS));
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
-  useEffect(() => {
-    let isMounted = true;
-    const loadServerOrders = async () => {
-      try {
-        const serverOrders = await orderService.getOrders();
-        if (isMounted && Array.isArray(serverOrders) && serverOrders.length > 0) {
-          setOrders((current) => {
-            // Merge server orders with local admin orders
-            const merged = [...current];
-            serverOrders.forEach((so) => {
-              const existingIdx = merged.findIndex((m) => m.id === so.id);
-              const formattedOrder = {
-                id: so.id,
-                customer: so.customer || "Online Customer",
-                email: so.email || "customer@example.com",
-                date: so.date || new Date().toISOString().slice(0, 10),
-                total: typeof so.total === "string" ? so.total : `$${(so.total || 0).toFixed(2)}`,
-                status: so.status || "Processing",
-                fulfillmentStatus: so.fulfillmentStatus || (so.status === "Shipped" || so.status === "Delivered" ? "Fulfilled" : "Unfulfilled"),
-                paymentStatus: so.paymentStatus || "Paid",
-                items: so.items || so.orderItems?.length || 1,
-                shippingAddress: so.shippingAddress || "123 Main St, New York, NY",
-                paymentMethod: so.paymentMethod || "Credit Card",
-                trackingNumber: so.trackingNumber || "TRK-PRM-9921",
-                itemsList: so.orderItems || so.itemsList || [],
-                history: so.timeline?.map((t) => ({ date: t.date, note: t.title })) || [
-                  { date: so.date || "Today", note: "Order placed successfully." }
-                ]
-              };
-
-              if (existingIdx >= 0) {
-                merged[existingIdx] = { ...merged[existingIdx], ...formattedOrder };
-              } else {
-                merged.unshift(formattedOrder);
-              }
-            });
-            setLocalAdminData("orders", merged);
-            return merged;
-          });
-        }
-      } catch {
-        // Fallback to local admin orders silently
-      }
-    };
-
-    loadServerOrders();
-    return () => { isMounted = false; };
-  }, []);
-
-  const saveOrders = (updated) => {
-    setOrders(updated);
-    setLocalAdminData("orders", updated);
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      const res = await adminService.getOrders({
+        pageSize: 50,
+        status: statusFilter !== "All" ? statusFilter.toLowerCase() : undefined
+      });
+      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      const formatted = list.map((so: any) => ({
+        id: so.id,
+        customer: so.customerEmail ? so.customerEmail.split("@")[0] : "Customer",
+        email: so.customerEmail || "customer@example.com",
+        date: so.createdAt ? new Date(so.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+        total: `$${((so.totalAmount || 0) / 100).toFixed(2)}`,
+        status: so.status ? so.status.charAt(0).toUpperCase() + so.status.slice(1) : "Processing",
+        fulfillmentStatus: so.status === "shipped" || so.status === "delivered" ? "Fulfilled" : "Unfulfilled",
+        paymentStatus: so.status === "canceled" ? "Canceled" : "Paid",
+        items: so.items?.length || 1,
+        shippingAddress: so.shippingAddress ? `${so.shippingAddress.street || ""}, ${so.shippingAddress.city || ""}` : "Online Order",
+        paymentMethod: "Credit Card",
+        trackingNumber: "TRK-PRM-9921",
+        itemsList: so.items || [],
+        history: [
+          { date: so.createdAt ? new Date(so.createdAt).toISOString().slice(0, 10) : "Today", note: "Order placed successfully." }
+        ]
+      }));
+      setOrders(formatted);
+    } catch {
+      toast.error("Failed to load orders from server");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdateStatus = async (id, newStatus) => {
-    const updated = orders.map((o) =>
-      o.id === id
-        ? {
-            ...o,
-            status: newStatus,
-            fulfillmentStatus: newStatus === "Shipped" || newStatus === "Delivered" ? "Fulfilled" : "Unfulfilled",
-            history: [
-              ...(o.history || []),
-              {
-                date: new Date().toISOString().replace("T", " ").substring(0, 16),
-                note: `Status updated to ${newStatus} by Admin.`
-              }
-            ]
-          }
-        : o
-    );
-    saveOrders(updated);
-    
-    // Sync with backend API
-    try {
-      await orderService.updateOrder(id, { status: newStatus });
-    } catch {
-      // Ignored in offline/mock
-    }
+  useEffect(() => {
+    loadOrders();
+  }, [statusFilter]);
 
-    toast.success(`Order ${id} status changed to ${newStatus}`);
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+    try {
+      await adminService.updateOrderStatus(id, newStatus.toLowerCase());
+      toast.success(`Order status updated to ${newStatus}`);
+      loadOrders();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to update order status");
+    }
   };
 
   const filtered = orders.filter((o) => {

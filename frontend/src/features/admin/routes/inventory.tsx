@@ -1,61 +1,76 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Minus, Search, History, AlertTriangle } from "lucide-react";
-import {
-  INITIAL_PRODUCTS,
-  INITIAL_INVENTORY_LOGS,
-  getLocalAdminData,
-  setLocalAdminData
-} from "../data/mockAdminData";
+import { adminService } from "@/services/admin";
 import { toast } from "sonner";
 
 export function AdminInventory() {
-  const [products, setProducts] = useState(() => getLocalAdminData("products", INITIAL_PRODUCTS));
-  const [logs, setLogs] = useState(() => getLocalAdminData("inventory_logs", INITIAL_INVENTORY_LOGS));
+  const [products, setProducts] = useState<any[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [adjustAmount, setAdjustAmount] = useState(0);
-  const [adjustReason, setAdjustReason] = useState("Restock");
+  const [adjustReason, setAdjustReason] = useState("restock");
 
-  const saveProducts = (updatedProds) => {
-    setProducts(updatedProds);
-    setLocalAdminData("products", updatedProds);
+  const loadInventoryData = async () => {
+    try {
+      setLoading(true);
+      const [invRes, logsRes]: [any, any] = await Promise.all([
+        adminService.getInventory({ pageSize: 50 }),
+        adminService.getInventoryLedgers(30)
+      ]);
+
+      const items = Array.isArray(invRes?.data) ? invRes.data : (Array.isArray(invRes) ? invRes : []);
+      setProducts(items.map((it: any) => ({
+        id: it.variantId || it.productId,
+        variantId: it.variantId,
+        productId: it.productId,
+        name: `${it.productName} (${it.variantTitle || "Default"})`,
+        sku: it.sku,
+        stock: it.onHandQuantity !== undefined ? it.onHandQuantity : 25,
+        available: it.availableQuantity !== undefined ? it.availableQuantity : 25,
+        image: it.thumbnail || "http://localhost:9000/catalog/products/macbook-air-15-m3.jpg",
+        lowStockThreshold: 10
+      })));
+
+      const ledgerList = Array.isArray(logsRes?.data) ? logsRes.data : (Array.isArray(logsRes) ? logsRes : []);
+      setLogs(ledgerList.map((l: any) => ({
+        id: l.id,
+        product: `${l.productName} (${l.sku})`,
+        sku: l.sku,
+        change: l.quantity > 0 ? `+${l.quantity}` : `${l.quantity}`,
+        type: l.reason ? l.reason.toUpperCase() : "AUDIT",
+        date: l.createdAt ? l.createdAt.replace("T", " ").substring(0, 16) : new Date().toISOString().substring(0, 16),
+        user: "Warehouse Manager"
+      })));
+    } catch {
+      toast.error("Failed to load inventory data from server");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const saveLogs = (updatedLogs) => {
-    setLogs(updatedLogs);
-    setLocalAdminData("inventory_logs", updatedLogs);
-  };
+  useEffect(() => {
+    loadInventoryData();
+  }, []);
 
-  const handleAdjustStock = (prod) => {
+  const handleAdjustStock = (prod: any) => {
     setSelectedProduct(prod);
     setAdjustAmount(0);
-    setAdjustReason("Restock");
+    setAdjustReason("restock");
   };
 
-  const handleApplyAdjustment = () => {
+  const handleApplyAdjustment = async () => {
     if (!selectedProduct || adjustAmount === 0) return;
 
-    const newStock = Math.max(0, selectedProduct.stock + adjustAmount);
-    const updatedProducts = products.map((p) =>
-      p.id === selectedProduct.id ? { ...p, stock: newStock } : p
-    );
-
-    const changeFormatted = adjustAmount > 0 ? `+${adjustAmount}` : `${adjustAmount}`;
-    const newLog = {
-      id: `inv-log-${Date.now()}`,
-      product: selectedProduct.name,
-      sku: selectedProduct.sku,
-      change: changeFormatted,
-      type: adjustReason,
-      newStock,
-      date: new Date().toISOString().replace("T", " ").substring(0, 16),
-      user: "Admin Manager"
-    };
-
-    saveProducts(updatedProducts);
-    saveLogs([newLog, ...logs]);
-    setSelectedProduct(null);
-    toast.success(`Inventory updated for ${selectedProduct.name}`);
+    try {
+      await adminService.adjustInventory(selectedProduct.variantId, adjustAmount, adjustReason);
+      toast.success(`Inventory adjusted for ${selectedProduct.name}`);
+      setSelectedProduct(null);
+      loadInventoryData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to adjust inventory");
+    }
   };
 
   const filtered = products.filter(
@@ -204,10 +219,10 @@ export function AdminInventory() {
                   onChange={(e) => setAdjustReason(e.target.value)}
                   className="w-full px-3 py-2 mt-1 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
                 >
-                  <option value="Restock">Warehouse Restock</option>
-                  <option value="Damaged Adjustment">Damaged / Written Off</option>
-                  <option value="Physical Audit Sync">Inventory Audit Sync</option>
-                  <option value="Customer Return">Customer Return</option>
+                  <option value="restock">Warehouse Restock</option>
+                  <option value="adjustment">Inventory Audit Sync / Adjustment</option>
+                  <option value="return">Customer Return</option>
+                  <option value="sale">Manual Sale Offset</option>
                 </select>
               </div>
             </div>

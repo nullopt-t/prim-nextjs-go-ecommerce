@@ -1,61 +1,94 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
-import { INITIAL_ATTRIBUTES, getLocalAdminData, setLocalAdminData } from "../data/mockAdminData";
+import { adminService } from "@/services/admin";
 import { toast } from "sonner";
 
 export function AdminAttributes() {
-  const [attributes, setAttributes] = useState(() => getLocalAdminData("attributes", INITIAL_ATTRIBUTES));
+  const [attributes, setAttributes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newAttrName, setNewAttrName] = useState("");
   const [newAttrValue, setNewAttrValue] = useState("");
-  const [activeAttrId, setActiveAttrId] = useState(null);
+  const [activeAttrId, setActiveAttrId] = useState<string | null>(null);
 
-  const saveAttributes = (updated) => {
-    setAttributes(updated);
-    setLocalAdminData("attributes", updated);
+  const loadAttributes = async () => {
+    try {
+      setLoading(true);
+      const res: any = await adminService.getAttributes();
+      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setAttributes(list.map((a: any) => ({
+        id: a.id,
+        name: a.label || a.key,
+        code: a.key,
+        categoryName: a.categoryName || "Global",
+        values: Array.isArray(a.allowedValues) ? a.allowedValues : []
+      })));
+    } catch {
+      toast.error("Failed to load attributes from server");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCreateAttribute = (e) => {
+  useEffect(() => {
+    loadAttributes();
+  }, []);
+
+  const handleCreateAttribute = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAttrName) return;
-    const newAttr = {
-      id: `attr-${Date.now()}`,
-      name: newAttrName,
-      code: newAttrName.toLowerCase().replace(/\s+/g, "_"),
-      values: []
+
+    const payload = {
+      key: newAttrName.toLowerCase().replace(/\s+/g, "_"),
+      label: newAttrName,
+      valueType: "text",
+      allowedValues: [],
+      isFilterable: true,
+      sortOrder: 0
     };
-    saveAttributes([...attributes, newAttr]);
-    setNewAttrName("");
-    setIsModalOpen(false);
-    toast.success("Attribute created!");
+
+    try {
+      await adminService.createAttribute(payload);
+      toast.success("Attribute created!");
+      setNewAttrName("");
+      setIsModalOpen(false);
+      loadAttributes();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to create attribute");
+    }
   };
 
-  const handleAddValue = (attrId) => {
+  const handleAddValue = (attrId: string) => {
     if (!newAttrValue) return;
     const updated = attributes.map((a) =>
       a.id === attrId && !a.values.includes(newAttrValue)
         ? { ...a, values: [...a.values, newAttrValue] }
         : a
     );
-    saveAttributes(updated);
+    setAttributes(updated);
     setNewAttrValue("");
     setActiveAttrId(null);
     toast.success("Option value added!");
   };
 
-  const handleRemoveValue = (attrId, valToRemove) => {
+  const handleRemoveValue = (attrId: string, valToRemove: string) => {
     const updated = attributes.map((a) =>
       a.id === attrId
-        ? { ...a, values: a.values.filter((v) => v !== valToRemove) }
+        ? { ...a, values: a.values.filter((v: string) => v !== valToRemove) }
         : a
     );
-    saveAttributes(updated);
+    setAttributes(updated);
   };
 
-  const handleDeleteAttribute = (id) => {
+  const handleDeleteAttribute = async (id: string) => {
     if (confirm("Delete attribute?")) {
-      saveAttributes(attributes.filter((a) => a.id !== id));
-      toast.success("Attribute deleted");
+      try {
+        await adminService.deleteAttribute(id);
+        toast.success("Attribute deleted");
+        loadAttributes();
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Failed to delete attribute");
+      }
     }
   };
 

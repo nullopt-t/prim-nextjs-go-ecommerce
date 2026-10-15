@@ -1,22 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Edit2, Trash2, ExternalLink, X } from "lucide-react";
-import { INITIAL_BRANDS, getLocalAdminData, setLocalAdminData } from "../data/mockAdminData";
+import { catalogService } from "@/services/catalog";
 import { toast } from "sonner";
 
 export function AdminBrands() {
-  const [brands, setBrands] = useState(() => getLocalAdminData("brands", INITIAL_BRANDS));
+  const [brands, setBrands] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingBrand, setEditingBrand] = useState(null);
+  const [editingBrand, setEditingBrand] = useState<any>(null);
+
+  const loadBrands = async () => {
+    try {
+      setLoading(true);
+      const res: any = await catalogService.getBrands(100);
+      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      setBrands(list.map((b: any) => ({
+        id: b.id,
+        name: b.name,
+        website: b.link || b.website || "https://prim.com",
+        productsCount: b.productCount || 0,
+        status: "Active",
+        logo: b.logoUrl || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&q=80"
+      })));
+    } catch {
+      toast.error("Failed to load brands from server");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBrands();
+  }, []);
 
   const [formData, setFormData] = useState({ name: "", website: "", logo: "" });
 
-  const saveBrands = (updated) => {
-    setBrands(updated);
-    setLocalAdminData("brands", updated);
-  };
-
-  const handleOpenModal = (brand = null) => {
+  const handleOpenModal = (brand: any = null) => {
     if (brand) {
       setEditingBrand(brand);
       setFormData({ name: brand.name, website: brand.website, logo: brand.logo });
@@ -27,34 +47,40 @@ export function AdminBrands() {
     setIsModalOpen(true);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) return;
 
-    if (editingBrand) {
-      const updated = brands.map((b) => (b.id === editingBrand.id ? { ...b, ...formData } : b));
-      saveBrands(updated);
-      toast.success("Brand updated!");
-    } else {
-      const newBrand = {
-        id: `brand-${Date.now()}`,
-        name: formData.name,
-        website: formData.website,
-        productsCount: 0,
-        status: "Active",
-        logo: formData.logo
-      };
-      saveBrands([...brands, newBrand]);
-      toast.success("Brand created!");
+    try {
+      if (editingBrand) {
+        await catalogService.updateBrand(editingBrand.id, {
+          name: formData.name,
+          link: formData.website || undefined
+        });
+        toast.success("Brand updated!");
+      } else {
+        await catalogService.createBrand({
+          name: formData.name,
+          link: formData.website || undefined
+        });
+        toast.success("Brand created!");
+      }
+      setIsModalOpen(false);
+      loadBrands();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to save brand");
     }
-    setIsModalOpen(false);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Delete brand?")) {
-      const updated = brands.filter((b) => b.id !== id);
-      saveBrands(updated);
-      toast.success("Brand deleted");
+      try {
+        await catalogService.deleteBrand(id);
+        toast.success("Brand deleted");
+        loadBrands();
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Failed to delete brand");
+      }
     }
   };
 

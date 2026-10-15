@@ -1,24 +1,48 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { RefreshCcw, Search } from "lucide-react";
-import { INITIAL_PAYMENTS, getLocalAdminData, setLocalAdminData } from "../data/mockAdminData";
+import { adminService } from "@/services/admin";
 import { toast } from "sonner";
 
 export function AdminPayments() {
-  const [payments, setPayments] = useState(() => getLocalAdminData("payments", INITIAL_PAYMENTS));
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const savePayments = (updated) => {
-    setPayments(updated);
-    setLocalAdminData("payments", updated);
+  const loadPayments = async () => {
+    try {
+      setLoading(true);
+      const res: any = await adminService.getPayments({ pageSize: 50 });
+      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setPayments(list.map((p: any) => ({
+        id: p.id,
+        orderId: p.orderId,
+        customer: p.customerEmail ? p.customerEmail.split("@")[0] : "Customer",
+        email: p.customerEmail || "customer@example.com",
+        gateway: p.provider ? p.provider.toUpperCase() : "STRIPE",
+        amount: `$${((p.amount || 0) / 100).toFixed(2)}`,
+        fee: `$${(((p.amount || 0) * 0.029 + 30) / 100).toFixed(2)}`,
+        status: p.status === "captured" ? "Succeeded" : (p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : "Pending")
+      })));
+    } catch {
+      toast.error("Failed to load payments from server");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleIssueRefund = (pay) => {
+  useEffect(() => {
+    loadPayments();
+  }, []);
+
+  const handleIssueRefund = async (pay: any) => {
     if (confirm(`Issue full refund for transaction ${pay.id}?`)) {
-      const updated = payments.map((p) =>
-        p.id === pay.id ? { ...p, status: "Refunded" } : p
-      );
-      savePayments(updated);
-      toast.success(`Refund of ${pay.amount} issued for ${pay.customer}`);
+      try {
+        await adminService.refundPayment(pay.id);
+        toast.success(`Refund issued for ${pay.customer}`);
+        loadPayments();
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Failed to issue refund");
+      }
     }
   };
 
