@@ -352,7 +352,7 @@ func (r *AdminRepository) ListInventoryOverview(ctx context.Context, qe database
 			pv.sku,
 			pv.title,
 			COALESCE((SELECT SUM(quantity) FROM inventory_ledgers WHERE variant_id = pv.id), 0)::int AS on_hand,
-			COALESCE((SELECT SUM(quantity) FROM inventory_reservations WHERE variant_id = pv.id AND status = 'pending' AND expires_at > NOW()), 0)::int AS reserved,
+			COALESCE((SELECT SUM(quantity) FROM inventory_reservations WHERE variant_id = pv.id AND released_at IS NULL AND expires_at > NOW()), 0)::int AS reserved,
 			pv.price,
 			pv.currency
 		FROM product_variants pv
