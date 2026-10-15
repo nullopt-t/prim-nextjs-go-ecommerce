@@ -30,22 +30,40 @@ export function AdminProducts() {
       if (!isMounted) return;
       const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
       if (list.length > 0) {
-        const formatted = list.map((p: any) => ({
-          id: p.id || p.slug,
-          name: p.title || p.product?.en || p.name || "Product",
-          sku: p.sku || `SKU-${p.id || "001"}`,
-          category: p.category || "Electronics",
-          brand: typeof p.brand === "string" ? p.brand : p.brand?.name || "PRIM",
-          price: p.extractedPrice || (typeof p.price === "number" ? p.price : parseFloat(String(p.price || "0").replace(/[^0-9.-]+/g, "")) || 0),
-          compareAtPrice: p.extractedOriginalPrice || (p.originalPrice ? parseFloat(String(p.originalPrice).replace(/[^0-9.-]+/g, "")) : null),
-          cost: 45,
-          stock: p.stockCount || (p.stock !== undefined ? p.stock : 25),
-          lowStockThreshold: 10,
-          status: p.status || (p.inStock ? "Active" : "Out of Stock"),
-          image: p.thumbnail || p.img || p.image || "http://localhost:9000/catalog/products/macbook-air-15-m3.jpg",
-          variants: p.variants || [],
-          salesCount: 12
-        }));
+        const formatted = list.map((p: any) => {
+          let categoryName = "Electronics";
+          if (typeof p.category === "string") {
+            categoryName = p.category;
+          } else if (p.category && typeof p.category === "object" && p.category.name) {
+            categoryName = p.category.name;
+          } else if (Array.isArray(p.categories) && p.categories.length > 0) {
+            categoryName = typeof p.categories[0] === "string" ? p.categories[0] : (p.categories[0]?.name || "Electronics");
+          }
+
+          let brandName = "PRIM";
+          if (typeof p.brand === "string") {
+            brandName = p.brand;
+          } else if (p.brand && typeof p.brand === "object" && p.brand.name) {
+            brandName = p.brand.name;
+          }
+
+          return {
+            id: p.id || p.slug,
+            name: p.title || p.product?.en || p.name || "Product",
+            sku: p.sku || `SKU-${p.id || "001"}`,
+            category: categoryName,
+            brand: brandName,
+            price: p.extractedPrice || (typeof p.price === "number" ? p.price : parseFloat(String(p.price || "0").replace(/[^0-9.-]+/g, "")) || 0),
+            compareAtPrice: p.extractedOriginalPrice || (p.originalPrice ? parseFloat(String(p.originalPrice).replace(/[^0-9.-]+/g, "")) : null),
+            cost: 45,
+            stock: p.stockCount || (p.stock !== undefined ? p.stock : 25),
+            lowStockThreshold: 10,
+            status: p.status || (p.inStock ? "Active" : "Out of Stock"),
+            image: p.thumbnail || p.img || p.image || "http://localhost:9000/catalog/products/macbook-air-15-m3.jpg",
+            variants: p.variants || [],
+            salesCount: 12
+          };
+        });
         setProducts(formatted);
       }
     }).catch(() => {});
@@ -284,12 +302,16 @@ export function AdminProducts() {
                           <div className="font-semibold text-foreground text-xs line-clamp-1">
                             {prod.name}
                           </div>
-                          <div className="text-[10px] text-muted-foreground">Brand: {prod.brand}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            Brand: {typeof prod.brand === "object" ? prod.brand?.name : String(prod.brand || "PRIM")}
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="py-3.5 font-mono text-muted-foreground font-medium">{prod.sku}</td>
-                    <td className="py-3.5 font-medium text-foreground">{prod.category}</td>
+                    <td className="py-3.5 font-medium text-foreground">
+                      {typeof prod.category === "object" ? prod.category?.name : String(prod.category || "General")}
+                    </td>
                     <td className="py-3.5">
                       <div className="font-bold text-foreground">${prod.price.toFixed(2)}</div>
                       {prod.compareAtPrice && (
