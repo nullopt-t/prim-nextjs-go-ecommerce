@@ -102,30 +102,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
           </Link>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Theme Switcher Button */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="size-9 rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all flex items-center justify-center cursor-pointer border border-border/40 hover:border-accent-brand/40 shadow-2xs"
-            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
-            title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
-          >
-            {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
-          </button>
-
-          {/* Language Switcher Button */}
-          <button
-            type="button"
-            onClick={toggleLanguage}
-            className="h-9 px-2.5 rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all flex items-center gap-1.5 cursor-pointer border border-border/40 hover:border-accent-brand/40 shadow-2xs font-semibold text-xs"
-            aria-label="Switch Language"
-            title={locale === "en" ? "تغيير إلى العربية" : "Switch to English"}
-          >
-            <Languages className="size-3.5" />
-            <span className="uppercase">{locale === "en" ? "AR" : "EN"}</span>
-          </button>
-
+        <div className="flex items-center gap-3">
           {/* Account Dropdown */}
           <div className="relative" ref={userMenuRef}>
             <button
