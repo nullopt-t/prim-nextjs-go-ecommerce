@@ -172,9 +172,10 @@ INSERT INTO storage_objects (id, bucket, object_key, content_type, file_size, st
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================================
--- 2. USERS (Admins, Support, Customers)
+-- 2. USERS (Superadmins, Admins, Support, Customers)
 -- =====================================================================
 INSERT INTO users (id, email, full_name, role, is_email_verified, status, created_at, updated_at) VALUES
+('10000000-0000-0000-0000-000000000000', 'superadmin@prim.com', 'Platform Superadmin', 'superadmin', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
 ('10000000-0000-0000-0000-000000000001', 'admin@prim.com', 'Admin User', 'admin', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
 ('10000000-0000-0000-0000-000000000002', 'john.doe@example.com', 'John Doe', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
 ('10000000-0000-0000-0000-000000000003', 'jane.smith@example.com', 'Jane Smith', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
