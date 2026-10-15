@@ -2,6 +2,8 @@
 
 import { usePathname, Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
+import { useAuthContext } from "@/context/AuthContext";
+import { Shield } from "lucide-react";
 
 export const accountTabKeys = [
   { id: "overview", key: "overview", path: "/user/overview" },
@@ -15,6 +17,8 @@ export const accountTabKeys = [
 export default function UserTopTabs() {
   const pathname = usePathname();
   const t = useTranslations("userNav");
+  const { user } = useAuthContext();
+  const isStaff = user?.role === "admin" || user?.role === "superadmin";
 
   return (
     <nav
@@ -38,6 +42,16 @@ export default function UserTopTabs() {
           </Link>
         );
       })}
+
+      {isStaff && (
+        <Link
+          href="/admin/customers"
+          className="ml-auto py-1 px-2.5 rounded-lg bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 text-xs font-bold transition-all hover:bg-purple-500/20 flex items-center gap-1.5 whitespace-nowrap"
+        >
+          <Shield className="size-3.5" />
+          <span>Admin Console</span>
+        </Link>
+      )}
     </nav>
   );
 }

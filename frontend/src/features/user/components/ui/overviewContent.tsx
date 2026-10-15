@@ -23,6 +23,8 @@ import {
   CheckCircle2,
   Clock,
   Truck,
+  Shield,
+  ShieldAlert,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -222,6 +224,37 @@ export default function OverviewContent() {
 
   return (
     <div className="w-full flex flex-col gap-6 pb-16">
+      {/* ── Staff Elevated Access Banner ── */}
+      {(user?.role === "admin" || user?.role === "superadmin") && (
+        <div className="w-full p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-primary/10 to-blue-500/10 border border-purple-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3.5">
+            <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30 shrink-0">
+              {user.role === "superadmin" ? <ShieldAlert className="size-5" /> : <Shield className="size-5" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm text-foreground">
+                  {user.role === "superadmin" ? "Platform Superadministrator" : "Store Administrator"}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-700 dark:text-purple-300">
+                  Staff Account
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                You have elevated permissions to manage marketplace users, orders, catalog governance, and system operations.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/customers"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all shadow-xs shrink-0"
+          >
+            <span>Open Admin Console</span>
+            <ExternalLink className="size-3.5" />
+          </Link>
+        </div>
+      )}
+
       {/* ── 2. Open Orders Sub-Section with Live Preview (Hidden when no active orders) ── */}
       {(loading || activeOrdersPreview.length > 0) && (
         <div className="flex flex-col gap-3">
