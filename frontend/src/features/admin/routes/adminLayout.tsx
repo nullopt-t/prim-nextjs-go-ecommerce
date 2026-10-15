@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useRouter, usePathname } from "@/i18n/navigation";
 import { useAuthContext } from "@/context/AuthContext";
 import {
@@ -19,15 +19,40 @@ import {
   X,
   Bell,
   ChevronRight,
+  ChevronDown,
+  User,
+  LogOut,
   ShieldCheck
 } from "lucide-react";
 
 export function AdminLayout({ children }: { children?: React.ReactNode }) {
-  const { user } = useAuthContext();
+  const { user, logout } = useAuthContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const navigate = useRouter();
   const pathname = usePathname();
   const location = { pathname };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    if (userMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [userMenuOpen]);
+
+  const handleLogout = async () => {
+    setUserMenuOpen(false);
+    await logout();
+    navigate.push("/");
+  };
 
   const navItems = [
     { name: "Dashboard", path: "/admin", icon: LayoutDashboard, exact: true },
@@ -86,16 +111,8 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate.push("/portal")}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent-brand/10 text-accent-brand hover:bg-accent-brand/20 border border-accent-brand/20 transition-colors"
-          >
-            <ShieldCheck className="size-3.5" />
-            <span>Route Manager</span>
-          </button>
-
-          <button
             onClick={() => navigate.push("/home")}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border transition-colors cursor-pointer"
           >
             <Store className="size-3.5 text-accent-brand" />
             <span className="hidden sm:inline">Storefront</span>
@@ -108,16 +125,77 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
             <span className="absolute top-1.5 right-1.5 size-2 bg-accent-brand rounded-full"></span>
           </button>
 
-          <div className="flex items-center gap-2.5 pl-2 border-l border-border">
-            <div className="size-8 rounded-full bg-accent-brand/10 border border-accent-brand/30 text-accent-brand flex items-center justify-center font-bold text-xs uppercase">
-              {user?.email ? user.email.slice(0, 2) : "SA"}
-            </div>
-            <div className="hidden xl:flex flex-col text-left">
-              <span className="text-xs font-semibold text-foreground leading-none">
-                {user?.name || (user?.role === "superadmin" ? "Superadmin" : "Administrator")}
-              </span>
-              <span className="text-[10px] text-muted-foreground">{user?.email || "superadmin@prim.com"}</span>
-            </div>
+          {/* Account Dropdown */}
+          <div className="relative" ref={userMenuRef}>
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen((prev) => !prev)}
+              className="flex items-center gap-2.5 pl-2 border-l border-border hover:opacity-85 transition-opacity cursor-pointer"
+            >
+              <div className="size-8 rounded-full bg-accent-brand/10 border border-accent-brand/30 text-accent-brand flex items-center justify-center font-bold text-xs uppercase">
+                {user?.email ? user.email.slice(0, 2) : "SA"}
+              </div>
+              <div className="hidden xl:flex flex-col text-left">
+                <span className="text-xs font-semibold text-foreground leading-none">
+                  {user?.name || (user?.role === "superadmin" ? "Superadmin" : "Administrator")}
+                </span>
+                <span className="text-[10px] text-muted-foreground">{user?.email || "superadmin@prim.com"}</span>
+              </div>
+              <ChevronDown className="size-3.5 text-muted-foreground ml-1" />
+            </button>
+
+            {userMenuOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-background border border-border rounded-2xl shadow-xl z-50 overflow-hidden py-1.5 animate-in fade-in-0 zoom-in-95 duration-100">
+                <div className="px-4 py-3 border-b border-border/70 bg-secondary/20">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-xs text-foreground truncate">{user?.name || "Superadmin"}</p>
+                    <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+                      {user?.role || "superadmin"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate mt-0.5">{user?.email || "superadmin@prim.com"}</p>
+                </div>
+
+                <div className="p-1.5 space-y-0.5 text-xs font-medium">
+                  <Link
+                    href="/user/overview"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
+                  >
+                    <User className="size-4 text-muted-foreground shrink-0" />
+                    <span>Customer Account Hub</span>
+                  </Link>
+
+                  <Link
+                    href="/admin/settings"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
+                  >
+                    <Settings className="size-4 text-muted-foreground shrink-0" />
+                    <span>Store Configuration</span>
+                  </Link>
+
+                  <Link
+                    href="/admin/customers"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
+                  >
+                    <Users className="size-4 text-muted-foreground shrink-0" />
+                    <span>User Management</span>
+                  </Link>
+                </div>
+
+                <div className="p-1.5 border-t border-border/70">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-destructive hover:bg-destructive/10 transition-colors text-xs font-semibold cursor-pointer"
+                  >
+                    <LogOut className="size-4 shrink-0" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
