@@ -393,16 +393,33 @@ func (r *AdminRepository) ListInventoryOverview(ctx context.Context, qe database
 	return list, total, nil
 }
 
-func (r *AdminRepository) ListRecentLedgers(ctx context.Context, qe database.QueryExecutor, limit int) ([]InventoryLedgerItem, error) {
+func (r *AdminRepository) ListRecentLedgers(ctx context.Context, qe database.QueryExecutor, limit int, variantID *uuid.UUID, productID *uuid.UUID) ([]InventoryLedgerItem, error) {
 	query := `
 		SELECT il.id, il.variant_id, p.title, pv.sku, il.quantity, il.reason, il.created_at
 		FROM inventory_ledgers il
 		JOIN product_variants pv ON il.variant_id = pv.id
 		JOIN products p ON pv.product_id = p.id
-		ORDER BY il.created_at DESC
-		LIMIT $1
+		WHERE 1=1
 	`
-	rows, err := qe.Query(ctx, query, limit)
+	args := []any{}
+	i := 1
+
+	if variantID != nil {
+		query += fmt.Sprintf(" AND il.variant_id = $%d", i)
+		args = append(args, *variantID)
+		i++
+	}
+
+	if productID != nil {
+		query += fmt.Sprintf(" AND p.id = $%d", i)
+		args = append(args, *productID)
+		i++
+	}
+
+	query += fmt.Sprintf(" ORDER BY il.created_at DESC LIMIT $%d", i)
+	args = append(args, limit)
+
+	rows, err := qe.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list recent ledgers: %w", err)
 	}

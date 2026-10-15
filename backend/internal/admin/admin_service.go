@@ -132,11 +132,11 @@ func (s *AdminService) ListInventoryOverview(ctx context.Context, limit, offset 
 	return items, total, err
 }
 
-func (s *AdminService) ListRecentLedgers(ctx context.Context, limit int) ([]InventoryLedgerItem, error) {
+func (s *AdminService) ListRecentLedgers(ctx context.Context, limit int, variantID *uuid.UUID, productID *uuid.UUID) ([]InventoryLedgerItem, error) {
 	var list []InventoryLedgerItem
 	err := s.txRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
-		list, err = s.repo.ListRecentLedgers(ctx, db, limit)
+		list, err = s.repo.ListRecentLedgers(ctx, db, limit, variantID, productID)
 		return err
 	})
 	return list, err

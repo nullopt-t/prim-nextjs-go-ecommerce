@@ -162,8 +162,17 @@ export const adminService = {
     return api.get(`/api/v1/admin/inventory${qs ? `?${qs}` : ""}`);
   },
 
-  getInventoryLedgers: async (limit?: number): Promise<any> => {
-    return api.get(`/api/v1/admin/inventory/ledgers${limit ? `?limit=${limit}` : ""}`);
+  getInventoryLedgers: async (params?: number | { limit?: number; variantId?: string; productId?: string }): Promise<any> => {
+    const query = new URLSearchParams();
+    if (typeof params === "number") {
+      query.set("limit", String(params));
+    } else if (params) {
+      if (params.limit) query.set("limit", String(params.limit));
+      if (params.variantId) query.set("variantId", params.variantId);
+      if (params.productId) query.set("productId", params.productId);
+    }
+    const qs = query.toString();
+    return api.get(`/api/v1/admin/inventory/ledgers${qs ? `?${qs}` : ""}`);
   },
 
   adjustInventory: async (variantId: string, quantity: number, reason: string): Promise<any> => {

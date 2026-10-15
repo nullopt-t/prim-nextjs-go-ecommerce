@@ -5,9 +5,11 @@ import {
   Filter,
   Edit2,
   Trash2,
+  History,
   X
 } from "lucide-react";
 import { catalogService } from "@/services/catalog";
+import { adminService } from "@/services/admin";
 import { useCatalogContext } from "@/context/CatalogContext";
 import { toast } from "sonner";
 
@@ -86,6 +88,35 @@ export function AdminProducts() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [auditProduct, setAuditProduct] = useState<any>(null);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+
+  const handleViewAudit = async (prod: any) => {
+    setAuditProduct(prod);
+    setLoadingAudit(true);
+    try {
+      const res = await adminService.getInventoryLedgers({
+        limit: 50,
+        productId: prod.id
+      });
+      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setAuditLogs(list.map((l: any) => ({
+        id: l.id,
+        product: `${l.productName} (${l.sku})`,
+        sku: l.sku,
+        change: l.quantity > 0 ? `+${l.quantity}` : `${l.quantity}`,
+        quantity: l.quantity,
+        type: l.reason ? l.reason.toUpperCase() : "AUDIT",
+        date: l.createdAt ? l.createdAt.replace("T", " ").substring(0, 16) : new Date().toISOString().substring(0, 16),
+        user: "System / Admin"
+      })));
+    } catch {
+      toast.error("Failed to load audit history for product");
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
 
   // Form State
   const [formData, setFormData] = useState({
@@ -347,7 +378,14 @@ export function AdminProducts() {
                       </span>
                     </td>
                     <td className="py-3.5 pr-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleViewAudit(prod)}
+                          className="p-1.5 text-muted-foreground hover:text-accent-brand hover:bg-secondary rounded-lg transition-colors"
+                          title="View Audit Trail"
+                        >
+                          <History className="size-4" />
+                        </button>
                         <button
                           onClick={() => handleOpenEditModal(prod)}
                           className="p-1.5 text-muted-foreground hover:text-accent-brand hover:bg-secondary rounded-lg transition-colors"
@@ -493,6 +531,68 @@ export function AdminProducts() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Product Audit History Modal */}
+      {auditProduct && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-background border border-border rounded-2xl max-w-xl w-full p-6 shadow-xl space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-accent-brand/10 text-accent-brand rounded-xl">
+                  <History className="size-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-foreground">Product Audit Trail</h3>
+                  <p className="text-xs text-muted-foreground">{auditProduct.name} &bull; <span className="font-mono">{auditProduct.sku}</span></p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAuditProduct(null)}
+                className="text-muted-foreground hover:text-foreground text-sm font-semibold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[220px]">
+              {loadingAudit ? (
+                <div className="py-12 text-center text-xs text-muted-foreground">Loading audit records...</div>
+              ) : auditLogs.length === 0 ? (
+                <div className="py-12 text-center text-xs text-muted-foreground">
+                  No inventory ledger events recorded for this product yet.
+                </div>
+              ) : (
+                auditLogs.map((entry) => (
+                  <div key={entry.id} className="p-3 border border-border rounded-xl bg-secondary/15 flex items-center justify-between text-xs">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground uppercase tracking-wider text-[11px]">{entry.type}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">{entry.date}</span>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        Recorded by: {entry.user}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-sm font-bold ${entry.quantity > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                        {entry.change} units
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-border">
+              <button
+                onClick={() => setAuditProduct(null)}
+                className="px-4 py-2 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground border border-border rounded-xl"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

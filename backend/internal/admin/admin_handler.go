@@ -307,7 +307,21 @@ func (h *AdminHandler) ListRecentLedgers(c *gin.Context) {
 		}
 	}
 
-	ledgers, err := h.service.ListRecentLedgers(c.Request.Context(), limit)
+	var variantUUID *uuid.UUID
+	if vId := c.Query("variantId"); vId != "" {
+		if parsed, err := uuid.Parse(vId); err == nil {
+			variantUUID = &parsed
+		}
+	}
+
+	var productUUID *uuid.UUID
+	if pId := c.Query("productId"); pId != "" {
+		if parsed, err := uuid.Parse(pId); err == nil {
+			productUUID = &parsed
+		}
+	}
+
+	ledgers, err := h.service.ListRecentLedgers(c.Request.Context(), limit, variantUUID, productUUID)
 	if err != nil {
 		_ = c.Error(apierr.InternalServerError("Failed to fetch ledgers").Wrap(err))
 		return
