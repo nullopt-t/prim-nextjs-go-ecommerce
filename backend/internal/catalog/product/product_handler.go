@@ -560,6 +560,8 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 }
 
 type ProductListItemResponse struct {
+	// Product UUID
+	ID string `json:"id" example:"60000000-0000-0000-0000-000000000001"`
 	// URL-friendly unique slug
 	Slug string `json:"slug" example:"macbook-pro-16"`
 	// Product display title
@@ -586,6 +588,7 @@ type ProductListItemResponse struct {
 
 func mapProductListItemResponse(item *ProductCardReadModel) ProductListItemResponse {
 	res := ProductListItemResponse{
+		ID:       item.ID.String(),
 		Slug:     item.Slug,
 		Title:    item.Title,
 		Currency: item.Currency,

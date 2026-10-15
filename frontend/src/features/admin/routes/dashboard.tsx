@@ -88,31 +88,7 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard Overview</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Real-time business performance, sales metrics, and store activity.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate.push("/admin/products")}
-            className="flex items-center gap-2 px-4 py-2 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all"
-          >
-            <Plus className="size-4" />
-            <span>Add Product</span>
-          </button>
-          <button
-            onClick={() => navigate.push("/admin/promotions")}
-            className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground font-semibold text-xs rounded-xl border border-border hover:bg-secondary/80 transition-all"
-          >
-            <Tag className="size-4" />
-            <span>New Promotion</span>
-          </button>
-        </div>
-      </div>
+      {/* Metrics Row */}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
