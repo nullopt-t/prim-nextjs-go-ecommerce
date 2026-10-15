@@ -278,7 +278,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 
 	// admin backoffice
 	adminRepo := admin.NewRepository()
-	adminService := admin.NewService(txRunner, adminRepo)
+	adminService := admin.NewService(txRunner, adminRepo, objectService)
 	adminHandler := admin.NewHandler(adminService)
 	adminRouter := admin.NewRouter(adminHandler, sessionService)
 	adminRouter.MapRoutes(v1)

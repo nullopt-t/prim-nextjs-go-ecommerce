@@ -24,7 +24,7 @@ export function AdminProducts() {
     try {
       setLoading(true);
       const [prodsRes, catsRes, brandsRes]: [any, any, any] = await Promise.all([
-        catalogService.getProducts({ pageSize: 100 }),
+        catalogService.getProducts(`pageSize=100&_t=${Date.now()}`),
         catalogService.getCategories(100),
         catalogService.getBrands(100)
       ]);
@@ -56,19 +56,20 @@ export function AdminProducts() {
 
           return {
             id: p.id || p.slug,
+            variantId: p.variantId,
             name: p.title || p.product?.en || p.name || "Product",
-            sku: p.sku || `SKU-${p.id || "001"}`,
+            sku: p.sku || `SKU-${(p.id || "001").slice(0, 8)}`,
             category: categoryName,
             brand: brandName,
             price: p.extractedPrice || (typeof p.price === "number" ? p.price : parseFloat(String(p.price || "0").replace(/[^0-9.-]+/g, "")) || 0),
             compareAtPrice: p.extractedOriginalPrice || (p.originalPrice ? parseFloat(String(p.originalPrice).replace(/[^0-9.-]+/g, "")) : null),
-            cost: 45,
-            stock: p.stockCount || (p.stock !== undefined ? p.stock : 25),
+            cost: 0,
+            stock: typeof p.stockQuantity === "number" ? p.stockQuantity : (p.stockCount || (p.stock !== undefined ? p.stock : 0)),
             lowStockThreshold: 10,
-            status: p.status || (p.inStock ? "Active" : "Out of Stock"),
-            image: p.thumbnail || p.img || p.image || "http://localhost:9000/catalog/products/macbook-air-15-m3.jpg",
+            status: p.status || (p.inStock || p.stockQuantity > 0 ? "Active" : "Out of Stock"),
+            image: p.thumbnail || p.img || p.image || "/placeholder.png",
             variants: p.variants || [],
-            salesCount: 12
+            salesCount: 0
           };
         });
         setProducts(formatted);
@@ -101,16 +102,24 @@ export function AdminProducts() {
         productId: prod.id
       });
       const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      setAuditLogs(list.map((l: any) => ({
+      const mapped = list.map((l: any) => ({
         id: l.id,
-        product: `${l.productName} (${l.sku})`,
-        sku: l.sku,
+        productName: l.productName || prod.name,
+        variantTitle: l.variantTitle || "Default Variant",
+        sku: l.sku || prod.sku,
         change: l.quantity > 0 ? `+${l.quantity}` : `${l.quantity}`,
         quantity: l.quantity,
-        type: l.reason ? l.reason.toUpperCase() : "AUDIT",
-        date: l.createdAt ? l.createdAt.replace("T", " ").substring(0, 16) : new Date().toISOString().substring(0, 16),
-        user: "System / Admin"
-      })));
+        reason: l.reason || "restock",
+        date: l.createdAt ? new Date(l.createdAt).toLocaleString() : "Recently",
+        ledgerId: l.id ? l.id.slice(0, 8) : ""
+      }));
+      setAuditLogs(mapped);
+
+      // Always guarantee Current On-Hand Stock is 100% in sync with the ledger balance
+      const ledgerSum = mapped.reduce((acc: number, curr: any) => acc + (curr.quantity || 0), 0);
+      setAuditProduct((prev: any) => prev ? { ...prev, stock: ledgerSum } : prev);
+      // Also update the row in products list state if it differed
+      setProducts((prev: any[]) => prev.map((p) => p.id === prod.id ? { ...p, stock: ledgerSum } : p));
     } catch {
       toast.error("Failed to load audit history for product");
     } finally {
@@ -128,6 +137,7 @@ export function AdminProducts() {
     compareAtPrice: "",
     cost: "",
     stock: "",
+    adjustmentReason: "adjustment",
     status: "Active",
     image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80"
   });
@@ -147,6 +157,7 @@ export function AdminProducts() {
       compareAtPrice: "120.00",
       cost: "45.00",
       stock: "25",
+      adjustmentReason: "restock",
       status: "Active",
       image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80"
     });
@@ -164,6 +175,7 @@ export function AdminProducts() {
       compareAtPrice: prod.compareAtPrice?.toString() || "",
       cost: prod.cost?.toString() || "",
       stock: prod.stock.toString(),
+      adjustmentReason: "adjustment",
       status: prod.status,
       image: prod.image
     });
@@ -178,6 +190,10 @@ export function AdminProducts() {
     }
 
     if (editingProduct) {
+      const newStock = parseInt(formData.stock, 10);
+      const oldStock = typeof editingProduct.stock === "number" ? editingProduct.stock : 0;
+      const stockDiff = newStock - oldStock;
+
       const updatedProductData = {
         name: formData.name,
         sku: formData.sku,
@@ -186,26 +202,40 @@ export function AdminProducts() {
         price: parseFloat(formData.price),
         compareAtPrice: formData.compareAtPrice ? parseFloat(formData.compareAtPrice) : null,
         cost: formData.cost ? parseFloat(formData.cost) : null,
-        stock: parseInt(formData.stock, 10),
+        stock: newStock,
         status: formData.status,
         image: formData.image
       };
 
-      const updated = products.map((p) =>
-        p.id === editingProduct.id
-          ? { ...p, ...updatedProductData }
-          : p
+      // Optimistically update products table immediately
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === editingProduct.id
+            ? { ...p, ...updatedProductData }
+            : p
+        )
       );
-      saveProductsToState(updated);
+      setIsModalOpen(false);
 
       try {
         await catalogService.updateProduct(editingProduct.id, updatedProductData);
+        // If stock changed or was edited, record an audit event in inventory_ledgers
+        if (stockDiff !== 0) {
+          const reason = formData.adjustmentReason || (stockDiff > 0 ? "restock" : "adjustment");
+          if (editingProduct.variantId) {
+            await adminService.adjustInventory(editingProduct.variantId, stockDiff, reason);
+          } else {
+            await adminService.adjustProductInventory(editingProduct.id, stockDiff, reason);
+          }
+          toast.success(`Product updated & ledger recorded (${stockDiff > 0 ? `+${stockDiff}` : stockDiff} units)`);
+        } else {
+          toast.success("Product updated successfully!");
+        }
+        await loadAll();
         refreshCatalog?.();
-      } catch {
-        // Ignored in mock
+      } catch (err: any) {
+        toast.error(err?.message || "Product update partially failed");
       }
-
-      toast.success("Product updated successfully!");
     } else {
       const newId = `prod-${Date.now()}`;
       const newProd = {
@@ -226,10 +256,12 @@ export function AdminProducts() {
         ],
         salesCount: 0
       };
-      saveProductsToState([newProd, ...products]);
+      setProducts((prev) => [newProd, ...prev]);
+      setIsModalOpen(false);
 
       try {
         await catalogService.createProduct(newProd);
+        await loadAll();
         refreshCatalog?.();
       } catch {
         // Ignored in mock
@@ -237,8 +269,6 @@ export function AdminProducts() {
 
       toast.success("New product created and added to catalog!");
     }
-
-    setIsModalOpen(false);
   };
 
   const handleDeleteProduct = async (id) => {
@@ -505,6 +535,23 @@ export function AdminProducts() {
                 </div>
               </div>
 
+              {editingProduct && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground">Stock Ledger Audit Reason</label>
+                  <select
+                    value={formData.adjustmentReason || "adjustment"}
+                    onChange={(e) => setFormData({ ...formData, adjustmentReason: e.target.value })}
+                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
+                  >
+                    <option value="adjustment">Manual Adjustment (Correction / Audit)</option>
+                    <option value="restock">Restock (Received Inventory)</option>
+                    <option value="return">Customer Return</option>
+                    <option value="sale">Sale Deduction</option>
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">Changes to stock quantity will automatically append a new record to the product's inventory audit ledger.</p>
+                </div>
+              )}
+
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground">Image URL</label>
                 <input
@@ -548,12 +595,18 @@ export function AdminProducts() {
                   <p className="text-xs text-muted-foreground">{auditProduct.name} &bull; <span className="font-mono">{auditProduct.sku}</span></p>
                 </div>
               </div>
-              <button
-                onClick={() => setAuditProduct(null)}
-                className="text-muted-foreground hover:text-foreground text-sm font-semibold p-1"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">Current On-Hand Stock</div>
+                  <div className="text-xs font-bold text-accent-brand">{auditProduct.stock} units</div>
+                </div>
+                <button
+                  onClick={() => setAuditProduct(null)}
+                  className="text-muted-foreground hover:text-foreground text-sm font-semibold p-1"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[220px]">
@@ -568,11 +621,13 @@ export function AdminProducts() {
                   <div key={entry.id} className="p-3 border border-border rounded-xl bg-secondary/15 flex items-center justify-between text-xs">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-foreground uppercase tracking-wider text-[11px]">{entry.type}</span>
-                        <span className="text-[10px] text-muted-foreground font-mono">{entry.date}</span>
+                        <span className="font-semibold text-foreground">{entry.variantTitle}</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-secondary text-secondary-foreground border border-border">
+                          {entry.reason}
+                        </span>
                       </div>
-                      <div className="text-[11px] text-muted-foreground mt-0.5">
-                        Recorded by: {entry.user}
+                      <div className="text-[11px] text-muted-foreground mt-0.5 font-mono">
+                        SKU: {entry.sku} &bull; {entry.date} &bull; Ref: {entry.ledgerId}
                       </div>
                     </div>
                     <div className="text-right">
@@ -585,7 +640,13 @@ export function AdminProducts() {
               )}
             </div>
 
-            <div className="flex justify-end pt-3 border-t border-border">
+            <div className="flex items-center justify-between pt-3 border-t border-border">
+              <div className="text-xs text-muted-foreground">
+                Total Ledger Balance:{" "}
+                <span className="font-bold text-foreground">
+                  {auditLogs.reduce((acc, curr) => acc + (curr.quantity || 0), 0)} units
+                </span>
+              </div>
               <button
                 onClick={() => setAuditProduct(null)}
                 className="px-4 py-2 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground border border-border rounded-xl"

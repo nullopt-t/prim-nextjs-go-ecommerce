@@ -55,7 +55,8 @@ export function AdminOrders() {
       toast.success(`Order status updated to ${newStatus}`);
       loadOrders();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to update order status");
+      toast.error(err?.message || err?.response?.data?.message || "Failed to update order status");
+      loadOrders();
     }
   };
 
@@ -138,14 +139,38 @@ export function AdminOrders() {
                   </td>
                   <td className="py-3.5">
                     <select
-                      value={order.status}
+                      value={order.status === "Canceled" ? "Cancelled" : order.status}
                       onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
-                      className="px-2.5 py-1 bg-secondary/50 border border-border rounded-lg text-xs font-semibold text-foreground focus:outline-hidden"
+                      disabled={order.status === "Cancelled" || order.status === "Canceled" || order.status === "Delivered"}
+                      className="px-2.5 py-1 bg-secondary/50 border border-border rounded-lg text-xs font-semibold text-foreground focus:outline-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <option value="Processing">Processing</option>
-                      <option value="Shipped">Shipped</option>
-                      <option value="Delivered">Delivered</option>
-                      <option value="Cancelled">Cancelled</option>
+                      {order.status === "Pending" && (
+                        <>
+                          <option value="Pending" disabled>Pending</option>
+                          <option value="Processing">Processing</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </>
+                      )}
+                      {order.status === "Processing" && (
+                        <>
+                          <option value="Processing" disabled>Processing</option>
+                          <option value="Shipped">Shipped</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </>
+                      )}
+                      {order.status === "Shipped" && (
+                        <>
+                          <option value="Shipped" disabled>Shipped</option>
+                          <option value="Delivered">Delivered</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </>
+                      )}
+                      {order.status === "Delivered" && (
+                        <option value="Delivered">Delivered (Final)</option>
+                      )}
+                      {(order.status === "Cancelled" || order.status === "Canceled") && (
+                        <option value="Cancelled">Cancelled (Final)</option>
+                      )}
                     </select>
                   </td>
                   <td className="py-3.5 pr-4 text-right">

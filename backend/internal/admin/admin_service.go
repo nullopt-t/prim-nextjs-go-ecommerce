@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,16 +10,40 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
-type AdminService struct {
-	txRunner database.Runner
-	repo     *AdminRepository
+type ObjectService interface {
+	UploadObject(ctx context.Context, contentType string, size int64, bucket string, file io.Reader) (*model.Object, error)
 }
 
-func NewService(txRunner database.Runner, repo *AdminRepository) *AdminService {
+type AdminService struct {
+	txRunner      database.Runner
+	repo          *AdminRepository
+	objectService ObjectService
+}
+
+func NewService(txRunner database.Runner, repo *AdminRepository, objectService ObjectService) *AdminService {
 	return &AdminService{
-		txRunner: txRunner,
-		repo:     repo,
+		txRunner:      txRunner,
+		repo:          repo,
+		objectService: objectService,
 	}
+}
+
+func (s *AdminService) UploadMedia(ctx context.Context, contentType string, size int64, file io.Reader) (*MediaItem, error) {
+	bucket := "catalog"
+	obj, err := s.objectService.UploadObject(ctx, contentType, size, bucket, file)
+	if err != nil {
+		return nil, err
+	}
+	return &MediaItem{
+		ID:          obj.ID,
+		Bucket:      obj.Bucket,
+		ObjectKey:   obj.Key,
+		ContentType: obj.ContentType,
+		FileSize:    obj.FileSize,
+		Status:      string(obj.Status),
+		URL:         "http://localhost:9000/" + obj.Bucket + "/" + obj.Key,
+		CreatedAt:   obj.CreatedAt,
+	}, nil
 }
 
 func (s *AdminService) GetDashboardStats(ctx context.Context) (*DashboardStats, error) {
@@ -156,6 +181,35 @@ func (s *AdminService) AdjustInventory(ctx context.Context, variantID uuid.UUID,
 			VALUES ($1, $2, $3, $4::inventory_reason, NOW())
 		`
 		_, err := tx.Exec(ctx, query, ledger.ID, ledger.VariantID, ledger.Quantity, ledger.Reason)
+		return err
+	})
+}
+
+func (s *AdminService) AdjustProductInventory(ctx context.Context, productID uuid.UUID, delta int, reason string) error {
+	return s.txRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+		var variantID uuid.UUID
+		err := tx.QueryRow(ctx, `
+			SELECT id FROM product_variants
+			WHERE product_id = $1 AND deleted_at IS NULL
+			ORDER BY is_default DESC, created_at ASC
+			LIMIT 1
+		`, productID).Scan(&variantID)
+		if err != nil {
+			return err
+		}
+
+		ledger := &model.InventoryLedger{
+			ID:        uuid.New(),
+			VariantID: variantID,
+			Quantity:  delta,
+			Reason:    model.InventoryReason(reason),
+			CreatedAt: time.Now(),
+		}
+		query := `
+			INSERT INTO inventory_ledgers (id, variant_id, quantity, reason, created_at)
+			VALUES ($1, $2, $3, $4::inventory_reason, NOW())
+		`
+		_, err = tx.Exec(ctx, query, ledger.ID, ledger.VariantID, ledger.Quantity, ledger.Reason)
 		return err
 	})
 }

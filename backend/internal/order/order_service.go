@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
@@ -229,8 +230,50 @@ func (s *OrderService) ListOrders(
 	return orders, pageMeta, nil
 }
 
+func CanTransitionOrderStatus(current, next model.OrderStatus) bool {
+	if current == next {
+		return true
+	}
+	switch current {
+	case model.OrderStatusPending:
+		// Pending can transition to paid, processing, or cancelled
+		return next == model.OrderStatusPaid || next == model.OrderStatusProcessing || next == model.OrderStatusCancelled
+	case model.OrderStatusPaid:
+		// Paid can transition to processing, shipped, refunded, or cancelled
+		return next == model.OrderStatusProcessing || next == model.OrderStatusShipped || next == model.OrderStatusRefunded || next == model.OrderStatusCancelled
+	case model.OrderStatusProcessing:
+		// Processing can transition to shipped, refunded, or cancelled
+		return next == model.OrderStatusShipped || next == model.OrderStatusRefunded || next == model.OrderStatusCancelled
+	case model.OrderStatusShipped:
+		// Shipped can only transition to delivered, refunded, or cancelled
+		return next == model.OrderStatusDelivered || next == model.OrderStatusRefunded || next == model.OrderStatusCancelled
+	case model.OrderStatusDelivered:
+		// Delivered is a terminal delivery state; can only be refunded
+		return next == model.OrderStatusRefunded
+	case model.OrderStatusCancelled:
+		// Once cancelled, an order is terminal and cannot transition to delivered, shipped, or processing
+		return false
+	case model.OrderStatusRefunded:
+		// Terminal state
+		return false
+	default:
+		return false
+	}
+}
+
 func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, status model.OrderStatus, notes *string) error {
 	err := s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
+		ord, err := s.orderRepo.GetOrderByID(ctx, tx, id)
+		if err != nil {
+			return err
+		}
+
+		if !CanTransitionOrderStatus(ord.Status, status) {
+			return apierr.BadRequestError(
+				fmt.Sprintf("Cannot transition order status from '%s' to '%s'", ord.Status, status),
+			).WithCode(errcode.CodeInvalidOrderStatus)
+		}
+
 		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, id, status); err != nil {
 			return err
 		}
@@ -238,6 +281,10 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 	})
 
 	if err != nil {
+		var appErr *apierr.APIError
+		if errors.As(err, &appErr) {
+			return err
+		}
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
@@ -268,15 +315,15 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 			return apierr.ForbiddenError("You are not authorized to cancel this order")
 		}
 
-		if ord.Status != model.OrderStatusPending {
+		if !CanTransitionOrderStatus(ord.Status, model.OrderStatusCancelled) {
 			return apierr.BadRequestError("Order cannot be cancelled in its current state").WithCode("INVALID_ORDER_STATUS")
 		}
 
 		note := "Cancelled by customer"
-		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, id, model.OrderStatusCanceled); err != nil {
+		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, id, model.OrderStatusCancelled); err != nil {
 			return err
 		}
-		return s.orderRepo.AddStatusHistory(ctx, tx, id, model.OrderStatusCanceled, &note)
+		return s.orderRepo.AddStatusHistory(ctx, tx, id, model.OrderStatusCancelled, &note)
 	})
 }
 

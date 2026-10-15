@@ -1,15 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
 import {
-  DollarSign,
-  ShoppingBag,
-  Package,
-  Users,
-  TrendingUp,
-  AlertTriangle,
   ArrowUpRight,
-  Plus,
-  Tag,
   Eye
 } from "lucide-react";
 import {
@@ -64,10 +56,10 @@ export function AdminDashboard() {
     return () => { isMounted = false; };
   }, []);
 
-  const totalRev = stats ? (stats.totalRevenue / 100) : 200638.05;
-  const totalOrds = stats?.totalOrders || 326;
-  const totalCusts = stats?.totalCustomers || 10;
-  const totalProds = stats?.totalProducts || 114;
+  const totalRev = stats ? stats.totalRevenue / 100 : 0;
+  const totalOrds = stats?.totalOrders || 0;
+  const totalCusts = stats?.totalCustomers || 0;
+  const totalProds = stats?.totalProducts || 0;
 
   const chartData = (stats?.recentSales && stats.recentSales.length > 0)
     ? stats.recentSales.map((s: any) => ({
@@ -75,16 +67,7 @@ export function AdminDashboard() {
         sales: s.sales / 100,
         orders: s.orders
       }))
-    : [
-        { month: "10-08", sales: 12400, orders: 20 },
-        { month: "10-09", sales: 15200, orders: 25 },
-        { month: "10-10", sales: 18900, orders: 30 },
-        { month: "10-11", sales: 14100, orders: 22 },
-        { month: "10-12", sales: 22500, orders: 35 },
-        { month: "10-13", sales: 28900, orders: 42 },
-        { month: "10-14", sales: 34100, orders: 48 },
-        { month: "10-15", sales: 31200, orders: 45 }
-      ];
+    : [];
 
   return (
     <div className="space-y-6">
@@ -95,15 +78,11 @@ export function AdminDashboard() {
         <div className="bg-background border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Revenue</span>
-            <div className="size-9 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 flex items-center justify-center">
-              <DollarSign className="size-5" />
-            </div>
           </div>
           <div className="mt-4">
             <div className="text-2xl font-bold text-foreground">${totalRev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            <div className="flex items-center gap-1 mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-              <TrendingUp className="size-3.5" />
-              <span>Real-time settled revenue</span>
+            <div className="mt-1 text-xs text-muted-foreground font-medium">
+              Real-time settled revenue
             </div>
           </div>
         </div>
@@ -111,15 +90,11 @@ export function AdminDashboard() {
         <div className="bg-background border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Orders</span>
-            <div className="size-9 rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 flex items-center justify-center">
-              <ShoppingBag className="size-5" />
-            </div>
           </div>
           <div className="mt-4">
-            <div className="text-2xl font-bold text-foreground">{totalOrds}</div>
-            <div className="flex items-center gap-1 mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-              <TrendingUp className="size-3.5" />
-              <span>{stats?.pendingOrders || 0} pending processing</span>
+            <div className="text-2xl font-bold text-foreground">{totalOrds.toLocaleString()}</div>
+            <div className="mt-1 text-xs text-muted-foreground font-medium">
+              {stats?.pendingOrders || 0} pending processing
             </div>
           </div>
         </div>
@@ -127,15 +102,11 @@ export function AdminDashboard() {
         <div className="bg-background border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Catalog Products</span>
-            <div className="size-9 rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 flex items-center justify-center">
-              <Package className="size-5" />
-            </div>
           </div>
           <div className="mt-4">
-            <div className="text-2xl font-bold text-foreground">{totalProds} Products</div>
-            <div className="flex items-center gap-1 mt-1 text-xs text-amber-600 dark:text-amber-400 font-semibold">
-              <AlertTriangle className="size-3.5" />
-              <span>Active in catalog</span>
+            <div className="text-2xl font-bold text-foreground">{totalProds.toLocaleString()}</div>
+            <div className="mt-1 text-xs text-muted-foreground font-medium">
+              Active in catalog
             </div>
           </div>
         </div>
@@ -143,15 +114,11 @@ export function AdminDashboard() {
         <div className="bg-background border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Active Customers</span>
-            <div className="size-9 rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 flex items-center justify-center">
-              <Users className="size-5" />
-            </div>
           </div>
           <div className="mt-4">
-            <div className="text-2xl font-bold text-foreground">{totalCusts}</div>
-            <div className="flex items-center gap-1 mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-              <TrendingUp className="size-3.5" />
-              <span>Registered customer accounts</span>
+            <div className="text-2xl font-bold text-foreground">{totalCusts.toLocaleString()}</div>
+            <div className="mt-1 text-xs text-muted-foreground font-medium">
+              Registered customer accounts
             </div>
           </div>
         </div>

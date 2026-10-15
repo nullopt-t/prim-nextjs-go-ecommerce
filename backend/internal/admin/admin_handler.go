@@ -199,6 +199,34 @@ func (h *AdminHandler) ListMedia(c *gin.Context) {
 	})
 }
 
+func (h *AdminHandler) UploadMedia(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("file is required").WithCode(apierr.CodeInvalidInput))
+		return
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to read uploaded file").Wrap(err))
+		return
+	}
+	defer src.Close()
+
+	contentType := file.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	item, err := h.service.UploadMedia(c.Request.Context(), contentType, file.Size, src)
+	if err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to upload media").Wrap(err))
+		return
+	}
+
+	c.JSON(http.StatusCreated, api.DataResponse{Data: item})
+}
+
 // Attributes
 func (h *AdminHandler) ListAttributes(c *gin.Context) {
 	list, err := h.service.ListAttributes(c.Request.Context())
@@ -353,4 +381,25 @@ func (h *AdminHandler) AdjustInventory(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Inventory adjusted successfully"})
+}
+
+func (h *AdminHandler) AdjustProductInventory(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("productId"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid product ID"))
+		return
+	}
+
+	var req AdjustInventoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid request body").Wrap(err))
+		return
+	}
+
+	if err := h.service.AdjustProductInventory(c.Request.Context(), id, req.Quantity, req.Reason); err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to adjust product inventory").Wrap(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Product inventory adjusted successfully"})
 }

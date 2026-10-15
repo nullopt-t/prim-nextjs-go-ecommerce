@@ -24,7 +24,7 @@ BEGIN
         CREATE TYPE user_role AS ENUM ('customer', 'vendor', 'support', 'admin', 'superadmin');
     END IF;
     IF to_regtype('order_status') IS NULL THEN
-        CREATE TYPE order_status AS ENUM ('pending', 'paid', 'processing', 'shipped', 'delivered', 'canceled', 'refunded');
+        CREATE TYPE order_status AS ENUM ('pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded');
     END IF;
     IF to_regtype('payment_status') IS NULL THEN
         CREATE TYPE payment_status AS ENUM ('pending', 'authorized', 'captured', 'failed', 'refunded');

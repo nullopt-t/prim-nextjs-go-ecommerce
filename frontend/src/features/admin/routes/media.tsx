@@ -36,25 +36,22 @@ export function AdminMedia() {
     loadMedia();
   }, []);
 
-  const handleSimulateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploading(true);
-    setTimeout(() => {
-      const newMedia = {
-        id: `med-${Date.now()}`,
-        name: file.name,
-        size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-        type: file.type.includes("image") ? "Image" : "Document",
-        dimensions: "1200x1200",
-        url: URL.createObjectURL(file),
-        uploadedAt: new Date().toISOString().split("T")[0]
-      };
-      setMediaList([newMedia, ...mediaList]);
-      setIsUploading(false);
+    try {
+      setIsUploading(true);
+      await adminService.uploadMedia(file);
       toast.success("File uploaded to media library!");
-    }, 800);
+      await loadMedia();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to upload file");
+    } finally {
+      setIsUploading(false);
+      // Reset input value so same file can be uploaded again if needed
+      e.target.value = "";
+    }
   };
 
   const handleCopyUrl = (url: string, id: string) => {
@@ -83,7 +80,7 @@ export function AdminMedia() {
         <label className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 cursor-pointer transition-all shrink-0">
           <UploadCloud className="size-4" />
           <span>{isUploading ? "Uploading..." : "Upload New File"}</span>
-          <input type="file" onChange={handleSimulateUpload} className="hidden" accept="image/*" />
+          <input type="file" onChange={handleFileUpload} disabled={isUploading} className="hidden" accept="image/*" />
         </label>
       </div>
 

@@ -20,8 +20,9 @@ const (
 	OrderStatusShipped OrderStatus = "shipped"
 	// OrderStatusDelivered indicates the carrier has successfully delivered the shipment to the customer.
 	OrderStatusDelivered OrderStatus = "delivered"
-	// OrderStatusCanceled indicates the customer or store cancelled the order prior to fulfillment.
-	OrderStatusCanceled OrderStatus = "canceled"
+	// OrderStatusCancelled indicates the customer or store cancelled the order prior to fulfillment.
+	OrderStatusCancelled OrderStatus = "cancelled"
+	OrderStatusCanceled  OrderStatus = "cancelled"
 	// OrderStatusRefunded indicates the purchase charge has been fully reversed to the customer.
 	OrderStatusRefunded OrderStatus = "refunded"
 )

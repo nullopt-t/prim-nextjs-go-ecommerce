@@ -40,6 +40,7 @@ func (r *AdminRouter) MapRoutes(vgroup *gin.RouterGroup) {
 
 		// Media Library
 		admin.GET("/media", r.handler.ListMedia)
+		admin.POST("/media", r.handler.UploadMedia)
 
 		// Attributes
 		admin.GET("/attributes", r.handler.ListAttributes)
@@ -50,5 +51,6 @@ func (r *AdminRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.GET("/inventory", r.handler.ListInventoryOverview)
 		admin.GET("/inventory/ledgers", r.handler.ListRecentLedgers)
 		admin.POST("/inventory/variants/:variantId/adjust", r.handler.AdjustInventory)
+		admin.POST("/inventory/products/:productId/adjust", r.handler.AdjustProductInventory)
 	}
 }

@@ -140,6 +140,12 @@ export const adminService = {
     return api.get(`/api/v1/admin/media${qs ? `?${qs}` : ""}`);
   },
 
+  uploadMedia: async (file: File): Promise<any> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.upload(`/api/v1/admin/media`, formData);
+  },
+
   // Attributes
   getAttributes: async (): Promise<any> => {
     return api.get(`/api/v1/admin/attributes`);
@@ -177,5 +183,9 @@ export const adminService = {
 
   adjustInventory: async (variantId: string, quantity: number, reason: string): Promise<any> => {
     return api.post(`/api/v1/admin/inventory/variants/${variantId}/adjust`, { quantity, reason });
+  },
+
+  adjustProductInventory: async (productId: string, quantity: number, reason: string): Promise<any> => {
+    return api.post(`/api/v1/admin/inventory/products/${productId}/adjust`, { quantity, reason });
   },
 };

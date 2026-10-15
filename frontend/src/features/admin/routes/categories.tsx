@@ -1,20 +1,30 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit2, Trash2, FolderTree, X } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, FolderTree, X, SlidersHorizontal, Tag } from "lucide-react";
 import { catalogService } from "@/services/catalog";
+import { adminService } from "@/services/admin";
 import { toast } from "sonner";
 
 export function AdminCategories() {
   const [categories, setCategories] = useState<any[]>([]);
+  const [allAttributes, setAllAttributes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [viewingCategoryAttrs, setViewingCategoryAttrs] = useState<any>(null);
+  const [newLinkedAttrName, setNewLinkedAttrName] = useState("");
+  const [creatingAttr, setCreatingAttr] = useState(false);
 
   const loadCategories = async () => {
     try {
       setLoading(true);
-      const res: any = await catalogService.getCategories(100);
+      const [res, attrRes]: [any, any] = await Promise.all([
+        catalogService.getCategories(100),
+        adminService.getAttributes()
+      ]);
       const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      const attrs = Array.isArray(attrRes?.data) ? attrRes.data : (Array.isArray(attrRes) ? attrRes : []);
+      setAllAttributes(attrs);
       setCategories(list.map((c: any) => ({
         id: c.id,
         name: c.name,
@@ -146,7 +156,15 @@ export function AdminCategories() {
                   </span>
                 </td>
                 <td className="py-3.5 pr-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <button
+                      onClick={() => setViewingCategoryAttrs(cat)}
+                      className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border flex items-center gap-1.5 transition-colors"
+                      title="Manage Category Attributes"
+                    >
+                      <SlidersHorizontal className="size-3.5 text-accent-brand" />
+                      <span>Attributes</span>
+                    </button>
                     <button onClick={() => handleOpenModal(cat)} className="p-1.5 text-muted-foreground hover:text-accent-brand rounded-lg">
                       <Edit2 className="size-4" />
                     </button>
@@ -201,6 +219,120 @@ export function AdminCategories() {
                 <button type="submit" className="px-4 py-2 text-xs font-semibold bg-accent-brand text-white rounded-xl">Save</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Linked Category Attributes Modal */}
+      {viewingCategoryAttrs && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-background border border-border rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-accent-brand/10 text-accent-brand rounded-xl">
+                  <SlidersHorizontal className="size-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-foreground">Linked Attributes</h3>
+                  <p className="text-xs text-muted-foreground">{viewingCategoryAttrs.name} category specifications</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingCategoryAttrs(null)}
+                className="text-muted-foreground hover:text-foreground text-sm font-semibold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-foreground">Link New Attribute to this Category</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Attribute name (e.g. Screen Size, Material)"
+                  value={newLinkedAttrName}
+                  onChange={(e) => setNewLinkedAttrName(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
+                />
+                <button
+                  disabled={creatingAttr || !newLinkedAttrName.trim()}
+                  onClick={async () => {
+                    if (!newLinkedAttrName.trim()) return;
+                    setCreatingAttr(true);
+                    try {
+                      await adminService.createAttribute({
+                        categoryId: viewingCategoryAttrs.id,
+                        key: newLinkedAttrName.toLowerCase().replace(/\s+/g, "_"),
+                        label: newLinkedAttrName.trim(),
+                        valueType: "text",
+                        allowedValues: [],
+                        isFilterable: true,
+                        sortOrder: 0
+                      });
+                      toast.success(`Attribute "${newLinkedAttrName}" linked to ${viewingCategoryAttrs.name}!`);
+                      setNewLinkedAttrName("");
+                      loadCategories();
+                    } catch {
+                      toast.error("Failed to link attribute to category");
+                    } finally {
+                      setCreatingAttr(false);
+                    }
+                  }}
+                  className="px-4 py-2 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 disabled:opacity-50"
+                >
+                  {creatingAttr ? "Linking..." : "Link"}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pt-2 min-h-[160px]">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Currently Linked Attributes
+              </span>
+              {allAttributes.filter(a => a.categoryId === viewingCategoryAttrs.id).length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  No attributes linked to this category yet. Type an attribute name above to create and link one.
+                </div>
+              ) : (
+                allAttributes
+                  .filter(a => a.categoryId === viewingCategoryAttrs.id)
+                  .map((attr) => (
+                    <div key={attr.id} className="p-3 border border-border rounded-xl bg-secondary/15 flex items-center justify-between text-xs">
+                      <div>
+                        <div className="font-semibold text-foreground">{attr.label || attr.key}</div>
+                        <div className="text-[10px] text-muted-foreground font-mono">key: {attr.key} &bull; type: {attr.valueType}</div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (confirm(`Unlink and delete attribute "${attr.label || attr.key}"?`)) {
+                            try {
+                              await adminService.deleteAttribute(attr.id);
+                              toast.success("Attribute unlinked");
+                              loadCategories();
+                            } catch {
+                              toast.error("Failed to unlink attribute");
+                            }
+                          }
+                        }}
+                        className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg transition-colors"
+                        title="Unlink Attribute"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-border flex justify-end">
+              <button
+                onClick={() => setViewingCategoryAttrs(null)}
+                className="px-4 py-2 text-xs font-semibold rounded-xl border border-border hover:bg-secondary text-foreground"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

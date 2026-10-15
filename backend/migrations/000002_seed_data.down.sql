@@ -1,4 +1,11 @@
--- Revert seed script for Prim E-Commerce Platform
+-- Order Status History
+DELETE FROM order_status_history;
+
+-- Coupon Redemptions
+DELETE FROM coupon_redemptions;
+
+-- Payments
+DELETE FROM payments;
 
 -- Reviews
 DELETE FROM reviews WHERE id IN (
@@ -10,22 +17,10 @@ DELETE FROM reviews WHERE id IN (
 );
 
 -- Order Items
-DELETE FROM order_items WHERE id IN (
-    '91000000-0000-0000-0000-000000000001',
-    '91000000-0000-0000-0000-000000000002',
-    '91000000-0000-0000-0000-000000000003',
-    '91000000-0000-0000-0000-000000000004',
-    '91000000-0000-0000-0000-000000000005'
-);
+DELETE FROM order_items;
 
 -- Orders
-DELETE FROM orders WHERE id IN (
-    '90000000-0000-0000-0000-000000000001',
-    '90000000-0000-0000-0000-000000000002',
-    '90000000-0000-0000-0000-000000000003',
-    '90000000-0000-0000-0000-000000000004',
-    '90000000-0000-0000-0000-000000000005'
-);
+DELETE FROM orders;
 
 -- Inventory Ledgers
 DELETE FROM inventory_ledgers WHERE id IN (

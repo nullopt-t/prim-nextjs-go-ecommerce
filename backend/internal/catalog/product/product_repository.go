@@ -49,6 +49,9 @@ type ProductCardReadModel struct {
 	Price           *int64
 	CrossedOutPrice *int64
 	Currency        *string
+	SKU             *string
+	DefaultVariantID *uuid.UUID
+	StockQuantity   int
 	Rating          *model.RatingSummary
 	TagsRaw         []byte
 	CreatedAt       time.Time
@@ -359,6 +362,9 @@ func (r *ProductRepository) List(
 			so.object_key as so_object_key,
 			so.content_type as so_content_type,
 			so.file_size as so_file_size,
+			pv.id as default_variant_id,
+			pv.sku as sku,
+			COALESCE((SELECT SUM(il.quantity) FROM product_variants pv_all JOIN inventory_ledgers il ON il.variant_id = pv_all.id WHERE pv_all.product_id = p.id AND pv_all.deleted_at IS NULL), 0) as stock_quantity,
 			pv.price as price,
 			pv.crossed_out_price as crossed_out_price,
 			pv.currency as currency,
@@ -416,6 +422,9 @@ func (r *ProductRepository) List(
 			&soKey,
 			&soContentType,
 			&soFileSize,
+			&item.DefaultVariantID,
+			&item.SKU,
+			&item.StockQuantity,
 			&item.Price,
 			&item.CrossedOutPrice,
 			&item.Currency,

@@ -30,16 +30,28 @@ export function AdminOrderDetails() {
           status: remoteOrder.status ? remoteOrder.status.charAt(0).toUpperCase() + remoteOrder.status.slice(1) : "Processing",
           fulfillmentStatus: remoteOrder.status === "shipped" || remoteOrder.status === "delivered" ? "Fulfilled" : "Unfulfilled",
           paymentStatus: remoteOrder.status === "canceled" ? "Canceled" : "Paid",
-          items: remoteOrder.items?.length || 1,
           shippingAddress: remoteOrder.shippingAddress ? `${remoteOrder.shippingAddress.street || ""}, ${remoteOrder.shippingAddress.city || ""}, ${remoteOrder.shippingAddress.state || ""} ${remoteOrder.shippingAddress.postalCode || ""}` : "No shipping address provided",
           paymentMethod: "Credit Card",
           trackingNumber: "TRK-PRM-9921",
-          itemsList: (remoteOrder.items || []).map((it: any) => ({
-            id: it.id,
-            name: it.productSnapshot || "Order Item",
-            price: (it.priceAtPurchase || 0) / 100,
-            quantity: it.quantity || 1
-          })),
+          items: (Array.isArray(remoteOrder.items) ? remoteOrder.items : []).map((it: any) => {
+            let itemName = "Order Item";
+            if (typeof it.productSnapshot === "string") {
+              try {
+                const parsed = JSON.parse(it.productSnapshot);
+                itemName = parsed.title || parsed.name || itemName;
+              } catch {
+                itemName = it.productSnapshot;
+              }
+            } else if (it.productSnapshot && typeof it.productSnapshot === "object") {
+              itemName = it.productSnapshot.title || it.productSnapshot.name || itemName;
+            }
+            return {
+              id: it.id,
+              name: itemName,
+              price: `$${((it.priceAtPurchase || 0) / 100).toFixed(2)}`,
+              quantity: it.quantity || 1
+            };
+          }),
           history: [
             { date: remoteOrder.createdAt ? new Date(remoteOrder.createdAt).toISOString().slice(0, 10) : "Today", note: "Order placed successfully." }
           ]
@@ -72,7 +84,8 @@ export function AdminOrderDetails() {
       toast.success(`Fulfillment status updated to ${newStatus}`);
       fetchOrderFromApi();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to update status");
+      toast.error(err?.message || err?.response?.data?.message || "Failed to update status");
+      fetchOrderFromApi();
     }
   };
 
@@ -119,6 +132,8 @@ export function AdminOrderDetails() {
                   ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"
                   : order.status === "Processing"
                   ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400"
+                  : order.status === "Canceled" || order.status === "Cancelled"
+                  ? "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-400"
                   : "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-400"
               }`}
             >
@@ -130,14 +145,38 @@ export function AdminOrderDetails() {
 
         <div className="flex items-center gap-2">
           <select
-            value={order.status}
+            value={order.status === "Canceled" ? "Cancelled" : order.status}
             onChange={(e) => handleUpdateFulfillment(e.target.value)}
-            className="px-3 py-2 bg-secondary border border-border rounded-xl text-xs font-semibold text-foreground"
+            disabled={order.status === "Cancelled" || order.status === "Canceled" || order.status === "Delivered"}
+            className="px-3 py-2 bg-secondary border border-border rounded-xl text-xs font-semibold text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <option value="Processing">Processing</option>
-            <option value="Shipped">Shipped</option>
-            <option value="Delivered">Delivered</option>
-            <option value="Cancelled">Cancelled</option>
+            {order.status === "Pending" && (
+              <>
+                <option value="Pending" disabled>Pending</option>
+                <option value="Processing">Processing</option>
+                <option value="Cancelled">Cancelled</option>
+              </>
+            )}
+            {order.status === "Processing" && (
+              <>
+                <option value="Processing" disabled>Processing</option>
+                <option value="Shipped">Shipped</option>
+                <option value="Cancelled">Cancelled</option>
+              </>
+            )}
+            {order.status === "Shipped" && (
+              <>
+                <option value="Shipped" disabled>Shipped</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+              </>
+            )}
+            {order.status === "Delivered" && (
+              <option value="Delivered">Delivered (Final)</option>
+            )}
+            {(order.status === "Cancelled" || order.status === "Canceled") && (
+              <option value="Cancelled">Cancelled (Final)</option>
+            )}
           </select>
         </div>
       </div>

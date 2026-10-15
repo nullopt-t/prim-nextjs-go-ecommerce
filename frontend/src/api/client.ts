@@ -89,6 +89,26 @@ export const api = {
     }),
   delete: <T = any>(endpoint: string, options?: RequestInit) =>
     request<T>(endpoint, { method: "DELETE", ...options }),
+  upload: <T = any>(endpoint: string, formData: FormData, options?: RequestInit) => {
+    const url = endpoint.startsWith("http") ? endpoint : `${getBaseUrl()}${endpoint}`;
+    const locale = getActiveLocale();
+    return fetch(url, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Accept-Language": locale,
+        ...options?.headers,
+      },
+      body: formData,
+      ...options,
+    }).then(async (res) => {
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || `HTTP Error ${res.status}`);
+      }
+      return res.json() as Promise<T>;
+    });
+  },
 };
 
 export default api;

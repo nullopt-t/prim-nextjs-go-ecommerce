@@ -584,14 +584,32 @@ type ProductListItemResponse struct {
 	Category *category.PublicCategoryResponse `json:"category,omitempty"`
 	// Rating summary and score breakdown
 	Rating *ProductRatingSummaryResponse `json:"rating,omitempty"`
+	// Default variant UUID
+	VariantID *string `json:"variantId,omitempty" example:"70000000-0000-0000-0000-000000000001"`
+	// Stock Keeping Unit
+	SKU *string `json:"sku,omitempty" example:"MAC-PRO-001"`
+	// Real-time on-hand available stock count
+	StockQuantity int `json:"stockQuantity" example:"50"`
+	// In stock flag
+	InStock bool `json:"inStock" example:"true"`
 }
 
 func mapProductListItemResponse(item *ProductCardReadModel) ProductListItemResponse {
+	var variantIDStr *string
+	if item.DefaultVariantID != nil {
+		s := item.DefaultVariantID.String()
+		variantIDStr = &s
+	}
+
 	res := ProductListItemResponse{
-		ID:       item.ID.String(),
-		Slug:     item.Slug,
-		Title:    item.Title,
-		Currency: item.Currency,
+		ID:            item.ID.String(),
+		Slug:          item.Slug,
+		Title:         item.Title,
+		Currency:      item.Currency,
+		VariantID:     variantIDStr,
+		SKU:           item.SKU,
+		StockQuantity: item.StockQuantity,
+		InStock:       item.StockQuantity > 0,
 	}
 
 	if item.Category != nil {

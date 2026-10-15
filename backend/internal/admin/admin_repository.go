@@ -103,6 +103,7 @@ type InventoryLedgerItem struct {
 	ID           uuid.UUID `json:"id"`
 	VariantID    uuid.UUID `json:"variantId"`
 	ProductName  string    `json:"productName"`
+	VariantTitle string    `json:"variantTitle"`
 	SKU          string    `json:"sku"`
 	Quantity     int       `json:"quantity"`
 	Reason       string    `json:"reason"`
@@ -129,7 +130,7 @@ func (r *AdminRepository) GetDashboardStats(ctx context.Context, qe database.Que
 			COUNT(*) FILTER (WHERE status = 'processing'),
 			COUNT(*) FILTER (WHERE status = 'shipped'),
 			COUNT(*) FILTER (WHERE status = 'delivered'),
-			COUNT(*) FILTER (WHERE status = 'canceled')
+			COUNT(*) FILTER (WHERE status = 'cancelled')
 		FROM orders
 	`
 	err := qe.QueryRow(ctx, query).Scan(
@@ -395,7 +396,7 @@ func (r *AdminRepository) ListInventoryOverview(ctx context.Context, qe database
 
 func (r *AdminRepository) ListRecentLedgers(ctx context.Context, qe database.QueryExecutor, limit int, variantID *uuid.UUID, productID *uuid.UUID) ([]InventoryLedgerItem, error) {
 	query := `
-		SELECT il.id, il.variant_id, p.title, pv.sku, il.quantity, il.reason, il.created_at
+		SELECT il.id, il.variant_id, p.title, pv.title, pv.sku, il.quantity, il.reason, il.created_at
 		FROM inventory_ledgers il
 		JOIN product_variants pv ON il.variant_id = pv.id
 		JOIN products p ON pv.product_id = p.id
@@ -429,7 +430,7 @@ func (r *AdminRepository) ListRecentLedgers(ctx context.Context, qe database.Que
 	for rows.Next() {
 		var item InventoryLedgerItem
 		if err := rows.Scan(
-			&item.ID, &item.VariantID, &item.ProductName, &item.SKU, &item.Quantity, &item.Reason, &item.CreatedAt,
+			&item.ID, &item.VariantID, &item.ProductName, &item.VariantTitle, &item.SKU, &item.Quantity, &item.Reason, &item.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan ledger: %w", err)
 		}
