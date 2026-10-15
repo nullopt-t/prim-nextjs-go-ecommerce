@@ -36,7 +36,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
     { name: "Media Library", path: "/admin/media", icon: Image },
     { name: "Inventory", path: "/admin/inventory", icon: Boxes, badge: "Low Stock" },
     { name: "Orders", path: "/admin/orders", icon: ShoppingBag, badge: "4 New" },
-    { name: "Customers", path: "/admin/customers", icon: Users },
+    { name: "Users & Staff", path: "/admin/customers", icon: Users },
     { name: "Payments", path: "/admin/payments", icon: CreditCard },
     { name: "Promotions", path: "/admin/promotions", icon: Percent },
     { name: "Settings", path: "/admin/settings", icon: Settings },

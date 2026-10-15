@@ -1,167 +1,479 @@
-import { useState } from "react";
-import { Search, Edit2, X } from "lucide-react";
-import { INITIAL_CUSTOMERS, getLocalAdminData, setLocalAdminData } from "../data/mockAdminData";
+"use client";
+
+import React, { useState, useEffect, useCallback } from "react";
+import { 
+  Search, 
+  RefreshCw, 
+  Shield, 
+  CheckCircle2, 
+  XCircle, 
+  MoreVertical, 
+  UserX, 
+  UserCheck, 
+  LogOut, 
+  ShieldAlert, 
+  Users, 
+  ChevronLeft, 
+  ChevronRight,
+  Filter,
+  Eye,
+  Store,
+  Headphones,
+  ShieldCheck
+} from "lucide-react";
+import { adminService, AdminUser, PaginationMeta } from "@/services/admin";
+import { UserSlideOverDrawer } from "../components/UserSlideOverDrawer";
+import { ChangeRoleModal } from "../components/ChangeRoleModal";
+import { SuspendUserModal } from "../components/SuspendUserModal";
+import { RevokeSessionsModal } from "../components/RevokeSessionsModal";
 import { toast } from "sonner";
 
 export function AdminCustomers() {
-  const [customers, setCustomers] = useState(() => getLocalAdminData("customers", INITIAL_CUSTOMERS));
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta>({
+    page: 1,
+    pageSize: 10,
+    totalItems: 0,
+    totalPages: 1,
+    hasPrevious: false,
+    hasNext: false,
+  });
+
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
 
-  const [formData, setFormData] = useState({ segment: "Regular", status: "Active" });
+  // Active User Drawer & Modals state
+  const [inspectUser, setInspectUser] = useState<AdminUser | null>(null);
+  const [roleModalUser, setRoleModalUser] = useState<AdminUser | null>(null);
+  const [suspendModalUser, setSuspendModalUser] = useState<AdminUser | null>(null);
+  const [revokeModalUser, setRevokeModalUser] = useState<AdminUser | null>(null);
 
-  const saveCustomers = (updated) => {
-    setCustomers(updated);
-    setLocalAdminData("customers", updated);
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // reset to first page on search
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await adminService.getUsers({
+        page,
+        pageSize: 10,
+        search: debouncedSearch || undefined,
+        role: roleFilter,
+        status: statusFilter,
+      });
+
+      const userList = res.data || [];
+      setUsers(userList);
+      if (res.meta) {
+        setMeta(res.meta);
+      }
+
+      // If drawer is currently inspecting a user, keep the live data updated
+      if (inspectUser) {
+        const refreshed = userList.find((u) => u.id === inspectUser.id);
+        if (refreshed) setInspectUser(refreshed);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load user records");
+    } finally {
+      setLoading(false);
+    }
+  }, [page, debouncedSearch, roleFilter, statusFilter]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // Action Handlers
+  const handleConfirmRoleChange = async (userId: string, newRole: AdminUser["role"]) => {
+    try {
+      await adminService.updateUserRole(userId, { role: newRole });
+      toast.success("User role updated successfully");
+      await fetchUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update role");
+      throw err;
+    }
   };
 
-  const handleOpenEdit = (cust) => {
-    setEditingCustomer(cust);
-    setFormData({ segment: cust.segment, status: cust.status });
-    setIsModalOpen(true);
+  const handleConfirmStatusChange = async (userId: string, status: AdminUser["status"], suspendedUntil: string | null) => {
+    try {
+      await adminService.updateUserStatus(userId, { status, suspendedUntil });
+      toast.success(status === "active" ? "User account reactivated" : "User account suspended");
+      await fetchUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update account status");
+      throw err;
+    }
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    const updated = customers.map((c) =>
-      c.id === editingCustomer.id ? { ...c, ...formData } : c
-    );
-    saveCustomers(updated);
-    setIsModalOpen(false);
-    toast.success(`Customer ${editingCustomer.name} updated!`);
+  const handleConfirmRevokeSessions = async (userId: string) => {
+    try {
+      await adminService.revokeUserSessions(userId);
+      toast.success("All active user sessions revoked successfully");
+      await fetchUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to revoke sessions");
+      throw err;
+    }
   };
 
-  const filtered = customers.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.email.toLowerCase().includes(search.toLowerCase())
-  );
+  // Helper badge stylers
+  const renderRoleBadge = (role: AdminUser["role"]) => {
+    switch (role) {
+      case "superadmin":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30">
+            <ShieldAlert className="size-3 text-purple-600 dark:text-purple-400" />
+            Superadmin
+          </span>
+        );
+      case "admin":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+            <ShieldCheck className="size-3 text-blue-600 dark:text-blue-400" />
+            Admin
+          </span>
+        );
+      case "vendor":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+            <Store className="size-3 text-amber-600 dark:text-amber-400" />
+            Vendor
+          </span>
+        );
+      case "support":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30">
+            <Headphones className="size-3 text-teal-600 dark:text-teal-400" />
+            Support
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-secondary text-secondary-foreground border border-border">
+            Customer
+          </span>
+        );
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-3xl border border-border/80 shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Customer Accounts</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage registered store users, VIP customer segmentation, and total lifetime spend.
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">User & Staff Management</h1>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20">
+              {meta.totalItems} Total Accounts
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Superadmin directory: inspect accounts, assign administrative roles, manage suspensions, and invalidate credentials.
           </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => fetchUsers()}
+            disabled={loading}
+            className="p-2.5 rounded-xl border border-border bg-card hover:bg-secondary text-foreground text-xs font-semibold transition-colors flex items-center gap-2 disabled:opacity-50"
+            title="Refresh User Directory"
+          >
+            <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
         </div>
       </div>
 
-      <div className="bg-background border border-border rounded-2xl p-4 shadow-xs">
-        <div className="relative max-w-sm">
+      {/* Control & Filter Bar */}
+      <div className="bg-background border border-border/80 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        {/* Search */}
+        <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search customers by name or email..."
+            placeholder="Search by email, name, or UUID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+            className="w-full pl-10 pr-4 py-2 bg-secondary/20 border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:outline-hidden"
           />
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Role Filter */}
+          <div className="flex items-center gap-1.5 bg-secondary/30 border border-border rounded-xl p-1 text-xs">
+            {["all", "customer", "vendor", "admin", "superadmin"].map((r) => (
+              <button
+                key={r}
+                onClick={() => {
+                  setRoleFilter(r);
+                  setPage(1);
+                }}
+                className={`px-2.5 py-1 rounded-lg font-medium text-[11px] capitalize transition-all ${
+                  roleFilter === r
+                    ? "bg-card text-foreground font-bold shadow-xs border border-border"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+            className="py-1.5 px-3 bg-secondary/30 border border-border rounded-xl text-xs text-foreground font-medium focus:outline-hidden"
+          >
+            <option value="all">All Statuses</option>
+            <option value="active">Active Only</option>
+            <option value="suspended">Suspended Only</option>
+          </select>
         </div>
       </div>
 
-      <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
+      {/* Dense User Table */}
+      <div className="bg-background border border-border/80 rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
-              <tr>
-                <th className="py-3.5 pl-4">Customer Name</th>
-                <th className="py-3.5">Contact Email</th>
-                <th className="py-3.5">Total Orders</th>
-                <th className="py-3.5">Lifetime Spend</th>
-                <th className="py-3.5">Segment</th>
-                <th className="py-3.5">Status</th>
-                <th className="py-3.5 pr-4 text-right">Actions</th>
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="border-b border-border/80 bg-muted/20 text-muted-foreground uppercase text-[10px] font-bold tracking-wider">
+                <th className="py-3 px-4">User Identity</th>
+                <th className="py-3 px-4">Permission Role</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4">Email Verification</th>
+                <th className="py-3 px-4">Joined Date</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {filtered.map((cust) => (
-                <tr key={cust.id} className="hover:bg-secondary/20 transition-colors">
-                  <td className="py-3.5 pl-4">
-                    <div className="font-semibold text-foreground">{cust.name}</div>
-                    <div className="text-[10px] text-muted-foreground">Joined: {cust.joinedDate}</div>
-                  </td>
-                  <td className="py-3.5 text-muted-foreground">{cust.email}</td>
-                  <td className="py-3.5 font-bold text-foreground">{cust.ordersCount} orders</td>
-                  <td className="py-3.5 font-bold text-foreground">{cust.totalSpent}</td>
-                  <td className="py-3.5">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        cust.segment === "VIP"
-                          ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-400"
-                          : "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400"
-                      }`}
-                    >
-                      {cust.segment}
-                    </span>
-                  </td>
-                  <td className="py-3.5">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        cust.status === "Active"
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"
-                          : "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400"
-                      }`}
-                    >
-                      {cust.status}
-                    </span>
-                  </td>
-                  <td className="py-3.5 pr-4 text-right">
-                    <button onClick={() => handleOpenEdit(cust)} className="p-1.5 text-muted-foreground hover:text-accent-brand">
-                      <Edit2 className="size-4" />
-                    </button>
+              {loading && users.length === 0 ? (
+                // Skeletons
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="size-8 rounded-full bg-muted/60" />
+                        <div className="space-y-1.5">
+                          <div className="h-3 w-32 bg-muted/60 rounded-sm" />
+                          <div className="h-2.5 w-44 bg-muted/40 rounded-sm" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-muted/60 rounded-full" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-14 bg-muted/60 rounded-full" /></td>
+                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-muted/40 rounded-sm" /></td>
+                    <td className="py-3.5 px-4"><div className="h-3 w-20 bg-muted/40 rounded-sm" /></td>
+                    <td className="py-3.5 px-4 text-right"><div className="h-6 w-16 bg-muted/40 rounded-lg ml-auto" /></td>
+                  </tr>
+                ))
+              ) : users.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                    <Users className="size-8 mx-auto mb-2 text-muted-foreground/50" />
+                    <p className="font-semibold text-foreground text-sm">No accounts found</p>
+                    <p className="text-xs mt-0.5">Try adjusting your filters or search terms.</p>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                users.map((u) => {
+                  const isSuspended = u.status === "suspended";
+                  return (
+                    <tr 
+                      key={u.id} 
+                      onClick={() => setInspectUser(u)}
+                      className="hover:bg-muted/15 transition-colors cursor-pointer group"
+                    >
+                      {/* Identity */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="size-8 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                            {u.fullName ? u.fullName.slice(0, 2).toUpperCase() : u.email.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                              {u.fullName || "Unnamed User"}
+                            </span>
+                            <span className="text-[11px] font-mono text-muted-foreground truncate">
+                              {u.email}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Role Badge */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {renderRoleBadge(u.role)}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                          u.status === "active"
+                            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                            : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30"
+                        }`}>
+                          <span className={`size-1.5 rounded-full ${u.status === "active" ? "bg-emerald-500" : "bg-rose-500"}`} />
+                          {u.status}
+                        </span>
+                      </td>
+
+                      {/* Email Verified */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {u.isEmailVerified ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 className="size-3.5" /> Verified
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                            <XCircle className="size-3.5 text-muted-foreground/60" /> Unverified
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Joined Date */}
+                      <td className="py-3 px-4 whitespace-nowrap text-muted-foreground font-mono text-[11px]">
+                        {new Date(u.createdAt).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </td>
+
+                      {/* Row Action Buttons */}
+                      <td className="py-3 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setInspectUser(u)}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                            title="Inspect User Details"
+                          >
+                            <Eye className="size-4" />
+                          </button>
+
+                          <button
+                            onClick={() => setRoleModalUser(u)}
+                            className="p-1.5 rounded-lg text-purple-600 hover:text-purple-700 hover:bg-purple-500/10 transition-colors"
+                            title="Change Role (Superadmin)"
+                          >
+                            <Shield className="size-4" />
+                          </button>
+
+                          <button
+                            onClick={() => setSuspendModalUser(u)}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              isSuspended
+                                ? "text-emerald-600 hover:bg-emerald-500/10"
+                                : "text-rose-600 hover:bg-rose-500/10"
+                            }`}
+                            title={isSuspended ? "Reactivate Account" : "Suspend Account"}
+                          >
+                            {isSuspended ? <UserCheck className="size-4" /> : <UserX className="size-4" />}
+                          </button>
+
+                          <button
+                            onClick={() => setRevokeModalUser(u)}
+                            className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-500/10 transition-colors"
+                            title="Revoke Sessions"
+                          >
+                            <LogOut className="size-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
-      </div>
 
-      {isModalOpen && editingCustomer && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-sm w-full p-6 shadow-xl space-y-4">
-            <div className="flex justify-between items-center border-b border-border pb-3">
-              <h3 className="font-bold text-base text-foreground">Edit Account: {editingCustomer.name}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground">
-                <X className="size-5" />
-              </button>
-            </div>
-            <form onSubmit={handleSave} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Customer Segment</label>
-                <select
-                  value={formData.segment}
-                  onChange={(e) => setFormData({ ...formData, segment: e.target.value })}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
-                >
-                  <option value="New">New</option>
-                  <option value="Regular">Regular</option>
-                  <option value="VIP">VIP</option>
-                </select>
-              </div>
+        {/* Pagination Bar */}
+        <div className="p-4 border-t border-border/80 bg-muted/10 flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            Showing <strong className="text-foreground">{users.length}</strong> of{" "}
+            <strong className="text-foreground">{meta.totalItems}</strong> accounts
+          </span>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Account Status</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Suspended">Suspended</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-border">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs border border-border rounded-xl">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-xs bg-accent-brand text-white rounded-xl">Save</button>
-              </div>
-            </form>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={!meta.hasPrevious || loading}
+              className="p-1.5 rounded-lg border border-border bg-card hover:bg-secondary text-foreground disabled:opacity-40 transition-colors"
+              title="Previous Page"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <span className="font-mono text-xs px-2 font-bold text-foreground">
+              Page {meta.page} of {Math.max(1, meta.totalPages)}
+            </span>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!meta.hasNext || loading}
+              className="p-1.5 rounded-lg border border-border bg-card hover:bg-secondary text-foreground disabled:opacity-40 transition-colors"
+              title="Next Page"
+            >
+              <ChevronRight className="size-4" />
+            </button>
           </div>
         </div>
+      </div>
+
+      {/* Slide-over Inspector Drawer */}
+      <UserSlideOverDrawer
+        user={inspectUser}
+        isOpen={Boolean(inspectUser)}
+        onClose={() => setInspectUser(null)}
+        onChangeRole={(u) => setRoleModalUser(u)}
+        onSuspend={(u) => setSuspendModalUser(u)}
+        onRevokeSessions={(u) => setRevokeModalUser(u)}
+      />
+
+      {/* Change Role Modal */}
+      {roleModalUser && (
+        <ChangeRoleModal
+          user={roleModalUser}
+          isOpen={Boolean(roleModalUser)}
+          onClose={() => setRoleModalUser(null)}
+          onConfirm={handleConfirmRoleChange}
+        />
+      )}
+
+      {/* Suspend User Modal */}
+      {suspendModalUser && (
+        <SuspendUserModal
+          user={suspendModalUser}
+          isOpen={Boolean(suspendModalUser)}
+          onClose={() => setSuspendModalUser(null)}
+          onConfirm={handleConfirmStatusChange}
+        />
+      )}
+
+      {/* Revoke Sessions Modal */}
+      {revokeModalUser && (
+        <RevokeSessionsModal
+          user={revokeModalUser}
+          isOpen={Boolean(revokeModalUser)}
+          onClose={() => setRevokeModalUser(null)}
+          onConfirm={handleConfirmRevokeSessions}
+        />
       )}
     </div>
   );
