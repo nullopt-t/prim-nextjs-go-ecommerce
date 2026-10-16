@@ -410,12 +410,6 @@ func (r *ProductRepository) List(
 			pv.price as price,
 			pv.crossed_out_price as crossed_out_price,
 			pv.currency as currency,
-			(
-				SELECT coalesce(json_agg(json_build_object('id', pt.id, 'name', pt.name)), '[]'::json)
-				FROM product_tag_assignments pta
-				JOIN product_tags pt ON pta.tag_id = pt.id
-				WHERE pta.product_id = p.id
-			) as tags_raw,
 			p.created_at,
 			p.updated_at,
 			p.deleted_at
@@ -470,7 +464,6 @@ func (r *ProductRepository) List(
 			&item.Price,
 			&item.CrossedOutPrice,
 			&item.Currency,
-			&item.TagsRaw,
 			&item.CreatedAt,
 			&item.UpdatedAt,
 			&item.DeletedAt,
