@@ -89,8 +89,16 @@ export function AdminCategories() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    toast.info("Categories with attached products cannot be deleted directly.");
+  const handleDelete = async (id: string) => {
+    if (confirm("Categories with attached products cannot be deleted directly.")) {
+      try {
+        await catalogService.deleteCategory(id);
+        toast.success("Category deleted");
+        loadCategories();
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Failed to delete category");
+      }
+    }
   };
 
   const filtered = categories.filter((c) =>

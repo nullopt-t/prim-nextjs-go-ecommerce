@@ -61,10 +61,15 @@ export function AdminMedia() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Delete this media asset?")) {
-      setMediaList(mediaList.filter((m) => m.id !== id));
-      toast.success("Media file deleted");
+      try {
+        await adminService.deleteMedia(id);
+        setMediaList(mediaList.filter((m) => m.id !== id));
+        toast.success("Media file deleted");
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Failed to delete media");
+      }
     }
   };
 

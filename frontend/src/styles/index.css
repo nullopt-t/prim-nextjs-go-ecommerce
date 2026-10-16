@@ -5,7 +5,7 @@
 
 html,
 body {
-	min-height: 100vh;
+	min-height: 100dvh;
 	background-color: var(--page-bg);
 	font-family: var(--font-ibm-plex-sans), system-ui, sans-serif;
 }

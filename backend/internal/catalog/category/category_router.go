@@ -40,6 +40,7 @@ func (cr *CategoryRouter) MapRoutes(
 		admin.POST("", cr.chandler.CreateCategory)
 		admin.PATCH("/:id", cr.chandler.UpdateCategory)
 		admin.GET("/:id", cr.chandler.GetCategoryByID)
+		admin.DELETE("/:id", cr.chandler.DeleteCategory)
 	}
 
 	adminAttrs := vgroup.Group("/admin/attributes")

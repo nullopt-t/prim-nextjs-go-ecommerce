@@ -388,3 +388,17 @@ func (h *CategoryHandler) DeleteAttribute(c *gin.Context) {
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Attribute deleted"})
 }
 
+func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid category ID"))
+		return
+	}
+
+	if err := h.categoryService.DeleteCategory(c.Request.Context(), id); err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to delete category").Wrap(err))
+		return
+	}
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Category deleted"})
+}
+

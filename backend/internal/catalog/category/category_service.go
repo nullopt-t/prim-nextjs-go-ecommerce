@@ -281,6 +281,18 @@ func (cs *CategoryService) DeleteAttribute(ctx context.Context, id uuid.UUID) er
 	})
 }
 
+func (cs *CategoryService) DeleteCategory(ctx context.Context, id uuid.UUID) error {
+	return cs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		if err := cs.repo.SoftDeleteCategory(ctx, tx, id); err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.NotFoundError("Category not found").WithCode(apierr.CodeNotFound)
+			}
+			return err
+		}
+		return nil
+	})
+}
+
 func (cs *CategoryService) handleError(err error, defaultMsg string) error {
 	if err == nil {
 		return nil

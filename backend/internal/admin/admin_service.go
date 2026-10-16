@@ -296,3 +296,15 @@ func (s *AdminService) UpdateSettings(ctx context.Context, items map[string]inte
 		return nil
 	})
 }
+
+func (s *AdminService) DeleteMedia(ctx context.Context, id uuid.UUID) error {
+	return s.txRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+		if err := s.repo.DeleteMedia(ctx, tx, id); err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.NotFoundError("Media not found").WithCode(apierr.CodeNotFound)
+			}
+			return err
+		}
+		return nil
+	})
+}

@@ -44,7 +44,7 @@ import { WishlistProvider } from "@/context/WishlistContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 
 import { CartSidebar } from "@/components/ui/cartSidebar";
-import { Toaster } from "sonner";
+import { ResponsiveToaster } from "@/components/ui/responsiveToaster";
 
 export default async function RootLayout({
   children,
@@ -69,6 +69,7 @@ export default async function RootLayout({
       className={`${ibmPlexSans.variable} ${ibmPlexSansArabic.variable}`}
       suppressHydrationWarning
     >
+      <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       <body className={`antialiased ${locale === "ar" ? "font-arabic" : "font-sans"}`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
@@ -85,7 +86,7 @@ export default async function RootLayout({
               </WishlistProvider>
             </AuthProvider>
           </ThemeProvider>
-          <Toaster richColors position="bottom-right" />
+          <ResponsiveToaster richColors />
         </NextIntlClientProvider>
       </body>
     </html>

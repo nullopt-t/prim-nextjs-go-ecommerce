@@ -48,6 +48,7 @@ export const catalogService = {
     api.post("/api/v1/admin/categories", payload),
   updateCategory: (id: string, payload: { name?: string; parentId?: string }) =>
     api.patch(`/api/v1/admin/categories/${id}`, payload),
+  deleteCategory: (id: string) => api.delete(`/api/v1/admin/categories/${id}`),
 
   // Brand Admin
   createBrand: (payload: { name: string; link?: string }) =>

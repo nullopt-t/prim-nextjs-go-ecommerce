@@ -154,6 +154,10 @@ export const adminService = {
     return api.upload(`/api/v1/admin/media`, formData);
   },
 
+  deleteMedia: async (id: string): Promise<{ message: string }> => {
+    return api.delete<{ message: string }>(`/api/v1/admin/media/${id}`);
+  },
+
   // Attributes
   getAttributes: async (): Promise<any> => {
     return api.get(`/api/v1/admin/attributes`);

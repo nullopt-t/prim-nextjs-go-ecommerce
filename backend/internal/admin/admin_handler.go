@@ -238,6 +238,20 @@ func (h *AdminHandler) UploadMedia(c *gin.Context) {
 	c.JSON(http.StatusCreated, api.DataResponse{Data: item})
 }
 
+func (h *AdminHandler) DeleteMedia(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid media ID"))
+		return
+	}
+
+	if err := h.service.DeleteMedia(c.Request.Context(), id); err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to delete media").Wrap(err))
+		return
+	}
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Media deleted"})
+}
+
 // Attributes
 func (h *AdminHandler) ListAttributes(c *gin.Context) {
 	list, err := h.service.ListAttributes(c.Request.Context())

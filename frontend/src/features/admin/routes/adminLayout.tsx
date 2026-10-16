@@ -219,11 +219,11 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
 
         {/* Sidebar */}
         <aside
-          className={`fixed lg:sticky top-16 z-30 h-[calc(100vh-4rem)] w-64 bg-background border-r border-border flex flex-col justify-between transition-transform duration-200 ease-in-out ${
+          className={`fixed lg:sticky top-16 z-30 h-[calc(100dvh-4rem)] w-64 bg-background border-r border-border flex flex-col justify-between transition-transform duration-200 ease-in-out ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           }`}
         >
-          <div className="p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-8rem)]">
+          <div className="p-3 space-y-1 overflow-y-auto max-h-[calc(100dvh-8rem)]">
             <div className="px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               Management
             </div>

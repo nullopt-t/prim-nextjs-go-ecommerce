@@ -534,3 +534,15 @@ func (r *AdminRepository) DeleteSetting(ctx context.Context, qe database.QueryEx
 	}
 	return nil
 }
+
+func (r *AdminRepository) DeleteMedia(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) error {
+	query := `UPDATE storage_objects SET status = 'deleted', deleted_at = now(), updated_at = now() WHERE id = $1 AND deleted_at IS NULL`
+	tag, err := qe.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("delete media: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return apierr.NotFoundError("Media not found")
+	}
+	return nil
+}

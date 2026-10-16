@@ -46,7 +46,7 @@ export function PortalSwitcher() {
   ];
 
   return (
-    <div className="fixed bottom-4 left-4 z-50 font-sans">
+    <div className="fixed bottom-4 left-4 z-50 font-sans hidden md:flex">
       {isOpen && (
         <div className="mb-2 w-56 rounded-2xl bg-card border border-border shadow-2xl p-2.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
           <div className="flex items-center justify-between px-2 py-1.5 border-b border-border/60 mb-1.5">
