@@ -186,6 +186,14 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 		return
 	}
 
+	// Canonicalize and strictly validate the email address so /verify uses the
+	// same identifier as /start (otherwise challenge lookups miss on case/tags)
+	email, err := utils.IsValidEmail(req.Email)
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("invalid email"))
+		return
+	}
+
 	// Capture client fingerprinting metadata (User-Agent and Client IP) for session binding
 	ctx := c.Request.Context()
 	userAgent := c.GetHeader("User-Agent")
@@ -194,7 +202,7 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 	// Verify the OTP challenge code and transition the user account state
 	authResult, err := h.authService.VerifyChallenge(
 		ctx,
-		req.Email,
+		email,
 		req.Code,
 		userAgent,
 		ipAddress,
@@ -254,11 +262,19 @@ func (h *Handler) ResendChallenge(c *gin.Context) {
 		return
 	}
 
+	// Canonicalize and strictly validate the email address so /resend uses the
+	// same identifier as /start
+	email, err := utils.IsValidEmail(req.Email)
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("invalid email"))
+		return
+	}
+
 	// Trigger OTP regeneration and re-transmission through the domain auth service
 	ctx := c.Request.Context()
-	err := h.authService.ResendChallenge(
+	err = h.authService.ResendChallenge(
 		ctx,
-		req.Email,
+		email,
 	)
 	if err != nil {
 		_ = c.Error(err)

@@ -11,6 +11,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/utils"
 )
 
 // UserService defines the account persistence and user identity contract
@@ -93,6 +94,9 @@ func (s *AuthService) StartChallenge(
 	ctx context.Context,
 	identifier string,
 ) (*model.Challenge, error) {
+	// Canonicalize the identifier so every entry point keys the same Redis challenge
+	identifier = utils.NormalizeEmail(identifier)
+
 	challenge, err := s.challengeService.Create(
 		ctx,
 		identifier,
@@ -111,6 +115,9 @@ func (s *AuthService) ResendChallenge(
 	ctx context.Context,
 	identifier string,
 ) error {
+	// Canonicalize the identifier to match the challenge key used at creation
+	identifier = utils.NormalizeEmail(identifier)
+
 	// Fetch active challenge from Redis
 	challenge, err := s.challengeService.Get(
 		ctx,
@@ -143,6 +150,9 @@ func (s *AuthService) VerifyChallenge(
 	userAgent string,
 	ipAddress string,
 ) (*SessionAuthResult, error) {
+	// Canonicalize the identifier to match the challenge key used at creation
+	identifier = utils.NormalizeEmail(identifier)
+
 	// Retrieve active challenge from Redis
 	challenge, err := s.challengeService.Get(
 		ctx,
