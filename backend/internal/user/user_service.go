@@ -392,8 +392,13 @@ func (s *UserService) UpdateAccountStatus(
 		suspendedUntil = nil
 	}
 
-	// Update status in PostgreSQL
+	// Update status in PostgreSQL. A deleted status is a real soft delete:
+	// status and deleted_at are set atomically so the account disappears from
+	// listings and its sessions are revoked below.
 	err = s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		if newStatus == model.StatusDeleted {
+			return s.repo.SoftDelete(ctx, db, targetUserID)
+		}
 		return s.repo.UpdateStatus(ctx, db, targetUserID, newStatus, suspendedUntil)
 	})
 
