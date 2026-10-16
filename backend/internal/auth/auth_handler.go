@@ -429,9 +429,14 @@ func (h *Handler) Logout(c *gin.Context) {
 		sessionID = sid.(string)
 	}
 
-	// Delete current session from Redis store
+	// Delete current session from Redis store. Revocation failure is surfaced
+	// instead of swallowed: cookies are only cleared once the server-side
+	// session is confirmed revoked, otherwise the session stays valid.
 	if sessionID != "" {
-		_ = h.sessionService.DeleteSessionByID(c.Request.Context(), userID, sessionID)
+		if err := h.sessionService.DeleteSessionByID(c.Request.Context(), userID, sessionID); err != nil {
+			_ = c.Error(err)
+			return
+		}
 	}
 
 	// Clear auth cookies on client browser and respond with 204 No Content
