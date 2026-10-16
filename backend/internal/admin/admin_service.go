@@ -2,11 +2,14 @@ package admin
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
@@ -80,13 +83,25 @@ func (s *AdminService) CreateCoupon(ctx context.Context, p *PromotionItem) error
 
 func (s *AdminService) UpdateCouponStatus(ctx context.Context, id uuid.UUID, status string) error {
 	return s.txRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
-		return s.repo.UpdateCouponStatus(ctx, tx, id, status)
+		if err := s.repo.UpdateCouponStatus(ctx, tx, id, status); err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.NotFoundError("Coupon not found").WithCode(apierr.CodeNotFound)
+			}
+			return err
+		}
+		return nil
 	})
 }
 
 func (s *AdminService) DeleteCoupon(ctx context.Context, id uuid.UUID) error {
 	return s.txRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
-		return s.repo.DeleteCoupon(ctx, tx, id)
+		if err := s.repo.DeleteCoupon(ctx, tx, id); err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.NotFoundError("Coupon not found").WithCode(apierr.CodeNotFound)
+			}
+			return err
+		}
+		return nil
 	})
 }
 
@@ -103,13 +118,49 @@ func (s *AdminService) ListPayments(ctx context.Context, limit, offset int) ([]P
 
 func (s *AdminService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, status string) error {
 	return s.txRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
-		return s.repo.UpdatePaymentStatus(ctx, tx, id, status)
+		if err := s.repo.UpdatePaymentStatus(ctx, tx, id, status); err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.NotFoundError("Payment not found").WithCode(apierr.CodeNotFound)
+			}
+			return err
+		}
+		return nil
 	})
 }
 
+// RefundPayment marks a payment refunded only when the transition is valid:
+// the payment must exist and be in a capturable state (captured). Already
+// refunded or failed payments are rejected. A real gateway reversal should be
+// invoked here before flipping the local record.
 func (s *AdminService) RefundPayment(ctx context.Context, id uuid.UUID) error {
 	return s.txRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
-		return s.repo.UpdatePaymentStatus(ctx, tx, id, "refunded")
+		payment, err := s.repo.GetPaymentByID(ctx, tx, id)
+		if err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.NotFoundError("Payment not found").WithCode(apierr.CodeNotFound)
+			}
+			return err
+		}
+
+		switch payment.Status {
+		case "captured":
+			// eligible for refund
+		case "refunded":
+			return apierr.BadRequestError("Payment is already refunded").WithCode(apierr.CodeInvalidInput)
+		case "failed":
+			return apierr.BadRequestError("Failed payment cannot be refunded").WithCode(apierr.CodeInvalidInput)
+		default:
+			return apierr.BadRequestError(
+				fmt.Sprintf("Payment in %s state cannot be refunded", payment.Status),
+			).WithCode(apierr.CodeInvalidInput)
+		}
+
+		// TODO(integration): invoke the payment gateway reversal before flipping
+		// the local record; on gateway failure, abort and keep the status unchanged.
+		if err := s.repo.UpdatePaymentStatus(ctx, tx, id, "refunded"); err != nil {
+			return err
+		}
+		return nil
 	})
 }
 

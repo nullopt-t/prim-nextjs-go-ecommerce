@@ -149,7 +149,9 @@ func (r *AdminRepository) GetDashboardStats(ctx context.Context, qe database.Que
 	}
 
 	// Product count
-	_ = qe.QueryRow(ctx, `SELECT COUNT(*) FROM products WHERE deleted_at IS NULL`).Scan(&stats.TotalProducts)
+	if err := qe.QueryRow(ctx, `SELECT COUNT(*) FROM products WHERE deleted_at IS NULL`).Scan(&stats.TotalProducts); err != nil {
+		return nil, fmt.Errorf("get product count: %w", err)
+	}
 
 	// Daily sales last 14 days (excluding cancelled orders)
 	salesQuery := `
@@ -217,14 +219,26 @@ func (r *AdminRepository) CreateCoupon(ctx context.Context, qe database.QueryExe
 
 func (r *AdminRepository) UpdateCouponStatus(ctx context.Context, qe database.QueryExecutor, id uuid.UUID, status string) error {
 	query := `UPDATE coupons SET status = $1::coupon_status, updated_at = NOW() WHERE id = $2`
-	_, err := qe.Exec(ctx, query, status, id)
-	return err
+	res, err := qe.Exec(ctx, query, status, id)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return database.ErrNotFound
+	}
+	return nil
 }
 
 func (r *AdminRepository) DeleteCoupon(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) error {
 	query := `DELETE FROM coupons WHERE id = $1`
-	_, err := qe.Exec(ctx, query, id)
-	return err
+	res, err := qe.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return database.ErrNotFound
+	}
+	return nil
 }
 
 func (r *AdminRepository) ListPayments(ctx context.Context, qe database.QueryExecutor, limit, offset int) ([]PaymentItem, int, error) {
@@ -259,15 +273,36 @@ func (r *AdminRepository) ListPayments(ctx context.Context, qe database.QueryExe
 	return payments, total, nil
 }
 
+func (r *AdminRepository) GetPaymentByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*PaymentItem, error) {
+	query := `SELECT id, order_id, amount, currency, status, provider, provider_transaction_id, created_at, updated_at FROM payments WHERE id = $1`
+	var pi PaymentItem
+	err := qe.QueryRow(ctx, query, id).Scan(
+		&pi.ID, &pi.OrderID, &pi.Amount, &pi.Currency, &pi.Status,
+		&pi.Provider, &pi.ProviderTransactionID, &pi.CreatedAt, &pi.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &pi, nil
+}
+
 func (r *AdminRepository) UpdatePaymentStatus(ctx context.Context, qe database.QueryExecutor, id uuid.UUID, status string) error {
 	query := `UPDATE payments SET status = $1::payment_status, updated_at = NOW() WHERE id = $2`
-	_, err := qe.Exec(ctx, query, status, id)
-	return err
+	res, err := qe.Exec(ctx, query, status, id)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return database.ErrNotFound
+	}
+	return nil
 }
 
 func (r *AdminRepository) ListMedia(ctx context.Context, qe database.QueryExecutor, limit, offset int) ([]MediaItem, int, error) {
 	var total int
-	_ = qe.QueryRow(ctx, `SELECT COUNT(*) FROM storage_objects WHERE deleted_at IS NULL`).Scan(&total)
+	if err := qe.QueryRow(ctx, `SELECT COUNT(*) FROM storage_objects WHERE deleted_at IS NULL`).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("get media count: %w", err)
+	}
 
 	query := `
 		SELECT id, bucket, object_key, content_type, file_size, status, created_at
@@ -337,13 +372,21 @@ func (r *AdminRepository) CreateAttribute(ctx context.Context, qe database.Query
 
 func (r *AdminRepository) DeleteAttribute(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) error {
 	query := `DELETE FROM category_attributes WHERE id = $1`
-	_, err := qe.Exec(ctx, query, id)
-	return err
+	res, err := qe.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return database.ErrNotFound
+	}
+	return nil
 }
 
 func (r *AdminRepository) ListInventoryOverview(ctx context.Context, qe database.QueryExecutor, limit, offset int) ([]InventoryStockItem, int, error) {
 	var total int
-	_ = qe.QueryRow(ctx, `SELECT COUNT(*) FROM product_variants WHERE deleted_at IS NULL`).Scan(&total)
+	if err := qe.QueryRow(ctx, `SELECT COUNT(*) FROM product_variants WHERE deleted_at IS NULL`).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("get inventory count: %w", err)
+	}
 
 	query := `
 		SELECT 
