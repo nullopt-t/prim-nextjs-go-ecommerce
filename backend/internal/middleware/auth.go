@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -36,6 +37,11 @@ type SessionStore interface {
 	// It returns the session pointer or an error if the lookup fails or the session does not exist.
 	GetSessionByID(ctx context.Context, sessionID string) (*model.UserSession, error)
 }
+
+// UserResolver resolves a fresh user record by ID, used to re-validate the
+// account's role and status on every authenticated request so suspensions,
+// demotions, and deletions take effect on live sessions.
+type UserResolver func(ctx context.Context, userID uuid.UUID) (*model.User, error)
 
 // Authorize verifies that the authenticated user possesses one of the allowed roles.
 // Users with SuperRole ("superadmin") automatically pass any staff-level check.
@@ -101,7 +107,10 @@ func extractSessionID(c *gin.Context) string {
 // It looks up the session ID via the SessionStore, loads the user_id and userRole,
 // and sets them in the Gin context. If the session cookie is missing, invalid, or expired,
 // it halts the middleware chain and aborts with an authentication error.
-func Authenticate(sessionStore SessionStore) gin.HandlerFunc {
+// When a UserResolver is provided, the user's account status and role are re-validated
+// against the database on every request, so suspension, demotion, or deletion
+// invalidates live sessions immediately instead of trusting the session snapshot.
+func Authenticate(sessionStore SessionStore, userResolvers ...UserResolver) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sessionID := extractSessionID(c)
 
@@ -144,6 +153,25 @@ func Authenticate(sessionStore SessionStore) gin.HandlerFunc {
 			c.Set("userRole", string(session.UserRole))
 		} else {
 			c.Set("userRole", "customer")
+		}
+
+		// Re-validate the account's status and role from the database so a
+		// suspension, demotion, or deletion takes effect on live sessions.
+		if len(userResolvers) > 0 && userResolvers[0] != nil {
+			user, err := userResolvers[0](c.Request.Context(), session.UserID)
+			if err != nil {
+				// The account backing this session no longer exists or cannot
+				// be read: fail closed and reject the request.
+				_ = c.Error(apierr.UnauthorizedError())
+				c.Abort()
+				return
+			}
+			if !user.IsActive() {
+				_ = c.Error(apierr.New(http.StatusForbidden, "Account is not active").WithCode(apierr.CodeForbidden))
+				c.Abort()
+				return
+			}
+			c.Set("userRole", string(user.Role))
 		}
 
 		// Proceed to subsequent handlers in the Gin middleware chain

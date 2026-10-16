@@ -238,6 +238,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		app.logger,
 		sessionService,
 		app.config.RateLimitCfg,
+		userService.GetUserByID,
 	)
 	authRouter.MapRoutes(v1)
 

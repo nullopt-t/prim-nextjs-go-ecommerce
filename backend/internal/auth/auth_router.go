@@ -10,16 +10,19 @@ import (
 // Router registers and manages HTTP route bindings for authentication flows,
 // public passwordless challenge handshakes, rate limiting policies, and protected session operations.
 type Router struct {
-	authHandler  *Handler
-	secrets      config.Secrets
-	limiter      middleware.RateLimiter
-	logger       log.Logger
-	sessionStore middleware.SessionStore
-	rateLimitCfg config.RateLimitConfig
+	authHandler   *Handler
+	secrets       config.Secrets
+	limiter       middleware.RateLimiter
+	logger        log.Logger
+	sessionStore  middleware.SessionStore
+	rateLimitCfg  config.RateLimitConfig
+	userResolver  middleware.UserResolver
 }
 
 // NewRouter constructs a new authentication router with dependencies needed for routing,
 // rate limiting enforcement, and session authentication middleware.
+// userResolver, when non-nil, re-validates each user's account status and role
+// from the database on every authenticated request.
 func NewRouter(
 	ah *Handler,
 	secrets config.Secrets,
@@ -27,8 +30,9 @@ func NewRouter(
 	logger log.Logger,
 	sessionStore middleware.SessionStore,
 	rateLimitCfg config.RateLimitConfig,
+	userResolver ...middleware.UserResolver,
 ) *Router {
-	return &Router{
+	r := &Router{
 		authHandler:  ah,
 		secrets:      secrets,
 		limiter:      limiter,
@@ -36,6 +40,10 @@ func NewRouter(
 		sessionStore: sessionStore,
 		rateLimitCfg: rateLimitCfg,
 	}
+	if len(userResolver) > 0 {
+		r.userResolver = userResolver[0]
+	}
+	return r
 }
 
 // MapRoutes configures public challenge endpoints and protected session endpoints on the provided Gin router group.
@@ -79,7 +87,7 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	// Protected endpoints: enforce server-side session authentication middleware
 	// A dedicated sub-group guarantees that protected middleware does not leak or depend on declaration order.
 	protected := auth.Group("")
-	protected.Use(middleware.Authenticate(r.sessionStore))
+	protected.Use(middleware.Authenticate(r.sessionStore, r.userResolver))
 
 	// GET /api/v1/auth/me - Retrieve current authenticated user profile
 	protected.GET("/me", r.authHandler.GetMe)

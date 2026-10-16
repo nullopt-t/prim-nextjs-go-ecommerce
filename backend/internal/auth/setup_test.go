@@ -122,8 +122,10 @@ func (s *AuthTestSuite) SetupSuite() {
 	userService := user.NewService(txRunner, userRepo, logger)
 
 	secrets := config.Secrets{
-		JwtAccessTokenSecretKey:  "access",
+		JwtAccessTokenSecretKey: "access",
 		JwtRefreshTokenSecretKey: "refresh",
+		JwtIssuer:               "test-issuer",
+		JwtAudience:             "test-audience",
 	}
 	authService := auth.NewAuthService(
 		logger,
@@ -158,6 +160,10 @@ func (s *AuthTestSuite) SetupSuite() {
 			AuthVerifyRequests: 10,
 			AuthVerifyWindow:   time.Minute,
 		},
+		// Re-validation against the DB is exercised by VerifyChallenge's own
+		// status checks; keep the middleware resolver nil here to avoid coupling
+		// challenge-flow tests to user table state.
+		nil,
 	)
 
 	v1 := s.router.Group("/api/v1")
