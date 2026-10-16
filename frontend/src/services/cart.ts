@@ -18,8 +18,9 @@ export const cartService = {
    * Resolves the proper variant ID (even if a slug or product id is passed) and adds the item
    */
   addItem: async (payload: AddItemServicePayload) => {
-    let variantId = payload.variantId || payload.id;
+    let variantId = payload.variantId;
 
+    // If no variantId provided, or if the provided variantId might be a product identifier, resolve it
     if (!variantId || !UUID_REGEX.test(variantId)) {
       const identifier = payload.slug || payload.id || variantId;
       if (identifier) {
@@ -36,6 +37,11 @@ export const cartService = {
           // fallback if lookup fails
         }
       }
+    }
+
+    // If still missing, check if payload.id is valid
+    if (!variantId && payload.id && UUID_REGEX.test(payload.id)) {
+      variantId = payload.id;
     }
 
     if (!variantId || !UUID_REGEX.test(variantId)) {

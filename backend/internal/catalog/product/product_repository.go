@@ -140,12 +140,15 @@ func (r *ProductRepository) GetByIDWithDeleted(
 	return r.get(ctx, qe, "id = $1", id)
 }
 
-// GetBySlug retrieves a single non-deleted product by its public SEO slug.
+// GetBySlug retrieves a single non-deleted product by its public SEO slug or UUID.
 func (r *ProductRepository) GetBySlug(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	slug string,
 ) (*model.Product, error) {
+	if parsedUUID, err := uuid.Parse(slug); err == nil && parsedUUID != uuid.Nil {
+		return r.get(ctx, qe, "(slug = $1 OR id = $2) AND deleted_at IS NULL", slug, parsedUUID)
+	}
 	return r.get(ctx, qe, "slug = $1 AND deleted_at IS NULL", slug)
 }
 
@@ -396,6 +399,8 @@ func (r *ProductRepository) List(
 			so.object_key as so_object_key,
 			so.content_type as so_content_type,
 			so.file_size as so_file_size,
+			pv.id AS default_variant_id,
+			pv.sku AS sku,
 			GREATEST(
 				COALESCE((SELECT SUM(il.quantity) FROM product_variants pv_all JOIN inventory_ledgers il ON il.variant_id = pv_all.id WHERE pv_all.product_id = p.id AND pv_all.deleted_at IS NULL), 0) -
 				COALESCE((SELECT SUM(ir.quantity) FROM product_variants pv_all JOIN inventory_reservations ir ON ir.variant_id = pv_all.id WHERE pv_all.product_id = p.id AND pv_all.deleted_at IS NULL AND ir.released_at IS NULL AND ir.expires_at > now()), 0),

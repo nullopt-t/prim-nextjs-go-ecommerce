@@ -33,6 +33,7 @@ export default function WishlistContent() {
         if (!item) continue;
         const res = await addToCart({
           id: String(item.productId || item.id),
+          variantId: item.variantId || item.defaultVariantId,
           slug: item.slug,
           productName: item.product,
           productPrice: typeof item.price === "number" ? `$${item.price.toFixed(2)}` : String(item.price),

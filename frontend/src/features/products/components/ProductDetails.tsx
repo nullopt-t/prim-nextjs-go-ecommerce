@@ -224,10 +224,16 @@ export function ProductDetails() {
   const handleAddToCart = async () => {
     if (!isVariantInStock) return;
     setIsAdding(true);
-    const variantId = activeVariant?.id || String(product.id);
+    const resolvedVariantId =
+      activeVariant?.id ||
+      (product.variants && product.variants.find((v: any) => v.isDefault)?.id) ||
+      (product.variants && product.variants[0]?.id) ||
+      product.variantId ||
+      product.defaultVariantId;
     const payload = {
       id: String(product.id),
-      variantId,
+      slug: product.slug,
+      variantId: resolvedVariantId,
       productName: product.product,
       productPrice: `$${currentPrice}`,
       img: images[0],
@@ -246,10 +252,16 @@ export function ProductDetails() {
   const handleBuyNow = async () => {
     if (!isVariantInStock) return;
     setIsAdding(true);
-    const variantId = activeVariant?.id || String(product.id);
+    const resolvedVariantId =
+      activeVariant?.id ||
+      (product.variants && product.variants.find((v: any) => v.isDefault)?.id) ||
+      (product.variants && product.variants[0]?.id) ||
+      product.variantId ||
+      product.defaultVariantId;
     const payload = {
       id: String(product.id),
-      variantId,
+      slug: product.slug,
+      variantId: resolvedVariantId,
       productName: product.product,
       productPrice: `$${currentPrice}`,
       img: images[0],

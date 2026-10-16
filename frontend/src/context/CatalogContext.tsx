@@ -117,6 +117,7 @@ export function normalizeProduct(raw: any) {
     : [];
 
   const variantId = raw.variantId || p.variantId || undefined;
+  const defaultVariantId = raw.defaultVariantId || raw.variantId || p.variantId || undefined;
 
   return {
     ...raw,
@@ -124,6 +125,7 @@ export function normalizeProduct(raw: any) {
     productId: id,
     wishlistItemId,
     variantId,
+    defaultVariantId,
     slug,
     product,
     title: titleStr,
