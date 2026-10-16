@@ -3,13 +3,14 @@ package admin
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
+	"github.com/nullopt-t/prim-backend/internal/shared/validation"
 )
 
 type AdminHandler struct {
@@ -127,20 +128,14 @@ func (h *AdminHandler) DeletePromotion(c *gin.Context) {
 
 // Payments
 func (h *AdminHandler) ListPayments(c *gin.Context) {
-	limit := 50
-	offset := 0
-	if l := c.Query("pageSize"); l != "" {
-		if val, err := strconv.Atoi(l); err == nil && val > 0 {
-			limit = val
-		}
+	q := &pagination.ListQuery{}
+	if err := c.ShouldBindQuery(q); err != nil {
+		validation.ValidationError(c, err)
+		return
 	}
-	if p := c.Query("page"); p != "" {
-		if val, err := strconv.Atoi(p); err == nil && val > 0 {
-			offset = (val - 1) * limit
-		}
-	}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 50, MaxPageSize: 100})
 
-	payments, total, err := h.service.ListPayments(c.Request.Context(), limit, offset)
+	payments, total, err := h.service.ListPayments(c.Request.Context(), q.PageSize, q.Offset)
 	if err != nil {
 		_ = c.Error(apierr.InternalServerError("Failed to fetch payments").Wrap(err))
 		return
@@ -150,7 +145,7 @@ func (h *AdminHandler) ListPayments(c *gin.Context) {
 		"data": payments,
 		"meta": gin.H{
 			"totalItems": total,
-			"pageSize":   limit,
+			"pageSize":   q.PageSize,
 		},
 	})
 }
@@ -193,20 +188,14 @@ func (h *AdminHandler) RefundPayment(c *gin.Context) {
 
 // Media
 func (h *AdminHandler) ListMedia(c *gin.Context) {
-	limit := 50
-	offset := 0
-	if l := c.Query("pageSize"); l != "" {
-		if val, err := strconv.Atoi(l); err == nil && val > 0 {
-			limit = val
-		}
+	q := &pagination.ListQuery{}
+	if err := c.ShouldBindQuery(q); err != nil {
+		validation.ValidationError(c, err)
+		return
 	}
-	if p := c.Query("page"); p != "" {
-		if val, err := strconv.Atoi(p); err == nil && val > 0 {
-			offset = (val - 1) * limit
-		}
-	}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 50, MaxPageSize: 100})
 
-	media, total, err := h.service.ListMedia(c.Request.Context(), limit, offset)
+	media, total, err := h.service.ListMedia(c.Request.Context(), q.PageSize, q.Offset)
 	if err != nil {
 		_ = c.Error(apierr.InternalServerError("Failed to fetch media").Wrap(err))
 		return
@@ -216,7 +205,7 @@ func (h *AdminHandler) ListMedia(c *gin.Context) {
 		"data": media,
 		"meta": gin.H{
 			"totalItems": total,
-			"pageSize":   limit,
+			"pageSize":   q.PageSize,
 		},
 	})
 }
@@ -321,20 +310,14 @@ func (h *AdminHandler) DeleteAttribute(c *gin.Context) {
 
 // Inventory
 func (h *AdminHandler) ListInventoryOverview(c *gin.Context) {
-	limit := 50
-	offset := 0
-	if l := c.Query("pageSize"); l != "" {
-		if val, err := strconv.Atoi(l); err == nil && val > 0 {
-			limit = val
-		}
+	q := &pagination.ListQuery{}
+	if err := c.ShouldBindQuery(q); err != nil {
+		validation.ValidationError(c, err)
+		return
 	}
-	if p := c.Query("page"); p != "" {
-		if val, err := strconv.Atoi(p); err == nil && val > 0 {
-			offset = (val - 1) * limit
-		}
-	}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 50, MaxPageSize: 100})
 
-	items, total, err := h.service.ListInventoryOverview(c.Request.Context(), limit, offset)
+	items, total, err := h.service.ListInventoryOverview(c.Request.Context(), q.PageSize, q.Offset)
 	if err != nil {
 		_ = c.Error(apierr.InternalServerError("Failed to fetch inventory overview").Wrap(err))
 		return
@@ -344,18 +327,19 @@ func (h *AdminHandler) ListInventoryOverview(c *gin.Context) {
 		"data": items,
 		"meta": gin.H{
 			"totalItems": total,
-			"pageSize":   limit,
+			"pageSize":   q.PageSize,
 		},
 	})
 }
 
 func (h *AdminHandler) ListRecentLedgers(c *gin.Context) {
-	limit := 30
-	if l := c.Query("limit"); l != "" {
-		if val, err := strconv.Atoi(l); err == nil && val > 0 {
-			limit = val
-		}
+	q := &pagination.ListQuery{}
+	if err := c.ShouldBindQuery(q); err != nil {
+		validation.ValidationError(c, err)
+		return
 	}
+	// Limit-only listing: clamp page size, no offset
+	q.Process(pagination.QueryOptions{DefaultPageSize: 30, MaxPageSize: 100})
 
 	var variantUUID *uuid.UUID
 	if vId := c.Query("variantId"); vId != "" {
@@ -371,7 +355,7 @@ func (h *AdminHandler) ListRecentLedgers(c *gin.Context) {
 		}
 	}
 
-	ledgers, err := h.service.ListRecentLedgers(c.Request.Context(), limit, variantUUID, productUUID)
+	ledgers, err := h.service.ListRecentLedgers(c.Request.Context(), q.PageSize, variantUUID, productUUID)
 	if err != nil {
 		_ = c.Error(apierr.InternalServerError("Failed to fetch ledgers").Wrap(err))
 		return

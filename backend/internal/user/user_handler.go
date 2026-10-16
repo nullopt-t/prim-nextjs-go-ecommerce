@@ -150,14 +150,8 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 		return
 	}
 
-	// Apply default pagination bounds
-	if q.PageSize <= 0 {
-		q.PageSize = 10
-	}
-
-	if q.Page <= 0 {
-		q.Page = 1
-	}
+	// Apply pagination bounds: cap page size and compute an overflow-safe offset
+	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
 	// Optional administrative filters
 	var rolePtr *string

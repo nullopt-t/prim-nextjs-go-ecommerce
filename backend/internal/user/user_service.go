@@ -157,15 +157,9 @@ func (s *UserService) GetAllUsers(
 	var page *pagination.Page
 
 	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		// PageSize/Offset are already clamped and overflow-safe from ListQuery.Process
 		limit := q.PageSize
-		if limit <= 0 {
-			limit = 10
-		}
-		pageNumber := q.Page
-		if pageNumber <= 0 {
-			pageNumber = 1
-		}
-		offset := (pageNumber - 1) * limit
+		offset := q.Offset
 
 		var searchPtr *string
 		if q.Search != "" {
@@ -191,7 +185,7 @@ func (s *UserService) GetAllUsers(
 		}
 
 		users = uList
-		page = pagination.NewPage(pageNumber, limit, totalCount)
+		page = pagination.NewPage(q.Page, limit, totalCount)
 		return nil
 	})
 
