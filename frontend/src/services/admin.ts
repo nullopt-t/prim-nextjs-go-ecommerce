@@ -192,4 +192,13 @@ export const adminService = {
   adjustProductInventory: async (productId: string, quantity: number, reason: string): Promise<any> => {
     return api.post(`/api/v1/admin/inventory/products/${productId}/adjust`, { quantity, reason });
   },
+
+  // Settings
+  getSettings: async (): Promise<{ data: Record<string, any> }> => {
+    return api.get(`/api/v1/admin/settings`);
+  },
+
+  updateSettings: async (items: Record<string, any>): Promise<{ message: string }> => {
+    return api.put<{ message: string }>(`/api/v1/admin/settings`, { items });
+  },
 };

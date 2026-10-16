@@ -53,5 +53,9 @@ func (r *AdminRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.GET("/inventory/ledgers", r.handler.ListRecentLedgers)
 		admin.POST("/inventory/variants/:variantId/adjust", r.handler.AdjustInventory)
 		admin.POST("/inventory/products/:productId/adjust", r.handler.AdjustProductInventory)
+
+		// Settings
+		admin.GET("/settings", r.handler.GetSettings)
+		admin.PUT("/settings", r.handler.UpdateSettings)
 	}
 }

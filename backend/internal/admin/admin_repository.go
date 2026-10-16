@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
@@ -480,4 +481,56 @@ func (r *AdminRepository) ListRecentLedgers(ctx context.Context, qe database.Que
 		list = append(list, item)
 	}
 	return list, nil
+}
+
+// SettingItem represents a single admin setting key/value pair.
+type SettingItem struct {
+	Key       string      `json:"key"`
+	Value     interface{} `json:"value"`
+	UpdatedAt time.Time   `json:"updatedAt"`
+}
+
+func (r *AdminRepository) GetAllSettings(ctx context.Context, qe database.QueryExecutor) ([]SettingItem, error) {
+	query := `SELECT key, value, updated_at FROM admin_settings ORDER BY key`
+	rows, err := qe.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("list settings: %w", err)
+	}
+	defer rows.Close()
+
+	var list []SettingItem
+	for rows.Next() {
+		var s SettingItem
+		if err := rows.Scan(&s.Key, &s.Value, &s.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan setting: %w", err)
+		}
+		list = append(list, s)
+	}
+	return list, nil
+}
+
+func (r *AdminRepository) UpsertSetting(ctx context.Context, qe database.QueryExecutor, key string, value interface{}) error {
+	query := `
+		INSERT INTO admin_settings (key, value, updated_at)
+		VALUES ($1, $2, now())
+		ON CONFLICT (key) DO UPDATE
+		SET value = $2, updated_at = now()
+	`
+	_, err := qe.Exec(ctx, query, key, value)
+	if err != nil {
+		return fmt.Errorf("upsert setting %s: %w", key, err)
+	}
+	return nil
+}
+
+func (r *AdminRepository) DeleteSetting(ctx context.Context, qe database.QueryExecutor, key string) error {
+	query := `DELETE FROM admin_settings WHERE key = $1`
+	cmd, err := qe.Exec(ctx, query, key)
+	if err != nil {
+		return fmt.Errorf("delete setting %s: %w", key, err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return apierr.NotFoundError("Setting not found")
+	}
+	return nil
 }

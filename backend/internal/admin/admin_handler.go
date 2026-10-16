@@ -409,3 +409,31 @@ func (h *AdminHandler) AdjustProductInventory(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Product inventory adjusted successfully"})
 }
+
+// Settings
+func (h *AdminHandler) GetSettings(c *gin.Context) {
+	settings, err := h.service.GetSettings(c.Request.Context())
+	if err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to fetch settings").Wrap(err))
+		return
+	}
+	c.JSON(http.StatusOK, api.DataResponse{Data: settings})
+}
+
+type UpdateSettingsRequest struct {
+	Items map[string]interface{} `json:"items" binding:"required"`
+}
+
+func (h *AdminHandler) UpdateSettings(c *gin.Context) {
+	var req UpdateSettingsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid request body").Wrap(err))
+		return
+	}
+
+	if err := h.service.UpdateSettings(c.Request.Context(), req.Items); err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to update settings").Wrap(err))
+		return
+	}
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Settings updated successfully"})
+}

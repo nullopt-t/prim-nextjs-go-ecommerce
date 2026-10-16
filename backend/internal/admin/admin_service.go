@@ -270,3 +270,29 @@ func (s *AdminService) AdjustProductInventory(ctx context.Context, productID uui
 		return err
 	})
 }
+
+func (s *AdminService) GetSettings(ctx context.Context) (map[string]interface{}, error) {
+	settings := make(map[string]interface{})
+	err := s.txRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		list, err := s.repo.GetAllSettings(ctx, db)
+		if err != nil {
+			return err
+		}
+		for _, s := range list {
+			settings[s.Key] = s.Value
+		}
+		return nil
+	})
+	return settings, err
+}
+
+func (s *AdminService) UpdateSettings(ctx context.Context, items map[string]interface{}) error {
+	return s.txRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+		for key, value := range items {
+			if err := s.repo.UpsertSetting(ctx, tx, key, value); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
