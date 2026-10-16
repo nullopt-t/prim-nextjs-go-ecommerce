@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/validation"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
@@ -20,9 +19,8 @@ type AddressRequest struct {
 }
 
 type CheckoutRequest struct {
-	CustomerEmail   string         `json:"customerEmail,omitempty"`
-	ShippingAddress AddressRequest `json:"shippingAddress" binding:"required"`
-	CouponID        *uuid.UUID     `json:"couponId,omitempty"`
+	ShippingAddressID uuid.UUID  `json:"shippingAddressId" binding:"required"`
+	CouponID        *uuid.UUID `json:"couponId,omitempty"`
 }
 
 type CheckoutResponse struct {
@@ -70,19 +68,10 @@ func (h *CheckoutHandler) Checkout(c *gin.Context) {
 		return
 	}
 
-	shippingAddr := model.Address{
-		Street:     req.ShippingAddress.Street,
-		City:       req.ShippingAddress.City,
-		State:      req.ShippingAddress.State,
-		PostalCode: req.ShippingAddress.PostalCode,
-		Country:    req.ShippingAddress.Country,
-	}
-
 	in := &CheckoutInput{
-		CustomerID:      customerID,
-		CustomerEmail:   req.CustomerEmail,
-		ShippingAddress: shippingAddr,
-		CouponID:        req.CouponID,
+		CustomerID:        customerID,
+		ShippingAddressID: req.ShippingAddressID,
+		CouponID:          req.CouponID,
 	}
 
 	createdOrder, err := h.checkoutService.Checkout(c.Request.Context(), in)

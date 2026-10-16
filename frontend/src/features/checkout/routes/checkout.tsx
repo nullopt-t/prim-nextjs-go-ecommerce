@@ -21,55 +21,27 @@ import {
 	Smartphone,
 	Sparkles,
 	PackageCheck,
-	Pencil
+	Pencil,
+	Plus,
+	X,
+	Loader2
 } from "lucide-react";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
+import { useAuthContext } from "@/context/AuthContext";
 
 function generateOrderCode() {
 	return Math.floor(10000 + Math.random() * 90000).toString();
 }
 
-function resolveShippingAddress(isCustom, custom, addresses, effectiveId) {
-	if (isCustom || !addresses || addresses.length === 0) {
-		return `${custom.name ? custom.name + " - " : ""}${custom.street}, ${custom.city}${custom.country ? ", " + custom.country : ""}`;
-	}
+function resolveShippingAddress(addresses, effectiveId) {
+	if (!addresses || addresses.length === 0) return "";
 	const addr = addresses.find((a) => a.id === effectiveId);
 	if (!addr) return "";
 	const name = addr.fullName || addr.name || "";
 	const street = addr.line1 ? `${addr.line1}${addr.line2 ? ", " + addr.line2 : ""}` : addr.street || "";
 	return `${name ? name + " - " : ""}${street}, ${addr.city}, ${addr.country}`;
-}
-
-function resolveStructuredAddress(isCustom, custom, addresses, effectiveId) {
-	if (isCustom || !addresses || addresses.length === 0) {
-		return {
-			street: custom.street || "Main Street",
-			city: custom.city || "Cairo",
-			state: custom.state || "",
-			postalCode: custom.postalCode || "00000",
-			country: custom.country || "Egypt",
-		};
-	}
-	const addr = addresses.find((a) => a.id === effectiveId);
-	if (!addr) {
-		return {
-			street: "Main Street",
-			city: "Cairo",
-			state: "",
-			postalCode: "00000",
-			country: "Egypt",
-		};
-	}
-	const street = addr.line1 ? `${addr.line1}${addr.line2 ? ", " + addr.line2 : ""}` : addr.street || "Main Street";
-	return {
-		street: street,
-		city: addr.city || "Cairo",
-		state: addr.state || "",
-		postalCode: addr.postalCode || addr.zipCode || "00000",
-		country: addr.country || "Egypt",
-	};
 }
 
 function resolvePaymentLabel(paymentType, cards, effectiveCardId, newCardData) {
@@ -82,26 +54,35 @@ function resolvePaymentLabel(paymentType, cards, effectiveCardId, newCardData) {
 	return `Card ending in ${newCardData.number.slice(-4) || "0000"}`;
 }
 
+const INITIAL_NEW_ADDRESS = {
+	label: "Home",
+	fullName: "",
+	phone: "",
+	line1: "",
+	line2: "",
+	city: "",
+	state: "",
+	postalCode: "",
+	country: "Egypt",
+	isDefault: true,
+};
+
 export function Checkout() {
+	const { user } = useAuthContext();
 	const { cartItems, refreshCart, resetCart, appliedCoupon } = useCart();
 	const { checkout, loading: placingOrder } = useCheckout();
-	const { addresses } = useAddresses();
+	const { addresses, addAddress, refreshAddresses, loading: addressesLoading } = useAddresses();
 	const { cards } = usePaymentMethods();
 	const router = useRouter();
 
 	// Step management: 1: Delivery Address, 2: Delivery Speed, 3: Payment & Confirm
 	const [currentStep, setCurrentStep] = useState(1);
 
-	// Selection states
+	// Address states
 	const [selectedAddressId, setSelectedAddressId] = useState("");
-	const [isCustomAddress, setIsCustomAddress] = useState(false);
-	const [customAddress, setCustomAddress] = useState({
-		name: "",
-		street: "",
-		city: "",
-		country: "Egypt",
-		phone: "",
-	});
+	const [isAddingAddress, setIsAddingAddress] = useState(false);
+	const [savingAddress, setSavingAddress] = useState(false);
+	const [addressForm, setAddressForm] = useState(INITIAL_NEW_ADDRESS);
 
 	const [shippingSpeed, setShippingSpeed] = useState("standard"); // 'standard' | 'express'
 	const [deliveryNotes, setDeliveryNotes] = useState("");
@@ -136,7 +117,44 @@ export function Checkout() {
 	const shippingCost = shippingSpeed === "express" ? 15.00 : (isStandardFree ? 0 : 9.99);
 	const finalTotal = Math.max(0, subtotal - discount + shippingCost);
 
-	const resolvedAddressString = resolveShippingAddress(isCustomAddress, customAddress, addresses, effectiveAddressId);
+	const resolvedAddressString = resolveShippingAddress(addresses, effectiveAddressId);
+
+	const handleOpenAddAddress = () => {
+		setAddressForm({
+			...INITIAL_NEW_ADDRESS,
+			fullName: user?.name || "",
+			phone: user?.phone || "",
+			isDefault: !addresses || addresses.length === 0,
+		});
+		setIsAddingAddress(true);
+	};
+
+	const handleSaveNewAddress = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!addressForm.fullName.trim() || !addressForm.line1.trim() || !addressForm.city.trim() || !addressForm.country.trim()) {
+			toast.error("Please fill in recipient name, street line, city, and country");
+			return;
+		}
+
+		setSavingAddress(true);
+		try {
+			const res = await addAddress(addressForm);
+			if (res.success) {
+				toast.success("Address added successfully");
+				if (res.data?.id) {
+					setSelectedAddressId(res.data.id);
+				}
+				setIsAddingAddress(false);
+				if (refreshAddresses) await refreshAddresses();
+			} else {
+				toast.error(res.error || "Failed to add address");
+			}
+		} catch (err: any) {
+			toast.error(err?.message || "Failed to add address");
+		} finally {
+			setSavingAddress(false);
+		}
+	};
 
 	// Validation helpers
 	const validateStep1 = () => {
@@ -146,16 +164,12 @@ export function Checkout() {
 			return false;
 		}
 
-		if (isCustomAddress || !addresses || addresses.length === 0) {
-			if (!customAddress.name.trim()) {
-				toast.error("Please enter recipient name");
-				return false;
-			}
-			if (!customAddress.street.trim() || !customAddress.city.trim()) {
-				toast.error("Please enter complete delivery address (street and city)");
-				return false;
-			}
-		} else if (!effectiveAddressId) {
+		if (!addresses || addresses.length === 0) {
+			toast.error("Please add a delivery address to proceed");
+			return false;
+		}
+
+		if (!effectiveAddressId) {
 			toast.error("Please select a delivery address");
 			return false;
 		}
@@ -209,10 +223,9 @@ export function Checkout() {
 		}
 
 		const finalShippingAddress = resolvedAddressString;
-		const structuredShippingAddress = resolveStructuredAddress(isCustomAddress, customAddress, addresses, effectiveAddressId);
 
 		const orderPayload = {
-			shippingAddress: structuredShippingAddress,
+			shippingAddressId: effectiveAddressId,
 			couponId: appliedCoupon?.id || undefined,
 		};
 
@@ -414,21 +427,173 @@ export function Checkout() {
 											</div>
 											<div>
 												<h2 className="text-lg font-bold text-foreground">1. Delivery Address</h2>
-												<p className="text-xs text-muted-foreground">Select your saved destination or enter a new address.</p>
+												<p className="text-xs text-muted-foreground">Select your saved destination or add a new address.</p>
 											</div>
 										</div>
-										{addresses.length > 0 && (
+										{!isAddingAddress && (
 											<button
 												type="button"
-												onClick={() => setIsCustomAddress(!isCustomAddress)}
-												className="text-xs font-semibold text-accent-brand hover:underline px-3 py-1.5 rounded-lg hover:bg-accent-brand/5 transition-colors"
+												onClick={handleOpenAddAddress}
+												className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent-brand hover:underline px-3 py-1.5 rounded-lg hover:bg-accent-brand/5 transition-colors"
 											>
-												{isCustomAddress ? "Use saved address" : "+ Enter new address"}
+												<Plus className="size-3.5" />
+												<span>Add New Address</span>
 											</button>
 										)}
 									</div>
 
-									{!isCustomAddress && addresses.length > 0 ? (
+									{isAddingAddress ? (
+										<form onSubmit={handleSaveNewAddress} className="space-y-4">
+											<div className="flex items-center justify-between pb-2 border-b border-border/40">
+												<span className="text-xs font-semibold text-foreground">New Delivery Address</span>
+												{addresses && addresses.length > 0 && (
+													<button
+														type="button"
+														onClick={() => setIsAddingAddress(false)}
+														className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+													>
+														<X className="size-3.5" />
+														<span>Cancel</span>
+													</button>
+												)}
+											</div>
+
+											{/* Label Selector */}
+											<div>
+												<label className="block text-xs font-semibold text-foreground mb-1.5">
+													Address Label
+												</label>
+												<div className="grid grid-cols-3 gap-2">
+													{["Home", "Office", "Other"].map((lbl) => (
+														<button
+															key={lbl}
+															type="button"
+															onClick={() => setAddressForm({ ...addressForm, label: lbl })}
+															className={`py-2 px-3 rounded-xl border text-xs font-medium cursor-pointer transition-all ${
+																addressForm.label.toLowerCase() === lbl.toLowerCase()
+																	? "border-accent-brand bg-accent-brand/10 text-accent-brand font-semibold"
+																	: "border-border/80 bg-secondary/40 text-muted-foreground hover:text-foreground"
+															}`}
+														>
+															{lbl}
+														</button>
+													))}
+												</div>
+											</div>
+
+											<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+												<div className="flex flex-col gap-1.5 sm:col-span-2">
+													<label className="text-xs font-medium text-foreground">Recipient Full Name *</label>
+													<input
+														type="text"
+														className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent-brand"
+														placeholder="e.g. Mohamed Mahmoud"
+														value={addressForm.fullName}
+														onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
+														required
+													/>
+												</div>
+
+												<div className="flex flex-col gap-1.5 sm:col-span-2">
+													<label className="text-xs font-medium text-foreground">Street Address / Apartment *</label>
+													<input
+														type="text"
+														className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent-brand"
+														placeholder="Street name, building number, suite/apt"
+														value={addressForm.line1}
+														onChange={(e) => setAddressForm({ ...addressForm, line1: e.target.value })}
+														required
+													/>
+												</div>
+
+												<div className="flex flex-col gap-1.5 sm:col-span-2">
+													<label className="text-xs font-medium text-foreground">Apartment, Suite, Unit (Optional)</label>
+													<input
+														type="text"
+														className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent-brand"
+														placeholder="Apt 4B, 3rd floor"
+														value={addressForm.line2}
+														onChange={(e) => setAddressForm({ ...addressForm, line2: e.target.value })}
+													/>
+												</div>
+
+												<div className="flex flex-col gap-1.5">
+													<label className="text-xs font-medium text-foreground">City *</label>
+													<input
+														type="text"
+														className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent-brand"
+														placeholder="Cairo"
+														value={addressForm.city}
+														onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+														required
+													/>
+												</div>
+
+												<div className="flex flex-col gap-1.5">
+													<label className="text-xs font-medium text-foreground">State / Province</label>
+													<input
+														type="text"
+														className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent-brand"
+														placeholder="Cairo Governorate"
+														value={addressForm.state}
+														onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+													/>
+												</div>
+
+												<div className="flex flex-col gap-1.5">
+													<label className="text-xs font-medium text-foreground">Postal Code</label>
+													<input
+														type="text"
+														className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent-brand"
+														placeholder="11511"
+														value={addressForm.postalCode}
+														onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
+													/>
+												</div>
+
+												<div className="flex flex-col gap-1.5">
+													<label className="text-xs font-medium text-foreground">Phone Number</label>
+													<input
+														type="text"
+														className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent-brand"
+														placeholder="+20 100 123 4567"
+														value={addressForm.phone}
+														onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
+													/>
+												</div>
+
+												<div className="flex flex-col gap-1.5 sm:col-span-2">
+													<label className="text-xs font-medium text-foreground">Country *</label>
+													<CountrySelect
+														value={addressForm.country}
+														onChange={(countryName) =>
+															setAddressForm({ ...addressForm, country: countryName })
+														}
+													/>
+												</div>
+											</div>
+
+											<div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+												{addresses && addresses.length > 0 && (
+													<button
+														type="button"
+														onClick={() => setIsAddingAddress(false)}
+														className="px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground border border-border rounded-xl hover:bg-secondary transition-colors"
+													>
+														Cancel
+													</button>
+												)}
+												<button
+													type="submit"
+													disabled={savingAddress}
+													className="px-5 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all flex items-center gap-2 disabled:opacity-50"
+												>
+													{savingAddress && <Loader2 className="size-3.5 animate-spin" />}
+													<span>{savingAddress ? "Saving..." : "Save and Select Address"}</span>
+												</button>
+											</div>
+										</form>
+									) : addresses && addresses.length > 0 ? (
 										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 											{addresses.map((addr) => {
 												const isSelected = effectiveAddressId === addr.id;
@@ -469,61 +634,36 @@ export function Checkout() {
 													</div>
 												);
 											})}
+
+											{/* Add Address Card Option */}
+											<div
+												onClick={handleOpenAddAddress}
+												className="p-5 rounded-xl border border-dashed border-border hover:border-accent-brand/60 bg-secondary/10 hover:bg-accent-brand/5 cursor-pointer transition-all flex flex-col items-center justify-center text-center gap-2 min-h-[140px]"
+											>
+												<div className="size-8 rounded-full bg-accent-brand/10 text-accent-brand flex items-center justify-center">
+													<Plus className="size-4" />
+												</div>
+												<span className="text-xs font-semibold text-foreground">Add Another Address</span>
+												<span className="text-[11px] text-muted-foreground">Deliver to a different location</span>
+											</div>
 										</div>
 									) : (
-										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-											<div className="flex flex-col gap-1.5 sm:col-span-2">
-												<label className="text-xs font-medium text-foreground">Recipient Full Name *</label>
-												<input
-													type="text"
-													className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent-brand"
-													placeholder="e.g. Mohamed Mahmoud"
-													value={customAddress.name}
-													onChange={(e) => setCustomAddress({ ...customAddress, name: e.target.value })}
-													required
-												/>
+										<div className="py-8 px-4 border border-dashed border-border rounded-2xl bg-secondary/20 text-center flex flex-col items-center">
+											<div className="size-12 rounded-2xl bg-accent-brand/10 text-accent-brand flex items-center justify-center mb-3">
+												<MapPin className="size-6" />
 											</div>
-											<div className="flex flex-col gap-1.5 sm:col-span-2">
-												<label className="text-xs font-medium text-foreground">Street Address / Apartment *</label>
-												<input
-													type="text"
-													className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent-brand"
-													placeholder="Street name, building number, suite/apt"
-													value={customAddress.street}
-													onChange={(e) => setCustomAddress({ ...customAddress, street: e.target.value })}
-													required
-												/>
-											</div>
-											<div className="flex flex-col gap-1.5">
-												<label className="text-xs font-medium text-foreground">City *</label>
-												<input
-													type="text"
-													className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent-brand"
-													placeholder="Cairo"
-													value={customAddress.city}
-													onChange={(e) => setCustomAddress({ ...customAddress, city: e.target.value })}
-													required
-												/>
-											</div>
-											<div className="flex flex-col gap-1.5">
-												<label className="text-xs font-medium text-foreground">Phone Number</label>
-												<input
-													type="text"
-													className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent-brand"
-													placeholder="+20 100 123 4567"
-													value={customAddress.phone}
-													onChange={(e) => setCustomAddress({ ...customAddress, phone: e.target.value })}
-												/>
-											</div>
-											<div className="flex flex-col gap-1.5 sm:col-span-2">
-												<label className="text-xs font-medium text-foreground">Country *</label>
-												<CountrySelect
-													value={customAddress.country}
-													onChange={(countryName) =>
-														setCustomAddress({ ...customAddress, country: countryName })
-													}
-												/>
-											</div>
+											<h3 className="text-sm font-bold text-foreground mb-1">No Saved Addresses Found</h3>
+											<p className="text-xs text-muted-foreground max-w-sm mb-5 leading-relaxed">
+												You don't have any shipping addresses saved to your account yet. Please add a delivery address to complete your order.
+											</p>
+											<button
+												type="button"
+												onClick={handleOpenAddAddress}
+												className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-brand text-white font-semibold text-xs shadow-sm hover:bg-accent-brand/90 transition-all cursor-pointer"
+											>
+												<Plus className="size-4" />
+												<span>Add Shipping Address</span>
+											</button>
 										</div>
 									)}
 

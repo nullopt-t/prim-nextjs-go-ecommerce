@@ -37,7 +37,7 @@ type CreateOrderInput struct {
 	// CustomerEmail is the contact email address where invoices and receipts are sent.
 	CustomerEmail string
 	// ShippingAddress is the physical destination address for the delivery.
-	ShippingAddress model.Address
+	ShippingAddress *model.Address
 	// CouponID is the optional applied promotional discount coupon UUID.
 	CouponID *uuid.UUID
 	// DiscountAmount is the deducted total from the gross order price in minor units.

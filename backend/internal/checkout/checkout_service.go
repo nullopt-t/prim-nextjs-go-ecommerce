@@ -24,16 +24,28 @@ type InventoryService interface {
 	AdjustStock(ctx context.Context, in inventory.AdjustStockInput) (*model.InventoryStock, error)
 }
 
+type UserService interface {
+	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
+}
+
+type AddressService interface {
+	GetAddress(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*model.UserAddress, error)
+}
+
 type CheckoutService struct {
 	cartService      CartService
 	orderService     OrderService
 	inventoryService InventoryService
+	userService      UserService
+	addressService   AddressService
 }
 
-func NewService(cartService CartService, orderService OrderService, inventoryService ...InventoryService) *CheckoutService {
+func NewService(cartService CartService, orderService OrderService, userService UserService, addressService AddressService, inventoryService ...InventoryService) *CheckoutService {
 	s := &CheckoutService{
-		cartService:  cartService,
-		orderService: orderService,
+		cartService:      cartService,
+		orderService:     orderService,
+		userService:      userService,
+		addressService:   addressService,
 	}
 	if len(inventoryService) > 0 {
 		s.inventoryService = inventoryService[0]
@@ -43,8 +55,7 @@ func NewService(cartService CartService, orderService OrderService, inventorySer
 
 type CheckoutInput struct {
 	CustomerID      uuid.UUID
-	CustomerEmail   string
-	ShippingAddress model.Address
+	ShippingAddressID uuid.UUID
 	CouponID        *uuid.UUID
 }
 
@@ -63,6 +74,16 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 	var currency = "USD"
 	if len(cartData.Items) > 0 {
 		currency = cartData.Items[0].Currency
+	}
+
+	user, err := s.userService.GetUserByID(ctx, in.CustomerID)
+	if err != nil {
+		return nil, err
+	}
+
+	shippingAddr, err := s.addressService.GetAddress(ctx, in.ShippingAddressID, in.CustomerID)
+	if err != nil {
+		return nil, err
 	}
 
 	for _, item := range cartData.Items {
@@ -117,10 +138,23 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		})
 	}
 
+	addr := &model.Address{
+		Street:     shippingAddr.Line1,
+		City:       shippingAddr.City,
+		Country:    shippingAddr.Country,
+	}
+
+	if shippingAddr.State != nil {
+		addr.State = *shippingAddr.State
+	}
+	if shippingAddr.PostalCode != nil {
+		addr.PostalCode = *shippingAddr.PostalCode
+	}
+
 	orderIn := &order.CreateOrderInput{
 		CustomerID:      &in.CustomerID,
-		CustomerEmail:   in.CustomerEmail,
-		ShippingAddress: in.ShippingAddress,
+		CustomerEmail:   user.Identifier,
+		ShippingAddress: addr,
 		CouponID:        in.CouponID,
 		DiscountAmount:  totalDiscount,
 		Currency:        currency,
