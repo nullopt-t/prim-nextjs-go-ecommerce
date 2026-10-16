@@ -45,6 +45,8 @@ func NewService(
 	}
 }
 
+// AddToWishlist saves a product or specific variant to the authenticated customer's wishlist.
+// Verifies that the product exists, is published, and that any specified variant belongs to the product.
 func (s *WishlistService) AddToWishlist(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -69,6 +71,27 @@ func (s *WishlistService) AddToWishlist(
 		if prod.Status != model.PublicationStatusPublished {
 			return nil, apierr.BadRequestError("Product is not available for wishlisting").
 				WithCode(apierr.CodeInvalidInput)
+		}
+	}
+
+	if variantID != nil {
+		var variantProdID uuid.UUID
+		err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+			var qErr error
+			variantProdID, qErr = s.repo.GetVariantProductID(ctx, db, *variantID)
+			return qErr
+		})
+		if err != nil {
+			mappedErr := database.MapError(err)
+			if errors.Is(mappedErr, database.ErrNotFound) {
+				return nil, apierr.NotFoundError("Variant not found").
+					WithCode(errcode.CodeVariantNotFound)
+			}
+			return nil, apierr.InternalServerError("Failed to verify variant").Wrap(err)
+		}
+		if variantProdID != productID {
+			return nil, apierr.BadRequestError("Variant does not belong to specified product").
+				WithCode(errcode.CodeVariantProductMismatch)
 		}
 	}
 

@@ -21,6 +21,8 @@ func TestFormatPrice(t *testing.T) {
 		{3500, "GBP", "£35.00"},
 		{1500, "EGP", "E£15.00"},
 		{1999, "", "$19.99"},
+		{100, "JPY", "¥100"},
+		{1500, "KWD", "$1.500"},
 	}
 
 	for _, tt := range tests {
@@ -49,4 +51,10 @@ func TestExtractPrice(t *testing.T) {
 			assert.Equal(t, tt.expected, res)
 		})
 	}
+}
+
+func TestExtractPriceForCurrency(t *testing.T) {
+	assert.Equal(t, 24.99, utils.ExtractPriceForCurrency(2499, "USD"))
+	assert.Equal(t, 100.0, utils.ExtractPriceForCurrency(100, "JPY"))
+	assert.Equal(t, 1.5, utils.ExtractPriceForCurrency(1500, "KWD"))
 }

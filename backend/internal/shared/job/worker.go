@@ -1,3 +1,4 @@
+// Package job provides background asynchronous workers for processing queued notification tasks.
 package job
 
 import (
@@ -9,6 +10,7 @@ import (
 	"time"
 )
 
+// Worker continuously polls a JobQueue and dispatches messages to registered handlers.
 type Worker struct {
 	queue      JobQueue
 	dispatcher *MessageDispatcher
@@ -16,6 +18,7 @@ type Worker struct {
 	clientCfg  config.ClientConfig
 }
 
+// NewNotifierWorker constructs a new background worker instance.
 func NewNotifierWorker(
 	queue JobQueue,
 	dispatcher *MessageDispatcher,
@@ -30,6 +33,7 @@ func NewNotifierWorker(
 	}
 }
 
+// Start initiates the worker event loop. It dequeues jobs, executes their handlers, and handles retries.
 func (w *Worker) Start(ctx context.Context) {
 	for {
 		select {
@@ -45,7 +49,14 @@ func (w *Worker) Start(ctx context.Context) {
 			continue
 		}
 
-		if msg.Status != "pending" {
+		// Queue was empty, sleep briefly before next polling iteration
+		if msg == nil {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
+		// Check message status
+		if msg.Status != MessageStatusPending {
 			continue
 		}
 
@@ -60,24 +71,28 @@ func (w *Worker) Start(ctx context.Context) {
 			},
 		)
 
-		err = w.dispatcher.Dispatch(string(msg.Type), msg)
+		err = w.dispatcher.Dispatch(ctx, string(msg.Type), msg)
 		if err != nil {
 			msg.Attempts++
 			if msg.Attempts >= 3 {
 				// mark as failed and skip re-enqueue
+				msg.Status = MessageStatusFailure
+				w.logger.Error("message reached max attempts, discarding", log.Meta{"id": msg.ID, "error": err})
 				continue
 			}
 
+			// Exponential backoff before re-enqueuing
+			time.Sleep(time.Duration(msg.Attempts*200) * time.Millisecond)
 			err = w.queue.Enqueue(ctx, msg)
 			if err != nil {
 				w.logger.Error("failed to re-enqueue message", log.Meta{"error": err})
 			}
 			continue
 		}
-		msg.Status = "completed"
-		err = w.queue.Enqueue(ctx, msg)
-		if err != nil {
-			w.logger.Error("failed to re-enqueue message", log.Meta{"error": err})
-		}
+
+		// Message processed successfully; do not re-enqueue completed message
+		msg.Status = MessageStatusSuccess
+		w.logger.Info("message processed successfully", log.Meta{"id": msg.ID})
 	}
 }
+

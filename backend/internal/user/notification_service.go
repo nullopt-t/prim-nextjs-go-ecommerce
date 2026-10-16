@@ -13,12 +13,16 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
+// NotificationService coordinates business operations for customer notifications:
+// creation, paginated list retrieval, unread count aggregation, status updates (read),
+// and deletion.
 type NotificationService struct {
 	dbRunner database.Runner
 	repo     *NotificationRepository
 	logger   log.Logger
 }
 
+// NewNotificationService constructs a new NotificationService instance.
 func NewNotificationService(
 	dbRunner database.Runner,
 	repo *NotificationRepository,
@@ -41,7 +45,8 @@ func (s *NotificationService) CreateNotification(
 	})
 }
 
-// GetMyNotifications returns a paginated list of notifications for the user.
+// GetMyNotifications returns a paginated list of notifications for the user,
+// supporting optional filtering for unread notifications only.
 func (s *NotificationService) GetMyNotifications(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -123,7 +128,7 @@ func (s *NotificationService) MarkAllAsRead(
 	return count, nil
 }
 
-// DeleteNotification removes a notification.
+// DeleteNotification removes a notification belonging to the specified user.
 func (s *NotificationService) DeleteNotification(
 	ctx context.Context,
 	id, userID uuid.UUID,

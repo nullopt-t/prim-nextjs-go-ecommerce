@@ -1,11 +1,15 @@
+// Package order implements core order domain logic, state machine validation,
+// customer/admin query operations, and transactional order creation.
 package order
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/google/uuid"
+	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/order/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
@@ -14,48 +18,80 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
+// CreateOrderItemInput describes the essential pricing and variant attributes for a new order line item.
 type CreateOrderItemInput struct {
-	VariantID       uuid.UUID
-	Quantity        int
+	// VariantID is the unique UUID identifying the specific SKU/variant being purchased.
+	VariantID uuid.UUID
+	// Quantity is the number of units ordered.
+	Quantity int
+	// PriceAtPurchase is the unit price in minor currency units (cents).
 	PriceAtPurchase int64
+	// ProductSnapshot contains serialized JSON capturing product name, variant title, SKU, and image URL at checkout time.
 	ProductSnapshot string
 }
 
+// CreateOrderInput encapsulates all parameters required to generate a brand new customer order.
 type CreateOrderInput struct {
-	CustomerID      *uuid.UUID
-	CustomerEmail   string
+	// CustomerID is the optional UUID of an authenticated customer (nil for guest checkout).
+	CustomerID *uuid.UUID
+	// CustomerEmail is the contact email address where invoices and receipts are sent.
+	CustomerEmail string
+	// ShippingAddress is the physical destination address for the delivery.
 	ShippingAddress model.Address
-	CouponID        *uuid.UUID
-	DiscountAmount  int64
-	Currency        string
-	Items           []CreateOrderItemInput
+	// CouponID is the optional applied promotional discount coupon UUID.
+	CouponID *uuid.UUID
+	// DiscountAmount is the deducted total from the gross order price in minor units.
+	DiscountAmount int64
+	// Currency is the 3-letter currency code (e.g., "USD").
+	Currency string
+	// Items is the non-empty list of line items included in the purchase.
+	Items []CreateOrderItemInput
 }
 
+// InventoryService defines the subset of inventory functionality needed by OrderService for restoring stock upon cancellation.
+type InventoryService interface {
+	AdjustStock(ctx context.Context, in inventory.AdjustStockInput) (*model.InventoryStock, error)
+}
+
+// OrderService orchestrates database transactions, order status state machine validation,
+// and audit log tracking for order lifecycle events.
 type OrderService struct {
-	qexecuter database.Runner
-	orderRepo *Repository
-	logger    log.Logger
+	qexecuter        database.Runner
+	orderRepo        *Repository
+	logger           log.Logger
+	inventoryService InventoryService
 }
 
+// NewService instantiates an OrderService with database runner, order repository, logger, and optional inventory service dependencies.
 func NewService(
 	r database.Runner,
 	orderRepo *Repository,
 	logger log.Logger,
+	inventoryService ...InventoryService,
 ) *OrderService {
-	return &OrderService{
+	s := &OrderService{
 		qexecuter: r,
 		orderRepo: orderRepo,
 		logger:    logger,
 	}
+	if len(inventoryService) > 0 {
+		s.inventoryService = inventoryService[0]
+	}
+	return s
 }
 
+// CreateOrder creates an order and its associated line items within an atomic database transaction.
+// It computes the gross total, applies discount deductions, persists the initial 'pending' status,
+// and creates the initial status history audit trail.
 func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*model.Order, error) {
+	// Validate that at least one line item is provided.
 	if len(in.Items) == 0 {
 		return nil, apierr.BadRequestError("Order must contain at least one item").WithCode(errcode.CodeEmptyOrderItems)
 	}
 
 	var createdOrder *model.Order
 
+	// Execute within an atomic transaction.
 	err := s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
 		orderID := uuid.New()
 
@@ -63,7 +99,22 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 		orderItems := make([]model.OrderItem, 0, len(in.Items))
 
 		for _, itemInput := range in.Items {
-			itemTotal := itemInput.PriceAtPurchase * int64(itemInput.Quantity)
+			if itemInput.Quantity <= 0 {
+				return apierr.BadRequestError("Item quantity must be greater than zero")
+			}
+			if itemInput.PriceAtPurchase < 0 {
+				return apierr.BadRequestError("Item price cannot be negative")
+			}
+
+			// Validate against int64 overflow during itemTotal multiplication and running total
+			qty := int64(itemInput.Quantity)
+			if itemInput.PriceAtPurchase > 0 && qty > math.MaxInt64/itemInput.PriceAtPurchase {
+				return apierr.BadRequestError("Order total exceeds maximum allowable limit")
+			}
+			itemTotal := itemInput.PriceAtPurchase * qty
+			if itemTotal > math.MaxInt64-totalAmount {
+				return apierr.BadRequestError("Order total exceeds maximum allowable limit")
+			}
 			totalAmount += itemTotal
 
 			item := model.OrderItem{
@@ -95,16 +146,19 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 			Items:           orderItems,
 		}
 
+		// Persist the root order record.
 		if err := s.orderRepo.CreateOrder(ctx, tx, newOrder); err != nil {
 			return err
 		}
 
+		// Persist each line item associated with the order.
 		for i := range orderItems {
 			if err := s.orderRepo.AddOrderItem(ctx, tx, &orderItems[i]); err != nil {
 				return err
 			}
 		}
 
+		// Insert initial audit history entry.
 		note := "Order created with status pending"
 		if err := s.orderRepo.AddStatusHistory(ctx, tx, orderID, model.OrderStatusPending, &note); err != nil {
 			return err
@@ -132,6 +186,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 	return createdOrder, nil
 }
 
+// GetOrderByID loads an order by its UUID within a read-only database query execution block.
 func (s *OrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.Order, error) {
 	var order *model.Order
 	err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
@@ -159,6 +214,7 @@ func (s *OrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.O
 	return order, nil
 }
 
+// GetCustomerOrders fetches all orders belonging to the specified customer UUID.
 func (s *OrderService) GetCustomerOrders(ctx context.Context, customerID uuid.UUID) ([]model.Order, error) {
 	var orders []model.Order
 	err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
@@ -179,6 +235,7 @@ func (s *OrderService) GetCustomerOrders(ctx context.Context, customerID uuid.UU
 	return orders, nil
 }
 
+// ListOrders retrieves a paginated set of orders filtered by optional customer ID or status.
 func (s *OrderService) ListOrders(
 	ctx context.Context,
 	customerID *uuid.UUID,
@@ -230,6 +287,14 @@ func (s *OrderService) ListOrders(
 	return orders, pageMeta, nil
 }
 
+// CanTransitionOrderStatus implements the finite state machine transitions for the order lifecycle:
+//   - pending -> paid, processing, cancelled
+//   - paid -> processing, shipped, refunded, cancelled
+//   - processing -> shipped, refunded, cancelled
+//   - shipped -> delivered, refunded
+//   - delivered -> refunded
+//   - cancelled -> (terminal state)
+//   - refunded -> (terminal state)
 func CanTransitionOrderStatus(current, next model.OrderStatus) bool {
 	if current == next {
 		return true
@@ -245,8 +310,8 @@ func CanTransitionOrderStatus(current, next model.OrderStatus) bool {
 		// Processing can transition to shipped, refunded, or cancelled
 		return next == model.OrderStatusShipped || next == model.OrderStatusRefunded || next == model.OrderStatusCancelled
 	case model.OrderStatusShipped:
-		// Shipped can only transition to delivered, refunded, or cancelled
-		return next == model.OrderStatusDelivered || next == model.OrderStatusRefunded || next == model.OrderStatusCancelled
+		// Shipped can only transition to delivered or refunded (shipped orders in transit cannot be cancelled)
+		return next == model.OrderStatusDelivered || next == model.OrderStatusRefunded
 	case model.OrderStatusDelivered:
 		// Delivered is a terminal delivery state; can only be refunded
 		return next == model.OrderStatusRefunded
@@ -261,9 +326,13 @@ func CanTransitionOrderStatus(current, next model.OrderStatus) bool {
 	}
 }
 
+// UpdateOrderStatus modifies an existing order's state after validating the state machine transition.
+// It executes within a transaction and inserts an audit log entry in order_status_history.
 func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, status model.OrderStatus, notes *string) error {
 	err := s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
-		ord, err := s.orderRepo.GetOrderByID(ctx, tx, id)
+		// Acquire an exclusive FOR UPDATE row-level lock on the order to prevent concurrent race conditions
+		// during status transitions.
+		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
 		if err != nil {
 			return err
 		}
@@ -300,9 +369,11 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 	return nil
 }
 
+// CancelOrder handles customer-initiated cancellation for pending or confirmed orders.
+// Verifies customer authorization and valid transition before setting status to cancelled.
 func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID uuid.UUID) error {
 	return s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
-		ord, err := s.orderRepo.GetOrderByID(ctx, tx, id)
+		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
 		if err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrNotFound) {
@@ -316,14 +387,61 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 		}
 
 		if !CanTransitionOrderStatus(ord.Status, model.OrderStatusCancelled) {
-			return apierr.BadRequestError("Order cannot be cancelled in its current state").WithCode("INVALID_ORDER_STATUS")
+			return apierr.BadRequestError("Order cannot be cancelled in its current state").WithCode(errcode.CodeInvalidOrderStatus)
 		}
 
 		note := "Cancelled by customer"
 		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, id, model.OrderStatusCancelled); err != nil {
 			return err
 		}
-		return s.orderRepo.AddStatusHistory(ctx, tx, id, model.OrderStatusCancelled, &note)
+
+		if err := s.orderRepo.AddStatusHistory(ctx, tx, id, model.OrderStatusCancelled, &note); err != nil {
+			return err
+		}
+
+		// Fetch order items to restore stock
+		items, err := s.orderRepo.GetOrderItems(ctx, tx, id)
+		if err != nil {
+			return fmt.Errorf("fetch order items for cancellation: %w", err)
+		}
+
+		// Restore stock for purchased items
+		for _, item := range items {
+			if s.inventoryService != nil {
+				_, err := s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
+					VariantID: item.VariantID,
+					Quantity:  item.Quantity,
+					Reason:    string(model.InventoryReasonReturn),
+				})
+				if err != nil {
+					return fmt.Errorf("restore inventory for cancelled item %s: %w", item.ID, err)
+				}
+			} else {
+				// Directly record inventory restoration ledger within the transaction
+				ledgerQuery := `
+					INSERT INTO inventory_ledgers (id, variant_id, quantity, reason, created_at)
+					VALUES ($1, $2, $3, 'return'::inventory_reason, now())
+				`
+				if _, err := tx.Exec(ctx, ledgerQuery, uuid.New(), item.VariantID, item.Quantity); err != nil {
+					return fmt.Errorf("restore inventory ledger for cancelled item %s: %w", item.ID, err)
+				}
+			}
+		}
+
+		// Update any associated captured or pending payment records to refunded / failed
+		paymentRefundQuery := `
+			UPDATE payments
+			SET status = CASE
+				WHEN status = 'captured'::payment_status THEN 'refunded'::payment_status
+				ELSE 'failed'::payment_status
+			END,
+			updated_at = now()
+			WHERE order_id = $1 AND status NOT IN ('refunded'::payment_status, 'failed'::payment_status)
+		`
+		if _, err := tx.Exec(ctx, paymentRefundQuery, id); err != nil {
+			return fmt.Errorf("refund payment for cancelled order %s: %w", id, err)
+		}
+
+		return nil
 	})
 }
-

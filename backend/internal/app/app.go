@@ -77,8 +77,6 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	v1.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
-	swagger.SetUpDocs(v1)
-
 	txRunner := database.NewTxRunner(app.db)
 
 	kafkaCfg := brokerkafka.DefaultConfig(app.config.KafkaCfg.Brokers, app.config.KafkaCfg.GroupID)
@@ -111,6 +109,8 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		app.config.AuthCfg.SessionTTL,
 	)
 	userService.SetSessionManager(sessionService)
+
+	swagger.SetUpDocs(v1, sessionService)
 
 	authService := auth.NewAuthService(
 		app.logger,
@@ -265,13 +265,13 @@ func (app *App) setupRoutes(router *gin.Engine) {
 
 	// order
 	orderRepo := order.NewRepository()
-	orderService := order.NewService(txRunner, orderRepo, app.logger)
+	orderService := order.NewService(txRunner, orderRepo, app.logger, inventoryService)
 	orderHandler := order.NewHandler(orderService)
 	orderRouter := order.NewRouter(orderHandler, sessionService)
 	orderRouter.MapRoutes(v1)
 
 	// checkout
-	checkoutService := checkout.NewService(cartService, orderService)
+	checkoutService := checkout.NewService(cartService, orderService, inventoryService)
 	checkoutHandler := checkout.NewHandler(checkoutService)
 	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionService)
 	checkoutRouter.MapRoutes(v1)
@@ -321,7 +321,16 @@ func (app *App) Run() error {
 		)
 	}
 
-	app.config = config.Load()
+	app.config, err = config.Load()
+	if err != nil {
+		app.logger.Error(
+			"failed to load configuration",
+			log.Meta{
+				"Error": err.Error(),
+			},
+		)
+		return err
+	}
 	app.db, err = database.ConnectDB(context.Background(), app.config.DBCfg)
 	if err != nil {
 		app.logger.Error(

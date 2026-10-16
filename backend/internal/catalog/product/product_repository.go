@@ -1,3 +1,5 @@
+// Package product provides database repository operations for product catalog persistence,
+// rich search/filtering across brands, categories, and tags, and publication status updates.
 package product
 
 import (
@@ -15,6 +17,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
+// allowedProductSortFields maps user-facing sort parameters to safe SQL column names.
 var allowedProductSortFields = map[string]string{
 	"id":         "p.id",
 	"slug":       "p.slug",
@@ -24,18 +27,21 @@ var allowedProductSortFields = map[string]string{
 	"updated_at": "p.updated_at",
 }
 
+// PublicProductBrandReadModel represents brand summary information projected onto a product card.
 type PublicProductBrandReadModel struct {
 	ID   uuid.UUID
 	Name string
 	Link *string
 }
 
+// PublicProductCategoryReadModel represents category summary information projected onto a product card.
 type PublicProductCategoryReadModel struct {
 	ID   uuid.UUID
 	Name string
 }
 
-
+// ProductCardReadModel represents a flattened, performant denormalized view of a product for storefront listings,
+// including default variant pricing, aggregated inventory, and taxonomy tags.
 type ProductCardReadModel struct {
 	ID              uuid.UUID
 	Slug            string
@@ -59,6 +65,7 @@ type ProductCardReadModel struct {
 	DeletedAt       *time.Time
 }
 
+// CreateProductMediaInput defines parameters to link a media object to a product.
 type CreateProductMediaInput struct {
 	ID        uuid.UUID
 	ProductID uuid.UUID
@@ -67,12 +74,15 @@ type CreateProductMediaInput struct {
 	SortOrder int
 }
 
+// ProductRepository provides database access for products and related denormalized queries.
 type ProductRepository struct{}
 
+// NewProductRepository creates and returns a new ProductRepository instance.
 func NewProductRepository() *ProductRepository {
 	return &ProductRepository{}
 }
 
+// Create inserts a new product record in draft state.
 func (r *ProductRepository) Create(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -112,6 +122,7 @@ func (r *ProductRepository) Create(
 	return nil
 }
 
+// GetByID retrieves a single non-deleted product by its UUID.
 func (r *ProductRepository) GetByID(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -120,6 +131,7 @@ func (r *ProductRepository) GetByID(
 	return r.get(ctx, qe, "id = $1 AND deleted_at IS NULL", id)
 }
 
+// GetByIDWithDeleted retrieves a product by UUID even if it has been soft-deleted (for administrative audit).
 func (r *ProductRepository) GetByIDWithDeleted(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -128,12 +140,28 @@ func (r *ProductRepository) GetByIDWithDeleted(
 	return r.get(ctx, qe, "id = $1", id)
 }
 
+// GetBySlug retrieves a single non-deleted product by its public SEO slug.
 func (r *ProductRepository) GetBySlug(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	slug string,
 ) (*model.Product, error) {
 	return r.get(ctx, qe, "slug = $1 AND deleted_at IS NULL", slug)
+}
+
+// SlugExists checks whether any product (including soft-deleted) has the specified slug.
+func (r *ProductRepository) SlugExists(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	slug string,
+) (bool, error) {
+	var exists bool
+	query := "SELECT EXISTS(SELECT 1 FROM products WHERE slug = $1)"
+	err := qe.QueryRow(ctx, query, slug).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("check slug exists: %w", err)
+	}
+	return exists, nil
 }
 
 func (r *ProductRepository) get(
@@ -179,6 +207,7 @@ func (r *ProductRepository) get(
 	return product, nil
 }
 
+// Update modifies mutable product columns including taxonomy, title, description, and thumbnail.
 func (r *ProductRepository) Update(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -229,6 +258,11 @@ func (r *ProductRepository) Update(
 	return nil
 }
 
+// List executes a complex faceted query against products, filtering by published status,
+// brand IDs/names, category IDs/names, tag IDs/names, and full-text keyword search.
+// Results are projected into ProductCardReadModel with pricing and inventory from the default variant.
+// The stock calculation computes total salable available inventory across all active variants of the product
+// (ledger on-hand quantity minus unreleased active reservations, clamped to 0).
 func (r *ProductRepository) List(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -362,9 +396,11 @@ func (r *ProductRepository) List(
 			so.object_key as so_object_key,
 			so.content_type as so_content_type,
 			so.file_size as so_file_size,
-			pv.id as default_variant_id,
-			pv.sku as sku,
-			COALESCE((SELECT SUM(il.quantity) FROM product_variants pv_all JOIN inventory_ledgers il ON il.variant_id = pv_all.id WHERE pv_all.product_id = p.id AND pv_all.deleted_at IS NULL), 0) as stock_quantity,
+			GREATEST(
+				COALESCE((SELECT SUM(il.quantity) FROM product_variants pv_all JOIN inventory_ledgers il ON il.variant_id = pv_all.id WHERE pv_all.product_id = p.id AND pv_all.deleted_at IS NULL), 0) -
+				COALESCE((SELECT SUM(ir.quantity) FROM product_variants pv_all JOIN inventory_reservations ir ON ir.variant_id = pv_all.id WHERE pv_all.product_id = p.id AND pv_all.deleted_at IS NULL AND ir.released_at IS NULL AND ir.expires_at > now()), 0),
+				0
+			) as stock_quantity,
 			pv.price as price,
 			pv.crossed_out_price as crossed_out_price,
 			pv.currency as currency,
@@ -472,6 +508,7 @@ func (r *ProductRepository) List(
 	return pagination.NewPagedResult(items, pagination.NewPage(q.Page, q.PageSize, total)), nil
 }
 
+// AdminList executes an administrative catalog query including drafts, archived, and optionally soft-deleted products.
 func (r *ProductRepository) AdminList(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -622,6 +659,7 @@ func (r *ProductRepository) AdminList(
 	return pagination.NewPagedResult(items, pagination.NewPage(q.Page, q.PageSize, total)), nil
 }
 
+// SoftDeleteByID soft-deletes a product by its UUID (setting deleted_at = now()).
 func (r *ProductRepository) SoftDeleteByID(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -658,6 +696,7 @@ func (r *ProductRepository) softDelete(
 	return nil
 }
 
+// UpdateStatus changes the publication lifecycle status (draft, published, archived) of a product.
 func (r *ProductRepository) UpdateStatus(
 	ctx context.Context,
 	qe database.QueryExecutor,

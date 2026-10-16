@@ -1,8 +1,11 @@
+// Package product provides business logic orchestration, transaction boundaries,
+// publication workflows, thumbnail uploading, and cross-subdomain integration for products.
 package product
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"strings"
@@ -25,6 +28,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/utils"
 )
 
+// ObjectService defines storage operations for uploading, retrieving, and generating presigned URLs for media.
 type ObjectService interface {
 	UploadObject(ctx context.Context, contentType string, size int64, bucket string, file io.Reader) (*model.Object, error)
 	GetObjectByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
@@ -33,6 +37,7 @@ type ObjectService interface {
 	GetObjectURL(ctx context.Context, bucket, key string) string
 }
 
+// handleError maps database and driver errors to standard domain APIErrors.
 func (s *ProductService) handleError(err error, defaultMsg string) error {
 	if err == nil {
 		return nil
@@ -49,9 +54,9 @@ func (s *ProductService) handleError(err error, defaultMsg string) error {
 		s.logger.Error("internal server error in product service", log.Meta{"error": err.Error()})
 		return apierr.InternalServerError("Failed to " + defaultMsg).Wrap(err).WithStack()
 	}
-} 
+}
 
-
+// ProductService manages product catalog lifecycles, cross-domain dependencies, and administration.
 type ProductService struct {
 	dbRunner         database.Runner
 	logger           log.Logger
@@ -65,6 +70,7 @@ type ProductService struct {
 	reviewService    *review.ReviewService
 }
 
+// NewService constructs a new ProductService with all required sub-domain services injected.
 func NewService(
 	r database.Runner,
 	logger log.Logger,
@@ -91,14 +97,17 @@ func NewService(
 	}
 }
 
+// CreateProductInput defines the creation parameters for a new draft product.
 type CreateProductInput struct {
 	BrandID     *uuid.UUID
 	CategoryID  uuid.UUID
+	Slug        *string
 	Title       string
 	Description *string
 	ProductType string
 }
 
+// UpdateProductInput defines mutable fields for updating an existing product.
 type UpdateProductInput struct {
 	BrandID     *uuid.UUID
 	CategoryID  *uuid.UUID
@@ -108,6 +117,7 @@ type UpdateProductInput struct {
 	ProductType *string
 }
 
+// CreateProductVariantInput defines parameters for creating a variant under an existing product.
 type CreateProductVariantInput struct {
 	Title           string
 	Price           *int64
@@ -118,6 +128,7 @@ type CreateProductVariantInput struct {
 	InitialStock    *int
 }
 
+// ProductDetails aggregates full details of a product, its brand, category, variants, inventory stock, and tags.
 type ProductDetails struct {
 	Product  *model.Product                      `json:"product"`
 	Brand    *model.ProductBrand                 `json:"brand,omitempty"`
@@ -127,6 +138,9 @@ type ProductDetails struct {
 	Tags     []*model.ProductTag                 `json:"tags,omitempty"`
 }
 
+// CreateProductAsDraft validates category and brand references, computes an initial slug from title,
+// resolves any slug collisions across all products (including soft-deleted),
+// and inserts the product into the database with PublicationStatusDraft.
 func (s *ProductService) CreateProductAsDraft(
 	ctx context.Context,
 	input CreateProductInput,
@@ -161,18 +175,50 @@ func (s *ProductService) CreateProductAsDraft(
 		}
 	}
 
-	product := &model.Product{
-		ID:          uuid.New(),
-		Slug:        utils.Slugify(input.Title),
-		BrandID:     input.BrandID,
-		CategoryID:  input.CategoryID,
-		Title:       input.Title,
-		Description: input.Description,
-		Status:      model.PublicationStatusDraft,
-		ProductType: pt,
+	baseSlug := ""
+	if input.Slug != nil {
+		baseSlug = utils.Slugify(*input.Slug)
+	}
+	if baseSlug == "" {
+		baseSlug = utils.Slugify(input.Title)
+	}
+	if baseSlug == "" {
+		baseSlug = "product"
 	}
 
+	var product *model.Product
 	err = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		finalSlug := baseSlug
+		// Check for slug collisions across all products (including soft-deleted)
+		exists, err := s.productRepo.SlugExists(ctx, db, finalSlug)
+		if err != nil {
+			return err
+		}
+		if exists {
+			for i := 1; i <= 10; i++ {
+				candidate := fmt.Sprintf("%s-%s", baseSlug, uuid.New().String()[:8])
+				candidateExists, err := s.productRepo.SlugExists(ctx, db, candidate)
+				if err != nil {
+					return err
+				}
+				if !candidateExists {
+					finalSlug = candidate
+					break
+				}
+			}
+		}
+
+		product = &model.Product{
+			ID:          uuid.New(),
+			Slug:        finalSlug,
+			BrandID:     input.BrandID,
+			CategoryID:  input.CategoryID,
+			Title:       input.Title,
+			Description: input.Description,
+			Status:      model.PublicationStatusDraft,
+			ProductType: pt,
+		}
+
 		return s.productRepo.Create(ctx, db, product)
 	})
 	if err != nil {
@@ -182,6 +228,7 @@ func (s *ProductService) CreateProductAsDraft(
 	return product, nil
 }
 
+// UpdateProduct modifies product properties inside a database transaction, validating category/brand references.
 func (s *ProductService) UpdateProduct(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -266,6 +313,7 @@ func (s *ProductService) UpdateProduct(
 	return nil
 }
 
+// GetByID retrieves a product by its UUID without hydrating associations.
 func (s *ProductService) GetByID(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -295,6 +343,8 @@ func (s *ProductService) GetByID(
 	return product, nil
 }
 
+// GetAdminDetailsByID retrieves full administrative product details (including soft-deleted),
+// hydrating brand, category, thumbnail, variants, and warehouse inventory stock breakdown.
 func (s *ProductService) GetAdminDetailsByID(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -369,6 +419,7 @@ func (s *ProductService) GetAdminDetailsByID(
 	return productDetails, nil
 }
 
+// GetBySlug retrieves public storefront details by product SEO slug.
 func (s *ProductService) GetBySlug(
 	ctx context.Context,
 	slug string,
@@ -443,6 +494,8 @@ func (s *ProductService) GetBySlug(
 
 	return productDetails, nil
 }
+
+// AdminList retrieves paginated products for administrative management, resolving thumbnail URLs.
 func (s *ProductService) AdminList(
 	ctx context.Context,
 	q *ListProductsQuery,
@@ -471,6 +524,8 @@ func (s *ProductService) AdminList(
 
 	return res, nil
 }
+
+// List executes a storefront product card query and hydrates review ratings asynchronously.
 func (s *ProductService) List(
 	ctx context.Context,
 	q *ListProductsQuery,
@@ -520,6 +575,8 @@ func (s *ProductService) List(
 	return res, nil
 }
 
+// PublishProduct transitions a product from draft to published.
+// Verifies that the product has at least one active variant.
 func (s *ProductService) PublishProduct(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -556,6 +613,7 @@ func (s *ProductService) PublishProduct(
 	return nil
 }
 
+// ArchiveProduct sets a product's publication status to archived, hiding it from public search.
 func (s *ProductService) ArchiveProduct(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -583,12 +641,27 @@ func (s *ProductService) ArchiveProduct(
 	return nil
 }
 
+// SoftDeleteProduct marks a product and its associated variants as soft-deleted within a single transaction.
 func (s *ProductService) SoftDeleteProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
-		return s.productRepo.SoftDeleteByID(ctx, db, productID)
+	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+		if err := s.productRepo.SoftDeleteByID(ctx, tx, productID); err != nil {
+			return err
+		}
+
+		// Cascade soft-deletion to variants of this product
+		_, err := tx.Exec(ctx, `
+			UPDATE product_variants
+			SET deleted_at = now(), updated_at = now()
+			WHERE product_id = $1 AND deleted_at IS NULL
+		`, productID)
+		if err != nil {
+			return fmt.Errorf("cascade soft-delete variants: %w", err)
+		}
+
+		return nil
 	})
 
 	if err != nil {
@@ -610,6 +683,7 @@ func (s *ProductService) SoftDeleteProduct(
 	return nil
 }
 
+// CreateProductVariant creates a variant under the given product and records initial stock if specified.
 func (s *ProductService) CreateProductVariant(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -634,16 +708,22 @@ func (s *ProductService) CreateProductVariant(
 	}
 
 	if input.InitialStock != nil && *input.InitialStock > 0 && s.inventoryService != nil {
-		_, _ = s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
+		_, err = s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
 			VariantID: createdVariant.ID,
 			Quantity:  *input.InitialStock,
 			Reason:    string(model.InventoryReasonRestock),
 		})
+		if err != nil {
+			// Roll back created variant on failure to maintain consistency
+			_ = s.variantService.DeleteVariantByID(ctx, createdVariant.ID)
+			return nil, err
+		}
 	}
 
 	return createdVariant, nil
 }
 
+// GetProductVariants retrieves active variants for a product.
 func (s *ProductService) GetProductVariants(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -652,6 +732,7 @@ func (s *ProductService) GetProductVariants(
 	return s.variantService.ListVariantsByProductID(ctx, productID, q, false)
 }
 
+// SetDefaultVariant designates a variant as default for the given product.
 func (s *ProductService) SetDefaultVariant(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -660,6 +741,7 @@ func (s *ProductService) SetDefaultVariant(
 	return s.variantService.SetDefaultVariant(ctx, productID, variantID)
 }
 
+// ReplaceProductTags delegates tag association replacement to tagService.
 func (s *ProductService) ReplaceProductTags(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -668,6 +750,8 @@ func (s *ProductService) ReplaceProductTags(
 	return s.tagService.ReplaceProductTags(ctx, productID, tagIDs)
 }
 
+// UploadProductThumbnail handles multipart thumbnail upload, size and MIME type validation,
+// S3/MinIO upload, and product table attachment, safely deleting any previously uploaded thumbnail.
 func (ps *ProductService) UploadProductThumbnail(
 	ctx context.Context,
 	productID uuid.UUID,

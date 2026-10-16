@@ -134,6 +134,9 @@ func (s *CartService) GetOrCreateCart(
 	return cart, nil
 }
 
+// MaxCartItemQuantity represents the maximum allowable quantity for any single line item in the cart.
+const MaxCartItemQuantity = 999
+
 func (s *CartService) AddItem(
 	ctx context.Context,
 	userID *uuid.UUID,
@@ -141,8 +144,8 @@ func (s *CartService) AddItem(
 	variantID uuid.UUID,
 	quantity int,
 ) (*model.Cart, error) {
-	if quantity <= 0 {
-		return nil, apierr.BadRequestError("Quantity must be greater than zero").
+	if quantity <= 0 || quantity > MaxCartItemQuantity {
+		return nil, apierr.BadRequestError("Quantity must be between 1 and 999").
 			WithCode(errcode.CodeInvalidQuantity)
 	}
 
@@ -153,14 +156,21 @@ func (s *CartService) AddItem(
 			Wrap(err)
 	}
 
-	// Validate available inventory
+	// Validate available inventory (fail-closed)
 	if s.inventoryService != nil {
 		stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, v.ID)
-		if stockErr == nil && stock != nil {
-			if stock.AvailableQuantity < quantity {
-				return nil, apierr.BadRequestError("Insufficient inventory available").
-					WithCode(errcode.CodeInsufficientInventory)
+		if stockErr != nil {
+			var apiErr *apierr.APIError
+			if errors.As(stockErr, &apiErr) {
+				return nil, apiErr
 			}
+			return nil, apierr.InternalServerError("Failed to check inventory").
+				WithCode(apierr.CodeInternalError).
+				Wrap(stockErr)
+		}
+		if stock == nil || stock.AvailableQuantity < quantity {
+			return nil, apierr.BadRequestError("Insufficient inventory available").
+				WithCode(errcode.CodeInsufficientInventory)
 		}
 	}
 
@@ -179,9 +189,9 @@ func (s *CartService) AddItem(
 		var err error
 		switch {
 		case userID != nil:
-			cart, err = s.cartRepo.GetCartByUserID(ctx, tx, *userID)
+			cart, err = s.cartRepo.GetCartByUserIDForUpdate(ctx, tx, *userID)
 		case sessionID != nil:
-			cart, err = s.cartRepo.GetCartBySessionID(ctx, tx, *sessionID)
+			cart, err = s.cartRepo.GetCartBySessionIDForUpdate(ctx, tx, *sessionID)
 		default:
 			return apierr.BadRequestError("User ID or Session ID is required").
 				WithCode(apierr.CodeInvalidInput)
@@ -204,19 +214,29 @@ func (s *CartService) AddItem(
 		}
 
 		existingItem, getErr := s.cartRepo.GetItemByVariantID(ctx, tx, cart.ID, v.ID)
-		if getErr == nil {
+		if getErr == nil && existingItem != nil {
 			newQty := existingItem.Quantity + quantity
+			if newQty > MaxCartItemQuantity {
+				return apierr.BadRequestError("Total item quantity cannot exceed 999").
+					WithCode(errcode.CodeInvalidQuantity)
+			}
 			if s.inventoryService != nil {
 				stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, v.ID)
-				if stockErr == nil && stock != nil && stock.AvailableQuantity < newQty {
+				if stockErr != nil {
+					var apiErr *apierr.APIError
+					if errors.As(stockErr, &apiErr) {
+						return apiErr
+					}
+					return apierr.InternalServerError("Failed to check inventory").
+						WithCode(apierr.CodeInternalError).
+						Wrap(stockErr)
+				}
+				if stock == nil || stock.AvailableQuantity < newQty {
 					return apierr.BadRequestError("Insufficient inventory available").
 						WithCode(errcode.CodeInsufficientInventory)
 				}
 			}
-			// Item exists, update quantity
-			err = s.cartRepo.UpdateItemQuantity(ctx, tx, cart.ID, existingItem.ID, newQty)
-			return err
-		} else if !errors.Is(database.MapError(getErr), database.ErrNotFound) {
+		} else if getErr != nil && !errors.Is(database.MapError(getErr), database.ErrNotFound) {
 			return getErr
 		}
 
@@ -228,7 +248,31 @@ func (s *CartService) AddItem(
 			PriceAtPurchase: price,
 			Currency:        currency,
 		}
-		return s.cartRepo.AddItem(ctx, tx, newItem)
+		if err := s.cartRepo.AddItem(ctx, tx, newItem); err != nil {
+			return err
+		}
+
+		if newItem.Quantity > MaxCartItemQuantity {
+			return apierr.BadRequestError("Total item quantity cannot exceed 999").
+				WithCode(errcode.CodeInvalidQuantity)
+		}
+		if s.inventoryService != nil {
+			stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, v.ID)
+			if stockErr != nil {
+				var apiErr *apierr.APIError
+				if errors.As(stockErr, &apiErr) {
+					return apiErr
+				}
+				return apierr.InternalServerError("Failed to check inventory").
+					WithCode(apierr.CodeInternalError).
+					Wrap(stockErr)
+			}
+			if stock == nil || stock.AvailableQuantity < newItem.Quantity {
+				return apierr.BadRequestError("Insufficient inventory available").
+					WithCode(errcode.CodeInsufficientInventory)
+			}
+		}
+		return nil
 	})
 
 	if txErr != nil {
@@ -252,8 +296,8 @@ func (s *CartService) UpdateCartItemQuantity(
 	itemID uuid.UUID,
 	quantity int,
 ) (*model.Cart, error) {
-	if quantity <= 0 {
-		return nil, apierr.BadRequestError("Quantity must be greater than zero").
+	if quantity <= 0 || quantity > MaxCartItemQuantity {
+		return nil, apierr.BadRequestError("Quantity must be between 1 and 999").
 			WithCode(errcode.CodeInvalidQuantity)
 	}
 
@@ -270,7 +314,16 @@ func (s *CartService) UpdateCartItemQuantity(
 
 		if s.inventoryService != nil {
 			stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, item.VariantID)
-			if stockErr == nil && stock != nil && stock.AvailableQuantity < quantity {
+			if stockErr != nil {
+				var apiErr *apierr.APIError
+				if errors.As(stockErr, &apiErr) {
+					return apiErr
+				}
+				return apierr.InternalServerError("Failed to check inventory").
+					WithCode(apierr.CodeInternalError).
+					Wrap(stockErr)
+			}
+			if stock == nil || stock.AvailableQuantity < quantity {
 				return apierr.BadRequestError("Insufficient inventory available").
 					WithCode(errcode.CodeInsufficientInventory)
 			}
@@ -358,7 +411,7 @@ func (s *CartService) MergeGuestCart(
 	userID uuid.UUID,
 ) error {
 	err := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		guestCart, gErr := s.cartRepo.GetCartBySessionID(ctx, tx, sessionID)
+		guestCart, gErr := s.cartRepo.GetCartBySessionIDForUpdate(ctx, tx, sessionID)
 		if gErr != nil {
 			if errors.Is(database.MapError(gErr), database.ErrNotFound) {
 				return nil
@@ -366,7 +419,7 @@ func (s *CartService) MergeGuestCart(
 			return gErr
 		}
 
-		userCart, uErr := s.cartRepo.GetCartByUserID(ctx, tx, userID)
+		userCart, uErr := s.cartRepo.GetCartByUserIDForUpdate(ctx, tx, userID)
 		if uErr != nil {
 			if errors.Is(database.MapError(uErr), database.ErrNotFound) {
 				newCart := &model.Cart{
@@ -397,10 +450,22 @@ func (s *CartService) MergeGuestCart(
 			if existing != nil {
 				targetQty = existing.Quantity + item.Quantity
 			}
+			if targetQty > MaxCartItemQuantity {
+				targetQty = MaxCartItemQuantity
+			}
 
 			if s.inventoryService != nil {
 				stock, stockErr := s.inventoryService.GetStockByVariantID(ctx, item.VariantID)
-				if stockErr == nil && stock != nil && stock.AvailableQuantity < targetQty {
+				if stockErr != nil {
+					var apiErr *apierr.APIError
+					if errors.As(stockErr, &apiErr) {
+						return apiErr
+					}
+					return apierr.InternalServerError("Failed to check inventory").
+						WithCode(apierr.CodeInternalError).
+						Wrap(stockErr)
+				}
+				if stock == nil || stock.AvailableQuantity < targetQty {
 					return apierr.BadRequestError("Insufficient inventory available for variant").
 						WithCode(errcode.CodeInsufficientInventory)
 				}

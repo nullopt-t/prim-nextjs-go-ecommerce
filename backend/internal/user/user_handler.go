@@ -17,27 +17,34 @@ import (
 	"github.com/google/uuid"
 )
 
+// UsersResponse wraps a slice of UserResponse objects for batch administrative user listings.
 type UsersResponse struct {
 	Users []UserResponse `json:"users"`
 }
 
+// UserByEmailRequest represents the request payload when querying or referencing a user by their primary email.
 type UserByEmailRequest struct {
 	Email string `json:"email" binding:"required,email"`
 }
 
+// UserURIParam captures and validates UUID route parameters from path bindings.
 type UserURIParam struct {
 	UserID uuid.UUID `uri:"id" json:"id" binding:"required"`
 }
 
+// UpdateUserRoleRequest represents the request body for modifying a user's administrative role tier.
 type UpdateUserRoleRequest struct {
 	Role string `json:"role" binding:"required"`
 }
 
+// UpdateUserStatusRequest represents the payload for changing account standing (active, suspended, deleted).
 type UpdateUserStatusRequest struct {
 	Status         string     `json:"status" binding:"required"`
 	SuspendedUntil *time.Time `json:"suspendedUntil,omitempty"`
 }
 
+// UserResponse represents the public administrative view of a user account entity,
+// including administrative roles, email verification status, account status, and timestamps.
 type UserResponse struct {
 	ID              uuid.UUID  `json:"id"`
 	Email           string     `json:"email"`
@@ -51,10 +58,12 @@ type UserResponse struct {
 	UpdatedAt       time.Time  `json:"updatedAt"`
 }
 
+// ToUserResponse converts an internal User model entity to the public UserResponse DTO,
+// defaulting a nil role pointer to the standard "customer" role.
 func ToUserResponse(user model.User) UserResponse {
 	roleStr := "customer"
-	if user.Role != nil {
-		roleStr = string(*user.Role)
+	if user.Role != "" {
+		roleStr = string(user.Role)
 	}
 	return UserResponse{
 		ID:              user.ID,
@@ -70,6 +79,7 @@ func ToUserResponse(user model.User) UserResponse {
 	}
 }
 
+// ToUserListResponse converts a slice of domain User entities into the UsersResponse container.
 func ToUserListResponse(users []model.User) UsersResponse {
 	var list UsersResponse
 	list.Users = make([]UserResponse, 0, len(users))
@@ -79,6 +89,9 @@ func ToUserListResponse(users []model.User) UsersResponse {
 	return list
 }
 
+// Handler orchestrates HTTP transport operations for administrative user management:
+// querying users, listing paginated accounts, deleting users, altering roles, updating status,
+// and revoking user sessions.
 type Handler struct {
 	userService *UserService
 	limiter     *security.RateLimiter
@@ -86,6 +99,7 @@ type Handler struct {
 	logger      log.Logger
 }
 
+// NewHandler constructs a new administrative user Handler.
 func NewHandler(
 	userService *UserService,
 	limiter *security.RateLimiter,
@@ -100,13 +114,16 @@ func NewHandler(
 	}
 }
 
+// GetUserByID retrieves full profile and status details for a user by their UUID.
 func (h *Handler) GetUserByID(c *gin.Context) {
+	// Parse target user UUID from path
 	userID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(apierr.BadRequestError("Invalid user ID"))
 		return
 	}
 
+	// Fetch user record from service
 	user, err := h.userService.GetUserByID(
 		c.Request.Context(),
 		userID,
@@ -124,13 +141,16 @@ func (h *Handler) GetUserByID(c *gin.Context) {
 	)
 }
 
+// GetAllUsers retrieves a paginated, filterable list of user accounts for staff administration.
 func (h *Handler) GetAllUsers(c *gin.Context) {
+	// Bind pagination query parameters
 	var q pagination.ListQuery
 	if err := c.ShouldBindQuery(&q); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
+	// Apply default pagination bounds
 	if q.PageSize <= 0 {
 		q.PageSize = 10
 	}
@@ -139,6 +159,7 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 		q.Page = 1
 	}
 
+	// Optional administrative filters
 	var rolePtr *string
 	if r := c.Query("role"); r != "" {
 		rolePtr = &r
@@ -149,6 +170,7 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 		statusPtr = &s
 	}
 
+	// Query database via user service
 	users, page, err := h.userService.GetAllUsers(
 		c.Request.Context(),
 		q,
@@ -169,10 +191,24 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 	)
 }
 
+// DeleteUser deletes an account by its UUID.
 func (h *Handler) DeleteUser(c *gin.Context) {
+	// Parse target user UUID
 	userID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(apierr.BadRequestError("Invalid user ID"))
+		return
+	}
+
+	// Extract caller's authenticated user ID
+	callerIDVal, exists := c.Get("userID")
+	if !exists {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+	callerID := callerIDVal.(uuid.UUID)
+	if userID == callerID {
+		_ = c.Error(apierr.BadRequestError("Superadmins cannot delete their own account").WithCode("CANNOT_DELETE_SELF"))
 		return
 	}
 
@@ -193,19 +229,23 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 	)
 }
 
+// UpdateUserRole modifies the administrative role of a target user (Superadmin only).
 func (h *Handler) UpdateUserRole(c *gin.Context) {
+	// Parse target user UUID
 	userID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(apierr.BadRequestError("Invalid user ID"))
 		return
 	}
 
+	// Parse JSON request body
 	var req UpdateUserRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
+	// Extract caller's authenticated user ID
 	callerIDVal, exists := c.Get("userID")
 	if !exists {
 		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
@@ -213,6 +253,7 @@ func (h *Handler) UpdateUserRole(c *gin.Context) {
 	}
 	callerID := callerIDVal.(uuid.UUID)
 
+	// Update user role through service (prevents modifying own role)
 	if err := h.userService.UpdateUserRole(
 		c.Request.Context(),
 		userID,
@@ -228,19 +269,23 @@ func (h *Handler) UpdateUserRole(c *gin.Context) {
 	})
 }
 
+// UpdateAccountStatus modifies a user's account standing (active, suspended, deleted) (Superadmin only).
 func (h *Handler) UpdateAccountStatus(c *gin.Context) {
+	// Parse target user UUID
 	userID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(apierr.BadRequestError("Invalid user ID"))
 		return
 	}
 
+	// Parse JSON request body
 	var req UpdateUserStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		validation.ValidationError(c, err)
 		return
 	}
 
+	// Extract caller's user UUID from context
 	callerIDVal, exists := c.Get("userID")
 	if !exists {
 		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
@@ -248,6 +293,7 @@ func (h *Handler) UpdateAccountStatus(c *gin.Context) {
 	}
 	callerID := callerIDVal.(uuid.UUID)
 
+	// Update account status in database
 	if err := h.userService.UpdateAccountStatus(
 		c.Request.Context(),
 		userID,
@@ -264,13 +310,16 @@ func (h *Handler) UpdateAccountStatus(c *gin.Context) {
 	})
 }
 
+// RevokeUserSessions forcefully revokes all active Redis sessions for the specified user (Superadmin only).
 func (h *Handler) RevokeUserSessions(c *gin.Context) {
+	// Parse target user UUID
 	userID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(apierr.BadRequestError("Invalid user ID"))
 		return
 	}
 
+	// Extract caller's authenticated user ID
 	callerIDVal, exists := c.Get("userID")
 	if !exists {
 		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
@@ -278,6 +327,7 @@ func (h *Handler) RevokeUserSessions(c *gin.Context) {
 	}
 	callerID := callerIDVal.(uuid.UUID)
 
+	// Invalidate all sessions in Redis
 	if err := h.userService.RevokeAllUserSessions(
 		c.Request.Context(),
 		userID,

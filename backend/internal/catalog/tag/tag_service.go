@@ -36,9 +36,19 @@ func (ts *TagService) CreateTag(
 	ctx context.Context,
 	in CreateTagInput,
 ) (*model.ProductTag, error) {
+	name := strings.TrimSpace(in.Name)
+	if name == "" {
+		return nil, apierr.BadRequestError("Validation failed").
+			WithCode(apierr.CodeValidationFailed).
+			WithFields(api.FieldError{
+				Field:   "name",
+				Message: "tag name cannot be empty",
+			})
+	}
+
 	tag := &model.ProductTag{
 		ID:   uuid.New(),
-		Name: strings.TrimSpace(in.Name),
+		Name: name,
 	}
 
 	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {
@@ -236,6 +246,10 @@ func (ts *TagService) handleError(err error, defaultMsg string) error {
 	case errors.Is(mappedErr, database.ErrConflict):
 		return apierr.ConflictError("A tag with this name already exists").
 			WithCode(errcode.CodeTagAlreadyExists).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+		return apierr.BadRequestError("Referenced entity does not exist").
+			WithCode(apierr.CodeInvalidReference).
 			Wrap(err)
 	case errors.Is(mappedErr, database.ErrInvalidInput):
 		return apierr.BadRequestError("Invalid input provided").

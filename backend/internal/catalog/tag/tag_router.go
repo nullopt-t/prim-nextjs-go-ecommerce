@@ -2,6 +2,7 @@ package tag
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/middleware"
 )
 
@@ -21,6 +22,7 @@ func (tr *TagRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	admin := vgroup.Group("/admin/tags")
 	admin.Use(
 		middleware.Authenticate(tr.sessionStore),
+		middleware.Authorize(model.AdminRole),
 	)
 	{
 		admin.GET("", tr.th.AdminListTags)

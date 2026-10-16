@@ -1,3 +1,5 @@
+// Package model defines the core domain entities, data transfer objects, and value objects
+// used throughout the Prim backend services.
 package model
 
 import (
@@ -8,6 +10,7 @@ import (
 
 // Cart represents a customer shopping cart container.
 // It can belong to an authenticated customer (UserID) or a guest visitor (SessionID).
+// When a guest logs in, their guest cart is merged into their permanent user cart.
 type Cart struct {
 	// ID is the unique database UUID for the cart.
 	ID uuid.UUID
@@ -20,6 +23,7 @@ type Cart struct {
 	// UpdatedAt is the timestamp when the cart or its items were last modified.
 	UpdatedAt time.Time
 	// DeletedAt is the optional soft-delete timestamp when the cart was emptied or discarded.
+	// Cart queries filter `deleted_at IS NULL` and DeleteCart sets this timestamp.
 	DeletedAt *time.Time
 	// Items contains all line items currently present in the cart.
 	Items []CartItem
@@ -33,7 +37,7 @@ type CartItem struct {
 	CartID uuid.UUID
 	// VariantID is the specific ProductVariant UUID added to the cart.
 	VariantID uuid.UUID
-	// Quantity is the number of units of this variant in the cart.
+	// Quantity is the number of units of this variant in the cart (bounded by MaxCartItemQuantity).
 	Quantity int
 	// PriceAtPurchase is the unit price in cents at the moment this item was added to the cart.
 	PriceAtPurchase int64
@@ -43,7 +47,8 @@ type CartItem struct {
 	Currency string
 	// CartedAt is the timestamp when this variant was added to the cart.
 	CartedAt time.Time
-	// DeletedAt is the optional timestamp when this item was removed from the cart.
+	// DeletedAt is the optional timestamp when this item was soft-deleted from the cart.
+	// Active items filter `deleted_at IS NULL`; re-adding an item reactivates it and clears deleted_at.
 	DeletedAt *time.Time
 	// Variant is the eagerly loaded or hydrated ProductVariant entity.
 	Variant *ProductVariant

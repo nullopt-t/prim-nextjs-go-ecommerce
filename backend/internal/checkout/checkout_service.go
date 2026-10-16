@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
@@ -19,16 +20,25 @@ type OrderService interface {
 	CreateOrder(ctx context.Context, in *order.CreateOrderInput) (*model.Order, error)
 }
 
-type CheckoutService struct {
-	cartService  CartService
-	orderService OrderService
+type InventoryService interface {
+	AdjustStock(ctx context.Context, in inventory.AdjustStockInput) (*model.InventoryStock, error)
 }
 
-func NewService(cartService CartService, orderService OrderService) *CheckoutService {
-	return &CheckoutService{
+type CheckoutService struct {
+	cartService      CartService
+	orderService     OrderService
+	inventoryService InventoryService
+}
+
+func NewService(cartService CartService, orderService OrderService, inventoryService ...InventoryService) *CheckoutService {
+	s := &CheckoutService{
 		cartService:  cartService,
 		orderService: orderService,
 	}
+	if len(inventoryService) > 0 {
+		s.inventoryService = inventoryService[0]
+	}
+	return s
 }
 
 type CheckoutInput struct {
@@ -117,8 +127,42 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		Items:           items,
 	}
 
+	// Reserve inventory / deduct stock atomically during checkout
+	if s.inventoryService != nil {
+		deducted := make([]order.CreateOrderItemInput, 0, len(items))
+		for _, item := range items {
+			_, err := s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
+				VariantID: item.VariantID,
+				Quantity:  -item.Quantity,
+				Reason:    string(model.InventoryReasonSale),
+			})
+			if err != nil {
+				// Compensate already deducted items if a subsequent item fails
+				for _, prev := range deducted {
+					_, _ = s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
+						VariantID: prev.VariantID,
+						Quantity:  prev.Quantity,
+						Reason:    string(model.InventoryReasonAdjustment),
+					})
+				}
+				return nil, err
+			}
+			deducted = append(deducted, item)
+		}
+	}
+
 	createdOrder, err := s.orderService.CreateOrder(ctx, orderIn)
 	if err != nil {
+		if s.inventoryService != nil {
+			// Roll back stock deductions if order creation failed
+			for _, item := range items {
+				_, _ = s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
+					VariantID: item.VariantID,
+					Quantity:  item.Quantity,
+					Reason:    string(model.InventoryReasonAdjustment),
+				})
+			}
+		}
 		return nil, err
 	}
 

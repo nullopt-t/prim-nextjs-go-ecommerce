@@ -16,10 +16,13 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
+// ObjectService defines storage URL resolution methods for product and variant media.
 type ObjectService interface {
 	GetObjectURL(ctx context.Context, bucket, key string) string
 }
 
+// VariantService coordinates business logic, transaction handling, and cross-domain inventory integration
+// for product variants (SKUs), media galleries, and stock availability.
 type VariantService struct {
 	logger           log.Logger
 	dr               database.Runner
@@ -28,6 +31,8 @@ type VariantService struct {
 	inventoryService *inventory.InventoryService
 }
 
+// NewService constructs a new VariantService with injected database runner, media object service,
+// variant repository, and inventory service.
 func NewService(
 	logger log.Logger,
 	r database.Runner,
@@ -44,18 +49,29 @@ func NewService(
 	}
 }
 
+// CreateVariantInput represents the parameters required to create a new product variant.
 type CreateVariantInput struct {
+	// ProductID is the UUID of the parent product.
 	ProductID         uuid.UUID
+	// SKU is an optional custom SKU string; if omitted, a new UUID string is generated.
 	SKU               *string
+	// Title is the required display title of the variant.
 	Title             string
+	// Price is the sales price in minor currency units (cents).
 	Price             *int64
+	// CrossedOutPrice is the original MSRP price in minor currency units (cents).
 	CrossedOutPrice   *int64
+	// Currency is the ISO-4217 currency code (e.g. USD).
 	Currency          *string
+	// Attributes contains multi-attribute key-value specifications (e.g. {"color":"black","size":"XL"}).
 	Attributes        map[string]any
+	// IsDefault indicates whether this variant is the initial storefront selection.
 	IsDefault         bool
+	// ThumbnailObjectID is an optional storage object UUID for the variant's thumbnail image.
 	ThumbnailObjectID *uuid.UUID
 }
 
+// UpdateVariantInput represents the parameters for updating an existing product variant.
 type UpdateVariantInput struct {
 	SKU               *string
 	Title             *string
@@ -67,6 +83,7 @@ type UpdateVariantInput struct {
 	ThumbnailObjectID *uuid.UUID
 }
 
+// AttachMediaInput defines the parameters to link a storage object to a variant.
 type AttachMediaInput struct {
 	VariantID       uuid.UUID
 	StorageObjectID uuid.UUID
@@ -74,6 +91,9 @@ type AttachMediaInput struct {
 	SortOrder       int
 }
 
+// CreateVariant creates a new product variant. If this is the product's first variant,
+// it is automatically designated as default. If explicitly marked as default, any existing default
+// flags for the product's variants are cleared first.
 func (vs *VariantService) CreateVariant(
 	ctx context.Context,
 	in *CreateVariantInput,
@@ -124,6 +144,13 @@ func (vs *VariantService) CreateVariant(
 	}
 
 	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		// Acquire an exclusive row-level lock on the parent product to prevent concurrent creation races
+		var parentProductID uuid.UUID
+		err := tx.QueryRow(ctx, `SELECT id FROM products WHERE id = $1 FOR UPDATE`, variant.ProductID).Scan(&parentProductID)
+		if err != nil {
+			return err
+		}
+
 		// If this is the first variant of the product, make it default automatically
 		count, err := vs.vr.CountByProductID(ctx, tx, variant.ProductID)
 		if err != nil {
@@ -169,6 +196,7 @@ func (vs *VariantService) CreateVariant(
 	return variant, nil
 }
 
+// GetVariantByID retrieves a variant by UUID and populates presigned thumbnail and media gallery URLs.
 func (vs *VariantService) GetVariantByID(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -212,6 +240,7 @@ func (vs *VariantService) GetVariantByID(
 	return variant, nil
 }
 
+// GetVariantBySKU retrieves a variant by its unique SKU identifier.
 func (vs *VariantService) GetVariantBySKU(
 	ctx context.Context,
 	sku string,
@@ -264,6 +293,9 @@ func (vs *VariantService) GetVariantBySKU(
 	return variant, nil
 }
 
+// UpdateVariant updates mutable variant fields. If is_default is set to true, existing default
+// flags for the product's variants are cleared first. If an existing default variant is unset,
+// the first available variant is automatically reassigned as default.
 func (vs *VariantService) UpdateVariant(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -305,16 +337,29 @@ func (vs *VariantService) UpdateVariant(
 	}
 
 	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		existing, err := vs.vr.GetByID(ctx, tx, variantID)
+		if err != nil {
+			return err
+		}
+
 		if in.IsDefault != nil && *in.IsDefault {
-			existing, err := vs.vr.GetByID(ctx, tx, variantID)
-			if err != nil {
-				return err
-			}
 			if err := vs.vr.ClearDefaultFlags(ctx, tx, existing.ProductID); err != nil {
 				return err
 			}
 		}
-		return vs.vr.Update(ctx, tx, variantID, fields)
+
+		if err := vs.vr.Update(ctx, tx, variantID, fields); err != nil {
+			return err
+		}
+
+		// If this variant was default and is now unset, ensure another variant is designated as default
+		if in.IsDefault != nil && !*in.IsDefault && existing.IsDefault {
+			if err := vs.vr.SetFirstAvailableAsDefault(ctx, tx, existing.ProductID); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	})
 
 	if err != nil {
@@ -341,6 +386,8 @@ func (vs *VariantService) UpdateVariant(
 	return nil
 }
 
+// ListVariantsByProductID returns a paginated list of variants belonging to a specific product,
+// populating thumbnail and media gallery presigned URLs.
 func (vs *VariantService) ListVariantsByProductID(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -425,6 +472,8 @@ func (vs *VariantService) ListVariantsByProductID(
 	return result, nil
 }
 
+// DeleteVariantByID soft-deletes a variant, releasing any active inventory reservations.
+// If the deleted variant was the default, the oldest remaining active variant is promoted to default.
 func (vs *VariantService) DeleteVariantByID(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -472,6 +521,9 @@ func (vs *VariantService) DeleteVariantByID(
 	return nil
 }
 
+// RestoreVariantByID un-deletes a previously soft-deleted product variant.
+// If another default variant already exists for the product, the restored variant has is_default reset to false
+// to preserve the partial unique index idx_product_variants_default.
 func (vs *VariantService) RestoreVariantByID(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -481,8 +533,47 @@ func (vs *VariantService) RestoreVariantByID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return vs.vr.Restore(ctx, db, variantID)
+	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		// Fetch the variant including deleted records to inspect its product and default flag
+		var (
+			productID uuid.UUID
+			isDefault bool
+		)
+		err := tx.QueryRow(ctx,
+			`SELECT product_id, is_default FROM product_variants WHERE id = $1 AND deleted_at IS NOT NULL`,
+			variantID,
+		).Scan(&productID, &isDefault)
+		if err != nil {
+			return err
+		}
+
+		// Lock parent product
+		var pID uuid.UUID
+		if err := tx.QueryRow(ctx, `SELECT id FROM products WHERE id = $1 FOR UPDATE`, productID).Scan(&pID); err != nil {
+			return err
+		}
+
+		if isDefault {
+			// Check if another active variant is currently designated as default
+			var defaultExists bool
+			err = tx.QueryRow(ctx,
+				`SELECT EXISTS(SELECT 1 FROM product_variants WHERE product_id = $1 AND is_default = true AND deleted_at IS NULL)`,
+				productID,
+			).Scan(&defaultExists)
+			if err != nil {
+				return err
+			}
+
+			// If another default already exists, reset is_default to false on the variant being restored
+			if defaultExists {
+				_, err = tx.Exec(ctx, `UPDATE product_variants SET is_default = false WHERE id = $1`, variantID)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		return vs.vr.Restore(ctx, tx, variantID)
 	})
 
 	if err != nil {
@@ -504,6 +595,7 @@ func (vs *VariantService) RestoreVariantByID(
 	return nil
 }
 
+// AttachMedia associates an uploaded storage object with a variant.
 func (vs *VariantService) AttachMedia(
 	ctx context.Context,
 	in AttachMediaInput,
@@ -552,6 +644,7 @@ func (vs *VariantService) AttachMedia(
 	return createdMedia, nil
 }
 
+// RemoveMedia disassociates a media item from a variant and resequences remaining media sort orders.
 func (vs *VariantService) RemoveMedia(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -585,6 +678,7 @@ func (vs *VariantService) RemoveMedia(
 	return nil
 }
 
+// DetachMedia is an alias for RemoveMedia.
 func (vs *VariantService) DetachMedia(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -593,6 +687,7 @@ func (vs *VariantService) DetachMedia(
 	return vs.RemoveMedia(ctx, variantID, mediaID)
 }
 
+// ReorderMedia applies a new sequence order to all media items attached to a variant.
 func (vs *VariantService) ReorderMedia(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -648,6 +743,7 @@ func (vs *VariantService) ReorderMedia(
 	return nil
 }
 
+// ListVariantMedia retrieves all gallery media items for a variant and populates presigned CDN URLs.
 func (vs *VariantService) ListVariantMedia(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -691,6 +787,8 @@ func (vs *VariantService) ListVariantMedia(
 	return mediaList, nil
 }
 
+// SetDefaultVariant designates a specific variant as the default for its parent product,
+// clearing default flags on all other variants of the product.
 func (vs *VariantService) SetDefaultVariant(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -733,6 +831,7 @@ func (vs *VariantService) SetDefaultVariant(
 	return nil
 }
 
+// AdjustStock delegates stock adjustment to the injected inventory service.
 func (vs *VariantService) AdjustStock(
 	ctx context.Context,
 	in inventory.AdjustStockInput,
@@ -743,6 +842,7 @@ func (vs *VariantService) AdjustStock(
 	return vs.inventoryService.AdjustStock(ctx, in)
 }
 
+// GetStockByVariantID delegates stock balance lookup to the injected inventory service.
 func (vs *VariantService) GetStockByVariantID(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -753,6 +853,7 @@ func (vs *VariantService) GetStockByVariantID(
 	return vs.inventoryService.GetStockByVariantID(ctx, variantID)
 }
 
+// ListLedgers delegates inventory audit ledger queries to the injected inventory service.
 func (vs *VariantService) ListLedgers(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -763,3 +864,4 @@ func (vs *VariantService) ListLedgers(
 	}
 	return vs.inventoryService.ListLedgers(ctx, variantID, q)
 }
+

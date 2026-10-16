@@ -73,8 +73,8 @@ func (s *ReviewService) CreateReview(
 				return apierr.BadRequestError("order item does not belong to the specified product").
 					WithCode(errcode.CodeReviewNotEligible)
 			}
-			if pv.OrderStatus == model.OrderStatusCanceled || pv.OrderStatus == model.OrderStatusRefunded {
-				return apierr.BadRequestError("cannot review items from canceled or refunded orders").
+			if pv.OrderStatus != model.OrderStatusDelivered {
+				return apierr.ForbiddenError("you can only review products that have been delivered").
 					WithCode(errcode.CodeReviewNotEligible)
 			}
 		} else {
@@ -100,7 +100,7 @@ func (s *ReviewService) CreateReview(
 				WithCode(errcode.CodeReviewAlreadyExists)
 		}
 
-		// 3. Create review
+		// 3. Create review (initialize as pending for moderation)
 		reviewID := uuid.New()
 		rv := &model.Review{
 			ID:          reviewID,
@@ -110,10 +110,14 @@ func (s *ReviewService) CreateReview(
 			Rating:      in.Rating,
 			Title:       in.Title,
 			Body:        in.Body,
-			Status:      model.ReviewStatusApproved,
+			Status:      model.ReviewStatusPending,
 		}
 
 		if err := s.repo.Create(ctx, tx, rv); err != nil {
+			if errors.Is(database.MapError(err), database.ErrConflict) {
+				return apierr.ConflictError("a review has already been submitted for this order item").
+					WithCode(errcode.CodeReviewAlreadyExists)
+			}
 			return apierr.InternalServerError("failed to create review").Wrap(err)
 		}
 
@@ -178,6 +182,8 @@ func (s *ReviewService) GetRatingSummariesByProductIDs(
 	return summaries, nil
 }
 
+// UpdateUserReview allows a customer to update the rating, headline, or narrative body of their own review.
+// Automatically resets moderation status to 'pending' to require moderator re-approval if changes are made.
 func (s *ReviewService) UpdateUserReview(
 	ctx context.Context,
 	id uuid.UUID,
@@ -203,15 +209,25 @@ func (s *ReviewService) UpdateUserReview(
 			return apierr.ForbiddenError("you can only update your own review")
 		}
 
-		if in.Rating != nil {
+		changed := false
+		if in.Rating != nil && *in.Rating != rv.Rating {
 			rv.Rating = *in.Rating
+			changed = true
 		}
-		if in.Title != nil {
+		if in.Title != nil && (rv.Title == nil || *in.Title != *rv.Title) {
 			rv.Title = in.Title
+			changed = true
 		}
-		if in.Body != nil {
+		if in.Body != nil && (rv.Body == nil || *in.Body != *rv.Body) {
 			rv.Body = in.Body
+			changed = true
 		}
+
+		if !changed {
+			updatedReview = rv
+			return nil
+		}
+
 		rv.Status = model.ReviewStatusPending
 
 		if err := s.repo.Update(ctx, tx, rv); err != nil {

@@ -12,10 +12,13 @@ import (
 )
 
 var (
+	// ErrAddressNotFound indicates that no active address matching the specified ID and UserID was found.
 	ErrAddressNotFound = errors.New("address not found")
 )
 
 // AddressRepository handles persistence of user addresses in PostgreSQL.
+// All queries enforce user_id tenancy filters and soft-deletion constraints (deleted_at IS NULL)
+// to guarantee multi-tenant data isolation and prevent unauthorized data access across users.
 type AddressRepository struct{}
 
 // NewAddressRepository creates a new AddressRepository.
@@ -24,6 +27,7 @@ func NewAddressRepository() *AddressRepository {
 }
 
 // CountByUser returns the count of non-deleted addresses for a user.
+// Used during creation to determine if the new address should automatically become the default address.
 func (r *AddressRepository) CountByUser(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -90,6 +94,7 @@ func (r *AddressRepository) ListByUser(
 }
 
 // GetByIDAndUser retrieves a single non-deleted address belonging to the user.
+// Scoping by user_id ensures that users cannot view addresses belonging to other customers.
 func (r *AddressRepository) GetByIDAndUser(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -131,6 +136,7 @@ func (r *AddressRepository) GetByIDAndUser(
 }
 
 // ClearDefault unsets is_default for all non-deleted addresses of the specified user.
+// Executed inside database transactions prior to setting a new default address.
 func (r *AddressRepository) ClearDefault(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -171,6 +177,8 @@ func (r *AddressRepository) SetDefault(
 }
 
 // Create inserts a new address.
+// Default address uniqueness per user is enforced at the database level by the partial unique index:
+// idx_addresses_user_default ON addresses (user_id) WHERE is_default = true AND deleted_at IS NULL.
 func (r *AddressRepository) Create(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -254,7 +262,7 @@ func (r *AddressRepository) Update(
 	return nil
 }
 
-// SoftDelete marks an address as deleted.
+// SoftDelete marks an address as deleted and unsets is_default to prevent deleted addresses from acting as defaults.
 func (r *AddressRepository) SoftDelete(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -277,6 +285,7 @@ func (r *AddressRepository) SoftDelete(
 }
 
 // FindMostRecentActive retrieves the most recently updated or created active address for promotion.
+// Invoked when the user's current default address is deleted, promoting the next active address to default.
 func (r *AddressRepository) FindMostRecentActive(
 	ctx context.Context,
 	qe database.QueryExecutor,

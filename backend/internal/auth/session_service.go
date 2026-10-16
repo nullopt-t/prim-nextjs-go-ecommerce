@@ -14,22 +14,29 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// SessionType defines the authorization scope classification for client sessions (guest or authenticated).
 type SessionType = model.SessionType
 
 const (
-	SessionTypeGuest         = model.SessionTypeGuest
+	// SessionTypeGuest indicates an unauthenticated anonymous browser session (e.g. guest shopping cart).
+	SessionTypeGuest = model.SessionTypeGuest
+	// SessionTypeAuthenticated indicates a verified customer or staff session bound to a specific user account.
 	SessionTypeAuthenticated = model.SessionTypeAuthenticated
 )
 
+// UserSession alias to internal/model.UserSession representing session payload stored in Redis.
 type UserSession = model.UserSession
 
-
+// SessionService manages server-side user session lifecycles in Redis:
+// creation, activity tracking, sliding window auto-refresh, active session listing,
+// single session revocation, and global user session invalidation.
 type SessionService struct {
 	redisClient *redis.Client
 	logger      log.Logger
 	sessionTTL  time.Duration
 }
 
+// NewSessionService constructs a new SessionService with Redis client and session lifetime configuration.
 func NewSessionService(
 	redisClient *redis.Client,
 	logger log.Logger,
@@ -42,6 +49,9 @@ func NewSessionService(
 	}
 }
 
+// CreateSession creates a new server-side session object in Redis.
+// It assigns a secure random session identifier with prefix "sess_", serializes session metadata,
+// stores the session JSON with a TTL, and registers the session ID in the user's active session set.
 func (s *SessionService) CreateSession(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -50,18 +60,22 @@ func (s *SessionService) CreateSession(
 	userAgent string,
 	ipAddress string,
 ) (*UserSession, error) {
+	// Generate unique session identifier with standard prefix
 	sessionID := fmt.Sprintf("sess_%s", uuid.New().String())
 	now := time.Now().UTC()
 
 	sess := &UserSession{
 		ID:         sessionID,
 		UserID:     userID,
-		UserRole:   userRole,
+		UserRole:   model.UserRole(userRole),
 		Type:       sessionType,
 		UserAgent:  userAgent,
 		IPAddress:  ipAddress,
 		CreatedAt:  now,
 		LastActive: now,
+	}
+	if err := sess.Validate(); err != nil {
+		return nil, err
 	}
 
 	data, err := json.Marshal(sess)
@@ -77,14 +91,21 @@ func (s *SessionService) CreateSession(
 		return nil, err
 	}
 
-	// Add session ID to user's Redis session set
-	if err := s.redisClient.SAdd(ctx, userSetKey, sessionID).Err(); err != nil {
-		return nil, err
+	// Add session ID to user's Redis session set if authenticated
+	if userID != uuid.Nil {
+		if err := s.redisClient.SAdd(ctx, userSetKey, sessionID).Err(); err != nil {
+			return nil, err
+		}
+		// Set TTL on userSetKey to avoid accumulation of dead session keys
+		_ = s.redisClient.Expire(ctx, userSetKey, s.sessionTTL*2).Err()
 	}
 
 	return sess, nil
 }
 
+// GetUserSessions lists all active sessions registered for the given user UUID.
+// It iterates through the user's Redis set, fetches session data, prunes expired session IDs (lazy cleanup),
+// and returns all currently active sessions.
 func (s *SessionService) GetUserSessions(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -116,6 +137,9 @@ func (s *SessionService) GetUserSessions(
 	return sessions, nil
 }
 
+// GetSessionByID fetches session metadata from Redis by session ID.
+// If the session has been active for more than half its TTL, it automatically refreshes
+// LastActive and extends the Redis TTL (sliding expiration window).
 func (s *SessionService) GetSessionByID(
 	ctx context.Context,
 	sessionID string,
@@ -153,13 +177,26 @@ func (s *SessionService) GetSessionByID(
 	return &sess, nil
 }
 
+// DeleteSessionByID deletes a specific active session key from Redis and removes it from the user's session set.
+// Enforces ownership check to prevent IDOR attacks.
 func (s *SessionService) DeleteSessionByID(
 	ctx context.Context,
 	userID uuid.UUID,
 	sessionID string,
 ) error {
-	sessKey := fmt.Sprintf("auth:session:%s", sessionID)
 	userSetKey := fmt.Sprintf("auth:user_sessions:%s", userID.String())
+
+	// IDOR check: verify that the session actually belongs to this user
+	isMember, err := s.redisClient.SIsMember(ctx, userSetKey, sessionID).Result()
+	if err != nil {
+		s.logger.Error("failed to verify session ownership", log.Meta{"error": err, "session_id": sessionID, "user_id": userID.String()})
+		return err
+	}
+	if !isMember {
+		return apierr.New(http.StatusNotFound, "Session not found").WithCode(apierr.CodeNotFound)
+	}
+
+	sessKey := fmt.Sprintf("auth:session:%s", sessionID)
 
 	if err := s.redisClient.Del(ctx, sessKey).Err(); err != nil {
 		s.logger.Error("failed to delete session key", log.Meta{"error": err, "session_id": sessionID})
@@ -174,6 +211,8 @@ func (s *SessionService) DeleteSessionByID(
 	return nil
 }
 
+// DeleteAllSessions invalidates all active sessions for the given user UUID by deleting all session keys
+// and removing the user's session tracking set from Redis in a single atomic pipeline.
 func (s *SessionService) DeleteAllSessions(
 	ctx context.Context,
 	userID uuid.UUID,

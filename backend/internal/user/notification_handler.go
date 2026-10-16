@@ -14,14 +14,19 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 )
 
+// NotificationHandler processes HTTP operations for in-app customer notifications:
+// paginated list queries, unread count polling, marking individual/all notifications as read,
+// and notification deletion.
 type NotificationHandler struct {
 	service *NotificationService
 }
 
+// NewNotificationHandler constructs a new NotificationHandler instance.
 func NewNotificationHandler(service *NotificationService) *NotificationHandler {
 	return &NotificationHandler{service: service}
 }
 
+// NotificationItemResponse represents the localized public API response structure for an in-app notification.
 type NotificationItemResponse struct {
 	ID        string          `json:"id"`
 	Title     string          `json:"title"`
@@ -34,10 +39,13 @@ type NotificationItemResponse struct {
 	CreatedAt string          `json:"createdAt"`
 }
 
+// NotificationCountResponse represents the badge count payload returned for user unread alerts.
 type NotificationCountResponse struct {
 	Count int `json:"count"`
 }
 
+// mapNotificationResponse converts an internal UserNotification domain model entity into the
+// localized API response DTO, applying locale translations to bilingual title and message fields.
 func mapNotificationResponse(n *model.UserNotification, locale string) NotificationItemResponse {
 	var readAtStr *string
 	if n.ReadAt != nil {
@@ -70,12 +78,14 @@ func mapNotificationResponse(n *model.UserNotification, locale string) Notificat
 //	@Failure		401			{object}	api.UnauthorizedErrorResponse
 //	@Router			/user/notifications [get]
 func (h *NotificationHandler) GetMyNotifications(c *gin.Context) {
+	// Extract authenticated user ID from context
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
+	// Bind and sanitize pagination query parameters
 	q := &pagination.ListQuery{}
 	if err := c.ShouldBindQuery(q); err != nil {
 		_ = c.Error(apierr.ValidationFailedError("invalid query parameters"))
@@ -83,15 +93,18 @@ func (h *NotificationHandler) GetMyNotifications(c *gin.Context) {
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 5, MaxPageSize: 10})
 
+	// Parse unread-only boolean query filter and active content language
 	unreadOnly := c.Query("unreadOnly") == "true"
 	locale := middleware.GetLocale(c)
 
+	// Fetch paginated notification items
 	result, err := h.service.GetMyNotifications(c.Request.Context(), userID, unreadOnly, q)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
+	// Map and localize notification items
 	responses := make([]NotificationItemResponse, len(result.Items))
 	for i, item := range result.Items {
 		responses[i] = mapNotificationResponse(item, locale)
@@ -113,6 +126,7 @@ func (h *NotificationHandler) GetMyNotifications(c *gin.Context) {
 //	@Failure		401	{object}	api.UnauthorizedErrorResponse
 //	@Router			/user/notifications/unread-count [get]
 func (h *NotificationHandler) GetUnreadCount(c *gin.Context) {
+	// Soft authorization fallback: if unauthenticated or anonymous guest, return count 0
 	_, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusOK, api.DataResponse{Data: NotificationCountResponse{Count: 0}})
@@ -125,6 +139,7 @@ func (h *NotificationHandler) GetUnreadCount(c *gin.Context) {
 		return
 	}
 
+	// Query unread count index
 	count, err := h.service.GetUnreadCount(c.Request.Context(), userID)
 	if err != nil {
 		_ = c.Error(err)
@@ -145,12 +160,14 @@ func (h *NotificationHandler) GetUnreadCount(c *gin.Context) {
 //	@Failure		404	{object}	api.NotFoundErrorResponse
 //	@Router			/user/notifications/{id}/read [patch]
 func (h *NotificationHandler) MarkAsRead(c *gin.Context) {
+	// Extract authenticated user ID from context
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
+	// Parse notification UUID
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(apierr.BadRequestError("invalid notification id").WithCode(apierr.CodeInvalidInput))
@@ -174,12 +191,14 @@ func (h *NotificationHandler) MarkAsRead(c *gin.Context) {
 //	@Failure		401	{object}	api.UnauthorizedErrorResponse
 //	@Router			/user/notifications/mark-all-read [patch]
 func (h *NotificationHandler) MarkAllAsRead(c *gin.Context) {
+	// Extract caller's user UUID from context
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
+	// Atomically mark all unread notifications for the user as read
 	_, err = h.service.MarkAllAsRead(c.Request.Context(), userID)
 	if err != nil {
 		_ = c.Error(err)
@@ -200,18 +219,21 @@ func (h *NotificationHandler) MarkAllAsRead(c *gin.Context) {
 //	@Failure		404	{object}	api.NotFoundErrorResponse
 //	@Router			/user/notifications/{id} [delete]
 func (h *NotificationHandler) DeleteNotification(c *gin.Context) {
+	// Extract caller's user UUID from context
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
+	// Parse target notification UUID
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		_ = c.Error(apierr.BadRequestError("invalid notification id").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
+	// Delete notification with strict tenant ownership validation
 	if err := h.service.DeleteNotification(c.Request.Context(), id, userID); err != nil {
 		_ = c.Error(err)
 		return
@@ -220,6 +242,8 @@ func (h *NotificationHandler) DeleteNotification(c *gin.Context) {
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Notification deleted successfully"})
 }
 
+// getUserIDFromContext retrieves and parses the user UUID stored in Gin context by authentication middleware.
+// Supports both uuid.UUID and string representations.
 func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
 	val, exists := c.Get("userID")
 	if !exists {

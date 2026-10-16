@@ -98,6 +98,7 @@ func (r *WishlistRepository) GetByID(
 	return item, nil
 }
 
+// GetByUserAndProduct retrieves the most recent wishlist item for a given customer and catalog product.
 func (r *WishlistRepository) GetByUserAndProduct(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -147,6 +148,8 @@ func (r *WishlistRepository) GetByUserAndProduct(
 		)
 		LEFT JOIN storage_objects vso ON pv.thumbnail_object_id = vso.id
 		WHERE wi.user_id = $1 AND wi.product_id = $2
+		ORDER BY wi.created_at DESC
+		LIMIT 1
 	`
 	row := qe.QueryRow(ctx, query, userID, productID)
 	item, err := scanWishlistItem(row)
@@ -300,6 +303,21 @@ func (r *WishlistRepository) DeleteByID(
 	return nil
 }
 
+// GetVariantProductID queries the database to find the product ID associated with a product variant.
+func (r *WishlistRepository) GetVariantProductID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	variantID uuid.UUID,
+) (uuid.UUID, error) {
+	query := `SELECT product_id FROM product_variants WHERE id = $1 AND deleted_at IS NULL`
+	var prodID uuid.UUID
+	err := qe.QueryRow(ctx, query, variantID).Scan(&prodID)
+	return prodID, err
+}
+
+// DeleteByProduct removes wishlist items for a given product.
+// If variantID is provided, removes only that variant.
+// If variantID is nil, removes only the generic product bookmark where variant_id IS NULL.
 func (r *WishlistRepository) DeleteByProduct(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -319,7 +337,7 @@ func (r *WishlistRepository) DeleteByProduct(
 		return nil
 	}
 
-	query := `DELETE FROM wishlist_items WHERE user_id = $1 AND product_id = $2`
+	query := `DELETE FROM wishlist_items WHERE user_id = $1 AND product_id = $2 AND variant_id IS NULL`
 	tag, err := qe.Exec(ctx, query, userID, productID)
 	if err != nil {
 		return err

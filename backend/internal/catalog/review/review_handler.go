@@ -278,10 +278,58 @@ func (h *ReviewHandler) CheckEligibility(c *gin.Context) {
 	})
 }
 
+// ListPublicReviews godoc
+//
+//	@Summary		List public approved reviews
+//	@Description	Returns a paginated list of approved reviews for storefront display.
+//	@Tags			Reviews
+//	@Produce		json
+//	@Param			productId	query		string																false	"Filter by Product UUID"
+//	@Param			q			query		pagination.ListQuery												false	"Pagination and sorting parameters"
+//	@Success		200			{object}	api.PaginatedResponse{data=[]ReviewResponse,meta=pagination.Page}	"Paginated list of approved reviews"
+//	@Failure		400			{object}	api.BadRequestErrorResponse											"Invalid input"
+//	@Failure		500			{object}	api.InternalServerErrorResponse										"Internal server error"
+//	@Router			/reviews [get]
+func (h *ReviewHandler) ListPublicReviews(c *gin.Context) {
+	q := &pagination.ListQuery{}
+	if err := c.ShouldBindQuery(q); err != nil {
+		_ = c.Error(apierr.ValidationFailedError("invalid query parameters"))
+		return
+	}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
+
+	var productIDPtr *uuid.UUID
+	if prodStr := c.Query("productId"); prodStr != "" {
+		pid, err := uuid.Parse(prodStr)
+		if err != nil {
+			_ = c.Error(apierr.ValidationFailedError("invalid product id"))
+			return
+		}
+		productIDPtr = &pid
+	}
+
+	approvedStatus := model.ReviewStatusApproved
+	result, err := h.service.ListReviews(c.Request.Context(), q, productIDPtr, nil, &approvedStatus)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	responses := make([]ReviewResponse, 0, len(result.Items))
+	for _, rv := range result.Items {
+		responses = append(responses, mapReviewToResponse(rv))
+	}
+
+	c.JSON(http.StatusOK, api.PaginatedResponse{
+		Data: responses,
+		Meta: result.Page,
+	})
+}
+
 // GetReviewByID godoc
 //
 //	@Summary		Get review by ID
-//	@Description	Retrieves a review by its unique identifier.
+//	@Description	Retrieves a review by its unique identifier. Only approved reviews are publicly visible; pending or rejected reviews require the author's identity.
 //	@Tags			Reviews
 //	@Produce		json
 //	@Param			id	path		string									true	"Review ID"
@@ -301,6 +349,19 @@ func (h *ReviewHandler) GetReviewByID(c *gin.Context) {
 	rv, err := h.service.GetReviewByID(c.Request.Context(), id)
 	if err != nil {
 		_ = c.Error(err)
+		return
+	}
+
+	var callingUserID uuid.UUID
+	if uidVal, exists := c.Get("userID"); exists {
+		if uid, ok := uidVal.(uuid.UUID); ok {
+			callingUserID = uid
+		}
+	}
+
+	// IDOR protection: only return approved reviews, or allow author to view their own review
+	if rv.Status != model.ReviewStatusApproved && (callingUserID == uuid.Nil || rv.UserID != callingUserID) {
+		_ = c.Error(apierr.NotFoundError("review not found"))
 		return
 	}
 
@@ -417,39 +478,41 @@ func (h *ReviewHandler) AdminListReviews(c *gin.Context) {
 	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
 	var productIDPtr *uuid.UUID
-	if productIDStr := c.Query("productId"); productIDStr == "" {
+	productIDStr := c.Query("productId")
+	if productIDStr == "" {
 		productIDStr = c.Query("product_id")
-		if productIDStr != "" {
-			if id, err := uuid.Parse(productIDStr); err == nil {
-				productIDPtr = &id
-			}
+	}
+	if productIDStr != "" {
+		id, err := uuid.Parse(productIDStr)
+		if err != nil {
+			_ = c.Error(apierr.ValidationFailedError("invalid product id"))
+			return
 		}
-	} else {
-		if id, err := uuid.Parse(productIDStr); err == nil {
-			productIDPtr = &id
-		}
+		productIDPtr = &id
 	}
 
 	var userIDPtr *uuid.UUID
-	if userIDStr := c.Query("userId"); userIDStr == "" {
+	userIDStr := c.Query("userId")
+	if userIDStr == "" {
 		userIDStr = c.Query("user_id")
-		if userIDStr != "" {
-			if id, err := uuid.Parse(userIDStr); err == nil {
-				userIDPtr = &id
-			}
+	}
+	if userIDStr != "" {
+		id, err := uuid.Parse(userIDStr)
+		if err != nil {
+			_ = c.Error(apierr.ValidationFailedError("invalid user id"))
+			return
 		}
-	} else {
-		if id, err := uuid.Parse(userIDStr); err == nil {
-			userIDPtr = &id
-		}
+		userIDPtr = &id
 	}
 
 	var statusPtr *model.ReviewStatus
 	if statusStr := c.Query("status"); statusStr != "" {
 		s, err := model.ParseReviewStatus(statusStr)
-		if err == nil {
-			statusPtr = &s
+		if err != nil {
+			_ = c.Error(apierr.ValidationFailedError("invalid review status"))
+			return
 		}
+		statusPtr = &s
 	}
 
 	result, err := h.service.ListReviews(c.Request.Context(), q, productIDPtr, userIDPtr, statusPtr)

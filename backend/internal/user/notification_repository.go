@@ -11,7 +11,9 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
-// NotificationRepository performs SQL queries on user_notifications.
+// NotificationRepository performs SQL queries and updates on the user_notifications table in PostgreSQL.
+// It ensures strict tenancy enforcement by requiring user_id on all read, update, and delete queries,
+// preventing horizontal privilege escalation (IDOR) attacks across user accounts.
 type NotificationRepository struct{}
 
 // NewNotificationRepository constructs a NotificationRepository.
@@ -19,7 +21,7 @@ func NewNotificationRepository() *NotificationRepository {
 	return &NotificationRepository{}
 }
 
-// Create inserts a new notification record into PostgreSQL.
+// Create inserts a new notification record into PostgreSQL and scans the generated created_at timestamp.
 func (r *NotificationRepository) Create(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -54,6 +56,8 @@ func (r *NotificationRepository) Create(
 }
 
 // ListByUser retrieves paginated user notifications, optionally filtered to unread items only.
+// It executes a count query to populate pagination metadata, followed by a limit/offset query
+// sorted newest-first (created_at DESC).
 func (r *NotificationRepository) ListByUser(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -124,7 +128,7 @@ func (r *NotificationRepository) ListByUser(
 	return items, total, rows.Err()
 }
 
-// CountUnreadByUser queries the index on unread notifications.
+// CountUnreadByUser queries the index on unread notifications (read_at IS NULL) for the given user.
 func (r *NotificationRepository) CountUnreadByUser(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -139,6 +143,7 @@ func (r *NotificationRepository) CountUnreadByUser(
 }
 
 // MarkAsRead marks a single notification as read if it belongs to the user.
+// Uses COALESCE(read_at, now()) to be idempotent: if already read, it leaves read_at intact and succeeds.
 func (r *NotificationRepository) MarkAsRead(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -146,8 +151,8 @@ func (r *NotificationRepository) MarkAsRead(
 ) error {
 	query := `
 		UPDATE user_notifications
-		SET read_at = now()
-		WHERE id = $1 AND user_id = $2 AND read_at IS NULL
+		SET read_at = COALESCE(read_at, now())
+		WHERE id = $1 AND user_id = $2
 	`
 	cmd, err := qe.Exec(ctx, query, id, userID)
 	if err != nil {
@@ -159,7 +164,7 @@ func (r *NotificationRepository) MarkAsRead(
 	return nil
 }
 
-// MarkAllAsRead marks all unread notifications for a user as read.
+// MarkAllAsRead marks all unread notifications for a user as read, returning the count of modified rows.
 func (r *NotificationRepository) MarkAllAsRead(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -177,7 +182,7 @@ func (r *NotificationRepository) MarkAllAsRead(
 	return cmd.RowsAffected(), nil
 }
 
-// Delete removes a notification by id.
+// Delete removes a notification by id, scoped strictly to the authenticated user ID.
 func (r *NotificationRepository) Delete(
 	ctx context.Context,
 	qe database.QueryExecutor,

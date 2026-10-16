@@ -46,8 +46,8 @@ type User struct {
 	Identifier string
 	// FullName is the user's display name.
 	FullName *string
-	// Role is the administrative role tier (nil for regular store customers).
-	Role *UserRole
+	// Role is the administrative role tier, defaulting to CustomerRole.
+	Role UserRole
 	// IsEmailVerified indicates whether the user confirmed their email address.
 	IsEmailVerified bool
 
@@ -79,14 +79,24 @@ type User struct {
 	UpdatedAt time.Time
 }
 
-// IsActive returns true if the user's account status is active.
+// IsActive returns true if the user's account status is active and neither locked nor suspended.
 func (u *User) IsActive() bool {
-	return u.Status == StatusActive
+	if u.Status != StatusActive {
+		return false
+	}
+	now := time.Now()
+	if u.LockedUntil != nil && now.Before(*u.LockedUntil) {
+		return false
+	}
+	if u.SuspendedUntil != nil && now.Before(*u.SuspendedUntil) {
+		return false
+	}
+	return true
 }
 
 // IsSuspended returns true if the user's account status is currently suspended.
 func (u *User) IsSuspended() bool {
-	return u.Status == StatusSuspended
+	return u.Status == StatusSuspended || (u.SuspendedUntil != nil && time.Now().Before(*u.SuspendedUntil))
 }
 
 // String returns a safe debug summary of the User record (excluding sensitive timestamps).

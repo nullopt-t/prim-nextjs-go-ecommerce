@@ -10,25 +10,32 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
+// userFilter defines internal query criteria for retrieving a single user by primary UUID or email identifier.
 type userFilter struct {
 	ID         *uuid.UUID
 	Identifier *string
 }
 
+// UserRepository provides PostgreSQL database persistence operations for the users table:
+// user creation, single-record lookups with case-insensitive email matching,
+// dynamic paginated listing with role/status filters, and role/status mutations.
 type UserRepository struct{}
 
+// NewPostgresRepository constructs a new UserRepository instance.
 func NewPostgresRepository() *UserRepository {
 	return &UserRepository{}
 }
 
+// Create inserts a new user record into the users table with default or specified role tier,
+// and returns the newly assigned user UUID and database-generated timestamps.
 func (r *UserRepository) Create(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	user *model.User,
 ) (uuid.UUID, error) {
 	role := "customer"
-	if user.Role != nil {
-		role = string(*user.Role)
+	if user.Role != "" {
+		role = string(user.Role)
 	}
 
 	query := `
@@ -44,6 +51,7 @@ func (r *UserRepository) Create(
 	return createdUserID, nil
 }
 
+// GetByID retrieves an active (non-deleted) user record by primary UUID key.
 func (r *UserRepository) GetByID(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -52,6 +60,7 @@ func (r *UserRepository) GetByID(
 	return r.get(ctx, qe, userFilter{ID: &id})
 }
 
+// GetByIdentifier retrieves an active (non-deleted) user record by their email address using case-insensitive comparison.
 func (r *UserRepository) GetByIdentifier(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -60,6 +69,8 @@ func (r *UserRepository) GetByIdentifier(
 	return r.get(ctx, qe, userFilter{Identifier: &identifier})
 }
 
+// get executes a parameterized SELECT query against users with deleted_at IS NULL,
+// scanning account status, suspension/lockout windows, and timestamps into the model.User struct.
 func (r *UserRepository) get(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -106,19 +117,22 @@ func (r *UserRepository) get(
 	}
 
 	rVal := model.UserRole(roleStr)
-	u.Role = &rVal
+	u.Role = rVal
 	u.Status = model.AccountStatus(statusStr)
 	return &u, nil
 }
 
+// UserListFilter encapsulates filtering, search, and pagination criteria for administrative user queries.
 type UserListFilter struct {
-	Role       *string
-	Status     *string
-	Search     *string
-	Limit      int
-	Offset     int
+	Role   *string
+	Status *string
+	Search *string
+	Limit  int
+	Offset int
 }
 
+// ListUsers dynamically builds and executes a parameterized SQL query to retrieve
+// a paginated list of non-deleted users matching role, status, or name/email substring searches.
 func (r *UserRepository) ListUsers(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -183,7 +197,7 @@ func (r *UserRepository) ListUsers(
 		}
 
 		rVal := model.UserRole(roleStr)
-		u.Role = &rVal
+		u.Role = rVal
 		u.Status = model.AccountStatus(statusStr)
 		users = append(users, u)
 	}
@@ -195,6 +209,8 @@ func (r *UserRepository) ListUsers(
 	return users, nil
 }
 
+// CountUsers returns the total count of non-deleted users matching the given filters,
+// utilized to construct pagination metadata (total pages, total records).
 func (r *UserRepository) CountUsers(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -231,6 +247,8 @@ func (r *UserRepository) CountUsers(
 	return count, nil
 }
 
+// UpdateRole changes the user's authorization tier (e.g. customer, admin, superadmin).
+// Returns database.ErrNotFound if the user does not exist or has been soft-deleted.
 func (r *UserRepository) UpdateRole(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -252,6 +270,8 @@ func (r *UserRepository) UpdateRole(
 	return nil
 }
 
+// UpdateStatus changes the account standing and optional temporary suspension timestamp.
+// Returns database.ErrNotFound if the user does not exist or has been soft-deleted.
 func (r *UserRepository) UpdateStatus(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -267,6 +287,28 @@ func (r *UserRepository) UpdateStatus(
 	tag, err := qe.Exec(ctx, query, string(status), suspendedUntil, userID)
 	if err != nil {
 		return fmt.Errorf("update user status: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return database.ErrNotFound
+	}
+	return nil
+}
+
+// SoftDelete marks a user account as deleted and sets deleted_at timestamp.
+// Returns database.ErrNotFound if the user does not exist or has already been soft-deleted.
+func (r *UserRepository) SoftDelete(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	userID uuid.UUID,
+) error {
+	query := `
+		UPDATE users
+		SET status = 'deleted', deleted_at = now(), updated_at = now()
+		WHERE id = $1 AND deleted_at IS NULL
+	`
+	tag, err := qe.Exec(ctx, query, userID)
+	if err != nil {
+		return fmt.Errorf("soft delete user: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return database.ErrNotFound

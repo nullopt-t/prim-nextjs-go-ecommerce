@@ -176,9 +176,12 @@ func (cs *CategoryService) UpdateCategory(
 						Message: "causes a circular reference in the category tree",
 					})
 			}
+			fields.ParentID = input.ParentID
+		} else {
+			// uuid.Nil signifies clearing/unsetting the parent category to make it a top-level category (NULL in DB)
+			nilParent := uuid.Nil
+			fields.ParentID = &nilParent
 		}
-
-		fields.ParentID = input.ParentID
 	}
 
 	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {

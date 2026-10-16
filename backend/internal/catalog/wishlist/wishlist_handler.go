@@ -440,10 +440,16 @@ func (h *WishlistHandler) RemoveByProductID(c *gin.Context) {
 //	@Failure		404			{object}	api.NotFoundErrorResponse	"Item not found"
 //	@Failure		500			{object}	api.InternalServerErrorResponse	"Internal server error"
 //	@Router			/wishlist [delete]
+//
 func (h *WishlistHandler) ClearWishlist(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		_ = c.Error(err)
+		return
+	}
+
+	if c.Query("variantId") != "" && c.Query("productId") == "" {
+		_ = c.Error(apierr.BadRequestError("productId is required when variantId is specified").WithCode(apierr.CodeInvalidInput))
 		return
 	}
 

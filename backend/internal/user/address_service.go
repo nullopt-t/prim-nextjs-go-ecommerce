@@ -12,6 +12,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
+// CreateAddressInput represents inbound payload parameters required to create a new address record.
 type CreateAddressInput struct {
 	Label      *string `json:"label"`
 	FullName   string  `json:"fullName"`
@@ -25,6 +26,7 @@ type CreateAddressInput struct {
 	IsDefault  bool    `json:"isDefault"`
 }
 
+// UpdateAddressInput represents inbound payload parameters required to update an existing address record.
 type UpdateAddressInput struct {
 	Label      *string `json:"label"`
 	FullName   string  `json:"fullName"`
@@ -38,12 +40,16 @@ type UpdateAddressInput struct {
 	IsDefault  bool    `json:"isDefault"`
 }
 
+// AddressService orchestrates business logic for customer addresses:
+// input validation, database transactions, default address state machine transitions,
+// automatic default address promotion upon deletion, and tenant-scoped security.
 type AddressService struct {
 	dbRunner database.Runner
 	repo     *AddressRepository
 	logger   log.Logger
 }
 
+// NewAddressService constructs a new AddressService instance.
 func NewAddressService(
 	dbRunner database.Runner,
 	repo *AddressRepository,
@@ -56,7 +62,7 @@ func NewAddressService(
 	}
 }
 
-// ListAddresses returns all saved addresses for a user.
+// ListAddresses returns all non-deleted saved addresses for the authenticated user, ordered default-first.
 func (s *AddressService) ListAddresses(ctx context.Context, userID uuid.UUID) ([]model.UserAddress, error) {
 	var addresses []model.UserAddress
 	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
@@ -71,7 +77,7 @@ func (s *AddressService) ListAddresses(ctx context.Context, userID uuid.UUID) ([
 	return addresses, nil
 }
 
-// GetAddress retrieves a single address by ID.
+// GetAddress retrieves a single address by its UUID, verifying it belongs to the authenticated user.
 func (s *AddressService) GetAddress(ctx context.Context, id, userID uuid.UUID) (*model.UserAddress, error) {
 	var address *model.UserAddress
 	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
@@ -89,8 +95,11 @@ func (s *AddressService) GetAddress(ctx context.Context, id, userID uuid.UUID) (
 	return address, nil
 }
 
-// CreateAddress creates a new address. If it's the user's first address or marked isDefault, it atomically unsets previous defaults.
+// CreateAddress validates address input fields and persists a new address inside a transaction.
+// If this is the user's first address, it is automatically promoted to the default address.
+// If the user marked it as default, existing default addresses are atomically cleared.
 func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in *CreateAddressInput) (*model.UserAddress, error) {
+	// Validate required address fields are non-empty after trimming whitespace
 	if strings.TrimSpace(in.FullName) == "" {
 		return nil, apierr.BadRequestError("Full name is required").WithCode(apierr.CodeInvalidInput)
 	}
@@ -119,17 +128,19 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 		IsDefault:  in.IsDefault,
 	}
 
+	// Execute transactional insertion and default flag reconciliation
 	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
-		// Check existing address count
+		// Check existing active address count
 		count, err := s.repo.CountByUser(ctx, tx, userID)
 		if err != nil {
 			return err
 		}
 
-		// If first address or explicitly marked default, clear any existing default
+		// First address created is unconditionally set as the default
 		if count == 0 {
 			address.IsDefault = true
 		} else if address.IsDefault {
+			// Atomically clear any existing default address
 			if err := s.repo.ClearDefault(ctx, tx, userID); err != nil {
 				return err
 			}
@@ -146,8 +157,9 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 	return address, nil
 }
 
-// UpdateAddress updates an existing address.
+// UpdateAddress updates attributes of an existing address within an atomic database transaction.
 func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID, in *UpdateAddressInput) (*model.UserAddress, error) {
+	// Validate required fields
 	if strings.TrimSpace(in.FullName) == "" {
 		return nil, apierr.BadRequestError("Full name is required").WithCode(apierr.CodeInvalidInput)
 	}
@@ -178,15 +190,32 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 		current.PostalCode = in.PostalCode
 		current.Country = strings.TrimSpace(in.Country)
 
+		// Transitioning address to default: clear existing default and set this address
 		if in.IsDefault && !current.IsDefault {
 			if err := s.repo.ClearDefault(ctx, tx, userID); err != nil {
 				return err
 			}
 			current.IsDefault = true
 		} else if !in.IsDefault && current.IsDefault {
-			// Cannot manually un-default if this is the only address
-			// Otherwise keep current or allow unsetting
+			// Prevent unsetting isDefault if it leaves zero default addresses
+			count, err := s.repo.CountByUser(ctx, tx, userID)
+			if err != nil {
+				return err
+			}
+			if count <= 1 {
+				return apierr.BadRequestError("Cannot unset default on the only address").WithCode(apierr.CodeInvalidInput)
+			}
+			// When un-defaulting this address, find another active address and promote it
 			current.IsDefault = false
+			if err := s.repo.Update(ctx, tx, current); err != nil {
+				return err
+			}
+			next, err := s.repo.FindMostRecentActive(ctx, tx, userID)
+			if err == nil && next != nil && next.ID != current.ID {
+				if err := s.repo.SetDefault(ctx, tx, next.ID, userID); err != nil {
+					return err
+				}
+			}
 		}
 
 		if err := s.repo.Update(ctx, tx, current); err != nil {
@@ -207,7 +236,7 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 	return updated, nil
 }
 
-// SetDefaultAddress marks the address as the default address.
+// SetDefaultAddress marks the specified address as the default address within an atomic transaction.
 func (s *AddressService) SetDefaultAddress(ctx context.Context, id, userID uuid.UUID) (*model.UserAddress, error) {
 	var address *model.UserAddress
 	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
@@ -215,11 +244,13 @@ func (s *AddressService) SetDefaultAddress(ctx context.Context, id, userID uuid.
 		if err != nil {
 			return err
 		}
+		// If already the default address, no mutation is required
 		if curr.IsDefault {
 			address = curr
 			return nil
 		}
 
+		// Atomically unset previous default and set new default
 		if err := s.repo.ClearDefault(ctx, tx, userID); err != nil {
 			return err
 		}
@@ -242,7 +273,9 @@ func (s *AddressService) SetDefaultAddress(ctx context.Context, id, userID uuid.
 	return address, nil
 }
 
-// DeleteAddress deletes an address. If it was the default address, it automatically promotes the most recently used/updated address.
+// DeleteAddress soft-deletes the target address.
+// If the deleted address was designated as the default address, it queries the most recently updated
+// active address and automatically promotes it as the new default address.
 func (s *AddressService) DeleteAddress(ctx context.Context, id, userID uuid.UUID) error {
 	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
 		current, err := s.repo.GetByIDAndUser(ctx, tx, id, userID)
@@ -252,6 +285,7 @@ func (s *AddressService) DeleteAddress(ctx context.Context, id, userID uuid.UUID
 
 		wasDefault := current.IsDefault
 
+		// Soft-delete the address
 		if err := s.repo.SoftDelete(ctx, tx, id, userID); err != nil {
 			return err
 		}
@@ -264,7 +298,7 @@ func (s *AddressService) DeleteAddress(ctx context.Context, id, userID uuid.UUID
 					return err
 				}
 			}
-			// If no remaining address found (ErrAddressNotFound), that's completely normal
+			// If no remaining address found (ErrAddressNotFound), that's completely normal for the user's last address
 		}
 
 		return nil

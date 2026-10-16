@@ -1,3 +1,5 @@
+// Package product provides Gin HTTP route handlers, request validation, and JSON response mapping
+// for master product management, catalog listings, publication workflows, and product reviews integration.
 package product
 
 import (
@@ -18,10 +20,12 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/utils"
 )
 
+// ProductHandler implements REST HTTP endpoints for storefront and administrative product catalog operations.
 type ProductHandler struct {
 	service *ProductService
 }
 
+// NewHandler constructs a new ProductHandler instance with injected ProductService.
 func NewHandler(s *ProductService) *ProductHandler {
 	return &ProductHandler{service: s}
 }
@@ -507,6 +511,7 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 //	@Failure		500		{object}	api.InternalServerErrorResponse						"Internal server error"
 //	@Success		201		{object}	api.DataResponse{data=AdminProductDetailsResponse}	"Created draft product details"
 //	@Router			/admin/products [post]
+//
 func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 	var body CreateProductRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -523,7 +528,14 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 		return
 	}
 
+	var customSlug *string
+	trimmedSlug := strings.TrimSpace(body.Slug)
+	if trimmedSlug != "" {
+		customSlug = &trimmedSlug
+	}
+
 	in := CreateProductInput{
+		Slug:        customSlug,
 		Title:       strings.TrimSpace(body.Title),
 		Description: body.Description,
 		CategoryID:  categoryID,
@@ -947,6 +959,7 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 
 	if len(details.Variants) > 0 {
 		variantRes := make([]ProductVariantResponse, 0, len(details.Variants))
+		var defaultPriceSet bool
 		for _, v := range details.Variants {
 			attrs := v.Attributes
 			if attrs == nil {
@@ -1014,7 +1027,20 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 			}
 			variantRes = append(variantRes, vr)
 
-			if v.IsDefault || res.Price == nil {
+			// Assign product-level price from the default variant, or fall back to the first available variant price.
+			// Default variant price takes strict precedence and cannot be overwritten by subsequent variants.
+			if v.IsDefault {
+				if priceStr != nil || !defaultPriceSet {
+					res.Price = priceStr
+					res.ExtractedPrice = extPrice
+					res.OriginalPrice = origPriceStr
+					res.ExtractedOriginalPrice = extOrigPrice
+					res.Currency = v.Currency
+					if priceStr != nil {
+						defaultPriceSet = true
+					}
+				}
+			} else if !defaultPriceSet && res.Price == nil && priceStr != nil {
 				res.Price = priceStr
 				res.ExtractedPrice = extPrice
 				res.OriginalPrice = origPriceStr

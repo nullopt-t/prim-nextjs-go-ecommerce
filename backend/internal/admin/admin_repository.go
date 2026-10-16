@@ -119,13 +119,13 @@ func NewRepository() *AdminRepository {
 func (r *AdminRepository) GetDashboardStats(ctx context.Context, qe database.QueryExecutor) (*DashboardStats, error) {
 	stats := &DashboardStats{}
 
-	// Aggregates from orders
+	// Aggregates from orders (excluding cancelled orders from revenue metrics)
 	query := `
 		SELECT 
-			COALESCE(SUM(total_amount), 0),
+			COALESCE(SUM(total_amount) FILTER (WHERE status != 'cancelled'), 0),
 			COUNT(*),
 			COUNT(DISTINCT customer_email),
-			COALESCE(AVG(total_amount), 0),
+			COALESCE(AVG(total_amount) FILTER (WHERE status != 'cancelled'), 0),
 			COUNT(*) FILTER (WHERE status = 'pending'),
 			COUNT(*) FILTER (WHERE status = 'processing'),
 			COUNT(*) FILTER (WHERE status = 'shipped'),
@@ -151,12 +151,12 @@ func (r *AdminRepository) GetDashboardStats(ctx context.Context, qe database.Que
 	// Product count
 	_ = qe.QueryRow(ctx, `SELECT COUNT(*) FROM products WHERE deleted_at IS NULL`).Scan(&stats.TotalProducts)
 
-	// Daily sales last 14 days
+	// Daily sales last 14 days (excluding cancelled orders)
 	salesQuery := `
 		SELECT 
 			TO_CHAR(created_at, 'YYYY-MM-DD') as day,
-			COALESCE(SUM(total_amount), 0) as daily_sales,
-			COUNT(*) as daily_orders
+			COALESCE(SUM(total_amount) FILTER (WHERE status != 'cancelled'), 0) as daily_sales,
+			COUNT(*) FILTER (WHERE status != 'cancelled') as daily_orders
 		FROM orders
 		GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
 		ORDER BY day DESC

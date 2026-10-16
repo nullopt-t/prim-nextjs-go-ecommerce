@@ -30,6 +30,8 @@ type UserNotification struct {
 }
 
 // LocalizedTitle resolves the title for a given locale ("ar" or "en").
+// If the requested locale and "en" are unavailable, it falls back to any non-empty locale entry in the map
+// or an empty string, avoiding leaking raw JSON syntax into user interfaces.
 func (n *UserNotification) LocalizedTitle(locale string) string {
 	var m map[string]string
 	if err := json.Unmarshal(n.Title, &m); err == nil {
@@ -39,11 +41,19 @@ func (n *UserNotification) LocalizedTitle(locale string) string {
 		if val, ok := m["en"]; ok && val != "" {
 			return val
 		}
+		for _, val := range m {
+			if val != "" {
+				return val
+			}
+		}
+		return ""
 	}
 	return string(n.Title)
 }
 
 // LocalizedMessage resolves the message for a given locale ("ar" or "en").
+// If the requested locale and "en" are unavailable, it falls back to any non-empty locale entry in the map
+// or an empty string, avoiding leaking raw JSON syntax into user interfaces.
 func (n *UserNotification) LocalizedMessage(locale string) string {
 	var m map[string]string
 	if err := json.Unmarshal(n.Message, &m); err == nil {
@@ -53,6 +63,12 @@ func (n *UserNotification) LocalizedMessage(locale string) string {
 		if val, ok := m["en"]; ok && val != "" {
 			return val
 		}
+		for _, val := range m {
+			if val != "" {
+				return val
+			}
+		}
+		return ""
 	}
 	return string(n.Message)
 }

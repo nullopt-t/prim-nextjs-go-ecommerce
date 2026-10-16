@@ -136,8 +136,9 @@ func (bs *BrandService) UpdateBrand(
 	in UpdateBrandInput,
 ) error {
 	fields := UpdateBrandFields{
-		Name: in.Name,
-		Link: in.Link,
+		Name:         in.Name,
+		Link:         in.Link,
+		LogoObjectID: in.LogoObjectID,
 	}
 
 	if in.Name != nil {
@@ -233,8 +234,9 @@ func (bs *BrandService) DeleteBrandByID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := bs.runner.WithDB(ctx, func(db database.QueryExecutor) error {
-		return bs.brandRepo.DeleteByID(ctx, db, id)
+	// Execute within a transaction so brand check and soft-delete are atomic
+	err := bs.runner.WithTx(ctx, func(tx database.QueryExecutor) error {
+		return bs.brandRepo.DeleteByID(ctx, tx, id)
 	})
 
 	if err != nil {

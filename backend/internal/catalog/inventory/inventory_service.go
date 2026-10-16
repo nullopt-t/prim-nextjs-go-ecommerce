@@ -1,3 +1,5 @@
+// Package inventory provides domain operations for modifying variant inventory stock,
+// ledger balance computation, holding temporary checkout stock reservations, and releasing expired holds.
 package inventory
 
 import (
@@ -15,12 +17,15 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
+// InventoryService provides domain logic and transaction orchestration for inventory ledgers,
+// stock reservations, and inventory balance calculations.
 type InventoryService struct {
 	logger log.Logger
 	dr     database.Runner
 	repo   *InventoryRepository
 }
 
+// NewService constructs a new InventoryService instance with the given logger, database runner, and repository.
 func NewService(
 	logger log.Logger,
 	dr database.Runner,
@@ -33,19 +38,31 @@ func NewService(
 	}
 }
 
+// AdjustStockInput defines the parameter payload for manually or programmatically adjusting stock levels.
 type AdjustStockInput struct {
+	// VariantID is the unique identifier of the product variant being adjusted.
 	VariantID uuid.UUID
+	// Quantity is the signed integer delta (+ for additions, - for reductions). Cannot be zero.
 	Quantity  int
+	// Reason describes the business rationale (restock, sale, return, adjustment, reservation_release).
 	Reason    string
 }
 
+// ReserveStockInput defines the parameters for reserving stock for an active cart or checkout session.
 type ReserveStockInput struct {
+	// VariantID is the unique identifier of the product variant to reserve.
 	VariantID uuid.UUID
+	// CartID optionally associates this reservation with a customer cart.
 	CartID    *uuid.UUID
+	// Quantity is the positive number of units to reserve.
 	Quantity  int
+	// Duration specifies how long the reservation remains valid before auto-expiration (defaults to 15m).
 	Duration  time.Duration
 }
 
+// AdjustStock records an inventory adjustment ledger entry within a database transaction.
+// It acquires an exclusive row lock on the variant to prevent race conditions and validates
+// that negative adjustments do not cause on-hand quantity to drop below reserved quantity or zero.
 func (s *InventoryService) AdjustStock(
 	ctx context.Context,
 	in AdjustStockInput,
@@ -79,9 +96,10 @@ func (s *InventoryService) AdjustStock(
 			return err
 		}
 
-		if in.Quantity < 0 && (currentStock.OnHandQuantity+in.Quantity < 0) {
+		if in.Quantity < 0 && (currentStock.OnHandQuantity+in.Quantity < currentStock.ReservedQuantity) {
 			return apierr.BadRequestError(
-				fmt.Sprintf("Insufficient on-hand inventory (%d) for adjustment (%d)", currentStock.OnHandQuantity, in.Quantity),
+				fmt.Sprintf("Insufficient available inventory: negative adjustment (%d) drops on-hand stock (%d) below active reservations (%d)",
+					in.Quantity, currentStock.OnHandQuantity, currentStock.ReservedQuantity),
 			).WithCode(errcode.CodeInsufficientInventory)
 		}
 
@@ -122,6 +140,7 @@ func (s *InventoryService) AdjustStock(
 	return updatedStock, nil
 }
 
+// GetStockByVariantID calculates and returns current stock levels (on-hand, reserved, available) for a variant.
 func (s *InventoryService) GetStockByVariantID(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -156,6 +175,7 @@ func (s *InventoryService) GetStockByVariantID(
 	return stock, nil
 }
 
+// GetStockForVariants batch calculates stock levels for multiple variant UUIDs.
 func (s *InventoryService) GetStockForVariants(
 	ctx context.Context,
 	variantIDs []uuid.UUID,
@@ -181,6 +201,7 @@ func (s *InventoryService) GetStockForVariants(
 	return stocks, nil
 }
 
+// ListVariantLedgers returns a paginated list of inventory ledger entries for a variant.
 func (s *InventoryService) ListVariantLedgers(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -208,6 +229,7 @@ func (s *InventoryService) ListVariantLedgers(
 	return result, nil
 }
 
+// ListLedgers is an alias for ListVariantLedgers.
 func (s *InventoryService) ListLedgers(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -216,6 +238,9 @@ func (s *InventoryService) ListLedgers(
 	return s.ListVariantLedgers(ctx, variantID, q)
 }
 
+// ReserveStock places a temporary hold on variant stock for customer checkout.
+// If an active reservation already exists for the given cart and variant, the existing reservation
+// is extended in duration and quantity.
 func (s *InventoryService) ReserveStock(
 	ctx context.Context,
 	in ReserveStockInput,
@@ -248,17 +273,19 @@ func (s *InventoryService) ReserveStock(
 			return err
 		}
 
-		if stock.AvailableQuantity < in.Quantity {
-			return apierr.BadRequestError(
-				fmt.Sprintf("Insufficient available stock (%d) for reservation (%d)", stock.AvailableQuantity, in.Quantity),
-			).WithCode(errcode.CodeInsufficientInventory)
-		}
-
 		// Check if active cart reservation already exists to extend / upsert
 		if in.CartID != nil {
 			existing, err := s.repo.GetActiveCartReservation(ctx, tx, *in.CartID, in.VariantID)
 			if err == nil && existing != nil {
+				// stock.AvailableQuantity already subtracts existing.Quantity; account for existing hold
+				effectiveAvailable := stock.AvailableQuantity + existing.Quantity
 				newQty := existing.Quantity + in.Quantity
+				if effectiveAvailable < newQty {
+					return apierr.BadRequestError(
+						fmt.Sprintf("Insufficient available stock (%d) for reservation (%d)", effectiveAvailable, newQty),
+					).WithCode(errcode.CodeInsufficientInventory)
+				}
+
 				newExpiry := time.Now().Add(ttl)
 				if err := s.repo.UpdateReservationQuantityAndExpiry(ctx, tx, existing.ID, newQty, newExpiry); err != nil {
 					return err
@@ -268,6 +295,12 @@ func (s *InventoryService) ReserveStock(
 				resultReservation = existing
 				return nil
 			}
+		}
+
+		if stock.AvailableQuantity < in.Quantity {
+			return apierr.BadRequestError(
+				fmt.Sprintf("Insufficient available stock (%d) for reservation (%d)", stock.AvailableQuantity, in.Quantity),
+			).WithCode(errcode.CodeInsufficientInventory)
 		}
 
 		newRes := &model.InventoryReservation{
@@ -308,6 +341,7 @@ func (s *InventoryService) ReserveStock(
 	return resultReservation, nil
 }
 
+// ReleaseReservation cancels a specific inventory reservation hold, immediately returning units to available stock.
 func (s *InventoryService) ReleaseReservation(
 	ctx context.Context,
 	reservationID uuid.UUID,
@@ -339,6 +373,7 @@ func (s *InventoryService) ReleaseReservation(
 	return nil
 }
 
+// ReleaseCartReservations releases all active inventory reservation holds for a specific cart UUID.
 func (s *InventoryService) ReleaseCartReservations(
 	ctx context.Context,
 	cartID uuid.UUID,
@@ -362,6 +397,8 @@ func (s *InventoryService) ReleaseCartReservations(
 	return nil
 }
 
+// ReleaseExpiredReservations batch releases all reservations where expires_at has passed.
+// Typically triggered by a background cron worker or scheduler.
 func (s *InventoryService) ReleaseExpiredReservations(
 	ctx context.Context,
 ) (int64, error) {
@@ -382,6 +419,9 @@ func (s *InventoryService) ReleaseExpiredReservations(
 	return count, nil
 }
 
+// CommitReservation transitions a reservation hold into a finalized sale deduction.
+// It acquires row locks on the reservation and variant to serialize concurrent commits and releases,
+// and validates on-hand inventory before writing a negative sale ledger entry.
 func (s *InventoryService) CommitReservation(
 	ctx context.Context,
 	reservationID uuid.UUID,
@@ -405,6 +445,22 @@ func (s *InventoryService) CommitReservation(
 		if time.Now().After(res.ExpiresAt) {
 			return apierr.BadRequestError("Reservation has expired").
 				WithCode(errcode.CodeReservationExpired)
+		}
+
+		// Acquire row-level lock on the variant to serialize stock deductions
+		if err := s.repo.LockVariantForUpdate(ctx, tx, res.VariantID); err != nil {
+			return err
+		}
+
+		// Verify sufficient physical on-hand stock is available before writing a negative sale ledger entry
+		stock, err := s.repo.GetStock(ctx, tx, res.VariantID)
+		if err != nil {
+			return err
+		}
+		if stock.OnHandQuantity < res.Quantity {
+			return apierr.BadRequestError(
+				fmt.Sprintf("Insufficient physical on-hand stock (%d) to commit reservation (%d)", stock.OnHandQuantity, res.Quantity),
+			).WithCode(errcode.CodeInsufficientInventory)
 		}
 
 		if err := s.repo.ReleaseReservation(ctx, tx, reservationID); err != nil {
@@ -435,6 +491,7 @@ func (s *InventoryService) CommitReservation(
 	return nil
 }
 
+// CheckAvailability checks whether a variant has at least quantity units of salable stock available.
 func (s *InventoryService) CheckAvailability(
 	ctx context.Context,
 	variantID uuid.UUID,

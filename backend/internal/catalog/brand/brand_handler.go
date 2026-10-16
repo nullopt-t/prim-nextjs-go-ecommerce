@@ -193,8 +193,9 @@ func (bh *BrandHandler) UpdateBrand(c *gin.Context) {
 		c.Request.Context(),
 		brandID,
 		UpdateBrandInput{
-			Name: body.Name,
-			Link: body.Link,
+			Name:         body.Name,
+			Link:         body.Link,
+			LogoObjectID: body.LogoObjectID,
 		},
 	)
 	if err != nil {

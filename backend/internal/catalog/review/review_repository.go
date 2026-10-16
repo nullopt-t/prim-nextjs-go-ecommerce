@@ -28,12 +28,16 @@ func NewReviewRepository() *ReviewRepository {
 	return &ReviewRepository{}
 }
 
+// PurchaseVerification contains customer ownership, product association, and order lifecycle status
+// used to validate whether an order item can be reviewed.
 type PurchaseVerification struct {
 	CustomerID  *uuid.UUID
 	ProductID   uuid.UUID
 	OrderStatus model.OrderStatus
 }
 
+// VerifyPurchase checks the database for an order item, resolving its buyer customer ID,
+// parent product ID, and parent order status.
 func (r *ReviewRepository) VerifyPurchase(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -60,7 +64,8 @@ func (r *ReviewRepository) VerifyPurchase(
 	return &pv, nil
 }
 
-// FindEligibleOrderItem finds a delivered order item for the given customer and product that hasn't been reviewed yet.
+// FindEligibleOrderItem finds a delivered order item for the given customer and product that hasn't been reviewed yet,
+// locking the order item row (FOR UPDATE) to prevent concurrency races on review creation.
 func (r *ReviewRepository) FindEligibleOrderItem(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -79,6 +84,7 @@ func (r *ReviewRepository) FindEligibleOrderItem(
 		  AND rev.id IS NULL
 		ORDER BY o.created_at DESC
 		LIMIT 1
+		FOR UPDATE OF oi
 	`
 	var orderItemID uuid.UUID
 	err := qe.QueryRow(ctx, query, userID, productID).Scan(&orderItemID)

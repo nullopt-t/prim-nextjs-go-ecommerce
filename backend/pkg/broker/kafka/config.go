@@ -2,6 +2,8 @@ package kafka
 
 import (
 	"time"
+
+	"github.com/segmentio/kafka-go"
 )
 
 // Config encapsulates connection and tuning options for Kafka brokers.
@@ -12,6 +14,7 @@ type Config struct {
 	DialTimeout   time.Duration
 	BatchTimeout  time.Duration
 	MaxBatchBytes int
+	StartOffset   int64
 }
 
 // DefaultConfig returns recommended production defaults.
@@ -23,5 +26,6 @@ func DefaultConfig(brokers []string, groupID string) Config {
 		DialTimeout:   10 * time.Second,
 		BatchTimeout:  10 * time.Millisecond,
 		MaxBatchBytes: 1024 * 1024, // 1MB
+		StartOffset:   kafka.LastOffset,
 	}
 }

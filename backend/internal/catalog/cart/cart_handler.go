@@ -3,6 +3,7 @@ package cart
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -22,16 +23,18 @@ func NewHandler(cartService *CartService) *CartHandler {
 	}
 }
 
+// AddItemRequest defines the request body payload for adding a product variant to the cart.
 type AddItemRequest struct {
 	// Product Variant UUID to add to the cart
 	VariantID uuid.UUID `json:"variantId" binding:"required" example:"70000000-0000-0000-0000-000000000001"`
-	// Quantity of units to add (must be at least 1)
-	Quantity int `json:"quantity" binding:"required,gt=0" example:"2"`
+	// Quantity of units to add (must be between 1 and 999)
+	Quantity int `json:"quantity" binding:"required,gt=0,lte=999" example:"2"`
 }
 
+// UpdateQuantityRequest defines the request body payload for modifying an item's quantity in the cart.
 type UpdateQuantityRequest struct {
-	// New total quantity desired for this cart item (must be at least 1)
-	Quantity int `json:"quantity" binding:"required,gt=0" example:"3"`
+	// New total quantity desired for this cart item (must be between 1 and 999)
+	Quantity int `json:"quantity" binding:"required,gt=0,lte=999" example:"3"`
 }
 
 type CartSummaryResponse struct {
@@ -91,6 +94,8 @@ type CartResponse struct {
 	UpdatedAt string `json:"updatedAt" example:"2026-08-23T16:26:25Z"`
 }
 
+// mapCartResponse transforms the internal domain model.Cart into a client-facing CartResponse.
+// It computes line item subtotals, aggregated cart totals, item counts, and resolves fallback titles and thumbnails.
 func mapCartResponse(cart *model.Cart) CartResponse {
 	if cart == nil {
 		return CartResponse{Items: []CartItemResponse{}}
@@ -111,14 +116,18 @@ func mapCartResponse(cart *model.Cart) CartResponse {
 			cartCurrency = item.Currency
 		}
 
-		itemSubtotal := int64(item.Quantity) * item.PriceAtPurchase
+		unitPrice := item.PriceAtPurchase
+		if item.Variant != nil && item.Variant.Price != nil {
+			unitPrice = *item.Variant.Price
+		}
+		itemSubtotal := int64(item.Quantity) * unitPrice
 		subtotal += itemSubtotal
 		itemCount += item.Quantity
 
 		itemRes := CartItemResponse{
 			ID:             item.ID.String(),
 			Quantity:       item.Quantity,
-			UnitPrice:      item.PriceAtPurchase,
+			UnitPrice:      unitPrice,
 			Subtotal:       itemSubtotal,
 			InStock:        item.InStock,
 			AvailableStock: item.AvailableStock,
@@ -130,11 +139,6 @@ func mapCartResponse(cart *model.Cart) CartResponse {
 			itemRes.Attributes = item.Variant.Attributes
 			if colorVal, ok := item.Variant.Attributes["color"].(string); ok {
 				itemRes.Color = colorVal
-			}
-			if item.Variant.Price != nil {
-				itemRes.UnitPrice = *item.Variant.Price
-				itemSubtotal = int64(item.Quantity) * (*item.Variant.Price)
-				itemRes.Subtotal = itemSubtotal
 			}
 		} else {
 			itemRes.VariantID = item.VariantID.String()
@@ -185,10 +189,14 @@ func (h *CartHandler) extractUserAndSession(c *gin.Context) (*uuid.UUID, *string
 		}
 	}
 
-	// Look for existing session ID in cookie
+	// Look for existing session ID in cookie and validate format
 	var sess string
 	if cookieSess, err := c.Cookie("session_id"); err == nil && cookieSess != "" {
-		sess = cookieSess
+		if strings.HasPrefix(cookieSess, "sess_") {
+			if _, parseErr := uuid.Parse(strings.TrimPrefix(cookieSess, "sess_")); parseErr == nil {
+				sess = cookieSess
+			}
+		}
 	}
 
 	// Use existing session if found, otherwise create a new guest session if not authenticated
@@ -196,7 +204,9 @@ func (h *CartHandler) extractUserAndSession(c *gin.Context) (*uuid.UUID, *string
 		sessionID = &sess
 	} else if userID == nil {
 		guestID := fmt.Sprintf("sess_%s", uuid.New().String())
-		c.SetCookie("session_id", guestID, GuestSessionCookieMaxAge, "/", "", false, true)
+		secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
+		c.SetSameSite(http.SameSiteLaxMode)
+		c.SetCookie("session_id", guestID, GuestSessionCookieMaxAge, "/", "", secure, true)
 		sessionID = &guestID
 	}
 
@@ -214,6 +224,27 @@ func (h *CartHandler) extractUserAndSession(c *gin.Context) (*uuid.UUID, *string
 //	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
 //	@Router			/cart [get]
 func (h *CartHandler) GetCart(c *gin.Context) {
+	// For unauthenticated visitors without an existing session cookie, return an empty cart response
+	// without creating an empty abandoned cart record in the database.
+	if _, exists := c.Get("userID"); !exists {
+		cookieSess, err := c.Cookie("session_id")
+		if err != nil || cookieSess == "" {
+			c.JSON(http.StatusOK, api.DataResponse{Data: CartResponse{
+				Currency: "USD",
+				Items:    []CartItemResponse{},
+				Summary: CartSummaryResponse{
+					Subtotal: 0,
+					Discount: 0,
+					Shipping: 0,
+					Tax:      0,
+					Total:    0,
+				},
+				ItemCount: 0,
+			}})
+			return
+		}
+	}
+
 	userID, sessionID := h.extractUserAndSession(c)
 
 	cart, err := h.cartService.GetOrCreateCart(c.Request.Context(), userID, sessionID)

@@ -2,6 +2,7 @@ package category
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/middleware"
 )
 
@@ -32,6 +33,7 @@ func (cr *CategoryRouter) MapRoutes(
 	admin := vgroup.Group("/admin/categories")
 	admin.Use(
 		middleware.Authenticate(cr.sessionStore),
+		middleware.Authorize(model.AdminRole),
 	)
 	{
 		admin.GET("", cr.chandler.ListAdminCategories)

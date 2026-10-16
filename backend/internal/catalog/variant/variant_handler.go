@@ -1,3 +1,5 @@
+// Package variant provides HTTP handlers, request validation, response mapping,
+// and REST controller endpoints for product variant (SKU) management.
 package variant
 
 import (
@@ -15,10 +17,12 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/utils"
 )
 
+// VariantHandler implements Gin HTTP handlers for variant operations, media attachment, and inventory audits.
 type VariantHandler struct {
 	vservice *VariantService
 }
 
+// NewHandler constructs a new VariantHandler instance.
 func NewHandler(s *VariantService) *VariantHandler {
 	return &VariantHandler{
 		vservice: s,
@@ -182,6 +186,9 @@ type VariantMediaResponse struct {
 	Object *StorageObjectResponse `json:"object,omitempty"`
 }
 
+// mapVariantResponse converts a domain ProductVariant into a public storefront VariantResponse DTO.
+// Price values are converted from integer cents into localized formatted currency strings and decimal floats,
+// taking currency-specific exponent and decimal scale into account.
 func mapVariantResponse(v *model.ProductVariant) VariantResponse {
 	attrs := v.Attributes
 	if attrs == nil {
@@ -214,7 +221,7 @@ func mapVariantResponse(v *model.ProductVariant) VariantResponse {
 	var extPrice *float64
 	if v.Price != nil {
 		ps := utils.FormatPrice(*v.Price, curr)
-		ep := utils.ExtractPrice(*v.Price)
+		ep := utils.ExtractPriceForCurrency(*v.Price, curr)
 		priceStr = &ps
 		extPrice = &ep
 	}
@@ -223,7 +230,7 @@ func mapVariantResponse(v *model.ProductVariant) VariantResponse {
 	var extOrigPrice *float64
 	if v.CrossedOutPrice != nil {
 		ops := utils.FormatPrice(*v.CrossedOutPrice, curr)
-		eop := utils.ExtractPrice(*v.CrossedOutPrice)
+		eop := utils.ExtractPriceForCurrency(*v.CrossedOutPrice, curr)
 		origPriceStr = &ops
 		extOrigPrice = &eop
 	}
@@ -245,6 +252,8 @@ func mapVariantResponse(v *model.ProductVariant) VariantResponse {
 	}
 }
 
+// mapAdminVariantResponse converts a domain ProductVariant into an administrative AdminVariantResponse DTO.
+// Price values are converted using currency-aware decimal scale for accurate administrative reporting.
 func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
 	attrs := v.Attributes
 	if attrs == nil {
@@ -272,7 +281,7 @@ func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
 	var extPrice *float64
 	if v.Price != nil {
 		ps := utils.FormatPrice(*v.Price, curr)
-		ep := utils.ExtractPrice(*v.Price)
+		ep := utils.ExtractPriceForCurrency(*v.Price, curr)
 		priceStr = &ps
 		extPrice = &ep
 	}
@@ -281,7 +290,7 @@ func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
 	var extOrigPrice *float64
 	if v.CrossedOutPrice != nil {
 		ops := utils.FormatPrice(*v.CrossedOutPrice, curr)
-		eop := utils.ExtractPrice(*v.CrossedOutPrice)
+		eop := utils.ExtractPriceForCurrency(*v.CrossedOutPrice, curr)
 		origPriceStr = &ops
 		extOrigPrice = &eop
 	}
@@ -870,11 +879,13 @@ func (vh *VariantHandler) ReorderMedia(c *gin.Context) {
 	})
 }
 
+// AdjustStockRequest defines the HTTP payload for manual administrative stock adjustments.
+// Only manual adjustment reasons (restock, return, adjustment) are permitted.
 type AdjustStockRequest struct {
 	// Adjustment quantity delta (positive to increase, negative to decrease)
 	Quantity int `json:"quantity" binding:"required" example:"50"`
-	// Business audit reason (restock, sale, return, adjustment, reservation_release)
-	Reason string `json:"reason" binding:"required,oneof=restock sale return adjustment reservation_release" example:"restock"`
+	// Business audit reason (restock, return, adjustment)
+	Reason string `json:"reason" binding:"required,oneof=restock return adjustment" example:"restock"`
 }
 
 type PublicStockResponse struct {
@@ -933,7 +944,7 @@ func mapLedgerResponse(l *model.InventoryLedger) InventoryLedgerResponse {
 // AdjustStock godoc
 //
 //	@Summary		Adjust variant inventory stock
-//	@Description	Records a new inventory ledger transaction (restock, adjustment, sale, return) to increment or decrement the variant's stock.
+//	@Description	Records a new inventory ledger transaction (restock, adjustment, return) to increment or decrement the variant's stock.
 //	@Tags			Admin Variant Inventory
 //	@Accept			json
 //	@Produce		json
@@ -957,6 +968,28 @@ func (vh *VariantHandler) AdjustStock(c *gin.Context) {
 	var body AdjustStockRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		validation.ValidationError(c, err)
+		return
+	}
+
+	if body.Reason == "restock" && body.Quantity <= 0 {
+		_ = c.Error(apierr.BadRequestError("Validation error").WithCode(apierr.CodeValidationFailed).WithFields(api.FieldError{
+			Field:   "quantity",
+			Message: "quantity must be greater than 0 for restock",
+		}))
+		return
+	}
+	if body.Reason == "return" && body.Quantity <= 0 {
+		_ = c.Error(apierr.BadRequestError("Validation error").WithCode(apierr.CodeValidationFailed).WithFields(api.FieldError{
+			Field:   "quantity",
+			Message: "quantity must be greater than 0 for return",
+		}))
+		return
+	}
+	if body.Reason == "adjustment" && body.Quantity == 0 {
+		_ = c.Error(apierr.BadRequestError("Validation error").WithCode(apierr.CodeValidationFailed).WithFields(api.FieldError{
+			Field:   "quantity",
+			Message: "quantity cannot be 0 for adjustment",
+		}))
 		return
 	}
 

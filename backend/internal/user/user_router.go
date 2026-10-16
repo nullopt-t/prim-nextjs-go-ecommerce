@@ -6,6 +6,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/model"
 )
 
+// UserHandler defines the HTTP handler interface for administrative user management endpoints.
 type UserHandler interface {
 	GetUserByID(c *gin.Context)
 	DeleteUser(c *gin.Context)
@@ -15,11 +16,13 @@ type UserHandler interface {
 	RevokeUserSessions(c *gin.Context)
 }
 
+// Router configures routing and administrative authorization hierarchies for /admin/users endpoints.
 type Router struct {
 	handler      UserHandler
 	sessionStore middleware.SessionStore
 }
 
+// NewRouter constructs a new user management Router instance.
 func NewRouter(handler UserHandler, sessionStore middleware.SessionStore) *Router {
 	return &Router{
 		handler:      handler,
@@ -27,6 +30,9 @@ func NewRouter(handler UserHandler, sessionStore middleware.SessionStore) *Route
 	}
 }
 
+// MapRoutes registers administrative user management routes under /admin/users.
+// Group-level middleware requires authentication and at least model.AdminRole clearance.
+// Sensitive mutations (role changes, status changes, session revocations) require model.SuperRole.
 func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	adminUsers := vgroup.Group("/admin/users")
 	adminUsers.Use(
@@ -34,13 +40,20 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		middleware.Authorize(model.AdminRole),
 	)
 	{
+		// GET /api/v1/admin/users - List paginated users with role/status filters (Admin or Superadmin)
 		adminUsers.GET("", r.handler.GetAllUsers)
+		// GET /api/v1/admin/users/:id - View user details by UUID (Admin or Superadmin)
 		adminUsers.GET("/:id", r.handler.GetUserByID)
-		adminUsers.DELETE("/:id", r.handler.DeleteUser)
 
-		// Superadmin-only mutation endpoints
+		// DELETE /api/v1/admin/users/:id - Delete account (Superadmin only)
+		adminUsers.DELETE("/:id", middleware.Authorize(model.SuperRole), r.handler.DeleteUser)
+
+		// Superadmin-only mutation endpoints: require highest administrative clearance
+		// PATCH /api/v1/admin/users/:id/role - Alter user administrative role tier
 		adminUsers.PATCH("/:id/role", middleware.Authorize(model.SuperRole), r.handler.UpdateUserRole)
+		// PATCH /api/v1/admin/users/:id/status - Alter account standing (suspend, activate)
 		adminUsers.PATCH("/:id/status", middleware.Authorize(model.SuperRole), r.handler.UpdateAccountStatus)
+		// POST /api/v1/admin/users/:id/revoke-sessions - Invalidate all active user login sessions
 		adminUsers.POST("/:id/revoke-sessions", middleware.Authorize(model.SuperRole), r.handler.RevokeUserSessions)
 	}
 }

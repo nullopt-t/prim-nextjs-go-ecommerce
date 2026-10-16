@@ -21,8 +21,12 @@ import (
 
 func main() {
 	_ = godotenv.Load()
-	cfg := config.Load()
 	logger := log.NewConsoleLogger()
+	cfg, err := config.Load()
+	if err != nil {
+		logger.Error("failed to load configuration", log.Meta{"error": err.Error()})
+		return
+	}
 
 	logger.Info("starting Prim Notification Worker daemon...")
 

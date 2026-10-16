@@ -1,3 +1,5 @@
+// Package variant provides repository persistence for product variants, SKU management,
+// variant default selection flags, and media asset associations.
 package variant
 
 import (
@@ -14,6 +16,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
+// allowedVariantSortFields maps public API sort keys to safe database column identifiers.
 var allowedVariantSortFields = map[string]string{
 	"id":         "pv.id",
 	"title":      "pv.title",
@@ -22,6 +25,7 @@ var allowedVariantSortFields = map[string]string{
 	"updated_at": "pv.updated_at",
 }
 
+// variantFilter encapsulates query criteria for single variant lookups.
 type variantFilter struct {
 	ID             *uuid.UUID
 	SKU            *string
@@ -29,6 +33,7 @@ type variantFilter struct {
 	IncludeDeleted bool
 }
 
+// UpdateVariantFields defines optional update patches for product variants.
 type UpdateVariantFields struct {
 	SKU               *string
 	Title             *string
@@ -40,12 +45,14 @@ type UpdateVariantFields struct {
 	ThumbnailObjectID *uuid.UUID
 }
 
+// ListVariantOptions defines filter and pagination parameters for querying variants by product.
 type ListVariantOptions struct {
 	ProductID      uuid.UUID
 	Query          *pagination.ListQuery
 	IncludeDeleted bool
 }
 
+// CreateVariantMediaInput defines parameters to insert a new media asset link for a variant.
 type CreateVariantMediaInput struct {
 	ID        uuid.UUID
 	VariantID uuid.UUID
@@ -54,14 +61,17 @@ type CreateVariantMediaInput struct {
 	SortOrder int
 }
 
+// VariantRepository provides database access for product_variants and variant_media tables.
 type VariantRepository struct{}
 
+// NewRepository creates and returns an initialized VariantRepository instance.
 func NewRepository() *VariantRepository {
 	return &VariantRepository{}
 }
 
 // --- Variant Operations ---
 
+// Create inserts a new product variant record into the database.
 func (vr *VariantRepository) Create(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -242,6 +252,7 @@ func (vr *VariantRepository) get(
 	return &v, nil
 }
 
+// Update applies partial updates to variant fields and refreshes the updated_at timestamp.
 func (vr *VariantRepository) Update(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -330,6 +341,7 @@ func (vr *VariantRepository) Update(
 	return nil
 }
 
+// ClearDefaultFlags sets is_default = false on all active variants of the specified product.
 func (vr *VariantRepository) ClearDefaultFlags(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -353,6 +365,8 @@ func (vr *VariantRepository) ClearDefaultFlags(
 	return nil
 }
 
+// ListByProductID executes a paginated query returning all variants belonging to a product.
+// Supports full-text title search and dynamic sorting.
 func (vr *VariantRepository) ListByProductID(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -499,6 +513,7 @@ func (vr *VariantRepository) ListByProductID(
 	return pagination.NewPagedResult(variants, pagination.NewPage(q.Page, q.PageSize, total)), nil
 }
 
+// CountByProductID returns the count of active (non-deleted) variants for a given product.
 func (vr *VariantRepository) CountByProductID(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -518,6 +533,7 @@ func (vr *VariantRepository) CountByProductID(
 	return count, nil
 }
 
+// Delete marks a variant as soft-deleted by setting deleted_at = now().
 func (vr *VariantRepository) Delete(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -540,6 +556,16 @@ func (vr *VariantRepository) Delete(
 
 	if cmd.RowsAffected() == 0 {
 		return pgx.ErrNoRows
+	}
+
+	// Release any active, unreleased inventory reservations holding stock for this deleted variant
+	releaseReservationsQuery := `
+		UPDATE inventory_reservations
+		SET released_at = now()
+		WHERE variant_id = $1 AND released_at IS NULL
+	`
+	if _, err := qe.Exec(ctx, releaseReservationsQuery, variantID); err != nil {
+		return fmt.Errorf("release variant reservations: %w", err)
 	}
 
 	return nil
@@ -575,6 +601,7 @@ func (vr *VariantRepository) SetFirstAvailableAsDefault(
 	return nil
 }
 
+// Restore un-deletes a variant by resetting deleted_at to NULL.
 func (vr *VariantRepository) Restore(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -604,40 +631,78 @@ func (vr *VariantRepository) Restore(
 
 // --- Variant Media Operations ---
 
+// AddMedia links an uploaded media storage object to a variant.
+// If in.SortOrder is non-negative and specified, existing media at or above that sort order are shifted up.
+// If in.SortOrder is negative, it appends to the end with MAX(sort_order) + 1.
 func (vr *VariantRepository) AddMedia(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	in CreateVariantMediaInput,
 ) (*model.VariantMedia, error) {
-	query := `
-		INSERT INTO variant_media (
-			id,
-			variant_id,
-			object_id,
-			media_type,
-			sort_order
-		)
-		VALUES (
-			$1,
-			$2,
-			$3,
-			$4,
-			COALESCE((SELECT MAX(sort_order) + 1 FROM variant_media WHERE variant_id = $2), 0)
-		)
-		RETURNING sort_order
-	`
-
 	var sortOrder int
-	err := qe.QueryRow(
-		ctx,
-		query,
-		in.ID,
-		in.VariantID,
-		in.ObjectID,
-		in.MediaType,
-	).Scan(&sortOrder)
-	if err != nil {
-		return nil, fmt.Errorf("add variant media: %w", err)
+	if in.SortOrder >= 0 {
+		// Shift existing media at or above in.SortOrder to make room
+		shiftQuery := `
+			UPDATE variant_media
+			SET sort_order = sort_order + 1
+			WHERE variant_id = $1 AND sort_order >= $2
+		`
+		if _, err := qe.Exec(ctx, shiftQuery, in.VariantID, in.SortOrder); err != nil {
+			return nil, fmt.Errorf("shift variant media sort order: %w", err)
+		}
+
+		insertQuery := `
+			INSERT INTO variant_media (
+				id,
+				variant_id,
+				object_id,
+				media_type,
+				sort_order
+			)
+			VALUES ($1, $2, $3, $4, $5)
+			RETURNING sort_order
+		`
+		err := qe.QueryRow(
+			ctx,
+			insertQuery,
+			in.ID,
+			in.VariantID,
+			in.ObjectID,
+			in.MediaType,
+			in.SortOrder,
+		).Scan(&sortOrder)
+		if err != nil {
+			return nil, fmt.Errorf("add variant media: %w", err)
+		}
+	} else {
+		insertQuery := `
+			INSERT INTO variant_media (
+				id,
+				variant_id,
+				object_id,
+				media_type,
+				sort_order
+			)
+			VALUES (
+				$1,
+				$2,
+				$3,
+				$4,
+				COALESCE((SELECT MAX(sort_order) + 1 FROM variant_media WHERE variant_id = $2), 0)
+			)
+			RETURNING sort_order
+		`
+		err := qe.QueryRow(
+			ctx,
+			insertQuery,
+			in.ID,
+			in.VariantID,
+			in.ObjectID,
+			in.MediaType,
+		).Scan(&sortOrder)
+		if err != nil {
+			return nil, fmt.Errorf("add variant media: %w", err)
+		}
 	}
 
 	return &model.VariantMedia{
@@ -649,6 +714,7 @@ func (vr *VariantRepository) AddMedia(
 	}, nil
 }
 
+// ListMediaByVariantID retrieves all media attachments for a single variant ordered by sort_order.
 func (vr *VariantRepository) ListMediaByVariantID(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -713,6 +779,7 @@ func (vr *VariantRepository) ListMediaByVariantID(
 	return result, nil
 }
 
+// ListMediaByVariantIDs executes a batch query retrieving media items for multiple variants.
 func (vr *VariantRepository) ListMediaByVariantIDs(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -777,6 +844,7 @@ func (vr *VariantRepository) ListMediaByVariantIDs(
 	return result, nil
 }
 
+// RemoveMedia deletes a media attachment and resequences remaining media to keep sort_order contiguous 0..N-1.
 func (vr *VariantRepository) RemoveMedia(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -817,6 +885,7 @@ func (vr *VariantRepository) RemoveMedia(
 	return nil
 }
 
+// ReorderMedia applies a batch update of sort_order values for a variant's media attachments.
 func (vr *VariantRepository) ReorderMedia(
 	ctx context.Context,
 	qe database.QueryExecutor,
