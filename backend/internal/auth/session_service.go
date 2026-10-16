@@ -174,6 +174,15 @@ func (s *SessionService) GetSessionByID(
 		}
 	}
 
+	// Refresh the user's session-set TTL on access. The set is only assigned a
+	// TTL once at creation (sessionTTL*2); without this refresh it expires while
+	// individually sliding session keys remain valid, making DeleteAllSessions
+	// and DeleteSessionByID silent no-ops for long-lived sessions.
+	if sess.UserID != uuid.Nil {
+		userSetKey := fmt.Sprintf("auth:user_sessions:%s", sess.UserID.String())
+		_ = s.redisClient.Expire(ctx, userSetKey, s.sessionTTL*2).Err()
+	}
+
 	return &sess, nil
 }
 
