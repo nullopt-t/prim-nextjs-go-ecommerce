@@ -19,7 +19,8 @@ type JobQueue interface {
 	Dequeue(ctx context.Context) (*JobMessage, error)
 }
 
-// redisJobQueue is an implementation of JobQueue backed by Redis lists (LPUSH / LPOP).
+// redisJobQueue is an implementation of JobQueue backed by Redis lists (LPUSH / RPOP).
+// Jobs are enqueued at the head and popped from the tail, preserving FIFO order.
 type redisJobQueue struct {
 	client *redis.Client
 	name   string
@@ -44,11 +45,11 @@ func (q *redisJobQueue) Enqueue(ctx context.Context, msg *JobMessage) error {
 	return nil
 }
 
-// Dequeue pops the next job from the head of the Redis list.
-// Returns (nil, nil) when the queue is empty (redis.Nil).
+// Dequeue pops the next job from the tail of the Redis list, preserving FIFO
+// order relative to the LPUSH enqueue. Returns (nil, nil) when empty (redis.Nil).
 func (q *redisJobQueue) Dequeue(ctx context.Context) (*JobMessage, error) {
 	var msg JobMessage
-	res, err := q.client.LPop(ctx, q.name).Result()
+	res, err := q.client.RPop(ctx, q.name).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return nil, nil

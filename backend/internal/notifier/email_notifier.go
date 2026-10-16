@@ -32,7 +32,7 @@ func (n *EmailNotifier) NotifyOTP(
 	n.logger.Debug("notify otp",
 		log.Meta{
 			"identifier": identifier,
-			"otp":        otp,
+			"channel":    channel,
 		},
 	)
 
