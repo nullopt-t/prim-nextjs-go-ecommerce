@@ -89,6 +89,12 @@ type Secrets struct {
 	// JwtResetPassTokenSecretKey signs single-use password reset tokens.
 	JwtResetPassTokenSecretKey string `yaml:"jwt_reset_pass_secret" env:"JWT_RESET_PASS_SECRET" env-default:"jwt-reset-pass-secret-key"`
 
+	// JwtIssuer identifies the issuer of JWT tokens; validated at verification time.
+	JwtIssuer string `yaml:"jwt_issuer" env:"JWT_ISSUER" env-default:"prim"`
+
+	// JwtAudience is the intended audience of JWT tokens; validated at verification time.
+	JwtAudience string `yaml:"jwt_audience" env:"JWT_AUDIENCE" env-default:"prim-api"`
+
 	// OTPHashPepper is the server-side pepper keying HMAC-SHA-256 for OTP challenge hashes.
 	// It must be kept secret; it prevents precomputation attacks over the small OTP space
 	// if Redis contents are exposed. Never use the development default in production.

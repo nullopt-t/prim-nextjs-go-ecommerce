@@ -30,7 +30,9 @@ type UserClaims struct {
 
 // JWTManager handles signing and validating authentication tokens.
 type JWTManager struct {
-	secrets config.Secrets
+	secrets  config.Secrets
+	issuer   string
+	audience string
 }
 
 // NewJWTManager creates an instance of JWTManager configured with secrets.
@@ -38,7 +40,9 @@ func NewJWTManager(
 	secrets config.Secrets,
 ) *JWTManager {
 	return &JWTManager{
-		secrets: secrets,
+		secrets:  secrets,
+		issuer:   secrets.JwtIssuer,
+		audience: secrets.JwtAudience,
 	}
 }
 
@@ -66,6 +70,8 @@ func (s *JWTManager) GenerateAccessToken(claims *UserClaims) (string, error) {
 	claims.RegisteredClaims = _jwt.RegisteredClaims{
 		ID:        uuid.New().String(),
 		Subject:   claims.UserID.String(),
+		Issuer:    s.issuer,
+		Audience:  _jwt.ClaimStrings{s.audience},
 		IssuedAt:  _jwt.NewNumericDate(time.Now()),
 		ExpiresAt: _jwt.NewNumericDate(time.Now().Add(AccessTokenExpiration)),
 	}
@@ -83,6 +89,8 @@ func (s *JWTManager) GenerateRefreshToken(claims *UserClaims) (string, error) {
 	claims.RegisteredClaims = _jwt.RegisteredClaims{
 		ID:        uuid.New().String(),
 		Subject:   claims.UserID.String(),
+		Issuer:    s.issuer,
+		Audience:  _jwt.ClaimStrings{s.audience},
 		IssuedAt:  _jwt.NewNumericDate(time.Now()),
 		ExpiresAt: _jwt.NewNumericDate(time.Now().Add(RefreshTokenExpiration)),
 	}
@@ -118,7 +126,9 @@ func (s *JWTManager) GenerateTokenPair(claims *UserClaims) (string, string, erro
 }
 
 // VerifyToken parses and validates a JWT token string against the given secret key.
-// Validates HMAC signing method to prevent algorithm confusion attacks and checks token validity.
+// It pins HS256 as the only acceptable signing method, requires exp, validates issuer
+// and audience, and enforces the token type claim (access_token/refresh_token) to
+// prevent token confusion and replay across token kinds.
 func (s *JWTManager) VerifyToken(tokenString string, secretKey string) (*UserClaims, error) {
 	claims := &UserClaims{}
 	token, err := _jwt.ParseWithClaims(tokenString, claims, func(token *_jwt.Token) (interface{}, error) {
@@ -126,13 +136,26 @@ func (s *JWTManager) VerifyToken(tokenString string, secretKey string) (*UserCla
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return []byte(secretKey), nil
-	})
+	},
+		_jwt.WithValidMethods([]string{_jwt.SigningMethodHS256.Alg()}),
+		_jwt.WithExpirationRequired(),
+		_jwt.WithIssuer(s.issuer),
+		_jwt.WithAudience(s.audience),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	if !token.Valid {
 		return nil, errors.New("invalid token")
+	}
+
+	// Reject tokens whose type claim is missing or unexpected, so an access
+	// token cannot be presented where a refresh token is required (and vice versa).
+	switch claims.Type {
+	case "access_token", "refresh_token":
+	default:
+		return nil, errors.New("invalid token type")
 	}
 
 	return claims, nil

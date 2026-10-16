@@ -28,6 +28,8 @@ x-app-env: &app-env # Database
   JWT_RESET_PASS_SECRET: dev-reset-secret
 
   # Auth
+  JWT_ISSUER: prim
+  JWT_AUDIENCE: prim-api
   OTP_HASH_PEPPER: dev-otp-pepper-change-me-in-production
 
   # Client
