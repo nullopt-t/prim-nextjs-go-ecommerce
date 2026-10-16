@@ -58,73 +58,8 @@ func (s *CartService) GetOrCreateCart(
 
 	err := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
 		var err error
-		switch {
-		case userID != nil:
-			cart, err = s.cartRepo.GetCartByUserID(ctx, tx, *userID)
-		case sessionID != nil:
-			cart, err = s.cartRepo.GetCartBySessionID(ctx, tx, *sessionID)
-		default:
-			return apierr.BadRequestError("User ID or Session ID is required").
-				WithCode(apierr.CodeInvalidInput)
-		}
-
-		if err != nil {
-			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				newCart := &model.Cart{
-					ID:        uuid.New(),
-					UserID:    userID,
-					SessionID: sessionID,
-				}
-				if createErr := s.cartRepo.CreateCart(ctx, tx, newCart); createErr != nil {
-					return createErr
-				}
-				cart = newCart
-			} else {
-				return err
-			}
-		}
-
-		items, itemsErr := s.cartRepo.GetCartItems(ctx, tx, cart.ID)
-		if itemsErr != nil && !errors.Is(database.MapError(itemsErr), database.ErrNotFound) {
-			return itemsErr
-		}
-
-		variantIDs := make([]uuid.UUID, 0, len(items))
-		for i := range items {
-			v, vErr := s.variantService.GetVariantByID(ctx, items[i].VariantID)
-			if vErr == nil {
-				items[i].Variant = v
-				variantIDs = append(variantIDs, v.ID)
-
-				// Fetch the associated product
-				p, pErr := s.productService.GetByID(ctx, v.ProductID)
-				if pErr == nil {
-					items[i].Product = p
-				}
-
-				// Thumbnail resolution: prefer variant thumbnail or variant media
-				if v.Thumbnail != nil && v.Thumbnail.PublicURL != "" {
-					items[i].ThumbnailURL = v.Thumbnail.PublicURL
-				} else if len(v.Media) > 0 && v.Media[0].Object != nil {
-					items[i].ThumbnailURL = v.Media[0].Object.PublicURL
-				}
-			}
-		}
-
-		if len(variantIDs) > 0 && s.inventoryService != nil {
-			stocks, stockErr := s.inventoryService.GetStockForVariants(ctx, variantIDs)
-			if stockErr == nil && stocks != nil {
-				for i := range items {
-					if st, ok := stocks[items[i].VariantID]; ok {
-						items[i].AvailableStock = st.AvailableQuantity
-						items[i].InStock = st.AvailableQuantity >= items[i].Quantity
-					}
-				}
-			}
-		}
-
-		cart.Items = items
-		return nil
+		cart, err = s.getOrCreateCartWithTx(ctx, tx, userID, sessionID)
+		return err
 	})
 
 	if err != nil {
@@ -132,6 +67,115 @@ func (s *CartService) GetOrCreateCart(
 	}
 
 	return cart, nil
+}
+
+// GetOrCreateCartWithTx resolves (or creates) the customer's cart within the
+// caller's transaction, taking a FOR UPDATE row lock so concurrent checkouts
+// for the same cart serialize instead of racing into duplicate orders.
+func (s *CartService) GetOrCreateCartWithTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	userID *uuid.UUID,
+	sessionID *string,
+) (*model.Cart, error) {
+	return s.getOrCreateCartWithTx(ctx, tx, userID, sessionID)
+}
+
+func (s *CartService) getOrCreateCartWithTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	userID *uuid.UUID,
+	sessionID *string,
+) (*model.Cart, error) {
+	var cart *model.Cart
+	var err error
+	switch {
+	case userID != nil:
+		cart, err = s.cartRepo.GetCartByUserIDForUpdate(ctx, tx, *userID)
+	case sessionID != nil:
+		cart, err = s.cartRepo.GetCartBySessionIDForUpdate(ctx, tx, *sessionID)
+	default:
+		return nil, apierr.BadRequestError("User ID or Session ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	if err != nil {
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			newCart := &model.Cart{
+				ID:        uuid.New(),
+				UserID:    userID,
+				SessionID: sessionID,
+			}
+			if createErr := s.cartRepo.CreateCart(ctx, tx, newCart); createErr != nil {
+				return nil, createErr
+			}
+			cart = newCart
+		} else {
+			return nil, err
+		}
+	}
+
+	items, itemsErr := s.cartRepo.GetCartItems(ctx, tx, cart.ID)
+	if itemsErr != nil && !errors.Is(database.MapError(itemsErr), database.ErrNotFound) {
+		return nil, itemsErr
+	}
+
+	variantIDs := make([]uuid.UUID, 0, len(items))
+	for i := range items {
+		v, vErr := s.variantService.GetVariantByID(ctx, items[i].VariantID)
+		if vErr == nil {
+			items[i].Variant = v
+			variantIDs = append(variantIDs, v.ID)
+
+			// Fetch the associated product
+			p, pErr := s.productService.GetByID(ctx, v.ProductID)
+			if pErr == nil {
+				items[i].Product = p
+			}
+
+			// Thumbnail resolution: prefer variant thumbnail or variant media
+			if v.Thumbnail != nil && v.Thumbnail.PublicURL != "" {
+				items[i].ThumbnailURL = v.Thumbnail.PublicURL
+			} else if len(v.Media) > 0 && v.Media[0].Object != nil {
+				items[i].ThumbnailURL = v.Media[0].Object.PublicURL
+			}
+		}
+	}
+
+	if len(variantIDs) > 0 && s.inventoryService != nil {
+		stocks, stockErr := s.inventoryService.GetStockForVariants(ctx, variantIDs)
+		if stockErr == nil && stocks != nil {
+			for i := range items {
+				if st, ok := stocks[items[i].VariantID]; ok {
+					items[i].AvailableStock = st.AvailableQuantity
+					items[i].InStock = st.AvailableQuantity >= items[i].Quantity
+				}
+			}
+		}
+	}
+
+	cart.Items = items
+	return cart, nil
+}
+
+// ClearCartWithTx soft-deletes all active items of the customer's cart inside
+// the caller's transaction, so cart clearance commits atomically with the order.
+func (s *CartService) ClearCartWithTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	userID *uuid.UUID,
+	sessionID *string,
+) error {
+	cart, err := s.getOrCreateCartWithTx(ctx, tx, userID, sessionID)
+	if err != nil {
+		return err
+	}
+
+	if err := s.cartRepo.ClearCart(ctx, tx, cart.ID); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // MaxCartItemQuantity represents the maximum allowable quantity for any single line item in the cart.

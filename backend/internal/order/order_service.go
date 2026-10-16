@@ -57,6 +57,9 @@ type CreateOrderInput struct {
 // InventoryService defines the subset of inventory functionality needed by OrderService for restoring stock upon cancellation.
 type InventoryService interface {
 	AdjustStock(ctx context.Context, in inventory.AdjustStockInput) (*model.InventoryStock, error)
+	// AdjustStockWithTx restores/adjusts stock within the caller's transaction so
+	// cancellation and restock remain atomic with the order status transition.
+	AdjustStockWithTx(ctx context.Context, tx database.QueryExecutor, in inventory.AdjustStockInput) (*model.InventoryStock, error)
 }
 
 // OrderService orchestrates database transactions, order status state machine validation,
@@ -86,93 +89,107 @@ func NewService(
 	return s
 }
 
-// CreateOrder creates an order and its associated line items within an atomic database transaction.
-// It computes the gross total, applies discount deductions, persists the initial 'pending' status,
-// and creates the initial status history audit trail.
-func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*model.Order, error) {
+// CreateOrderWithTx creates an order and its associated line items inside the
+// caller's database transaction, so checkout can atomically bundle stock
+// reservation, coupon redemption, and payment recording with order creation.
+func (s *OrderService) CreateOrderWithTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	in *CreateOrderInput,
+) (*model.Order, error) {
 	// Validate that at least one line item is provided.
 	if len(in.Items) == 0 {
 		return nil, apierr.BadRequestError("Order must contain at least one item").WithCode(errcode.CodeEmptyOrderItems)
 	}
 
+	orderID := uuid.New()
+
+	var totalAmount int64
+	orderItems := make([]model.OrderItem, 0, len(in.Items))
+
+	for _, itemInput := range in.Items {
+		if itemInput.Quantity <= 0 {
+			return nil, apierr.BadRequestError("Item quantity must be greater than zero")
+		}
+		if itemInput.PriceAtPurchase < 0 {
+			return nil, apierr.BadRequestError("Item price cannot be negative")
+		}
+
+		// Validate against int64 overflow during itemTotal multiplication and running total
+		qty := int64(itemInput.Quantity)
+		if itemInput.PriceAtPurchase > 0 && qty > math.MaxInt64/itemInput.PriceAtPurchase {
+			return nil, apierr.BadRequestError("Order total exceeds maximum allowable limit")
+		}
+		itemTotal := itemInput.PriceAtPurchase * qty
+		if itemTotal > math.MaxInt64-totalAmount {
+			return nil, apierr.BadRequestError("Order total exceeds maximum allowable limit")
+		}
+		totalAmount += itemTotal
+
+		item := model.OrderItem{
+			ID:              uuid.New(),
+			OrderID:         orderID,
+			VariantID:       itemInput.VariantID,
+			Quantity:        itemInput.Quantity,
+			PriceAtPurchase: itemInput.PriceAtPurchase,
+			ProductSnapshot: itemInput.ProductSnapshot,
+		}
+		orderItems = append(orderItems, item)
+	}
+
+	finalTotal := totalAmount - in.DiscountAmount + in.ShippingAmount + in.TaxAmount
+	if finalTotal < 0 {
+		finalTotal = 0
+	}
+
+	newOrder := &model.Order{
+		ID:              orderID,
+		CustomerID:      in.CustomerID,
+		CustomerEmail:   in.CustomerEmail,
+		ShippingAddress: in.ShippingAddress,
+		Status:          model.OrderStatusPending,
+		CouponID:        in.CouponID,
+		CouponCode:      in.CouponCode,
+		DiscountAmount:  in.DiscountAmount,
+		ShippingAmount:  in.ShippingAmount,
+		TaxAmount:       in.TaxAmount,
+		TotalAmount:     finalTotal,
+		Currency:        in.Currency,
+		Items:           orderItems,
+	}
+
+	// Persist the root order record.
+	if err := s.orderRepo.CreateOrder(ctx, tx, newOrder); err != nil {
+		return nil, err
+	}
+
+	// Persist each line item associated with the order.
+	for i := range orderItems {
+		if err := s.orderRepo.AddOrderItem(ctx, tx, &orderItems[i]); err != nil {
+			return nil, err
+		}
+	}
+
+	// Insert initial audit history entry.
+	note := "Order created with status pending"
+	if err := s.orderRepo.AddStatusHistory(ctx, tx, orderID, model.OrderStatusPending, &note); err != nil {
+		return nil, err
+	}
+
+	return newOrder, nil
+}
+
+// CreateOrder creates an order and its associated line items within an atomic database transaction.
+// It computes the gross total, applies discount deductions, persists the initial 'pending' status,
+// and creates the initial status history audit trail.
+func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*model.Order, error) {
 	var createdOrder *model.Order
 
 	// Execute within an atomic transaction.
 	err := s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
-		orderID := uuid.New()
-
-		var totalAmount int64
-		orderItems := make([]model.OrderItem, 0, len(in.Items))
-
-		for _, itemInput := range in.Items {
-			if itemInput.Quantity <= 0 {
-				return apierr.BadRequestError("Item quantity must be greater than zero")
-			}
-			if itemInput.PriceAtPurchase < 0 {
-				return apierr.BadRequestError("Item price cannot be negative")
-			}
-
-			// Validate against int64 overflow during itemTotal multiplication and running total
-			qty := int64(itemInput.Quantity)
-			if itemInput.PriceAtPurchase > 0 && qty > math.MaxInt64/itemInput.PriceAtPurchase {
-				return apierr.BadRequestError("Order total exceeds maximum allowable limit")
-			}
-			itemTotal := itemInput.PriceAtPurchase * qty
-			if itemTotal > math.MaxInt64-totalAmount {
-				return apierr.BadRequestError("Order total exceeds maximum allowable limit")
-			}
-			totalAmount += itemTotal
-
-			item := model.OrderItem{
-				ID:              uuid.New(),
-				OrderID:         orderID,
-				VariantID:       itemInput.VariantID,
-				Quantity:        itemInput.Quantity,
-				PriceAtPurchase: itemInput.PriceAtPurchase,
-				ProductSnapshot: itemInput.ProductSnapshot,
-			}
-			orderItems = append(orderItems, item)
-		}
-
-		finalTotal := totalAmount - in.DiscountAmount + in.ShippingAmount + in.TaxAmount
-		if finalTotal < 0 {
-			finalTotal = 0
-		}
-
-		newOrder := &model.Order{
-			ID:              orderID,
-			CustomerID:      in.CustomerID,
-			CustomerEmail:   in.CustomerEmail,
-			ShippingAddress: in.ShippingAddress,
-			Status:          model.OrderStatusPending,
-			CouponID:        in.CouponID,
-			CouponCode:      in.CouponCode,
-			DiscountAmount:  in.DiscountAmount,
-			TotalAmount:     finalTotal,
-			Currency:        in.Currency,
-			Items:           orderItems,
-		}
-
-		// Persist the root order record.
-		if err := s.orderRepo.CreateOrder(ctx, tx, newOrder); err != nil {
-			return err
-		}
-
-		// Persist each line item associated with the order.
-		for i := range orderItems {
-			if err := s.orderRepo.AddOrderItem(ctx, tx, &orderItems[i]); err != nil {
-				return err
-			}
-		}
-
-		// Insert initial audit history entry.
-		note := "Order created with status pending"
-		if err := s.orderRepo.AddStatusHistory(ctx, tx, orderID, model.OrderStatusPending, &note); err != nil {
-			return err
-		}
-
-		createdOrder = newOrder
-		return nil
+		var err error
+		createdOrder, err = s.CreateOrderWithTx(ctx, tx, in)
+		return err
 	})
 
 	if err != nil {
@@ -191,6 +208,46 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 	}
 
 	return createdOrder, nil
+}
+
+// restockOrderItems releases the purchased quantity of every line item back to
+// variant stock within the caller's transaction.
+func (s *OrderService) restockOrderItems(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	orderID uuid.UUID,
+) error {
+	items, err := s.orderRepo.GetOrderItems(ctx, tx, orderID)
+	if err != nil {
+		return fmt.Errorf("fetch order items for restock: %w", err)
+	}
+
+	for _, item := range items {
+		if s.inventoryService != nil {
+			if _, err := s.inventoryService.AdjustStockWithTx(
+				ctx,
+				tx,
+				inventory.AdjustStockInput{
+					VariantID: item.VariantID,
+					Quantity:  item.Quantity,
+					Reason:    string(model.InventoryReasonReturn),
+				},
+			); err != nil {
+				return fmt.Errorf("restore inventory for order item %s: %w", item.ID, err)
+			}
+		} else {
+			// Directly record inventory restoration ledger within the transaction
+			ledgerQuery := `
+				INSERT INTO inventory_ledgers (id, variant_id, quantity, reason, created_at)
+				VALUES ($1, $2, $3, 'return'::inventory_reason, now())
+			`
+			if _, err := tx.Exec(ctx, ledgerQuery, uuid.New(), item.VariantID, item.Quantity); err != nil {
+				return fmt.Errorf("restore inventory ledger for order item %s: %w", item.ID, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // GetOrderByID loads an order by its UUID within a read-only database query execution block.
@@ -350,10 +407,24 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 			).WithCode(errcode.CodeInvalidOrderStatus)
 		}
 
+		restocking := ord.Status != model.OrderStatusCancelled && status == model.OrderStatusCancelled
+
 		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, id, status); err != nil {
 			return err
 		}
-		return s.orderRepo.AddStatusHistory(ctx, tx, id, status, notes)
+		if err := s.orderRepo.AddStatusHistory(ctx, tx, id, status, notes); err != nil {
+			return err
+		}
+
+		// Restore stock when an order is cancelled (by admin or customer) so the
+		// reserved/purchased quantities return to salable stock in the same transaction.
+		if restocking {
+			if err := s.restockOrderItems(ctx, tx, id); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	})
 
 	if err != nil {
@@ -412,10 +483,10 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 			return fmt.Errorf("fetch order items for cancellation: %w", err)
 		}
 
-		// Restore stock for purchased items
+		// Restore stock for purchased items within the same transaction
 		for _, item := range items {
 			if s.inventoryService != nil {
-				_, err := s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
+				_, err := s.inventoryService.AdjustStockWithTx(ctx, tx, inventory.AdjustStockInput{
 					VariantID: item.VariantID,
 					Quantity:  item.Quantity,
 					Reason:    string(model.InventoryReasonReturn),

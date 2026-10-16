@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,14 +20,40 @@ import (
 type CartService interface {
 	GetOrCreateCart(ctx context.Context, userID *uuid.UUID, sessionID *string) (*model.Cart, error)
 	ClearCart(ctx context.Context, userID *uuid.UUID, sessionID *string) error
+	// GetOrCreateCartWithTx resolves (or creates) the cart inside the caller's
+	// transaction with a FOR UPDATE row lock, serializing concurrent checkouts.
+	GetOrCreateCartWithTx(
+		ctx context.Context,
+		tx database.QueryExecutor,
+		userID *uuid.UUID,
+		sessionID *string,
+	) (*model.Cart, error)
+	// ClearCartWithTx clears the cart inside the caller's transaction so checkout
+	// and cart clearance commit atomically.
+	ClearCartWithTx(
+		ctx context.Context,
+		tx database.QueryExecutor,
+		userID *uuid.UUID,
+		sessionID *string,
+	) error
 }
 
 type OrderService interface {
 	CreateOrder(ctx context.Context, in *order.CreateOrderInput) (*model.Order, error)
+	// CreateOrderWithTx creates the order inside the caller's transaction so
+	// stock reservation, coupon redemption, and payment stay atomic with it.
+	CreateOrderWithTx(
+		ctx context.Context,
+		tx database.QueryExecutor,
+		in *order.CreateOrderInput,
+	) (*model.Order, error)
 }
 
 type InventoryService interface {
 	AdjustStock(ctx context.Context, in inventory.AdjustStockInput) (*model.InventoryStock, error)
+	// ReserveStockWithTx places a temporary stock hold inside the caller's
+	// transaction so checkout stays atomic.
+	ReserveStockWithTx(ctx context.Context, tx database.QueryExecutor, in inventory.ReserveStockInput) (*model.InventoryReservation, error)
 }
 
 type UserService interface {
@@ -46,7 +73,14 @@ type CheckoutService struct {
 	runner           database.Runner
 }
 
-func NewService(cartService CartService, orderService OrderService, userService UserService, addressService AddressService, inventoryService InventoryService, runner ...database.Runner) *CheckoutService {
+func NewService(
+	cartService CartService,
+	orderService OrderService,
+	userService UserService,
+	addressService AddressService,
+	inventoryService InventoryService,
+	runner ...database.Runner,
+) *CheckoutService {
 	s := &CheckoutService{
 		cartService:      cartService,
 		orderService:     orderService,
@@ -68,93 +102,119 @@ type CheckoutInput struct {
 }
 
 func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*model.Order, error) {
-	cartData, err := s.cartService.GetOrCreateCart(ctx, &in.CustomerID, nil)
-	if err != nil {
-		return nil, err
+	if s.runner == nil {
+		return nil, apierr.InternalServerError("Database runner unavailable")
 	}
 
-	if len(cartData.Items) == 0 {
-		return nil, apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
-	}
+	var createdOrder *model.Order
 
-	var items []order.CreateOrderItemInput
-	var grossTotal int64 = 0
-	var totalDiscount int64 = 0
-	var currency = "EGP"
-	if len(cartData.Items) > 0 && cartData.Items[0].Currency != "" {
-		currency = cartData.Items[0].Currency
-	}
+	// One transaction covers cart lock, authoritative pricing, coupon validation
+	// and redemption, stock reservation, order creation, payment recording, and
+	// cart clearance. Any failure rolls everything back (including reservations),
+	// so there is no deducted-but-no-order or order-without-payment outcome.
+	err := s.runner.WithTx(ctx, func(tx database.QueryExecutor) error {
+		// 1. Lock the customer's cart FOR UPDATE so concurrent checkouts serialize.
+		cart, err := s.cartService.GetOrCreateCartWithTx(ctx, tx, &in.CustomerID, nil)
+		if err != nil {
+			return err
+		}
 
-	user, err := s.userService.GetUserByID(ctx, in.CustomerID)
-	if err != nil {
-		return nil, err
-	}
+		if len(cart.Items) == 0 {
+			return apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
+		}
 
-	shippingAddr, err := s.addressService.GetAddress(ctx, in.ShippingAddressID, in.CustomerID)
-	if err != nil {
-		return nil, err
-	}
+		// 2. Resolve the user and shipping address (read-only lookups).
+		user, err := s.userService.GetUserByID(ctx, in.CustomerID)
+		if err != nil {
+			return err
+		}
 
-	for _, item := range cartData.Items {
-		var snapshotBytes []byte
+		shippingAddr, err := s.addressService.GetAddress(ctx, in.ShippingAddressID, in.CustomerID)
+		if err != nil {
+			return err
+		}
 
-		// Build a complete, immutable snapshot of the product & variant at the moment of checkout
-		snapshotMap := make(map[string]any)
-		if item.Variant != nil {
-			snapshotMap["variantId"] = item.Variant.ID.String()
-			snapshotMap["sku"] = item.Variant.SKU
-			snapshotMap["title"] = item.Variant.Title
-			snapshotMap["price"] = item.Variant.Price
-			if item.Variant.Thumbnail != nil && item.Variant.Thumbnail.PublicURL != "" {
-				snapshotMap["thumbnailUrl"] = item.Variant.Thumbnail.PublicURL
-				snapshotMap["image"] = item.Variant.Thumbnail.PublicURL
+		// 3. Authoritative pricing: re-read live variant prices, reject items with
+		//    a missing price, and compute the gross total server-side.
+		var orderItems []order.CreateOrderItemInput
+		var grossTotal int64
+		currency := "EGP"
+		for _, item := range cart.Items {
+			if item.Variant == nil || item.Variant.Price == nil {
+				return apierr.BadRequestError(
+					fmt.Sprintf("Variant %s has no defined price", item.VariantID),
+				).WithCode(apierr.CodeInvalidInput)
 			}
-			if len(item.Variant.Media) > 0 && item.Variant.Media[0].Object != nil && item.Variant.Media[0].Object.PublicURL != "" {
-				snapshotMap["image"] = item.Variant.Media[0].Object.PublicURL
-				if _, ok := snapshotMap["thumbnailUrl"]; !ok {
-					snapshotMap["thumbnailUrl"] = item.Variant.Media[0].Object.PublicURL
+			unitPrice := *item.Variant.Price
+			if item.Variant.Currency != nil && *item.Variant.Currency != "" {
+				currency = *item.Variant.Currency
+			}
+
+			qty := int64(item.Quantity)
+			if unitPrice > 0 && qty > math.MaxInt64/unitPrice {
+				return apierr.BadRequestError("Order total exceeds maximum allowable limit")
+			}
+			itemTotal := unitPrice * qty
+			if itemTotal > math.MaxInt64-grossTotal {
+				return apierr.BadRequestError("Order total exceeds maximum allowable limit")
+			}
+			grossTotal += itemTotal
+
+			// Build a complete, immutable snapshot of the product & variant at checkout.
+			snapshotMap := make(map[string]any)
+			if item.Variant != nil {
+				snapshotMap["variantId"] = item.Variant.ID.String()
+				snapshotMap["sku"] = item.Variant.SKU
+				snapshotMap["title"] = item.Variant.Title
+				snapshotMap["price"] = unitPrice
+				if item.Variant.Thumbnail != nil && item.Variant.Thumbnail.PublicURL != "" {
+					snapshotMap["thumbnailUrl"] = item.Variant.Thumbnail.PublicURL
+					snapshotMap["image"] = item.Variant.Thumbnail.PublicURL
+				}
+				if len(item.Variant.Media) > 0 && item.Variant.Media[0].Object != nil && item.Variant.Media[0].Object.PublicURL != "" {
+					snapshotMap["image"] = item.Variant.Media[0].Object.PublicURL
+					if _, ok := snapshotMap["thumbnailUrl"]; !ok {
+						snapshotMap["thumbnailUrl"] = item.Variant.Media[0].Object.PublicURL
+					}
 				}
 			}
-		}
 
-		if item.ThumbnailURL != "" {
-			snapshotMap["thumbnailUrl"] = item.ThumbnailURL
-			snapshotMap["image"] = item.ThumbnailURL
-		}
+			if item.ThumbnailURL != "" {
+				snapshotMap["thumbnailUrl"] = item.ThumbnailURL
+				snapshotMap["image"] = item.ThumbnailURL
+			}
 
-		if item.Product != nil {
-			snapshotMap["productId"] = item.Product.ID.String()
-			snapshotMap["productTitle"] = item.Product.Title
-			snapshotMap["slug"] = item.Product.Slug
-			if item.Product.Thumbnail != nil && item.Product.Thumbnail.PublicURL != "" {
-				if _, ok := snapshotMap["thumbnailUrl"]; !ok {
-					snapshotMap["thumbnailUrl"] = item.Product.Thumbnail.PublicURL
-					snapshotMap["image"] = item.Product.Thumbnail.PublicURL
+			if item.Product != nil {
+				snapshotMap["productId"] = item.Product.ID.String()
+				snapshotMap["productTitle"] = item.Product.Title
+				snapshotMap["slug"] = item.Product.Slug
+				if item.Product.Thumbnail != nil && item.Product.Thumbnail.PublicURL != "" {
+					if _, ok := snapshotMap["thumbnailUrl"]; !ok {
+						snapshotMap["thumbnailUrl"] = item.Product.Thumbnail.PublicURL
+						snapshotMap["image"] = item.Product.Thumbnail.PublicURL
+					}
+				}
+				if title, ok := snapshotMap["title"].(string); !ok || title == "" {
+					snapshotMap["title"] = item.Product.Title
 				}
 			}
-			if title, ok := snapshotMap["title"].(string); !ok || title == "" {
-				snapshotMap["title"] = item.Product.Title
-			}
+
+			snapshotBytes, _ := json.Marshal(snapshotMap)
+
+			orderItems = append(orderItems, order.CreateOrderItemInput{
+				VariantID:       item.VariantID,
+				Quantity:        item.Quantity,
+				PriceAtPurchase: unitPrice,
+				ProductSnapshot: string(snapshotBytes),
+			})
 		}
 
-		snapshotBytes, _ = json.Marshal(snapshotMap)
-
-		qty := int64(item.Quantity)
-		grossTotal += item.PriceAtPurchase * qty
-
-		items = append(items, order.CreateOrderItemInput{
-			VariantID:       item.VariantID,
-			Quantity:        item.Quantity,
-			PriceAtPurchase: item.PriceAtPurchase,
-			ProductSnapshot: string(snapshotBytes),
-		})
-	}
-
-	var appliedCouponCode *string
-
-	// Validate coupon if provided
-	if in.CouponID != nil && s.runner != nil {
-		err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+		// 4. Validate and apply the coupon inside the same transaction, locking the coupon row
+		//    so concurrent redemptions are serialized; the unique index on
+		//    coupon_redemptions(coupon_id, user_id) backstops the per-user limit.
+		var appliedCouponCode *string
+		var totalDiscount int64
+		if in.CouponID != nil {
 			var (
 				cID           uuid.UUID
 				code          string
@@ -165,18 +225,18 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 				perUserLimit  sql.NullInt32
 				startsAt      *time.Time
 				expiresAt     *time.Time
-				status        string
+				couponStatus  string
 			)
 
-			query := `
+			scanErr := tx.QueryRow(ctx, `
 				SELECT id, code, discount_type, discount_value, min_cart_amount,
 				       usage_limit, per_user_limit, starts_at, expires_at, status
 				FROM coupons
 				WHERE id = $1
-			`
-			scanErr := db.QueryRow(ctx, query, *in.CouponID).Scan(
+				FOR UPDATE
+			`, *in.CouponID).Scan(
 				&cID, &code, &discountType, &discountValue, &minCartAmount,
-				&usageLimit, &perUserLimit, &startsAt, &expiresAt, &status,
+				&usageLimit, &perUserLimit, &startsAt, &expiresAt, &couponStatus,
 			)
 			if scanErr != nil {
 				if errors.Is(scanErr, sql.ErrNoRows) {
@@ -187,7 +247,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 
 			appliedCouponCode = &code
 
-			if status != "active" {
+			if couponStatus != "active" {
 				return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' is not active", code)).WithCode("COUPON_INACTIVE")
 			}
 
@@ -206,7 +266,9 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			// Check global usage limit
 			if usageLimit.Valid {
 				var usedCount int
-				_ = db.QueryRow(ctx, `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1`, cID).Scan(&usedCount)
+				if scanErr := tx.QueryRow(ctx, `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1`, cID).Scan(&usedCount); scanErr != nil {
+					return apierr.InternalServerError("Failed to check coupon usage").Wrap(scanErr)
+				}
 				if usedCount >= int(usageLimit.Int32) {
 					return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' usage limit has been reached", code)).WithCode("COUPON_USAGE_LIMIT_EXCEEDED")
 				}
@@ -218,7 +280,9 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 				userLimit = int(perUserLimit.Int32)
 			}
 			var userUsedCount int
-			_ = db.QueryRow(ctx, `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1 AND user_id = $2`, cID, in.CustomerID).Scan(&userUsedCount)
+			if scanErr := tx.QueryRow(ctx, `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1 AND user_id = $2`, cID, in.CustomerID).Scan(&userUsedCount); scanErr != nil {
+				return apierr.InternalServerError("Failed to check per-user coupon limit").Wrap(scanErr)
+			}
 			if userUsedCount >= userLimit {
 				return apierr.BadRequestError(fmt.Sprintf("You have already used coupon '%s' the maximum allowable times", code)).WithCode("COUPON_USER_LIMIT_EXCEEDED")
 			}
@@ -232,118 +296,100 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			if totalDiscount > grossTotal {
 				totalDiscount = grossTotal
 			}
-
-			return nil
-		})
-
-		if err != nil {
-			return nil, err
 		}
-	}
 
-	addr := &model.Address{
-		Street:  shippingAddr.Line1,
-		City:    shippingAddr.City,
-		Country: shippingAddr.Country,
-	}
-
-	if shippingAddr.State != nil {
-		addr.State = *shippingAddr.State
-	}
-	if shippingAddr.PostalCode != nil {
-		addr.PostalCode = *shippingAddr.PostalCode
-	}
-
-	// Charge shipping consistently with the cart-quote rule:
-	// free shipping at or above 15000 minor units, 999 otherwise.
-	var shippingCost int64
-	if grossTotal > 0 && grossTotal < 15000 {
-		shippingCost = 999
-	}
-
-	orderIn := &order.CreateOrderInput{
-		CustomerID:      &in.CustomerID,
-		CustomerEmail:   user.Identifier,
-		ShippingAddress: addr,
-		CouponID:        in.CouponID,
-		CouponCode:      appliedCouponCode,
-		DiscountAmount:  totalDiscount,
-		ShippingAmount:  shippingCost,
-		Currency:        currency,
-		Items:           items,
-	}
-
-	// Reserve inventory / deduct stock atomically during checkout
-	if s.inventoryService != nil {
-		deducted := make([]order.CreateOrderItemInput, 0, len(items))
-		for _, item := range items {
-			_, err := s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
-				VariantID: item.VariantID,
-				Quantity:  -item.Quantity,
-				Reason:    string(model.InventoryReasonSale),
-			})
-			if err != nil {
-				// Compensate already deducted items if a subsequent item fails
-				for _, prev := range deducted {
-					_, _ = s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
-						VariantID: prev.VariantID,
-						Quantity:  prev.Quantity,
-						Reason:    string(model.InventoryReasonAdjustment),
-					})
-				}
-				return nil, err
-			}
-			deducted = append(deducted, item)
+		// 5. Charge shipping consistently with the cart-quote rule:
+		//    free shipping at/above 15000 minor units, 999 otherwise.
+		var shippingCost int64
+		if grossTotal > 0 && grossTotal < 15000 {
+			shippingCost = 999
 		}
-	}
 
-	createdOrder, err := s.orderService.CreateOrder(ctx, orderIn)
-	if err != nil {
+		// 6. Reserve stock for every item (reservation at checkout; committed on
+		//    payment, released on expiry or cancellation). All reservations live in
+		//    this transaction and roll back with it on any failure.
 		if s.inventoryService != nil {
-			// Roll back stock deductions if order creation failed
-			for _, item := range items {
-				_, _ = s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
+			for _, item := range orderItems {
+				if _, err := s.inventoryService.ReserveStockWithTx(ctx, tx, inventory.ReserveStockInput{
 					VariantID: item.VariantID,
+					CartID:    &cart.ID,
 					Quantity:  item.Quantity,
-					Reason:    string(model.InventoryReasonAdjustment),
-				})
+				}); err != nil {
+					return err
+				}
 			}
 		}
+
+		// 7. Create the order inside this transaction.
+		addr := &model.Address{
+			Street:  shippingAddr.Line1,
+			City:    shippingAddr.City,
+			Country: shippingAddr.Country,
+		}
+		if shippingAddr.State != nil {
+			addr.State = *shippingAddr.State
+		}
+		if shippingAddr.PostalCode != nil {
+			addr.PostalCode = *shippingAddr.PostalCode
+		}
+
+		orderIn := &order.CreateOrderInput{
+			CustomerID:      &in.CustomerID,
+			CustomerEmail:   user.Identifier,
+			ShippingAddress: addr,
+			CouponID:        in.CouponID,
+			CouponCode:      appliedCouponCode,
+			DiscountAmount:  totalDiscount,
+			ShippingAmount:  shippingCost,
+			Currency:        currency,
+			Items:           orderItems,
+		}
+
+		var createErr error
+		createdOrder, createErr = s.orderService.CreateOrderWithTx(ctx, tx, orderIn)
+		if createErr != nil {
+			return createErr
+		}
+
+		// 8. Record the coupon redemption; surface errors so the transaction rolls back.
+		if in.CouponID != nil && totalDiscount > 0 {
+			redemptionQuery := `
+				INSERT INTO coupon_redemptions (id, coupon_id, user_id, order_id, discount_amount, created_at)
+				VALUES ($1, $2, $3, $4, $5, NOW())
+			`
+			if _, execErr := tx.Exec(ctx, redemptionQuery, uuid.New(), *in.CouponID, in.CustomerID, createdOrder.ID, totalDiscount); execErr != nil {
+				return apierr.InternalServerError("Failed to record coupon redemption").Wrap(execErr)
+			}
+		}
+
+		// 9. Record the payment transaction; surface errors so the transaction rolls back.
+		provider := "cash_on_delivery"
+		providerTxID := fmt.Sprintf("COD-%s", createdOrder.ID.String()[:8])
+		if in.PaymentMethod != "" && in.PaymentMethod != "cod" && in.PaymentMethod != "cash_on_delivery" {
+			provider = in.PaymentMethod
+			providerTxID = fmt.Sprintf("PAY-%s", createdOrder.ID.String()[:8])
+		}
+
+		paymentQuery := `
+			INSERT INTO payments (id, order_id, amount, currency, status, provider, provider_transaction_id, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, 'pending'::payment_status, $5, $6, NOW(), NOW())
+		`
+		if _, execErr := tx.Exec(ctx, paymentQuery, uuid.New(), createdOrder.ID, createdOrder.TotalAmount, createdOrder.Currency, provider, providerTxID); execErr != nil {
+			return apierr.InternalServerError("Failed to record payment").Wrap(execErr)
+		}
+
+		// 10. Clear the cart inside the same transaction so checkout and cart
+		//     clearance commit atomically (no duplicate orders from a failed clear).
+		if err := s.cartService.ClearCartWithTx(ctx, tx, &in.CustomerID, nil); err != nil {
+			return apierr.InternalServerError("Failed to clear cart").Wrap(err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		return nil, err
 	}
-
-	// Record coupon redemption and payment details if runner is available
-	if s.runner != nil {
-		_ = s.runner.WithTx(ctx, func(tx database.QueryExecutor) error {
-			// Record coupon redemption
-			if in.CouponID != nil && totalDiscount > 0 {
-				redemptionQuery := `
-					INSERT INTO coupon_redemptions (id, coupon_id, user_id, order_id, discount_amount, created_at)
-					VALUES ($1, $2, $3, $4, $5, NOW())
-				`
-				_, _ = tx.Exec(ctx, redemptionQuery, uuid.New(), *in.CouponID, in.CustomerID, createdOrder.ID, totalDiscount)
-			}
-
-			// Record payment transaction
-			provider := "cash_on_delivery"
-			providerTxID := fmt.Sprintf("COD-%s", createdOrder.ID.String()[:8])
-			if in.PaymentMethod != "" && in.PaymentMethod != "cod" && in.PaymentMethod != "cash_on_delivery" {
-				provider = in.PaymentMethod
-				providerTxID = fmt.Sprintf("PAY-%s", createdOrder.ID.String()[:8])
-			}
-
-			paymentQuery := `
-				INSERT INTO payments (id, order_id, amount, currency, status, provider, provider_transaction_id, created_at, updated_at)
-				VALUES ($1, $2, $3, $4, 'pending'::payment_status, $5, $6, NOW(), NOW())
-			`
-			_, _ = tx.Exec(ctx, paymentQuery, uuid.New(), createdOrder.ID, createdOrder.TotalAmount, createdOrder.Currency, provider, providerTxID)
-
-			return nil
-		})
-	}
-
-	// Clear the user's cart after successful order creation
-	_ = s.cartService.ClearCart(ctx, &in.CustomerID, nil)
 
 	return createdOrder, nil
 }

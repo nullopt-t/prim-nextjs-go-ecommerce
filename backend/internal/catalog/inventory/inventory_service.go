@@ -67,54 +67,11 @@ func (s *InventoryService) AdjustStock(
 	ctx context.Context,
 	in AdjustStockInput,
 ) (*model.InventoryStock, error) {
-	if in.VariantID == uuid.Nil {
-		return nil, apierr.BadRequestError("Variant ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
-	if in.Quantity == 0 {
-		return nil, apierr.BadRequestError("Quantity adjustment cannot be zero").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
-	reason, err := model.ParseInventoryReason(in.Reason)
-	if err != nil {
-		return nil, apierr.BadRequestError("Invalid inventory reason: " + in.Reason).
-			WithCode(errcode.CodeInvalidInventoryReason).
-			Wrap(err)
-	}
-
 	var updatedStock *model.InventoryStock
 
 	txErr := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		if err := s.repo.LockVariantForUpdate(ctx, tx, in.VariantID); err != nil {
-			return err
-		}
-
-		currentStock, err := s.repo.GetStock(ctx, tx, in.VariantID)
-		if err != nil {
-			return err
-		}
-
-		if in.Quantity < 0 && (currentStock.OnHandQuantity+in.Quantity < currentStock.ReservedQuantity) {
-			return apierr.BadRequestError(
-				fmt.Sprintf("Insufficient available inventory: negative adjustment (%d) drops on-hand stock (%d) below active reservations (%d)",
-					in.Quantity, currentStock.OnHandQuantity, currentStock.ReservedQuantity),
-			).WithCode(errcode.CodeInsufficientInventory)
-		}
-
-		ledger := &model.InventoryLedger{
-			ID:        uuid.New(),
-			VariantID: in.VariantID,
-			Quantity:  in.Quantity,
-			Reason:    reason,
-		}
-
-		if err := s.repo.CreateLedger(ctx, tx, ledger); err != nil {
-			return err
-		}
-
-		updatedStock, err = s.repo.GetStock(ctx, tx, in.VariantID)
+		var err error
+		updatedStock, err = s.adjustStockInTx(ctx, tx, in)
 		return err
 	})
 
@@ -138,6 +95,86 @@ func (s *InventoryService) AdjustStock(
 	}
 
 	return updatedStock, nil
+}
+
+// AdjustStockWithTx adjusts variant stock within the caller's database transaction,
+// so stock movements can participate in wider atomic units of work (e.g. checkout
+// or order cancellation) instead of opening their own separate transaction.
+func (s *InventoryService) AdjustStockWithTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	in AdjustStockInput,
+) (*model.InventoryStock, error) {
+	if _, err := validateAdjustStockInput(in); err != nil {
+		return nil, err
+	}
+	return s.adjustStockInTx(ctx, tx, in)
+}
+
+// validateAdjustStockInput checks shared preconditions for stock adjustments and
+// returns the parsed inventory reason.
+func validateAdjustStockInput(in AdjustStockInput) (model.InventoryReason, error) {
+	if in.VariantID == uuid.Nil {
+		return "", apierr.BadRequestError("Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	if in.Quantity == 0 {
+		return "", apierr.BadRequestError("Quantity adjustment cannot be zero").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	reason, err := model.ParseInventoryReason(in.Reason)
+	if err != nil {
+		return "", apierr.BadRequestError("Invalid inventory reason: " + in.Reason).
+			WithCode(errcode.CodeInvalidInventoryReason).
+			Wrap(err)
+	}
+
+	return reason, nil
+}
+
+// adjustStockInTx executes a stock adjustment inside an already-begun transaction.
+// It row-locks the variant, rejects negative adjustments that would drop on-hand
+// stock below active reservations, and appends a ledger entry.
+func (s *InventoryService) adjustStockInTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	in AdjustStockInput,
+) (*model.InventoryStock, error) {
+	reason, err := validateAdjustStockInput(in)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.LockVariantForUpdate(ctx, tx, in.VariantID); err != nil {
+		return nil, err
+	}
+
+	currentStock, err := s.repo.GetStock(ctx, tx, in.VariantID)
+	if err != nil {
+		return nil, err
+	}
+
+	if in.Quantity < 0 && (currentStock.OnHandQuantity+in.Quantity < currentStock.ReservedQuantity) {
+		return nil, apierr.BadRequestError(
+			fmt.Sprintf("Insufficient available inventory: negative adjustment (%d) drops on-hand stock (%d) below active reservations (%d)",
+				in.Quantity, currentStock.OnHandQuantity, currentStock.ReservedQuantity),
+		).WithCode(errcode.CodeInsufficientInventory)
+	}
+
+	ledger := &model.InventoryLedger{
+		ID:        uuid.New(),
+		VariantID: in.VariantID,
+		Quantity:  in.Quantity,
+		Reason:    reason,
+	}
+
+	if err := s.repo.CreateLedger(ctx, tx, ledger); err != nil {
+		return nil, err
+	}
+
+	return s.repo.GetStock(ctx, tx, in.VariantID)
 }
 
 // GetStockByVariantID calculates and returns current stock levels (on-hand, reserved, available) for a variant.
@@ -263,60 +300,9 @@ func (s *InventoryService) ReserveStock(
 	var resultReservation *model.InventoryReservation
 
 	err := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		// Row-level lock to prevent concurrency overselling
-		if err := s.repo.LockVariantForUpdate(ctx, tx, in.VariantID); err != nil {
-			return err
-		}
-
-		stock, err := s.repo.GetStock(ctx, tx, in.VariantID)
-		if err != nil {
-			return err
-		}
-
-		// Check if active cart reservation already exists to extend / upsert
-		if in.CartID != nil {
-			existing, err := s.repo.GetActiveCartReservation(ctx, tx, *in.CartID, in.VariantID)
-			if err == nil && existing != nil {
-				// stock.AvailableQuantity already subtracts existing.Quantity; account for existing hold
-				effectiveAvailable := stock.AvailableQuantity + existing.Quantity
-				newQty := existing.Quantity + in.Quantity
-				if effectiveAvailable < newQty {
-					return apierr.BadRequestError(
-						fmt.Sprintf("Insufficient available stock (%d) for reservation (%d)", effectiveAvailable, newQty),
-					).WithCode(errcode.CodeInsufficientInventory)
-				}
-
-				newExpiry := time.Now().Add(ttl)
-				if err := s.repo.UpdateReservationQuantityAndExpiry(ctx, tx, existing.ID, newQty, newExpiry); err != nil {
-					return err
-				}
-				existing.Quantity = newQty
-				existing.ExpiresAt = newExpiry
-				resultReservation = existing
-				return nil
-			}
-		}
-
-		if stock.AvailableQuantity < in.Quantity {
-			return apierr.BadRequestError(
-				fmt.Sprintf("Insufficient available stock (%d) for reservation (%d)", stock.AvailableQuantity, in.Quantity),
-			).WithCode(errcode.CodeInsufficientInventory)
-		}
-
-		newRes := &model.InventoryReservation{
-			ID:        uuid.New(),
-			VariantID: in.VariantID,
-			CartID:    in.CartID,
-			Quantity:  in.Quantity,
-			ExpiresAt: time.Now().Add(ttl),
-		}
-
-		if err := s.repo.CreateReservation(ctx, tx, newRes); err != nil {
-			return err
-		}
-
-		resultReservation = newRes
-		return nil
+		var err error
+		resultReservation, err = s.reserveStockInTx(ctx, tx, in, ttl)
+		return err
 	})
 
 	if err != nil {
@@ -339,6 +325,104 @@ func (s *InventoryService) ReserveStock(
 	}
 
 	return resultReservation, nil
+}
+
+// ReserveStockWithTx places a temporary stock hold within the caller's database
+// transaction, allowing checkout to reserve, order, and commit/release stock
+// atomically instead of across independent transactions.
+func (s *InventoryService) ReserveStockWithTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	in ReserveStockInput,
+) (*model.InventoryReservation, error) {
+	if err := validateReserveStockInput(in); err != nil {
+		return nil, err
+	}
+
+	ttl := in.Duration
+	if ttl <= 0 {
+		ttl = 15 * time.Minute
+	}
+
+	return s.reserveStockInTx(ctx, tx, in, ttl)
+}
+
+// validateReserveStockInput checks shared preconditions for stock reservations.
+func validateReserveStockInput(in ReserveStockInput) error {
+	if in.VariantID == uuid.Nil {
+		return apierr.BadRequestError("Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	if in.Quantity <= 0 {
+		return apierr.BadRequestError("Reservation quantity must be positive").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	return nil
+}
+
+// reserveStockInTx executes a stock reservation inside an already-begun transaction.
+// It row-locks the variant, extends an existing active cart reservation when present,
+// and otherwise inserts a new reservation after checking salable stock.
+func (s *InventoryService) reserveStockInTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	in ReserveStockInput,
+	ttl time.Duration,
+) (*model.InventoryReservation, error) {
+	// Row-level lock to prevent concurrency overselling
+	if err := s.repo.LockVariantForUpdate(ctx, tx, in.VariantID); err != nil {
+		return nil, err
+	}
+
+	stock, err := s.repo.GetStock(ctx, tx, in.VariantID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if active cart reservation already exists to extend / upsert
+	if in.CartID != nil {
+		existing, err := s.repo.GetActiveCartReservation(ctx, tx, *in.CartID, in.VariantID)
+		if err == nil && existing != nil {
+			// stock.AvailableQuantity already subtracts existing.Quantity; account for existing hold
+			effectiveAvailable := stock.AvailableQuantity + existing.Quantity
+			newQty := existing.Quantity + in.Quantity
+			if effectiveAvailable < newQty {
+				return nil, apierr.BadRequestError(
+					fmt.Sprintf("Insufficient available stock (%d) for reservation (%d)", effectiveAvailable, newQty),
+				).WithCode(errcode.CodeInsufficientInventory)
+			}
+
+			newExpiry := time.Now().Add(ttl)
+			if err := s.repo.UpdateReservationQuantityAndExpiry(ctx, tx, existing.ID, newQty, newExpiry); err != nil {
+				return nil, err
+			}
+			existing.Quantity = newQty
+			existing.ExpiresAt = newExpiry
+			return existing, nil
+		}
+	}
+
+	if stock.AvailableQuantity < in.Quantity {
+		return nil, apierr.BadRequestError(
+			fmt.Sprintf("Insufficient available stock (%d) for reservation (%d)", stock.AvailableQuantity, in.Quantity),
+		).WithCode(errcode.CodeInsufficientInventory)
+	}
+
+	newRes := &model.InventoryReservation{
+		ID:        uuid.New(),
+		VariantID: in.VariantID,
+		CartID:    in.CartID,
+		Quantity:  in.Quantity,
+		ExpiresAt: time.Now().Add(ttl),
+	}
+
+	if err := s.repo.CreateReservation(ctx, tx, newRes); err != nil {
+		return nil, err
+	}
+
+	return newRes, nil
 }
 
 // ReleaseReservation cancels a specific inventory reservation hold, immediately returning units to available stock.
