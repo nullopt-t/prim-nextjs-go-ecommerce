@@ -140,16 +140,17 @@ func (r *ProductRepository) GetByIDWithDeleted(
 	return r.get(ctx, qe, "id = $1", id)
 }
 
-// GetBySlug retrieves a single non-deleted product by its public SEO slug or UUID.
+// GetBySlug retrieves a single published, non-deleted product by its public SEO slug or UUID.
+// Unpublished (draft/archived) products must not be reachable through public storefront lookups.
 func (r *ProductRepository) GetBySlug(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	slug string,
 ) (*model.Product, error) {
 	if parsedUUID, err := uuid.Parse(slug); err == nil && parsedUUID != uuid.Nil {
-		return r.get(ctx, qe, "(slug = $1 OR id = $2) AND deleted_at IS NULL", slug, parsedUUID)
+		return r.get(ctx, qe, "(slug = $1 OR id = $2) AND deleted_at IS NULL AND status = $3", slug, parsedUUID, model.PublicationStatusPublished)
 	}
-	return r.get(ctx, qe, "slug = $1 AND deleted_at IS NULL", slug)
+	return r.get(ctx, qe, "slug = $1 AND deleted_at IS NULL AND status = $2", slug, model.PublicationStatusPublished)
 }
 
 // SlugExists checks whether any product (including soft-deleted) has the specified slug.
@@ -591,13 +592,22 @@ func (r *ProductRepository) AdminList(
 		argIdx++
 	}
 
+	// Brand/category name filters require joining the taxonomy tables; the join
+	// must apply to both the count and the select, otherwise the query fails at
+	// runtime (b.name/c.name reference unbound tables).
+	joinStmt := ""
+	if len(q.BrandNames) > 0 || len(q.CategoryNames) > 0 {
+		joinStmt = `LEFT JOIN product_brands b ON b.id = p.brand_id AND b.deleted_at IS NULL
+			LEFT JOIN product_categories c ON c.id = p.category_id AND c.deleted_at IS NULL`
+	}
+
 	whereStmt := ""
 	if len(whereClauses) > 0 {
 		whereStmt = "WHERE " + strings.Join(whereClauses, " AND ")
 	}
 
 	// 1. Total Count
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p %s", whereStmt)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p %s %s", joinStmt, whereStmt)
 	var total int
 	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, fmt.Errorf("count admin products: %w", err)
@@ -646,8 +656,9 @@ func (r *ProductRepository) AdminList(
 		FROM products p
 		%s
 		%s
+		%s
 		LIMIT $%d OFFSET $%d
-	`, whereStmt, orderBy, argIdx, argIdx+1)
+	`, joinStmt, whereStmt, orderBy, argIdx, argIdx+1)
 
 	queryArgs := append(slices.Clone(args), q.PageSize, q.Offset)
 
