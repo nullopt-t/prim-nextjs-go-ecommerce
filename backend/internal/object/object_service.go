@@ -195,3 +195,42 @@ func (os *ObjectService) GetObjectURL(
 ) string {
 	return os.storageProvider.GetPublicURL(bucket, key)
 }
+
+type MediaItem struct {
+	ID          uuid.UUID `json:"id"`
+	Bucket      string    `json:"bucket"`
+	ObjectKey   string    `json:"objectKey"`
+	ContentType string    `json:"contentType"`
+	FileSize    int64     `json:"fileSize"`
+	Status      string    `json:"status"`
+	URL         string    `json:"url"`
+	CreatedAt   string    `json:"createdAt"`
+}
+
+func (os *ObjectService) ListMedia(ctx context.Context, limit, offset int) ([]MediaItem, int, error) {
+	var list []MediaItem
+	var total int
+	err := os.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		objects, count, err := os.objectRepo.ListMedia(ctx, db, limit, offset)
+		if err != nil {
+			return err
+		}
+		total = count
+		for _, obj := range objects {
+			url := os.storageProvider.GetPublicURL(obj.Bucket, obj.Key)
+			list = append(list, MediaItem{
+				ID:          obj.ID,
+				Bucket:      obj.Bucket,
+				ObjectKey:   obj.Key,
+				ContentType: obj.ContentType,
+				FileSize:    obj.FileSize,
+				Status:      string(obj.Status),
+				URL:         url,
+				CreatedAt:   obj.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			})
+		}
+		return nil
+	})
+	return list, total, err
+}
+

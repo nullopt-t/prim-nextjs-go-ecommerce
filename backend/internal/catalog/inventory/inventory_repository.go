@@ -418,3 +418,128 @@ func (r *InventoryRepository) ReleaseExpiredReservations(
 
 	return cmd.RowsAffected(), nil
 }
+
+type InventoryStockItem struct {
+	VariantID         uuid.UUID `json:"variantId"`
+	ProductID         uuid.UUID `json:"productId"`
+	ProductName       string    `json:"productName"`
+	SKU               string    `json:"sku"`
+	VariantTitle      string    `json:"variantTitle"`
+	OnHandQuantity    int       `json:"onHandQuantity"`
+	ReservedQuantity  int       `json:"reservedQuantity"`
+	AvailableQuantity int       `json:"availableQuantity"`
+	IsInStock         bool      `json:"isInStock"`
+	Price             int64     `json:"price"`
+	Currency          string    `json:"currency"`
+	Thumbnail         string    `json:"thumbnail"`
+}
+
+type InventoryLedgerItem struct {
+	ID           uuid.UUID `json:"id"`
+	VariantID    uuid.UUID `json:"variantId"`
+	ProductName  string    `json:"productName"`
+	VariantTitle string    `json:"variantTitle"`
+	SKU          string    `json:"sku"`
+	Quantity     int       `json:"quantity"`
+	Reason       string    `json:"reason"`
+	CreatedAt    time.Time `json:"createdAt"`
+}
+
+func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, qe database.QueryExecutor, limit, offset int) ([]InventoryStockItem, int, error) {
+	var total int
+	_ = qe.QueryRow(ctx, `SELECT COUNT(*) FROM product_variants WHERE deleted_at IS NULL`).Scan(&total)
+
+	query := `
+		SELECT 
+			pv.id,
+			pv.product_id,
+			p.title,
+			pv.sku,
+			pv.title,
+			COALESCE((SELECT SUM(quantity) FROM inventory_ledgers WHERE variant_id = pv.id), 0)::int AS on_hand,
+			COALESCE((SELECT SUM(quantity) FROM inventory_reservations WHERE variant_id = pv.id AND released_at IS NULL AND expires_at > NOW()), 0)::int AS reserved,
+			pv.price,
+			pv.currency
+		FROM product_variants pv
+		JOIN products p ON pv.product_id = p.id
+		WHERE pv.deleted_at IS NULL
+		ORDER BY on_hand ASC, pv.created_at DESC
+		LIMIT $1 OFFSET $2
+	`
+	rows, err := qe.Query(ctx, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list inventory: %w", err)
+	}
+	defer rows.Close()
+
+	var list []InventoryStockItem
+	for rows.Next() {
+		var item InventoryStockItem
+		if err := rows.Scan(
+			&item.VariantID,
+			&item.ProductID,
+			&item.ProductName,
+			&item.SKU,
+			&item.VariantTitle,
+			&item.OnHandQuantity,
+			&item.ReservedQuantity,
+			&item.Price,
+			&item.Currency,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan inventory item: %w", err)
+		}
+		item.AvailableQuantity = item.OnHandQuantity - item.ReservedQuantity
+		if item.AvailableQuantity < 0 {
+			item.AvailableQuantity = 0
+		}
+		item.IsInStock = item.AvailableQuantity > 0
+		list = append(list, item)
+	}
+	return list, total, nil
+}
+
+func (r *InventoryRepository) ListRecentLedgers(ctx context.Context, qe database.QueryExecutor, limit int, variantID *uuid.UUID, productID *uuid.UUID) ([]InventoryLedgerItem, error) {
+	query := `
+		SELECT il.id, il.variant_id, p.title, pv.title, pv.sku, il.quantity, il.reason, il.created_at
+		FROM inventory_ledgers il
+		JOIN product_variants pv ON il.variant_id = pv.id
+		JOIN products p ON pv.product_id = p.id
+		WHERE 1=1
+	`
+	args := []any{}
+	i := 1
+
+	if variantID != nil {
+		query += fmt.Sprintf(" AND il.variant_id = $%d", i)
+		args = append(args, *variantID)
+		i++
+	}
+
+	if productID != nil {
+		query += fmt.Sprintf(" AND p.id = $%d", i)
+		args = append(args, *productID)
+		i++
+	}
+
+	query += fmt.Sprintf(" ORDER BY il.created_at DESC LIMIT $%d", i)
+	args = append(args, limit)
+
+	rows, err := qe.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list recent ledgers: %w", err)
+	}
+	defer rows.Close()
+
+	var list []InventoryLedgerItem
+	for rows.Next() {
+		var item InventoryLedgerItem
+		if err := rows.Scan(
+			&item.ID, &item.VariantID, &item.ProductName, &item.VariantTitle, &item.SKU, &item.Quantity, &item.Reason, &item.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan ledger: %w", err)
+		}
+		list = append(list, item)
+	}
+	return list, nil
+}
+

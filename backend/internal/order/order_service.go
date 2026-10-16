@@ -523,3 +523,41 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 		return nil
 	})
 }
+
+// GetDashboardStats aggregates live metrics for administrative reporting.
+func (s *OrderService) GetDashboardStats(ctx context.Context) (*DashboardStats, error) {
+	var stats *DashboardStats
+	err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		stats, err = s.orderRepo.GetDashboardStats(ctx, db)
+		return err
+	})
+	return stats, err
+}
+
+// ListPayments returns a paginated list of payment transactions.
+func (s *OrderService) ListPayments(ctx context.Context, limit, offset int) ([]PaymentItem, int, error) {
+	var payments []PaymentItem
+	var total int
+	err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		payments, total, err = s.orderRepo.ListPayments(ctx, db, limit, offset)
+		return err
+	})
+	return payments, total, err
+}
+
+// UpdatePaymentStatus changes the status of a payment record.
+func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, status string) error {
+	return s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
+		return s.orderRepo.UpdatePaymentStatus(ctx, tx, id, status)
+	})
+}
+
+// RefundPayment sets the payment status to refunded.
+func (s *OrderService) RefundPayment(ctx context.Context, id uuid.UUID) error {
+	return s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
+		return s.orderRepo.UpdatePaymentStatus(ctx, tx, id, "refunded")
+	})
+}
+

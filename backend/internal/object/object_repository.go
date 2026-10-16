@@ -158,3 +158,38 @@ func (or *ObjectRepository) GetByIDs(
 	}
 	return objects, nil
 }
+
+func (or *ObjectRepository) ListMedia(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	limit, offset int,
+) ([]*model.Object, int, error) {
+	var total int
+	_ = qe.QueryRow(ctx, `SELECT COUNT(*) FROM storage_objects WHERE deleted_at IS NULL`).Scan(&total)
+
+	query := `
+		SELECT id, bucket, object_key, content_type, file_size, status, created_at, updated_at, deleted_at
+		FROM storage_objects
+		WHERE deleted_at IS NULL
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2
+	`
+	rows, err := qe.Query(ctx, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list media: %w", err)
+	}
+	defer rows.Close()
+
+	var objects []*model.Object
+	for rows.Next() {
+		obj := &model.Object{}
+		if err := rows.Scan(
+			&obj.ID, &obj.Bucket, &obj.Key, &obj.ContentType,
+			&obj.FileSize, &obj.Status, &obj.CreatedAt, &obj.UpdatedAt, &obj.DeletedAt,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan media: %w", err)
+		}
+		objects = append(objects, obj)
+	}
+	return objects, total, nil
+}

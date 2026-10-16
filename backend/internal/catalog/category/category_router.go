@@ -41,4 +41,16 @@ func (cr *CategoryRouter) MapRoutes(
 		admin.PATCH("/:id", cr.chandler.UpdateCategory)
 		admin.GET("/:id", cr.chandler.GetCategoryByID)
 	}
+
+	adminAttrs := vgroup.Group("/admin/attributes")
+	adminAttrs.Use(
+		middleware.Authenticate(cr.sessionStore),
+		middleware.Authorize(model.AdminRole),
+	)
+	{
+		adminAttrs.GET("", cr.chandler.ListAttributes)
+		adminAttrs.POST("", cr.chandler.CreateAttribute)
+		adminAttrs.DELETE("/:id", cr.chandler.DeleteAttribute)
+	}
 }
+

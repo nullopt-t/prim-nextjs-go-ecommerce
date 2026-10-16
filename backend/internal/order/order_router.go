@@ -44,6 +44,19 @@ func (r *OrderRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.PATCH("/:id/status", r.handler.UpdateOrderStatus)
 	}
 
+	// Administrative dashboard and payments endpoints group
+	adminRoot := vgroup.Group("/admin")
+	adminRoot.Use(
+		middleware.Authenticate(r.sessionStore),
+		middleware.Authorize(model.AdminRole),
+	)
+	{
+		adminRoot.GET("/dashboard", r.handler.GetDashboard)
+		adminRoot.GET("/payments", r.handler.ListPayments)
+		adminRoot.PATCH("/payments/:id/status", r.handler.UpdatePaymentStatus)
+		adminRoot.POST("/payments/:id/refund", r.handler.RefundPayment)
+	}
+
 	// Customer order endpoints group: protected by customer session authentication.
 	ordersGroup := vgroup.Group("/orders")
 	{

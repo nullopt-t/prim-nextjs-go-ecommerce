@@ -5,6 +5,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/catalog/brand"
 	"github.com/nullopt-t/prim-backend/internal/catalog/cart"
 	"github.com/nullopt-t/prim-backend/internal/catalog/category"
+	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
 	"github.com/nullopt-t/prim-backend/internal/catalog/review"
@@ -18,7 +19,6 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/user"
-	"github.com/nullopt-t/prim-backend/internal/admin"
 	"github.com/minio/minio-go/v7"
 
 	"context"
@@ -127,6 +127,10 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		objectRepository,
 		app.storageProvider,
 	)
+	objectHandler := object.NewHandler(objectService)
+	objectRouter := object.NewRouter(objectHandler, sessionService)
+	objectRouter.MapRoutes(v1)
+
 
 	brandRepo := brand.NewRepository()
 	brandService := brand.NewService(
@@ -169,6 +173,10 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		txRunner,
 		inventoryRepo,
 	)
+	inventoryHandler := inventory.NewHandler(inventoryService)
+	inventoryRouter := inventory.NewRouter(inventoryHandler, sessionService)
+	inventoryRouter.MapRoutes(v1)
+
 
 	variantRepository := variant.NewRepository()
 	variantService := variant.NewService(
@@ -278,12 +286,12 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionService)
 	checkoutRouter.MapRoutes(v1)
 
-	// admin backoffice
-	adminRepo := admin.NewRepository()
-	adminService := admin.NewService(txRunner, adminRepo, objectService)
-	adminHandler := admin.NewHandler(adminService)
-	adminRouter := admin.NewRouter(adminHandler, sessionService)
-	adminRouter.MapRoutes(v1)
+	// coupon & promotions
+	couponRepo := coupon.NewRepository()
+	couponService := coupon.NewService(txRunner, couponRepo)
+	couponHandler := coupon.NewHandler(couponService)
+	couponRouter := coupon.NewRouter(couponHandler, sessionService)
+	couponRouter.MapRoutes(v1)
 }
 
 func (app *App) Shutdown() {

@@ -588,3 +588,72 @@ func (s *InventoryService) CheckAvailability(
 
 	return stock.AvailableQuantity >= quantity, stock, nil
 }
+
+func (s *InventoryService) ListInventoryOverview(ctx context.Context, limit, offset int) ([]InventoryStockItem, int, error) {
+	var items []InventoryStockItem
+	var total int
+	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		items, total, err = s.repo.ListInventoryOverview(ctx, db, limit, offset)
+		return err
+	})
+	return items, total, err
+}
+
+func (s *InventoryService) ListRecentLedgers(ctx context.Context, limit int, variantID *uuid.UUID, productID *uuid.UUID) ([]InventoryLedgerItem, error) {
+	var list []InventoryLedgerItem
+	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		list, err = s.repo.ListRecentLedgers(ctx, db, limit, variantID, productID)
+		return err
+	})
+	return list, err
+}
+
+func (s *InventoryService) AdjustInventory(ctx context.Context, variantID uuid.UUID, delta int, reason string) error {
+	return s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		ledger := &model.InventoryLedger{
+			ID:        uuid.New(),
+			VariantID: variantID,
+			Quantity:  delta,
+			Reason:    model.InventoryReason(reason),
+			CreatedAt: time.Now(),
+		}
+		query := `
+			INSERT INTO inventory_ledgers (id, variant_id, quantity, reason, created_at)
+			VALUES ($1, $2, $3, $4::inventory_reason, NOW())
+		`
+		_, err := tx.Exec(ctx, query, ledger.ID, ledger.VariantID, ledger.Quantity, ledger.Reason)
+		return err
+	})
+}
+
+func (s *InventoryService) AdjustProductInventory(ctx context.Context, productID uuid.UUID, delta int, reason string) error {
+	return s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		var variantID uuid.UUID
+		err := tx.QueryRow(ctx, `
+			SELECT id FROM product_variants
+			WHERE product_id = $1 AND deleted_at IS NULL
+			ORDER BY is_default DESC, created_at ASC
+			LIMIT 1
+		`, productID).Scan(&variantID)
+		if err != nil {
+			return err
+		}
+
+		ledger := &model.InventoryLedger{
+			ID:        uuid.New(),
+			VariantID: variantID,
+			Quantity:  delta,
+			Reason:    model.InventoryReason(reason),
+			CreatedAt: time.Now(),
+		}
+		query := `
+			INSERT INTO inventory_ledgers (id, variant_id, quantity, reason, created_at)
+			VALUES ($1, $2, $3, $4::inventory_reason, NOW())
+		`
+		_, err = tx.Exec(ctx, query, ledger.ID, ledger.VariantID, ledger.Quantity, ledger.Reason)
+		return err
+	})
+}
+

@@ -3,6 +3,7 @@ package order
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -418,3 +419,116 @@ func (h *OrderHandler) AdminGetOrderByID(c *gin.Context) {
 		Data: mapOrderResponse(ord),
 	})
 }
+
+// GetDashboard godoc
+//
+//	@Summary		Get administrative dashboard metrics
+//	@Description	Aggregates platform KPIs including revenue, order volume, and customer statistics.
+//	@Tags			Admin Dashboard
+//	@Produce		json
+//	@Success		200	{object}	api.DataResponse
+//	@Router			/admin/dashboard [get]
+func (h *OrderHandler) GetDashboard(c *gin.Context) {
+	stats, err := h.orderService.GetDashboardStats(c.Request.Context())
+	if err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to fetch dashboard stats").Wrap(err))
+		return
+	}
+	c.JSON(http.StatusOK, api.DataResponse{Data: stats})
+}
+
+// ListPayments godoc
+//
+//	@Summary		List payments (Admin)
+//	@Description	Returns a paginated list of all payment transactions across the platform.
+//	@Tags			Admin Payments
+//	@Produce		json
+//	@Param			page		query	int	false	"Page number"
+//	@Param			pageSize	query	int	false	"Items per page"
+//	@Success		200			{object}	gin.H
+//	@Router			/admin/payments [get]
+func (h *OrderHandler) ListPayments(c *gin.Context) {
+	limit := 50
+	offset := 0
+	if l := c.Query("pageSize"); l != "" {
+		if val, err := strconv.Atoi(l); err == nil && val > 0 {
+			limit = val
+		}
+	}
+	if p := c.Query("page"); p != "" {
+		if val, err := strconv.Atoi(p); err == nil && val > 0 {
+			offset = (val - 1) * limit
+		}
+	}
+
+	payments, total, err := h.orderService.ListPayments(c.Request.Context(), limit, offset)
+	if err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to fetch payments").Wrap(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": payments,
+		"meta": gin.H{
+			"totalItems": total,
+			"pageSize":   limit,
+		},
+	})
+}
+
+// UpdatePaymentStatus godoc
+//
+//	@Summary		Update payment status (Admin)
+//	@Description	Updates status of a payment transaction.
+//	@Tags			Admin Payments
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string	true	"Payment UUID"
+//	@Param			status	body		map[string]string	true	"Status"
+//	@Success		200		{object}	api.MessageResponse
+//	@Router			/admin/payments/{id}/status [patch]
+func (h *OrderHandler) UpdatePaymentStatus(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid payment ID"))
+		return
+	}
+
+	var req struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid status body"))
+		return
+	}
+
+	if err := h.orderService.UpdatePaymentStatus(c.Request.Context(), id, req.Status); err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to update payment status").Wrap(err))
+		return
+	}
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Payment status updated successfully"})
+}
+
+// RefundPayment godoc
+//
+//	@Summary		Refund payment (Admin)
+//	@Description	Marks a payment transaction as refunded.
+//	@Tags			Admin Payments
+//	@Produce		json
+//	@Param			id	path		string	true	"Payment UUID"
+//	@Success		200	{object}	api.MessageResponse
+//	@Router			/admin/payments/{id}/refund [post]
+func (h *OrderHandler) RefundPayment(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid payment ID"))
+		return
+	}
+
+	if err := h.orderService.RefundPayment(c.Request.Context(), id); err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to refund payment").Wrap(err))
+		return
+	}
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Payment marked as refunded"})
+}
+

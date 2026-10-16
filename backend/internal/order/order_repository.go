@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -524,3 +525,134 @@ func (r *Repository) CountOrders(
 
 	return count, nil
 }
+
+// --- Dashboard & Payments Aggregates ---
+
+type DashboardStats struct {
+	TotalRevenue      int64        `json:"totalRevenue"`
+	TotalOrders       int          `json:"totalOrders"`
+	TotalCustomers    int          `json:"totalCustomers"`
+	TotalProducts     int          `json:"totalProducts"`
+	AverageOrderValue float64      `json:"averageOrderValue"`
+	PendingOrders     int          `json:"pendingOrders"`
+	ProcessingOrders  int          `json:"processingOrders"`
+	ShippedOrders     int          `json:"shippedOrders"`
+	DeliveredOrders   int          `json:"deliveredOrders"`
+	CanceledOrders    int          `json:"canceledOrders"`
+	RecentSales       []DailySales `json:"recentSales"`
+}
+
+type DailySales struct {
+	Date   string `json:"date"`
+	Sales  int64  `json:"sales"`
+	Orders int    `json:"orders"`
+}
+
+type PaymentItem struct {
+	ID                    uuid.UUID `json:"id"`
+	OrderID               uuid.UUID `json:"orderId"`
+	Amount                int64     `json:"amount"`
+	Currency              string    `json:"currency"`
+	Status                string    `json:"status"`
+	Provider              string    `json:"provider"`
+	ProviderTransactionID string    `json:"providerTransactionId"`
+	CustomerEmail         string    `json:"customerEmail"`
+	CreatedAt             time.Time `json:"createdAt"`
+	UpdatedAt             time.Time `json:"updatedAt"`
+}
+
+func (r *Repository) GetDashboardStats(ctx context.Context, qe database.QueryExecutor) (*DashboardStats, error) {
+	stats := &DashboardStats{}
+
+	query := `
+		SELECT 
+			COALESCE(SUM(total_amount) FILTER (WHERE status != 'cancelled'), 0),
+			COUNT(*),
+			COUNT(DISTINCT customer_email),
+			COALESCE(AVG(total_amount) FILTER (WHERE status != 'cancelled'), 0),
+			COUNT(*) FILTER (WHERE status = 'pending'),
+			COUNT(*) FILTER (WHERE status = 'processing'),
+			COUNT(*) FILTER (WHERE status = 'shipped'),
+			COUNT(*) FILTER (WHERE status = 'delivered'),
+			COUNT(*) FILTER (WHERE status = 'cancelled')
+		FROM orders
+	`
+	err := qe.QueryRow(ctx, query).Scan(
+		&stats.TotalRevenue,
+		&stats.TotalOrders,
+		&stats.TotalCustomers,
+		&stats.AverageOrderValue,
+		&stats.PendingOrders,
+		&stats.ProcessingOrders,
+		&stats.ShippedOrders,
+		&stats.DeliveredOrders,
+		&stats.CanceledOrders,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get order aggregates: %w", err)
+	}
+
+	_ = qe.QueryRow(ctx, `SELECT COUNT(*) FROM products WHERE deleted_at IS NULL`).Scan(&stats.TotalProducts)
+
+	salesQuery := `
+		SELECT 
+			TO_CHAR(created_at, 'YYYY-MM-DD') as day,
+			COALESCE(SUM(total_amount) FILTER (WHERE status != 'cancelled'), 0) as daily_sales,
+			COUNT(*) FILTER (WHERE status != 'cancelled') as daily_orders
+		FROM orders
+		GROUP BY TO_CHAR(created_at, 'YYYY-MM-DD')
+		ORDER BY day DESC
+		LIMIT 14
+	`
+	rows, err := qe.Query(ctx, salesQuery)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var ds DailySales
+			if err := rows.Scan(&ds.Date, &ds.Sales, &ds.Orders); err == nil {
+				stats.RecentSales = append(stats.RecentSales, ds)
+			}
+		}
+	}
+
+	return stats, nil
+}
+
+func (r *Repository) ListPayments(ctx context.Context, qe database.QueryExecutor, limit, offset int) ([]PaymentItem, int, error) {
+	var total int
+	_ = qe.QueryRow(ctx, `SELECT COUNT(*) FROM payments`).Scan(&total)
+
+	query := `
+		SELECT p.id, p.order_id, p.amount, p.currency, p.status, p.provider, p.provider_transaction_id,
+		       COALESCE(o.customer_email, 'customer@example.com'), p.created_at, p.updated_at
+		FROM payments p
+		LEFT JOIN orders o ON p.order_id = o.id
+		ORDER BY p.created_at DESC
+		LIMIT $1 OFFSET $2
+	`
+	rows, err := qe.Query(ctx, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list payments: %w", err)
+	}
+	defer rows.Close()
+
+	var payments []PaymentItem
+	for rows.Next() {
+		var pi PaymentItem
+		if err := rows.Scan(
+			&pi.ID, &pi.OrderID, &pi.Amount, &pi.Currency, &pi.Status, &pi.Provider, &pi.ProviderTransactionID,
+			&pi.CustomerEmail, &pi.CreatedAt, &pi.UpdatedAt,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan payment: %w", err)
+		}
+		payments = append(payments, pi)
+	}
+	return payments, total, nil
+}
+
+func (r *Repository) UpdatePaymentStatus(ctx context.Context, qe database.QueryExecutor, id uuid.UUID, status string) error {
+	query := `UPDATE payments SET status = $1::payment_status, updated_at = NOW() WHERE id = $2`
+	_, err := qe.Exec(ctx, query, status, id)
+	return err
+}
+
