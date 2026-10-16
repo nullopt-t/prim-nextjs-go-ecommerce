@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"context"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -62,19 +64,58 @@ func Locale() gin.HandlerFunc {
 }
 
 // parseAcceptLanguage parses standard Accept-Language headers (e.g. "fr-FR, ar;q=0.9, en;q=0.8")
-// and returns the best supported locale ("ar" or "en"), falling back to DefaultLocale ("en").
+// and returns the best supported locale ("ar" or "en"), honoring the q weights
+// (RFC 9110: candidates are tried in descending weight order), falling back to
+// DefaultLocale ("en").
 func parseAcceptLanguage(header string) string {
-	parts := strings.Split(header, ",")
-	for _, part := range parts {
-		tag := strings.TrimSpace(part)
-		if idx := strings.Index(tag, ";"); idx != -1 {
-			tag = strings.TrimSpace(tag[:idx])
+	type weightedTag struct {
+		tag    string
+		weight float64
+	}
+
+	const defaultWeight = 1.0
+
+	var candidates []weightedTag
+	for _, part := range strings.Split(header, ",") {
+		item := strings.TrimSpace(part)
+		if item == "" {
+			continue
 		}
+
+		tag := item
+		weight := defaultWeight
+		if idx := strings.Index(item, ";"); idx != -1 {
+			tag = strings.TrimSpace(item[:idx])
+			for _, param := range strings.Split(item[idx+1:], ";") {
+				param = strings.TrimSpace(param)
+				kv := strings.SplitN(param, "=", 2)
+				if len(kv) == 2 && strings.EqualFold(kv[0], "q") {
+					if w, err := strconv.ParseFloat(strings.TrimSpace(kv[1]), 64); err == nil {
+						weight = w
+					}
+				}
+			}
+		}
+		// A q value of 0 means "not acceptable" per RFC 9110.
+		if weight == 0 {
+			continue
+		}
+
 		tag = strings.ToLower(tag)
-		if strings.HasPrefix(tag, LocaleAR) {
+		candidates = append(candidates, weightedTag{tag: tag, weight: weight})
+	}
+
+	// RFC 9110: the most preferred acceptable media range is the one with the
+	// highest q weight.
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].weight > candidates[j].weight
+	})
+
+	for _, c := range candidates {
+		if strings.HasPrefix(c.tag, LocaleAR) {
 			return LocaleAR
 		}
-		if strings.HasPrefix(tag, LocaleEN) {
+		if strings.HasPrefix(c.tag, LocaleEN) {
 			return LocaleEN
 		}
 	}

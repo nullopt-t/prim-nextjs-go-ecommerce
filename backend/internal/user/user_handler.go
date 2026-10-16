@@ -195,12 +195,11 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 	}
 
 	// Extract caller's authenticated user ID
-	callerIDVal, exists := c.Get("userID")
-	if !exists {
-		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+	callerID, err := getUserIDFromContext(c)
+	if err != nil {
+		_ = c.Error(err)
 		return
 	}
-	callerID := callerIDVal.(uuid.UUID)
 	if userID == callerID {
 		_ = c.Error(apierr.BadRequestError("Superadmins cannot delete their own account").WithCode("CANNOT_DELETE_SELF"))
 		return
@@ -241,12 +240,11 @@ func (h *Handler) UpdateUserRole(c *gin.Context) {
 	}
 
 	// Extract caller's authenticated user ID
-	callerIDVal, exists := c.Get("userID")
-	if !exists {
-		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+	callerID, err := getUserIDFromContext(c)
+	if err != nil {
+		_ = c.Error(err)
 		return
 	}
-	callerID := callerIDVal.(uuid.UUID)
 
 	// Update user role through service (prevents modifying own role)
 	if err := h.userService.UpdateUserRole(
@@ -281,12 +279,11 @@ func (h *Handler) UpdateAccountStatus(c *gin.Context) {
 	}
 
 	// Extract caller's user UUID from context
-	callerIDVal, exists := c.Get("userID")
-	if !exists {
-		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+	callerID, err := getUserIDFromContext(c)
+	if err != nil {
+		_ = c.Error(err)
 		return
 	}
-	callerID := callerIDVal.(uuid.UUID)
 
 	// Update account status in database
 	if err := h.userService.UpdateAccountStatus(
@@ -315,12 +312,11 @@ func (h *Handler) RevokeUserSessions(c *gin.Context) {
 	}
 
 	// Extract caller's authenticated user ID
-	callerIDVal, exists := c.Get("userID")
-	if !exists {
-		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+	callerID, err := getUserIDFromContext(c)
+	if err != nil {
+		_ = c.Error(err)
 		return
 	}
-	callerID := callerIDVal.(uuid.UUID)
 
 	// Invalidate all sessions in Redis
 	if err := h.userService.RevokeAllUserSessions(
@@ -336,5 +332,7 @@ func (h *Handler) RevokeUserSessions(c *gin.Context) {
 		Message: "User sessions revoked successfully",
 	})
 }
+
+
 
 
