@@ -16,13 +16,10 @@ type Router struct {
 	logger        log.Logger
 	sessionStore  middleware.SessionStore
 	rateLimitCfg  config.RateLimitConfig
-	userResolver  middleware.UserResolver
 }
 
 // NewRouter constructs a new authentication router with dependencies needed for routing,
 // rate limiting enforcement, and session authentication middleware.
-// userResolver, when non-nil, re-validates each user's account status and role
-// from the database on every authenticated request.
 func NewRouter(
 	ah *Handler,
 	secrets config.Secrets,
@@ -30,7 +27,6 @@ func NewRouter(
 	logger log.Logger,
 	sessionStore middleware.SessionStore,
 	rateLimitCfg config.RateLimitConfig,
-	userResolver ...middleware.UserResolver,
 ) *Router {
 	r := &Router{
 		authHandler:  ah,
@@ -39,9 +35,6 @@ func NewRouter(
 		logger:       logger,
 		sessionStore: sessionStore,
 		rateLimitCfg: rateLimitCfg,
-	}
-	if len(userResolver) > 0 {
-		r.userResolver = userResolver[0]
 	}
 	return r
 }
@@ -87,7 +80,7 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	// Protected endpoints: enforce server-side session authentication middleware
 	// A dedicated sub-group guarantees that protected middleware does not leak or depend on declaration order.
 	protected := auth.Group("")
-	protected.Use(middleware.Authenticate(r.sessionStore, r.userResolver))
+	protected.Use(middleware.Authenticate(r.sessionStore))
 
 	// GET /api/v1/auth/me - Retrieve current authenticated user profile
 	protected.GET("/me", r.authHandler.GetMe)

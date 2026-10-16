@@ -161,9 +161,7 @@ func (s *AuthTestSuite) SetupSuite() {
 			AuthVerifyWindow:   time.Minute,
 		},
 		// Re-validation against the DB is exercised by VerifyChallenge's own
-		// status checks; keep the middleware resolver nil here to avoid coupling
-		// challenge-flow tests to user table state.
-		nil,
+		// status checks; the middleware trusts the session snapshot.
 	)
 
 	v1 := s.router.Group("/api/v1")
