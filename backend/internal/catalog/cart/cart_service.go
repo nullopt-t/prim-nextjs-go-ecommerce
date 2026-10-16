@@ -174,10 +174,11 @@ func (s *CartService) AddItem(
 		}
 	}
 
-	price := int64(0)
-	if v.Price != nil {
-		price = *v.Price
+	if v.Price == nil {
+		return nil, apierr.BadRequestError("Variant has no defined price").
+			WithCode(apierr.CodeInvalidInput)
 	}
+	price := *v.Price
 	currency := "EGP"
 	if v.Currency != nil && *v.Currency != "" {
 		currency = *v.Currency

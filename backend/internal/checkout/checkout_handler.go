@@ -92,8 +92,7 @@ func (h *CheckoutHandler) Checkout(c *gin.Context) {
 }
 
 type ApplyCouponRequest struct {
-	Code         string `json:"code" binding:"required"`
-	CartSubtotal *int64 `json:"cartSubtotal,omitempty"`
+	Code string `json:"code" binding:"required"`
 }
 
 // ApplyCoupon godoc
@@ -127,7 +126,7 @@ func (h *CheckoutHandler) ApplyCoupon(c *gin.Context) {
 		sessionID = &cookieSess
 	}
 
-	res, err := h.checkoutService.ValidateCoupon(c.Request.Context(), req.Code, userID, sessionID, req.CartSubtotal)
+	res, err := h.checkoutService.ValidateCoupon(c.Request.Context(), req.Code, userID, sessionID)
 	if err != nil {
 		_ = c.Error(err)
 		return

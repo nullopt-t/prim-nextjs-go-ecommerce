@@ -355,7 +355,7 @@ type CouponValidationResult struct {
 	Message         string    `json:"message"`
 }
 
-func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userID *uuid.UUID, sessionID *string, clientSubtotal ...*int64) (*CouponValidationResult, error) {
+func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userID *uuid.UUID, sessionID *string) (*CouponValidationResult, error) {
 	if s.runner == nil {
 		return nil, apierr.InternalServerError("Database runner unavailable")
 	}
@@ -373,11 +373,9 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 		}
 	}
 
-	// Fallback to client cartSubtotal if session cart lookup yielded 0
-	if grossTotal == 0 && len(clientSubtotal) > 0 && clientSubtotal[0] != nil && *clientSubtotal[0] > 0 {
-		grossTotal = *clientSubtotal[0]
-	}
-
+	// grossTotal is computed exclusively from the server-side cart and the
+	// authoritative live variant prices. Client-supplied subtotals are never
+	// trusted for pricing decisions.
 	var result *CouponValidationResult
 
 	err := s.runner.WithTx(ctx, func(db database.QueryExecutor) error {
