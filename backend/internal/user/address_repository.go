@@ -291,6 +291,26 @@ func (r *AddressRepository) FindMostRecentActive(
 	qe database.QueryExecutor,
 	userID uuid.UUID,
 ) (*model.UserAddress, error) {
+	return r.findMostRecentActive(ctx, qe, userID, uuid.Nil)
+}
+
+// FindMostRecentActiveExcluding is like FindMostRecentActive but skips the
+// given address ID, so demoting the current default cannot re-select it.
+func (r *AddressRepository) FindMostRecentActiveExcluding(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	userID uuid.UUID,
+	excludeID uuid.UUID,
+) (*model.UserAddress, error) {
+	return r.findMostRecentActive(ctx, qe, userID, excludeID)
+}
+
+func (r *AddressRepository) findMostRecentActive(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	userID uuid.UUID,
+	excludeID uuid.UUID,
+) (*model.UserAddress, error) {
 	query := `
 		SELECT 
 			id, user_id, label, full_name, phone, line1, line2,
@@ -298,11 +318,15 @@ func (r *AddressRepository) FindMostRecentActive(
 			created_at, updated_at
 		FROM addresses
 		WHERE user_id = $1 AND deleted_at IS NULL
-		ORDER BY updated_at DESC, created_at DESC
-		LIMIT 1
 	`
+	args := []any{userID}
+	if excludeID != uuid.Nil {
+		query += ` AND id <> $2`
+		args = append(args, excludeID)
+	}
+	query += ` ORDER BY updated_at DESC, created_at DESC LIMIT 1`
 	var a model.UserAddress
-	err := qe.QueryRow(ctx, query, userID).Scan(
+	err := qe.QueryRow(ctx, query, args...).Scan(
 		&a.ID,
 		&a.UserID,
 		&a.Label,

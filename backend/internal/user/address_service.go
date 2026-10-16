@@ -128,8 +128,15 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 		IsDefault:  in.IsDefault,
 	}
 
-	// Execute transactional insertion and default flag reconciliation
+	// Execute transactional insertion and default flag reconciliation.
+	// A per-user advisory transaction lock serializes concurrent creations so
+	// only one "first address" wins the default flag (the partial unique index
+	// on addresses(user_id) WHERE is_default is the backstop).
 	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock((hashtext($1::text))::bigint)`, userID.String()); err != nil {
+			return err
+		}
+
 		// Check existing active address count
 		count, err := s.repo.CountByUser(ctx, tx, userID)
 		if err != nil {
@@ -205,13 +212,19 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 			if count <= 1 {
 				return apierr.BadRequestError("Cannot unset default on the only address").WithCode(apierr.CodeInvalidInput)
 			}
-			// When un-defaulting this address, find another active address and promote it
+			// Promote the most recent *other* active address before demoting
+			// the current one. Promoting after the update re-selects the
+			// just-updated current address (latest updated_at), leaving the
+			// user with no default address at all.
+			next, err := s.repo.FindMostRecentActiveExcluding(ctx, tx, userID, current.ID)
+			if err != nil && !errors.Is(err, ErrAddressNotFound) {
+				return err
+			}
 			current.IsDefault = false
 			if err := s.repo.Update(ctx, tx, current); err != nil {
 				return err
 			}
-			next, err := s.repo.FindMostRecentActive(ctx, tx, userID)
-			if err == nil && next != nil && next.ID != current.ID {
+			if next != nil {
 				if err := s.repo.SetDefault(ctx, tx, next.ID, userID); err != nil {
 					return err
 				}
