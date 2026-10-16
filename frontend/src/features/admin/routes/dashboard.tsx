@@ -43,7 +43,7 @@ export function AdminDashboard() {
           id: o.id,
           customer: o.customerEmail ? o.customerEmail.split("@")[0] : "Customer",
           status: o.status ? o.status.charAt(0).toUpperCase() + o.status.slice(1) : "Pending",
-          total: `$${((o.totalAmount || 0) / 100).toFixed(2)}`
+          total: `EGP ${((o.totalAmount || 0) / 100).toFixed(2)}`
         })));
       } catch {
         // Handled silently
@@ -80,7 +80,7 @@ export function AdminDashboard() {
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Revenue</span>
           </div>
           <div className="mt-4">
-            <div className="text-2xl font-bold text-foreground">${totalRev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="text-2xl font-bold text-foreground">EGP {totalRev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             <div className="mt-1 text-xs text-muted-foreground font-medium">
               Real-time settled revenue
             </div>
@@ -138,7 +138,7 @@ export function AdminDashboard() {
                 timeframe === "monthly" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Revenue ($)
+              Revenue (EGP)
             </button>
             <button
               onClick={() => setTimeframe("orders")}
@@ -163,9 +163,9 @@ export function AdminDashboard() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border, #e5e7eb)" />
                 <XAxis dataKey="month" tick={{ fontSize: 12, fill: "gray" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: "gray" }} axisLine={false} tickLine={false} tickFormatter={(val) => `$${val / 1000}k`} />
+                <YAxis tick={{ fontSize: 12, fill: "gray" }} axisLine={false} tickLine={false} tickFormatter={(val) => `${val / 1000}k EGP`} />
                 <Tooltip
-                  formatter={(val: any) => [`$${val.toLocaleString()}`, "Gross Revenue"]}
+                  formatter={(val: any) => [`EGP ${val.toLocaleString()}`, "Gross Revenue"]}
                   contentStyle={{ backgroundColor: "var(--color-bg, #ffffff)", borderRadius: "12px", border: "1px solid #e5e7eb" }}
                 />
                 <Area type="monotone" dataKey="sales" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />

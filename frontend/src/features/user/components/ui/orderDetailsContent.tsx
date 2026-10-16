@@ -32,6 +32,8 @@ interface Order {
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
   totalAmount: number;
   discountAmount: number;
+  couponCode?: string | null;
+  couponId?: string | null;
   currency: string;
   items: OrderItem[];
   createdAt: string;
@@ -180,7 +182,16 @@ export default function OrderDetailsContent() {
     month: "long",
     day: "numeric",
   });
-  const subtotal = (order.totalAmount / 100).toFixed(2);
+  const itemsSubtotalCents = items.reduce(
+    (acc, it) => acc + (it.priceAtPurchase || 0) * (it.quantity || 1),
+    0
+  );
+  const rawSubtotal = itemsSubtotalCents > 0 
+    ? (itemsSubtotalCents / 100).toFixed(2) 
+    : ((order.totalAmount + (order.discountAmount || 0)) / 100).toFixed(2);
+  const discountVal = (order.discountAmount || 0) / 100;
+  const formattedDiscount = discountVal > 0 ? discountVal.toFixed(2) : null;
+  const totalPaid = (order.totalAmount / 100).toFixed(2);
   const formattedAddress = formatAddress(order.shippingAddress);
 
   return (
@@ -323,15 +334,30 @@ export default function OrderDetailsContent() {
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">{t("subtotal")}</span>
-                <span className="font-medium text-foreground">{subtotal} {order.currency.toUpperCase()}</span>
+                <span className="font-medium text-foreground">{rawSubtotal} {order.currency.toUpperCase()}</span>
               </div>
+              {formattedDiscount && (
+                <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                  <div className="flex items-center gap-1.5">
+                    <span>Discount</span>
+                    {order.couponCode && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/10 border border-emerald-500/20">
+                        {order.couponCode}
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-medium font-mono">
+                    -{formattedDiscount} {order.currency.toUpperCase()}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">{t("shipping")}</span>
                 <span className="text-emerald-600 dark:text-emerald-400 font-medium">{t("freeShipping")}</span>
               </div>
               <div className="border-t border-border/50 pt-2.5 mt-2.5 flex items-center justify-between font-bold text-xs sm:text-sm">
                 <span className="text-foreground">{t("total")}</span>
-                <span className="text-foreground font-mono">{subtotal} {order.currency.toUpperCase()}</span>
+                <span className="text-foreground font-mono">{totalPaid} {order.currency.toUpperCase()}</span>
               </div>
             </div>
           </div>

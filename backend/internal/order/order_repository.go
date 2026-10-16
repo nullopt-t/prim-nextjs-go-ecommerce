@@ -115,15 +115,18 @@ func (r *Repository) GetOrderByID(
 	id uuid.UUID,
 ) (*model.Order, error) {
 	query := `
-		SELECT id, customer_id, customer_email, shipping_address,
-		       status, coupon_id, discount_amount, total_amount, currency, created_at, updated_at
-		FROM orders
-		WHERE id = $1
+		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
+		       o.status, o.coupon_id, o.discount_amount, o.total_amount, o.currency, o.created_at, o.updated_at,
+		       c.code
+		FROM orders o
+		LEFT JOIN coupons c ON o.coupon_id = c.id
+		WHERE o.id = $1
 	`
 	row := qe.QueryRow(ctx, query, id)
 
 	var o model.Order
 	var shippingBytes []byte
+	var couponCode *string
 
 	err := row.Scan(
 		&o.ID,
@@ -137,7 +140,9 @@ func (r *Repository) GetOrderByID(
 		&o.Currency,
 		&o.CreatedAt,
 		&o.UpdatedAt,
+		&couponCode,
 	)
+	o.CouponCode = couponCode
 	if err != nil {
 		return nil, fmt.Errorf("get order by id: %w", err)
 	}
@@ -163,16 +168,19 @@ func (r *Repository) GetOrderByIDForUpdate(
 	id uuid.UUID,
 ) (*model.Order, error) {
 	query := `
-		SELECT id, customer_id, customer_email, shipping_address,
-		       status, coupon_id, discount_amount, total_amount, currency, created_at, updated_at
-		FROM orders
-		WHERE id = $1
-		FOR UPDATE
+		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
+		       o.status, o.coupon_id, o.discount_amount, o.total_amount, o.currency, o.created_at, o.updated_at,
+		       c.code
+		FROM orders o
+		LEFT JOIN coupons c ON o.coupon_id = c.id
+		WHERE o.id = $1
+		FOR UPDATE OF o
 	`
 	row := qe.QueryRow(ctx, query, id)
 
 	var o model.Order
 	var shippingBytes []byte
+	var couponCode *string
 
 	err := row.Scan(
 		&o.ID,
@@ -186,7 +194,9 @@ func (r *Repository) GetOrderByIDForUpdate(
 		&o.Currency,
 		&o.CreatedAt,
 		&o.UpdatedAt,
+		&couponCode,
 	)
+	o.CouponCode = couponCode
 	if err != nil {
 		return nil, fmt.Errorf("get order by id for update: %w", err)
 	}
@@ -212,11 +222,13 @@ func (r *Repository) GetOrdersByCustomerID(
 	customerID uuid.UUID,
 ) ([]model.Order, error) {
 	query := `
-		SELECT id, customer_id, customer_email, shipping_address,
-		       status, coupon_id, discount_amount, total_amount, currency, created_at, updated_at
-		FROM orders
-		WHERE customer_id = $1
-		ORDER BY created_at DESC
+		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
+		       o.status, o.coupon_id, o.discount_amount, o.total_amount, o.currency, o.created_at, o.updated_at,
+		       c.code
+		FROM orders o
+		LEFT JOIN coupons c ON o.coupon_id = c.id
+		WHERE o.customer_id = $1
+		ORDER BY o.created_at DESC
 	`
 	rows, err := qe.Query(ctx, query, customerID)
 	if err != nil {
@@ -228,6 +240,7 @@ func (r *Repository) GetOrdersByCustomerID(
 	for rows.Next() {
 		var o model.Order
 		var shippingBytes []byte
+		var couponCode *string
 
 		if err := rows.Scan(
 			&o.ID,
@@ -241,9 +254,11 @@ func (r *Repository) GetOrdersByCustomerID(
 			&o.Currency,
 			&o.CreatedAt,
 			&o.UpdatedAt,
+			&couponCode,
 		); err != nil {
 			return nil, fmt.Errorf("scan order: %w", err)
 		}
+		o.CouponCode = couponCode
 
 		if err := json.Unmarshal(shippingBytes, &o.ShippingAddress); err != nil {
 			return nil, fmt.Errorf("unmarshal shipping address: %w", err)
@@ -393,27 +408,29 @@ func (r *Repository) ListOrders(
 	filter OrderListFilter,
 ) ([]model.Order, error) {
 	query := `
-		SELECT id, customer_id, customer_email, shipping_address,
-		       status, coupon_id, discount_amount, total_amount, currency, created_at, updated_at
-		FROM orders
+		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
+		       o.status, o.coupon_id, o.discount_amount, o.total_amount, o.currency, o.created_at, o.updated_at,
+		       c.code
+		FROM orders o
+		LEFT JOIN coupons c ON o.coupon_id = c.id
 		WHERE 1=1
 	`
 	args := []any{}
 	i := 1
 
 	if filter.CustomerID != nil {
-		query += fmt.Sprintf(" AND customer_id = $%d", i)
+		query += fmt.Sprintf(" AND o.customer_id = $%d", i)
 		args = append(args, *filter.CustomerID)
 		i++
 	}
 
 	if filter.Status != nil && *filter.Status != "" {
-		query += fmt.Sprintf(" AND status = $%d::order_status", i)
+		query += fmt.Sprintf(" AND o.status = $%d::order_status", i)
 		args = append(args, *filter.Status)
 		i++
 	}
 
-	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", i, i+1)
+	query += fmt.Sprintf(" ORDER BY o.created_at DESC LIMIT $%d OFFSET $%d", i, i+1)
 	args = append(args, filter.Limit, filter.Offset)
 
 	rows, err := qe.Query(ctx, query, args...)
@@ -426,6 +443,7 @@ func (r *Repository) ListOrders(
 	for rows.Next() {
 		var o model.Order
 		var shippingBytes []byte
+		var couponCode *string
 
 		if err := rows.Scan(
 			&o.ID,
@@ -439,9 +457,11 @@ func (r *Repository) ListOrders(
 			&o.Currency,
 			&o.CreatedAt,
 			&o.UpdatedAt,
+			&couponCode,
 		); err != nil {
 			return nil, fmt.Errorf("scan order: %w", err)
 		}
+		o.CouponCode = couponCode
 
 		if err := json.Unmarshal(shippingBytes, &o.ShippingAddress); err != nil {
 			return nil, fmt.Errorf("unmarshal shipping address for order %s: %w", o.ID, err)

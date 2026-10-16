@@ -69,6 +69,8 @@ type OrderResponse struct {
 	Status model.OrderStatus `json:"status"`
 	// CouponID is the optional applied promotional voucher or coupon UUID.
 	CouponID *string `json:"couponId,omitempty"`
+	// CouponCode is the human-readable applied voucher or coupon code.
+	CouponCode *string `json:"couponCode,omitempty"`
 	// DiscountAmount is the deducted amount in minor currency units.
 	DiscountAmount int64 `json:"discountAmount"`
 	// TotalAmount is the final monetary charge in minor currency units after discounts.
@@ -112,6 +114,8 @@ func mapOrderResponse(o *model.Order) OrderResponse {
 		cid := o.CouponID.String()
 		res.CouponID = &cid
 	}
+
+	res.CouponCode = o.CouponCode
 
 	if len(o.Items) > 0 {
 		items := make([]OrderItemResponse, 0, len(o.Items))

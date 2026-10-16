@@ -39,7 +39,7 @@ type CreateVariantRequest struct {
 	// Crossed-out/original MSRP price in cents
 	CrossedOutPrice *int64 `json:"crossedOutPrice,omitempty" example:"299900"`
 	// Currency ISO code
-	Currency *string `json:"currency,omitempty" example:"USD"`
+	Currency *string `json:"currency,omitempty" example:"EGP"`
 	// Key-value attribute specifications (e.g. {"color":"Black","ram":"18GB"})
 	Attributes map[string]any `json:"attributes,omitempty"`
 	// True if this is the default selected variant on storefronts
@@ -58,7 +58,7 @@ type UpdateVariantRequest struct {
 	// Updated original price in cents
 	CrossedOutPrice *int64 `json:"crossedOutPrice,omitempty" example:"299900"`
 	// Currency ISO code
-	Currency *string `json:"currency,omitempty" example:"USD"`
+	Currency *string `json:"currency,omitempty" example:"EGP"`
 	// Updated attributes map
 	Attributes map[string]any `json:"attributes,omitempty"`
 	// Updated default selection flag
@@ -96,7 +96,7 @@ type VariantResponse struct {
 	// Numeric original price value
 	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
 	// Currency ISO code
-	Currency *string `json:"currency,omitempty" example:"USD"`
+	Currency *string `json:"currency,omitempty" example:"EGP"`
 	// Primary thumbnail image URL
 	Thumbnail *string `json:"thumbnail,omitempty" example:"https://example.com/thumb.jpg"`
 	// Attached gallery media assets
@@ -125,7 +125,7 @@ type AdminVariantResponse struct {
 	// Numeric original price value
 	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
 	// Currency ISO code
-	Currency *string `json:"currency,omitempty" example:"USD"`
+	Currency *string `json:"currency,omitempty" example:"EGP"`
 	// Thumbnail storage object details
 	Thumbnail *StorageObjectResponse `json:"thumbnail,omitempty"`
 	// Attached gallery media assets
@@ -212,7 +212,7 @@ func mapVariantResponse(v *model.ProductVariant) VariantResponse {
 		thumbnailURL = &v.Thumbnail.PublicURL
 	}
 
-	curr := "USD"
+	curr := "EGP"
 	if v.Currency != nil && *v.Currency != "" {
 		curr = *v.Currency
 	}
@@ -272,7 +272,7 @@ func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
 		}
 	}
 
-	curr := "USD"
+	curr := "EGP"
 	if v.Currency != nil && *v.Currency != "" {
 		curr = *v.Currency
 	}

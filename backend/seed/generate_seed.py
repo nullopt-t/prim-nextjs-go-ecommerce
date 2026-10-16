@@ -741,7 +741,7 @@ for cat_name, brand_name, title, slug, desc, highlights, var_list in catalog_def
         v_id = hex_id(0x70000000, var_counter)
         v_sku = f"{slug[:10].upper()}-{var_counter:03d}"
         is_def = (v_idx == 0)
-        variants.append((v_id, v_sku, p_id, is_def, v_title, v_price, v_cross, 'USD', v_attrs, v_thumb_id))
+        variants.append((v_id, v_sku, p_id, is_def, v_title, v_price, v_cross, 'EGP', v_attrs, v_thumb_id))
         
         # Build intelligently arranged gallery for this variant
         arranged_gallery = resolve_variant_gallery(cat_name, brand_name, title, slug, var_list, v_idx)
@@ -868,11 +868,11 @@ lines.append("-- ===============================================================
 lines.append("-- 13. COUPONS")
 lines.append("-- =====================================================================")
 lines.append("""INSERT INTO coupons (id, code, discount_type, discount_value, currency, min_cart_amount, usage_limit, per_user_limit, starts_at, expires_at, status, created_at, updated_at) VALUES
-('c0000000-0000-0000-0000-000000000001', 'WELCOME10', 'percentage', 10, 'USD', 5000, 1000, 1, now() - INTERVAL '40 days', now() + INTERVAL '60 days', 'active', now() - INTERVAL '40 days', now() - INTERVAL '40 days'),
-('c0000000-0000-0000-0000-000000000002', 'SUMMER20', 'percentage', 20, 'USD', 10000, 500, 1, now() - INTERVAL '40 days', now() + INTERVAL '60 days', 'active', now() - INTERVAL '40 days', now() - INTERVAL '40 days'),
-('c0000000-0000-0000-0000-000000000003', 'FLASH50', 'fixed_amount', 5000, 'USD', 20000, 200, 1, now() - INTERVAL '40 days', now() + INTERVAL '60 days', 'active', now() - INTERVAL '40 days', now() - INTERVAL '40 days'),
-('c0000000-0000-0000-0000-000000000004', 'VIP100', 'fixed_amount', 10000, 'USD', 50000, 100, 2, now() - INTERVAL '40 days', now() + INTERVAL '60 days', 'active', now() - INTERVAL '40 days', now() - INTERVAL '40 days'),
-('c0000000-0000-0000-0000-000000000005', 'EXPIRED30', 'percentage', 30, 'USD', 10000, 100, 1, now() - INTERVAL '40 days', now() - INTERVAL '5 days', 'archived', now() - INTERVAL '40 days', now() - INTERVAL '40 days')
+('c0000000-0000-0000-0000-000000000001', 'WELCOME10', 'percentage', 10, 'EGP', 5000, 1000, 1, now() - INTERVAL '40 days', now() + INTERVAL '60 days', 'active', now() - INTERVAL '40 days', now() - INTERVAL '40 days'),
+('c0000000-0000-0000-0000-000000000002', 'SUMMER20', 'percentage', 20, 'EGP', 10000, 500, 1, now() - INTERVAL '40 days', now() + INTERVAL '60 days', 'active', now() - INTERVAL '40 days', now() - INTERVAL '40 days'),
+('c0000000-0000-0000-0000-000000000003', 'FLASH50', 'fixed_amount', 5000, 'EGP', 20000, 200, 1, now() - INTERVAL '40 days', now() + INTERVAL '60 days', 'active', now() - INTERVAL '40 days', now() - INTERVAL '40 days'),
+('c0000000-0000-0000-0000-000000000004', 'VIP100', 'fixed_amount', 10000, 'EGP', 50000, 100, 2, now() - INTERVAL '40 days', now() + INTERVAL '60 days', 'active', now() - INTERVAL '40 days', now() - INTERVAL '40 days'),
+('c0000000-0000-0000-0000-000000000005', 'EXPIRED30', 'percentage', 30, 'EGP', 10000, 100, 1, now() - INTERVAL '40 days', now() - INTERVAL '5 days', 'archived', now() - INTERVAL '40 days', now() - INTERVAL '40 days')
 ON CONFLICT (id) DO NOTHING;
 """)
 
@@ -896,11 +896,11 @@ lines.append("-- ===============================================================
 lines.append("-- 15. CART ITEMS")
 lines.append("-- =====================================================================")
 lines.append(f"""INSERT INTO cart_items (id, cart_id, variant_id, quantity, price_at_purchase, currency, carted_at) VALUES
-('a1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', '{variants[0][0]}', 1, {variants[0][5]}, 'USD', now() - INTERVAL '2 days'),
-('a1000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', '{variants[1][0]}', 1, {variants[1][5]}, 'USD', now() - INTERVAL '2 days'),
-('a1000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000002', '{variants[2][0]}', 1, {variants[2][5]}, 'USD', now() - INTERVAL '2 days'),
-('a1000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000003', '{variants[3][0]}', 1, {variants[3][5]}, 'USD', now() - INTERVAL '2 days'),
-('a1000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000004', '{variants[4][0]}', 2, {variants[4][5]}, 'USD', now() - INTERVAL '2 days')
+('a1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', '{variants[0][0]}', 1, {variants[0][5]}, 'EGP', now() - INTERVAL '2 days'),
+('a1000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', '{variants[1][0]}', 1, {variants[1][5]}, 'EGP', now() - INTERVAL '2 days'),
+('a1000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000002', '{variants[2][0]}', 1, {variants[2][5]}, 'EGP', now() - INTERVAL '2 days'),
+('a1000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000003', '{variants[3][0]}', 1, {variants[3][5]}, 'EGP', now() - INTERVAL '2 days'),
+('a1000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000004', '{variants[4][0]}', 2, {variants[4][5]}, 'EGP', now() - INTERVAL '2 days')
 ON CONFLICT (id) DO NOTHING;
 """)
 
@@ -978,7 +978,7 @@ for p_idx, prod in enumerate(products):
         
         # Order
         shipping_addr = {"name": u_name, "line1": "123 Market St", "city": "San Francisco", "postal_code": "94103", "country": "USA"}
-        orders_data.append((o_id, u_id, u_email, shipping_addr, 'delivered', None, 0, v_price, 'USD'))
+        orders_data.append((o_id, u_id, u_email, shipping_addr, 'delivered', None, 0, v_price, 'EGP'))
         
         # Order Item
         v_thumb_obj_id = target_var[9]
@@ -1001,7 +1001,7 @@ for p_idx, prod in enumerate(products):
         order_items_data.append((oi_id, o_id, v_id, 1, v_price, p_snap))
         
         # Payment
-        payments_data.append((pay_id, o_id, v_price, 'USD', 'captured', 'stripe', f"ch_stripe_seed_{o_counter:04d}"))
+        payments_data.append((pay_id, o_id, v_price, 'EGP', 'captured', 'stripe', f"ch_stripe_seed_{o_counter:04d}"))
         
         # Review
         rating_score = random.choices([5, 4, 3], weights=[70, 25, 5])[0]

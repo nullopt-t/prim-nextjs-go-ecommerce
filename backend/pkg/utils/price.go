@@ -59,15 +59,15 @@ func currencyDivisor(currency string) float64 {
 func FormatPrice(cents int64, currency string) string {
 	// Normalize currency string by trimming whitespace and capitalizing.
 	currUpper := strings.ToUpper(strings.TrimSpace(currency))
-	// Default to USD if no currency string is provided.
+	// Default to EGP if no currency string is provided.
 	if currUpper == "" {
-		currUpper = "USD"
+		currUpper = "EGP"
 	}
 	// Look up currency symbol in predefined symbol table.
 	symbol, ok := currencySymbols[currUpper]
-	// Fallback to "$" if currency is unknown.
+	// Fallback to "E£" if currency is unknown.
 	if !ok {
-		symbol = "$"
+		symbol = "E£"
 	}
 
 	divisor := currencyDivisor(currUpper)

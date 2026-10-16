@@ -34,6 +34,8 @@ interface Order {
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
   totalAmount: number;
   discountAmount: number;
+  couponCode?: string | null;
+  couponId?: string | null;
   currency: string;
   items: OrderItem[];
   createdAt: string;
@@ -171,6 +173,11 @@ function OrderCard({ order }: { order: Order }) {
         </div>
 
         <div className="flex items-center gap-3 text-xs">
+          {order.couponCode && (
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              {order.couponCode}
+            </span>
+          )}
           <div>
             <span className="text-muted-foreground text-[11px]">{t("card.total")}: </span>
             <span className="font-bold text-foreground text-xs sm:text-sm">{totalFormatted}</span>

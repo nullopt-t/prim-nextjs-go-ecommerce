@@ -23,4 +23,10 @@ func (r *CheckoutRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	{
 		group.POST("", r.handler.Checkout)
 	}
+
+	coupons := vgroup.Group("/coupons")
+	coupons.Use(middleware.OptionalAuthenticate(r.sessionStore))
+	{
+		coupons.POST("/apply", r.handler.ApplyCoupon)
+	}
 }

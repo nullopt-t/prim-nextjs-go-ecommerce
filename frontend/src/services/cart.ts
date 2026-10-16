@@ -57,5 +57,9 @@ export const cartService = {
 
   removeItem: (id: string) => api.delete(`/api/v1/cart/items/${id}`),
 
-  applyCoupon: (code: string) => api.post("/api/v1/coupons/apply", { code }),
+  applyCoupon: (code: string, cartSubtotal?: number) =>
+    api.post("/api/v1/coupons/apply", {
+      code,
+      cartSubtotal: cartSubtotal !== undefined ? Math.round(cartSubtotal * 100) : undefined,
+    }),
 };

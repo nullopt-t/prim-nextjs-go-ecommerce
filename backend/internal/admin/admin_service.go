@@ -101,6 +101,12 @@ func (s *AdminService) ListPayments(ctx context.Context, limit, offset int) ([]P
 	return payments, total, err
 }
 
+func (s *AdminService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, status string) error {
+	return s.txRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+		return s.repo.UpdatePaymentStatus(ctx, tx, id, status)
+	})
+}
+
 func (s *AdminService) RefundPayment(ctx context.Context, id uuid.UUID) error {
 	return s.txRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
 		return s.repo.UpdatePaymentStatus(ctx, tx, id, "refunded")

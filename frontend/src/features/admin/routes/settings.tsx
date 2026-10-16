@@ -5,7 +5,7 @@ import { toast } from "sonner";
 const DEFAULT_SETTINGS = {
   storeName: "PRIM Superstore",
   storeEmail: "support@prim.com",
-  currency: "USD ($)",
+  currency: "EGP (E£)",
   taxRate: 8.5,
   shippingFlatRate: 15.00,
   freeShippingThreshold: 150.00,
@@ -122,7 +122,7 @@ export function AdminSettings() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Flat Shipping Rate ($)</label>
+              <label className="text-xs font-semibold text-foreground">Flat Shipping Rate (EGP)</label>
               <input
                 type="number"
                 step="0.01"
@@ -132,7 +132,7 @@ export function AdminSettings() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Free Shipping Minimum ($)</label>
+              <label className="text-xs font-semibold text-foreground">Free Shipping Minimum (EGP)</label>
               <input
                 type="number"
                 value={settings.freeShippingThreshold}

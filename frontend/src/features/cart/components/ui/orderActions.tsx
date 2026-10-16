@@ -10,7 +10,7 @@ interface OrderActionsProps {
 }
 
 export default function OrderActions({
-  price = "$45",
+  price = "EGP 45",
   onRemove,
   onQuantityChange,
 }: OrderActionsProps) {

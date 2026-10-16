@@ -178,8 +178,8 @@ func (s *CartService) AddItem(
 	if v.Price != nil {
 		price = *v.Price
 	}
-	currency := "USD"
-	if v.Currency != nil {
+	currency := "EGP"
+	if v.Currency != nil && *v.Currency != "" {
 		currency = *v.Currency
 	}
 

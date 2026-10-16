@@ -24,7 +24,9 @@ export function AdminOrders() {
         customer: so.customerEmail ? so.customerEmail.split("@")[0] : "Customer",
         email: so.customerEmail || "customer@example.com",
         date: so.createdAt ? new Date(so.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
-        total: `$${((so.totalAmount || 0) / 100).toFixed(2)}`,
+        total: `EGP ${((so.totalAmount || 0) / 100).toFixed(2)}`,
+        discount: so.discountAmount ? `EGP ${((so.discountAmount || 0) / 100).toFixed(2)}` : null,
+        couponCode: so.couponCode || null,
         status: so.status ? so.status.charAt(0).toUpperCase() + so.status.slice(1) : "Processing",
         fulfillmentStatus: so.status === "shipped" || so.status === "delivered" ? "Fulfilled" : "Unfulfilled",
         paymentStatus: so.status === "canceled" ? "Canceled" : "Paid",
@@ -131,7 +133,21 @@ export function AdminOrders() {
                     <div className="font-semibold text-foreground">{order.customer}</div>
                     <div className="text-[10px] text-muted-foreground">{order.email}</div>
                   </td>
-                  <td className="py-3.5 font-bold text-foreground">{order.total}</td>
+                  <td className="py-3.5">
+                    <div className="font-bold text-foreground">{order.total}</div>
+                    {order.couponCode && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          {order.couponCode}
+                        </span>
+                        {order.discount && (
+                          <span className="text-[10px] text-muted-foreground line-through">
+                            -{order.discount}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </td>
                   <td className="py-3.5">
                     <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400 font-bold rounded-full text-[10px]">
                       {order.paymentStatus}

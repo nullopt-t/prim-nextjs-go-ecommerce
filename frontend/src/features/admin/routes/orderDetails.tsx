@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Truck, Clock, MapPin, CreditCard, User } from "lucide-react";
+import { ArrowLeft, Truck, Clock, MapPin, CreditCard, User, Tag } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { toast } from "sonner";
 
@@ -26,7 +26,11 @@ export function AdminOrderDetails() {
           customer: remoteOrder.customerEmail ? remoteOrder.customerEmail.split("@")[0] : "Customer",
           email: remoteOrder.customerEmail || "customer@example.com",
           date: remoteOrder.createdAt ? new Date(remoteOrder.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
-          total: `$${((remoteOrder.totalAmount || 0) / 100).toFixed(2)}`,
+          total: `EGP ${((remoteOrder.totalAmount || 0) / 100).toFixed(2)}`,
+          discount: remoteOrder.discountAmount ? `EGP ${((remoteOrder.discountAmount || 0) / 100).toFixed(2)}` : null,
+          discountAmount: remoteOrder.discountAmount || 0,
+          couponCode: remoteOrder.couponCode || null,
+          couponId: remoteOrder.couponId || null,
           status: remoteOrder.status ? remoteOrder.status.charAt(0).toUpperCase() + remoteOrder.status.slice(1) : "Processing",
           fulfillmentStatus: remoteOrder.status === "shipped" || remoteOrder.status === "delivered" ? "Fulfilled" : "Unfulfilled",
           paymentStatus: remoteOrder.status === "canceled" ? "Canceled" : "Paid",
@@ -48,7 +52,7 @@ export function AdminOrderDetails() {
             return {
               id: it.id,
               name: itemName,
-              price: `$${((it.priceAtPurchase || 0) / 100).toFixed(2)}`,
+              price: `EGP ${((it.priceAtPurchase || 0) / 100).toFixed(2)}`,
               quantity: it.quantity || 1
             };
           }),
@@ -198,6 +202,22 @@ export function AdminOrderDetails() {
                 </div>
               ))}
             </div>
+            {order.couponCode && (
+              <div className="pt-2 border-t border-border flex justify-between items-center text-xs">
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
+                  <Tag className="size-3.5" />
+                  <span>Coupon Applied:</span>
+                  <span className="font-mono bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 uppercase tracking-wide">
+                    {order.couponCode}
+                  </span>
+                </span>
+                {order.discount && (
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                    -{order.discount}
+                  </span>
+                )}
+              </div>
+            )}
             <div className="pt-3 border-t border-border flex justify-between items-center text-sm font-bold">
               <span>Total Paid</span>
               <span className="text-accent-brand text-base">{order.total}</span>

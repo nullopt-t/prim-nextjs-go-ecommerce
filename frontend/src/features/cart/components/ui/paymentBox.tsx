@@ -11,6 +11,7 @@ import { calculateCartTotals } from "@/features/cart/utils/cartCalculations";
 
 export default function PaymentBox({ compact = false }: { compact?: boolean }) {
   const t = useTranslations("cart");
+  const tCommon = useTranslations("common");
   const { cartItems, appliedCoupon, closeCart } = useCart();
   const router = useRouter();
 
@@ -28,6 +29,8 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
     total,
   } = calculateCartTotals(cartItems, appliedCoupon);
 
+  const currencySymbol = tCommon("currency");
+
   if (compact) {
     return (
       <div className="flex flex-col gap-3">
@@ -36,7 +39,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <div className="flex items-center justify-between text-xs text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-lg border border-border/40">
             <span className="flex items-center gap-1.5 text-foreground truncate">
               <Truck className="size-3 text-accent-brand shrink-0" />
-              <span>Add <strong className="text-accent-brand">${remainingForFreeShipping.toFixed(2)}</strong> for free shipping</span>
+              <span>Add <strong className="text-accent-brand">{currencySymbol} {remainingForFreeShipping.toFixed(2)}</strong> for free shipping</span>
             </span>
             <span className="text-[11px] font-semibold">{Math.round(shippingProgress)}%</span>
           </div>
@@ -55,18 +58,18 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
               {t("orderSummary.total", { defaultMessage: "Total" })}
             </span>
             <span className="text-xl font-bold text-foreground tracking-tight">
-              ${total.toFixed(2)}
+              {currencySymbol} {total.toFixed(2)}
             </span>
           </div>
 
           <div className="text-end text-xs text-muted-foreground">
             {discount > 0 ? (
               <span className="text-emerald-600 dark:text-emerald-400 font-medium block">
-                -${discount.toFixed(2)} discount
+                -{currencySymbol} {discount.toFixed(2)} discount
               </span>
             ) : null}
             <span>
-              {isFreeShipping ? "Free Shipping" : `+$${shippingCost.toFixed(2)} shipping`}
+              {isFreeShipping ? "Free Shipping" : `+${currencySymbol} ${shippingCost.toFixed(2)} shipping`}
             </span>
           </div>
         </div>
@@ -105,7 +108,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
               <Truck className="size-3.5 text-accent-brand" />
               {isFreeShipping
                 ? "You unlocked Free Shipping!"
-                : `Add $${remainingForFreeShipping.toFixed(2)} for Free Shipping`}
+                : `Add ${currencySymbol} ${remainingForFreeShipping.toFixed(2)} for Free Shipping`}
             </span>
             <span className="text-muted-foreground">{Math.round(shippingProgress)}%</span>
           </div>
@@ -123,7 +126,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <span className="text-muted-foreground">
             {t("orderSummary.subtotal", { defaultMessage: "Subtotal" })}
           </span>
-          <span className="text-foreground font-medium">${subtotal.toFixed(2)}</span>
+          <span className="text-foreground font-medium">{currencySymbol} {subtotal.toFixed(2)}</span>
         </p>
 
         {discount > 0 && (
@@ -132,7 +135,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
               <Sparkles className="size-3.5" />
               Discount ({appliedCoupon?.code})
             </span>
-            <span>-${discount.toFixed(2)}</span>
+            <span>-{currencySymbol} {discount.toFixed(2)}</span>
           </p>
         )}
 
@@ -144,7 +147,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
             {isFreeShipping ? (
               <span className="text-emerald-600 dark:text-emerald-400 font-medium">FREE</span>
             ) : (
-              `$${shippingCost.toFixed(2)}`
+              `${currencySymbol} ${shippingCost.toFixed(2)}`
             )}
           </span>
         </p>
@@ -152,7 +155,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <span className="text-muted-foreground">
             {t("orderSummary.tax", { defaultMessage: "Estimated Tax" })}
           </span>
-          <span className="text-foreground font-medium">$0.00</span>
+          <span className="text-foreground font-medium">{currencySymbol} 0.00</span>
         </p>
       </div>
 
@@ -163,7 +166,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <span className="text-foreground font-semibold">
             {t("orderSummary.total", { defaultMessage: "Total" })}
           </span>
-          <span className="text-foreground font-bold text-2xl">${total.toFixed(2)}</span>
+          <span className="text-foreground font-bold text-2xl">{currencySymbol} {total.toFixed(2)}</span>
         </p>
       </div>
 

@@ -384,10 +384,10 @@ export function AdminProducts() {
                       {typeof prod.category === "object" ? prod.category?.name : String(prod.category || "General")}
                     </td>
                     <td className="py-3.5">
-                      <div className="font-bold text-foreground">${prod.price.toFixed(2)}</div>
+                      <div className="font-bold text-foreground">EGP {prod.price.toFixed(2)}</div>
                       {prod.compareAtPrice && (
                         <div className="text-[10px] text-muted-foreground line-through">
-                          ${prod.compareAtPrice.toFixed(2)}
+                          EGP {prod.compareAtPrice.toFixed(2)}
                         </div>
                       )}
                     </td>
@@ -503,7 +503,7 @@ export function AdminProducts() {
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Price ($) *</label>
+                  <label className="text-xs font-semibold text-foreground">Price (EGP) *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -514,7 +514,7 @@ export function AdminProducts() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Compare Price ($)</label>
+                  <label className="text-xs font-semibold text-foreground">Compare Price (EGP)</label>
                   <input
                     type="number"
                     step="0.01"

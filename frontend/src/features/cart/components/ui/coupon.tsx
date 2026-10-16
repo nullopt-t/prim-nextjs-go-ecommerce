@@ -42,10 +42,12 @@ export default function Coupon() {
             <div className="p-1 rounded-full bg-emerald-500/20">
               <Check className="size-3.5" />
             </div>
-            <span className="font-semibold tracking-wide">{appliedCoupon.code}</span>
+            <span className="font-semibold tracking-wide font-mono uppercase">{appliedCoupon.code}</span>
             <span className="text-xs opacity-90">
               ({appliedCoupon.discountPercent
                 ? `${appliedCoupon.discountPercent}% OFF`
+                : appliedCoupon.fixedDiscount
+                ? `EGP ${appliedCoupon.fixedDiscount} OFF`
                 : appliedCoupon.freeShipping
                 ? "Free Shipping"
                 : "Applied"})
@@ -89,23 +91,6 @@ export default function Coupon() {
                 disabled={loading || !code.trim()}
               />
             </div>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-            <span>{t("coupon.available", { defaultMessage: "Available codes:" })}</span>
-            <button
-              onClick={() => handleApply("SAVE10")}
-              type="button"
-              className="px-2 py-0.5 rounded-md bg-secondary hover:bg-accent-brand/10 hover:text-accent-brand font-mono font-medium transition-colors cursor-pointer border border-border/50"
-            >
-              SAVE10 (10% OFF)
-            </button>
-            <button
-              onClick={() => handleApply("WELCOME15")}
-              type="button"
-              className="px-2 py-0.5 rounded-md bg-secondary hover:bg-accent-brand/10 hover:text-accent-brand font-mono font-medium transition-colors cursor-pointer border border-border/50"
-            >
-              WELCOME15 (15% OFF)
-            </button>
           </div>
         </>
       )}

@@ -98,3 +98,6 @@ logs/
 # Misc
 # -----------------------------------------------------------------------------
 .cache/
+
+# Task board (kept out of version control)
+NEXT_TASKS.md

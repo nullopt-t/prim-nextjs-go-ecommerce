@@ -22,8 +22,15 @@ export interface CartContextItem {
 export interface CouponData {
   id?: string;
   code: string;
+  discountType?: "percentage" | "fixed_amount" | string;
+  discountValue?: number;
   discountPercent?: number;
   fixedDiscount?: number;
+  minCartAmount?: number;
+  discountAmount?: number;
+  subtotal?: number;
+  shipping?: number;
+  total?: number;
   freeShipping?: boolean;
   message?: string;
 }
@@ -107,8 +114,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const formattedItems: CartContextItem[] = rawItems.map((item: any) => {
       const title = item.title || item.name || item.productName || "Product";
       const price = item.unitPrice !== undefined
-        ? `$${(item.unitPrice / 100).toFixed(2)}`
-        : (item.productPrice || item.price || "$0.00");
+        ? `EGP ${(item.unitPrice / 100).toFixed(2)}`
+        : (item.productPrice || item.price || "EGP 0.00");
       const img = item.thumbnailUrl || item.img || item.image || "/placeholder-product.png";
 
       return {
@@ -232,9 +239,53 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const applyCoupon = async (code: string) => {
     try {
-      const res = await cartService.applyCoupon(code);
-      setAppliedCoupon(res);
-      return { success: true, coupon: res };
+      const currentSubtotal = cartSummary.subtotal || cartItems.reduce((acc, item) => {
+        const raw = typeof item.productPrice === "number"
+          ? item.productPrice
+          : parseFloat(String(item.productPrice || "").replace(/[^0-9.-]+/g, "")) || 0;
+        return acc + raw * (item.quantity || 1);
+      }, 0);
+
+      const res: any = await cartService.applyCoupon(code, currentSubtotal);
+      const raw: any = res?.data || res || {};
+      
+      const discountType = raw.discountType || (raw.discountPercent ? "percentage" : "fixed_amount");
+      const discountValue = Number(raw.discountValue || 0);
+      const discountAmount = raw.discountAmount !== undefined ? Number(raw.discountAmount) / 100 : undefined;
+      const serverSubtotal = raw.subtotal !== undefined ? Number(raw.subtotal) / 100 : undefined;
+      const serverShipping = raw.shipping !== undefined ? Number(raw.shipping) / 100 : undefined;
+      const serverTotal = raw.total !== undefined ? Number(raw.total) / 100 : undefined;
+
+      const couponData: CouponData = {
+        id: raw.id,
+        code: raw.code || code.toUpperCase(),
+        discountType,
+        discountValue,
+        discountPercent: raw.discountPercent ?? (discountType === "percentage" ? discountValue : undefined),
+        fixedDiscount: raw.fixedDiscount ?? (discountType === "fixed_amount" ? discountValue / 100 : undefined),
+        minCartAmount: raw.minCartAmount ? Number(raw.minCartAmount) / 100 : undefined,
+        discountAmount,
+        subtotal: serverSubtotal,
+        shipping: serverShipping,
+        total: serverTotal,
+        freeShipping: Boolean(raw.freeShipping),
+        message: raw.message,
+      };
+
+      setAppliedCoupon(couponData);
+
+      // Server is the authoritative source for calculation: update cartSummary directly from server
+      if (serverSubtotal !== undefined && discountAmount !== undefined && serverTotal !== undefined) {
+        setCartSummary((prev) => ({
+          ...prev,
+          subtotal: serverSubtotal,
+          discount: discountAmount,
+          shipping: serverShipping ?? prev.shipping,
+          total: serverTotal,
+        }));
+      }
+
+      return { success: true, coupon: couponData };
     } catch (err: any) {
       return { success: false, error: err.message || "Invalid coupon code" };
     }
@@ -242,6 +293,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const removeCoupon = () => {
     setAppliedCoupon(null);
+    setCartSummary((prev) => ({
+      ...prev,
+      discount: 0,
+      total: prev.subtotal + prev.shipping + prev.tax,
+    }));
   };
 
   return (

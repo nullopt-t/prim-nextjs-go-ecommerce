@@ -134,7 +134,7 @@ export const INITIAL_ORDERS = [
     customer: "Alex Morgan",
     email: "alex.morgan@example.com",
     date: "2026-08-12 14:30",
-    total: "$288.99",
+    total: "EGP 288.99",
     amountNum: 288.99,
     status: "Processing",
     paymentStatus: "Paid",
@@ -142,13 +142,13 @@ export const INITIAL_ORDERS = [
     paymentMethod: "Credit Card (Visa ending in 4242)",
     shippingAddress: "742 Evergreen Terrace, Springfield, OR 97477",
     items: [
-      { id: "item-1", name: "Wireless Noise-Canceling Headphones", price: "$199.99", quantity: 1 },
-      { id: "item-2", name: "Minimalist Leather Backpack", price: "$89.00", quantity: 1 }
+      { id: "item-1", name: "Wireless Noise-Canceling Headphones", price: "EGP 199.99", quantity: 1 },
+      { id: "item-2", name: "Minimalist Leather Backpack", price: "EGP 89.00", quantity: 1 }
     ],
     trackingNumber: "TRK-9821-EXP",
     history: [
       { date: "2026-08-12 14:30", note: "Order placed by customer." },
-      { date: "2026-08-12 14:31", note: "Payment of $288.99 confirmed via Stripe." }
+      { date: "2026-08-12 14:31", note: "Payment of EGP 288.99 confirmed via Stripe." }
     ]
   },
   {
@@ -156,7 +156,7 @@ export const INITIAL_ORDERS = [
     customer: "Sarah Jenkins",
     email: "s.jenkins@domain.com",
     date: "2026-08-11 18:15",
-    total: "$129.50",
+    total: "EGP 129.50",
     amountNum: 129.50,
     status: "Shipped",
     paymentStatus: "Paid",
@@ -164,7 +164,7 @@ export const INITIAL_ORDERS = [
     paymentMethod: "PayPal (s.jenkins@domain.com)",
     shippingAddress: "100 Universal City Plaza, Universal City, CA 91608",
     items: [
-      { id: "item-3", name: "Ergonomic Mechanical Keyboard", price: "$129.50", quantity: 1 }
+      { id: "item-3", name: "Ergonomic Mechanical Keyboard", price: "EGP 129.50", quantity: 1 }
     ],
     trackingNumber: "FEDEX-8891023",
     history: [
@@ -178,7 +178,7 @@ export const INITIAL_ORDERS = [
     customer: "David Kim",
     email: "dkim.tech@gmail.com",
     date: "2026-08-10 11:20",
-    total: "$387.99",
+    total: "EGP 387.99",
     amountNum: 387.99,
     status: "Delivered",
     paymentStatus: "Paid",
@@ -186,9 +186,9 @@ export const INITIAL_ORDERS = [
     paymentMethod: "Apple Pay",
     shippingAddress: "555 California St, San Francisco, CA 94104",
     items: [
-      { id: "item-4", name: "Smart Fitness Watch V2", price: "$179.00", quantity: 1 },
-      { id: "item-5", name: "Wireless Noise-Canceling Headphones", price: "$199.99", quantity: 1 },
-      { id: "item-6", name: "Stainless Steel Insulated Bottle", price: "$29.99", quantity: 1 }
+      { id: "item-4", name: "Smart Fitness Watch V2", price: "EGP 179.00", quantity: 1 },
+      { id: "item-5", name: "Wireless Noise-Canceling Headphones", price: "EGP 199.99", quantity: 1 },
+      { id: "item-6", name: "Stainless Steel Insulated Bottle", price: "EGP 29.99", quantity: 1 }
     ],
     trackingNumber: "UPS-1Z9999999999",
     history: [
@@ -202,7 +202,7 @@ export const INITIAL_ORDERS = [
     customer: "Elena Rostova",
     email: "elena.r@design.co",
     date: "2026-08-09 09:45",
-    total: "$59.98",
+    total: "EGP 59.98",
     amountNum: 59.98,
     status: "Cancelled",
     paymentStatus: "Refunded",
@@ -210,35 +210,35 @@ export const INITIAL_ORDERS = [
     paymentMethod: "Credit Card (Mastercard ending in 1102)",
     shippingAddress: "200 Park Ave, New York, NY 10166",
     items: [
-      { id: "item-7", name: "Stainless Steel Insulated Bottle", price: "$29.99", quantity: 2 }
+      { id: "item-7", name: "Stainless Steel Insulated Bottle", price: "EGP 29.99", quantity: 2 }
     ],
     trackingNumber: "N/A",
     history: [
       { date: "2026-08-09 09:45", note: "Order placed." },
       { date: "2026-08-09 10:15", note: "Customer requested cancellation." },
-      { date: "2026-08-09 10:20", note: "Full refund of $59.98 issued." }
+      { date: "2026-08-09 10:20", note: "Full refund of EGP 59.98 issued." }
     ]
   }
 ];
 
 export const INITIAL_CUSTOMERS = [
-  { id: "cust-1", name: "Alex Morgan", email: "alex.morgan@example.com", phone: "+1 (555) 234-5678", ordersCount: 4, totalSpent: "$682.50", segment: "VIP", status: "Active", joinedDate: "2025-11-12" },
-  { id: "cust-2", name: "Sarah Jenkins", email: "s.jenkins@domain.com", phone: "+1 (555) 876-5432", ordersCount: 2, totalSpent: "$240.00", segment: "Regular", status: "Active", joinedDate: "2026-01-05" },
-  { id: "cust-3", name: "David Kim", email: "dkim.tech@gmail.com", phone: "+1 (555) 432-1098", ordersCount: 7, totalSpent: "$1,450.00", segment: "VIP", status: "Active", joinedDate: "2025-08-20" },
-  { id: "cust-4", name: "Elena Rostova", email: "elena.r@design.co", phone: "+1 (555) 654-9870", ordersCount: 1, totalSpent: "$59.98", segment: "New", status: "Active", joinedDate: "2026-08-01" },
-  { id: "cust-5", name: "Marcus Brody", email: "mbrody@archeology.edu", phone: "+1 (555) 998-1122", ordersCount: 0, totalSpent: "$0.00", segment: "New", status: "Inactive", joinedDate: "2026-08-10" }
+  { id: "cust-1", name: "Alex Morgan", email: "alex.morgan@example.com", phone: "+1 (555) 234-5678", ordersCount: 4, totalSpent: "EGP 682.50", segment: "VIP", status: "Active", joinedDate: "2025-11-12" },
+  { id: "cust-2", name: "Sarah Jenkins", email: "s.jenkins@domain.com", phone: "+1 (555) 876-5432", ordersCount: 2, totalSpent: "EGP 240.00", segment: "Regular", status: "Active", joinedDate: "2026-01-05" },
+  { id: "cust-3", name: "David Kim", email: "dkim.tech@gmail.com", phone: "+1 (555) 432-1098", ordersCount: 7, totalSpent: "EGP 1,450.00", segment: "VIP", status: "Active", joinedDate: "2025-08-20" },
+  { id: "cust-4", name: "Elena Rostova", email: "elena.r@design.co", phone: "+1 (555) 654-9870", ordersCount: 1, totalSpent: "EGP 59.98", segment: "New", status: "Active", joinedDate: "2026-08-01" },
+  { id: "cust-5", name: "Marcus Brody", email: "mbrody@archeology.edu", phone: "+1 (555) 998-1122", ordersCount: 0, totalSpent: "EGP 0.00", segment: "New", status: "Inactive", joinedDate: "2026-08-10" }
 ];
 
 export const INITIAL_PAYMENTS = [
-  { id: "PAY-501", orderId: "ORD-9821", customer: "Alex Morgan", gateway: "Stripe (Credit Card)", amount: "$288.99", fee: "$8.68", status: "Succeeded", date: "2026-08-12 14:31" },
-  { id: "PAY-502", orderId: "ORD-9820", customer: "Sarah Jenkins", gateway: "PayPal", amount: "$129.50", fee: "$3.88", status: "Succeeded", date: "2026-08-11 18:16" },
-  { id: "PAY-503", orderId: "ORD-9819", customer: "David Kim", gateway: "Apple Pay", amount: "$387.99", fee: "$11.64", status: "Succeeded", date: "2026-08-10 11:20" },
-  { id: "PAY-504", orderId: "ORD-9818", customer: "Elena Rostova", gateway: "Stripe (Credit Card)", amount: "$59.98", fee: "$0.00", status: "Refunded", date: "2026-08-09 10:20" }
+  { id: "PAY-501", orderId: "ORD-9821", customer: "Alex Morgan", gateway: "Stripe (Credit Card)", amount: "EGP 288.99", fee: "EGP 8.68", status: "Succeeded", date: "2026-08-12 14:31" },
+  { id: "PAY-502", orderId: "ORD-9820", customer: "Sarah Jenkins", gateway: "PayPal", amount: "EGP 129.50", fee: "EGP 3.88", status: "Succeeded", date: "2026-08-11 18:16" },
+  { id: "PAY-503", orderId: "ORD-9819", customer: "David Kim", gateway: "Apple Pay", amount: "EGP 387.99", fee: "EGP 11.64", status: "Succeeded", date: "2026-08-10 11:20" },
+  { id: "PAY-504", orderId: "ORD-9818", customer: "Elena Rostova", gateway: "Stripe (Credit Card)", amount: "EGP 59.98", fee: "EGP 0.00", status: "Refunded", date: "2026-08-09 10:20" }
 ];
 
 export const INITIAL_PROMOTIONS = [
   { id: "promo-1", code: "SUMMER20", type: "Percentage", value: "20% OFF", usageLimit: 500, currentUsage: 214, status: "Active", startDate: "2026-06-01", endDate: "2026-08-31" },
-  { id: "promo-2", code: "WELCOME10", type: "Fixed Amount", value: "$10.00 OFF", usageLimit: 1000, currentUsage: 642, status: "Active", startDate: "2026-01-01", endDate: "2026-12-31" },
+  { id: "promo-2", code: "WELCOME10", type: "Fixed Amount", value: "10.00 EGP OFF", usageLimit: 1000, currentUsage: 642, status: "Active", startDate: "2026-01-01", endDate: "2026-12-31" },
   { id: "promo-3", code: "FREESHIP", type: "Free Shipping", value: "Free Standard Shipping", usageLimit: 200, currentUsage: 189, status: "Active", startDate: "2026-08-01", endDate: "2026-08-20" },
   { id: "promo-4", code: "FLASH50", type: "Percentage", value: "50% OFF", usageLimit: 50, currentUsage: 50, status: "Expired", startDate: "2026-07-15", endDate: "2026-07-16" }
 ];
@@ -252,7 +252,7 @@ export const INITIAL_INVENTORY_LOGS = [
 export const INITIAL_SETTINGS = {
   storeName: "PRIM Global Store",
   storeEmail: "support@prim.com",
-  currency: "USD ($)",
+  currency: "EGP (E£)",
   timezone: "UTC-7 (Pacific Time)",
   taxRatePercent: 8.5,
   freeShippingThreshold: 150,

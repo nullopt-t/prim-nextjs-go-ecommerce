@@ -131,6 +131,10 @@ export const adminService = {
     return api.post(`/api/v1/admin/payments/${id}/refund`, {});
   },
 
+  updatePaymentStatus: async (id: string, status: string): Promise<any> => {
+    return api.patch(`/api/v1/admin/payments/${id}/status`, { status });
+  },
+
   // Media Library
   getMedia: async (params?: { page?: number; pageSize?: number }): Promise<any> => {
     const query = new URLSearchParams();

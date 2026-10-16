@@ -17,7 +17,7 @@ export function AdminPromotions() {
         id: p.id,
         code: p.code,
         type: p.discountType === "percentage" ? "Percentage" : "Fixed Amount",
-        value: p.discountType === "percentage" ? `${p.discountValue}%` : `$${(p.discountValue / 100).toFixed(2)}`,
+        value: p.discountType === "percentage" ? `${p.discountValue}%` : `EGP ${(p.discountValue / 100).toFixed(2)}`,
         discountPercent: p.discountType === "percentage" ? p.discountValue : 0,
         fixedDiscount: p.discountType === "fixed_amount" ? p.discountValue / 100 : 0,
         usageLimit: p.usageLimit || 500,
@@ -69,7 +69,7 @@ export function AdminPromotions() {
       code: formData.code.toUpperCase().trim(),
       discountType: isPct ? "percentage" : "fixed_amount",
       discountValue: discountVal,
-      currency: "USD",
+      currency: "EGP",
       minCartAmount: 5000,
       usageLimit: Number(formData.usageLimit) || 100,
       status: "active",
@@ -200,7 +200,7 @@ export function AdminPromotions() {
                     className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
                   >
                     <option value="Percentage">Percentage OFF</option>
-                    <option value="Fixed Amount">Fixed $ OFF</option>
+                    <option value="Fixed Amount">Fixed EGP OFF</option>
                     <option value="Free Shipping">Free Shipping</option>
                   </select>
                 </div>

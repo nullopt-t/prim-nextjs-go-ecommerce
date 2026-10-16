@@ -40,6 +40,8 @@ type CreateOrderInput struct {
 	ShippingAddress *model.Address
 	// CouponID is the optional applied promotional discount coupon UUID.
 	CouponID *uuid.UUID
+	// CouponCode is the human-readable code of the applied coupon.
+	CouponCode *string
 	// DiscountAmount is the deducted total from the gross order price in minor units.
 	DiscountAmount int64
 	// Currency is the 3-letter currency code (e.g., "USD").
@@ -140,6 +142,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 			ShippingAddress: in.ShippingAddress,
 			Status:          model.OrderStatusPending,
 			CouponID:        in.CouponID,
+			CouponCode:      in.CouponCode,
 			DiscountAmount:  in.DiscountAmount,
 			TotalAmount:     finalTotal,
 			Currency:        in.Currency,

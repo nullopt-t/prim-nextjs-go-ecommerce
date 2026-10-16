@@ -71,6 +71,8 @@ type Order struct {
 	Status OrderStatus
 	// CouponID is the optional applied coupon promotion UUID.
 	CouponID *uuid.UUID
+	// CouponCode is the human-readable code of the applied coupon (e.g. "SUMMER20").
+	CouponCode *string
 	// DiscountAmount is the total discount reduction in cents.
 	DiscountAmount int64
 	// TotalAmount is the final charged sum (subtotal - discounts + tax + shipping) in cents.

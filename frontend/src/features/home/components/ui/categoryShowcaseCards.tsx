@@ -42,6 +42,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
                   key={productTarget}
                   href={`/products/${productTarget}`}
                   className="group flex flex-col text-left rtl:text-right"
+                  title={productTitle}
                 >
                   <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-secondary/50 border border-border/40 group-hover:border-accent-brand/60 transition-colors">
                     <img
@@ -50,14 +51,6 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
                       className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
-                  <p className="text-xs font-medium text-foreground group-hover:text-accent-brand mt-1.5 line-clamp-1 w-full transition-colors">
-                    {productTitle}
-                  </p>
-                  {p.price !== undefined && (
-                    <span className="text-[11px] font-semibold text-muted-foreground group-hover:text-foreground">
-                      ${typeof p.price === "number" ? p.price.toFixed(2) : p.price}
-                    </span>
-                  )}
                 </Link>
               );
             })}
@@ -73,6 +66,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
               <Link
                 href={`/products/${productTarget}`}
                 className="group block mb-3 text-left rtl:text-right"
+                title={productTitle}
               >
                 <div className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-secondary/50 border border-border/40 group-hover:border-accent-brand/60 transition-colors">
                   <img
@@ -80,16 +74,6 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
                     alt={productTitle}
                     className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
                   />
-                </div>
-                <div className="flex items-center justify-between mt-2">
-                  <p className="text-xs sm:text-sm font-semibold text-foreground group-hover:text-accent-brand line-clamp-1 transition-colors">
-                    {productTitle}
-                  </p>
-                  {top4[0].price !== undefined && (
-                    <span className="text-xs font-bold text-foreground shrink-0 ltr:ml-2 rtl:mr-2">
-                      ${typeof top4[0].price === "number" ? top4[0].price.toFixed(2) : top4[0].price}
-                    </span>
-                  )}
                 </div>
               </Link>
             );

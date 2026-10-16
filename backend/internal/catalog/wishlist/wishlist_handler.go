@@ -54,7 +54,7 @@ type WishlistProductResponse struct {
 	// Numeric original crossed-out price
 	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
 	// Currency ISO code
-	Currency *string `json:"currency,omitempty" example:"USD"`
+	Currency *string `json:"currency,omitempty" example:"EGP"`
 	// Salable inventory availability
 	InStock bool `json:"inStock" example:"true"`
 	// Variant specific details
@@ -113,7 +113,7 @@ func mapWishlistItemResponse(item *model.WishlistItem) WishlistItemResponse {
 		extractedPrice   *float64
 		origPriceStr     *string
 		extractedOrigVal *float64
-		currency         = "USD"
+		currency         = "EGP"
 		variantIDStr     *string
 	)
 

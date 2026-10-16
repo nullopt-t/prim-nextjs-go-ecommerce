@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { RefreshCcw, Search } from "lucide-react";
+import { CheckCircle2, RefreshCcw, Search } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { toast } from "sonner";
 
@@ -19,8 +19,8 @@ export function AdminPayments() {
         customer: p.customerEmail ? p.customerEmail.split("@")[0] : "Customer",
         email: p.customerEmail || "customer@example.com",
         gateway: p.provider ? p.provider.toUpperCase() : "STRIPE",
-        amount: `$${((p.amount || 0) / 100).toFixed(2)}`,
-        fee: `$${(((p.amount || 0) * 0.029 + 30) / 100).toFixed(2)}`,
+        amount: `EGP ${((p.amount || 0) / 100).toFixed(2)}`,
+        fee: `EGP ${(((p.amount || 0) * 0.029 + 30) / 100).toFixed(2)}`,
         status: p.status === "captured" ? "Succeeded" : (p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : "Pending")
       })));
     } catch {
@@ -42,6 +42,18 @@ export function AdminPayments() {
         loadPayments();
       } catch (err: any) {
         toast.error(err?.response?.data?.message || "Failed to issue refund");
+      }
+    }
+  };
+
+  const handleMarkPaid = async (pay: any) => {
+    if (confirm(`Mark transaction ${pay.id} as captured/paid?`)) {
+      try {
+        await adminService.updatePaymentStatus(pay.id, "captured");
+        toast.success(`Payment marked as captured for ${pay.customer}`);
+        loadPayments();
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Failed to update payment status");
       }
     }
   };
@@ -112,7 +124,16 @@ export function AdminPayments() {
                       {pay.status}
                     </span>
                   </td>
-                  <td className="py-3.5 pr-4 text-right">
+                  <td className="py-3.5 pr-4 text-right space-x-2">
+                    {pay.status === "Pending" && (
+                      <button
+                        onClick={() => handleMarkPaid(pay)}
+                        className="px-2.5 py-1 text-[11px] font-semibold text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg transition-colors inline-flex items-center gap-1"
+                      >
+                        <CheckCircle2 className="size-3" />
+                        <span>Mark Paid</span>
+                      </button>
+                    )}
                     {pay.status === "Succeeded" && (
                       <button
                         onClick={() => handleIssueRefund(pay)}

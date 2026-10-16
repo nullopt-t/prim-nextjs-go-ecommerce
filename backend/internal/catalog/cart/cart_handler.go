@@ -83,7 +83,7 @@ type CartResponse struct {
 	// Cart UUID
 	ID string `json:"id" example:"c23c12b7-37ff-49e6-a70f-1dcd122a0b99"`
 	// Active store currency code
-	Currency string `json:"currency" example:"USD"`
+	Currency string `json:"currency" example:"EGP"`
 	// List of all items currently in cart
 	Items []CartItemResponse `json:"items"`
 	// Monetary calculation breakdown
@@ -103,7 +103,7 @@ func mapCartResponse(cart *model.Cart) CartResponse {
 
 	var subtotal int64
 	var itemCount int
-	cartCurrency := "USD" // Default fallback
+	cartCurrency := "EGP" // Default fallback
 
 	res := CartResponse{
 		ID:        cart.ID.String(),
@@ -230,7 +230,7 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 		cookieSess, err := c.Cookie("session_id")
 		if err != nil || cookieSess == "" {
 			c.JSON(http.StatusOK, api.DataResponse{Data: CartResponse{
-				Currency: "USD",
+				Currency: "EGP",
 				Items:    []CartItemResponse{},
 				Summary: CartSummaryResponse{
 					Subtotal: 0,

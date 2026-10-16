@@ -155,6 +155,28 @@ func (h *AdminHandler) ListPayments(c *gin.Context) {
 	})
 }
 
+func (h *AdminHandler) UpdatePaymentStatus(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid payment ID"))
+		return
+	}
+
+	var req struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid status body"))
+		return
+	}
+
+	if err := h.service.UpdatePaymentStatus(c.Request.Context(), id, req.Status); err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to update payment status").Wrap(err))
+		return
+	}
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Payment status updated successfully"})
+}
+
 func (h *AdminHandler) RefundPayment(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

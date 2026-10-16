@@ -128,7 +128,7 @@ type ProductVariantResponse struct {
 	// Numeric original MSRP price
 	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
 	// Currency ISO code
-	Currency *string `json:"currency,omitempty" example:"USD"`
+	Currency *string `json:"currency,omitempty" example:"EGP"`
 	// Primary variant thumbnail URL
 	Thumbnail *string `json:"thumbnail,omitempty" example:"https://example.com/thumb.jpg"`
 	// Associated media gallery
@@ -157,7 +157,7 @@ type AdminProductVariantResponse struct {
 	// Numeric original price
 	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
 	// Currency ISO code
-	Currency *string `json:"currency,omitempty" example:"USD"`
+	Currency *string `json:"currency,omitempty" example:"EGP"`
 	// Storage object metadata for thumbnail
 	Thumbnail *StorageObjectResponse `json:"thumbnail,omitempty"`
 	// Media gallery
@@ -192,7 +192,7 @@ type ProductResponse struct {
 	// Numeric original price
 	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
 	// Currency ISO code
-	Currency *string `json:"currency,omitempty" example:"USD"`
+	Currency *string `json:"currency,omitempty" example:"EGP"`
 }
 
 type ProductRatingSummaryResponse struct {
@@ -301,7 +301,7 @@ type CreateProductVariantRequest struct {
 	// Crossed-out/original MSRP price in cents
 	CrossedOutPrice *int64 `json:"crossedOutPrice,omitempty" example:"299900"`
 	// Currency ISO code
-	Currency *string `json:"currency,omitempty" example:"USD"`
+	Currency *string `json:"currency,omitempty" example:"EGP"`
 	// Custom attributes map
 	Attributes map[string]any `json:"attributes,omitempty"`
 	// Flag if this variant should be the default selection
@@ -423,7 +423,7 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 					})
 				}
 			}
-			curr := "USD"
+			curr := "EGP"
 			if v.Currency != nil && *v.Currency != "" {
 				curr = *v.Currency
 			}
@@ -591,7 +591,7 @@ type ProductListItemResponse struct {
 	// Numeric original price
 	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
 	// Currency ISO code
-	Currency *string `json:"currency,omitempty" example:"USD"`
+	Currency *string `json:"currency,omitempty" example:"EGP"`
 	// Category information
 	Category *category.PublicCategoryResponse `json:"category,omitempty"`
 	// Rating summary and score breakdown
@@ -631,7 +631,7 @@ func mapProductListItemResponse(item *ProductCardReadModel) ProductListItemRespo
 		}
 	}
 
-	curr := "USD"
+	curr := "EGP"
 	if item.Currency != nil && *item.Currency != "" {
 		curr = *item.Currency
 	}
@@ -980,7 +980,7 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 			if v.Thumbnail != nil && v.Thumbnail.PublicURL != "" {
 				thumbnailURL = &v.Thumbnail.PublicURL
 			}
-			curr := "USD"
+			curr := "EGP"
 			if v.Currency != nil && *v.Currency != "" {
 				curr = *v.Currency
 			}
@@ -1341,7 +1341,7 @@ func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 		return
 	}
 
-	curr := "USD"
+	curr := "EGP"
 	if v.Currency != nil && *v.Currency != "" {
 		curr = *v.Currency
 	}

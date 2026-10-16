@@ -29,11 +29,20 @@ export function calculateCartTotals(
     return acc + rawPrice * (item.quantity || 1);
   }, 0);
 
+  // Calculate discount from coupon
   let discount = 0;
-  if (appliedCoupon?.discountPercent) {
-    discount = (subtotal * appliedCoupon.discountPercent) / 100;
-  } else if (appliedCoupon?.fixedDiscount) {
-    discount = appliedCoupon.fixedDiscount;
+  if (appliedCoupon) {
+    if (appliedCoupon.discountAmount && appliedCoupon.discountAmount > 0) {
+      discount = appliedCoupon.discountAmount;
+    } else if (appliedCoupon.discountPercent) {
+      discount = (subtotal * appliedCoupon.discountPercent) / 100;
+    } else if (appliedCoupon.fixedDiscount) {
+      discount = appliedCoupon.fixedDiscount;
+    } else if (appliedCoupon.discountType === "percentage" && appliedCoupon.discountValue) {
+      discount = (subtotal * appliedCoupon.discountValue) / 100;
+    } else if (appliedCoupon.discountType === "fixed_amount" && appliedCoupon.discountValue) {
+      discount = appliedCoupon.discountValue / 100;
+    }
   }
 
   const isFreeShipping = subtotal >= shippingThreshold || Boolean(appliedCoupon?.freeShipping);

@@ -93,7 +93,7 @@
     }
   },
   "common": {
-    "currency": "$",
+    "currency": "EGP",
     "filters": {
       "allCategories": "All Categories",
       "andUp": "& up",

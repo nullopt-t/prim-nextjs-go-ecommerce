@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCart } from "@/hooks/useCart";
+import { calculateCartTotals } from "@/features/cart/utils/cartCalculations";
 import { useCheckout } from "@/hooks/useOrders";
 import { useAddresses, usePaymentMethods } from "@/hooks/useUserAccount";
 import { useRouter } from "@/i18n/navigation";
@@ -24,6 +25,7 @@ import {
 	Pencil,
 	Plus,
 	X,
+	Tag,
 	Loader2
 } from "lucide-react";
 import { CountrySelect } from "@/components/ui/CountrySelect";
@@ -69,8 +71,10 @@ const INITIAL_NEW_ADDRESS = {
 
 export function Checkout() {
 	const { user } = useAuthContext();
-	const { cartItems, refreshCart, resetCart, appliedCoupon } = useCart();
+	const { cartItems, refreshCart, resetCart, appliedCoupon, applyCoupon, removeCoupon } = useCart();
 	const { checkout, loading: placingOrder } = useCheckout();
+	const [couponInput, setCouponInput] = useState("");
+	const [applyingCoupon, setApplyingCoupon] = useState(false);
 	const { addresses, addAddress, refreshAddresses, loading: addressesLoading } = useAddresses();
 	const { cards } = usePaymentMethods();
 	const router = useRouter();
@@ -103,17 +107,13 @@ export function Checkout() {
 	const effectiveAddressId = selectedAddressId || addresses?.find((a: any) => a.isDefault)?.id || addresses?.[0]?.id || "";
 	const effectiveCardId = selectedCardId || cards?.find((c: any) => c.isDefault)?.id || cards?.[0]?.id || "";
 
-	// Calculations
-	const subtotal = cartItems?.reduce((acc: number, item: any) => acc + (parseFloat(String(item.productPrice || "").replace('$', '') || "0") * (item.quantity || 1)), 0) || 0;
-	
-	let discount = 0;
-	if (appliedCoupon?.discountPercent) {
-		discount = (subtotal * appliedCoupon.discountPercent) / 100;
-	} else if (appliedCoupon?.fixedDiscount) {
-		discount = appliedCoupon.fixedDiscount;
-	}
+	// Calculations using standard cartCalculations utility
+	const {
+		subtotal,
+		discount,
+		isFreeShipping: isStandardFree,
+	} = calculateCartTotals(cartItems, appliedCoupon);
 
-	const isStandardFree = subtotal >= 150 || appliedCoupon?.freeShipping;
 	const shippingCost = shippingSpeed === "express" ? 15.00 : (isStandardFree ? 0 : 9.99);
 	const finalTotal = Math.max(0, subtotal - discount + shippingCost);
 
@@ -154,6 +154,33 @@ export function Checkout() {
 		} finally {
 			setSavingAddress(false);
 		}
+	};
+
+	const handleApplyCoupon = async (codeToApply?: string) => {
+		const targetCode = (codeToApply || couponInput).trim();
+		if (!targetCode) {
+			toast.error("Please enter a coupon code");
+			return;
+		}
+		setApplyingCoupon(true);
+		try {
+			const res = await applyCoupon(targetCode);
+			if (res.success) {
+				toast.success(res.coupon?.message || `Coupon ${targetCode.toUpperCase()} applied!`);
+				setCouponInput("");
+			} else {
+				toast.error(res.error || "Failed to apply coupon");
+			}
+		} catch (err: any) {
+			toast.error(err?.message || "Invalid coupon code");
+		} finally {
+			setApplyingCoupon(false);
+		}
+	};
+
+	const handleRemoveCoupon = () => {
+		removeCoupon();
+		toast.info("Coupon removed");
 	};
 
 	// Validation helpers
@@ -227,6 +254,7 @@ export function Checkout() {
 		const orderPayload = {
 			shippingAddressId: effectiveAddressId,
 			couponId: appliedCoupon?.id || undefined,
+			paymentMethod: paymentType === "cod" ? "cash_on_delivery" : paymentType,
 		};
 
 		const result = await checkout(orderPayload);
@@ -239,7 +267,7 @@ export function Checkout() {
 			const completedOrderInfo = {
 				id: orderData.orderId || `ORD-${randomOrderCode}`,
 				trackingNumber: `PRM-${orderData.orderId ? orderData.orderId.slice(0, 8).toUpperCase() : randomOrderCode}`,
-				total: `$${finalTotal.toFixed(2)}`,
+				total: `EGP ${finalTotal.toFixed(2)}`,
 				shippingAddress: finalShippingAddress,
 				date: "Today",
 			};
@@ -753,11 +781,11 @@ export function Checkout() {
 															</div>
 														</div>
 														<span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
-															{isStandardFree ? "FREE" : "$9.99"}
+															{isStandardFree ? "FREE" : "EGP 9.99"}
 														</span>
 													</div>
 													<p className="text-xs text-muted-foreground leading-relaxed">
-														Standard ground delivery via regular postal service. Free for orders over $150.
+														Standard ground delivery via regular postal service. Free for orders over EGP 150.
 													</p>
 												</div>
 												{shippingSpeed === "standard" && (
@@ -787,7 +815,7 @@ export function Checkout() {
 																<span className="text-[11px] text-muted-foreground">1 to 2 business days</span>
 															</div>
 														</div>
-														<span className="text-xs font-extrabold text-foreground">$15.00</span>
+														<span className="text-xs font-extrabold text-foreground">EGP 15.00</span>
 													</div>
 													<p className="text-xs text-muted-foreground leading-relaxed">
 														Guaranteed air express courier with real-time GPS tracking and signature on delivery.
@@ -877,7 +905,7 @@ export function Checkout() {
 												<div>
 													<span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Delivery Speed</span>
 													<p className="text-xs sm:text-sm font-semibold text-foreground">
-														{shippingSpeed === "express" ? "Express Priority (1-2 days) • $15.00" : `Standard Delivery (3-5 days) • ${isStandardFree ? "Free" : "$9.99"}`}
+														{shippingSpeed === "express" ? "Express Priority (1-2 days) • EGP 15.00" : `Standard Delivery (3-5 days) • ${isStandardFree ? "Free" : "EGP 9.99"}`}
 													</p>
 												</div>
 											</div>
@@ -1080,7 +1108,7 @@ export function Checkout() {
 												disabled={placingOrder}
 												className="flex items-center gap-2 px-6 py-3 bg-accent-brand text-white font-bold text-sm rounded-xl shadow-md hover:bg-accent-brand/90 transition-all disabled:opacity-50"
 											>
-												<span>{placingOrder ? "Placing Order..." : `Place Order • $${finalTotal.toFixed(2)}`}</span>
+												<span>{placingOrder ? "Placing Order..." : `Place Order • EGP ${finalTotal.toFixed(2)}`}</span>
 												<CheckCircle2 className="size-4" />
 											</button>
 										</div>
@@ -1121,10 +1149,64 @@ export function Checkout() {
 								))}
 							</div>
 
+							{/* Clean Promo Code Input */}
+							<div className="pt-2 border-t border-border/60">
+								{appliedCoupon ? (
+									<div className="flex items-center justify-between p-2.5 bg-emerald-500/10 border border-emerald-500/25 rounded-xl text-xs">
+										<div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-medium">
+											<Tag className="size-3.5 text-emerald-600 shrink-0" />
+											<span className="font-bold tracking-wider font-mono uppercase">{appliedCoupon.code}</span>
+											<span className="text-[11px] opacity-80">
+												({appliedCoupon.discountPercent
+													? `${appliedCoupon.discountPercent}% OFF`
+													: appliedCoupon.fixedDiscount
+													? `EGP ${appliedCoupon.fixedDiscount} OFF`
+													: "Applied"})
+											</span>
+										</div>
+										<button
+											type="button"
+											onClick={handleRemoveCoupon}
+											className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-background/80 transition-colors"
+											title="Remove promo code"
+										>
+											<X className="size-3.5" />
+										</button>
+									</div>
+								) : (
+									<div className="flex gap-2">
+										<div className="flex-1 bg-secondary/30 border border-border focus-within:border-accent-brand rounded-xl overflow-hidden flex items-center px-3 h-9 transition-colors">
+											<Tag className="size-3.5 text-muted-foreground shrink-0 mr-2" />
+											<input
+												type="text"
+												placeholder="Promo code"
+												value={couponInput}
+												onChange={(e) => setCouponInput(e.target.value)}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														e.preventDefault();
+														handleApplyCoupon();
+													}
+												}}
+												className="w-full bg-transparent outline-none text-xs text-foreground placeholder:text-muted-foreground uppercase font-mono"
+											/>
+										</div>
+										<button
+											type="button"
+											onClick={() => handleApplyCoupon()}
+											disabled={applyingCoupon || !couponInput.trim()}
+											className="px-3.5 h-9 rounded-xl bg-secondary hover:bg-secondary/80 disabled:opacity-40 text-foreground font-semibold text-xs transition-colors shrink-0 flex items-center justify-center cursor-pointer border border-border"
+										>
+											{applyingCoupon ? <Loader2 className="size-3.5 animate-spin" /> : "Apply"}
+										</button>
+									</div>
+								)}
+							</div>
+
 							<div className="flex flex-col gap-2.5 pt-4 border-t border-border/60 text-sm">
 								<div className="flex justify-between text-muted-foreground">
 									<span>Subtotal</span>
-									<span className="font-medium text-foreground">${subtotal.toFixed(2)}</span>
+									<span className="font-medium text-foreground">EGP {subtotal.toFixed(2)}</span>
 								</div>
 
 								{discount > 0 && (
@@ -1133,7 +1215,7 @@ export function Checkout() {
 											<Sparkles className="size-3.5" />
 											Discount ({appliedCoupon?.code})
 										</span>
-										<span>-${discount.toFixed(2)}</span>
+										<span>-EGP {discount.toFixed(2)}</span>
 									</div>
 								)}
 
@@ -1143,19 +1225,19 @@ export function Checkout() {
 										{shippingCost === 0 ? (
 											<span className="text-emerald-600 font-medium">FREE</span>
 										) : (
-											`$${shippingCost.toFixed(2)}`
+											`EGP ${shippingCost.toFixed(2)}`
 										)}
 									</span>
 								</div>
 
 								<div className="flex justify-between text-muted-foreground">
 									<span>Estimated Taxes</span>
-									<span className="font-medium text-foreground">$0.00</span>
+									<span className="font-medium text-foreground">EGP 0.00</span>
 								</div>
 
 								<div className="flex justify-between items-center text-lg font-bold text-foreground pt-3 border-t border-border">
 									<span>Total to Pay</span>
-									<span className="text-2xl font-extrabold text-foreground">${finalTotal.toFixed(2)}</span>
+									<span className="text-2xl font-extrabold text-foreground">EGP {finalTotal.toFixed(2)}</span>
 								</div>
 							</div>
 
@@ -1189,7 +1271,7 @@ export function Checkout() {
 									disabled={placingOrder || !cartItems || cartItems.length === 0}
 									className="w-full py-3.5 px-6 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-bold text-base shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
 								>
-									<span>{placingOrder ? "Processing Order..." : `Place Order • $${finalTotal.toFixed(2)}`}</span>
+									<span>{placingOrder ? "Processing Order..." : `Place Order • EGP ${finalTotal.toFixed(2)}`}</span>
 									<CheckCircle2 className="size-4" />
 								</button>
 							)}

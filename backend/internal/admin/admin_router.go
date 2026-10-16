@@ -36,6 +36,7 @@ func (r *AdminRouter) MapRoutes(vgroup *gin.RouterGroup) {
 
 		// Payments
 		admin.GET("/payments", r.handler.ListPayments)
+		admin.PATCH("/payments/:id/status", r.handler.UpdatePaymentStatus)
 		admin.POST("/payments/:id/refund", r.handler.RefundPayment)
 
 		// Media Library

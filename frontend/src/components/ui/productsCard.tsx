@@ -86,7 +86,7 @@ export function ProductsCard({
         slug: cardDetails.slug || String(cardDetails.id),
         variantId: defaultVariant?.id || cardDetails.defaultVariantId,
         productName: cardDetails.product,
-        productPrice: typeof cardDetails.price === "number" ? `$${cardDetails.price.toFixed(2)}` : String(cardDetails.price),
+        productPrice: typeof cardDetails.price === "number" ? `EGP ${cardDetails.price.toFixed(2)}` : String(cardDetails.price),
         img: typeof cardDetails.img === "string" ? cardDetails.img : "/placeholder-product.png",
         quantity: 1,
       };

@@ -36,7 +36,7 @@ export default function WishlistContent() {
           variantId: item.variantId || item.defaultVariantId,
           slug: item.slug,
           productName: item.product,
-          productPrice: typeof item.price === "number" ? `$${item.price.toFixed(2)}` : String(item.price),
+          productPrice: typeof item.price === "number" ? `EGP ${item.price.toFixed(2)}` : String(item.price),
           img: typeof item.img === "string" ? item.img : "/placeholder-product.png",
           quantity: 1,
         });

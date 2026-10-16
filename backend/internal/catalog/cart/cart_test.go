@@ -232,7 +232,7 @@ func (s *CartHTTPTestSuite) TestHTTP_GetCart_InitialEmptySchema() {
 	// Assert Top-Level CartResponse Fields
 	_, parseErr := uuid.Parse(resp.Data.ID)
 	s.Require().NoError(parseErr, "Cart ID must be a valid UUID string")
-	s.Equal("USD", resp.Data.Currency)
+	s.Equal("EGP", resp.Data.Currency)
 	s.Equal(0, resp.Data.ItemCount)
 	s.NotZero(resp.Data.UpdatedAt)
 	s.NotNil(resp.Data.Items)
