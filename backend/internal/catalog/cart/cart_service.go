@@ -107,9 +107,20 @@ func (s *CartService) getOrCreateCartWithTx(
 				SessionID: sessionID,
 			}
 			if createErr := s.cartRepo.CreateCart(ctx, tx, newCart); createErr != nil {
-				return nil, createErr
+				// Partial unique index on carts(user_id) lets one concurrent
+				// creation win; fetch the existing active cart instead of a 500.
+				if errors.Is(database.MapError(createErr), database.ErrConflict) && userID != nil {
+					if existing, gErr := s.cartRepo.GetCartByUserIDForUpdate(ctx, tx, *userID); gErr == nil {
+						cart = existing
+					} else if gErr != nil {
+						return nil, gErr
+					}
+				} else {
+					return nil, createErr
+				}
+			} else {
+				cart = newCart
 			}
-			cart = newCart
 		} else {
 			return nil, err
 		}
