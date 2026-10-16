@@ -561,3 +561,10 @@ func (s *OrderService) RefundPayment(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
+// UpdateOrderTracking updates the carrier tracking number for an order.
+func (s *OrderService) UpdateOrderTracking(ctx context.Context, id uuid.UUID, trackingNumber string) error {
+	return s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
+		return s.orderRepo.UpdateOrderTracking(ctx, tx, id, trackingNumber)
+	})
+}
+

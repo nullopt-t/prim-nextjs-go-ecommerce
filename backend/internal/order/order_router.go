@@ -42,6 +42,8 @@ func (r *OrderRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.GET("/:id", r.handler.AdminGetOrderByID)
 		// PATCH /admin/orders/:id/status - transition order status and record audit log.
 		admin.PATCH("/:id/status", r.handler.UpdateOrderStatus)
+		// PATCH /admin/orders/:id/tracking - update carrier tracking number.
+		admin.PATCH("/:id/tracking", r.handler.UpdateOrderTracking)
 	}
 
 	// Administrative dashboard and payments endpoints group

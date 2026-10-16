@@ -96,6 +96,10 @@ export const adminService = {
     return api.patch<{ message: string }>(`/api/v1/admin/orders/${id}/status`, { status, notes });
   },
 
+  updateOrderTracking: async (id: string, trackingNumber: string): Promise<{ message: string }> => {
+    return api.patch<{ message: string }>(`/api/v1/admin/orders/${id}/tracking`, { trackingNumber });
+  },
+
   // Dashboard Overview
   getDashboard: async (): Promise<any> => {
     return api.get(`/api/v1/admin/dashboard`);

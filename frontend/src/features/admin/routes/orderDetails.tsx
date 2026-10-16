@@ -31,12 +31,12 @@ export function AdminOrderDetails() {
           discountAmount: remoteOrder.discountAmount || 0,
           couponCode: remoteOrder.couponCode || null,
           couponId: remoteOrder.couponId || null,
-          status: remoteOrder.status ? remoteOrder.status.charAt(0).toUpperCase() + remoteOrder.status.slice(1) : "Processing",
+          status: remoteOrder.status ? remoteOrder.status.toLowerCase() : "pending",
           fulfillmentStatus: remoteOrder.status === "shipped" || remoteOrder.status === "delivered" ? "Fulfilled" : "Unfulfilled",
-          paymentStatus: remoteOrder.status === "canceled" ? "Canceled" : "Paid",
+          paymentStatus: remoteOrder.status === "cancelled" ? "Canceled" : "Paid",
           shippingAddress: remoteOrder.shippingAddress ? `${remoteOrder.shippingAddress.street || ""}, ${remoteOrder.shippingAddress.city || ""}, ${remoteOrder.shippingAddress.state || ""} ${remoteOrder.shippingAddress.postalCode || ""}` : "No shipping address provided",
-          paymentMethod: "Credit Card",
-          trackingNumber: "TRK-PRM-9921",
+          paymentMethod: remoteOrder.paymentMethod || "—",
+          trackingNumber: remoteOrder.trackingNumber || "",
           items: (Array.isArray(remoteOrder.items) ? remoteOrder.items : []).map((it: any) => {
             let itemName = "Order Item";
             if (typeof it.productSnapshot === "string") {
@@ -94,7 +94,16 @@ export function AdminOrderDetails() {
   };
 
   const handleSaveTracking = async () => {
-    toast.success("Tracking information saved!");
+    if (!trackingNumber.trim()) {
+      toast.error("Please enter a tracking number");
+      return;
+    }
+    try {
+      await adminService.updateOrderTracking(order.id, trackingNumber);
+      toast.success("Tracking information saved!");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to save tracking number");
+    }
   };
 
   const handleAddTimelineNote = async (e: React.FormEvent) => {
@@ -149,37 +158,37 @@ export function AdminOrderDetails() {
 
         <div className="flex items-center gap-2">
           <select
-            value={order.status === "Canceled" ? "Cancelled" : order.status}
-            onChange={(e) => handleUpdateFulfillment(e.target.value)}
-            disabled={order.status === "Cancelled" || order.status === "Canceled" || order.status === "Delivered"}
+            value={order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+            onChange={(e) => handleUpdateFulfillment(e.target.value.toLowerCase())}
+            disabled={order.status === "cancelled" || order.status === "delivered"}
             className="px-3 py-2 bg-secondary border border-border rounded-xl text-xs font-semibold text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {order.status === "Pending" && (
+            {order.status === "pending" && (
               <>
-                <option value="Pending" disabled>Pending</option>
-                <option value="Processing">Processing</option>
-                <option value="Cancelled">Cancelled</option>
+                <option value="pending" disabled>Pending</option>
+                <option value="processing">Processing</option>
+                <option value="cancelled">Cancelled</option>
               </>
             )}
-            {order.status === "Processing" && (
+            {order.status === "processing" && (
               <>
-                <option value="Processing" disabled>Processing</option>
-                <option value="Shipped">Shipped</option>
-                <option value="Cancelled">Cancelled</option>
+                <option value="processing" disabled>Processing</option>
+                <option value="shipped">Shipped</option>
+                <option value="cancelled">Cancelled</option>
               </>
             )}
-            {order.status === "Shipped" && (
+            {order.status === "shipped" && (
               <>
-                <option value="Shipped" disabled>Shipped</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Cancelled">Cancelled</option>
+                <option value="shipped" disabled>Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
               </>
             )}
-            {order.status === "Delivered" && (
-              <option value="Delivered">Delivered (Final)</option>
+            {order.status === "delivered" && (
+              <option value="delivered">Delivered (Final)</option>
             )}
-            {(order.status === "Cancelled" || order.status === "Canceled") && (
-              <option value="Cancelled">Cancelled (Final)</option>
+            {(order.status === "cancelled") && (
+              <option value="cancelled">Cancelled (Final)</option>
             )}
           </select>
         </div>

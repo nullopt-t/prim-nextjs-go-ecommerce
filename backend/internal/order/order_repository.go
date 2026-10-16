@@ -38,8 +38,9 @@ func (r *Repository) CreateOrder(
 	query := `
 		INSERT INTO orders (
 			id, customer_id, customer_email, shipping_address,
-			status, coupon_id, discount_amount, shipping_amount, tax_amount, total_amount, currency, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now())
+			status, coupon_id, discount_amount, shipping_amount, tax_amount, total_amount, currency,
+			payment_method, tracking_number, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now(), now())
 		RETURNING created_at, updated_at
 	`
 	err = qe.QueryRow(
@@ -56,6 +57,8 @@ func (r *Repository) CreateOrder(
 		o.TaxAmount,
 		o.TotalAmount,
 		o.Currency,
+		o.PaymentMethod,
+		o.TrackingNumber,
 	).Scan(&o.CreatedAt, &o.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create order: %w", err)
@@ -119,7 +122,9 @@ func (r *Repository) GetOrderByID(
 ) (*model.Order, error) {
 	query := `
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
-		       o.status, o.coupon_id, o.discount_amount, o.total_amount, o.currency, o.created_at, o.updated_at,
+		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount,
+		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
+		       o.created_at, o.updated_at,
 		       c.code
 		FROM orders o
 		LEFT JOIN coupons c ON o.coupon_id = c.id
@@ -130,6 +135,7 @@ func (r *Repository) GetOrderByID(
 	var o model.Order
 	var shippingBytes []byte
 	var couponCode *string
+	var paymentMethod, trackingNumber *string
 
 	err := row.Scan(
 		&o.ID,
@@ -139,13 +145,19 @@ func (r *Repository) GetOrderByID(
 		&o.Status,
 		&o.CouponID,
 		&o.DiscountAmount,
+		&o.ShippingAmount,
+		&o.TaxAmount,
 		&o.TotalAmount,
 		&o.Currency,
+		&paymentMethod,
+		&trackingNumber,
 		&o.CreatedAt,
 		&o.UpdatedAt,
 		&couponCode,
 	)
 	o.CouponCode = couponCode
+	o.PaymentMethod = derefString(paymentMethod)
+	o.TrackingNumber = derefString(trackingNumber)
 	if err != nil {
 		return nil, fmt.Errorf("get order by id: %w", err)
 	}
@@ -172,7 +184,9 @@ func (r *Repository) GetOrderByIDForUpdate(
 ) (*model.Order, error) {
 	query := `
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
-		       o.status, o.coupon_id, o.discount_amount, o.total_amount, o.currency, o.created_at, o.updated_at,
+		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount,
+		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
+		       o.created_at, o.updated_at,
 		       c.code
 		FROM orders o
 		LEFT JOIN coupons c ON o.coupon_id = c.id
@@ -184,6 +198,7 @@ func (r *Repository) GetOrderByIDForUpdate(
 	var o model.Order
 	var shippingBytes []byte
 	var couponCode *string
+	var paymentMethod, trackingNumber *string
 
 	err := row.Scan(
 		&o.ID,
@@ -193,13 +208,19 @@ func (r *Repository) GetOrderByIDForUpdate(
 		&o.Status,
 		&o.CouponID,
 		&o.DiscountAmount,
+		&o.ShippingAmount,
+		&o.TaxAmount,
 		&o.TotalAmount,
 		&o.Currency,
+		&paymentMethod,
+		&trackingNumber,
 		&o.CreatedAt,
 		&o.UpdatedAt,
 		&couponCode,
 	)
 	o.CouponCode = couponCode
+	o.PaymentMethod = derefString(paymentMethod)
+	o.TrackingNumber = derefString(trackingNumber)
 	if err != nil {
 		return nil, fmt.Errorf("get order by id for update: %w", err)
 	}
@@ -226,7 +247,9 @@ func (r *Repository) GetOrdersByCustomerID(
 ) ([]model.Order, error) {
 	query := `
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
-		       o.status, o.coupon_id, o.discount_amount, o.total_amount, o.currency, o.created_at, o.updated_at,
+		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount,
+		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
+		       o.created_at, o.updated_at,
 		       c.code
 		FROM orders o
 		LEFT JOIN coupons c ON o.coupon_id = c.id
@@ -244,6 +267,7 @@ func (r *Repository) GetOrdersByCustomerID(
 		var o model.Order
 		var shippingBytes []byte
 		var couponCode *string
+		var paymentMethod, trackingNumber *string
 
 		if err := rows.Scan(
 			&o.ID,
@@ -253,8 +277,12 @@ func (r *Repository) GetOrdersByCustomerID(
 			&o.Status,
 			&o.CouponID,
 			&o.DiscountAmount,
+			&o.ShippingAmount,
+			&o.TaxAmount,
 			&o.TotalAmount,
 			&o.Currency,
+			&paymentMethod,
+			&trackingNumber,
 			&o.CreatedAt,
 			&o.UpdatedAt,
 			&couponCode,
@@ -262,6 +290,8 @@ func (r *Repository) GetOrdersByCustomerID(
 			return nil, fmt.Errorf("scan order: %w", err)
 		}
 		o.CouponCode = couponCode
+		o.PaymentMethod = derefString(paymentMethod)
+		o.TrackingNumber = derefString(trackingNumber)
 
 		if err := json.Unmarshal(shippingBytes, &o.ShippingAddress); err != nil {
 			return nil, fmt.Errorf("unmarshal shipping address: %w", err)
@@ -412,7 +442,9 @@ func (r *Repository) ListOrders(
 ) ([]model.Order, error) {
 	query := `
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
-		       o.status, o.coupon_id, o.discount_amount, o.total_amount, o.currency, o.created_at, o.updated_at,
+		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount,
+		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
+		       o.created_at, o.updated_at,
 		       c.code
 		FROM orders o
 		LEFT JOIN coupons c ON o.coupon_id = c.id
@@ -447,6 +479,7 @@ func (r *Repository) ListOrders(
 		var o model.Order
 		var shippingBytes []byte
 		var couponCode *string
+		var paymentMethod, trackingNumber *string
 
 		if err := rows.Scan(
 			&o.ID,
@@ -456,8 +489,12 @@ func (r *Repository) ListOrders(
 			&o.Status,
 			&o.CouponID,
 			&o.DiscountAmount,
+			&o.ShippingAmount,
+			&o.TaxAmount,
 			&o.TotalAmount,
 			&o.Currency,
+			&paymentMethod,
+			&trackingNumber,
 			&o.CreatedAt,
 			&o.UpdatedAt,
 			&couponCode,
@@ -465,6 +502,8 @@ func (r *Repository) ListOrders(
 			return nil, fmt.Errorf("scan order: %w", err)
 		}
 		o.CouponCode = couponCode
+		o.PaymentMethod = derefString(paymentMethod)
+		o.TrackingNumber = derefString(trackingNumber)
 
 		if err := json.Unmarshal(shippingBytes, &o.ShippingAddress); err != nil {
 			return nil, fmt.Errorf("unmarshal shipping address for order %s: %w", o.ID, err)
@@ -654,5 +693,25 @@ func (r *Repository) UpdatePaymentStatus(ctx context.Context, qe database.QueryE
 	query := `UPDATE payments SET status = $1::payment_status, updated_at = NOW() WHERE id = $2`
 	_, err := qe.Exec(ctx, query, status, id)
 	return err
+}
+
+func (r *Repository) UpdateOrderTracking(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID, trackingNumber string) error {
+	query := `UPDATE orders SET tracking_number = $1, updated_at = NOW() WHERE id = $2`
+	tag, err := qe.Exec(ctx, query, trackingNumber, orderID)
+	if err != nil {
+		return fmt.Errorf("update order tracking: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}
+
+// derefString returns the string value of a *string, or "" if nil.
+func derefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 

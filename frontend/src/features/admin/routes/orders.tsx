@@ -27,13 +27,13 @@ export function AdminOrders() {
         total: `EGP ${((so.totalAmount || 0) / 100).toFixed(2)}`,
         discount: so.discountAmount ? `EGP ${((so.discountAmount || 0) / 100).toFixed(2)}` : null,
         couponCode: so.couponCode || null,
-        status: so.status ? so.status.charAt(0).toUpperCase() + so.status.slice(1) : "Processing",
+        status: so.status ? so.status.toLowerCase() : "pending",
         fulfillmentStatus: so.status === "shipped" || so.status === "delivered" ? "Fulfilled" : "Unfulfilled",
-        paymentStatus: so.status === "canceled" ? "Canceled" : "Paid",
-        items: so.items?.length || 1,
+        paymentStatus: so.status === "cancelled" ? "Canceled" : "Paid",
+        items: Array.isArray(so.items) ? so.items.length : 0,
         shippingAddress: so.shippingAddress ? `${so.shippingAddress.street || ""}, ${so.shippingAddress.city || ""}` : "Online Order",
-        paymentMethod: "Credit Card",
-        trackingNumber: "TRK-PRM-9921",
+        paymentMethod: so.paymentMethod || "—",
+        trackingNumber: so.trackingNumber || "",
         itemsList: so.items || [],
         history: [
           { date: so.createdAt ? new Date(so.createdAt).toISOString().slice(0, 10) : "Today", note: "Order placed successfully." }
@@ -67,7 +67,8 @@ export function AdminOrders() {
       o.id.toLowerCase().includes(search.toLowerCase()) ||
       o.customer.toLowerCase().includes(search.toLowerCase()) ||
       o.email.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "All" || o.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "All" || o.status === statusFilter.toLowerCase();
     return matchesSearch && matchesStatus;
   });
 
@@ -101,11 +102,12 @@ export function AdminOrders() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
           >
-            <option value="All">All Statuses</option>
-            <option value="Processing">Processing</option>
-            <option value="Shipped">Shipped</option>
-            <option value="Delivered">Delivered</option>
-            <option value="Cancelled">Cancelled</option>
+            <option value="all">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="processing">Processing</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
           </select>
         </div>
       </div>
@@ -155,37 +157,37 @@ export function AdminOrders() {
                   </td>
                   <td className="py-3.5">
                     <select
-                      value={order.status === "Canceled" ? "Cancelled" : order.status}
-                      onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
-                      disabled={order.status === "Cancelled" || order.status === "Canceled" || order.status === "Delivered"}
+                      value={order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      onChange={(e) => handleUpdateStatus(order.id, e.target.value.toLowerCase())}
+                      disabled={order.status === "cancelled" || order.status === "delivered"}
                       className="px-2.5 py-1 bg-secondary/50 border border-border rounded-lg text-xs font-semibold text-foreground focus:outline-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {order.status === "Pending" && (
+                      {order.status === "pending" && (
                         <>
-                          <option value="Pending" disabled>Pending</option>
-                          <option value="Processing">Processing</option>
-                          <option value="Cancelled">Cancelled</option>
+                          <option value="pending" disabled>Pending</option>
+                          <option value="processing">Processing</option>
+                          <option value="cancelled">Cancelled</option>
                         </>
                       )}
-                      {order.status === "Processing" && (
+                      {order.status === "processing" && (
                         <>
-                          <option value="Processing" disabled>Processing</option>
-                          <option value="Shipped">Shipped</option>
-                          <option value="Cancelled">Cancelled</option>
+                          <option value="processing" disabled>Processing</option>
+                          <option value="shipped">Shipped</option>
+                          <option value="cancelled">Cancelled</option>
                         </>
                       )}
-                      {order.status === "Shipped" && (
+                      {order.status === "shipped" && (
                         <>
-                          <option value="Shipped" disabled>Shipped</option>
-                          <option value="Delivered">Delivered</option>
-                          <option value="Cancelled">Cancelled</option>
+                          <option value="shipped" disabled>Shipped</option>
+                          <option value="delivered">Delivered</option>
+                          <option value="cancelled">Cancelled</option>
                         </>
                       )}
-                      {order.status === "Delivered" && (
-                        <option value="Delivered">Delivered (Final)</option>
+                      {order.status === "delivered" && (
+                        <option value="delivered">Delivered (Final)</option>
                       )}
-                      {(order.status === "Cancelled" || order.status === "Canceled") && (
-                        <option value="Cancelled">Cancelled (Final)</option>
+                      {(order.status === "cancelled") && (
+                        <option value="cancelled">Cancelled (Final)</option>
                       )}
                     </select>
                   </td>

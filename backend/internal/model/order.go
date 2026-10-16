@@ -83,6 +83,10 @@ type Order struct {
 	TotalAmount int64
 	// Currency is the transaction currency code (e.g. "USD").
 	Currency string
+	// PaymentMethod is the payment method used for the order (e.g. "cash_on_delivery", "stripe").
+	PaymentMethod string
+	// TrackingNumber is the carrier tracking number for shipped orders.
+	TrackingNumber string
 	// Items contains all purchased line items in this order.
 	Items []OrderItem
 	// CreatedAt is the timestamp when the order was placed.

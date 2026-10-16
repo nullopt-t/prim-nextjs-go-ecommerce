@@ -74,10 +74,18 @@ type OrderResponse struct {
 	CouponCode *string `json:"couponCode,omitempty"`
 	// DiscountAmount is the deducted amount in minor currency units.
 	DiscountAmount int64 `json:"discountAmount"`
+	// ShippingAmount is the shipping charge applied to the order in minor currency units.
+	ShippingAmount int64 `json:"shippingAmount"`
+	// TaxAmount is the tax amount applied to the order in minor currency units.
+	TaxAmount int64 `json:"taxAmount"`
 	// TotalAmount is the final monetary charge in minor currency units after discounts.
 	TotalAmount int64 `json:"totalAmount"`
 	// Currency is the 3-letter ISO currency code.
 	Currency string `json:"currency"`
+	// PaymentMethod is the payment method used for the order.
+	PaymentMethod string `json:"paymentMethod"`
+	// TrackingNumber is the carrier tracking number for shipped orders.
+	TrackingNumber string `json:"trackingNumber"`
 	// Items lists the individual line items in this order.
 	Items []OrderItemResponse `json:"items,omitempty"`
 	// CreatedAt is the RFC3339 creation timestamp.
@@ -98,12 +106,16 @@ func mapOrderResponse(o *model.Order) OrderResponse {
 			PostalCode: o.ShippingAddress.PostalCode,
 			Country:    o.ShippingAddress.Country,
 		},
-		Status:         o.Status,
-		DiscountAmount: o.DiscountAmount,
-		TotalAmount:    o.TotalAmount,
-		Currency:       o.Currency,
-		CreatedAt:      o.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:      o.UpdatedAt.Format(time.RFC3339),
+		Status:          o.Status,
+		DiscountAmount:  o.DiscountAmount,
+		ShippingAmount:  o.ShippingAmount,
+		TaxAmount:       o.TaxAmount,
+		TotalAmount:     o.TotalAmount,
+		Currency:        o.Currency,
+		PaymentMethod:   o.PaymentMethod,
+		TrackingNumber:  o.TrackingNumber,
+		CreatedAt:       o.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:       o.UpdatedAt.Format(time.RFC3339),
 	}
 
 	if o.CustomerID != nil {
@@ -530,5 +542,41 @@ func (h *OrderHandler) RefundPayment(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Payment marked as refunded"})
+}
+
+// UpdateOrderTracking godoc
+//
+//	@Summary		Update order tracking number (Admin)
+//	@Description	Updates the carrier tracking number for an order.
+//	@Tags			Admin Orders
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string				true	"Order UUID"	format(uuid)
+//	@Param			tracking	body		map[string]string		true	"Tracking number"
+//	@Success		200		{object}	api.MessageResponse
+//	@Router			/admin/orders/{id}/tracking [patch]
+func (h *OrderHandler) UpdateOrderTracking(c *gin.Context) {
+	orderID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid order ID").WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid order UUID format",
+		}))
+		return
+	}
+
+	var req struct {
+		TrackingNumber string `json:"trackingNumber" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid request body").Wrap(err))
+		return
+	}
+
+	if err := h.orderService.UpdateOrderTracking(c.Request.Context(), orderID, req.TrackingNumber); err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to update tracking number").Wrap(err))
+		return
+	}
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Tracking number updated successfully"})
 }
 
