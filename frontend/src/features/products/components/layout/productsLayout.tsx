@@ -4,6 +4,7 @@ import SideBar from "@/features/products/components/ui/sideBar";
 import Content from "@/features/products/components/ui/content";
 import { Title } from "@/components/ui/title";
 import { useCatalogContext } from "@/context/CatalogContext";
+import { useTranslations } from "next-intl";
 
 import { useSearchParams } from "next/navigation";
 
@@ -12,16 +13,17 @@ interface ProductsLayoutProps {
 }
 
 export default function ProductsLayout({ category = "All" }: ProductsLayoutProps) {
+  const t = useTranslations("products");
   const { categories } = useCatalogContext();
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q");
 
-  let displayTitle = "All Products";
-  let displaySubtitle = "Showing all products";
+  let displayTitle = t("layout.allProducts");
+  let displaySubtitle = t("layout.showingAll");
 
   if (searchQuery) {
-    displayTitle = `Search: "${searchQuery}"`;
-    displaySubtitle = "Matching products";
+    displayTitle = t("layout.searchTitle", { query: searchQuery });
+    displaySubtitle = t("layout.matching");
   } else if (category && category.toLowerCase() !== "all") {
     const matchedCategory = categories.find((c: any) => c.id === category || c.slug === category);
     if (matchedCategory) {
@@ -31,7 +33,7 @@ export default function ProductsLayout({ category = "All" }: ProductsLayoutProps
     } else {
       displayTitle = category.replace(/-/g, " ");
     }
-    displaySubtitle = `Showing products in ${displayTitle}`;
+    displaySubtitle = t("layout.showingIn", { category: displayTitle });
   }
   return (
     <div>

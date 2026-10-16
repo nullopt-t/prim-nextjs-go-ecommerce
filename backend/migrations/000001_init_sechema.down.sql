@@ -21,6 +21,9 @@ DROP TABLE IF EXISTS users CASCADE;
 -- Drop storage / media
 DROP TABLE IF EXISTS storage_objects CASCADE;
 
+-- Drop admin settings
+DROP TABLE IF EXISTS admin_settings CASCADE;
+
 -- Drop custom ENUM types if present
 DROP TYPE IF EXISTS storage_object_status CASCADE;
 DROP TYPE IF EXISTS publication_status CASCADE;

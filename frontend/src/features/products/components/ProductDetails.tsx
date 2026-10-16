@@ -33,6 +33,7 @@ export function ProductDetails() {
   const locale = useLocale();
   const t = useTranslations("common");
   const tReviews = useTranslations("reviews");
+  const tProducts = useTranslations("products");
   const { user } = useAuthContext();
 
   const { products: allProducts, loading: allLoading } = useAllProducts();
@@ -99,7 +100,7 @@ export function ProductDetails() {
           const isOwn = user?.id && String(r.userId) === String(user.id);
           return {
             id: r.id,
-            author: isOwn ? (user.name || "You") : r.user?.name || "Customer",
+            author: isOwn ? (user.name || tProducts("details.you")) : r.user?.name || tProducts("details.customer"),
             avatar: isOwn ? null : r.user?.avatar || null,
             rating: r.rating || 5,
             date: r.createdAt
@@ -108,8 +109,8 @@ export function ProductDetails() {
                   month: "long",
                   day: "numeric",
                 })
-              : "Recently",
-            title: r.title || "Customer Review",
+              : tProducts("details.recently"),
+            title: r.title || tProducts("details.customerReview"),
             content: r.body || r.content || "",
             helpful: r.helpful || 0,
             verified: true,
@@ -162,7 +163,7 @@ export function ProductDetails() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
         <div className="size-8 rounded-full border-2 border-accent-brand border-t-transparent animate-spin mb-3" />
-        <span className="text-sm">Loading product details...</span>
+        <span className="text-sm">{tProducts("details.loading")}</span>
       </div>
     );
   }
@@ -171,12 +172,12 @@ export function ProductDetails() {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <Package className="size-12 text-muted-foreground mb-3 opacity-50" />
-        <h1 className="text-xl font-bold text-foreground mb-2">Product Not Found</h1>
+        <h1 className="text-xl font-bold text-foreground mb-2">{tProducts("details.notFound")}</h1>
         <p className="text-muted-foreground text-sm mb-6 max-w-sm">
-          The product you are looking for doesn't exist or has been removed.
+          {tProducts("details.notFoundDescription")}
         </p>
         <Link href="/products">
-          <CustomButton text="Browse All Products" className="px-6 py-2.5 text-sm" />
+          <CustomButton text={tProducts("details.browseAll")} className="px-6 py-2.5 text-sm" />
         </Link>
       </div>
     );
@@ -243,9 +244,9 @@ export function ProductDetails() {
     const res = await addToCart(payload);
     setIsAdding(false);
     if (res.success) {
-      toast.success(`Added ${quantity}x ${productName} to your cart!`);
+      toast.success(tProducts("details.addedToCart", { quantity, productName }));
     } else {
-      toast.error(res.error || "Failed to add to cart");
+      toast.error(res.error || tProducts("details.addFailed"));
     }
   };
 
@@ -273,7 +274,7 @@ export function ProductDetails() {
     if (res.success) {
       navigate.push("/checkout");
     } else {
-      toast.error(res.error || "Failed to initiate checkout");
+      toast.error(res.error || tProducts("details.checkoutFailed"));
     }
   };
 
@@ -285,9 +286,9 @@ export function ProductDetails() {
   const handleShare = () => {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(window.location.href);
-      toast.success("Product link copied to clipboard!");
+      toast.success(tProducts("details.linkCopied"));
     } else {
-      toast.info("Share URL: " + window.location.href);
+      toast.info(tProducts("details.shareUrl", { url: window.location.href }));
     }
   };
 
@@ -310,16 +311,18 @@ export function ProductDetails() {
 
       const newRev: ProductReview = {
         id: serverReview?.id || Date.now(),
-        author: "You",
+        author: tProducts("details.you"),
         avatar: null,
         rating: newReviewData.rating,
         title: newReviewData.title,
         content: newReviewData.content,
-        date: `Reviewed on ${new Date().toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })}`,
+        date: tProducts("details.reviewedOn", {
+          date: new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+        }),
         helpful: 0,
         verified: true,
       };
@@ -365,11 +368,11 @@ export function ProductDetails() {
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 overflow-x-auto whitespace-nowrap pb-1 scrollbar-none">
         <Link href="/" className="hover:text-foreground transition-colors">
-          Home
+          {t("header.home")}
         </Link>
         <ChevronRight className="size-3.5 rtl:rotate-180 shrink-0" />
         <Link href="/products" className="hover:text-foreground transition-colors">
-          Products
+          {tProducts("details.products")}
         </Link>
         <ChevronRight className="size-3.5 rtl:rotate-180 shrink-0" />
         <Link
@@ -383,7 +386,7 @@ export function ProductDetails() {
       </nav>
 
       {/* Main Product Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16">
         <ProductGallery
           images={images}
           productName={productName}
@@ -441,7 +444,7 @@ export function ProductDetails() {
       {similarProducts.length > 0 && (
         <div className="mt-8 sm:mt-12 mb-6 sm:mb-8">
           <SectionTitle
-            title="Similar Products"
+            title={tProducts("details.similarProducts")}
             link={`/products?category=${product.categoryId || product.category}`}
           />
           <ProductsGrid

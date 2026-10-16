@@ -2,16 +2,16 @@ import MainLayout from "@/components/layouts/mainLayout";
 import { useTranslations } from "next-intl";
 
 export function Careers() {
-  const t = useTranslations("common.footer");
+  const t = useTranslations("shop");
   return (
     <MainLayout>
       <div className="w-full flex flex-col gap-6 py-4 sm:py-6">
         <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-          {t("careers", { defaultMessage: "Careers at PRIM" })}
+          {t("pages.careers.title")}
         </h1>
         <div className="text-muted-foreground flex flex-col gap-4 text-base leading-relaxed">
-          <p>Join a fast-growing team redefining modern e-commerce. We are constantly searching for passionate designers, engineers, product builders, and merchant operators.</p>
-          <p>Interested in joining? Send your CV and portfolio to careers@prim.shop.</p>
+          <p>{t("pages.careers.description")}</p>
+          <p>{t("pages.careers.apply")}</p>
         </div>
       </div>
     </MainLayout>

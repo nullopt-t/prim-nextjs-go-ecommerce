@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { LazyImage } from "@/components/ui/lazyImage";
 
 interface ProductGalleryProps {
@@ -15,6 +16,7 @@ export function ProductGallery({
   onSelectImage,
   discountPercentage,
 }: ProductGalleryProps) {
+  const t = useTranslations("products");
   const currentImage = images[activeImage] || images[0] || "/placeholder-product.png";
 
   return (
@@ -29,14 +31,14 @@ export function ProductGallery({
         />
         {discountPercentage && (
           <span className="absolute top-4 start-4 bg-destructive text-white px-3 py-1 rounded-full text-sm font-semibold shadow-sm">
-            {discountPercentage} OFF
+            {t("gallery.off", { discount: discountPercentage })}
           </span>
         )}
       </div>
 
       {/* Thumbnails */}
       {images.length > 1 && (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {images.map((img, i) => (
             <button
               key={i}
@@ -47,11 +49,11 @@ export function ProductGallery({
                   ? "border-accent-brand ring-2 ring-accent-brand/20"
                   : "border-border/50 hover:border-border"
               } transition-all cursor-pointer`}
-              aria-label={`Select product image ${i + 1}`}
+              aria-label={t("gallery.selectImage", { index: i + 1 })}
             >
               <LazyImage
                 src={img}
-                alt={`${productName} thumbnail ${i + 1}`}
+                alt={t("gallery.thumbnailAlt", { productName, index: i + 1 })}
                 containerClassName={`w-full h-full transition-opacity ${
                   i === activeImage ? "opacity-100" : "opacity-70 hover:opacity-100"
                 }`}

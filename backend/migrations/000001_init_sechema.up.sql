@@ -1,6 +1,7 @@
 -- =====================================================================
 -- PRIM E-COMMERCE DATABASE SCHEMA (Production Hardened)
 -- PostgreSQL
+-- Consolidated: 000001_init_sechema + 000003 + 000004 + 000005 + 000006
 -- =====================================================================
 
 BEGIN;
@@ -307,6 +308,11 @@ CREATE TABLE IF NOT EXISTS cart_items (
 
 CREATE INDEX IF NOT EXISTS idx_cart_items_cart_id ON cart_items (cart_id);
 
+-- One active cart per user at most
+CREATE UNIQUE INDEX IF NOT EXISTS idx_carts_active_user
+    ON carts (user_id)
+    WHERE user_id IS NOT NULL AND deleted_at IS NULL;
+
 
 -- =====================================================================
 -- INVENTORY
@@ -369,6 +375,10 @@ CREATE TABLE IF NOT EXISTS coupons (
     )
 );
 
+-- Enforce at most one redemption per user per coupon at the DB level
+CREATE UNIQUE INDEX IF NOT EXISTS idx_coupon_redemptions_coupon_user
+    ON coupon_redemptions (coupon_id, user_id);
+
 
 -- =====================================================================
 -- ORDERS
@@ -382,8 +392,12 @@ CREATE TABLE IF NOT EXISTS orders (
     status              order_status NOT NULL DEFAULT 'pending',
     coupon_id           uuid NULL,
     discount_amount     bigint NOT NULL DEFAULT 0,
+    shipping_amount     bigint NOT NULL DEFAULT 0,
+    tax_amount          bigint NOT NULL DEFAULT 0,
     total_amount        bigint NOT NULL,
     currency            text NOT NULL DEFAULT 'EGP',
+    payment_method      text NOT NULL DEFAULT 'pending',
+    tracking_number     text NULL,
     created_at          timestamptz NOT NULL DEFAULT now(),
     updated_at          timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (id),
@@ -534,5 +548,17 @@ CREATE INDEX IF NOT EXISTS idx_user_notifications_user_unread
 CREATE INDEX IF NOT EXISTS idx_user_notifications_user_created 
     ON user_notifications (user_id, created_at DESC);
 
-COMMIT;
 
+-- =====================================================================
+-- ADMIN SETTINGS: key-value store for store configuration
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS admin_settings (
+    id          uuid NOT NULL DEFAULT gen_random_uuid(),
+    key         varchar(100) NOT NULL UNIQUE,
+    value       jsonb NOT NULL DEFAULT '{}'::jsonb,
+    updated_at  timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (id)
+);
+
+COMMIT;

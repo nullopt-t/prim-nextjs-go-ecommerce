@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import {
   ArrowUpRight,
   Eye
@@ -19,6 +20,7 @@ import { adminService } from "@/services/admin";
 
 export function AdminDashboard() {
   const navigate = useRouter();
+  const t = useTranslations("admin");
   const [timeframe, setTimeframe] = useState("monthly");
   const [stats, setStats] = useState<any>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
@@ -77,48 +79,48 @@ export function AdminDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-background border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Revenue</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("dashboard.totalRevenue")}</span>
           </div>
           <div className="mt-4">
             <div className="text-2xl font-bold text-foreground">EGP {totalRev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             <div className="mt-1 text-xs text-muted-foreground font-medium">
-              Real-time settled revenue
+              {t("dashboard.totalRevenueSub")}
             </div>
           </div>
         </div>
 
         <div className="bg-background border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Orders</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("dashboard.totalOrders")}</span>
           </div>
           <div className="mt-4">
             <div className="text-2xl font-bold text-foreground">{totalOrds.toLocaleString()}</div>
             <div className="mt-1 text-xs text-muted-foreground font-medium">
-              {stats?.pendingOrders || 0} pending processing
+              {t("dashboard.pendingProcessing", { count: stats?.pendingOrders || 0 })}
             </div>
           </div>
         </div>
 
         <div className="bg-background border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Catalog Products</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("dashboard.catalogProducts")}</span>
           </div>
           <div className="mt-4">
             <div className="text-2xl font-bold text-foreground">{totalProds.toLocaleString()}</div>
             <div className="mt-1 text-xs text-muted-foreground font-medium">
-              Active in catalog
+              {t("dashboard.activeInCatalog")}
             </div>
           </div>
         </div>
 
         <div className="bg-background border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Active Customers</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("dashboard.activeCustomers")}</span>
           </div>
           <div className="mt-4">
             <div className="text-2xl font-bold text-foreground">{totalCusts.toLocaleString()}</div>
             <div className="mt-1 text-xs text-muted-foreground font-medium">
-              Registered customer accounts
+              {t("dashboard.registeredAccounts")}
             </div>
           </div>
         </div>
@@ -128,8 +130,8 @@ export function AdminDashboard() {
       <div className="bg-background border border-border rounded-2xl p-6 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-lg font-bold text-foreground">Revenue & Sales Trends</h2>
-            <p className="text-xs text-muted-foreground">Historical order volume and daily store settlement.</p>
+            <h2 className="text-lg font-bold text-foreground">{t("dashboard.revenueTrends")}</h2>
+            <p className="text-xs text-muted-foreground">{t("dashboard.revenueTrendsSub")}</p>
           </div>
           <div className="flex items-center gap-2 bg-secondary/50 p-1 rounded-xl border border-border">
             <button
@@ -138,7 +140,7 @@ export function AdminDashboard() {
                 timeframe === "monthly" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Revenue (EGP)
+              {t("dashboard.revenueEgp")}
             </button>
             <button
               onClick={() => setTimeframe("orders")}
@@ -146,7 +148,7 @@ export function AdminDashboard() {
                 timeframe === "orders" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Order Count
+              {t("dashboard.orderCount")}
             </button>
           </div>
         </div>
@@ -165,7 +167,7 @@ export function AdminDashboard() {
                 <XAxis dataKey="month" tick={{ fontSize: 12, fill: "gray" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: "gray" }} axisLine={false} tickLine={false} tickFormatter={(val) => `${val / 1000}k EGP`} />
                 <Tooltip
-                  formatter={(val: any) => [`EGP ${val.toLocaleString()}`, "Gross Revenue"]}
+                  formatter={(val: any) => [`EGP ${val.toLocaleString()}`, t("dashboard.grossRevenue")]}
                   contentStyle={{ backgroundColor: "var(--color-bg, #ffffff)", borderRadius: "12px", border: "1px solid #e5e7eb" }}
                 />
                 <Area type="monotone" dataKey="sales" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
@@ -176,7 +178,7 @@ export function AdminDashboard() {
                 <XAxis dataKey="month" tick={{ fontSize: 12, fill: "gray" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: "gray" }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  formatter={(val: any) => [val, "Orders"]}
+                  formatter={(val: any) => [val, t("dashboard.orders")]}
                   contentStyle={{ backgroundColor: "var(--color-bg, #ffffff)", borderRadius: "12px", border: "1px solid #e5e7eb" }}
                 />
                 <Bar dataKey="orders" fill="#3b82f6" radius={[6, 6, 0, 0]} />
@@ -193,14 +195,14 @@ export function AdminDashboard() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-bold text-base text-foreground">Recent Customer Orders</h3>
-                <p className="text-xs text-muted-foreground">Latest purchases requiring processing and fulfillment.</p>
+                <h3 className="font-bold text-base text-foreground">{t("dashboard.recentOrders")}</h3>
+                <p className="text-xs text-muted-foreground">{t("dashboard.recentOrdersSub")}</p>
               </div>
               <button
                 onClick={() => navigate.push("/admin/orders")}
                 className="text-xs font-semibold text-accent-brand hover:underline flex items-center gap-1"
               >
-                <span>View All Orders</span>
+                <span>{t("dashboard.viewAllOrders")}</span>
                 <ArrowUpRight className="size-3.5" />
               </button>
             </div>
@@ -209,11 +211,11 @@ export function AdminDashboard() {
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
-                    <th className="pb-3 pl-2">Order ID</th>
-                    <th className="pb-3">Customer</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3">Total</th>
-                    <th className="pb-3 pr-2 text-right">Action</th>
+                    <th className="pb-3 pl-2">{t("dashboard.orderId")}</th>
+                    <th className="pb-3">{t("dashboard.customer")}</th>
+                    <th className="pb-3">{t("dashboard.status")}</th>
+                    <th className="pb-3">{t("dashboard.total")}</th>
+                    <th className="pb-3 pr-2 text-right">{t("dashboard.action")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
@@ -243,7 +245,7 @@ export function AdminDashboard() {
                         <button
                           onClick={() => navigate.push(`/admin/orders/${order.id}`)}
                           className="p-1.5 text-muted-foreground hover:text-accent-brand hover:bg-secondary rounded-lg transition-colors"
-                          title="View Order Details"
+                          title={t("dashboard.viewOrderDetails")}
                         >
                           <Eye className="size-4" />
                         </button>
@@ -261,20 +263,20 @@ export function AdminDashboard() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-bold text-base text-foreground">Stock Alerts</h3>
-                <p className="text-xs text-muted-foreground">Products reaching critical inventory threshold.</p>
+                <h3 className="font-bold text-base text-foreground">{t("dashboard.stockAlerts")}</h3>
+                <p className="text-xs text-muted-foreground">{t("dashboard.stockAlertsSub")}</p>
               </div>
               <button
                 onClick={() => navigate.push("/admin/inventory")}
                 className="text-xs font-semibold text-accent-brand hover:underline"
               >
-                Inventory
+                {t("dashboard.inventory")}
               </button>
             </div>
 
             <div className="space-y-3">
               <div className="text-center text-xs text-muted-foreground py-6">
-                All catalog inventory levels healthy. Check Inventory tab for audit ledgers.
+                {t("dashboard.inventoryHealthy")}
               </div>
             </div>
           </div>
@@ -283,7 +285,7 @@ export function AdminDashboard() {
             onClick={() => navigate.push("/admin/inventory")}
             className="w-full mt-4 py-2.5 bg-secondary text-secondary-foreground text-xs font-semibold rounded-xl border border-border hover:bg-secondary/80 transition-colors"
           >
-            Manage Stock Adjustments
+            {t("dashboard.manageStockAdjustments")}
           </button>
         </div>
       </div>

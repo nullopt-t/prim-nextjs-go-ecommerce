@@ -11,9 +11,11 @@ import {
 import { catalogService } from "@/services/catalog";
 import { adminService } from "@/services/admin";
 import { useCatalogContext } from "@/context/CatalogContext";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 export function AdminProducts() {
+  const t = useTranslations("admin");
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
@@ -75,7 +77,7 @@ export function AdminProducts() {
         setProducts(formatted);
       }
     } catch {
-      toast.error("Failed to load catalog products");
+      toast.error(t("products.toast.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -121,7 +123,7 @@ export function AdminProducts() {
       // Also update the row in products list state if it differed
       setProducts((prev: any[]) => prev.map((p) => p.id === prod.id ? { ...p, stock: ledgerSum } : p));
     } catch {
-      toast.error("Failed to load audit history for product");
+      toast.error(t("products.toast.auditFailed"));
     } finally {
       setLoadingAudit(false);
     }
@@ -185,7 +187,7 @@ export function AdminProducts() {
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.price || !formData.stock) {
-      toast.error("Please fill in required fields");
+      toast.error(t("products.toast.requiredFields"));
       return;
     }
 
@@ -227,14 +229,14 @@ export function AdminProducts() {
           } else {
             await adminService.adjustProductInventory(editingProduct.id, stockDiff, reason);
           }
-          toast.success(`Product updated & ledger recorded (${stockDiff > 0 ? `+${stockDiff}` : stockDiff} units)`);
+          toast.success(t("products.toast.updatedLedger", { change: stockDiff > 0 ? `+${stockDiff}` : stockDiff }));
         } else {
-          toast.success("Product updated successfully!");
+          toast.success(t("products.toast.updated"));
         }
         await loadAll();
         refreshCatalog?.();
       } catch (err: any) {
-        toast.error(err?.message || "Product update partially failed");
+        toast.error(err?.message || t("products.toast.updatePartialFailed"));
       }
     } else {
       const newId = `prod-${Date.now()}`;
@@ -267,12 +269,12 @@ export function AdminProducts() {
         // Ignored in mock
       }
 
-      toast.success("New product created and added to catalog!");
+      toast.success(t("products.toast.created"));
     }
   };
 
   const handleDeleteProduct = async (id) => {
-    if (confirm("Are you sure you want to delete this product?")) {
+    if (confirm(t("products.confirmDelete"))) {
       const updated = products.filter((p) => p.id !== id);
       saveProductsToState(updated);
       try {
@@ -281,7 +283,7 @@ export function AdminProducts() {
       } catch {
         // Ignored in mock
       }
-      toast.success("Product removed from catalog");
+      toast.success(t("products.toast.deleted"));
     }
   };
 
@@ -299,9 +301,9 @@ export function AdminProducts() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Products & Variants</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("products.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage your store catalog, pricing, inventory stock, and product variants.
+            {t("products.subtitle")}
           </p>
         </div>
         <button
@@ -309,7 +311,7 @@ export function AdminProducts() {
           className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0"
         >
           <Plus className="size-4" />
-          <span>Add New Product</span>
+          <span>{t("products.addNew")}</span>
         </button>
       </div>
 
@@ -319,7 +321,7 @@ export function AdminProducts() {
           <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search by product name or SKU..."
+            placeholder={t("products.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
@@ -333,7 +335,7 @@ export function AdminProducts() {
             onChange={(e) => setSelectedCategory(e.target.value)}
             className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
           >
-            <option value="All">All Categories</option>
+            <option value="All">{t("products.allCategories")}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.name}>
                 {c.name}
@@ -349,13 +351,13 @@ export function AdminProducts() {
           <table className="w-full text-left text-xs">
             <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
               <tr>
-                <th className="py-3.5 pl-4">Product</th>
-                <th className="py-3.5">SKU</th>
-                <th className="py-3.5">Category</th>
-                <th className="py-3.5">Price</th>
-                <th className="py-3.5">Stock</th>
-                <th className="py-3.5">Status</th>
-                <th className="py-3.5 pr-4 text-right">Actions</th>
+                <th className="py-3.5 pl-4">{t("products.colProduct")}</th>
+                <th className="py-3.5">{t("products.colSku")}</th>
+                <th className="py-3.5">{t("products.colCategory")}</th>
+                <th className="py-3.5">{t("products.colPrice")}</th>
+                <th className="py-3.5">{t("products.colStock")}</th>
+                <th className="py-3.5">{t("products.colStatus")}</th>
+                <th className="py-3.5 pr-4 text-right">{t("products.colActions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -374,7 +376,7 @@ export function AdminProducts() {
                             {prod.name}
                           </div>
                           <div className="text-[10px] text-muted-foreground">
-                            Brand: {typeof prod.brand === "object" ? prod.brand?.name : String(prod.brand || "PRIM")}
+                            {t("products.brandLabel", { name: typeof prod.brand === "object" ? prod.brand?.name : String(prod.brand || "PRIM") })}
                           </div>
                         </div>
                       </div>
@@ -393,7 +395,7 @@ export function AdminProducts() {
                     </td>
                     <td className="py-3.5">
                       <span className={`font-bold ${prod.stock <= 10 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
-                        {prod.stock} units
+                        {t("products.units", { count: prod.stock })}
                       </span>
                     </td>
                     <td className="py-3.5">
@@ -412,21 +414,21 @@ export function AdminProducts() {
                         <button
                           onClick={() => handleViewAudit(prod)}
                           className="p-1.5 text-muted-foreground hover:text-accent-brand hover:bg-secondary rounded-lg transition-colors"
-                          title="View Audit Trail"
+                          title={t("products.viewAudit")}
                         >
                           <History className="size-4" />
                         </button>
                         <button
                           onClick={() => handleOpenEditModal(prod)}
                           className="p-1.5 text-muted-foreground hover:text-accent-brand hover:bg-secondary rounded-lg transition-colors"
-                          title="Edit Product"
+                          title={t("products.editProduct")}
                         >
                           <Edit2 className="size-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteProduct(prod.id)}
                           className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                          title="Delete Product"
+                          title={t("products.deleteProduct")}
                         >
                           <Trash2 className="size-4" />
                         </button>
@@ -437,7 +439,7 @@ export function AdminProducts() {
               ) : (
                 <tr>
                   <td colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No products found matching criteria.
+                    {t("products.empty")}
                   </td>
                 </tr>
               )}
@@ -452,7 +454,7 @@ export function AdminProducts() {
           <div className="bg-background border border-border rounded-2xl max-w-xl w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto space-y-4">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <h3 className="font-bold text-lg text-foreground">
-                {editingProduct ? "Edit Product" : "Create New Product"}
+                {editingProduct ? t("products.editProduct") : t("products.createProduct")}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -464,20 +466,20 @@ export function AdminProducts() {
 
             <form onSubmit={handleSaveProduct} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Product Title *</label>
+                <label className="text-xs font-semibold text-foreground">{t("products.form.title")}</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Wireless Noise-Canceling Headphones"
+                  placeholder={t("products.form.titlePlaceholder")}
                   className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">SKU Code</label>
+                  <label className="text-xs font-semibold text-foreground">{t("products.form.sku")}</label>
                   <input
                     type="text"
                     value={formData.sku}
@@ -486,7 +488,7 @@ export function AdminProducts() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Category</label>
+                  <label className="text-xs font-semibold text-foreground">{t("products.form.category")}</label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -503,7 +505,7 @@ export function AdminProducts() {
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Price (EGP) *</label>
+                  <label className="text-xs font-semibold text-foreground">{t("products.form.price")}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -514,7 +516,7 @@ export function AdminProducts() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Compare Price (EGP)</label>
+                  <label className="text-xs font-semibold text-foreground">{t("products.form.comparePrice")}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -524,7 +526,7 @@ export function AdminProducts() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Stock Qty *</label>
+                  <label className="text-xs font-semibold text-foreground">{t("products.form.stockQty")}</label>
                   <input
                     type="number"
                     required
@@ -537,23 +539,23 @@ export function AdminProducts() {
 
               {editingProduct && (
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Stock Ledger Audit Reason</label>
+                  <label className="text-xs font-semibold text-foreground">{t("products.form.auditReason")}</label>
                   <select
                     value={formData.adjustmentReason || "adjustment"}
                     onChange={(e) => setFormData({ ...formData, adjustmentReason: e.target.value })}
                     className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
                   >
-                    <option value="adjustment">Manual Adjustment (Correction / Audit)</option>
-                    <option value="restock">Restock (Received Inventory)</option>
-                    <option value="return">Customer Return</option>
-                    <option value="sale">Sale Deduction</option>
+                    <option value="adjustment">{t("products.form.reasonAdjustment")}</option>
+                    <option value="restock">{t("products.form.reasonRestock")}</option>
+                    <option value="return">{t("products.form.reasonReturn")}</option>
+                    <option value="sale">{t("products.form.reasonSale")}</option>
                   </select>
-                  <p className="text-[11px] text-muted-foreground">Changes to stock quantity will automatically append a new record to the product's inventory audit ledger.</p>
+                  <p className="text-[11px] text-muted-foreground">{t("products.form.auditNote")}</p>
                 </div>
               )}
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Image URL</label>
+                <label className="text-xs font-semibold text-foreground">{t("products.form.imageUrl")}</label>
                 <input
                   type="text"
                   value={formData.image}
@@ -568,13 +570,13 @@ export function AdminProducts() {
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 text-xs font-semibold rounded-xl border border-border hover:bg-secondary text-foreground"
                 >
-                  Cancel
+                  {t("actions.cancel")}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 text-xs font-semibold rounded-xl bg-accent-brand text-white shadow-xs hover:bg-accent-brand/90"
                 >
-                  Save Product
+                  {t("products.form.saveProduct")}
                 </button>
               </div>
             </form>
@@ -591,14 +593,14 @@ export function AdminProducts() {
                   <History className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-foreground">Product Audit Trail</h3>
+                  <h3 className="font-bold text-base text-foreground">{t("products.audit.title")}</h3>
                   <p className="text-xs text-muted-foreground">{auditProduct.name} &bull; <span className="font-mono">{auditProduct.sku}</span></p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right">
-                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">Current On-Hand Stock</div>
-                  <div className="text-xs font-bold text-accent-brand">{auditProduct.stock} units</div>
+                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">{t("products.audit.currentStock")}</div>
+                  <div className="text-xs font-bold text-accent-brand">{t("products.units", { count: auditProduct.stock })}</div>
                 </div>
                 <button
                   onClick={() => setAuditProduct(null)}
@@ -611,10 +613,10 @@ export function AdminProducts() {
 
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[220px]">
               {loadingAudit ? (
-                <div className="py-12 text-center text-xs text-muted-foreground">Loading audit records...</div>
+                <div className="py-12 text-center text-xs text-muted-foreground">{t("products.audit.loading")}</div>
               ) : auditLogs.length === 0 ? (
                 <div className="py-12 text-center text-xs text-muted-foreground">
-                  No inventory ledger events recorded for this product yet.
+                  {t("products.audit.empty")}
                 </div>
               ) : (
                 auditLogs.map((entry) => (
@@ -632,7 +634,7 @@ export function AdminProducts() {
                     </div>
                     <div className="text-right">
                       <span className={`text-sm font-bold ${entry.quantity > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
-                        {entry.change} units
+                        {t("products.units", { count: entry.change })}
                       </span>
                     </div>
                   </div>
@@ -642,16 +644,16 @@ export function AdminProducts() {
 
             <div className="flex items-center justify-between pt-3 border-t border-border">
               <div className="text-xs text-muted-foreground">
-                Total Ledger Balance:{" "}
+                {t("products.audit.totalBalance")}{" "}
                 <span className="font-bold text-foreground">
-                  {auditLogs.reduce((acc, curr) => acc + (curr.quantity || 0), 0)} units
+                  {t("products.units", { count: auditLogs.reduce((acc, curr) => acc + (curr.quantity || 0), 0) })}
                 </span>
               </div>
               <button
                 onClick={() => setAuditProduct(null)}
                 className="px-4 py-2 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground border border-border rounded-xl"
               >
-                Close
+                {t("actions.close")}
               </button>
             </div>
           </div>

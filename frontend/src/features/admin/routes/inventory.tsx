@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { Plus, Minus, Search, History, AlertTriangle } from "lucide-react";
 import { adminService } from "@/services/admin";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 export function AdminInventory() {
+  const t = useTranslations("admin");
   const [products, setProducts] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ export function AdminInventory() {
         user: "System / Admin"
       })));
     } catch {
-      toast.error("Failed to load product audit trail");
+      toast.error(t("inventory.toast.auditFailed"));
     } finally {
       setLoadingAudit(false);
     }
@@ -74,7 +76,7 @@ export function AdminInventory() {
         user: "Warehouse Manager"
       })));
     } catch {
-      toast.error("Failed to load inventory data from server");
+      toast.error(t("inventory.toast.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -99,14 +101,14 @@ export function AdminInventory() {
       } else if (selectedProduct.productId) {
         await adminService.adjustProductInventory(selectedProduct.productId, adjustAmount, adjustReason);
       } else {
-        toast.error("No variant or product ID available for adjustment");
+        toast.error(t("inventory.toast.noId"));
         return;
       }
-      toast.success(`Inventory adjusted for ${selectedProduct.name}`);
+      toast.success(t("inventory.toast.adjusted", { name: selectedProduct.name }));
       setSelectedProduct(null);
       loadInventoryData();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to adjust inventory");
+      toast.error(err?.response?.data?.message || t("inventory.toast.adjustFailed"));
     }
   };
 
@@ -120,9 +122,9 @@ export function AdminInventory() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Inventory & Stock Control</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("inventory.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Monitor real-time warehouse stock levels, perform manual adjustments, and track stock audit logs.
+            {t("inventory.subtitle")}
           </p>
         </div>
       </div>
@@ -132,7 +134,7 @@ export function AdminInventory() {
           <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search inventory by product or SKU..."
+            placeholder={t("inventory.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
@@ -144,18 +146,18 @@ export function AdminInventory() {
         {/* Stock List Table */}
         <div className="lg:col-span-2 bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
           <div className="p-4 border-b border-border bg-secondary/20 flex items-center justify-between">
-            <h3 className="font-bold text-sm text-foreground">Current Stock Levels</h3>
-            <span className="text-xs text-muted-foreground">{products.length} catalog items</span>
+            <h3 className="font-bold text-sm text-foreground">{t("inventory.currentStockLevels")}</h3>
+            <span className="text-xs text-muted-foreground">{t("inventory.catalogItems", { count: products.length })}</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
                 <tr>
-                  <th className="py-3 pl-4">Product</th>
-                  <th className="py-3">SKU</th>
-                  <th className="py-3">Stock On Hand</th>
-                  <th className="py-3">Status</th>
-                  <th className="py-3 pr-4 text-right">Actions</th>
+                  <th className="py-3 pl-4">{t("inventory.colProduct")}</th>
+                  <th className="py-3">{t("inventory.colSku")}</th>
+                  <th className="py-3">{t("inventory.colStockOnHand")}</th>
+                  <th className="py-3">{t("inventory.colStatus")}</th>
+                  <th className="py-3 pr-4 text-right">{t("inventory.colActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -168,15 +170,15 @@ export function AdminInventory() {
                       </div>
                     </td>
                     <td className="py-3.5 font-mono text-muted-foreground">{prod.sku}</td>
-                    <td className="py-3.5 font-bold text-foreground">{prod.stock} units</td>
+                    <td className="py-3.5 font-bold text-foreground">{t("inventory.units", { count: prod.stock })}</td>
                     <td className="py-3.5">
                       {prod.stock <= (prod.lowStockThreshold || 10) ? (
                         <span className="px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400 font-bold rounded-full text-[10px] inline-flex items-center gap-1">
-                          <AlertTriangle className="size-3" /> Low Stock
+                          <AlertTriangle className="size-3" /> {t("status.lowStock")}
                         </span>
                       ) : (
                         <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400 font-bold rounded-full text-[10px]">
-                          In Stock
+                          {t("status.inStock")}
                         </span>
                       )}
                     </td>
@@ -185,16 +187,16 @@ export function AdminInventory() {
                         <button
                           onClick={() => handleViewAudit(prod)}
                           className="px-2.5 py-1.5 bg-secondary/80 hover:bg-secondary text-foreground text-xs font-semibold rounded-lg border border-border transition-colors flex items-center gap-1.5"
-                          title="View Audit Trail"
+                          title={t("inventory.viewAudit")}
                         >
                           <History className="size-3.5 text-accent-brand" />
-                          <span>Audit</span>
+                          <span>{t("inventory.audit")}</span>
                         </button>
                         <button
                           onClick={() => handleAdjustStock(prod)}
                           className="px-3 py-1.5 bg-accent-brand text-white hover:bg-accent-brand/90 text-xs font-semibold rounded-lg shadow-xs transition-colors"
                         >
-                          Adjust
+                          {t("inventory.adjust")}
                         </button>
                       </div>
                     </td>
@@ -210,7 +212,7 @@ export function AdminInventory() {
           <div>
             <div className="flex items-center gap-2 mb-4 border-b border-border pb-3">
               <History className="size-4 text-accent-brand" />
-              <h3 className="font-bold text-sm text-foreground">Global Stock Audit Log</h3>
+              <h3 className="font-bold text-sm text-foreground">{t("inventory.globalAuditLog")}</h3>
             </div>
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
               {logs.map((log) => (
@@ -222,8 +224,8 @@ export function AdminInventory() {
                     </span>
                   </div>
                   <div className="text-[10px] text-muted-foreground flex justify-between">
-                    <span>Reason: {log.type}</span>
-                    <span>By: {log.user}</span>
+                    <span>{t("inventory.reason", { type: log.type })}</span>
+                    <span>{t("inventory.by", { user: log.user })}</span>
                   </div>
                   <div className="text-[10px] text-muted-foreground font-mono">{log.date}</div>
                 </div>

@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 export default function SideBarBrands() {
   const { brands, filters, setFilter } = useCatalogContext();
   const t = useTranslations("common.filters");
+  const tProducts = useTranslations("products");
 
   const fallbackBrands = [
     { id: "brand-1", name: "Apple" },
@@ -24,7 +25,7 @@ export default function SideBarBrands() {
       <SideBarTitle title={t("brands")} />
       <div className="flex flex-col gap-2.5">
         {brandList.slice(0, 6).map((brand: any) => {
-          const brandName = brand.name || brand.brand || "Brand";
+          const brandName = brand.name || brand.brand || tProducts("sideBar.brandFallback");
           const isSelected = filters.brand?.toLowerCase() === brandName.toLowerCase();
           return (
             <FilterCheckbox

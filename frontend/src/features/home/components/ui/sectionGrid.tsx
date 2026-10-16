@@ -20,7 +20,7 @@ export default function SectionGrid() {
   const list = categories.length > 0 ? categories : defaultCategories;
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-5">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] xl:grid-cols-[repeat(6,minmax(0,1fr))] gap-5">
       {list.map((cat: any) => {
         const catSlug = cat.slug || cat.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-");
         const catName = typeof cat.name === "object" ? (cat.name.en || cat.name.ar) : (cat.name || cat.title || "Category");

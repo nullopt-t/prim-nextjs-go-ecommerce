@@ -27,11 +27,13 @@ import { ChangeRoleModal } from "../components/ChangeRoleModal";
 import { SuspendUserModal } from "../components/SuspendUserModal";
 import { RevokeSessionsModal } from "../components/RevokeSessionsModal";
 import { useAuthContext } from "@/context/AuthContext";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { ROLE_RANKS } from "@/lib/roles";
 
 export function AdminCustomers() {
   const { user: currentUser } = useAuthContext();
+  const t = useTranslations("admin");
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>({
     page: 1,
@@ -87,7 +89,7 @@ export function AdminCustomers() {
         if (refreshed) setInspectUser(refreshed);
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to load user records");
+      toast.error(err.message || t("customers.toast.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -101,10 +103,10 @@ export function AdminCustomers() {
   const handleConfirmRoleChange = async (userId: string, newRole: AdminUser["role"]) => {
     try {
       await adminService.updateUserRole(userId, { role: newRole });
-      toast.success("User role updated successfully");
+      toast.success(t("customers.toast.roleUpdated"));
       await fetchUsers();
     } catch (err: any) {
-      toast.error(err.message || "Failed to update role");
+      toast.error(err.message || t("customers.toast.roleFailed"));
       throw err;
     }
   };
@@ -112,10 +114,10 @@ export function AdminCustomers() {
   const handleConfirmStatusChange = async (userId: string, status: AdminUser["status"], suspendedUntil: string | null) => {
     try {
       await adminService.updateUserStatus(userId, { status, suspendedUntil });
-      toast.success(status === "active" ? "User account reactivated" : "User account suspended");
+      toast.success(status === "active" ? t("customers.toast.reactivated") : t("customers.toast.suspended"));
       await fetchUsers();
     } catch (err: any) {
-      toast.error(err.message || "Failed to update account status");
+      toast.error(err.message || t("customers.toast.statusFailed"));
       throw err;
     }
   };
@@ -123,10 +125,10 @@ export function AdminCustomers() {
   const handleConfirmRevokeSessions = async (userId: string) => {
     try {
       await adminService.revokeUserSessions(userId);
-      toast.success("All active user sessions revoked successfully");
+      toast.success(t("customers.toast.sessionsRevoked"));
       await fetchUsers();
     } catch (err: any) {
-      toast.error(err.message || "Failed to revoke sessions");
+      toast.error(err.message || t("customers.toast.sessionsFailed"));
       throw err;
     }
   };
@@ -138,34 +140,34 @@ export function AdminCustomers() {
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30">
             <ShieldAlert className="size-3 text-purple-600 dark:text-purple-400" />
-            Superadmin
+            {t("roles.superadmin")}
           </span>
         );
       case "admin":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
             <ShieldCheck className="size-3 text-blue-600 dark:text-blue-400" />
-            Admin
+            {t("roles.admin")}
           </span>
         );
       case "vendor":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
             <Store className="size-3 text-amber-600 dark:text-amber-400" />
-            Vendor
+            {t("roles.vendor")}
           </span>
         );
       case "support":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30">
             <Headphones className="size-3 text-teal-600 dark:text-teal-400" />
-            Support
+            {t("roles.support")}
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-secondary text-secondary-foreground border border-border">
-            Customer
+            {t("roles.customer")}
           </span>
         );
     }
@@ -177,13 +179,13 @@ export function AdminCustomers() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-3xl border border-border/80 shadow-xs">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">User & Staff Management</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("customers.title")}</h1>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20">
-              {meta.totalItems} Total Accounts
+              {t("customers.totalAccounts", { count: meta.totalItems })}
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Superadmin directory: inspect accounts, assign administrative roles, manage suspensions, and invalidate credentials.
+            {t("customers.subtitle")}
           </p>
         </div>
 
@@ -192,10 +194,10 @@ export function AdminCustomers() {
             onClick={() => fetchUsers()}
             disabled={loading}
             className="p-2.5 rounded-xl border border-border bg-card hover:bg-secondary text-foreground text-xs font-semibold transition-colors flex items-center gap-2 disabled:opacity-50"
-            title="Refresh User Directory"
+            title={t("customers.refreshTitle")}
           >
             <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">Refresh</span>
+            <span className="hidden sm:inline">{t("customers.refresh")}</span>
           </button>
         </div>
       </div>
@@ -207,7 +209,7 @@ export function AdminCustomers() {
           <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search by email, name, or UUID..."
+            placeholder={t("customers.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-secondary/20 border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:outline-hidden"
@@ -231,7 +233,7 @@ export function AdminCustomers() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {r}
+                {t(`customers.roles.${r}`)}
               </button>
             ))}
           </div>
@@ -245,9 +247,9 @@ export function AdminCustomers() {
             }}
             className="py-1.5 px-3 bg-secondary/30 border border-border rounded-xl text-xs text-foreground font-medium focus:outline-hidden"
           >
-            <option value="all">All Statuses</option>
-            <option value="active">Active Only</option>
-            <option value="suspended">Suspended Only</option>
+            <option value="all">{t("customers.allStatuses")}</option>
+            <option value="active">{t("customers.activeOnly")}</option>
+            <option value="suspended">{t("customers.suspendedOnly")}</option>
           </select>
         </div>
       </div>
@@ -258,12 +260,12 @@ export function AdminCustomers() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-border/80 bg-muted/20 text-muted-foreground uppercase text-[10px] font-bold tracking-wider">
-                <th className="py-3 px-4">User Identity</th>
-                <th className="py-3 px-4">Permission Role</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Email Verification</th>
-                <th className="py-3 px-4">Joined Date</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+                <th className="py-3 px-4">{t("customers.colIdentity")}</th>
+                <th className="py-3 px-4">{t("customers.colRole")}</th>
+                <th className="py-3 px-4">{t("customers.colStatus")}</th>
+                <th className="py-3 px-4">{t("customers.colVerification")}</th>
+                <th className="py-3 px-4">{t("customers.colJoined")}</th>
+                <th className="py-3 px-4 text-right">{t("customers.colActions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -291,8 +293,8 @@ export function AdminCustomers() {
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-muted-foreground">
                     <Users className="size-8 mx-auto mb-2 text-muted-foreground/50" />
-                    <p className="font-semibold text-foreground text-sm">No accounts found</p>
-                    <p className="text-xs mt-0.5">Try adjusting your filters or search terms.</p>
+                    <p className="font-semibold text-foreground text-sm">{t("customers.emptyTitle")}</p>
+                    <p className="text-xs mt-0.5">{t("customers.emptySub")}</p>
                   </td>
                 </tr>
               ) : (
@@ -320,11 +322,11 @@ export function AdminCustomers() {
                           <div className="flex flex-col min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="font-bold text-foreground truncate group-hover:text-primary transition-colors">
-                                {u.fullName || "Unnamed User"}
+                                {u.fullName || t("customers.unnamed")}
                               </span>
                               {isSelf && (
                                 <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent-brand/10 text-accent-brand border border-accent-brand/20">
-                                  You
+                                  {t("customers.you")}
                                 </span>
                               )}
                             </div>
@@ -356,11 +358,11 @@ export function AdminCustomers() {
                       <td className="py-3 px-4 whitespace-nowrap">
                         {u.isEmailVerified ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                            <CheckCircle2 className="size-3.5" /> Verified
+                            <CheckCircle2 className="size-3.5" /> {t("status.verified")}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-                            <XCircle className="size-3.5 text-muted-foreground/60" /> Unverified
+                            <XCircle className="size-3.5 text-muted-foreground/60" /> {t("status.unverified")}
                           </span>
                         )}
                       </td>
@@ -380,7 +382,7 @@ export function AdminCustomers() {
                           <button
                             onClick={() => setInspectUser(u)}
                             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                            title="Inspect User Details"
+                            title={t("customers.inspect")}
                           >
                             <Eye className="size-4" />
                           </button>
@@ -390,7 +392,7 @@ export function AdminCustomers() {
                               <button
                                 onClick={() => setRoleModalUser(u)}
                                 className="p-1.5 rounded-lg text-purple-600 hover:text-purple-700 hover:bg-purple-500/10 transition-colors"
-                                title="Change Role"
+                                title={t("customers.changeRole")}
                               >
                                 <Shield className="size-4" />
                               </button>
@@ -402,7 +404,7 @@ export function AdminCustomers() {
                                     ? "text-emerald-600 hover:bg-emerald-500/10"
                                     : "text-rose-600 hover:bg-rose-500/10"
                                 }`}
-                                title={isSuspended ? "Reactivate Account" : "Suspend Account"}
+                                title={isSuspended ? t("actions.reactivate") : t("actions.suspend")}
                               >
                                 {isSuspended ? <UserCheck className="size-4" /> : <UserX className="size-4" />}
                               </button>
@@ -410,7 +412,7 @@ export function AdminCustomers() {
                               <button
                                 onClick={() => setRevokeModalUser(u)}
                                 className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-500/10 transition-colors"
-                                title="Revoke Sessions"
+                                title={t("customers.revokeSessions")}
                               >
                                 <LogOut className="size-4" />
                               </button>
@@ -418,15 +420,15 @@ export function AdminCustomers() {
                               {currentUser?.role === "superadmin" && (
                                 <button
                                   onClick={() => {
-                                    if (confirm(`Delete user ${u.email}? This cannot be undone.`)) {
+                                    if (confirm(t("customers.confirmDelete", { email: u.email }))) {
                                       adminService.deleteUser(u.id).then(() => {
-                                        toast.success("User deleted");
+                                        toast.success(t("customers.toast.deleted"));
                                         fetchUsers();
                                       });
                                     }
                                   }}
                                   className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
-                                  title="Delete User"
+                                  title={t("customers.deleteUser")}
                                 >
                                   <UserX className="size-4" />
                                 </button>
@@ -446,8 +448,11 @@ export function AdminCustomers() {
         {/* Pagination Bar */}
         <div className="p-4 border-t border-border/80 bg-muted/10 flex items-center justify-between text-xs text-muted-foreground">
           <span>
-            Showing <strong className="text-foreground">{users.length}</strong> of{" "}
-            <strong className="text-foreground">{meta.totalItems}</strong> accounts
+            {t.rich("customers.showing", {
+              shown: users.length,
+              total: meta.totalItems,
+              b: (chunks) => <strong className="text-foreground">{chunks}</strong>,
+            })}
           </span>
 
           <div className="flex items-center gap-2">
@@ -455,18 +460,18 @@ export function AdminCustomers() {
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={!meta.hasPrevious || loading}
               className="p-1.5 rounded-lg border border-border bg-card hover:bg-secondary text-foreground disabled:opacity-40 transition-colors"
-              title="Previous Page"
+              title={t("customers.prevPage")}
             >
               <ChevronLeft className="size-4" />
             </button>
             <span className="font-mono text-xs px-2 font-bold text-foreground">
-              Page {meta.page} of {Math.max(1, meta.totalPages)}
+              {t("customers.page", { page: meta.page, pages: Math.max(1, meta.totalPages) })}
             </span>
             <button
               onClick={() => setPage((p) => p + 1)}
               disabled={!meta.hasNext || loading}
               className="p-1.5 rounded-lg border border-border bg-card hover:bg-secondary text-foreground disabled:opacity-40 transition-colors"
-              title="Next Page"
+              title={t("customers.nextPage")}
             >
               <ChevronRight className="size-4" />
             </button>

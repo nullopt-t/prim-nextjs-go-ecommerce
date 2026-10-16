@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { Search, Filter, Eye } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { toast } from "sonner";
 
 export function AdminOrders() {
   const navigate = useRouter();
+  const t = useTranslations("admin");
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -41,7 +43,7 @@ export function AdminOrders() {
       }));
       setOrders(formatted);
     } catch {
-      toast.error("Failed to load orders from server");
+      toast.error(t("orders.toast.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -54,10 +56,10 @@ export function AdminOrders() {
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
       await adminService.updateOrderStatus(id, newStatus.toLowerCase());
-      toast.success(`Order status updated to ${newStatus}`);
+      toast.success(t("orders.toast.statusUpdated", { status: newStatus }));
       loadOrders();
     } catch (err: any) {
-      toast.error(err?.message || err?.response?.data?.message || "Failed to update order status");
+      toast.error(err?.message || err?.response?.data?.message || t("orders.toast.statusUpdateFailed"));
       loadOrders();
     }
   };
@@ -76,9 +78,9 @@ export function AdminOrders() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Customer Orders</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("orders.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Track customer purchases, manage fulfillment statuses, and process order updates.
+            {t("orders.subtitle")}
           </p>
         </div>
       </div>
@@ -88,7 +90,7 @@ export function AdminOrders() {
           <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search by order ID or customer name..."
+            placeholder={t("orders.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
@@ -102,12 +104,12 @@ export function AdminOrders() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
           >
-            <option value="all">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
-            <option value="shipped">Shipped</option>
-            <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="all">{t("status.all")}</option>
+            <option value="pending">{t("status.pending")}</option>
+            <option value="processing">{t("status.processing")}</option>
+            <option value="shipped">{t("status.shipped")}</option>
+            <option value="delivered">{t("status.delivered")}</option>
+            <option value="cancelled">{t("status.cancelled")}</option>
           </select>
         </div>
       </div>
@@ -117,13 +119,13 @@ export function AdminOrders() {
           <table className="w-full text-left text-xs">
             <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
               <tr>
-                <th className="py-3.5 pl-4">Order ID</th>
-                <th className="py-3.5">Date & Time</th>
-                <th className="py-3.5">Customer</th>
-                <th className="py-3.5">Total</th>
-                <th className="py-3.5">Payment</th>
-                <th className="py-3.5">Fulfillment Status</th>
-                <th className="py-3.5 pr-4 text-right">Action</th>
+                <th className="py-3.5 pl-4">{t("orders.colOrderId")}</th>
+                <th className="py-3.5">{t("orders.colDate")}</th>
+                <th className="py-3.5">{t("orders.colCustomer")}</th>
+                <th className="py-3.5">{t("orders.colTotal")}</th>
+                <th className="py-3.5">{t("orders.colPayment")}</th>
+                <th className="py-3.5">{t("orders.colFulfillment")}</th>
+                <th className="py-3.5 pr-4 text-right">{t("orders.colAction")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -164,30 +166,30 @@ export function AdminOrders() {
                     >
                       {order.status === "pending" && (
                         <>
-                          <option value="pending" disabled>Pending</option>
-                          <option value="processing">Processing</option>
-                          <option value="cancelled">Cancelled</option>
+                          <option value="pending" disabled>{t("status.pending")}</option>
+                          <option value="processing">{t("status.processing")}</option>
+                          <option value="cancelled">{t("status.cancelled")}</option>
                         </>
                       )}
                       {order.status === "processing" && (
                         <>
-                          <option value="processing" disabled>Processing</option>
-                          <option value="shipped">Shipped</option>
-                          <option value="cancelled">Cancelled</option>
+                          <option value="processing" disabled>{t("status.processing")}</option>
+                          <option value="shipped">{t("status.shipped")}</option>
+                          <option value="cancelled">{t("status.cancelled")}</option>
                         </>
                       )}
                       {order.status === "shipped" && (
                         <>
-                          <option value="shipped" disabled>Shipped</option>
-                          <option value="delivered">Delivered</option>
-                          <option value="cancelled">Cancelled</option>
+                          <option value="shipped" disabled>{t("status.shipped")}</option>
+                          <option value="delivered">{t("status.delivered")}</option>
+                          <option value="cancelled">{t("status.cancelled")}</option>
                         </>
                       )}
                       {order.status === "delivered" && (
-                        <option value="delivered">Delivered (Final)</option>
+                        <option value="delivered">{t("status.deliveredFinal")}</option>
                       )}
                       {(order.status === "cancelled") && (
-                        <option value="cancelled">Cancelled (Final)</option>
+                        <option value="cancelled">{t("status.cancelledFinal")}</option>
                       )}
                     </select>
                   </td>
@@ -195,7 +197,7 @@ export function AdminOrders() {
                     <button
                       onClick={() => navigate.push(`/admin/orders/${order.id}`)}
                       className="p-1.5 text-muted-foreground hover:text-accent-brand hover:bg-secondary rounded-lg transition-colors"
-                      title="Manage Order"
+                      title={t("orders.manage")}
                     >
                       <Eye className="size-4" />
                     </button>

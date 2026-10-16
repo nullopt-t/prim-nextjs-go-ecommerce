@@ -1,4 +1,5 @@
 import { Check, Clock, Heart, Share2, ShoppingCart, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Stars } from "@/components/ui/stars";
 import { CustomButton } from "@/components/ui";
 import QuantitySelector from "@/components/ui/quantitySelector";
@@ -49,6 +50,7 @@ export function ProductActions({
   onToggleWishlist,
   onShare,
 }: ProductActionsProps) {
+  const t = useTranslations("products");
   const formatPrice = (val?: number) => {
     if (val === undefined || isNaN(val)) return "0";
     return val.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -72,7 +74,7 @@ export function ProductActions({
         </div>
         <div className="w-1 h-1 rounded-full bg-border" />
         <span className="text-sm text-muted-foreground underline decoration-dashed cursor-pointer hover:text-foreground transition-colors">
-          {reviewsCount} Reviews
+          {t("actions.reviewsCount", { count: reviewsCount })}
         </span>
       </div>
 
@@ -88,16 +90,16 @@ export function ProductActions({
       </div>
 
       <p className="text-muted-foreground text-base leading-relaxed mb-6">
-        We've carefully designed the {productName} to be something you'll love using every single day. It's built to last, feels great to use, and fits right into your lifestyle without any fuss.
+        {t("actions.description", { productName })}
       </p>
 
       {/* Colors (Radio Group) */}
       {colors.length > 0 && (
         <fieldset className="flex flex-col gap-3 mb-8">
           <legend className="text-sm font-medium text-foreground">
-            Color: <span className="text-muted-foreground ml-1">{colors[selectedColor]?.name || ""}</span>
+            {t("actions.color")} <span className="text-muted-foreground ml-1">{colors[selectedColor]?.name || ""}</span>
           </legend>
-          <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label="Select color">
+          <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label={t("actions.selectColor")}>
             {colors.map((color, idx) => {
               const isSelected = selectedColor === idx;
               return (
@@ -129,7 +131,7 @@ export function ProductActions({
               <Check className="size-3.5" />
             </div>
             <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-              In Stock ({availableStock} available)
+              {t("actions.inStock", { count: availableStock })}
             </span>
           </>
         ) : (
@@ -138,7 +140,7 @@ export function ProductActions({
               <Clock className="size-3.5" />
             </div>
             <span className="text-sm font-medium text-destructive">
-              Out of Stock
+              {t("actions.outOfStock")}
             </span>
           </>
         )}
@@ -157,7 +159,7 @@ export function ProductActions({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <CustomButton
-            text={isAdding ? "Adding..." : isVariantInStock ? "Add to Cart" : "Out of Stock"}
+            text={isAdding ? t("actions.adding") : isVariantInStock ? t("actions.addToCart") : t("actions.outOfStock")}
             icon={<ShoppingCart className="size-4" />}
             onClick={onAddToCart}
             className={`py-3.5 text-sm shadow-sm ${!isVariantInStock ? "opacity-50 cursor-not-allowed" : ""}`}
@@ -171,7 +173,7 @@ export function ProductActions({
             className="py-3.5 px-4 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-semibold text-sm transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             <Zap className="size-4 fill-current" />
-            <span>Buy Now</span>
+            <span>{t("actions.buyNow")}</span>
           </button>
         </div>
 
@@ -186,7 +188,7 @@ export function ProductActions({
             }`}
           >
             <Heart className={`size-4 ${isWishlisted ? "fill-current text-red-600" : ""}`} />
-            <span>{isWishlisted ? "Saved to Wishlist" : "Add to Wishlist"}</span>
+            <span>{isWishlisted ? t("actions.savedToWishlist") : t("actions.addToWishlist")}</span>
           </button>
 
           <button
@@ -195,7 +197,7 @@ export function ProductActions({
             className="py-2.5 px-4 flex items-center justify-center gap-2 rounded-xl border border-border bg-card hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors shadow-sm text-xs font-medium cursor-pointer"
           >
             <Share2 className="size-4" />
-            <span>Share</span>
+            <span>{t("actions.share")}</span>
           </button>
         </div>
       </div>

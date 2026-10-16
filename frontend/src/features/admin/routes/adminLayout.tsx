@@ -25,12 +25,13 @@ import {
   Languages
 } from "lucide-react";
 import { useTheme } from "@/context/theme";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 export function AdminLayout({ children }: { children?: React.ReactNode }) {
   const { user, logout } = useAuthContext();
   const { theme, toggle: toggleTheme } = useTheme();
   const locale = useLocale();
+  const t = useTranslations("admin");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -64,18 +65,18 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
   };
 
   const navItems = [
-    { name: "Dashboard", path: "/admin", icon: LayoutDashboard, exact: true },
-    { name: "Products", path: "/admin/products", icon: Package },
-    { name: "Categories", path: "/admin/categories", icon: FolderTree },
-    { name: "Brands", path: "/admin/brands", icon: Tag },
-    { name: "Attributes", path: "/admin/attributes", icon: SlidersHorizontal },
-    { name: "Media Library", path: "/admin/media", icon: Image },
-    { name: "Inventory", path: "/admin/inventory", icon: Boxes, badge: "Low Stock" },
-    { name: "Orders", path: "/admin/orders", icon: ShoppingBag, badge: "4 New" },
-    { name: "Users & Staff", path: "/admin/customers", icon: Users },
-    { name: "Payments", path: "/admin/payments", icon: CreditCard },
-    { name: "Promotions", path: "/admin/promotions", icon: Percent },
-    { name: "Settings", path: "/admin/settings", icon: Settings },
+    { nameKey: "layout.nav.dashboard", path: "/admin", icon: LayoutDashboard, exact: true },
+    { nameKey: "layout.nav.products", path: "/admin/products", icon: Package },
+    { nameKey: "layout.nav.categories", path: "/admin/categories", icon: FolderTree },
+    { nameKey: "layout.nav.brands", path: "/admin/brands", icon: Tag },
+    { nameKey: "layout.nav.attributes", path: "/admin/attributes", icon: SlidersHorizontal },
+    { nameKey: "layout.nav.mediaLibrary", path: "/admin/media", icon: Image },
+    { nameKey: "layout.nav.inventory", path: "/admin/inventory", icon: Boxes, badge: "Low Stock", badgeKey: "layout.badges.lowStock" },
+    { nameKey: "layout.nav.orders", path: "/admin/orders", icon: ShoppingBag, badge: "4 New", badgeKey: "layout.badges.newOrders" },
+    { nameKey: "layout.nav.usersStaff", path: "/admin/customers", icon: Users },
+    { nameKey: "layout.nav.payments", path: "/admin/payments", icon: CreditCard },
+    { nameKey: "layout.nav.promotions", path: "/admin/promotions", icon: Percent },
+    { nameKey: "layout.nav.settings", path: "/admin/settings", icon: Settings },
   ];
 
   return (
@@ -86,7 +87,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 rounded-lg hover:bg-secondary lg:hidden text-muted-foreground hover:text-foreground"
-            aria-label="Toggle Navigation"
+            aria-label={t("layout.toggleNav")}
           >
             {sidebarOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
@@ -96,8 +97,8 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
               PRI<span className="text-accent-brand">M</span>
             </span>
             <div className="hidden sm:flex flex-col">
-              <span className="font-bold text-xs leading-tight text-foreground">Admin</span>
-              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Console</span>
+              <span className="font-bold text-xs leading-tight text-foreground">{t("layout.brandTitle")}</span>
+              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">{t("layout.brandSubtitle")}</span>
             </div>
           </Link>
         </div>
@@ -115,7 +116,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
               </div>
               <div className="hidden sm:flex flex-col text-left">
                 <span className="text-xs font-semibold text-foreground leading-none">
-                  {user?.name || (user?.role === "superadmin" ? "Superadmin" : "Administrator")}
+                  {user?.name || (user?.role === "superadmin" ? t("roles.superadmin") : t("roles.administrator"))}
                 </span>
                 <span className="text-[10px] text-muted-foreground">{user?.email || "superadmin@prim.com"}</span>
               </div>
@@ -126,7 +127,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
               <div className="absolute right-0 rtl:left-0 rtl:right-auto mt-2 w-64 bg-background border border-border rounded-2xl shadow-xl z-50 overflow-hidden py-1.5 animate-in fade-in-0 zoom-in-95 duration-100">
                 <div className="px-4 py-3 border-b border-border/70 bg-secondary/20">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold text-xs text-foreground truncate">{user?.name || "Superadmin"}</p>
+                    <p className="font-semibold text-xs text-foreground truncate">{user?.name || t("roles.superadmin")}</p>
                     <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/20">
                       {user?.role || "superadmin"}
                     </span>
@@ -144,7 +145,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                   >
                     <div className="flex items-center gap-2.5">
                       {theme === "light" ? <Moon className="size-4 text-muted-foreground" /> : <Sun className="size-4 text-muted-foreground" />}
-                      <span>Theme</span>
+                      <span>{t("layout.theme")}</span>
                     </div>
                     <span className="text-[11px] font-semibold text-muted-foreground capitalize">{theme}</span>
                   </button>
@@ -158,7 +159,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                   >
                     <div className="flex items-center gap-2.5">
                       <Languages className="size-4 text-muted-foreground" />
-                      <span>Language</span>
+                      <span>{t("layout.language")}</span>
                     </div>
                     <span className="text-[11px] font-semibold text-muted-foreground uppercase">{locale === "en" ? "العربية" : "English"}</span>
                   </button>
@@ -171,7 +172,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                     className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
                   >
                     <User className="size-4 text-muted-foreground shrink-0" />
-                    <span>Customer Account Hub</span>
+                    <span>{t("layout.customerAccountHub")}</span>
                   </Link>
 
                   <Link
@@ -180,7 +181,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                     className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
                   >
                     <Settings className="size-4 text-muted-foreground shrink-0" />
-                    <span>Store Configuration</span>
+                    <span>{t("layout.storeConfiguration")}</span>
                   </Link>
 
                   <Link
@@ -189,7 +190,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                     className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
                   >
                     <Users className="size-4 text-muted-foreground shrink-0" />
-                    <span>User Management</span>
+                    <span>{t("layout.userManagement")}</span>
                   </Link>
                 </div>
 
@@ -199,7 +200,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-destructive hover:bg-destructive/10 transition-colors text-xs font-semibold cursor-pointer"
                   >
                     <LogOut className="size-4 shrink-0" />
-                    <span>Sign Out</span>
+                    <span>{t("layout.signOut")}</span>
                   </button>
                 </div>
               </div>
@@ -225,7 +226,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
         >
           <div className="p-3 space-y-1 overflow-y-auto max-h-[calc(100dvh-8rem)]">
             <div className="px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-              Management
+              {t("layout.management")}
             </div>
 
             {navItems.map((item) => {
@@ -244,7 +245,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                 >
                   <div className="flex items-center gap-2.5">
                     <Icon className="size-4 shrink-0" />
-                    <span>{item.name}</span>
+                    <span>{t(item.nameKey)}</span>
                   </div>
                   {item.badge && (
                     <span
@@ -254,7 +255,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                           : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300"
                       }`}
                     >
-                      {item.badge}
+                      {item.badgeKey && t(item.badgeKey)}
                     </span>
                   )}
                 </Link>
@@ -266,7 +267,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
             <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="size-4 text-emerald-500" />
-                <span>System Health: 100%</span>
+                <span>{t("layout.systemHealth")}</span>
               </div>
             </div>
           </div>

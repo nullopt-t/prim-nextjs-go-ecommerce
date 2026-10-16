@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 
 export default function SideBar() {
   const t = useTranslations("common.filters");
+  const tProducts = useTranslations("products");
   const [isOpenDesktop, setIsOpenDesktop] = useState(true);
   const [isOpenMobile, setIsOpenMobile] = useState(false);
 
@@ -100,7 +101,7 @@ export default function SideBar() {
       <div className="hidden md:block p-2.5 lg:p-5 ltr:border-r rtl:border-l border-border min-h-full">
         <button
           type="button"
-          aria-label="Toggle filters sidebar"
+          aria-label={tProducts("sideBar.toggle")}
           className="block ltr:ml-auto rtl:mr-auto text-muted-foreground mb-5 hover:text-accent-brand cursor-pointer"
           onClick={() => setIsOpenDesktop((prev) => !prev)}
         >

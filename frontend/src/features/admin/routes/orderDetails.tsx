@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { ArrowLeft, Truck, Clock, MapPin, CreditCard, User, Tag } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { toast } from "sonner";
@@ -8,6 +9,7 @@ import { toast } from "sonner";
 export function AdminOrderDetails() {
   const { id } = useParams();
   const navigate = useRouter();
+  const t = useTranslations("admin");
 
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +66,7 @@ export function AdminOrderDetails() {
         setTrackingNumber(formatted.trackingNumber);
       }
     } catch {
-      toast.error("Failed to load order from server");
+      toast.error(t("orderDetails.toast.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -75,34 +77,34 @@ export function AdminOrderDetails() {
   }, [id]);
 
   if (loading) {
-    return <div className="p-8 text-center text-muted-foreground">Loading order details...</div>;
+    return <div className="p-8 text-center text-muted-foreground">{t("orderDetails.loading")}</div>;
   }
 
   if (!order) {
-    return <div className="p-8 text-center text-muted-foreground">Order not found.</div>;
+    return <div className="p-8 text-center text-muted-foreground">{t("orderDetails.notFound")}</div>;
   }
 
   const handleUpdateFulfillment = async (newStatus: string) => {
     try {
       await adminService.updateOrderStatus(order.id, newStatus.toLowerCase());
-      toast.success(`Fulfillment status updated to ${newStatus}`);
+      toast.success(t("orderDetails.toast.statusUpdated", { status: newStatus }));
       fetchOrderFromApi();
     } catch (err: any) {
-      toast.error(err?.message || err?.response?.data?.message || "Failed to update status");
+      toast.error(err?.message || err?.response?.data?.message || t("orderDetails.toast.statusFailed"));
       fetchOrderFromApi();
     }
   };
 
   const handleSaveTracking = async () => {
     if (!trackingNumber.trim()) {
-      toast.error("Please enter a tracking number");
+      toast.error(t("orderDetails.toast.enterTracking"));
       return;
     }
     try {
       await adminService.updateOrderTracking(order.id, trackingNumber);
-      toast.success("Tracking information saved!");
+      toast.success(t("orderDetails.toast.trackingSaved"));
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save tracking number");
+      toast.error(err?.response?.data?.message || t("orderDetails.toast.trackingFailed"));
     }
   };
 
@@ -112,11 +114,11 @@ export function AdminOrderDetails() {
 
     try {
       await adminService.updateOrderStatus(order.id, order.status.toLowerCase(), noteInput.trim());
-      toast.success("Note added to timeline!");
+      toast.success(t("orderDetails.toast.noteAdded"));
       setNoteInput("");
       fetchOrderFromApi();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to add timeline note");
+      toast.error(err?.response?.data?.message || t("orderDetails.toast.noteFailed"));
     }
   };
 
@@ -128,7 +130,7 @@ export function AdminOrderDetails() {
           className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="size-4" />
-          <span>Back to All Orders</span>
+          <span>{t("orderDetails.back")}</span>
         </button>
         <span className="text-xs font-mono font-bold px-3 py-1 bg-secondary rounded-lg border border-border">
           {order.id}
@@ -138,7 +140,7 @@ export function AdminOrderDetails() {
       <div className="bg-background border border-border rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">Order Details</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t("orderDetails.title")}</h1>
             <span
               className={`px-3 py-0.5 rounded-full text-xs font-bold ${
                 order.status === "Delivered"
@@ -153,7 +155,7 @@ export function AdminOrderDetails() {
               {order.status}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">Placed on {order.date}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t("orderDetails.placedOn", { date: order.date })}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -165,30 +167,30 @@ export function AdminOrderDetails() {
           >
             {order.status === "pending" && (
               <>
-                <option value="pending" disabled>Pending</option>
-                <option value="processing">Processing</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="pending" disabled>{t("status.pending")}</option>
+                <option value="processing">{t("status.processing")}</option>
+                <option value="cancelled">{t("status.cancelled")}</option>
               </>
             )}
             {order.status === "processing" && (
               <>
-                <option value="processing" disabled>Processing</option>
-                <option value="shipped">Shipped</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="processing" disabled>{t("status.processing")}</option>
+                <option value="shipped">{t("status.shipped")}</option>
+                <option value="cancelled">{t("status.cancelled")}</option>
               </>
             )}
             {order.status === "shipped" && (
               <>
-                <option value="shipped" disabled>Shipped</option>
-                <option value="delivered">Delivered</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="shipped" disabled>{t("status.shipped")}</option>
+                <option value="delivered">{t("status.delivered")}</option>
+                <option value="cancelled">{t("status.cancelled")}</option>
               </>
             )}
             {order.status === "delivered" && (
-              <option value="delivered">Delivered (Final)</option>
+              <option value="delivered">{t("status.deliveredFinal")}</option>
             )}
             {(order.status === "cancelled") && (
-              <option value="cancelled">Cancelled (Final)</option>
+              <option value="cancelled">{t("status.cancelledFinal")}</option>
             )}
           </select>
         </div>
@@ -199,13 +201,13 @@ export function AdminOrderDetails() {
         <div className="lg:col-span-2 space-y-6">
           {/* Purchased Items */}
           <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
-            <h3 className="font-bold text-base text-foreground border-b border-border pb-3">Line Items ({order.items.length})</h3>
+            <h3 className="font-bold text-base text-foreground border-b border-border pb-3">{t("orderDetails.lineItems", { count: order.items.length })}</h3>
             <div className="divide-y divide-border">
               {order.items.map((item) => (
                 <div key={item.id} className="py-3 flex items-center justify-between text-xs">
                   <div>
                     <div className="font-semibold text-foreground">{item.name}</div>
-                    <div className="text-muted-foreground">Qty: {item.quantity}</div>
+                    <div className="text-muted-foreground">{t("orderDetails.qty", { count: item.quantity })}</div>
                   </div>
                   <div className="font-bold text-foreground">{item.price}</div>
                 </div>
@@ -215,7 +217,7 @@ export function AdminOrderDetails() {
               <div className="pt-2 border-t border-border flex justify-between items-center text-xs">
                 <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
                   <Tag className="size-3.5" />
-                  <span>Coupon Applied:</span>
+                  <span>{t("orderDetails.couponApplied")}</span>
                   <span className="font-mono bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 uppercase tracking-wide">
                     {order.couponCode}
                   </span>
@@ -228,7 +230,7 @@ export function AdminOrderDetails() {
               </div>
             )}
             <div className="pt-3 border-t border-border flex justify-between items-center text-sm font-bold">
-              <span>Total Paid</span>
+              <span>{t("orderDetails.totalPaid")}</span>
               <span className="text-accent-brand text-base">{order.total}</span>
             </div>
           </div>
@@ -237,12 +239,12 @@ export function AdminOrderDetails() {
           <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
             <h3 className="font-bold text-base text-foreground flex items-center gap-2">
               <Truck className="size-5 text-accent-brand" />
-              <span>Shipment Tracking</span>
+              <span>{t("orderDetails.shipmentTracking")}</span>
             </h3>
             <div className="flex gap-3">
               <input
                 type="text"
-                placeholder="Enter FedEx / UPS tracking number..."
+                placeholder={t("orderDetails.trackingPlaceholder")}
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
                 className="flex-1 px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
@@ -251,7 +253,7 @@ export function AdminOrderDetails() {
                 onClick={handleSaveTracking}
                 className="px-4 py-2 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90"
               >
-                Save Tracking
+                {t("orderDetails.saveTracking")}
               </button>
             </div>
           </div>
@@ -260,7 +262,7 @@ export function AdminOrderDetails() {
           <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
             <h3 className="font-bold text-base text-foreground flex items-center gap-2">
               <Clock className="size-5 text-accent-brand" />
-              <span>Fulfillment History & Timeline</span>
+              <span>{t("orderDetails.timeline")}</span>
             </h3>
             <div className="space-y-3">
               {order.history.map((log, idx) => (
@@ -277,13 +279,13 @@ export function AdminOrderDetails() {
             <form onSubmit={handleAddTimelineNote} className="pt-3 border-t border-border flex gap-2">
               <input
                 type="text"
-                placeholder="Add internal staff note..."
+                placeholder={t("orderDetails.notePlaceholder")}
                 value={noteInput}
                 onChange={(e) => setNoteInput(e.target.value)}
                 className="flex-1 px-3 py-1.5 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
               />
               <button type="submit" className="px-3 py-1.5 bg-secondary text-foreground text-xs font-semibold rounded-xl border border-border">
-                Add Note
+                {t("orderDetails.addNote")}
               </button>
             </form>
           </div>
@@ -294,7 +296,7 @@ export function AdminOrderDetails() {
           <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
             <h3 className="font-bold text-base text-foreground flex items-center gap-2">
               <User className="size-4 text-accent-brand" />
-              <span>Customer</span>
+              <span>{t("orderDetails.customer")}</span>
             </h3>
             <div className="text-xs space-y-1">
               <div className="font-semibold text-foreground">{order.customer}</div>
@@ -305,7 +307,7 @@ export function AdminOrderDetails() {
           <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
             <h3 className="font-bold text-base text-foreground flex items-center gap-2">
               <MapPin className="size-4 text-accent-brand" />
-              <span>Shipping Address</span>
+              <span>{t("orderDetails.shippingAddress")}</span>
             </h3>
             <div className="text-xs text-muted-foreground leading-relaxed">
               {order.shippingAddress}
@@ -315,15 +317,15 @@ export function AdminOrderDetails() {
           <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
             <h3 className="font-bold text-base text-foreground flex items-center gap-2">
               <CreditCard className="size-4 text-accent-brand" />
-              <span>Payment Details</span>
+              <span>{t("orderDetails.paymentDetails")}</span>
             </h3>
             <div className="text-xs space-y-2">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Method:</span>
+                <span className="text-muted-foreground">{t("orderDetails.method")}</span>
                 <span className="font-semibold text-foreground">{order.paymentMethod}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Status:</span>
+                <span className="text-muted-foreground">{t("orderDetails.statusLabel")}</span>
                 <span className="font-bold text-emerald-600">{order.paymentStatus}</span>
               </div>
             </div>

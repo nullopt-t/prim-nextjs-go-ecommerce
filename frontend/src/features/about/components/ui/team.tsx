@@ -15,7 +15,7 @@ export default function Team() {
       id: "nullopt-t",
       name: "Mohamed Mahmoud",
       img: MohamedImg,
-      imgAlt: "Mohamed photo",
+      imgAlt: t("team.mohamedAlt"),
       role: "developers.frontend",
       links: [
         {
@@ -34,7 +34,7 @@ export default function Team() {
       id: "nullopt-t",
       name: "Amr",
       img: AmrImg,
-      imgAlt: "Amr photo",
+      imgAlt: t("team.amrAlt"),
       role: "developers.backend",
       links: [
         {
