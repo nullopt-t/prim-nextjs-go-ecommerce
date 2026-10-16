@@ -791,6 +791,12 @@ func (ps *ProductService) UploadProductThumbnail(
 			Wrap(err)
 	}
 
+	if !fileUtil.IsAllowedImageMime(detectedContentType) {
+		return nil, apierr.BadRequestError(
+			"Only JPEG, PNG, WebP, and AVIF images are allowed",
+		).WithCode(apierr.CodeUnsupportedMediaType)
+	}
+
 	product, err := ps.GetByID(ctx, productID)
 	if err != nil {
 		return nil, err

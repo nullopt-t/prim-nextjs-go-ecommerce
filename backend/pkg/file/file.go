@@ -56,6 +56,27 @@ func DetectContentType(file multipart.File) (string, error) {
 	return detected, nil
 }
 
+// AllowedImageMIMETypes are the raster image formats permitted for user uploads.
+// SVG is deliberately excluded: SVG is XML-based and can carry JavaScript, which
+// leads to stored XSS when such files are served from a public bucket.
+var AllowedImageMIMETypes = map[string]bool{
+	"image/jpeg": true,
+	"image/png":  true,
+	"image/gif":  true,
+	"image/webp": true,
+	"image/avif": true,
+}
+
+// IsAllowedImageMime reports whether the content type is a raster image format
+// permitted for upload (SVG and other non-raster types are rejected).
+func IsAllowedImageMime(contentType string) bool {
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return false
+	}
+	return AllowedImageMIMETypes[strings.ToLower(mediaType)]
+}
+
 // MimeExtension maps MIME types to their conventional file extension including the leading dot.
 func MimeExtension(ct string) string {
 	cleanCT := strings.TrimSpace(ct)

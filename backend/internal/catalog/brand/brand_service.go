@@ -262,6 +262,13 @@ func (bs *BrandService) UploadBrandLogo(
 		return nil, apierr.BadRequestError("File is required").WithCode(apierr.CodeInvalidInput)
 	}
 
+	// Brand logos are raster images only; cap size at 2MB.
+	const maxBrandLogoSize = 2 * 1024 * 1024
+	if file.Size > maxBrandLogoSize {
+		return nil, apierr.BadRequestError("File size exceeds 2MB limit").
+			WithCode(apierr.CodeFileTooLarge)
+	}
+
 	src, err := file.Open()
 	if err != nil {
 		return nil, apierr.InternalServerError("Failed to open file").Wrap(err)
@@ -272,8 +279,10 @@ func (bs *BrandService) UploadBrandLogo(
 	if err != nil {
 		return nil, apierr.InternalServerError("Failed to detect content type").Wrap(err)
 	}
-	if !strings.HasPrefix(contentType, "image/") {
-		return nil, apierr.BadRequestError("Only image files are allowed").WithCode(apierr.CodeInvalidInput)
+	if !fileUtil.IsAllowedImageMime(contentType) {
+		return nil, apierr.BadRequestError(
+			"Only JPEG, PNG, WebP, and AVIF images are allowed",
+		).WithCode(apierr.CodeUnsupportedMediaType)
 	}
 
 	// Fetch existing brand to check for old logo
