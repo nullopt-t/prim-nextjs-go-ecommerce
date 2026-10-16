@@ -422,7 +422,18 @@ func (app *App) Run() error {
 		)
 	}
 
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(gin.Logger())
+
+	// Trust no proxies by default: c.ClientIP() then falls back to RemoteAddr,
+	// so client-supplied X-Forwarded-For/X-Real-IP cannot spoof rate limits.
+	// If the deployment sits behind known reverse proxies, replace nil with
+	// their CIDRs here: router.SetTrustedProxies([]string{"..."}).
+	if err := router.SetTrustedProxies(nil); err != nil {
+		app.logger.Warn("failed to configure trusted proxies", log.Meta{"Error": err})
+	}
+
 	app.setupRoutes(router)
 
 	protocols := new(http.Protocols)
