@@ -13,10 +13,19 @@ import { AdminUser } from "@/services/admin";
 
 interface ChangeRoleModalProps {
   user: AdminUser;
+  callerRole?: string;
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (userId: string, newRole: AdminUser["role"]) => Promise<void>;
 }
+
+const ROLE_RANKS: Record<string, number> = {
+  customer: 1,
+  vendor: 2,
+  support: 3,
+  admin: 4,
+  superadmin: 5,
+};
 
 const ROLES: { value: AdminUser["role"]; label: string; desc: string; color: string }[] = [
   { 
@@ -43,16 +52,15 @@ const ROLES: { value: AdminUser["role"]; label: string; desc: string; color: str
     desc: "Operational staff. Can manage products, categories, global orders, promotions, and customer data.",
     color: "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/20"
   },
-  { 
-    value: "superadmin", 
-    label: "Superadministrator", 
-    desc: "Unrestricted platform governance. Can modify staff roles, suspend accounts, and manage platform settings.",
-    color: "border-purple-300 dark:border-purple-700 bg-purple-50 dark:bg-purple-950/20"
-  },
 ];
 
-export function ChangeRoleModal({ user, isOpen, onClose, onConfirm }: ChangeRoleModalProps) {
-  const [selectedRole, setSelectedRole] = useState<AdminUser["role"]>(user.role);
+export function ChangeRoleModal({ user, callerRole = "superadmin", isOpen, onClose, onConfirm }: ChangeRoleModalProps) {
+  const callerRank = ROLE_RANKS[callerRole?.toLowerCase() || "customer"] || 1;
+  const availableRoles = ROLES.filter((r) => (ROLE_RANKS[r.value] || 1) < callerRank);
+
+  const [selectedRole, setSelectedRole] = useState<AdminUser["role"]>(
+    availableRoles.some((r) => r.value === user.role) ? user.role : (availableRoles[0]?.value || "customer")
+  );
   const [submitting, setSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -72,7 +80,7 @@ export function ChangeRoleModal({ user, isOpen, onClose, onConfirm }: ChangeRole
     }
   };
 
-  const isEscalation = selectedRole === "superadmin" || (selectedRole === "admin" && user.role === "customer");
+  const isEscalation = selectedRole === "admin" && user.role !== "admin";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
@@ -117,7 +125,7 @@ export function ChangeRoleModal({ user, isOpen, onClose, onConfirm }: ChangeRole
               Select New Permission Tier
             </label>
             <div className="space-y-2">
-              {ROLES.map((role) => (
+              {availableRoles.map((role) => (
                 <label
                   key={role.value}
                   className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${

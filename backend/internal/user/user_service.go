@@ -21,6 +21,22 @@ type SessionManager interface {
 	DeleteAllSessions(ctx context.Context, userID uuid.UUID) error
 }
 
+// RoleRank defines numeric privilege levels for role hierarchy enforcement.
+var RoleRank = map[model.UserRole]int{
+	model.CustomerRole: 1,
+	model.VendorRole:   2,
+	model.SupportRole:  3,
+	model.AdminRole:    4,
+	model.SuperRole:    5,
+}
+
+func GetRoleRank(role model.UserRole) int {
+	if rank, ok := RoleRank[role]; ok {
+		return rank
+	}
+	return 1
+}
+
 // UserService orchestrates business logic, state machines, and lifecycle rules for user accounts:
 // account creation, retrieval by UUID/identifier, paginated queries, administrative role mutations,
 // account suspension/status transitions, and session invalidation.
@@ -191,8 +207,30 @@ func (s *UserService) GetAllUsers(
 func (s *UserService) DeleteUserByID(
 	ctx context.Context,
 	userID uuid.UUID,
+	callerID uuid.UUID,
 ) error {
-	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	if userID == callerID {
+		return apierr.BadRequestError("Users cannot delete their own account").
+			WithCode("CANNOT_DELETE_SELF")
+	}
+
+	callerUser, err := s.GetUserByID(ctx, callerID)
+	if err != nil {
+		return apierr.UnauthorizedError("Caller not found")
+	}
+
+	targetUser, err := s.GetUserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	// Hierarchy check: cannot delete a user with equal or higher rank
+	if GetRoleRank(callerUser.Role) <= GetRoleRank(targetUser.Role) {
+		return apierr.ForbiddenError("You cannot delete a user with equal or higher privileges").
+			WithCode("CANNOT_MODIFY_EQUAL_OR_HIGHER_ROLE")
+	}
+
+	err = s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.repo.SoftDelete(ctx, db, userID)
 	})
 	if err != nil {
@@ -223,28 +261,69 @@ func (s *UserService) UpdateUserRole(
 	newRole model.UserRole,
 	callerID uuid.UUID,
 ) error {
-	// Prevent self-demotion or self-modification by superadmins
+	// Prevent self-demotion or self-modification
 	if targetUserID == callerID {
-		return apierr.BadRequestError("Superadmins cannot alter their own role").
+		return apierr.BadRequestError("Users cannot alter their own role").
 			WithCode("CANNOT_MODIFY_OWN_ROLE")
 	}
 
-	// Validate target role exists within permitted role hierarchy
-	validRoles := map[model.UserRole]bool{
-		model.CustomerRole: true,
-		model.VendorRole:   true,
-		model.SupportRole:  true,
-		model.AdminRole:    true,
-		model.SuperRole:    true,
+	callerUser, err := s.GetUserByID(ctx, callerID)
+	if err != nil {
+		return apierr.UnauthorizedError("Caller not found")
 	}
 
-	if !validRoles[newRole] {
-		return apierr.BadRequestError(fmt.Sprintf("Invalid role: %s", newRole)).
+	targetUser, err := s.GetUserByID(ctx, targetUserID)
+	if err != nil {
+		return err
+	}
+
+	// Role hierarchy: higher rank means greater privileges
+	roleRanks := map[model.UserRole]int{
+		model.CustomerRole: 1,
+		model.VendorRole:   2,
+		model.SupportRole:  3,
+		model.AdminRole:    4,
+		model.SuperRole:    5,
+	}
+
+	callerRank, callerValid := roleRanks[callerUser.Role]
+	if !callerValid {
+		return apierr.ForbiddenError("Caller does not have a valid administrative role").
+			WithCode("INSUFFICIENT_PERMISSIONS")
+	}
+
+	targetRank, targetValid := roleRanks[targetUser.Role]
+	if !targetValid {
+		return apierr.BadRequestError("Target user has an unrecognized role").
 			WithCode("INVALID_USER_ROLE")
 	}
 
+	newRank, newValid := roleRanks[newRole]
+	if !newValid {
+		return apierr.BadRequestError(fmt.Sprintf("Invalid target role: %s", newRole)).
+			WithCode("INVALID_USER_ROLE")
+	}
+
+	// 1. Caller cannot modify users with an equal or higher role
+	if callerRank <= targetRank {
+		return apierr.ForbiddenError("You cannot modify the role of a user with equal or higher privileges").
+			WithCode("CANNOT_MODIFY_EQUAL_OR_HIGHER_ROLE")
+	}
+
+	// 2. Caller cannot promote anyone to their own role or any higher role
+	if newRank >= callerRank {
+		return apierr.ForbiddenError("You cannot assign a role equal to or higher than your own").
+			WithCode("CANNOT_PROMOTE_TO_OR_ABOVE_OWN_ROLE")
+	}
+
+	// 3. Enforce single superadmin policy: multiple superadmins are not permitted
+	if newRole == model.SuperRole {
+		return apierr.BadRequestError("Only one Superadministrator is permitted in the system").
+			WithCode("MULTIPLE_SUPERADMINS_FORBIDDEN")
+	}
+
 	// Update role in database
-	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err = s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.repo.UpdateRole(ctx, db, targetUserID, newRole)
 	})
 
@@ -252,6 +331,10 @@ func (s *UserService) UpdateUserRole(
 		mappedErr := database.MapError(err)
 		if errors.Is(mappedErr, database.ErrNotFound) {
 			return apierr.NotFoundError("User not found")
+		}
+		if errors.Is(mappedErr, database.ErrConflict) {
+			return apierr.ConflictError("Only one Superadministrator is permitted in the system").
+				WithCode("MULTIPLE_SUPERADMINS_FORBIDDEN")
 		}
 		s.logger.Error("failed to update user role", log.Meta{"userId": targetUserID, "role": newRole, "error": err.Error()})
 		return apierr.InternalServerError("Failed to update user role").Wrap(err)
@@ -275,10 +358,26 @@ func (s *UserService) UpdateAccountStatus(
 	suspendedUntil *time.Time,
 	callerID uuid.UUID,
 ) error {
-	// Prevent superadmins from suspending their own accounts
+	// Prevent modifying own status
 	if targetUserID == callerID {
-		return apierr.BadRequestError("Superadmins cannot suspend their own account").
+		return apierr.BadRequestError("Users cannot alter their own account status").
 			WithCode("CANNOT_SUSPEND_SELF")
+	}
+
+	callerUser, err := s.GetUserByID(ctx, callerID)
+	if err != nil {
+		return apierr.UnauthorizedError("Caller not found")
+	}
+
+	targetUser, err := s.GetUserByID(ctx, targetUserID)
+	if err != nil {
+		return err
+	}
+
+	// Hierarchy check: cannot suspend/alter status of users with equal or higher rank
+	if GetRoleRank(callerUser.Role) <= GetRoleRank(targetUser.Role) {
+		return apierr.ForbiddenError("You cannot alter the status of a user with equal or higher privileges").
+			WithCode("CANNOT_MODIFY_EQUAL_OR_HIGHER_ROLE")
 	}
 
 	// Validate status value
@@ -300,7 +399,7 @@ func (s *UserService) UpdateAccountStatus(
 	}
 
 	// Update status in PostgreSQL
-	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err = s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.repo.UpdateStatus(ctx, db, targetUserID, newStatus, suspendedUntil)
 	})
 
@@ -330,6 +429,27 @@ func (s *UserService) RevokeAllUserSessions(
 	targetUserID uuid.UUID,
 	callerID uuid.UUID,
 ) error {
+	if targetUserID == callerID {
+		return apierr.BadRequestError("Users cannot revoke their own sessions via this administrative endpoint").
+			WithCode("CANNOT_REVOKE_OWN_SESSIONS")
+	}
+
+	callerUser, err := s.GetUserByID(ctx, callerID)
+	if err != nil {
+		return apierr.UnauthorizedError("Caller not found")
+	}
+
+	targetUser, err := s.GetUserByID(ctx, targetUserID)
+	if err != nil {
+		return err
+	}
+
+	// Hierarchy check: cannot revoke sessions of users with equal or higher rank
+	if GetRoleRank(callerUser.Role) <= GetRoleRank(targetUser.Role) {
+		return apierr.ForbiddenError("You cannot revoke sessions of a user with equal or higher privileges").
+			WithCode("CANNOT_MODIFY_EQUAL_OR_HIGHER_ROLE")
+	}
+
 	if s.sessions != nil {
 		if err := s.sessions.DeleteAllSessions(ctx, targetUserID); err != nil {
 			s.logger.Error("failed to revoke user sessions", log.Meta{"userId": targetUserID, "error": err.Error()})

@@ -26,9 +26,19 @@ import { UserSlideOverDrawer } from "../components/UserSlideOverDrawer";
 import { ChangeRoleModal } from "../components/ChangeRoleModal";
 import { SuspendUserModal } from "../components/SuspendUserModal";
 import { RevokeSessionsModal } from "../components/RevokeSessionsModal";
+import { useAuthContext } from "@/context/AuthContext";
 import { toast } from "sonner";
 
+const ROLE_RANKS: Record<string, number> = {
+  customer: 1,
+  vendor: 2,
+  support: 3,
+  admin: 4,
+  superadmin: 5,
+};
+
 export function AdminCustomers() {
+  const { user: currentUser } = useAuthContext();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>({
     page: 1,
@@ -295,6 +305,13 @@ export function AdminCustomers() {
               ) : (
                 users.map((u) => {
                   const isSuspended = u.status === "suspended";
+                  const isSelf = currentUser?.id && u.id && String(currentUser.id) === String(u.id);
+
+                  const callerRank = ROLE_RANKS[currentUser?.role?.toLowerCase() || "customer"] || 1;
+                  const targetRank = ROLE_RANKS[u.role?.toLowerCase() || "customer"] || 1;
+                  // Hierarchy rule: Caller can only manage users strictly lower in rank
+                  const canManageUser = !isSelf && callerRank > targetRank;
+
                   return (
                     <tr 
                       key={u.id} 
@@ -308,9 +325,16 @@ export function AdminCustomers() {
                             {u.fullName ? u.fullName.slice(0, 2).toUpperCase() : u.email.slice(0, 2).toUpperCase()}
                           </div>
                           <div className="flex flex-col min-w-0">
-                            <span className="font-bold text-foreground truncate group-hover:text-primary transition-colors">
-                              {u.fullName || "Unnamed User"}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                                {u.fullName || "Unnamed User"}
+                              </span>
+                              {isSelf && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent-brand/10 text-accent-brand border border-accent-brand/20">
+                                  You
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[11px] font-mono text-muted-foreground truncate">
                               {u.email}
                             </span>
@@ -368,33 +392,37 @@ export function AdminCustomers() {
                             <Eye className="size-4" />
                           </button>
 
-                          <button
-                            onClick={() => setRoleModalUser(u)}
-                            className="p-1.5 rounded-lg text-purple-600 hover:text-purple-700 hover:bg-purple-500/10 transition-colors"
-                            title="Change Role (Superadmin)"
-                          >
-                            <Shield className="size-4" />
-                          </button>
+                          {canManageUser && (
+                            <>
+                              <button
+                                onClick={() => setRoleModalUser(u)}
+                                className="p-1.5 rounded-lg text-purple-600 hover:text-purple-700 hover:bg-purple-500/10 transition-colors"
+                                title="Change Role"
+                              >
+                                <Shield className="size-4" />
+                              </button>
 
-                          <button
-                            onClick={() => setSuspendModalUser(u)}
-                            className={`p-1.5 rounded-lg transition-colors ${
-                              isSuspended
-                                ? "text-emerald-600 hover:bg-emerald-500/10"
-                                : "text-rose-600 hover:bg-rose-500/10"
-                            }`}
-                            title={isSuspended ? "Reactivate Account" : "Suspend Account"}
-                          >
-                            {isSuspended ? <UserCheck className="size-4" /> : <UserX className="size-4" />}
-                          </button>
+                              <button
+                                onClick={() => setSuspendModalUser(u)}
+                                className={`p-1.5 rounded-lg transition-colors ${
+                                  isSuspended
+                                    ? "text-emerald-600 hover:bg-emerald-500/10"
+                                    : "text-rose-600 hover:bg-rose-500/10"
+                                }`}
+                                title={isSuspended ? "Reactivate Account" : "Suspend Account"}
+                              >
+                                {isSuspended ? <UserCheck className="size-4" /> : <UserX className="size-4" />}
+                              </button>
 
-                          <button
-                            onClick={() => setRevokeModalUser(u)}
-                            className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-500/10 transition-colors"
-                            title="Revoke Sessions"
-                          >
-                            <LogOut className="size-4" />
-                          </button>
+                              <button
+                                onClick={() => setRevokeModalUser(u)}
+                                className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-500/10 transition-colors"
+                                title="Revoke Sessions"
+                              >
+                                <LogOut className="size-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -439,6 +467,8 @@ export function AdminCustomers() {
       {/* Slide-over Inspector Drawer */}
       <UserSlideOverDrawer
         user={inspectUser}
+        currentUserId={currentUser?.id}
+        currentUserRole={currentUser?.role}
         isOpen={Boolean(inspectUser)}
         onClose={() => setInspectUser(null)}
         onChangeRole={(u) => setRoleModalUser(u)}
@@ -450,6 +480,7 @@ export function AdminCustomers() {
       {roleModalUser && (
         <ChangeRoleModal
           user={roleModalUser}
+          callerRole={currentUser?.role}
           isOpen={Boolean(roleModalUser)}
           onClose={() => setRoleModalUser(null)}
           onConfirm={handleConfirmRoleChange}

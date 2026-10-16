@@ -22,6 +22,8 @@ import { toast } from "sonner";
 
 interface UserSlideOverDrawerProps {
   user: AdminUser | null;
+  currentUserId?: string;
+  currentUserRole?: string;
   isOpen: boolean;
   onClose: () => void;
   onChangeRole: (user: AdminUser) => void;
@@ -29,8 +31,18 @@ interface UserSlideOverDrawerProps {
   onRevokeSessions: (user: AdminUser) => void;
 }
 
+const ROLE_RANKS: Record<string, number> = {
+  customer: 1,
+  vendor: 2,
+  support: 3,
+  admin: 4,
+  superadmin: 5,
+};
+
 export function UserSlideOverDrawer({
   user,
+  currentUserId,
+  currentUserRole,
   isOpen,
   onClose,
   onChangeRole,
@@ -49,6 +61,10 @@ export function UserSlideOverDrawer({
   };
 
   const isSuspended = user.status === "suspended";
+  const isSelf = currentUserId && user.id && String(currentUserId) === String(user.id);
+  const callerRank = ROLE_RANKS[currentUserRole?.toLowerCase() || "customer"] || 1;
+  const targetRank = ROLE_RANKS[user.role?.toLowerCase() || "customer"] || 1;
+  const canManage = !isSelf && callerRank > targetRank;
 
   return (
     <div className="fixed inset-0 z-40 overflow-hidden">
@@ -205,44 +221,58 @@ export function UserSlideOverDrawer({
             {/* Quick Actions Panel */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Administrative Actions</h3>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => onChangeRole(user)}
-                  className="w-full py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-secondary text-foreground text-xs font-semibold transition-colors flex items-center justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <Shield className="size-4 text-purple-500" />
-                    Change Permission Role
-                  </span>
-                  <span className="text-[10px] text-muted-foreground uppercase">Superadmin</span>
-                </button>
+              {isSelf ? (
+                <div className="p-3.5 rounded-xl bg-secondary/30 border border-border text-center">
+                  <p className="text-xs text-muted-foreground">
+                    This is your account. Administrative role, suspension, and forced session actions cannot be applied to yourself.
+                  </p>
+                </div>
+              ) : !canManage ? (
+                <div className="p-3.5 rounded-xl bg-secondary/30 border border-border text-center">
+                  <p className="text-xs text-muted-foreground">
+                    This account possesses equal or higher administrative privileges ({user.role}). Actions cannot be applied to this account.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => onChangeRole(user)}
+                    className="w-full py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-secondary text-foreground text-xs font-semibold transition-colors flex items-center justify-between"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Shield className="size-4 text-purple-500" />
+                      Change Permission Role
+                    </span>
+                    <span className="text-[10px] text-muted-foreground uppercase">Superadmin</span>
+                  </button>
 
-                <button
-                  onClick={() => onSuspend(user)}
-                  className={`w-full py-2.5 px-4 rounded-xl border text-xs font-semibold transition-colors flex items-center justify-between ${
-                    isSuspended
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20"
-                      : "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300 hover:bg-rose-500/20"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    {isSuspended ? <UserCheck className="size-4" /> : <UserX className="size-4" />}
-                    {isSuspended ? "Reactivate Account" : "Suspend Account"}
-                  </span>
-                  <span className="text-[10px] opacity-75 uppercase">Superadmin</span>
-                </button>
+                  <button
+                    onClick={() => onSuspend(user)}
+                    className={`w-full py-2.5 px-4 rounded-xl border text-xs font-semibold transition-colors flex items-center justify-between ${
+                      isSuspended
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20"
+                        : "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300 hover:bg-rose-500/20"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      {isSuspended ? <UserCheck className="size-4" /> : <UserX className="size-4" />}
+                      {isSuspended ? "Reactivate Account" : "Suspend Account"}
+                    </span>
+                    <span className="text-[10px] opacity-75 uppercase">Superadmin</span>
+                  </button>
 
-                <button
-                  onClick={() => onRevokeSessions(user)}
-                  className="w-full py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-secondary text-foreground text-xs font-semibold transition-colors flex items-center justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <LogOut className="size-4 text-amber-500" />
-                    Force Log Out (Revoke Sessions)
-                  </span>
-                  <span className="text-[10px] text-muted-foreground uppercase">Superadmin</span>
-                </button>
-              </div>
+                  <button
+                    onClick={() => onRevokeSessions(user)}
+                    className="w-full py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-secondary text-foreground text-xs font-semibold transition-colors flex items-center justify-between"
+                  >
+                    <span className="flex items-center gap-2">
+                      <LogOut className="size-4 text-amber-500" />
+                      Force Log Out (Revoke Sessions)
+                    </span>
+                    <span className="text-[10px] text-muted-foreground uppercase">Superadmin</span>
+                  </button>
+                </div>
+              )}
             </div>
 
           </div>

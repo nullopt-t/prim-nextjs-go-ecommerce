@@ -215,6 +215,7 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 	err = h.userService.DeleteUserByID(
 		c.Request.Context(),
 		userID,
+		callerID,
 	)
 	if err != nil {
 		_ = c.Error(err)

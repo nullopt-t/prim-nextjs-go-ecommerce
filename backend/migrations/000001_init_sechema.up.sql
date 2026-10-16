@@ -91,6 +91,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower
     ON users (lower(email))
     WHERE deleted_at IS NULL;
 
+-- Enforce exactly one active superadmin in the system
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_single_superadmin
+    ON users (role)
+    WHERE role = 'superadmin' AND deleted_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS addresses (
     id             uuid NOT NULL,
     user_id        uuid NOT NULL,
