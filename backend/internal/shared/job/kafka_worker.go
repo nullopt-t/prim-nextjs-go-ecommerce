@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -47,26 +48,30 @@ func NewKafkaWorker(
 	}
 }
 
-// Start begins processing messages until ctx is cancelled.
+// Start begins processing messages until ctx is cancelled, spawning w.workers
+// concurrent consumer goroutines (the workers setting was previously ignored).
 func (w *KafkaWorker) Start(ctx context.Context, wg *sync.WaitGroup) {
-	defer wg.Done()
-
 	w.logger.Info("starting Kafka worker", log.Meta{
 		"topic":   w.topic,
 		"workers": w.workers,
 	})
 
-	for {
-		select {
-		case <-ctx.Done():
-			w.logger.Info("context cancelled, stopping Kafka worker", log.Meta{"topic": w.topic})
-			return
-		default:
-		}
+	for i := 0; i < w.workers; i++ {
+		wg.Add(1)
+		go w.run(ctx, wg)
+	}
+}
 
+// run is the per-worker message pump. Each worker fetches, processes, and commits
+// messages independently until ctx is cancelled.
+func (w *KafkaWorker) run(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for {
 		msg, err := w.consumer.FetchMessage(ctx)
 		if err != nil {
 			if ctx.Err() != nil {
+				w.logger.Info("context cancelled, stopping Kafka worker", log.Meta{"topic": w.topic})
 				return
 			}
 			w.logger.Error("failed to fetch message from Kafka", log.Meta{
@@ -100,6 +105,12 @@ func (w *KafkaWorker) Start(ctx context.Context, wg *sync.WaitGroup) {
 		// Process event with retry logic
 		err = w.processWithRetry(ctx, &event)
 		if err != nil {
+			// During shutdown, do not DLQ or commit: the message must be
+			// redelivered after restart instead of being silently dropped.
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return
+			}
+
 			w.logger.Error("failed to process event after retries, routing to DLQ", log.Meta{
 				"topic":   w.topic,
 				"eventId": event.EventID.String(),
@@ -109,11 +120,27 @@ func (w *KafkaWorker) Start(ctx context.Context, wg *sync.WaitGroup) {
 			event.LastError = err.Error()
 			dlqBytes, _ := json.Marshal(event)
 			if w.producer != nil {
-				_ = w.producer.Publish(ctx, TopicNotificationsDLQ, string(msg.Key), dlqBytes)
+				// Publish to the DLQ with a detached timeout context so a
+				// cancelled request context cannot silence the DLQ write and
+				// lose the message.
+				dlqCtx := ctx
+				if dlqCtx.Err() != nil {
+					var cancel context.CancelFunc
+					dlqCtx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+					defer cancel()
+				}
+				if err := w.producer.Publish(dlqCtx, TopicNotificationsDLQ, string(msg.Key), dlqBytes); err != nil {
+					w.logger.Error("failed to publish event to DLQ", log.Meta{
+						"topic":   w.topic,
+						"eventId": event.EventID.String(),
+						"error":   err,
+					})
+				}
 			}
 		}
 
-		// Commit offset upon completion or DLQ routing to progress the consumer group
+		// Commit offset upon completion or DLQ routing to progress the consumer group.
+		// CommitMessage falls back to a detached timeout context when ctx is cancelled.
 		if err := w.consumer.CommitMessage(ctx, msg); err != nil {
 			w.logger.Error("failed to commit message offset", log.Meta{
 				"topic":     w.topic,
