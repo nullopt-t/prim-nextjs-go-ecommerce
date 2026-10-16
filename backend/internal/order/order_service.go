@@ -44,6 +44,10 @@ type CreateOrderInput struct {
 	CouponCode *string
 	// DiscountAmount is the deducted total from the gross order price in minor units.
 	DiscountAmount int64
+	// ShippingAmount is the shipping charge applied to the order in minor units.
+	ShippingAmount int64
+	// TaxAmount is the tax amount applied to the order in minor units.
+	TaxAmount int64
 	// Currency is the 3-letter currency code (e.g., "USD").
 	Currency string
 	// Items is the non-empty list of line items included in the purchase.
@@ -130,7 +134,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 			orderItems = append(orderItems, item)
 		}
 
-		finalTotal := totalAmount - in.DiscountAmount
+		finalTotal := totalAmount - in.DiscountAmount + in.ShippingAmount + in.TaxAmount
 		if finalTotal < 0 {
 			finalTotal = 0
 		}

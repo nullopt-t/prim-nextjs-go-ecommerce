@@ -161,12 +161,20 @@ func mapCartResponse(cart *model.Cart) CartResponse {
 
 	res.Currency = cartCurrency
 	res.ItemCount = itemCount
+
+	// Charge shipping consistently with the checkout rule:
+	// free shipping at or above 15000 minor units, 999 otherwise.
+	var shippingCost int64
+	if subtotal > 0 && subtotal < 15000 {
+		shippingCost = 999
+	}
+
 	res.Summary = CartSummaryResponse{
 		Subtotal: subtotal,
 		Discount: 0,
-		Shipping: 0,        // Placeholder
-		Tax:      0,        // Placeholder
-		Total:    subtotal, // Assuming no tax/shipping yet
+		Shipping: shippingCost,
+		Tax:      0,
+		Total:    subtotal + shippingCost,
 	}
 
 	return res

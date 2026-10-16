@@ -75,6 +75,10 @@ type Order struct {
 	CouponCode *string
 	// DiscountAmount is the total discount reduction in cents.
 	DiscountAmount int64
+	// ShippingAmount is the shipping charge applied to the order in cents.
+	ShippingAmount int64
+	// TaxAmount is the tax amount applied to the order in cents.
+	TaxAmount int64
 	// TotalAmount is the final charged sum (subtotal - discounts + tax + shipping) in cents.
 	TotalAmount int64
 	// Currency is the transaction currency code (e.g. "USD").

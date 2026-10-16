@@ -37,8 +37,8 @@ func (r *Repository) CreateOrder(
 	query := `
 		INSERT INTO orders (
 			id, customer_id, customer_email, shipping_address,
-			status, coupon_id, discount_amount, total_amount, currency, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
+			status, coupon_id, discount_amount, shipping_amount, tax_amount, total_amount, currency, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now())
 		RETURNING created_at, updated_at
 	`
 	err = qe.QueryRow(
@@ -51,6 +51,8 @@ func (r *Repository) CreateOrder(
 		o.Status,
 		o.CouponID,
 		o.DiscountAmount,
+		o.ShippingAmount,
+		o.TaxAmount,
 		o.TotalAmount,
 		o.Currency,
 	).Scan(&o.CreatedAt, &o.UpdatedAt)

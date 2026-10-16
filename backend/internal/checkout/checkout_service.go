@@ -254,6 +254,13 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		addr.PostalCode = *shippingAddr.PostalCode
 	}
 
+	// Charge shipping consistently with the cart-quote rule:
+	// free shipping at or above 15000 minor units, 999 otherwise.
+	var shippingCost int64
+	if grossTotal > 0 && grossTotal < 15000 {
+		shippingCost = 999
+	}
+
 	orderIn := &order.CreateOrderInput{
 		CustomerID:      &in.CustomerID,
 		CustomerEmail:   user.Identifier,
@@ -261,6 +268,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		CouponID:        in.CouponID,
 		CouponCode:      appliedCouponCode,
 		DiscountAmount:  totalDiscount,
+		ShippingAmount:  shippingCost,
 		Currency:        currency,
 		Items:           items,
 	}
