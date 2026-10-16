@@ -70,7 +70,8 @@ func (r *WishlistRepository) GetByID(
 					SELECT 1 FROM product_variants v
 					WHERE v.product_id = p.id AND v.deleted_at IS NULL
 					  AND (wi.variant_id IS NULL OR v.id = wi.variant_id)
-					  AND COALESCE((SELECT SUM(il.quantity) FROM inventory_ledgers il WHERE il.variant_id = v.id), 0) > 0
+					  AND COALESCE((SELECT SUM(il.quantity) FROM inventory_ledgers il WHERE il.variant_id = v.id), 0)
+				     - COALESCE((SELECT SUM(ir.quantity) FROM inventory_reservations ir WHERE ir.variant_id = v.id AND ir.released_at IS NULL AND ir.expires_at > now()), 0) > 0
 				),
 				false
 			) AS in_stock
@@ -132,7 +133,8 @@ func (r *WishlistRepository) GetByUserAndProduct(
 					SELECT 1 FROM product_variants v
 					WHERE v.product_id = p.id AND v.deleted_at IS NULL
 					  AND (wi.variant_id IS NULL OR v.id = wi.variant_id)
-					  AND COALESCE((SELECT SUM(il.quantity) FROM inventory_ledgers il WHERE il.variant_id = v.id), 0) > 0
+					  AND COALESCE((SELECT SUM(il.quantity) FROM inventory_ledgers il WHERE il.variant_id = v.id), 0)
+				     - COALESCE((SELECT SUM(ir.quantity) FROM inventory_reservations ir WHERE ir.variant_id = v.id AND ir.released_at IS NULL AND ir.expires_at > now()), 0) > 0
 				),
 				false
 			) AS in_stock
@@ -229,7 +231,8 @@ func (r *WishlistRepository) ListByUser(
 					SELECT 1 FROM product_variants v
 					WHERE v.product_id = p.id AND v.deleted_at IS NULL
 					  AND (wi.variant_id IS NULL OR v.id = wi.variant_id)
-					  AND COALESCE((SELECT SUM(il.quantity) FROM inventory_ledgers il WHERE il.variant_id = v.id), 0) > 0
+					  AND COALESCE((SELECT SUM(il.quantity) FROM inventory_ledgers il WHERE il.variant_id = v.id), 0)
+				     - COALESCE((SELECT SUM(ir.quantity) FROM inventory_reservations ir WHERE ir.variant_id = v.id AND ir.released_at IS NULL AND ir.expires_at > now()), 0) > 0
 				),
 				false
 			) AS in_stock
