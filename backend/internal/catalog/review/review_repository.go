@@ -15,11 +15,11 @@ import (
 
 
 var allowedReviewSortFields = map[string]string{
-	"id":        "r.id",
-	"rating":    "r.rating",
-	"status":    "r.status",
-	"createdAt": "r.created_at",
-	"updatedAt": "r.updated_at",
+	"id":         "r.id",
+	"rating":     "r.rating",
+	"status":     "r.status",
+	"created_at": "r.created_at",
+	"updated_at": "r.updated_at",
 }
 
 type ReviewRepository struct{}
@@ -441,17 +441,23 @@ func (r *ReviewRepository) List(
 		return []model.Review{}, 0, nil
 	}
 
-	sortField := "r.created_at"
-	sortOrder := "DESC"
+	orderBy := "ORDER BY r.created_at DESC"
 	if len(q.Sort) > 0 {
-		sf := q.Sort[0].Field
-		if allowed, ok := allowedReviewSortFields[sf]; ok {
-			sortField = allowed
+		sortParts := make([]string, 0, len(q.Sort))
+		for _, sort := range q.Sort {
+			// Lookup is case-insensitive so "created_at" and "CreatedAt" both work
+			allowed, ok := allowedReviewSortFields[strings.ToLower(sort.Field)]
+			if !ok {
+				continue
+			}
+			dir := "DESC"
+			if sort.Order == pagination.SortAsc {
+				dir = "ASC"
+			}
+			sortParts = append(sortParts, fmt.Sprintf("%s %s", allowed, dir))
 		}
-		if q.Sort[0].Order == pagination.SortAsc {
-			sortOrder = "ASC"
-		} else {
-			sortOrder = "DESC"
+		if len(sortParts) > 0 {
+			orderBy = "ORDER BY " + strings.Join(sortParts, ", ")
 		}
 	}
 
@@ -469,9 +475,9 @@ func (r *ReviewRepository) List(
 			r.updated_at
 		FROM reviews r
 		%s
-		ORDER BY %s %s
+		%s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, sortField, sortOrder, argID, argID+1)
+	`, whereClause, orderBy, argID, argID+1)
 
 	args = append(args, q.PageSize, q.Offset)
 
