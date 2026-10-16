@@ -188,11 +188,11 @@ export default function Hero() {
                 key={slide.id}
                 onClick={() => setCurrentIndex(idx)}
                 aria-label={`Go to slide ${idx + 1}`}
-                className={`h-2 rounded-full transition-all duration-200 cursor-pointer ${
+                className={`h-2.5 rounded-full transition-all duration-200 cursor-pointer ${
                   isActive
                     ? "w-7 bg-foreground"
                     : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60"
-                }`}
+                } px-1 py-1`}
               />
             );
           })}
@@ -203,25 +203,25 @@ export default function Hero() {
           <button
             onClick={() => setIsPlaying((prev) => !prev)}
             aria-label={isPlaying ? "Pause carousel" : "Play carousel"}
-            className="size-7 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="h-11 w-11 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
-            {isPlaying ? <Pause className="size-3" /> : <Play className="size-3 ml-0.5" />}
+            {isPlaying ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
           </button>
 
           <button
             onClick={prevSlide}
             aria-label="Previous slide"
-            className="size-7 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="h-11 w-11 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
-            <ChevronLeft className="size-3.5 rtl:rotate-180" />
+            <ChevronLeft className="size-4.5 rtl:rotate-180" />
           </button>
 
           <button
             onClick={nextSlide}
             aria-label="Next slide"
-            className="size-7 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="h-11 w-11 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
-            <ChevronRight className="size-3.5 rtl:rotate-180" />
+            <ChevronRight className="size-4.5 rtl:rotate-180" />
           </button>
         </div>
       </div>

@@ -45,6 +45,7 @@ type PromotionItem struct {
 	Status         string     `json:"status"`
 	CreatedAt      time.Time  `json:"createdAt"`
 	UpdatedAt      time.Time  `json:"updatedAt"`
+	UsageCount     int        `json:"usageCount"`
 }
 
 type PaymentItem struct {
@@ -181,10 +182,11 @@ func (r *AdminRepository) GetDashboardStats(ctx context.Context, qe database.Que
 
 func (r *AdminRepository) ListCoupons(ctx context.Context, qe database.QueryExecutor) ([]PromotionItem, error) {
 	query := `
-		SELECT id, code, discount_type, discount_value, currency, min_cart_amount,
-		       usage_limit, per_user_limit, starts_at, expires_at, status, created_at, updated_at
-		FROM coupons
-		ORDER BY created_at DESC
+		SELECT c.id, c.code, c.discount_type, c.discount_value, c.currency, c.min_cart_amount,
+		       c.usage_limit, c.per_user_limit, c.starts_at, c.expires_at, c.status, c.created_at, c.updated_at,
+		       COALESCE((SELECT COUNT(*) FROM coupon_redemptions cr WHERE cr.coupon_id = c.id), 0)
+		FROM coupons c
+		ORDER BY c.created_at DESC
 	`
 	rows, err := qe.Query(ctx, query)
 	if err != nil {
@@ -198,6 +200,7 @@ func (r *AdminRepository) ListCoupons(ctx context.Context, qe database.QueryExec
 		if err := rows.Scan(
 			&p.ID, &p.Code, &p.DiscountType, &p.DiscountValue, &p.Currency, &p.MinCartAmount,
 			&p.UsageLimit, &p.PerUserLimit, &p.StartsAt, &p.ExpiresAt, &p.Status, &p.CreatedAt, &p.UpdatedAt,
+			&p.UsageCount,
 		); err != nil {
 			return nil, fmt.Errorf("scan coupon: %w", err)
 		}

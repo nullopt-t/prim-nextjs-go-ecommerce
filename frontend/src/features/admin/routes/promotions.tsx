@@ -21,7 +21,7 @@ export function AdminPromotions() {
         discountPercent: p.discountType === "percentage" ? p.discountValue : 0,
         fixedDiscount: p.discountType === "fixed_amount" ? p.discountValue / 100 : 0,
         usageLimit: p.usageLimit || 500,
-        currentUsage: 12,
+        currentUsage: p.usageCount ?? 0,
         status: p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : "Active",
         startDate: p.startsAt ? p.startsAt.slice(0, 10) : "2026-09-01",
         endDate: p.expiresAt ? p.expiresAt.slice(0, 10) : "2026-12-31"

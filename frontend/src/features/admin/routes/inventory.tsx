@@ -94,7 +94,14 @@ export function AdminInventory() {
     if (!selectedProduct || adjustAmount === 0) return;
 
     try {
-      await adminService.adjustInventory(selectedProduct.variantId, adjustAmount, adjustReason);
+      if (selectedProduct.variantId) {
+        await adminService.adjustInventory(selectedProduct.variantId, adjustAmount, adjustReason);
+      } else if (selectedProduct.productId) {
+        await adminService.adjustProductInventory(selectedProduct.productId, adjustAmount, adjustReason);
+      } else {
+        toast.error("No variant or product ID available for adjustment");
+        return;
+      }
       toast.success(`Inventory adjusted for ${selectedProduct.name}`);
       setSelectedProduct(null);
       loadInventoryData();

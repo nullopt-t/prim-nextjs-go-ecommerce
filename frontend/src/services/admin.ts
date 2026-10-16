@@ -75,6 +75,10 @@ export const adminService = {
     return api.post<{ message: string }>(`/api/v1/admin/users/${id}/revoke-sessions`, {});
   },
 
+  deleteUser: async (id: string): Promise<{ message: string }> => {
+    return api.delete<{ message: string }>(`/api/v1/admin/users/${id}`);
+  },
+
   // Orders Management
   getOrders: async (params?: { page?: number; pageSize?: number; customerId?: string; status?: string }): Promise<any> => {
     const query = new URLSearchParams();

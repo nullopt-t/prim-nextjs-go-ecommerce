@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { AdminUser } from "@/services/admin";
 import { toast } from "sonner";
+import { ROLE_RANKS } from "@/lib/roles";
 
 interface UserSlideOverDrawerProps {
   user: AdminUser | null;
@@ -30,14 +31,6 @@ interface UserSlideOverDrawerProps {
   onSuspend: (user: AdminUser) => void;
   onRevokeSessions: (user: AdminUser) => void;
 }
-
-const ROLE_RANKS: Record<string, number> = {
-  customer: 1,
-  vendor: 2,
-  support: 3,
-  admin: 4,
-  superadmin: 5,
-};
 
 export function UserSlideOverDrawer({
   user,

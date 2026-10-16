@@ -10,6 +10,7 @@ import {
   Loader2
 } from "lucide-react";
 import { AdminUser } from "@/services/admin";
+import { ROLE_RANKS } from "@/lib/roles";
 
 interface ChangeRoleModalProps {
   user: AdminUser;
@@ -18,14 +19,6 @@ interface ChangeRoleModalProps {
   onClose: () => void;
   onConfirm: (userId: string, newRole: AdminUser["role"]) => Promise<void>;
 }
-
-const ROLE_RANKS: Record<string, number> = {
-  customer: 1,
-  vendor: 2,
-  support: 3,
-  admin: 4,
-  superadmin: 5,
-};
 
 const ROLES: { value: AdminUser["role"]; label: string; desc: string; color: string }[] = [
   { 

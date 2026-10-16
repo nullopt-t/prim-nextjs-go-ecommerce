@@ -28,14 +28,7 @@ import { SuspendUserModal } from "../components/SuspendUserModal";
 import { RevokeSessionsModal } from "../components/RevokeSessionsModal";
 import { useAuthContext } from "@/context/AuthContext";
 import { toast } from "sonner";
-
-const ROLE_RANKS: Record<string, number> = {
-  customer: 1,
-  vendor: 2,
-  support: 3,
-  admin: 4,
-  superadmin: 5,
-};
+import { ROLE_RANKS } from "@/lib/roles";
 
 export function AdminCustomers() {
   const { user: currentUser } = useAuthContext();
@@ -421,6 +414,23 @@ export function AdminCustomers() {
                               >
                                 <LogOut className="size-4" />
                               </button>
+
+                              {currentUser?.role === "superadmin" && (
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`Delete user ${u.email}? This cannot be undone.`)) {
+                                      adminService.deleteUser(u.id).then(() => {
+                                        toast.success("User deleted");
+                                        fetchUsers();
+                                      });
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                                  title="Delete User"
+                                >
+                                  <UserX className="size-4" />
+                                </button>
+                              )}
                             </>
                           )}
                         </div>
