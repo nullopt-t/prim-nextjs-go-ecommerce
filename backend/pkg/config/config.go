@@ -88,6 +88,11 @@ type Secrets struct {
 
 	// JwtResetPassTokenSecretKey signs single-use password reset tokens.
 	JwtResetPassTokenSecretKey string `yaml:"jwt_reset_pass_secret" env:"JWT_RESET_PASS_SECRET" env-default:"jwt-reset-pass-secret-key"`
+
+	// OTPHashPepper is the server-side pepper keying HMAC-SHA-256 for OTP challenge hashes.
+	// It must be kept secret; it prevents precomputation attacks over the small OTP space
+	// if Redis contents are exposed. Never use the development default in production.
+	OTPHashPepper string `yaml:"otp_hash_pepper" env:"OTP_HASH_PEPPER" env-default:"dev-otp-pepper-change-me-in-production"`
 }
 
 // ClientConfig holds frontend application URLs for CORS, redirects, and transactional email links.
@@ -247,6 +252,9 @@ func Load(configPath ...string) (Config, error) {
 		}
 		if cfg.KeysCfg.JwtResetPassTokenSecretKey == "" || cfg.KeysCfg.JwtResetPassTokenSecretKey == "jwt-reset-pass-secret-key" {
 			return cfg, fmt.Errorf("insecure default JWT reset password token secret key must not be used in production")
+		}
+		if cfg.KeysCfg.OTPHashPepper == "" || cfg.KeysCfg.OTPHashPepper == "dev-otp-pepper-change-me-in-production" {
+			return cfg, fmt.Errorf("insecure default OTP hash pepper must not be used in production")
 		}
 	}
 

@@ -35,6 +35,7 @@ type ChallengeService struct {
 	logger       log.Logger
 	challengeTTL time.Duration
 	isProduction bool
+	otpPepper    string
 }
 
 // NewChallengeService constructs a new ChallengeService instance.
@@ -44,6 +45,7 @@ func NewChallengeService(
 	logger log.Logger,
 	challengeTTL time.Duration,
 	isProduction bool,
+	otpPepper string,
 ) *ChallengeService {
 	return &ChallengeService{
 		redisClient:  rdc,
@@ -51,6 +53,7 @@ func NewChallengeService(
 		logger:       logger,
 		challengeTTL: challengeTTL,
 		isProduction: isProduction,
+		otpPepper:    otpPepper,
 	}
 }
 
@@ -74,7 +77,7 @@ func (cs *ChallengeService) Create(
 	}
 
 	// Hash the raw OTP before storing in Redis so plaintext credentials never persist in cache
-	otpHash, err := crypto.Hash(otp)
+	otpHash, err := crypto.Hash(otp, cs.otpPepper)
 	if err != nil {
 		return nil, fmt.Errorf("create challenge: %w", err)
 	}
@@ -89,9 +92,15 @@ func (cs *ChallengeService) Create(
 
 	switch {
 	case err != nil:
-		// No active challenge exists: construct brand-new challenge model
-		challenge = model.NewChallenge(identifier, model.ChallengeChannel(channel), otpHash, cs.challengeTTL)
-		isNew = true
+		// Only a missing or expired challenge justifies creating a replacement.
+		// Infrastructure errors (e.g. Redis failure) are surfaced instead of
+		// silently resetting the resend quota.
+		if ae, ok := err.(*apierr.APIError); ok && ae.Status == http.StatusUnauthorized {
+			challenge = model.NewChallenge(identifier, model.ChallengeChannel(channel), otpHash, cs.challengeTTL)
+			isNew = true
+		} else {
+			return nil, fmt.Errorf("create challenge: fetch existing: %w", err)
+		}
 
 	case existing.Status == model.ChallengeStatusPending:
 		// Challenge is pending: verify resend limit cap before issuing a replacement OTP
@@ -103,6 +112,8 @@ func (cs *ChallengeService) Create(
 		}
 		existing.OtpHash = otpHash
 		existing.ResendCount++
+		// Refresh the expiration so a resend cannot expire the challenge mid-flow
+		existing.ExpiresAt = time.Now().Add(cs.challengeTTL)
 		challenge = existing
 
 	case existing.Status == model.ChallengeStatusVerified || existing.Status == model.ChallengeStatusExpired:
@@ -134,7 +145,8 @@ func (cs *ChallengeService) Create(
 	}
 
 	// Deliver the raw OTP code through the external communication channel (email/SMS)
-	// If notification fails, roll back resend count and abort creation to avoid burning user quota
+	// If notification fails, roll back state and delete the challenge so a failed
+	// delivery never leaves a hash that cannot be matched to a delivered OTP.
 	if err := cs.notifier.NotifyOTP(ctx, string(challenge.Channel), challenge.Identifier, otp); err != nil {
 		cs.logger.Warn("failed to send otp code", log.Meta{"Error": err})
 
@@ -144,6 +156,13 @@ func (cs *ChallengeService) Create(
 				cs.logger.Warn("failed to roll back resend_count", log.Meta{"Error": rbErr})
 			}
 		}
+
+		// Delete the challenge so the flow can be restarted cleanly instead of
+		// being stuck with a stored hash for an OTP the user never received.
+		if delErr := cs.redisClient.Del(ctx, k).Err(); delErr != nil {
+			cs.logger.Warn("failed to delete challenge after notify failure", log.Meta{"Error": delErr})
+		}
+
 		return nil, fmt.Errorf("create challenge: notify: %w", err)
 	}
 
@@ -191,6 +210,14 @@ func (cs *ChallengeService) Get(
 		ExpiresAt:   expiresAt,
 	}
 
+	// Restore the original creation timestamp when present, so resends never
+	// zero out created_at and the challenge's age stays accurate.
+	if createdAtStr := val["created_at"]; createdAtStr != "" {
+		if createdAt, err := time.Parse(time.RFC3339, createdAtStr); err == nil {
+			challenge.CreatedAt = createdAt
+		}
+	}
+
 	return challenge, nil
 }
 
@@ -201,7 +228,7 @@ func (cs *ChallengeService) updateOTP(
 	otp string,
 ) error {
 	// Securely hash the new OTP code
-	otpHash, err := crypto.Hash(otp)
+	otpHash, err := crypto.Hash(otp, cs.otpPepper)
 	if err != nil {
 		return fmt.Errorf("update challenge otp:%w", err)
 	}
@@ -304,7 +331,7 @@ func (cs *ChallengeService) Resend(
 }
 
 // Verify validates a submitted OTP against the cryptographically hashed secret in Redis.
-// It enforces challenge state checks, expiration checks, attempt throttling, and development backdoors.
+// It enforces challenge state checks, expiration checks, and attempt throttling.
 func (cs *ChallengeService) Verify(
 	ctx context.Context,
 	challenge *model.Challenge,
@@ -350,13 +377,8 @@ func (cs *ChallengeService) Verify(
 		).WithCode(apierr.CodeRateLimitExceeded)
 	}
 
-	// Development backdoor bypass: allows static OTP "123456" in non-production environments
-	if !cs.isProduction && otp == "123456" {
-		return true, nil
-	}
-
 	// Compare submitted OTP against stored hash using constant-time cryptographic verification
-	ok, err := crypto.Equal(challenge.OtpHash, otp)
+	ok, err := crypto.Equal(challenge.OtpHash, otp, cs.otpPepper)
 	if err != nil {
 		return false, fmt.Errorf("challenge verify: %w", err)
 	}

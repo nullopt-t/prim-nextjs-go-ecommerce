@@ -101,6 +101,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		app.logger,
 		app.config.AuthCfg.ChallengeTTL,
 		app.config.IsProduction,
+		app.config.KeysCfg.OTPHashPepper,
 	)
 
 	sessionService := auth.NewSessionService(

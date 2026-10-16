@@ -27,6 +27,9 @@ x-app-env: &app-env # Database
   JWT_REFRESH_SECRET: dev-refresh-secret
   JWT_RESET_PASS_SECRET: dev-reset-secret
 
+  # Auth
+  OTP_HASH_PEPPER: dev-otp-pepper-change-me-in-production
+
   # Client
   CLIENT_BASE_URL: http://localhost:3000
 

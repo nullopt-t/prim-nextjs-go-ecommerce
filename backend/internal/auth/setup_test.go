@@ -114,7 +114,7 @@ func (s *AuthTestSuite) SetupSuite() {
 	challengeTTL := 5 * time.Minute
 	sessionTTL := 30 * 24 * time.Hour
 
-	challengeService := auth.NewChallengeService(s.redisClient, s.notifier, logger, challengeTTL, false)
+	challengeService := auth.NewChallengeService(s.redisClient, s.notifier, logger, challengeTTL, false, "test-otp-pepper")
 	sessionService := auth.NewSessionService(s.redisClient, logger, sessionTTL)
 
 	txRunner := database.NewTxRunner(s.db)
