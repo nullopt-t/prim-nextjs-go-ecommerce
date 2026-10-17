@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/catalog/brand"
 	"github.com/nullopt-t/prim-backend/internal/catalog/category"
-	"github.com/nullopt-t/prim-backend/internal/catalog/errcode"
+	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/review"
 	"github.com/nullopt-t/prim-backend/internal/catalog/tag"
