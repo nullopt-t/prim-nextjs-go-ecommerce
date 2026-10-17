@@ -38,12 +38,18 @@ export interface UpdateStatusPayload {
 
 export type SystemServiceStatus = "healthy" | "degraded" | "unhealthy";
 
+export interface SystemResourceMetric {
+  /** Stable identifier the UI maps to a localized label (e.g. "memory"). */
+  key: string;
+  /** Formatted, already-human-readable reading (e.g. "1.2 MB"). */
+  value: string;
+}
+
 export interface SystemServiceHealth {
   key: "postgres" | "redis" | "kafka" | "minio" | string;
   status: SystemServiceStatus;
-  port: number;
   latencyMs: number;
-  lag?: number;
+  resources?: SystemResourceMetric[];
   error?: string;
 }
 

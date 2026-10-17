@@ -1307,30 +1307,34 @@
         "checking": "Checking…",
         "updated": "updated {seconds}s ago",
         "metric": {
-          "port": "Port {port}",
           "latency": "Latency {value}ms",
-          "lag": "{value} Lag",
-          "connected": "Connected",
-          "online": "Online",
-          "offline": "Offline",
           "unavailable": "Unavailable"
+        },
+        "resources": {
+          "connections": "Connections",
+          "storage": "Storage",
+          "memory": "Memory",
+          "keys": "Keys",
+          "clients": "Clients",
+          "ops": "Ops/s",
+          "brokers": "Brokers",
+          "partitions": "Partitions",
+          "messages": "Messages",
+          "lag": "Lag",
+          "objects": "Objects"
         },
         "services": {
           "postgres": {
-            "name": "PostgreSQL Database",
-            "info": "Active Pool"
+            "name": "PostgreSQL Database"
           },
           "redis": {
-            "name": "Redis Cache & Sessions",
-            "info": "In-Memory Store"
+            "name": "Redis Cache & Sessions"
           },
           "kafka": {
-            "name": "Kafka Message Broker",
-            "info": "Notifications Topic"
+            "name": "Kafka Message Broker"
           },
           "minio": {
-            "name": "MinIO S3 Storage",
-            "info": "Product Media Bucket"
+            "name": "MinIO S3 Storage"
           }
         }
       },

@@ -1307,30 +1307,34 @@
         "checking": "جارٍ الفحص…",
         "updated": "محدّث قبل {seconds} ث",
         "metric": {
-          "port": "المنفذ {port}",
           "latency": "زمن الاستجابة {value} م.ث",
-          "lag": "تأخر {value}",
-          "connected": "متصل",
-          "online": "متصل",
-          "offline": "غير متصل",
           "unavailable": "غير متاح"
+        },
+        "resources": {
+          "connections": "الاتصالات",
+          "storage": "التخزين",
+          "memory": "الذاكرة",
+          "keys": "المفاتيح",
+          "clients": "العملاء",
+          "ops": "عمليات/ث",
+          "brokers": "الوسطاء",
+          "partitions": "الأقسام",
+          "messages": "الرسائل",
+          "lag": "التأخير",
+          "objects": "الكائنات"
         },
         "services": {
           "postgres": {
-            "name": "قاعدة بيانات PostgreSQL",
-            "info": "مجمّع الاتصالات النشط"
+            "name": "قاعدة بيانات PostgreSQL"
           },
           "redis": {
-            "name": "Redis للتخزين المؤقت والجلسات",
-            "info": "مخزن في الذاكرة"
+            "name": "Redis للتخزين المؤقت والجلسات"
           },
           "kafka": {
-            "name": "وسيط رسائل Kafka",
-            "info": "موضوع الإشعارات"
+            "name": "وسيط رسائل Kafka"
           },
           "minio": {
-            "name": "تخزين MinIO S3",
-            "info": "حاوية وسائط المنتجات"
+            "name": "تخزين MinIO S3"
           }
         }
       },

@@ -324,10 +324,10 @@ func (app *App) setupRoutes(router *gin.Engine) {
 			KafkaBrokers:       app.config.KafkaCfg.Brokers,
 			KafkaGroupID:       app.config.KafkaCfg.GroupID,
 			NotificationsTopic: job.TopicNotificationsEmail,
-			Bucket:             "product-media",
-			PostgresPort:       app.config.DBCfg.DBPort,
-			RedisPort:          app.config.RedisCfg.Port,
-			MinioEndpoint:      app.config.MinioCfg.Endpoint,
+			// Must match the bucket used by the media upload handler
+			// (internal/object/object_handler.go), otherwise the health tile
+			// would scan an empty bucket and always read zero.
+			Bucket: "catalog",
 		},
 	)
 	systemHandler := system.NewHandler(systemService)

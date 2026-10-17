@@ -1,14 +1,15 @@
 // Package system exposes operational health diagnostics for the admin back office.
 // It probes each backing dependency (PostgreSQL, Redis, Kafka, MinIO) with a real
-// round-trip and reports live connection status, latency, and—where meaningful—
-// queue lag, so operators see the actual heartbeat of the platform rather than
-// static labels.
+// round-trip and reports live connection status, latency, and the resource usage
+// each service exposes over its own protocol, so operators see the actual
+// heartbeat and footprint of the platform rather than static labels.
 package system
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"math"
-	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -35,14 +36,13 @@ const (
 	// backend cannot stall the whole report.
 	probeTimeout = 3 * time.Second
 
-	// Default ports used when a configured endpoint cannot be parsed.
-	defaultPostgresPort = 5432
-	defaultKafkaPort    = 9092
-	defaultMinioPort    = 9000
+	// maxListObjects caps the MinIO usage scan so a large media bucket cannot
+	// stall the health report. The object count is suffixed with "+" when the
+	// cap is hit.
+	maxListObjects = 1000
 )
 
-// Config carries the dependency targets and display metadata the health service
-// probes. Endpoints are parsed lazily so callers can pass raw config values.
+// Config carries the dependency targets the health service probes.
 type Config struct {
 	// KafkaBrokers is the list of seed broker host:port addresses.
 	KafkaBrokers []string
@@ -50,14 +50,17 @@ type Config struct {
 	KafkaGroupID string
 	// NotificationsTopic is the topic inspected for connectivity and lag.
 	NotificationsTopic string
-	// Bucket is the object storage bucket whose existence is verified.
+	// Bucket is the object storage bucket whose usage is reported.
 	Bucket string
-	// PostgresPort is the configured database port (string form).
-	PostgresPort string
-	// RedisPort is the configured Redis port.
-	RedisPort int
-	// MinioEndpoint is the configured object storage endpoint (host:port or URL).
-	MinioEndpoint string
+}
+
+// ResourceMetric is a single labeled resource reading for a service.
+type ResourceMetric struct {
+	// Key is the stable identifier the client maps to a localized label
+	// (e.g. "memory", "connections", "lag").
+	Key string `json:"key"`
+	// Value is the formatted, already-human-readable reading (e.g. "1.2 MB").
+	Value string `json:"value"`
 }
 
 // ServiceHealth describes the observed state of a single backing service.
@@ -67,12 +70,10 @@ type ServiceHealth struct {
 	Key string `json:"key"`
 	// Status is one of StatusHealthy, StatusDegraded, or StatusUnhealthy.
 	Status string `json:"status"`
-	// Port is the network port the service listens on.
-	Port int `json:"port"`
 	// LatencyMs is the measured round-trip time in milliseconds.
 	LatencyMs float64 `json:"latencyMs"`
-	// Lag is the total consumer lag for the notifications topic, when known.
-	Lag *int64 `json:"lag,omitempty"`
+	// Resources holds the service's own resource readings, when available.
+	Resources []ResourceMetric `json:"resources,omitempty"`
 	// Error carries the failure reason when the service is not healthy.
 	Error string `json:"error,omitempty"`
 }
@@ -89,25 +90,19 @@ type HealthReport struct {
 
 // Service owns the dependency clients used to produce health reports.
 type Service struct {
-	db        *database.DB
-	redis     *redis.Client
-	minio     *minio.Client
-	kafkaPort int
-	minioPort int
-	pgPort    int
-	cfg       Config
+	db    *database.DB
+	redis *redis.Client
+	minio *minio.Client
+	cfg   Config
 }
 
 // NewService constructs a health service over the supplied dependency clients.
 func NewService(db *database.DB, redisClient *redis.Client, minioClient *minio.Client, cfg Config) *Service {
 	return &Service{
-		db:        db,
-		redis:     redisClient,
-		minio:     minioClient,
-		kafkaPort: firstBrokerPort(cfg.KafkaBrokers, defaultKafkaPort),
-		minioPort: portFromEndpoint(cfg.MinioEndpoint, defaultMinioPort),
-		pgPort:    atoiDefault(cfg.PostgresPort, defaultPostgresPort),
-		cfg:       cfg,
+		db:    db,
+		redis: redisClient,
+		minio: minioClient,
+		cfg:   cfg,
 	}
 }
 
@@ -141,9 +136,10 @@ func (s *Service) Check(ctx context.Context) *HealthReport {
 	}
 }
 
-// checkPostgres verifies the database answers a ping.
+// checkPostgres verifies the database answers a ping and reports pool usage and
+// on-disk size.
 func (s *Service) checkPostgres(ctx context.Context) ServiceHealth {
-	health := ServiceHealth{Key: "postgres", Status: StatusHealthy, Port: s.pgPort}
+	health := ServiceHealth{Key: "postgres", Status: StatusHealthy}
 	if s.db == nil {
 		health.Status = StatusUnhealthy
 		health.Error = "database client not configured"
@@ -158,15 +154,28 @@ func (s *Service) checkPostgres(ctx context.Context) ServiceHealth {
 	health.LatencyMs = elapsedMs(start)
 
 	if err != nil {
-		health.Status = StatusUnhealthy
-		health.Error = err.Error()
+		// The pool is shared with live traffic, so a busy pool can starve the
+		// probe of a connection even though PostgreSQL itself is healthy. Report
+		// that distinctly (with the pool gauge) instead of a false outage.
+		if errors.Is(err, context.DeadlineExceeded) && s.poolSaturated() {
+			health.Status = StatusDegraded
+			health.Error = "connection pool saturated"
+		} else {
+			health.Status = StatusUnhealthy
+			health.Error = err.Error()
+		}
+		health.Resources = s.postgresPoolResource()
+		return health
 	}
+
+	health.Resources = s.postgresResources(ctx)
 	return health
 }
 
-// checkRedis verifies the cache/session store answers a ping.
+// checkRedis verifies the cache/session store answers a ping and reports memory,
+// key count, and connected clients.
 func (s *Service) checkRedis(ctx context.Context) ServiceHealth {
-	health := ServiceHealth{Key: "redis", Status: StatusHealthy, Port: s.cfg.RedisPort}
+	health := ServiceHealth{Key: "redis", Status: StatusHealthy}
 	if s.redis == nil {
 		health.Status = StatusUnhealthy
 		health.Error = "redis client not configured"
@@ -183,14 +192,17 @@ func (s *Service) checkRedis(ctx context.Context) ServiceHealth {
 	if err != nil {
 		health.Status = StatusUnhealthy
 		health.Error = err.Error()
+		return health
 	}
+
+	health.Resources = s.redisResources(ctx)
 	return health
 }
 
-// checkKafka verifies broker/topic reachability and, when possible, reports the
-// consumer lag of the notifications topic.
+// checkKafka verifies broker/topic reachability and reports the cluster's broker
+// count, topic partitions, and consumer lag for the notifications topic.
 func (s *Service) checkKafka(ctx context.Context) ServiceHealth {
-	health := ServiceHealth{Key: "kafka", Status: StatusHealthy, Port: s.kafkaPort}
+	health := ServiceHealth{Key: "kafka", Status: StatusHealthy}
 	if len(s.cfg.KafkaBrokers) == 0 {
 		health.Status = StatusUnhealthy
 		health.Error = "no kafka brokers configured"
@@ -212,6 +224,7 @@ func (s *Service) checkKafka(ctx context.Context) ServiceHealth {
 		return health
 	}
 	partitions, err := conn.ReadPartitions(s.cfg.NotificationsTopic)
+	brokers, _ := conn.Brokers()
 	_ = conn.Close()
 	health.LatencyMs = elapsedMs(start)
 
@@ -227,18 +240,25 @@ func (s *Service) checkKafka(ctx context.Context) ServiceHealth {
 		return health
 	}
 
-	if lag, ok := s.kafkaLag(ctx, partitions); ok {
-		health.Lag = &lag
+	resources := []ResourceMetric{
+		metric("brokers", strconv.Itoa(len(brokers))),
+		metric("partitions", strconv.Itoa(len(partitions))),
 	}
+	if lag, total, ok := s.kafkaOffsets(ctx, partitions); ok {
+		resources = append(resources,
+			metric("messages", compactCount(total)),
+			metric("lag", strconv.FormatInt(lag, 10)))
+	}
+	health.Resources = resources
 	return health
 }
 
-// kafkaLag sums (high watermark - committed offset) across the supplied topic
-// partitions for the configured consumer group. Lag is best-effort: if any part
-// of the calculation fails the caller simply omits the figure.
-func (s *Service) kafkaLag(ctx context.Context, partitions []kafka.Partition) (int64, bool) {
+// kafkaOffsets returns the topic's total produced message count (the sum of each
+// partition's high watermark) and the configured consumer group's lag. Both are
+// best-effort: if the calculation fails the caller simply omits the figures.
+func (s *Service) kafkaOffsets(ctx context.Context, partitions []kafka.Partition) (lag int64, total int64, ok bool) {
 	if len(partitions) == 0 || s.cfg.KafkaGroupID == "" {
-		return 0, false
+		return 0, 0, false
 	}
 
 	ids := make([]int, 0, len(partitions))
@@ -259,7 +279,11 @@ func (s *Service) kafkaLag(ctx context.Context, partitions []kafka.Partition) (i
 	}
 
 	if len(ids) == 0 {
-		return 0, false
+		return 0, 0, false
+	}
+
+	for _, id := range ids {
+		total += lastOffsets[id]
 	}
 
 	// A dedicated transport keeps the offset lookup off the shared client cache.
@@ -273,13 +297,12 @@ func (s *Service) kafkaLag(ctx context.Context, partitions []kafka.Partition) (i
 		Topics:  map[string][]int{s.cfg.NotificationsTopic: ids},
 	})
 	if err != nil || resp.Error != nil {
-		return 0, false
+		return 0, total, true
 	}
 
-	var lag int64
 	for _, offset := range resp.Topics[s.cfg.NotificationsTopic] {
-		last, ok := lastOffsets[offset.Partition]
-		if !ok {
+		last, exists := lastOffsets[offset.Partition]
+		if !exists {
 			continue
 		}
 		committed := offset.CommittedOffset
@@ -291,13 +314,13 @@ func (s *Service) kafkaLag(ctx context.Context, partitions []kafka.Partition) (i
 			lag += last - committed
 		}
 	}
-	return lag, true
+	return lag, total, true
 }
 
-// checkMinio verifies the object storage endpoint is reachable and the media
-// bucket exists.
+// checkMinio verifies the object storage endpoint is reachable and reports the
+// media bucket's object count and total size.
 func (s *Service) checkMinio(ctx context.Context) ServiceHealth {
-	health := ServiceHealth{Key: "minio", Status: StatusHealthy, Port: s.minioPort}
+	health := ServiceHealth{Key: "minio", Status: StatusHealthy}
 	if s.minio == nil {
 		health.Status = StatusUnhealthy
 		health.Error = "object storage client not configured"
@@ -319,8 +342,111 @@ func (s *Service) checkMinio(ctx context.Context) ServiceHealth {
 	if !exists {
 		health.Status = StatusDegraded
 		health.Error = "media bucket not found"
+		return health
 	}
+
+	health.Resources = s.minioResources(ctx)
 	return health
+}
+
+// postgresPoolResource reports the pool's open connections against its ceiling.
+// It reads only in-memory pool statistics, so it never blocks on the database and
+// is safe to return even when a live round-trip is not possible.
+func (s *Service) postgresPoolResource() []ResourceMetric {
+	if s.db == nil || s.db.Pool == nil {
+		return nil
+	}
+	stat := s.db.Pool.Stat()
+	// Report the pool's open connections (in-use + idle) against its ceiling,
+	// which stays meaningful at rest, rather than only the checked-out count.
+	return []ResourceMetric{metric("connections",
+		fmt.Sprintf("%d / %d", stat.TotalConns(), stat.MaxConns()))}
+}
+
+// poolSaturated reports whether every pooled connection is currently checked out.
+func (s *Service) poolSaturated() bool {
+	if s.db == nil || s.db.Pool == nil {
+		return false
+	}
+	stat := s.db.Pool.Stat()
+	return stat.MaxConns() > 0 && stat.AcquiredConns() >= stat.MaxConns()
+}
+
+// postgresResources reports the connection pool utilisation and database size.
+func (s *Service) postgresResources(ctx context.Context) []ResourceMetric {
+	resources := s.postgresPoolResource()
+	if resources == nil {
+		return nil
+	}
+
+	var size string
+	if err := s.db.QueryRow(ctx, "SELECT pg_size_pretty(pg_database_size(current_database()))").Scan(&size); err == nil && size != "" {
+		resources = append(resources, metric("storage", size))
+	}
+	return resources
+}
+
+// redisResources reports cache memory, key count, and connected clients.
+func (s *Service) redisResources(ctx context.Context) []ResourceMetric {
+	if s.redis == nil {
+		return nil
+	}
+
+	resources := make([]ResourceMetric, 0, 4)
+	if info, err := s.redis.Info(ctx, "memory").Result(); err == nil {
+		if mem := parseInfoField(info, "used_memory_human"); mem != "" {
+			resources = append(resources, metric("memory", mem))
+		}
+	}
+	if size, err := s.redis.DBSize(ctx).Result(); err == nil {
+		resources = append(resources, metric("keys", strconv.FormatInt(size, 10)))
+	}
+	if info, err := s.redis.Info(ctx, "clients").Result(); err == nil {
+		if clients := parseInfoField(info, "connected_clients"); clients != "" {
+			resources = append(resources, metric("clients", clients))
+		}
+	}
+	// Throughput makes Redis load visible: it climbs with request volume rather
+	// than reflecting only the steady-state key/memory gauges.
+	if info, err := s.redis.Info(ctx, "stats").Result(); err == nil {
+		if ops := parseInfoField(info, "instantaneous_ops_per_sec"); ops != "" {
+			resources = append(resources, metric("ops", ops))
+		}
+	}
+	return resources
+}
+
+// minioResources reports the media bucket's object count and total byte size.
+func (s *Service) minioResources(ctx context.Context) []ResourceMetric {
+	if s.minio == nil {
+		return nil
+	}
+
+	count, bytes, truncated := s.bucketUsage(ctx, s.cfg.Bucket)
+	objects := strconv.FormatInt(count, 10)
+	if truncated {
+		objects += "+"
+	}
+	return []ResourceMetric{
+		metric("objects", objects),
+		metric("storage", humanBytes(bytes)),
+	}
+}
+
+// bucketUsage counts objects and sums their sizes in a bucket, stopping at
+// maxListObjects to keep the scan bounded.
+func (s *Service) bucketUsage(ctx context.Context, bucket string) (count int64, bytes int64, truncated bool) {
+	for object := range s.minio.ListObjects(ctx, bucket, minio.ListObjectsOptions{Recursive: true}) {
+		if object.Err != nil {
+			break
+		}
+		count++
+		bytes += object.Size
+		if count >= maxListObjects {
+			return count, bytes, true
+		}
+	}
+	return count, bytes, false
 }
 
 // rollupStatus reduces the per-service states into a single overall status,
@@ -339,48 +465,50 @@ func rollupStatus(services []ServiceHealth) string {
 	return status
 }
 
+// metric is a small constructor for a labeled resource reading.
+func metric(key, value string) ResourceMetric {
+	return ResourceMetric{Key: key, Value: value}
+}
+
+// parseInfoField extracts a "field:value" line from a Redis INFO payload.
+func parseInfoField(info, field string) string {
+	for _, line := range strings.Split(info, "\n") {
+		name, value, ok := strings.Cut(strings.TrimSpace(line), ":")
+		if ok && name == field {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
 // elapsedMs returns the time since start in milliseconds, rounded to 2 decimals.
 func elapsedMs(start time.Time) float64 {
 	ms := float64(time.Since(start).Microseconds()) / 1000.0
 	return math.Round(ms*100) / 100
 }
 
-// firstBrokerPort extracts the port from the first broker address, falling back
-// to the supplied default when it cannot be parsed.
-func firstBrokerPort(brokers []string, fallback int) int {
-	if len(brokers) == 0 {
-		return fallback
+// compactCount abbreviates a large count into a short human string (e.g. "12.3k").
+func compactCount(n int64) string {
+	switch {
+	case n >= 1_000_000:
+		return fmt.Sprintf("%.1fM", float64(n)/1_000_000)
+	case n >= 1_000:
+		return fmt.Sprintf("%.1fk", float64(n)/1_000)
+	default:
+		return strconv.FormatInt(n, 10)
 	}
-	return portFromEndpoint(brokers[0], fallback)
 }
 
-// portFromEndpoint extracts a numeric port from a "host:port" or "scheme://host:port"
-// endpoint, falling back to the supplied default when it cannot be parsed.
-func portFromEndpoint(endpoint string, fallback int) int {
-	endpoint = strings.TrimSpace(endpoint)
-	if i := strings.Index(endpoint, "://"); i >= 0 {
-		endpoint = endpoint[i+3:]
+// humanBytes formats a byte count into a compact IEC string (e.g. "1.2 MB").
+func humanBytes(n int64) string {
+	const unit = 1024
+	if n < unit {
+		return fmt.Sprintf("%d B", n)
 	}
-	if i := strings.IndexByte(endpoint, '/'); i >= 0 {
-		endpoint = endpoint[:i]
+	div, exp := int64(unit), 0
+	for value := n / unit; value >= unit; value /= unit {
+		div *= unit
+		exp++
 	}
-
-	_, portStr, err := net.SplitHostPort(endpoint)
-	if err != nil {
-		return fallback
-	}
-	port, err := strconv.Atoi(portStr)
-	if err != nil || port <= 0 {
-		return fallback
-	}
-	return port
-}
-
-// atoiDefault parses an integer string, returning the fallback on failure.
-func atoiDefault(value string, fallback int) int {
-	parsed, err := strconv.Atoi(strings.TrimSpace(value))
-	if err != nil || parsed <= 0 {
-		return fallback
-	}
-	return parsed
+	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "KMGTPE"[exp])
 }

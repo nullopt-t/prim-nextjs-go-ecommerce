@@ -23,50 +23,48 @@ const DEFAULT_SYSTEM_SETTINGS: Record<string, any> = {
   mockEmailNotifications: false
 };
 
-// Heartbeat interval for re-polling the core services health endpoint.
-const HEALTH_POLL_MS = 15000;
+// Short-poll interval for the core services health endpoint. Kept short so the
+// panel feels live; a single in-flight guard prevents request pile-up when a
+// report is slow (probes can take a few seconds under load).
+const HEALTH_POLL_MS = 5000;
 
 // Number of latency samples retained per service for the trend sparkline.
 const HISTORY_LIMIT = 24;
 
 type ServiceStatusKey = "healthy" | "degraded" | "unhealthy" | "unknown";
 
-// Static presentation for each probed service. Live status, port, latency, and
-// lag are overlaid from the backend health report.
+// Static presentation for each probed service. Live status, latency, and
+// resource readings are overlaid from the backend health report.
 const SERVICE_NODES = [
-  { key: "postgres", icon: Database, metric: "latency", defaultPort: 5432 },
-  { key: "redis", icon: Layers, metric: "latency", defaultPort: 6379 },
-  { key: "kafka", icon: Radio, metric: "lag", defaultPort: 9092 },
-  { key: "minio", icon: HardDrive, metric: "online", defaultPort: 9000 }
+  { key: "postgres", icon: Database },
+  { key: "redis", icon: Layers },
+  { key: "kafka", icon: Radio },
+  { key: "minio", icon: HardDrive }
 ] as const;
 
-const STATUS_STYLES: Record<ServiceStatusKey, { badge: string; dot: string; tile: string; accent: string; spark: string }> = {
+const STATUS_STYLES: Record<ServiceStatusKey, { badge: string; dot: string; tile: string; spark: string }> = {
   healthy: {
     badge: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
     dot: "bg-emerald-500",
     tile: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    accent: "bg-emerald-500",
     spark: "text-emerald-500"
   },
   degraded: {
     badge: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
     dot: "bg-amber-500",
     tile: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    accent: "bg-amber-500",
     spark: "text-amber-500"
   },
   unhealthy: {
     badge: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
     dot: "bg-rose-500",
     tile: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-    accent: "bg-rose-500",
     spark: "text-rose-500"
   },
   unknown: {
     badge: "bg-secondary/40 text-muted-foreground border-border/60",
     dot: "bg-muted-foreground",
     tile: "bg-secondary/50 text-muted-foreground",
-    accent: "bg-border",
     spark: "text-muted-foreground"
   }
 };
@@ -160,9 +158,16 @@ export function AdminSystem() {
     };
   }, []);
 
+  // Short polling: fetch the health report on a fixed interval, skipping a tick
+  // while the previous request is still in flight so a slow report cannot pile
+  // up.
   useEffect(() => {
     let isMounted = true;
+    let inFlight = false;
+
     const loadHealth = async () => {
+      if (inFlight) return;
+      inFlight = true;
       if (isMounted) setRefreshing(true);
       try {
         const res = await adminService.getSystemHealth();
@@ -178,14 +183,16 @@ export function AdminSystem() {
           return next;
         });
       } catch {
-        // Keep the last known report; the freshness indicator signals staleness.
+        // Keep the last known report; the freshness label signals staleness.
       } finally {
+        inFlight = false;
         if (isMounted) {
           setRefreshing(false);
           setHealthLoaded(true);
         }
       }
     };
+
     loadHealth();
     const poll = setInterval(loadHealth, HEALTH_POLL_MS);
     return () => {
@@ -194,9 +201,9 @@ export function AdminSystem() {
     };
   }, []);
 
-  // Tick the "updated Xs ago" label independently of the slower health poll.
+  // Tick the "updated Xs ago" label every second so it tracks the live stream.
   useEffect(() => {
-    const tick = setInterval(() => setNow(Date.now()), 5000);
+    const tick = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(tick);
   }, []);
 
@@ -276,12 +283,12 @@ export function AdminSystem() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("system.title")}</h1>
             <span
               className={
-                health && overallStatus !== "healthy"
+                !health || overallStatus !== "healthy"
                   ? `px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${overallStyle.badge}`
                   : "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent-brand/10 text-accent-brand border border-accent-brand/20"
               }
             >
-              {health && overallStatus !== "healthy" ? overallLabel : t("system.statusOnline")}
+              {!health || overallStatus !== "healthy" ? overallLabel : t("system.statusOnline")}
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">{t("system.subtitle")}</p>
@@ -375,15 +382,15 @@ export function AdminSystem() {
                 )}
                 <span>{overallLabel}</span>
               </span>
-              <span className={`flex items-center gap-1.5 text-[10px] font-mono ${isStale ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
-                <span className="relative flex size-1.5">
-                  {health && !isStale && (
+              {health && (
+                <span className={`flex items-center gap-1.5 text-[10px] font-mono ${isStale ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+                  <span className="relative flex size-1.5">
                     <span className={`prim-heartbeat absolute inline-flex size-full rounded-full ${freshnessDot}`} />
-                  )}
-                  <span className={`relative inline-flex size-1.5 rounded-full ${freshnessDot}`} />
+                    <span className={`relative inline-flex size-1.5 rounded-full ${freshnessDot}`} />
+                  </span>
+                  <span>{freshnessLabel}</span>
                 </span>
-                <span>{freshnessLabel}</span>
-              </span>
+              )}
             </div>
           </div>
 
@@ -392,13 +399,14 @@ export function AdminSystem() {
               ? SERVICE_NODES.map((node) => (
                   <div
                     key={node.key}
-                    className="p-4 rounded-xl border border-border/70 bg-secondary/10 flex flex-col gap-3"
+                    className="p-4 rounded-xl border border-border/70 bg-card flex flex-col gap-3"
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="prim-shimmer size-8 shrink-0 rounded-md bg-muted" />
                       <span className="prim-shimmer h-3 w-2/3 rounded bg-muted" />
                     </div>
                     <span className="prim-shimmer h-2.5 w-full rounded bg-muted" />
+                    <span className="prim-shimmer h-2.5 w-4/5 rounded bg-muted" />
                     <span className="prim-shimmer h-6 w-full rounded bg-muted" />
                   </div>
                 ))
@@ -407,40 +415,16 @@ export function AdminSystem() {
                   const service = healthByKey[node.key];
                   const status = (service?.status ?? "unknown") as ServiceStatusKey;
                   const style = STATUS_STYLES[status] ?? STATUS_STYLES.unknown;
-                  const port = service?.port ?? node.defaultPort;
-
-                  let metric: string;
-                  if (!service) {
-                    metric = t("system.infrastructure.metric.unavailable");
-                  } else if (node.metric === "latency") {
-                    metric = t("system.infrastructure.metric.latency", {
-                      value: formatLatency(service.latencyMs)
-                    });
-                  } else if (node.metric === "lag") {
-                    metric =
-                      typeof service.lag === "number"
-                        ? t("system.infrastructure.metric.lag", { value: service.lag })
-                        : t("system.infrastructure.metric.connected");
-                  } else {
-                    metric =
-                      status === "healthy"
-                        ? t("system.infrastructure.metric.online")
-                        : t("system.infrastructure.metric.offline");
-                  }
-
-                  const detail = `${t("system.infrastructure.metric.port", { port })} • ${t(
-                    `system.infrastructure.services.${node.key}.info`
-                  )} • ${metric}`;
+                  const resources = service?.resources ?? [];
+                  const latencyLabel = service
+                    ? t("system.infrastructure.metric.latency", { value: formatLatency(service.latencyMs) })
+                    : t("system.infrastructure.metric.unavailable");
 
                   return (
                     <div
                       key={node.key}
-                      className="group relative overflow-hidden p-4 rounded-xl border border-border/70 bg-secondary/10 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-sm"
+                      className="group p-4 rounded-xl border border-border/70 bg-card flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-sm"
                     >
-                      <span
-                        className={`absolute inset-y-0 start-0 w-[3px] transition-opacity ${style.accent} ${status === "healthy" ? "opacity-70" : "opacity-100"}`}
-                        aria-hidden="true"
-                      />
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <span className={`grid size-8 shrink-0 place-items-center rounded-md transition-colors ${style.tile}`}>
@@ -452,18 +436,38 @@ export function AdminSystem() {
                         </div>
                         <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${style.badge}`}>
                           <span className="relative flex size-1.5">
-                            {status === "healthy" && (
-                              <span className={`prim-heartbeat absolute inline-flex size-full rounded-full ${style.dot}`} />
-                            )}
+                            <span className={`prim-heartbeat absolute inline-flex size-full rounded-full ${style.dot}`} />
                             <span className={`relative inline-flex size-1.5 rounded-full ${style.dot}`} />
                           </span>
                           {t(`system.infrastructure.${status}`)}
                         </span>
                       </div>
 
-                      <div className="space-y-2">
-                        <span className="block text-[10px] text-muted-foreground font-mono truncate">
-                          {detail}
+                      <div className="space-y-1.5">
+                        {resources.length > 0 ? (
+                          resources.map((resource) => (
+                            <div
+                              key={resource.key}
+                              className="flex items-baseline justify-between gap-3 text-[11px]"
+                            >
+                              <span className="text-muted-foreground truncate">
+                                {t(`system.infrastructure.resources.${resource.key}`)}
+                              </span>
+                              <span className="font-mono font-semibold text-foreground tabular-nums">
+                                {resource.value}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-[11px] text-muted-foreground">
+                            {t("system.infrastructure.metric.unavailable")}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2 border-t border-border/60 pt-2">
+                        <span className="block text-[10px] text-muted-foreground font-mono">
+                          {latencyLabel}
                         </span>
                         <Sparkline values={history[node.key] ?? []} className={style.spark} />
                       </div>
