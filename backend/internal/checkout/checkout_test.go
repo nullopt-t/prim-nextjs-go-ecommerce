@@ -440,7 +440,7 @@ func (s *CheckoutTestSuite) postCheckout(sessionID string, body any) *httptest.R
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/checkout", bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	if sessionID != "" {
-		req.Header.Set("Authorization", "Bearer "+sessionID)
+		req.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: sessionID})
 	}
 
 	w := httptest.NewRecorder()
@@ -455,7 +455,7 @@ func (s *CheckoutTestSuite) postApplyCoupon(sessionID string, body any) *httptes
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/coupons/apply", bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	if sessionID != "" {
-		req.Header.Set("Authorization", "Bearer "+sessionID)
+		req.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: sessionID})
 	}
 
 	w := httptest.NewRecorder()
