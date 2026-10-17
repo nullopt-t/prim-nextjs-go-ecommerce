@@ -107,18 +107,40 @@ func (s *UserService) GetUserByID(
 ) (*model.User, error) {
 	var user *model.User
 	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		u, err := s.repo.GetByID(ctx, db, userID)
-		if err != nil {
-			mappedErr := database.MapError(err)
-			if errors.Is(mappedErr, database.ErrNotFound) {
-				return apierr.NotFoundError("User not found")
-			}
-			return apierr.InternalServerError("Failed to fetch user").Wrap(err)
-		}
-		user = u
-		return nil
+		var repoErr error
+		user, repoErr = s.getUserByID(ctx, db, userID)
+		return repoErr
 	})
-	return user, err
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// GetUserByIDWithTx resolves a user on the caller's transaction executor, so a
+// caller that already holds a transaction never checks out a second connection.
+func (s *UserService) GetUserByIDWithTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	userID uuid.UUID,
+) (*model.User, error) {
+	return s.getUserByID(ctx, tx, userID)
+}
+
+func (s *UserService) getUserByID(
+	ctx context.Context,
+	exec database.QueryExecutor,
+	userID uuid.UUID,
+) (*model.User, error) {
+	u, err := s.repo.GetByID(ctx, exec, userID)
+	if err != nil {
+		mappedErr := database.MapError(err)
+		if errors.Is(mappedErr, database.ErrNotFound) {
+			return nil, apierr.NotFoundError("User not found")
+		}
+		return nil, apierr.InternalServerError("Failed to fetch user").Wrap(err)
+	}
+	return u, nil
 }
 
 // GetUserByIdentifier retrieves a single active user by their email address.

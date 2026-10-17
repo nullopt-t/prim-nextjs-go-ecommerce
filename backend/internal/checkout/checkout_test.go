@@ -73,6 +73,12 @@ func (d *dummyProductService) GetByID(_ context.Context, id uuid.UUID) (*model.P
 	}, nil
 }
 
+// GetByIDWithTx satisfies cart.ProductService; the dummy reads no database, so
+// the executor is ignored.
+func (d *dummyProductService) GetByIDWithTx(ctx context.Context, _ database.QueryExecutor, id uuid.UUID) (*model.Product, error) {
+	return d.GetByID(ctx, id)
+}
+
 // dataEnvelope is the strict success envelope: {"data": <T>}.
 type dataEnvelope[T any] struct {
 	Data T `json:"data"`

@@ -168,7 +168,7 @@ func (s *CouponService) CreateCoupon(ctx context.Context, in CreateCouponInput) 
 		Status:        status,
 	}
 
-	err := s.runner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return s.repo.Create(ctx, tx, c)
 	})
 	if err != nil {
@@ -187,7 +187,7 @@ func (s *CouponService) UpdateStatus(ctx context.Context, id uuid.UUID, status m
 			WithCode(apierr.CodeValidationFailed)
 	}
 
-	err := s.runner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return s.repo.UpdateStatus(ctx, tx, id, status)
 	})
 	if err != nil {
@@ -198,7 +198,7 @@ func (s *CouponService) UpdateStatus(ctx context.Context, id uuid.UUID, status m
 
 // Delete permanently removes a coupon.
 func (s *CouponService) Delete(ctx context.Context, id uuid.UUID) error {
-	err := s.runner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return s.repo.Delete(ctx, tx, id)
 	})
 	if err != nil {
@@ -243,7 +243,7 @@ func (s *CouponService) ValidateAndCalculate(
 
 	var result *ValidationResult
 
-	err := s.runner.WithTx(ctx, func(db database.QueryExecutor) error {
+	err := s.runner.WithTx(ctx, func(ctx context.Context, db database.QueryExecutor) error {
 		c, err := s.repo.GetByCode(ctx, db, trimmedCode)
 		if err != nil {
 			if errors.Is(err, database.ErrNotFound) {
@@ -386,7 +386,7 @@ func (s *CouponService) RecordRedemption(
 		OrderID:        orderID,
 		DiscountAmount: discountAmount,
 	}
-	return s.runner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	return s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return s.repo.RecordRedemption(ctx, tx, red)
 	})
 }

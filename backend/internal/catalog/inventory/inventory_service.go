@@ -69,7 +69,7 @@ func (s *InventoryService) AdjustStock(
 ) (*model.InventoryStock, error) {
 	var updatedStock *model.InventoryStock
 
-	txErr := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	txErr := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		var err error
 		updatedStock, err = s.adjustStockInTx(ctx, tx, in)
 		return err
@@ -178,8 +178,43 @@ func (s *InventoryService) adjustStockInTx(
 }
 
 // GetStockByVariantID calculates and returns current stock levels (on-hand, reserved, available) for a variant.
+//
+// It checks a connection out of the pool, so callers that already hold a
+// transaction must use GetStockByVariantIDWithTx instead: asking the pool for a
+// second connection while one is held starves it and stalls every other request.
 func (s *InventoryService) GetStockByVariantID(
 	ctx context.Context,
+	variantID uuid.UUID,
+) (*model.InventoryStock, error) {
+	var stock *model.InventoryStock
+	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var repoErr error
+		stock, repoErr = s.getStockByVariantID(ctx, db, variantID)
+		return repoErr
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return stock, nil
+}
+
+// GetStockByVariantIDWithTx calculates stock levels on the caller's transaction
+// executor, so a caller that already holds a transaction never needs a second
+// pooled connection.
+func (s *InventoryService) GetStockByVariantIDWithTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	variantID uuid.UUID,
+) (*model.InventoryStock, error) {
+	return s.getStockByVariantID(ctx, tx, variantID)
+}
+
+// getStockByVariantID is the shared implementation behind both entry points: it
+// validates the variant id and maps persistence errors onto API errors.
+func (s *InventoryService) getStockByVariantID(
+	ctx context.Context,
+	exec database.QueryExecutor,
 	variantID uuid.UUID,
 ) (*model.InventoryStock, error) {
 	if variantID == uuid.Nil {
@@ -187,13 +222,7 @@ func (s *InventoryService) GetStockByVariantID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	var stock *model.InventoryStock
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		var repoErr error
-		stock, repoErr = s.repo.GetStock(ctx, db, variantID)
-		return repoErr
-	})
-
+	stock, err := s.repo.GetStock(ctx, exec, variantID)
 	if err != nil {
 		mappedErr := database.MapError(err)
 		switch {
@@ -212,22 +241,49 @@ func (s *InventoryService) GetStockByVariantID(
 	return stock, nil
 }
 
-// GetStockForVariants batch calculates stock levels for multiple variant UUIDs.
+// GetStockForVariants returns stock levels for many variants in one query.
+//
+// It checks a connection out of the pool, so callers that already hold a
+// transaction must use GetStockForVariantsWithTx instead: asking the pool
+// for a second connection while one is held starves it.
 func (s *InventoryService) GetStockForVariants(
 	ctx context.Context,
+	variantIDs []uuid.UUID,
+) (map[uuid.UUID]*model.InventoryStock, error) {
+	var stocks map[uuid.UUID]*model.InventoryStock
+	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var repoErr error
+		stocks, repoErr = s.getStockForVariants(ctx, db, variantIDs)
+		return repoErr
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return stocks, nil
+}
+
+// GetStockForVariantsWithTx returns stock levels on the caller's
+// transaction executor so a caller inside a transaction never needs a
+// second pooled connection.
+func (s *InventoryService) GetStockForVariantsWithTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	variantIDs []uuid.UUID,
+) (map[uuid.UUID]*model.InventoryStock, error) {
+	return s.getStockForVariants(ctx, tx, variantIDs)
+}
+
+func (s *InventoryService) getStockForVariants(
+	ctx context.Context,
+	exec database.QueryExecutor,
 	variantIDs []uuid.UUID,
 ) (map[uuid.UUID]*model.InventoryStock, error) {
 	if len(variantIDs) == 0 {
 		return make(map[uuid.UUID]*model.InventoryStock), nil
 	}
 
-	var stocks map[uuid.UUID]*model.InventoryStock
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		var repoErr error
-		stocks, repoErr = s.repo.GetStockForVariants(ctx, db, variantIDs)
-		return repoErr
-	})
-
+	stocks, err := s.repo.GetStockForVariants(ctx, exec, variantIDs)
 	if err != nil {
 		return nil, apierr.InternalServerError("Failed to get inventory stock for variants").
 			WithCode(apierr.CodeInternalError).
@@ -299,7 +355,7 @@ func (s *InventoryService) ReserveStock(
 
 	var resultReservation *model.InventoryReservation
 
-	err := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		var err error
 		resultReservation, err = s.reserveStockInTx(ctx, tx, in, ttl)
 		return err
@@ -515,7 +571,7 @@ func (s *InventoryService) CommitReservation(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		res, err := s.repo.GetReservationByID(ctx, tx, reservationID)
 		if err != nil {
 			return err
@@ -612,7 +668,7 @@ func (s *InventoryService) ListRecentLedgers(ctx context.Context, limit int, cur
 }
 
 func (s *InventoryService) AdjustInventory(ctx context.Context, variantID uuid.UUID, delta int, reason string) error {
-	return s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	return s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		ledger := &model.InventoryLedger{
 			ID:        uuid.New(),
 			VariantID: variantID,
@@ -630,7 +686,7 @@ func (s *InventoryService) AdjustInventory(ctx context.Context, variantID uuid.U
 }
 
 func (s *InventoryService) AdjustProductInventory(ctx context.Context, productID uuid.UUID, delta int, reason string) error {
-	return s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	return s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		var variantID uuid.UUID
 		err := tx.QueryRow(ctx, `
 			SELECT id FROM product_variants

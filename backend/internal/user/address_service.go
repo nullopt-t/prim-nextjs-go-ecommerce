@@ -81,10 +81,24 @@ func (s *AddressService) ListAddresses(ctx context.Context, userID uuid.UUID) ([
 func (s *AddressService) GetAddress(ctx context.Context, id, userID uuid.UUID) (*model.UserAddress, error) {
 	var address *model.UserAddress
 	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
-		var err error
-		address, err = s.repo.GetByIDAndUser(ctx, db, id, userID)
-		return err
+		var repoErr error
+		address, repoErr = s.getAddress(ctx, db, id, userID)
+		return repoErr
 	})
+	if err != nil {
+		return nil, err
+	}
+	return address, nil
+}
+
+// GetAddressWithTx resolves an address on the caller's transaction executor, so
+// a caller that already holds a transaction never checks out a second connection.
+func (s *AddressService) GetAddressWithTx(ctx context.Context, tx database.QueryExecutor, id, userID uuid.UUID) (*model.UserAddress, error) {
+	return s.getAddress(ctx, tx, id, userID)
+}
+
+func (s *AddressService) getAddress(ctx context.Context, exec database.QueryExecutor, id, userID uuid.UUID) (*model.UserAddress, error) {
+	address, err := s.repo.GetByIDAndUser(ctx, exec, id, userID)
 	if err != nil {
 		if errors.Is(err, ErrAddressNotFound) {
 			return nil, apierr.NotFoundError("Address not found")
@@ -132,7 +146,7 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 	// A per-user advisory transaction lock serializes concurrent creations so
 	// only one "first address" wins the default flag (the partial unique index
 	// on addresses(user_id) WHERE is_default is the backstop).
-	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock((hashtext($1::text))::bigint)`, userID.String()); err != nil {
 			return err
 		}
@@ -181,7 +195,7 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 	}
 
 	var updated *model.UserAddress
-	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		current, err := s.repo.GetByIDAndUser(ctx, tx, id, userID)
 		if err != nil {
 			return err
@@ -252,7 +266,7 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 // SetDefaultAddress marks the specified address as the default address within an atomic transaction.
 func (s *AddressService) SetDefaultAddress(ctx context.Context, id, userID uuid.UUID) (*model.UserAddress, error) {
 	var address *model.UserAddress
-	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		curr, err := s.repo.GetByIDAndUser(ctx, tx, id, userID)
 		if err != nil {
 			return err
@@ -290,7 +304,7 @@ func (s *AddressService) SetDefaultAddress(ctx context.Context, id, userID uuid.
 // If the deleted address was designated as the default address, it queries the most recently updated
 // active address and automatically promotes it as the new default address.
 func (s *AddressService) DeleteAddress(ctx context.Context, id, userID uuid.UUID) error {
-	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		current, err := s.repo.GetByIDAndUser(ctx, tx, id, userID)
 		if err != nil {
 			return err

@@ -105,7 +105,7 @@ func (s *WishlistService) AddToWishlist(
 	var createdItem *model.WishlistItem
 	var apiErr *apierr.APIError
 
-	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		if err := s.repo.Create(ctx, tx, newItem); err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrConflict) {
@@ -222,7 +222,7 @@ func (s *WishlistService) RemoveItem(
 ) error {
 	var apiErr *apierr.APIError
 
-	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		err := s.repo.DeleteByID(ctx, tx, itemID, userID)
 		if err != nil {
 			mappedErr := database.MapError(err)
@@ -253,7 +253,7 @@ func (s *WishlistService) RemoveByProductID(
 ) error {
 	var apiErr *apierr.APIError
 
-	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		err := s.repo.DeleteByProduct(ctx, tx, userID, productID, variantID)
 		if err != nil {
 			mappedErr := database.MapError(err)

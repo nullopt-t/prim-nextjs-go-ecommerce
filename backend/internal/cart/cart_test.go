@@ -45,6 +45,12 @@ func (d *dummyProductService) GetByID(ctx context.Context, id uuid.UUID) (*model
 	}, nil
 }
 
+// GetByIDWithTx satisfies cart.ProductService; the dummy reads no database, so
+// the executor is ignored.
+func (d *dummyProductService) GetByIDWithTx(ctx context.Context, _ database.QueryExecutor, id uuid.UUID) (*model.Product, error) {
+	return d.GetByID(ctx, id)
+}
+
 type CartHTTPTestSuite struct {
 	suite.Suite
 	pgContainer      *postgres.PostgresContainer

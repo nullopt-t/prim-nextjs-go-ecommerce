@@ -250,7 +250,7 @@ func (s *ProductService) UpdateProduct(
 		}
 	}
 
-	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		product, err := s.productRepo.GetByID(ctx, tx, productID)
 		if err != nil {
 			return err
@@ -313,18 +313,44 @@ func (s *ProductService) UpdateProduct(
 	return nil
 }
 
-// GetByID retrieves a product by its UUID without hydrating associations.
+// GetByID fetches a single product by its unique identifier.
+//
+// The lookup checks a connection out of the pool, so callers that already
+// hold a transaction must use GetByIDWithTx instead.
 func (s *ProductService) GetByID(
 	ctx context.Context,
 	productID uuid.UUID,
 ) (*model.Product, error) {
 	var product *model.Product
 	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
-		var err error
-		product, err = s.productRepo.GetByID(ctx, db, productID)
-		return err
+		var repoErr error
+		product, repoErr = s.getByID(ctx, db, productID)
+		return repoErr
 	})
+	if err != nil {
+		return nil, err
+	}
 
+	return product, nil
+}
+
+// GetByIDWithTx fetches a product on the caller's transaction executor, so
+// a caller that already holds a transaction never checks out a second
+// pooled connection.
+func (s *ProductService) GetByIDWithTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	productID uuid.UUID,
+) (*model.Product, error) {
+	return s.getByID(ctx, tx, productID)
+}
+
+func (s *ProductService) getByID(
+	ctx context.Context,
+	exec database.QueryExecutor,
+	productID uuid.UUID,
+) (*model.Product, error) {
+	product, err := s.productRepo.GetByID(ctx, exec, productID)
 	if err != nil {
 		mappedError := database.MapError(err)
 		switch {
@@ -646,7 +672,7 @@ func (s *ProductService) SoftDeleteProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		if err := s.productRepo.SoftDeleteByID(ctx, tx, productID); err != nil {
 			return err
 		}
@@ -823,7 +849,7 @@ func (ps *ProductService) UploadProductThumbnail(
 
 	oldThumbnailObjectID := product.ThumbnailObjectID
 	product.ThumbnailObjectID = &obj.ID
-	err = ps.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err = ps.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return ps.productRepo.Update(ctx, tx, product)
 	})
 

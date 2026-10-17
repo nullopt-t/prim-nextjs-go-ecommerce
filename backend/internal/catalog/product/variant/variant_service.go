@@ -148,7 +148,7 @@ func (vs *VariantService) CreateVariant(
 		ThumbnailObjectID: in.ThumbnailObjectID,
 	}
 
-	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		// Acquire an exclusive row-level lock on the parent product to prevent concurrent creation races
 		var parentProductID uuid.UUID
 		err := tx.QueryRow(ctx, `SELECT id FROM products WHERE id = $1 FOR UPDATE`, variant.ProductID).Scan(&parentProductID)
@@ -201,7 +201,10 @@ func (vs *VariantService) CreateVariant(
 	return variant, nil
 }
 
-// GetVariantByID retrieves a variant by UUID and populates presigned thumbnail and media gallery URLs.
+// GetVariantByID retrieves a single variant by its unique identifier.
+//
+// The lookups check a connection out of the pool, so callers that already
+// hold a transaction must use GetVariantByIDWithTx instead.
 func (vs *VariantService) GetVariantByID(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -209,10 +212,33 @@ func (vs *VariantService) GetVariantByID(
 	var variant *model.ProductVariant
 	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
-		variant, repoErr = vs.vr.GetByID(ctx, db, variantID)
+		variant, repoErr = vs.getVariantByID(ctx, db, variantID)
 		return repoErr
 	})
+	if err != nil {
+		return nil, err
+	}
 
+	return variant, nil
+}
+
+// GetVariantByIDWithTx retrieves a variant and its media on the caller's
+// transaction executor, so a caller that already holds a transaction never
+// checks out a second pooled connection.
+func (vs *VariantService) GetVariantByIDWithTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	variantID uuid.UUID,
+) (*model.ProductVariant, error) {
+	return vs.getVariantByID(ctx, tx, variantID)
+}
+
+func (vs *VariantService) getVariantByID(
+	ctx context.Context,
+	exec database.QueryExecutor,
+	variantID uuid.UUID,
+) (*model.ProductVariant, error) {
+	variant, err := vs.vr.GetByID(ctx, exec, variantID)
 	if err != nil {
 		mappedErr := database.MapError(err)
 		switch {
@@ -237,8 +263,8 @@ func (vs *VariantService) GetVariantByID(
 		)
 	}
 
-	mediaList, err := vs.ListVariantMedia(ctx, variantID)
-	if err == nil {
+	mediaList, mediaErr := vs.listVariantMedia(ctx, exec, variantID)
+	if mediaErr == nil {
 		variant.Media = mediaList
 	}
 
@@ -341,7 +367,7 @@ func (vs *VariantService) UpdateVariant(
 		fields.Title = &title
 	}
 
-	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		existing, err := vs.vr.GetByID(ctx, tx, variantID)
 		if err != nil {
 			return err
@@ -488,7 +514,7 @@ func (vs *VariantService) DeleteVariantByID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		variant, err := vs.vr.GetByID(ctx, tx, variantID)
 		if err != nil {
 			return err
@@ -538,7 +564,7 @@ func (vs *VariantService) RestoreVariantByID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		// Fetch the variant including deleted records to inspect its product and default flag
 		var (
 			productID uuid.UUID
@@ -618,7 +644,7 @@ func (vs *VariantService) AttachMedia(
 	mediaID := uuid.New()
 	var createdMedia *model.VariantMedia
 
-	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		var repoErr error
 		createdMedia, repoErr = vs.vr.AddMedia(ctx, tx, CreateVariantMediaInput{
 			ID:        mediaID,
@@ -708,7 +734,7 @@ func (vs *VariantService) ReorderMedia(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		existingMedia, err := vs.vr.ListMediaByVariantID(ctx, tx, variantID)
 		if err != nil {
 			return err
@@ -748,9 +774,30 @@ func (vs *VariantService) ReorderMedia(
 	return nil
 }
 
-// ListVariantMedia retrieves all gallery media items for a variant and populates presigned CDN URLs.
+// ListVariantMedia lists a variant's media, resolving public object URLs.
+//
+// It checks a connection out of the pool; in-transaction callers use the
+// unexported listVariantMedia with their own executor.
 func (vs *VariantService) ListVariantMedia(
 	ctx context.Context,
+	variantID uuid.UUID,
+) ([]*model.VariantMedia, error) {
+	var mediaList []*model.VariantMedia
+	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var repoErr error
+		mediaList, repoErr = vs.listVariantMedia(ctx, db, variantID)
+		return repoErr
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return mediaList, nil
+}
+
+func (vs *VariantService) listVariantMedia(
+	ctx context.Context,
+	exec database.QueryExecutor,
 	variantID uuid.UUID,
 ) ([]*model.VariantMedia, error) {
 	if variantID == uuid.Nil {
@@ -758,13 +805,7 @@ func (vs *VariantService) ListVariantMedia(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	var mediaList []*model.VariantMedia
-	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		var repoErr error
-		mediaList, repoErr = vs.vr.ListMediaByVariantID(ctx, db, variantID)
-		return repoErr
-	})
-
+	mediaList, err := vs.vr.ListMediaByVariantID(ctx, exec, variantID)
 	if err != nil {
 		return nil, apierr.InternalServerError("Failed to list variant media").
 			WithCode(apierr.CodeInternalError).
@@ -804,7 +845,7 @@ func (vs *VariantService) SetDefaultVariant(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		v, err := vs.vr.GetByID(ctx, tx, variantID)
 		if err != nil {
 			return err

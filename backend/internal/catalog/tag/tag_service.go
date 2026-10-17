@@ -199,7 +199,7 @@ func (ts *TagService) ReplaceProductTags(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := ts.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return ts.repo.ReplaceTagsForProduct(ctx, tx, productID, tagIDs)
 	})
 

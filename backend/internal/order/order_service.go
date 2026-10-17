@@ -192,7 +192,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 	var createdOrder *model.Order
 
 	// Execute within an atomic transaction.
-	err := s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		var err error
 		createdOrder, err = s.CreateOrderWithTx(ctx, tx, in)
 		return err
@@ -396,7 +396,7 @@ func CanTransitionOrderStatus(current, next model.OrderStatus) bool {
 // UpdateOrderStatus modifies an existing order's state after validating the state machine transition.
 // It executes within a transaction and inserts an audit log entry in order_status_history.
 func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, status model.OrderStatus, notes *string) error {
-	err := s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		// Acquire an exclusive FOR UPDATE row-level lock on the order to prevent concurrent race conditions
 		// during status transitions.
 		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
@@ -453,7 +453,7 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 // CancelOrder handles customer-initiated cancellation for pending or confirmed orders.
 // Verifies customer authorization and valid transition before setting status to cancelled.
 func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID uuid.UUID) error {
-	return s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
+	return s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
 		if err != nil {
 			mappedErr := database.MapError(err)
@@ -552,21 +552,21 @@ func (s *OrderService) ListPayments(ctx context.Context, limit int, cursor *pagi
 
 // UpdatePaymentStatus changes the status of a payment record.
 func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, status string) error {
-	return s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
+	return s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return s.orderRepo.UpdatePaymentStatus(ctx, tx, id, status)
 	})
 }
 
 // RefundPayment sets the payment status to refunded.
 func (s *OrderService) RefundPayment(ctx context.Context, id uuid.UUID) error {
-	return s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
+	return s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return s.orderRepo.UpdatePaymentStatus(ctx, tx, id, "refunded")
 	})
 }
 
 // UpdateOrderTracking updates the carrier tracking number for an order.
 func (s *OrderService) UpdateOrderTracking(ctx context.Context, id uuid.UUID, trackingNumber string) error {
-	return s.qexecuter.WithTx(ctx, func(tx database.QueryExecutor) error {
+	return s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return s.orderRepo.UpdateOrderTracking(ctx, tx, id, trackingNumber)
 	})
 }

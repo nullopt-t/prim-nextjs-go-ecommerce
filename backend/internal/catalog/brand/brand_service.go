@@ -241,7 +241,7 @@ func (bs *BrandService) DeleteBrandByID(
 	}
 
 	// Execute within a transaction so brand check and soft-delete are atomic
-	err := bs.runner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := bs.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return bs.brandRepo.DeleteByID(ctx, tx, id)
 	})
 

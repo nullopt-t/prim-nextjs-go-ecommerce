@@ -54,7 +54,7 @@ func (s *ReviewService) CreateReview(
 	var createdReview *model.Review
 	var apiErr *apierr.APIError
 
-	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		if in.OrderItemID != nil && *in.OrderItemID != uuid.Nil {
 			targetOrderItemID = *in.OrderItemID
 			// 1. Verify specific purchase
@@ -197,7 +197,7 @@ func (s *ReviewService) UpdateUserReview(
 	var updatedReview *model.Review
 	var apiErr *apierr.APIError
 
-	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		rv, err := s.repo.GetByID(ctx, tx, id)
 		if err != nil {
 			return apierr.InternalServerError("failed to get review by id").Wrap(err)
@@ -251,7 +251,7 @@ func (s *ReviewService) UpdateUserReview(
 func (s *ReviewService) DeleteReview(ctx context.Context, id uuid.UUID, userID uuid.UUID, isAdmin bool) error {
 	var apiErr *apierr.APIError
 
-	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		rv, err := s.repo.GetByID(ctx, tx, id)
 		if err != nil {
 			return apierr.InternalServerError("failed to get review by id").Wrap(err)
@@ -287,7 +287,7 @@ func (s *ReviewService) UpdateReviewStatus(
 ) error {
 	var apiErr *apierr.APIError
 
-	err := s.dbRunner.WithTx(ctx, func(tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		rv, err := s.repo.GetByID(ctx, tx, id)
 		if err != nil {
 			return apierr.InternalServerError("failed to get review by id").Wrap(err)

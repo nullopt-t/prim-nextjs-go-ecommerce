@@ -31,7 +31,7 @@ func (s *AttributeService) ListAttributes(ctx context.Context) ([]AttributeItem,
 }
 
 func (s *AttributeService) CreateAttribute(ctx context.Context, ai *AttributeItem) error {
-	return s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	return s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		if ai.ID == uuid.Nil {
 			ai.ID = uuid.New()
 		}
@@ -52,7 +52,7 @@ type UpdateAttributeInput struct {
 }
 
 func (s *AttributeService) UpdateAttribute(ctx context.Context, id uuid.UUID, in UpdateAttributeInput) error {
-	return s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	return s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return s.repo.UpdateAttribute(ctx, tx, id, UpdateAttributeFields{
 			Label:         in.Label,
 			ValueType:     in.ValueType,
@@ -64,7 +64,7 @@ func (s *AttributeService) UpdateAttribute(ctx context.Context, id uuid.UUID, in
 }
 
 func (s *AttributeService) DeleteAttribute(ctx context.Context, id uuid.UUID) error {
-	return s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	return s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return s.repo.DeleteAttribute(ctx, tx, id)
 	})
 }

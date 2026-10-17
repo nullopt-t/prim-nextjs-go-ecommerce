@@ -261,7 +261,7 @@ func (cs *CategoryService) AdminList(
 
 
 func (cs *CategoryService) DeleteCategory(ctx context.Context, id uuid.UUID) error {
-	return cs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+	return cs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		if err := cs.repo.SoftDeleteCategory(ctx, tx, id); err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Category not found").WithCode(apierr.CodeNotFound)
