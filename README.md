@@ -18,21 +18,43 @@ It's meant to be the whole shop, not just a demo: a catalog with variants and in
 
 ## Architecture
 
-```
-Browser
-└─ Frontend — Next.js 16 · React 19 · Tailwind CSS 4 · next-intl   (:3000)
-   │
-   └─ REST / JSON with a session cookie   (/api/v1)
-      │
-      └─ Backend API — Go 1.26 · Gin    (:8081)
-         │   handler → service → repository
-         │
-         ├─ PostgreSQL   catalog, orders, users, settings
-         ├─ Redis        cache, sessions, rate limits
-         ├─ MinIO        media (S3-compatible)
-         └─ Kafka        notification events
-            └─ Worker   Go 1.26, consumes Kafka
-               └─ Email and in-app notifications
+```mermaid
+graph LR
+    Client["Client / Browser"]
+
+    subgraph Frontend["Frontend (Next.js 16 App Router)"]
+        FE_Details["- React 19, TypeScript, Tailwind CSS 4<br/>- next-intl (Bilingual EN/AR + RTL)<br/>- Turbopack"]
+    end
+
+    subgraph Backend["Backend Service (Go 1.26 / Gin Engine)"]
+        direction TB
+        Handlers["Handlers / Controllers<br/>(HTTP, Sessions, Validation)"]
+        Services["Services / Use Cases<br/>(Business Logic)"]
+        Repos["Repositories / DAL<br/>(Data Abstraction & Drivers)"]
+
+        Handlers --> Services
+        Services --> Repos
+    end
+
+    subgraph Storage["Infrastructure & Storage"]
+        PG[("PostgreSQL<br/>:5432 (Primary DB)")]
+        Redis["Redis<br/>:6379 (Cache / Sessions / Rate Limits)"]
+        MinIO["MinIO (S3)<br/>:9000 (Media Storage)"]
+        Kafka["Kafka<br/>:9092 (Notification Events)"]
+    end
+
+    subgraph Worker["Notification Worker (Go 1.26)"]
+        W["Kafka Consumer<br/>Email & in-app notifications"]
+    end
+
+    Client -->|":3000 (HTTP / SSR)"| Frontend
+    Frontend -->|":8081 (REST API + Session Cookie)"| Handlers
+
+    Repos -->|"SQL Queries (:5432)"| PG
+    Repos -->|"Cache / Sessions (:6379)"| Redis
+    Repos -->|"S3 Protocol (:9000)"| MinIO
+    Services -->|"Publish Events"| Kafka
+    Kafka -->|"Consume"| W
 ```
 
 ## Tech stack
