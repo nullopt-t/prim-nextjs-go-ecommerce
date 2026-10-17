@@ -130,6 +130,11 @@ func (vs *VariantService) CreateVariant(
 		}
 	}
 
+	currency := "EGP"
+	if in.Currency != nil && strings.TrimSpace(*in.Currency) != "" {
+		currency = strings.TrimSpace(*in.Currency)
+	}
+
 	variant := &model.ProductVariant{
 		ID:                uuid.New(),
 		SKU:               sku,
@@ -137,7 +142,7 @@ func (vs *VariantService) CreateVariant(
 		Title:             title,
 		Price:             in.Price,
 		CrossedOutPrice:   in.CrossedOutPrice,
-		Currency:          in.Currency,
+		Currency:          &currency,
 		Attributes:        in.Attributes,
 		IsDefault:         in.IsDefault,
 		ThumbnailObjectID: in.ThumbnailObjectID,

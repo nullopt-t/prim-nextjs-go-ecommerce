@@ -1,8 +1,29 @@
 BEGIN;
 
--- Drop dependent / join / child tables first
-DROP TABLE IF EXISTS user_notifications CASCADE;
+-- Drop reviews & social
+DROP TABLE IF EXISTS reviews CASCADE;
 DROP TABLE IF EXISTS wishlist_items CASCADE;
+DROP TABLE IF EXISTS user_notifications CASCADE;
+
+-- Drop orders & payments
+DROP TABLE IF EXISTS payments CASCADE;
+DROP TABLE IF EXISTS order_status_history CASCADE;
+DROP TABLE IF EXISTS order_items CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+
+-- Drop coupons & redemptions
+DROP TABLE IF EXISTS coupon_redemptions CASCADE;
+DROP TABLE IF EXISTS coupons CASCADE;
+
+-- Drop inventory
+DROP TABLE IF EXISTS inventory_reservations CASCADE;
+DROP TABLE IF EXISTS inventory_ledgers CASCADE;
+
+-- Drop carts
+DROP TABLE IF EXISTS cart_items CASCADE;
+DROP TABLE IF EXISTS carts CASCADE;
+
+-- Drop catalog join & child tables
 DROP TABLE IF EXISTS variant_media CASCADE;
 DROP TABLE IF EXISTS product_tag_assignments CASCADE;
 DROP TABLE IF EXISTS category_attributes CASCADE;

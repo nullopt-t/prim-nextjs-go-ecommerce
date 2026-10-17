@@ -237,6 +237,7 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 	if _, exists := c.Get("userID"); !exists {
 		cookieSess, err := c.Cookie("session_id")
 		if err != nil || cookieSess == "" {
+			_, _ = h.extractUserAndSession(c)
 			c.JSON(http.StatusOK, api.DataResponse{Data: CartResponse{
 				Currency: "EGP",
 				Items:    []CartItemResponse{},

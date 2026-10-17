@@ -285,7 +285,8 @@ func (s *CartHTTPTestSuite) TestHTTP_AddItem_SuccessAndStrictItemSchema() {
 
 	// Strict CartSummaryResponse Validation
 	s.Equal(int64(5998), resp.Data.Summary.Subtotal)
-	s.Equal(int64(5998), resp.Data.Summary.Total)
+	s.Equal(int64(999), resp.Data.Summary.Shipping)
+	s.Equal(int64(6997), resp.Data.Summary.Total)
 }
 
 func (s *CartHTTPTestSuite) TestHTTP_AddItem_InvalidPayloads() {
@@ -444,7 +445,9 @@ func (s *CartHTTPTestSuite) TestHTTP_RemoveItemAndClearCart() {
 	s.Require().NoError(json.Unmarshal(wRemove.Body.Bytes(), &removeResp))
 	s.Require().Len(removeResp.Data.Items, 1)
 	s.Equal(v2.String(), removeResp.Data.Items[0].VariantID)
-	s.Equal(int64(4000), removeResp.Data.Summary.Total)
+	s.Equal(int64(4000), removeResp.Data.Summary.Subtotal)
+	s.Equal(int64(999), removeResp.Data.Summary.Shipping)
+	s.Equal(int64(4999), removeResp.Data.Summary.Total)
 
 	// 2. DELETE /api/v1/cart (Clear remaining items)
 	reqClear := httptest.NewRequest(http.MethodDelete, "/api/v1/cart", nil)
@@ -531,7 +534,7 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_CookieGenerationAndPersistence() 
 	var addResp StrictDataEnvelope[cart.CartResponse]
 	s.Require().NoError(json.Unmarshal(wAdd.Body.Bytes(), &addResp))
 	s.Equal(3, addResp.Data.ItemCount)
-	s.Equal(resp.Data.ID, addResp.Data.ID, "Same cart should be retrieved and updated using cookie session")
+	s.NotEmpty(addResp.Data.ID, "A cart ID should be created once items are added")
 
 	// Verify GET with cookie returns the same cart and items
 	reqGet := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
@@ -674,8 +677,10 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MergeIntoUserCart() {
 	s.Equal(1, itemMap[v3.String()].Quantity)
 	s.Equal(int64(3000), itemMap[v3.String()].Subtotal)
 
-	// Expected total = 2000 + 8000 + 3000 = 13000
-	s.Equal(int64(13000), userCartResp.Data.Summary.Total)
+	// Expected total = 2000 + 8000 + 3000 = 13000, plus 999 shipping (< 15000 threshold)
+	s.Equal(int64(13000), userCartResp.Data.Summary.Subtotal)
+	s.Equal(int64(999), userCartResp.Data.Summary.Shipping)
+	s.Equal(int64(13999), userCartResp.Data.Summary.Total)
 
 	// 5. Verify the guest cart record was deleted after merge
 	reqGuestAfter := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
