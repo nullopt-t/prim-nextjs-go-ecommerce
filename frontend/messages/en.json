@@ -1304,6 +1304,8 @@
         "unknown": "Unknown",
         "allOperational": "100% Operational",
         "partialOperational": "{up} of {total} Operational",
+        "checking": "Checking…",
+        "updated": "updated {seconds}s ago",
         "metric": {
           "port": "Port {port}",
           "latency": "Latency {value}ms",
