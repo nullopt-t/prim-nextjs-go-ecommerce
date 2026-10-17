@@ -1,10 +1,14 @@
 import { WishlistContent } from "@/features/wishlist";
 import { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Dashboard Wishlist | PRIM",
-  description: "Your saved products",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta.dashboard.user.wishlist");
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export default function UserWishlistPage() {
   return <WishlistContent />;

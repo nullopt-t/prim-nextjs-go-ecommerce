@@ -31,6 +31,10 @@
         "description": "Transparent pricing, honest reviews, and no hidden fees.",
         "title": "Trust"
       }
+    },
+    "team": {
+      "mohamedAlt": "Mohamed photo",
+      "amrAlt": "Amr photo"
     }
   },
   "auth": {
@@ -39,7 +43,8 @@
       "emailPlaceholder": "name@example.com",
       "signButton": "Continue",
       "subtitle": "Enter your email to sign in or create a new account.",
-      "title": "Get Started"
+      "title": "Get Started",
+      "codeSent": "Verification code sent to your email!"
     },
     "verify": {
       "changeEmail": "Change email",
@@ -50,7 +55,14 @@
       "sentTo": "Code sent to:",
       "subtitle": "We sent a 6-digit verification code to your email. Enter it below to proceed.",
       "title": "Verify OTP Code",
-      "verifyButton": "Verify & Continue"
+      "verifyButton": "Verify & Continue",
+      "welcomeBack": "Welcome back!",
+      "verifyFailed": "Failed to verify code. Please try again.",
+      "noEmail": "No email specified. Please return to login.",
+      "codeResent": "New verification code sent!",
+      "resendFailed": "Failed to resend verification code",
+      "resendError": "Failed to resend code",
+      "invalidCode": "Invalid verification code"
     },
     "guestCart": {
       "title": "Your current selection",
@@ -60,8 +72,13 @@
       "total": "Estimated Total",
       "remove": "Remove",
       "removed": "Item removed from selection",
-      "unitsAvailable": "Only {count} units available"
-    }
+      "unitsAvailable": "Only {count} units available",
+      "decreaseQty": "Decrease quantity",
+      "increaseQty": "Increase quantity"
+    },
+    "themeToggle": "Toggle theme",
+    "backToLogin": "Back to login",
+    "otpDigit": "Digit {digit}"
   },
   "cart": {
     "cart": {
@@ -72,7 +89,15 @@
     "coupon": {
       "apply": "Apply",
       "available": "Available codes:",
-      "placeholder": "Enter your coupon"
+      "placeholder": "Enter your coupon",
+      "applying": "Applying...",
+      "applied": "Coupon {code} applied!",
+      "freeShipping": "Free Shipping",
+      "appliedStatus": "Applied",
+      "errorEmpty": "Please enter a coupon code",
+      "invalid": "Failed to apply coupon",
+      "removed": "Coupon removed",
+      "remove": "Remove"
     },
     "empty": {
       "action": "Start Shopping",
@@ -90,7 +115,14 @@
     },
     "product": {
       "remove": "Remove"
-    }
+    },
+    "discount": "-{amount} discount",
+    "discountLabel": "Discount ({code})",
+    "encryptedCheckout": "Encrypted checkout",
+    "outOfStock": "Out of stock",
+    "shippingAdd": "Add {amount} for free shipping",
+    "shippingUnlocked": "You unlocked Free Shipping!",
+    "sslCheckout": "Secure 256-Bit SSL Encrypted Checkout"
   },
   "common": {
     "currency": "EGP",
@@ -155,7 +187,12 @@
       "signIn": "Sign In",
       "signOut": "Sign Out",
       "theme": "Theme",
-      "wishlist": "Wishlist"
+      "wishlist": "Wishlist",
+      "welcomeToPrim": "Welcome to PRIM",
+      "new": "new",
+      "loadingNotifications": "Loading notifications...",
+      "noNotificationsDescription": "Order updates and account alerts will appear here",
+      "dismiss": "Dismiss"
     }
   },
   "home": {
@@ -174,7 +211,8 @@
     },
     "categories": {
       "seeAll": "See all",
-      "title": "Categories"
+      "title": "Categories",
+      "exploreCategory": "Explore Category"
     },
     "featuredProducts": {
       "title": "Featured Products"
@@ -208,14 +246,23 @@
         }
       },
       "title": "Everything you need, ",
-      "viewDeals": "View deals"
+      "viewDeals": "View deals",
+      "billboard": "Promotions Billboard",
+      "goToSlide": "Go to slide {slide}",
+      "nextSlide": "Next slide",
+      "pauseCarousel": "Pause carousel",
+      "playCarousel": "Play carousel",
+      "previousSlide": "Previous slide"
     },
     "product": {
       "addToCart": "Add to cart"
     },
     "recentlyViewed": {
       "title": "Recently Viewed"
-    }
+    },
+    "scrollLeft": "Scroll left",
+    "scrollRight": "Scroll right",
+    "topRatedItems": "Top rated items and bestselling gear"
   },
   "notFound": {
     "button": "Back to Home",
@@ -313,7 +360,9 @@
       "deleteAccountDesc": "Permanently erase your account and all associated order history. This cannot be undone.",
       "deleteAccountButton": "Delete Account",
       "deleteNotice": "Self-service account deletion is not available. Please reach out to support."
-    }
+    },
+    "navAriaLabel": "Settings navigation",
+    "subNav": "Settings sub-navigation"
   },
   "wishlist": {
     "title": "Your Wishlist",
@@ -397,7 +446,8 @@
       "city": "Cairo",
       "state": "Cairo Governorate",
       "postalCode": "11511",
-      "country": "Select or search country..."
+      "country": "Select or search country...",
+      "giftReceiver": "e.g. Gift Receiver Name"
     },
     "hints": {
       "fullName": "Name of the person receiving the package at delivery",
@@ -417,7 +467,11 @@
     "reviews": "Reviews",
     "store": "Store",
     "wishlist": "Wishlist",
-    "settings": "Settings"
+    "settings": "Settings",
+    "accountNav": "Account navigation",
+    "mobileNav": "Mobile bottom navigation",
+    "adminConsole": "Admin Console",
+    "orderNav": "Order navigation"
   },
   "overview": {
     "heading": "Account Overview",
@@ -515,6 +569,21 @@
       "viewWishlist": "View Saved Wishlist ({count})",
       "billingMethods": "Billing & Payment Methods",
       "myReviews": "My Product Reviews"
+    },
+    "loading": "Loading your account...",
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "openAdminConsole": "Open Admin Console",
+    "staff": {
+      "superadmin": "Platform Superadministrator",
+      "admin": "Store Administrator",
+      "badge": "Staff Account",
+      "desc": "You have elevated permissions to manage marketplace users, orders, catalog governance, and system operations."
     }
   },
   "orders": {
@@ -552,7 +621,8 @@
       "writeReview": "Write review",
       "record": "Record",
       "viewDetails": "View Details"
-    }
+    },
+    "itemCount": "{count, plural, =1 {1 item} other {# items}}"
   },
   "userReviews": {
     "title": "My Reviews",
@@ -572,7 +642,8 @@
     "showMore": "Show more",
     "showLess": "Show less",
     "toastDeleted": "Review deleted.",
-    "toastFailed": "Failed to delete review."
+    "toastFailed": "Failed to delete review.",
+    "ariaDelete": "Delete review"
   },
   "payment": {
     "title": "Payment Methods",
@@ -608,6 +679,1205 @@
     "loading": "Loading order details...",
     "notFound": "Order not found",
     "notFoundDesc": "The requested order could not be located or you don't have access to it.",
-    "error": "Failed to load order details"
+    "error": "Failed to load order details",
+    "cancelOrder": "Cancel Order",
+    "cancelling": "Cancelling...",
+    "cancelSuccess": "Order cancelled successfully",
+    "cancelFailed": "Failed to cancel order",
+    "item": "Item"
+  },
+  "admin": {
+    "actions": {
+      "add": "Add",
+      "cancel": "Cancel",
+      "close": "Close",
+      "delete": "Delete",
+      "done": "Done",
+      "link": "Link",
+      "reactivate": "Reactivate Account",
+      "save": "Save",
+      "suspend": "Suspend Account"
+    },
+    "attributes": {
+      "title": "Product Attributes",
+      "subtitle": "Define variant attributes like Color, Size, Storage, and Specs linked to catalog categories.",
+      "new": "New Attribute",
+      "createTitle": "Create & Link Attribute",
+      "createSubtitle": "Link this attribute to a specific category in your catalog.",
+      "allCategories": "All Catalog Categories",
+      "globalUnassigned": "Global / Unassigned",
+      "categoryOption": "Category: {name}",
+      "optionValues": "Option Values ({count})",
+      "valuePlaceholder": "e.g. XL, 256GB...",
+      "addValue": "Add Option Value",
+      "meta": "Code: {code} • Type: {type}",
+      "confirmDelete": "Delete attribute?",
+      "form": {
+        "name": "Attribute Name *",
+        "namePlaceholder": "e.g. Screen Size, Color, Storage",
+        "category": "Catalog Category *",
+        "selectCategory": "-- Select Catalog Category --",
+        "valueType": "Value Type",
+        "typeText": "Text (e.g. Colors, Sizes)",
+        "typeNumber": "Number (e.g. Weight, Capacity)",
+        "typeBoolean": "Boolean (True / False)",
+        "submit": "Create & Link"
+      },
+      "toast": {
+        "loadFailed": "Failed to load attributes or categories from server",
+        "created": "Attribute created and linked to catalog category!",
+        "createFailed": "Failed to create attribute",
+        "deleted": "Attribute deleted",
+        "deleteFailed": "Failed to delete attribute",
+        "valueAdded": "Option value added!"
+      }
+    },
+    "brands": {
+      "title": "Brand Partners",
+      "subtitle": "Manage brand profiles, logos, and manufacturer links.",
+      "add": "Add Brand",
+      "createTitle": "Create Brand",
+      "editTitle": "Edit Brand",
+      "searchPlaceholder": "Search brands...",
+      "associatedProducts": "{count} Associated Products",
+      "visitWebsite": "Visit Website",
+      "confirmDelete": "Delete brand?",
+      "form": {
+        "name": "Brand Name *",
+        "website": "Website URL"
+      },
+      "toast": {
+        "loadFailed": "Failed to load brands from server",
+        "created": "Brand created!",
+        "updated": "Brand updated!",
+        "deleted": "Brand deleted",
+        "deleteFailed": "Failed to delete brand",
+        "saveFailed": "Failed to save brand"
+      }
+    },
+    "categories": {
+      "title": "Categories",
+      "subtitle": "Organize products into hierarchical categories and subcategories.",
+      "add": "Add Category",
+      "addTitle": "Add New Category",
+      "editTitle": "Edit Category",
+      "searchPlaceholder": "Search categories...",
+      "items": "{count} items",
+      "manageAttributes": "Manage Category Attributes",
+      "attributes": "Attributes",
+      "confirmDelete": "Categories with attached products cannot be deleted directly.",
+      "colName": "Category Name",
+      "colSlug": "Slug",
+      "colParent": "Parent Category",
+      "colProducts": "Products Count",
+      "colStatus": "Status",
+      "colActions": "Actions",
+      "form": {
+        "name": "Category Name *",
+        "parent": "Parent Category",
+        "root": "None (Root Level)"
+      },
+      "attrs": {
+        "title": "Linked Attributes",
+        "subtitle": "{name} category specifications",
+        "current": "Currently Linked Attributes",
+        "empty": "No attributes linked to this category yet. Type an attribute name above to create and link one.",
+        "linkLabel": "Link New Attribute to this Category",
+        "linkPlaceholder": "Attribute name (e.g. Screen Size, Material)",
+        "linking": "Linking...",
+        "unlink": "Unlink Attribute",
+        "confirmUnlink": "Unlink and delete attribute \"{name}\"?"
+      },
+      "toast": {
+        "loadFailed": "Failed to load categories from server",
+        "added": "New category added!",
+        "updated": "Category updated!",
+        "deleted": "Category deleted",
+        "deleteFailed": "Failed to delete category",
+        "saveFailed": "Failed to save category",
+        "attributeLinked": "Attribute \"{name}\" linked to {category}!",
+        "linkFailed": "Failed to link attribute to category",
+        "unlinked": "Attribute unlinked",
+        "unlinkFailed": "Failed to unlink attribute"
+      }
+    },
+    "customers": {
+      "title": "User & Staff Management",
+      "subtitle": "Superadmin directory: inspect accounts, assign administrative roles, manage suspensions, and invalidate credentials.",
+      "searchPlaceholder": "Search by email, name, or UUID...",
+      "allRoles": "All Roles",
+      "allStatuses": "All Statuses",
+      "activeOnly": "Active Only",
+      "suspendedOnly": "Suspended Only",
+      "unnamed": "Unnamed User",
+      "you": "You",
+      "inspect": "Inspect User Details",
+      "changeRole": "Change Role",
+      "revokeSessions": "Revoke Sessions",
+      "deleteUser": "Delete User",
+      "confirmDelete": "Delete user {email}? This cannot be undone.",
+      "emptyTitle": "No accounts found",
+      "emptySub": "Try adjusting your filters or search terms.",
+      "showing": "Showing <b>{shown}</b> of <b>{total}</b> accounts",
+      "prevPage": "Previous Page",
+      "nextPage": "Next Page",
+      "page": "Page {page} of {pages}",
+      "colIdentity": "User Identity",
+      "colRole": "Permission Role",
+      "colJoined": "Joined Date",
+      "colVerification": "Email Verification",
+      "colStatus": "Status",
+      "colActions": "Actions",
+      "toast": {
+        "loadFailed": "Failed to load user records",
+        "deleted": "User deleted",
+        "roleUpdated": "User role updated successfully",
+        "roleFailed": "Failed to update role",
+        "reactivated": "User account reactivated",
+        "suspended": "User account suspended",
+        "statusFailed": "Failed to update account status",
+        "sessionsRevoked": "All active user sessions revoked successfully",
+        "sessionsFailed": "Failed to revoke sessions"
+      },
+      "totalAccounts": "{count} Total Accounts",
+      "refreshTitle": "Refresh User Directory",
+      "refresh": "Refresh",
+      "roles": {
+        "all": "All",
+        "customer": "Customer",
+        "vendor": "Vendor",
+        "admin": "Admin",
+        "superadmin": "Superadmin"
+      }
+    },
+    "dashboard": {
+      "title": "Command Center",
+      "subtitle": "Platform performance, revenue metrics, order velocity, and key operational signals.",
+      "timeframe": "Last 30 Days",
+      "revenue": "Total Revenue",
+      "orders": "Orders",
+      "customers": "Active Customers",
+      "aov": "Average Order Value",
+      "viewOrders": "View Orders",
+      "liveVelocity": "Live Order Velocity",
+      "recentOrders": "Recent Customer Orders",
+      "pipelineSubtitle": "Real-time dispatch and fulfillment pipeline status breakdown.",
+      "statusBreakdown": "Order Status Breakdown",
+      "pending": "Pending Confirmation",
+      "processing": "Processing / Packing",
+      "shipped": "Shipped / In Transit",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled / Refunded",
+      "quickActions": "Quick Actions",
+      "addProduct": "Add New Product",
+      "manageInventory": "Manage Inventory",
+      "viewTransactions": "View Transactions",
+      "toast": {
+        "loadFailed": "Failed to load dashboard statistics"
+      },
+      "totalRevenue": "Total Revenue",
+      "totalRevenueSub": "Real-time settled revenue",
+      "totalOrders": "Total Orders",
+      "pendingProcessing": "{count} pending processing",
+      "catalogProducts": "Catalog Products",
+      "activeInCatalog": "Active in catalog",
+      "activeCustomers": "Active Customers",
+      "registeredAccounts": "Registered customer accounts",
+      "revenueTrends": "Revenue & Sales Trends",
+      "revenueTrendsSub": "Historical order volume and daily store settlement.",
+      "revenueEgp": "Revenue (EGP)",
+      "orderCount": "Order Count",
+      "grossRevenue": "Gross Revenue",
+      "recentOrdersSub": "Latest purchases requiring processing and fulfillment.",
+      "viewAllOrders": "View All Orders",
+      "orderId": "Order ID",
+      "customer": "Customer",
+      "status": "Status",
+      "total": "Total",
+      "action": "Action",
+      "viewOrderDetails": "View Order Details",
+      "stockAlerts": "Stock Alerts",
+      "stockAlertsSub": "Products reaching critical inventory threshold.",
+      "inventory": "Inventory",
+      "inventoryHealthy": "All catalog inventory levels healthy. Check Inventory tab for audit ledgers.",
+      "manageStockAdjustments": "Manage Stock Adjustments"
+    },
+    "inventory": {
+      "title": "Inventory & Stock Control",
+      "subtitle": "Monitor real-time warehouse stock levels, perform manual adjustments, and track stock audit logs.",
+      "searchPlaceholder": "Search inventory by product or SKU...",
+      "currentStockLevels": "Current Stock Levels",
+      "catalogItems": "{count} catalog items",
+      "globalAuditLog": "Global Stock Audit Log",
+      "viewAudit": "View Audit Trail",
+      "units": "{count} units",
+      "stockChange": "Stock Change (+/-)",
+      "reason": "Reason: {type}",
+      "reasonLabel": "Reason for Adjustment",
+      "reasonRestock": "Warehouse Restock",
+      "reasonAdjustment": "Inventory Audit Sync / Adjustment",
+      "reasonReturn": "Customer Return",
+      "reasonSale": "Manual Sale Offset",
+      "applyAdjustment": "Apply Adjustment",
+      "colProduct": "Product",
+      "colSku": "SKU",
+      "colStockOnHand": "Stock On Hand",
+      "colStatus": "Status",
+      "colActions": "Actions",
+      "audit": "Audit",
+      "auditTitle": "Product Audit Trail",
+      "loadingAudit": "Loading audit records...",
+      "auditEmpty": "No inventory ledger events recorded for this product yet.",
+      "recordedBy": "Recorded by: {user}",
+      "by": "By: {user}",
+      "toast": {
+        "loadFailed": "Failed to load inventory data from server",
+        "adjusted": "Inventory adjusted for {name}",
+        "adjustFailed": "Failed to adjust inventory",
+        "noId": "No variant or product ID available for adjustment",
+        "auditFailed": "Failed to load product audit trail"
+      },
+      "adjust": "Adjust",
+      "adjustTitle": "Adjust Stock: {name}",
+      "currentStockLabel": "Current Stock:"
+    },
+    "media": {
+      "title": "Media Library",
+      "subtitle": "Upload and manage product catalog images and banners.",
+      "upload": "Upload New File",
+      "uploading": "Uploading...",
+      "searchPlaceholder": "Search media files...",
+      "uploaded": "Uploaded:",
+      "size": "Size:",
+      "dimensions": "Dimensions:",
+      "preview": "Preview",
+      "copyLink": "Copy Link",
+      "confirmDelete": "Delete this media asset?",
+      "toast": {
+        "loadFailed": "Failed to load media assets from server",
+        "uploaded": "File uploaded to media library!",
+        "uploadFailed": "Failed to upload file",
+        "copied": "Media URL copied to clipboard!",
+        "deleted": "Media file deleted",
+        "deleteFailed": "Failed to delete media"
+      }
+    },
+    "orderDetails": {
+      "back": "Back to All Orders",
+      "title": "Order Details",
+      "loading": "Loading order details...",
+      "notFound": "Order not found.",
+      "placedOn": "Placed on {date}",
+      "customer": "Customer",
+      "statusLabel": "Status:",
+      "paymentDetails": "Payment Details",
+      "method": "Method:",
+      "totalPaid": "Total Paid",
+      "couponApplied": "Coupon Applied:",
+      "shippingAddress": "Shipping Address",
+      "shipmentTracking": "Shipment Tracking",
+      "trackingPlaceholder": "Enter FedEx / UPS tracking number...",
+      "saveTracking": "Save Tracking",
+      "lineItems": "Line Items ({count})",
+      "qty": "Qty: {count}",
+      "timeline": "Fulfillment History & Timeline",
+      "addNote": "Add Note",
+      "notePlaceholder": "Add internal staff note...",
+      "toast": {
+        "loadFailed": "Failed to load order from server",
+        "statusUpdated": "Fulfillment status updated to {status}",
+        "statusFailed": "Failed to update status",
+        "trackingSaved": "Tracking information saved!",
+        "trackingFailed": "Failed to save tracking number",
+        "enterTracking": "Please enter a tracking number",
+        "noteAdded": "Note added to timeline!",
+        "noteFailed": "Failed to add timeline note"
+      }
+    },
+    "orders": {
+      "title": "Customer Orders",
+      "subtitle": "Track customer purchases, manage fulfillment statuses, and process order updates.",
+      "searchPlaceholder": "Search by order ID or customer name...",
+      "manage": "Manage Order",
+      "colOrderId": "Order ID",
+      "colCustomer": "Customer",
+      "colDate": "Date & Time",
+      "colTotal": "Total",
+      "colPayment": "Payment",
+      "colFulfillment": "Fulfillment Status",
+      "colAction": "Action",
+      "toast": {
+        "loadFailed": "Failed to load orders from server",
+        "statusUpdated": "Order status updated to {status}",
+        "statusUpdateFailed": "Failed to update order status"
+      }
+    },
+    "payments": {
+      "title": "Payment Transactions",
+      "subtitle": "View credit card and payment gateway settlement logs, processor fees, and process refunds.",
+      "searchPlaceholder": "Search payments by ID, order, or customer...",
+      "colTxn": "Transaction ID",
+      "colOrder": "Order Ref",
+      "colCustomer": "Customer",
+      "colMethod": "Payment Method",
+      "colGross": "Gross Amount",
+      "colFee": "Processor Fee",
+      "colStatus": "Status",
+      "colActions": "Actions",
+      "markPaid": "Mark Paid",
+      "issueRefund": "Issue Refund",
+      "confirmRefund": "Issue full refund for transaction {id}?",
+      "confirmMarkPaid": "Mark transaction {id} as captured/paid?",
+      "toast": {
+        "loadFailed": "Failed to load payments from server",
+        "refundIssued": "Refund issued for {customer}",
+        "refundFailed": "Failed to issue refund",
+        "markedPaid": "Payment marked as captured for {customer}",
+        "statusFailed": "Failed to update payment status"
+      }
+    },
+    "products": {
+      "title": "Products & Variants",
+      "subtitle": "Manage your store catalog, pricing, inventory stock, and product variants.",
+      "addNew": "Add New Product",
+      "searchPlaceholder": "Search by product name or SKU...",
+      "allCategories": "All Categories",
+      "empty": "No products found matching criteria.",
+      "createProduct": "Create New Product",
+      "editProduct": "Edit Product",
+      "deleteProduct": "Delete Product",
+      "confirmDelete": "Are you sure you want to delete this product?",
+      "units": "{count} units",
+      "brandLabel": "Brand: {name}",
+      "colProduct": "Product",
+      "colSku": "SKU",
+      "colCategory": "Category",
+      "colPrice": "Price",
+      "colStock": "Stock",
+      "colStatus": "Status",
+      "colActions": "Actions",
+      "viewAudit": "View Audit Trail",
+      "audit": {
+        "title": "Product Audit Trail",
+        "loading": "Loading audit records...",
+        "empty": "No inventory ledger events recorded for this product yet.",
+        "currentStock": "Current On-Hand Stock",
+        "totalBalance": "Total Ledger Balance:"
+      },
+      "form": {
+        "title": "Product Title *",
+        "titlePlaceholder": "e.g. Wireless Noise-Canceling Headphones",
+        "sku": "SKU Code",
+        "price": "Price (EGP) *",
+        "comparePrice": "Compare Price (EGP)",
+        "category": "Category",
+        "imageUrl": "Image URL",
+        "stockQty": "Stock Qty *",
+        "auditReason": "Stock Ledger Audit Reason",
+        "reasonRestock": "Restock (Received Inventory)",
+        "reasonAdjustment": "Manual Adjustment (Correction / Audit)",
+        "reasonReturn": "Customer Return",
+        "reasonSale": "Sale Deduction",
+        "auditNote": "Changes to stock quantity will automatically append a new record to the product's inventory audit ledger.",
+        "saveProduct": "Save Product"
+      },
+      "toast": {
+        "loadFailed": "Failed to load catalog products",
+        "created": "New product created and added to catalog!",
+        "updated": "Product updated successfully!",
+        "updatedLedger": "Product updated & ledger recorded ({change} units)",
+        "deleted": "Product removed from catalog",
+        "requiredFields": "Please fill in required fields",
+        "updatePartialFailed": "Product update partially failed",
+        "auditFailed": "Failed to load audit history for product"
+      }
+    },
+    "promotions": {
+      "title": "Promotions & Discount Codes",
+      "subtitle": "Create checkout coupons, percentage discounts, free shipping rules, and seasonal campaigns.",
+      "create": "Create Coupon Code",
+      "expires": "Expires: {date}",
+      "redeemed": "{used} / {limit} redeemed",
+      "valid": "Valid: {date}",
+      "usageProgress": "Usage Progress:",
+      "typeLabel": "Type: {type}",
+      "confirmDelete": "Delete promo code?",
+      "form": {
+        "code": "Promo Code *",
+        "codePlaceholder": "e.g. SUMMER25",
+        "discountType": "Discount Type",
+        "typePercentage": "Percentage OFF",
+        "typeFixed": "Fixed EGP OFF",
+        "typeFreeShipping": "Free Shipping",
+        "valueLabel": "Value Label",
+        "valuePlaceholder": "e.g. 25% OFF",
+        "usageLimit": "Usage Limit (Max Uses)",
+        "submit": "Create Code"
+      },
+      "toast": {
+        "loadFailed": "Failed to load promotions from server",
+        "created": "Coupon code {code} created!",
+        "createFailed": "Failed to create coupon code",
+        "statusUpdated": "Promotion status updated!",
+        "statusFailed": "Failed to update status",
+        "deleted": "Promotion deleted",
+        "deleteFailed": "Failed to delete promotion"
+      }
+    },
+    "settings": {
+      "title": "Store Configuration",
+      "subtitle": "Global store metadata, currency preferences, tax calculations, and API security keys.",
+      "storeProfile": "Store Profile",
+      "storeName": "Store Name",
+      "supportEmail": "Customer Support Email",
+      "currency": "Base Currency",
+      "timezone": "Timezone",
+      "shippingTax": "Shipping & Tax Rates",
+      "flatShipping": "Flat Shipping Rate (EGP)",
+      "freeShippingMin": "Free Shipping Minimum (EGP)",
+      "taxRate": "Standard Tax Rate (%)",
+      "apiKeys": "API Keys & Webhooks",
+      "apiKey": "Live Public API Key",
+      "webhookSecret": "Stripe Webhook Signing Secret",
+      "saveChanges": "Save Changes",
+      "saving": "Saving…",
+      "toast": {
+        "saved": "Store configuration saved successfully!",
+        "saveFailed": "Failed to save settings"
+      }
+    },
+    "layout": {
+      "toggleNav": "Toggle Navigation",
+      "brandTitle": "Admin",
+      "brandSubtitle": "Console",
+      "theme": "Theme",
+      "language": "Language",
+      "customerAccountHub": "Customer Account Hub",
+      "storeConfiguration": "Store Configuration",
+      "userManagement": "User Management",
+      "signOut": "Sign Out",
+      "management": "Management",
+      "systemHealth": "System Health: 100%",
+      "nav": {
+        "dashboard": "Dashboard",
+        "orders": "Orders",
+        "products": "Products",
+        "categories": "Categories",
+        "attributes": "Attributes",
+        "brands": "Brands",
+        "inventory": "Inventory",
+        "promotions": "Promotions",
+        "customers": "Customers",
+        "payments": "Payments",
+        "media": "Media Library",
+        "settings": "Settings",
+        "mediaLibrary": "Media Library",
+        "usersStaff": "Users & Staff"
+      },
+      "badges": {
+        "lowStock": "Low Stock",
+        "newOrders": "4 New"
+      }
+    },
+    "roles": {
+      "superadmin": "Superadmin",
+      "administrator": "Administrator",
+      "admin": "Admin",
+      "support": "Support",
+      "vendor": "Vendor",
+      "customer": "Customer"
+    },
+    "status": {
+      "all": "All Statuses",
+      "verified": "Verified",
+      "unverified": "Unverified",
+      "pending": "Pending",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "deliveredFinal": "Delivered (Final)",
+      "cancelled": "Cancelled",
+      "cancelledFinal": "Cancelled (Final)",
+      "inStock": "In Stock",
+      "lowStock": "Low Stock",
+      "active": "Active",
+      "inactive": "Inactive",
+      "suspended": "Suspended",
+      "disabled": "Disabled",
+      "succeeded": "Succeeded",
+      "outOfStock": "Out of Stock",
+      "out of stock": "Out of Stock"
+    },
+    "modals": {
+      "processing": "Processing...",
+      "updating": "Updating...",
+      "revoking": "Revoking...",
+      "drawer": {
+        "close": "Close Inspector",
+        "copyId": "Copy ID",
+        "identification": "Identification",
+        "databaseUuid": "Database UUID",
+        "unnamed": "Unnamed Customer",
+        "emailVerification": "Email Verification",
+        "verifiedEmail": "Verified Email",
+        "accessRole": "Access Role",
+        "adminActions": "Administrative Actions",
+        "changeRole": "Change Permission Role",
+        "forceLogout": "Force Log Out (Revoke Sessions)",
+        "higherPrivNote": "This account possesses equal or higher administrative privileges ({role}). Actions cannot be applied to this account.",
+        "selfNote": "This is your account. Administrative role, suspension, and forced session actions cannot be applied to yourself.",
+        "securityTimestamps": "Security & Timestamps",
+        "registered": "Registered",
+        "lastModified": "Last Modified",
+        "lockExpires": "Security Lock Expires",
+        "suspensionExpires": "Suspension Expires",
+        "accountState": "Account State",
+        "toast": {
+          "copied": "User ID copied to clipboard"
+        }
+      },
+      "changeRole": {
+        "title": "Change User Role",
+        "subtitle": "Manage administrative authorization tier",
+        "current": "Current: {role}",
+        "currentLabel": "(current)",
+        "selectTier": "Select New Permission Tier",
+        "escalationTitle": "Privilege Escalation Notice:",
+        "escalationBody": "Assigning administrative clearance allows this user to view or manage sensitive marketplace records.",
+        "confirm": "Confirm Role Change",
+        "roleOptions": {
+          "customer": {
+            "label": "Customer",
+            "desc": "Standard buyer account. Can browse storefront, place orders, and manage personal addresses."
+          },
+          "vendor": {
+            "label": "Vendor Merchant",
+            "desc": "Merchant account. Can access Vendor Portal to manage catalog listings, stock, and view order fulfillment."
+          },
+          "support": {
+            "label": "Customer Support",
+            "desc": "Support staff. Can view customer orders, inspect buyer issues, and assist customers."
+          },
+          "admin": {
+            "label": "Store Administrator",
+            "desc": "Operational staff. Can manage products, categories, global orders, promotions, and customer data."
+          }
+        }
+      },
+      "suspend": {
+        "suspendTitle": "Suspend User Account",
+        "suspendSubtitle": "Temporarily or indefinitely restrict access",
+        "reactivateTitle": "Reactivate User Account",
+        "reactivateSubtitle": "Restore marketplace access",
+        "reason": "Administrative Reason (Optional)",
+        "reasonPlaceholder": "e.g. Terms violation, chargeback dispute, suspicious fraud score...",
+        "duration": "Suspension Duration",
+        "duration24h": "24 Hours",
+        "duration7d": "7 Days",
+        "duration30d": "30 Days",
+        "durationIndefinite": "Indefinite",
+        "warning": "Suspending this user will prevent them from logging in or placing new orders. Active sessions will also be invalidated.",
+        "confirmSuspend": "Suspend Account",
+        "confirmReactivate": "Confirm Reactivation",
+        "reactivateBody": "Reactivating this account will restore immediate sign-in capabilities, checkout access, and active order notifications."
+      },
+      "revoke": {
+        "title": "Force Revoke All Sessions",
+        "subtitle": "Terminate active credentials across all devices",
+        "user": "User",
+        "uuid": "UUID: {id}",
+        "body": "This action will immediately delete all session tokens in Redis for this account. The user will be instantly logged out of all active web and mobile browsers on their next interaction.",
+        "confirm": "Confirm Session Revocation"
+      }
+    }
+  },
+  "vendor": {
+    "layout": {
+      "vendorHub": "Vendor Hub",
+      "merchant": "Merchant",
+      "store": "Store:",
+      "routeManager": "Route Manager",
+      "storefront": "Storefront",
+      "activeAccount": "Active Vendor Account",
+      "commissionRate": "Commission Rate:",
+      "availableBalance": "Available Balance:",
+      "support": {
+        "title": "Need Vendor Support?",
+        "description": "Reach out to our Marketplace Merchant Operations team for payout or catalog queries."
+      },
+      "nav": {
+        "dashboard": "Vendor Dashboard",
+        "products": "My Products",
+        "inventory": "Inventory",
+        "orders": "Orders",
+        "payouts": "Payouts & Earnings"
+      }
+    },
+    "dashboard": {
+      "title": "Vendor Performance Dashboard",
+      "subtitle": "Track real-time sales revenue, commission deductions, inventory levels, and payout status.",
+      "grossSales": "Gross Sales",
+      "netEarnings": "Net Vendor Earnings",
+      "commissionNote": "After {rate}% marketplace commission",
+      "totalUnitsSold": "Total Units Sold",
+      "acrossCatalog": "Across active catalog",
+      "pendingFulfillment": "Pending Fulfillment",
+      "ordersCount": "{count, plural, =0 {No orders} =1 {1 order} other {# orders}}",
+      "requiresShipping": "Requires shipping action",
+      "growth": "+18.4% vs last month",
+      "chartTitle": "Sales Revenue & Payout Trends",
+      "chartSubtitle": "Monthly gross revenue vs net vendor payout",
+      "lastSixMonths": "Last 6 Months",
+      "chartGross": "Gross Sales",
+      "chartNet": "Net Earnings",
+      "topProducts": "Top Vendor Products",
+      "skuStock": "SKU: {sku} • Stock: {stock}",
+      "soldCount": "{count, plural, =1 {1 sold} other {# sold}}",
+      "recentOrders": "Recent Vendor Orders"
+    },
+    "products": {
+      "title": "My Products",
+      "subtitle": "Manage your store items, pricing, inventory stock, and product status.",
+      "searchPlaceholder": "Search my products by name or SKU...",
+      "totalSales": "{count} total sales",
+      "cost": "Cost: EGP {amount}",
+      "units": "{count} units",
+      "editTitle": "Edit Product",
+      "addTitle": "Add Vendor Product",
+      "confirmDelete": "Are you sure you want to delete this vendor product?",
+      "table": {
+        "details": "Product Details",
+        "sku": "SKU",
+        "category": "Category",
+        "priceCost": "Price / Cost",
+        "stock": "Stock",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "form": {
+        "title": "Product Title *",
+        "titlePlaceholder": "e.g. Pro Studio Headphones",
+        "skuCode": "SKU Code",
+        "category": "Category",
+        "sellingPrice": "Selling Price (EGP)",
+        "unitCost": "Unit Cost (EGP)",
+        "initialStock": "Initial Stock",
+        "imageUrl": "Image URL"
+      },
+      "categories": {
+        "audio": "Audio",
+        "electronics": "Electronics",
+        "accessories": "Accessories",
+        "keyboards": "Keyboards"
+      }
+    },
+    "orders": {
+      "title": "Vendor Orders & Fulfillment",
+      "subtitle": "Orders placed on the marketplace containing products from {store}.",
+      "searchPlaceholder": "Search by Order ID, customer, or product...",
+      "statusLabel": "Status:",
+      "storeFallback": "your store",
+      "qtyPrice": "Qty: {qty} @ EGP {price}",
+      "commission": "Commission: -EGP {amount}",
+      "table": {
+        "orderRef": "Order Ref",
+        "date": "Date",
+        "customer": "Customer",
+        "item": "Ordered Item",
+        "grossRevenue": "Gross Revenue",
+        "netEarnings": "Net Vendor Earnings",
+        "fulfillmentStatus": "Fulfillment Status",
+        "actions": "Actions"
+      }
+    },
+    "inventory": {
+      "title": "Vendor Inventory Stock",
+      "subtitle": "Real-time stock level monitoring, fast manual adjustments, and low stock warnings.",
+      "lowStockWarning": "{count, plural, =1 {1 item low in stock} other {# items low in stock}}",
+      "searchPlaceholder": "Search SKU or item name...",
+      "reorderPointValue": "{count, plural, =1 {1 unit} other {# units}}",
+      "decrease": "Decrease 1",
+      "increase": "Increase 1",
+      "table": {
+        "productName": "Product Name",
+        "sku": "SKU",
+        "reorderPoint": "Reorder Point",
+        "currentStock": "Current Stock",
+        "status": "Status",
+        "adjustment": "Quick Stock Adjustment"
+      }
+    },
+    "payouts": {
+      "title": "Vendor Earnings & Payouts",
+      "subtitle": "Track cleared marketplace funds, bank deposit routing, and withdraw earnings.",
+      "availableBalance": "Available Balance",
+      "availableBalanceNote": "Cleared & ready for direct deposit transfer",
+      "pendingClearance": "Pending Clearance",
+      "pendingClearanceNote": "Funds held during customer return window (7 days)",
+      "lifetimePaidOut": "Total Lifetime Paid Out",
+      "lifetimePaidOutNote": "Cumulative bank settlements since joining",
+      "accountEnding": "Account ending in •••• 8812",
+      "verifiedAccount": "Verified Account",
+      "schedule": "Payout Schedule:",
+      "scheduleValue": "Weekly (Every Monday)",
+      "commissionFee": "Marketplace Commission Fee:",
+      "historyTitle": "Payout Transaction History",
+      "historySubtitle": "Historical bank deposits and electronic fund transfers",
+      "modalTitle": "Request Vendor Withdrawal",
+      "withdrawalAmount": "Withdrawal Amount (EGP)",
+      "maximumWithdrawable": "Maximum withdrawable:",
+      "destinationAccount": "Destination Account",
+      "destinationAccountValue": "Chase Business Checking (ending in 8812)",
+      "estimatedArrival": "Estimated Arrival: 1-2 business days",
+      "table": {
+        "payoutId": "Payout ID",
+        "amount": "Amount",
+        "method": "Payment Method",
+        "requestedDate": "Requested Date",
+        "settlementDate": "Settlement Date",
+        "reference": "Reference TRX",
+        "status": "Status"
+      }
+    },
+    "status": {
+      "all": "All",
+      "active": "Active",
+      "lowStock": "Low Stock",
+      "outOfStock": "Out of Stock",
+      "processing": "Processing",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "pending": "Pending",
+      "paid": "Paid",
+      "completed": "Completed"
+    },
+    "actions": {
+      "addNewProduct": "Add New Product",
+      "manageProducts": "Manage My Products",
+      "viewAll": "View All",
+      "viewOrders": "View Orders",
+      "requestPayout": "Request Payout",
+      "showAllItems": "Show All Items",
+      "filterLowStock": "Filter Low Stock Only",
+      "cancel": "Cancel",
+      "saveChanges": "Save Changes",
+      "createProduct": "Create Product",
+      "confirmTransfer": "Confirm Transfer"
+    },
+    "toasts": {
+      "productUpdated": "Product updated successfully!",
+      "productAdded": "New product added to catalog!",
+      "productRemoved": "Product removed from catalog.",
+      "inventoryUpdated": "Inventory stock updated!",
+      "orderStatusUpdated": "Order status updated to {status}",
+      "invalidPayoutAmount": "Please enter a valid amount within your available balance.",
+      "payoutSubmitted": "Payout request of EGP {amount} submitted successfully!"
+    }
+  },
+  "checkout": {
+    "steps": {
+      "address": "Delivery Address",
+      "addressShort": "Address",
+      "shipping": "Delivery Speed",
+      "shippingShort": "Shipping",
+      "payment": "Payment & Confirm",
+      "paymentShort": "Payment",
+      "progressAria": "Checkout Progress"
+    },
+    "address": {
+      "heading": "1. Delivery Address",
+      "subtitle": "Select your saved destination or add a new address.",
+      "newAddress": "New Delivery Address",
+      "recipientName": "Recipient Full Name *",
+      "recipientPlaceholder": "e.g. Mohamed Mahmoud",
+      "street": "Street Address / Apartment *",
+      "streetPlaceholder": "Street name, building number, suite/apt",
+      "apartment": "Apartment, Suite, Unit (Optional)",
+      "apartmentPlaceholder": "Apt 4B, 3rd floor",
+      "state": "State / Province",
+      "phone": "Phone Number",
+      "phonePlaceholder": "+20 100 123 4567",
+      "addAnother": "Add Another Address",
+      "addAnotherDesc": "Deliver to a different location",
+      "noneTitle": "No Saved Addresses Found",
+      "noneDesc": "You don't have any shipping addresses saved to your account yet. Please add a delivery address to complete your order.",
+      "addShipping": "Add Shipping Address",
+      "fallbackLabel": "Delivery Address",
+      "save": "Save and Select Address",
+      "saving": "Saving..."
+    },
+    "delivery": {
+      "heading": "2. Delivery Speed",
+      "subtitle": "Select your preferred courier fulfillment schedule.",
+      "standard": "Standard Delivery",
+      "standardTime": "3 to 5 business days",
+      "standardDesc": "Standard ground delivery via regular postal service. Free for orders over EGP 150.",
+      "express": "Express Priority",
+      "expressTime": "1 to 2 business days",
+      "expressDesc": "Guaranteed air express courier with real-time GPS tracking and signature on delivery.",
+      "selected": "Selected method",
+      "instructions": "Delivery Instructions (Optional)",
+      "instructionsPlaceholder": "e.g. Leave package at front door, gate code #4492",
+      "expressRecap": "Express Priority (1-2 days) • EGP 15.00",
+      "standardRecap": "Standard Delivery (3-5 days) • {price}"
+    },
+    "payment": {
+      "heading": "3. Payment Method",
+      "security": "All transactions are encrypted with 256-bit bank-grade security.",
+      "savedCard": "Saved Card",
+      "creditCard": "Credit Card",
+      "digital": "Digital Pay",
+      "cod": "Cash On Delivery",
+      "nameOnCard": "Name on Card *",
+      "namePlaceholder": "Mohamed Mahmoud",
+      "cardNumber": "Card Number *",
+      "cardNumberPlaceholder": "4242 •••• •••• 4242",
+      "expiry": "Expiration Date *",
+      "expiryPlaceholder": "MM/YY",
+      "cvc": "Security Code (CVC) *",
+      "cvcPlaceholder": "123",
+      "cardEnding": "{type} ending in {last4}",
+      "expires": "Expires {expiry} • {name}",
+      "digitalTitle": "Instant 1-Click Digital Payment",
+      "digitalDesc": "Authenticate with Touch ID, Face ID, or your biometric wallet when you confirm the order below.",
+      "codTitle": "Cash on Delivery",
+      "codDesc": "Pay with cash directly to the courier upon delivery. Please ensure exact change is available at your address."
+    },
+    "summary": {
+      "product": "Product",
+      "itemCount": "{count, plural, =1 {# item} other {# items}}",
+      "qty": "Qty: {count}",
+      "promoPlaceholder": "Promo code",
+      "removePromo": "Remove promo code",
+      "discount": "Discount ({code})",
+      "percentOff": "{percent}% OFF",
+      "fixedOff": "EGP {amount} OFF",
+      "applied": "Applied",
+      "shipping": "Shipping ({speed})",
+      "express": "Express",
+      "standard": "Standard",
+      "taxes": "Estimated Taxes",
+      "total": "Total to Pay",
+      "secure": "Guaranteed Safe & Encrypted Checkout",
+      "shipTo": "Ship To"
+    },
+    "success": {
+      "badge": "Order Placed Successfully",
+      "title": "Thank You for Your Order!",
+      "desc": "We've received your order and are preparing it for shipment. A confirmation receipt has been sent to your email.",
+      "orderNumber": "Order Number:",
+      "trackingNumber": "Tracking Number:",
+      "totalPaid": "Total Paid:",
+      "destination": "Delivery Destination:",
+      "trackOrders": "Track in My Orders",
+      "continueShopping": "Continue Shopping",
+      "today": "Today"
+    },
+    "empty": {
+      "description": "You need to add items to your cart before proceeding to checkout.",
+      "discover": "Discover Products"
+    },
+    "validation": {
+      "fillRequired": "Please fill in recipient name, street line, city, and country",
+      "enterCoupon": "Please enter a coupon code",
+      "couponApplied": "Coupon {code} applied!",
+      "couponFailed": "Failed to apply coupon",
+      "invalidCoupon": "Invalid coupon code",
+      "couponRemoved": "Coupon removed",
+      "addAddress": "Please add a delivery address to proceed",
+      "selectAddress": "Please select a delivery address",
+      "cardName": "Please enter the name on your card",
+      "cardNumber": "Please enter a valid card number",
+      "cardExpiry": "Please enter card expiration date",
+      "cardCvc": "Please enter card security code (CVC)",
+      "cardDetails": "Please enter your card details",
+      "orderConfirmed": "Order confirmed successfully!",
+      "orderFailed": "Failed to place order"
+    },
+    "actions": {
+      "change": "Change",
+      "returnToCart": "Return to Cart",
+      "continueToDelivery": "Continue to Delivery Speed",
+      "backToAddress": "Back to Address",
+      "continueToPayment": "Continue to Payment",
+      "backToDelivery": "Back to Delivery",
+      "placeOrder": "Place Order • EGP {total}",
+      "placingOrder": "Placing Order...",
+      "processingOrder": "Processing Order..."
+    }
+  },
+  "portal": {
+    "names": {
+      "storefront": "Storefront",
+      "public": "Public Storefront",
+      "vendor": "Vendor Hub",
+      "admin": "Admin Control Panel",
+      "routeManager": "Route Manager"
+    },
+    "manager": {
+      "title": "PRIM Route Manager",
+      "subtitle": "Business Portal Switcher",
+      "statusBadge": "All 3 Environments Active",
+      "architectureBadge": "Multi-Portal Architecture",
+      "heading": "Select Your Destination",
+      "description": "The public customer storefront is segregated from internal operations. Choose which workspace environment you wish to launch:",
+      "includedFeatures": "Included Features:",
+      "launch": "Launch {portal}",
+      "returnNote": "You can return to this Route Manager anytime at {code}/portal{/code} or via the floating Portal Switcher."
+    },
+    "cards": {
+      "public": {
+        "subtitle": "Customer Shopping Experience",
+        "description": "Explore the live public marketplace, browse products, add to cart, and test the checkout workflow.",
+        "badge": "Customer Facing",
+        "features": {
+          "catalog": "Product catalog with filter & search",
+          "cart": "Cart drawer & real-time pricing",
+          "multilingual": "Multilingual (EN / AR) support",
+          "wishlist": "Wishlist & user account dashboard"
+        }
+      },
+      "vendor": {
+        "subtitle": "Merchant & Partner Portal",
+        "description": "Dedicated portal for independent seller shops to list items, monitor stock levels, view orders, and manage payouts.",
+        "badge": "Merchant Portal",
+        "features": {
+          "analytics": "Vendor analytics & sales revenue",
+          "submission": "Product submission & SKU management",
+          "inventory": "Stock inventory & low-stock alerts",
+          "payouts": "Payout requests & bank details"
+        }
+      },
+      "admin": {
+        "subtitle": "Enterprise Platform Operations",
+        "description": "Full store management console for platform administrators to manage products, categories, orders, customers, and site settings.",
+        "badge": "System Operations",
+        "features": {
+          "sales": "System-wide sales performance overview",
+          "catalog": "Catalog category & attribute builder",
+          "customers": "Customer management & order fulfillment",
+          "payments": "Payment gateway & promotion rules"
+        }
+      }
+    },
+    "switcher": {
+      "title": "Route Switcher",
+      "quickTitle": "Quick Route Switcher",
+      "adminActive": "Admin Console"
+    }
+  },
+  "products": {
+    "actions": {
+      "addToCart": "Add to Cart",
+      "adding": "Adding...",
+      "addToWishlist": "Add to Wishlist",
+      "savedToWishlist": "Saved to Wishlist",
+      "buyNow": "Buy Now",
+      "share": "Share",
+      "color": "Color:",
+      "selectColor": "Select color",
+      "inStock": "In Stock ({count} available)",
+      "outOfStock": "Out of Stock",
+      "reviewsCount": "{count} Reviews",
+      "description": "We've carefully designed the {productName} to be something you'll love using every single day. It's built to last, feels great to use, and fits right into your lifestyle without any fuss."
+    },
+    "specs": {
+      "description": "Description",
+      "fallbackIntro": "Enhance your lifestyle with the {productName}. Built with premium materials and cutting-edge technology, it delivers outstanding performance and reliability. Whether you're a professional or enthusiast, you'll appreciate the attention to detail and superior build quality.",
+      "fallbackFeature1": "High-quality materials for lasting durability",
+      "fallbackFeature2": "Ergonomic design for maximum comfort",
+      "fallbackFeature3": "Advanced features for enhanced productivity",
+      "fallbackFeature4": "Eco-friendly packaging and sustainable production",
+      "specifications": "Specifications",
+      "brand": "Brand",
+      "category": "Category",
+      "condition": "Condition",
+      "brandNew": "Brand New",
+      "warranty": "Warranty",
+      "warrantyValue": "1 Year Manufacturer",
+      "shippingReturns": "Shipping & Returns",
+      "shippingInfo": "Shipping Information",
+      "shippingInfoText": "We offer free standard shipping on all orders worldwide. Delivery typically takes 3-5 business days depending on your location. Expedited shipping is available at checkout for an additional fee.",
+      "returnPolicy": "Return Policy",
+      "returnPolicyText": "If you're not completely satisfied with your purchase, you can return it within 30 days for a full refund or exchange. The item must be in its original condition and packaging. Please contact our support team to initiate a return."
+    },
+    "gallery": {
+      "off": "{discount} OFF",
+      "selectImage": "Select product image {index}",
+      "thumbnailAlt": "{productName} thumbnail {index}"
+    },
+    "details": {
+      "loading": "Loading product details...",
+      "notFound": "Product Not Found",
+      "notFoundDescription": "The product you are looking for doesn't exist or has been removed.",
+      "browseAll": "Browse All Products",
+      "addedToCart": "Added {quantity}x {productName} to your cart!",
+      "addFailed": "Failed to add to cart",
+      "checkoutFailed": "Failed to initiate checkout",
+      "linkCopied": "Product link copied to clipboard!",
+      "shareUrl": "Share URL: {url}",
+      "similarProducts": "Similar Products",
+      "products": "Products",
+      "you": "You",
+      "customer": "Customer",
+      "customerReview": "Customer Review",
+      "recently": "Recently",
+      "reviewedOn": "Reviewed on {date}"
+    },
+    "sideBar": {
+      "toggle": "Toggle filters sidebar",
+      "brandFallback": "Brand"
+    },
+    "layout": {
+      "allProducts": "All Products",
+      "showingAll": "Showing all products",
+      "searchTitle": "Search: \"{query}\"",
+      "matching": "Matching products",
+      "showingIn": "Showing products in {category}"
+    }
+  },
+  "shop": {
+    "pages": {
+      "faqs": {
+        "title": "Frequently Asked Questions",
+        "trackOrder": {
+          "question": "How do I track my order?",
+          "answer": "Once your order has shipped, you will receive an email containing a tracking number and link to track your package in real-time."
+        },
+        "changeOrder": {
+          "question": "Can I change or cancel my order?",
+          "answer": "Orders are processed quickly to ensure fast delivery. If you need to make changes, please visit your account dashboard or contact customer support immediately."
+        },
+        "payment": {
+          "question": "What payment methods do you accept?",
+          "answer": "We accept major credit cards including Visa, MasterCard, American Express, as well as digital payment options."
+        }
+      },
+      "shipping": {
+        "title": "Shipping Information",
+        "intro": "We offer worldwide shipping with various delivery options to ensure you receive your order as quickly and safely as possible.",
+        "standardTitle": "Standard Shipping",
+        "standardDescription": "Standard shipping usually takes 5-7 business days within the contiguous United States. International shipping times may vary based on destination and customs processing.",
+        "expressTitle": "Express Shipping",
+        "expressDescription": "Need it faster? We offer express shipping options at checkout. Express orders are prioritized and typically arrive within 2-3 business days."
+      },
+      "returns": {
+        "title": "Returns & Exchanges",
+        "intro": "We want you to be completely satisfied with your purchase. If you are not happy with your order, we are here to help.",
+        "policyTitle": "Return Policy",
+        "policyDescription": "You have 30 calendar days to return an item from the date you received it. To be eligible for a return, your item must be unused and in the same condition that you received it. Your item must be in the original packaging.",
+        "refundsTitle": "Refunds",
+        "refundsDescription": "Once we receive your item, we will inspect it and notify you that we have received your returned item. We will immediately notify you on the status of your refund after inspecting the item. If your return is approved, we will initiate a refund to your credit card (or original method of payment)."
+      },
+      "contact": {
+        "title": "Contact Us",
+        "intro": "We are here to help with any questions, feedback, or support inquiries.",
+        "supportLabel": "Customer Support:",
+        "email": "Email: support@prim.shop",
+        "hours": "Hours: Monday – Saturday, 9:00 AM – 8:00 PM"
+      },
+      "press": {
+        "title": "Press & News",
+        "description": "Read about our latest product releases, company updates, and platform milestones.",
+        "inquiries": "For press inquiries and interview requests: press@prim.shop"
+      },
+      "careers": {
+        "title": "Careers at PRIM",
+        "description": "Join a fast-growing team redefining modern e-commerce. We are constantly searching for passionate designers, engineers, product builders, and merchant operators.",
+        "apply": "Interested in joining? Send your CV and portfolio to careers@prim.shop."
+      }
+    },
+    "categories": {
+      "title": "Categories",
+      "description": "Explore our diverse range of product categories."
+    }
+  },
+  "components": {
+    "cart": {
+      "closeCart": "Close cart"
+    },
+    "productsCard": {
+      "addedToCart": "Added \"{productName}\" to your cart!",
+      "addToCartFailed": "Failed to add to cart",
+      "added": "Added",
+      "remove": "Remove",
+      "adding": "Adding..."
+    },
+    "countrySelect": {
+      "selectCountry": "Select Country...",
+      "searchPlaceholder": "Search country...",
+      "noResults": "No countries found"
+    }
+  },
+  "meta": {
+    "home": {
+      "title": "PRIM - Premium Audio & Wearables",
+      "description": "E-Commerce store for audio gear, wearables, and accessories"
+    },
+    "portal": {
+      "title": "PRIM Route Manager | Multi-Portal Architecture",
+      "description": "Select workspace environment: Public Storefront, Vendor Hub, or Admin Control Panel"
+    },
+    "auth": {
+      "signIn": {
+        "title": "Sign In | PRIM",
+        "description": "Sign in to your PRIM account"
+      },
+      "verify": {
+        "title": "Verify Account | PRIM",
+        "description": "Verify your email to continue"
+      }
+    },
+    "shop": {
+      "wishlist": {
+        "title": "Your Wishlist | PRIM",
+        "description": "View and manage your saved items"
+      },
+      "products": {
+        "title": "Products Catalog | PRIM",
+        "description": "Browse our premium audio and gear catalog"
+      },
+      "cart": {
+        "title": "Your Shopping Cart | PRIM",
+        "description": "Review and checkout your cart items"
+      },
+      "about": {
+        "title": "About Us | PRIM",
+        "description": "Learn more about PRIM's values, mission, and team"
+      },
+      "checkout": {
+        "title": "Secure Checkout | PRIM",
+        "description": "Complete your order with secure delivery and payment options"
+      }
+    },
+    "dashboard": {
+      "user": {
+        "wishlist": {
+          "title": "Dashboard Wishlist | PRIM",
+          "description": "Your saved products"
+        },
+        "addresses": {
+          "title": "Delivery Addresses | PRIM",
+          "description": "Manage shipping and delivery addresses"
+        },
+        "orders": {
+          "title": "My Orders | PRIM",
+          "description": "View and track your previous orders"
+        },
+        "orderDetails": {
+          "title": "Order Details | PRIM",
+          "description": "View detailed invoice, shipping, and items for your order"
+        },
+        "reviews": {
+          "title": "Your Reviews | PRIM",
+          "description": "View and manage your product reviews"
+        },
+        "overview": {
+          "title": "Account Overview | PRIM",
+          "description": "User dashboard and account overview"
+        }
+      }
+    }
   }
 }

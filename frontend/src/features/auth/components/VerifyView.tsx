@@ -8,10 +8,12 @@ import { useCart } from "@/hooks/useCart";
 import { GuestCartPreview } from "./ui/GuestCartPreview";
 import { validateOtpCode } from "../utils/validation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 export function VerifyView() {
   const router = useRouter();
   const { verifyChallenge, resendChallenge } = useAuthContext();
+  const t = useTranslations("auth");
   const { cartItems } = useCart();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState<string>("");
@@ -52,7 +54,7 @@ export function VerifyView() {
         mergeCart,
       });
       if (res.success) {
-        toast.success("Welcome back!");
+        toast.success(t("verify.welcomeBack"));
         // Clear auth temp storage
         if (typeof window !== "undefined") {
           sessionStorage.removeItem("identifier");
@@ -63,10 +65,10 @@ export function VerifyView() {
         const destination = redirectParam ? decodeURIComponent(redirectParam) : "/";
         router.push(destination as any);
       } else {
-        toast.error(res.error || "Invalid verification code");
+        toast.error(res.error || t("verify.invalidCode"));
       }
     } catch {
-      toast.error("Failed to verify code. Please try again.");
+      toast.error(t("verify.verifyFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -74,18 +76,18 @@ export function VerifyView() {
 
   const handleResendOtp = async () => {
     if (!email) {
-      toast.error("No email specified. Please return to login.");
+      toast.error(t("verify.noEmail"));
       return;
     }
     try {
       const res = await resendChallenge({ email });
       if (res.success) {
-        toast.success("New verification code sent!");
+        toast.success(t("verify.codeResent"));
       } else {
-        toast.error(res.error || "Failed to resend code");
+        toast.error(res.error || t("verify.resendError"));
       }
     } catch {
-      toast.error("Failed to resend verification code");
+      toast.error(t("verify.resendFailed"));
     }
   };
 

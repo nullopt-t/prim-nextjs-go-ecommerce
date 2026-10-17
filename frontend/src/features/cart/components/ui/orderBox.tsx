@@ -89,7 +89,7 @@ export default function OrderBox({ orderDetails }: { orderDetails: CartItemData 
         {isOutOfStock && (
           <div className="absolute inset-0 bg-background/80 backdrop-blur-2xs flex items-center justify-center p-1 text-center">
             <span className="text-[9px] font-bold text-destructive leading-tight uppercase">
-              Out of stock
+              {t("outOfStock")}
             </span>
           </div>
         )}

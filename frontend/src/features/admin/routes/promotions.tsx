@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import { adminService } from "@/services/admin";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 export function AdminPromotions() {
+  const t = useTranslations("admin");
   const [promotions, setPromotions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,7 +29,7 @@ export function AdminPromotions() {
         endDate: p.expiresAt ? p.expiresAt.slice(0, 10) : "2026-12-31"
       })));
     } catch {
-      toast.error("Failed to load promotions from server");
+      toast.error(t("promotions.toast.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -50,10 +52,10 @@ export function AdminPromotions() {
     const nextStatus = currentStatus === "Active" ? "disabled" : "active";
     try {
       await adminService.updatePromotionStatus(id, nextStatus);
-      toast.success("Promotion status updated!");
+      toast.success(t("promotions.toast.statusUpdated"));
       loadPromos();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to update status");
+      toast.error(err?.response?.data?.message || t("promotions.toast.statusFailed"));
     }
   };
 
@@ -79,22 +81,22 @@ export function AdminPromotions() {
 
     try {
       await adminService.createPromotion(payload);
-      toast.success(`Coupon code ${payload.code} created!`);
+      toast.success(t("promotions.toast.created", { code: payload.code }));
       setIsModalOpen(false);
       loadPromos();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to create coupon code");
+      toast.error(err?.response?.data?.message || t("promotions.toast.createFailed"));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Delete promo code?")) {
+    if (confirm(t("promotions.confirmDelete"))) {
       try {
         await adminService.deletePromotion(id);
-        toast.success("Promotion deleted");
+        toast.success(t("promotions.toast.deleted"));
         loadPromos();
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Failed to delete promotion");
+        toast.error(err?.response?.data?.message || t("promotions.toast.deleteFailed"));
       }
     }
   };
@@ -103,9 +105,9 @@ export function AdminPromotions() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Promotions & Discount Codes</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("promotions.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Create checkout coupons, percentage discounts, free shipping rules, and seasonal campaigns.
+            {t("promotions.subtitle")}
           </p>
         </div>
         <button
@@ -113,7 +115,7 @@ export function AdminPromotions() {
           className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0"
         >
           <Plus className="size-4" />
-          <span>Create Coupon Code</span>
+          <span>{t("promotions.create")}</span>
         </button>
       </div>
 
@@ -126,7 +128,7 @@ export function AdminPromotions() {
                   {promo.code}
                 </span>
                 <div className="font-bold text-sm text-foreground mt-3">{promo.value}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Type: {promo.type}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{t("promotions.typeLabel", { type: promo.type, value: promo.value })}</div>
               </div>
               <button
                 onClick={() => handleToggleStatus(promo.id, promo.status)}
@@ -136,15 +138,15 @@ export function AdminPromotions() {
                     : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
                 }`}
               >
-                {promo.status}
+                {t(`status.${String(promo.status).toLowerCase()}`) || promo.status}
               </button>
             </div>
 
             <div className="space-y-2 pt-3 border-t border-border text-xs">
               <div className="flex justify-between text-muted-foreground">
-                <span>Usage Progress:</span>
+                <span>{t("promotions.usageProgress", { used: promo.currentUsage, limit: promo.usageLimit })}</span>
                 <span className="font-bold text-foreground">
-                  {promo.currentUsage} / {promo.usageLimit} redeemed
+                  {t("promotions.redeemed", { used: promo.currentUsage, limit: promo.usageLimit })}
                 </span>
               </div>
               <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
@@ -154,8 +156,8 @@ export function AdminPromotions() {
                 ></div>
               </div>
               <div className="flex justify-between text-[10px] text-muted-foreground pt-1">
-                <span>Valid: {promo.startDate}</span>
-                <span>Expires: {promo.endDate}</span>
+                <span>{t("promotions.valid", { date: promo.startDate })}</span>
+                <span>{t("promotions.expires", { date: promo.endDate })}</span>
               </div>
             </div>
 
@@ -172,7 +174,7 @@ export function AdminPromotions() {
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-background border border-border rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
             <div className="flex justify-between items-center border-b border-border pb-3">
-              <h3 className="font-bold text-base text-foreground">Create Coupon Code</h3>
+              <h3 className="font-bold text-base text-foreground">{t("promotions.create")}</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground">
                 <X className="size-5" />
               </button>
@@ -180,11 +182,11 @@ export function AdminPromotions() {
 
             <form onSubmit={handleCreatePromo} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Promo Code *</label>
+                <label className="text-xs font-semibold text-foreground">{t("promotions.form.code")}</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. SUMMER25"
+                  placeholder={t("promotions.form.codePlaceholder")}
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs font-mono uppercase text-foreground"
@@ -193,23 +195,23 @@ export function AdminPromotions() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Discount Type</label>
+                  <label className="text-xs font-semibold text-foreground">{t("promotions.form.discountType")}</label>
                   <select
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                     className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
                   >
-                    <option value="Percentage">Percentage OFF</option>
-                    <option value="Fixed Amount">Fixed EGP OFF</option>
-                    <option value="Free Shipping">Free Shipping</option>
+                    <option value="Percentage">{t("promotions.form.typePercentage")}</option>
+                    <option value="Fixed Amount">{t("promotions.form.typeFixed")}</option>
+                    <option value="Free Shipping">{t("promotions.form.typeFreeShipping")}</option>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Value Label</label>
+                  <label className="text-xs font-semibold text-foreground">{t("promotions.form.valueLabel")}</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. 25% OFF"
+                    placeholder={t("promotions.form.valuePlaceholder")}
                     value={formData.value}
                     onChange={(e) => setFormData({ ...formData, value: e.target.value })}
                     className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
@@ -218,7 +220,7 @@ export function AdminPromotions() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Usage Limit (Max Uses)</label>
+                <label className="text-xs font-semibold text-foreground">{t("promotions.form.usageLimit")}</label>
                 <input
                   type="number"
                   value={formData.usageLimit}
@@ -228,8 +230,8 @@ export function AdminPromotions() {
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-border">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs border border-border rounded-xl">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-xs bg-accent-brand text-white rounded-xl">Create Code</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs border border-border rounded-xl">{t("actions.cancel")}</button>
+                <button type="submit" className="px-4 py-2 text-xs bg-accent-brand text-white rounded-xl">{t("promotions.form.submit")}</button>
               </div>
             </form>
           </div>

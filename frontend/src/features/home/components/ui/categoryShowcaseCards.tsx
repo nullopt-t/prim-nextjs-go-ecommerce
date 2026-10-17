@@ -80,7 +80,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
           })()
         ) : (
           <div className="aspect-square bg-secondary/40 rounded-xl mb-3 flex items-center justify-center text-xs text-muted-foreground">
-            Explore Category
+            {t("exploreCategory")}
           </div>
         )}
       </div>

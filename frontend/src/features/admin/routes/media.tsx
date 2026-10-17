@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { UploadCloud, Search, Trash2, Copy, Check, Eye, X } from "lucide-react";
 import { adminService } from "@/services/admin";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 export function AdminMedia() {
+  const t = useTranslations("admin");
   const [mediaList, setMediaList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -26,7 +28,7 @@ export function AdminMedia() {
         uploadedAt: m.createdAt ? m.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10)
       })));
     } catch {
-      toast.error("Failed to load media assets from server");
+      toast.error(t("media.toast.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -43,10 +45,10 @@ export function AdminMedia() {
     try {
       setIsUploading(true);
       await adminService.uploadMedia(file);
-      toast.success("File uploaded to media library!");
+      toast.success(t("media.toast.uploaded"));
       await loadMedia();
     } catch (err: any) {
-      toast.error(err?.message || "Failed to upload file");
+      toast.error(err?.message || t("media.toast.uploadFailed"));
     } finally {
       setIsUploading(false);
       // Reset input value so same file can be uploaded again if needed
@@ -57,18 +59,18 @@ export function AdminMedia() {
   const handleCopyUrl = (url: string, id: string) => {
     navigator.clipboard.writeText(url);
     setCopiedId(id);
-    toast.success("Media URL copied to clipboard!");
+    toast.success(t("media.toast.copied"));
     setTimeout(() => setCopiedId(null), 2000);
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Delete this media asset?")) {
+    if (confirm(t("media.confirmDelete"))) {
       try {
         await adminService.deleteMedia(id);
         setMediaList(mediaList.filter((m) => m.id !== id));
-        toast.success("Media file deleted");
+        toast.success(t("media.toast.deleted"));
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Failed to delete media");
+        toast.error(err?.response?.data?.message || t("media.toast.deleteFailed"));
       }
     }
   };
@@ -79,12 +81,12 @@ export function AdminMedia() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Media Library</h1>
-          <p className="text-sm text-muted-foreground mt-1">Upload and manage product catalog images and banners.</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("media.title")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t("media.subtitle")}</p>
         </div>
         <label className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 cursor-pointer transition-all shrink-0">
           <UploadCloud className="size-4" />
-          <span>{isUploading ? "Uploading..." : "Upload New File"}</span>
+          <span>{isUploading ? t("media.uploading") : t("media.upload")}</span>
           <input type="file" onChange={handleFileUpload} disabled={isUploading} className="hidden" accept="image/*" />
         </label>
       </div>
@@ -94,7 +96,7 @@ export function AdminMedia() {
           <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search media files..."
+            placeholder={t("media.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
@@ -108,13 +110,13 @@ export function AdminMedia() {
             <div className="aspect-square relative overflow-hidden bg-secondary/20">
               <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                <button onClick={() => setPreviewItem(item)} className="p-2 bg-white/90 text-black rounded-lg hover:bg-white" title="Preview">
+                <button onClick={() => setPreviewItem(item)} className="p-2 bg-white/90 text-black rounded-lg hover:bg-white" title={t("media.preview")}>
                   <Eye className="size-4" />
                 </button>
-                <button onClick={() => handleCopyUrl(item.url, item.id)} className="p-2 bg-white/90 text-black rounded-lg hover:bg-white" title="Copy Link">
+                <button onClick={() => handleCopyUrl(item.url, item.id)} className="p-2 bg-white/90 text-black rounded-lg hover:bg-white" title={t("media.copyLink")}>
                   {copiedId === item.id ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
                 </button>
-                <button onClick={() => handleDelete(item.id)} className="p-2 bg-white/90 text-red-600 rounded-lg hover:bg-white" title="Delete">
+                <button onClick={() => handleDelete(item.id)} className="p-2 bg-white/90 text-red-600 rounded-lg hover:bg-white" title={t("actions.delete")}>
                   <Trash2 className="size-4" />
                 </button>
               </div>
@@ -143,9 +145,9 @@ export function AdminMedia() {
               <img src={previewItem.url} alt={previewItem.name} className="w-full h-full object-contain bg-black/5" />
             </div>
             <div className="text-xs text-muted-foreground space-y-1">
-              <div><strong>Size:</strong> {previewItem.size}</div>
-              <div><strong>Dimensions:</strong> {previewItem.dimensions}</div>
-              <div><strong>Uploaded:</strong> {previewItem.uploadedAt}</div>
+              <div><strong>{t("media.size")}</strong> {previewItem.size}</div>
+              <div><strong>{t("media.dimensions")}</strong> {previewItem.dimensions}</div>
+              <div><strong>{t("media.uploaded")}</strong> {previewItem.uploadedAt}</div>
             </div>
           </div>
         </div>

@@ -19,7 +19,7 @@ export default function OrderDetailsTopNav() {
 
   return (
     <nav
-      aria-label="Order navigation"
+      aria-label={tNav("orderNav")}
       className="flex items-center gap-2 lg:gap-3.5 overflow-x-auto scrollbar-none px-2"
     >
       <Link

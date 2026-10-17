@@ -139,7 +139,7 @@ export function GuestCartPreview({ mergeCart, onToggleMerge }: GuestCartPreviewP
                   onClick={() => handleUpdateQty(item.id, item.quantity || 1, -1, item.availableStock)}
                   disabled={isBusy || (item.quantity || 1) <= 1}
                   className="size-5 inline-flex items-center justify-center rounded text-foreground hover:bg-secondary transition-colors cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed"
-                  aria-label="Decrease quantity"
+                  aria-label={t("decreaseQty")}
                 >
                   <Minus className="size-2.5" />
                 </button>
@@ -153,7 +153,7 @@ export function GuestCartPreview({ mergeCart, onToggleMerge }: GuestCartPreviewP
                   onClick={() => handleUpdateQty(item.id, item.quantity || 1, 1, item.availableStock)}
                   disabled={isBusy || (item.availableStock !== undefined && (item.quantity || 1) >= item.availableStock)}
                   className="size-5 inline-flex items-center justify-center rounded text-foreground hover:bg-secondary transition-colors cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed"
-                  aria-label="Increase quantity"
+                  aria-label={t("increaseQty")}
                 >
                   <Plus className="size-2.5" />
                 </button>

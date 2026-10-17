@@ -25,7 +25,7 @@ export default function FormTitle({ type }: FormTitleProps) {
       {type === "verify" && (
         <Link
           href="/auth"
-          aria-label="Back to login"
+          aria-label={t("backToLogin")}
           className="p-1 -ms-1 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors inline-flex items-center justify-center cursor-pointer"
         >
           {isRTL ? (

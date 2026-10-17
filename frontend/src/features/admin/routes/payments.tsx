@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { CheckCircle2, RefreshCcw, Search } from "lucide-react";
 import { adminService } from "@/services/admin";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 export function AdminPayments() {
+  const t = useTranslations("admin");
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -24,7 +26,7 @@ export function AdminPayments() {
         status: p.status === "captured" ? "Succeeded" : (p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : "Pending")
       })));
     } catch {
-      toast.error("Failed to load payments from server");
+      toast.error(t("payments.toast.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -35,25 +37,25 @@ export function AdminPayments() {
   }, []);
 
   const handleIssueRefund = async (pay: any) => {
-    if (confirm(`Issue full refund for transaction ${pay.id}?`)) {
+    if (confirm(t("payments.confirmRefund", { id: pay.id }))) {
       try {
         await adminService.refundPayment(pay.id);
-        toast.success(`Refund issued for ${pay.customer}`);
+        toast.success(t("payments.toast.refundIssued", { customer: pay.customer }));
         loadPayments();
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Failed to issue refund");
+        toast.error(err?.response?.data?.message || t("payments.toast.refundFailed"));
       }
     }
   };
 
   const handleMarkPaid = async (pay: any) => {
-    if (confirm(`Mark transaction ${pay.id} as captured/paid?`)) {
+    if (confirm(t("payments.confirmMarkPaid", { id: pay.id }))) {
       try {
         await adminService.updatePaymentStatus(pay.id, "captured");
-        toast.success(`Payment marked as captured for ${pay.customer}`);
+        toast.success(t("payments.toast.markedPaid", { customer: pay.customer }));
         loadPayments();
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Failed to update payment status");
+        toast.error(err?.response?.data?.message || t("payments.toast.statusFailed"));
       }
     }
   };
@@ -69,9 +71,9 @@ export function AdminPayments() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Payment Transactions</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("payments.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            View credit card and payment gateway settlement logs, processor fees, and process refunds.
+            {t("payments.subtitle")}
           </p>
         </div>
       </div>
@@ -81,7 +83,7 @@ export function AdminPayments() {
           <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search payments by ID, order, or customer..."
+            placeholder={t("payments.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
@@ -94,14 +96,14 @@ export function AdminPayments() {
           <table className="w-full text-left text-xs">
             <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
               <tr>
-                <th className="py-3.5 pl-4">Transaction ID</th>
-                <th className="py-3.5">Order Ref</th>
-                <th className="py-3.5">Customer</th>
-                <th className="py-3.5">Payment Method</th>
-                <th className="py-3.5">Gross Amount</th>
-                <th className="py-3.5">Processor Fee</th>
-                <th className="py-3.5">Status</th>
-                <th className="py-3.5 pr-4 text-right">Actions</th>
+                <th className="py-3.5 pl-4">{t("payments.colTxn")}</th>
+                <th className="py-3.5">{t("payments.colOrder")}</th>
+                <th className="py-3.5">{t("payments.colCustomer")}</th>
+                <th className="py-3.5">{t("payments.colMethod")}</th>
+                <th className="py-3.5">{t("payments.colGross")}</th>
+                <th className="py-3.5">{t("payments.colFee")}</th>
+                <th className="py-3.5">{t("payments.colStatus")}</th>
+                <th className="py-3.5 pr-4 text-right">{t("payments.colActions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -121,7 +123,7 @@ export function AdminPayments() {
                           : "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400"
                       }`}
                     >
-                      {pay.status}
+                      {t(`status.${String(pay.status).toLowerCase()}`) || pay.status}
                     </span>
                   </td>
                   <td className="py-3.5 pr-4 text-right space-x-2">
@@ -131,7 +133,7 @@ export function AdminPayments() {
                         className="px-2.5 py-1 text-[11px] font-semibold text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg transition-colors inline-flex items-center gap-1"
                       >
                         <CheckCircle2 className="size-3" />
-                        <span>Mark Paid</span>
+                        <span>{t("payments.markPaid")}</span>
                       </button>
                     )}
                     {pay.status === "Succeeded" && (
@@ -140,7 +142,7 @@ export function AdminPayments() {
                         className="px-2.5 py-1 text-[11px] font-semibold text-destructive bg-destructive/10 hover:bg-destructive/20 rounded-lg transition-colors inline-flex items-center gap-1"
                       >
                         <RefreshCcw className="size-3" />
-                        <span>Issue Refund</span>
+                        <span>{t("payments.issueRefund")}</span>
                       </button>
                     )}
                   </td>

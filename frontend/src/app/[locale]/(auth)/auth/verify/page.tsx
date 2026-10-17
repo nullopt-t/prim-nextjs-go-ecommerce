@@ -1,10 +1,14 @@
 import { VerifyView } from "@/features/auth";
 import { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Verify Account | PRIM",
-  description: "Verify your email to continue",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta.auth.verify");
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export default function VerifyPage() {
   return <VerifyView />;

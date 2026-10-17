@@ -26,7 +26,7 @@ export default function Coupon() {
 
     if (res.success) {
       toast.success(
-        res.coupon?.message || `Coupon ${targetCode.toUpperCase()} applied!`
+        res.coupon?.message || t("coupon.applied", { code: targetCode.toUpperCase() })
       );
       setCode("");
     } else {
@@ -49,8 +49,8 @@ export default function Coupon() {
                 : appliedCoupon.fixedDiscount
                 ? `EGP ${appliedCoupon.fixedDiscount} OFF`
                 : appliedCoupon.freeShipping
-                ? "Free Shipping"
-                : "Applied"})
+                ? t("coupon.freeShipping")
+                : t("coupon.appliedStatus")})
             </span>
           </div>
           <button
@@ -86,7 +86,7 @@ export default function Coupon() {
             </div>
             <div className="w-28 md:w-36 h-12 shadow-xs">
               <CustomButton
-                text={loading ? "Applying..." : t("coupon.apply", { defaultMessage: "Apply" })}
+                text={loading ? t("coupon.applying") : t("coupon.apply", { defaultMessage: "Apply" })}
                 onClick={() => handleApply()}
                 disabled={loading || !code.trim()}
               />

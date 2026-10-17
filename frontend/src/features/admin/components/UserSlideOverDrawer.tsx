@@ -18,6 +18,7 @@ import {
   ExternalLink 
 } from "lucide-react";
 import { AdminUser } from "@/services/admin";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { ROLE_RANKS } from "@/lib/roles";
 
@@ -43,13 +44,14 @@ export function UserSlideOverDrawer({
   onRevokeSessions,
 }: UserSlideOverDrawerProps) {
   const [copied, setCopied] = useState(false);
+  const t = useTranslations("admin");
 
   if (!isOpen || !user) return null;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
-    toast.success("User ID copied to clipboard");
+    toast.success(t("modals.drawer.toast.copied"));
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -79,10 +81,10 @@ export function UserSlideOverDrawer({
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
                   <h2 className="text-base font-bold text-foreground truncate max-w-[200px]">
-                    {user.fullName || "Unnamed Customer"}
+                    {user.fullName || t("modals.drawer.unnamed")}
                   </h2>
                   {user.isEmailVerified && (
-                    <span title="Verified Email">
+                    <span title={t("modals.drawer.verifiedEmail")}>
                       <CheckCircle2 className="size-4 text-emerald-500" />
                     </span>
                   )}
@@ -105,35 +107,35 @@ export function UserSlideOverDrawer({
             {/* Quick Status Bar */}
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3.5 rounded-xl bg-secondary/30 border border-border flex flex-col gap-1">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Access Role</span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("modals.drawer.accessRole")}</span>
                 <span className="text-xs font-bold text-foreground capitalize flex items-center gap-1.5">
                   <Shield className="size-3.5 text-purple-500" />
-                  {user.role}
+                  {t(`roles.${user.role}`) || user.role}
                 </span>
               </div>
               <div className="p-3.5 rounded-xl bg-secondary/30 border border-border flex flex-col gap-1">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Account State</span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("modals.drawer.accountState")}</span>
                 <span className={`text-xs font-bold capitalize flex items-center gap-1.5 ${
                   user.status === "active" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                 }`}>
                   <span className={`size-2 rounded-full ${user.status === "active" ? "bg-emerald-500" : "bg-rose-500"}`} />
-                  {user.status}
+                  {t(`status.${String(user.status).toLowerCase()}`) || user.status}
                 </span>
               </div>
             </div>
 
             {/* Account Identifiers */}
             <div className="space-y-3">
-              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Identification</h3>
+              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">{t("modals.drawer.identification")}</h3>
               <div className="p-4 rounded-2xl bg-secondary/20 border border-border space-y-3 text-xs">
                 <div>
-                  <span className="text-muted-foreground block text-[11px] mb-1">Database UUID</span>
+                  <span className="text-muted-foreground block text-[11px] mb-1">{t("modals.drawer.databaseUuid")}</span>
                   <div className="flex items-center justify-between bg-card p-2 rounded-lg border border-border">
                     <span className="font-mono text-[11px] text-foreground truncate">{user.id}</span>
                     <button
                       onClick={() => copyToClipboard(user.id)}
                       className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors ml-2"
-                      title="Copy ID"
+                      title={t("modals.drawer.copyId")}
                     >
                       {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
                     </button>
@@ -141,19 +143,19 @@ export function UserSlideOverDrawer({
                 </div>
 
                 <div className="flex justify-between items-center pt-2 border-t border-border/60">
-                  <span className="text-muted-foreground">Email Verification</span>
+                  <span className="text-muted-foreground">{t("modals.drawer.emailVerification")}</span>
                   <span className={`font-semibold flex items-center gap-1 text-[11px] ${
                     user.isEmailVerified ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
                   }`}>
                     {user.isEmailVerified ? (
                       <>
                         <CheckCircle2 className="size-3.5" />
-                        Verified
+                        {t("status.verified")}
                       </>
                     ) : (
                       <>
                         <XCircle className="size-3.5" />
-                        Unverified
+                        {t("status.unverified")}
                       </>
                     )}
                   </span>
@@ -163,11 +165,11 @@ export function UserSlideOverDrawer({
 
             {/* Timestamps & Security Details */}
             <div className="space-y-3">
-              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Security & Timestamps</h3>
+              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">{t("modals.drawer.securityTimestamps")}</h3>
               <div className="p-4 rounded-2xl bg-secondary/20 border border-border space-y-2.5 text-xs">
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground flex items-center gap-1.5">
-                    <Calendar className="size-3.5" /> Registered
+                    <Calendar className="size-3.5" /> {t("modals.drawer.registered")}
                   </span>
                   <span className="font-medium text-foreground">
                     {new Date(user.createdAt).toLocaleDateString(undefined, { 
@@ -180,7 +182,7 @@ export function UserSlideOverDrawer({
 
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground flex items-center gap-1.5">
-                    <Clock className="size-3.5" /> Last Modified
+                    <Clock className="size-3.5" /> {t("modals.drawer.lastModified")}
                   </span>
                   <span className="font-medium text-foreground">
                     {new Date(user.updatedAt).toLocaleDateString(undefined, { 
@@ -193,7 +195,7 @@ export function UserSlideOverDrawer({
 
                 {user.suspendedUntil && (
                   <div className="flex justify-between items-center pt-2 border-t border-border/60 text-rose-600 dark:text-rose-400">
-                    <span className="font-semibold">Suspension Expires</span>
+                    <span className="font-semibold">{t("modals.drawer.suspensionExpires")}</span>
                     <span className="font-mono text-[11px]">
                       {new Date(user.suspendedUntil).toLocaleString()}
                     </span>
@@ -202,7 +204,7 @@ export function UserSlideOverDrawer({
 
                 {user.lockedUntil && (
                   <div className="flex justify-between items-center pt-2 border-t border-border/60 text-amber-600 dark:text-amber-400">
-                    <span className="font-semibold">Security Lock Expires</span>
+                    <span className="font-semibold">{t("modals.drawer.lockExpires")}</span>
                     <span className="font-mono text-[11px]">
                       {new Date(user.lockedUntil).toLocaleTimeString()}
                     </span>
@@ -213,17 +215,17 @@ export function UserSlideOverDrawer({
 
             {/* Quick Actions Panel */}
             <div className="space-y-3">
-              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Administrative Actions</h3>
+              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">{t("modals.drawer.adminActions")}</h3>
               {isSelf ? (
                 <div className="p-3.5 rounded-xl bg-secondary/30 border border-border text-center">
                   <p className="text-xs text-muted-foreground">
-                    This is your account. Administrative role, suspension, and forced session actions cannot be applied to yourself.
+                    {t("modals.drawer.selfNote")}
                   </p>
                 </div>
               ) : !canManage ? (
                 <div className="p-3.5 rounded-xl bg-secondary/30 border border-border text-center">
                   <p className="text-xs text-muted-foreground">
-                    This account possesses equal or higher administrative privileges ({user.role}). Actions cannot be applied to this account.
+                    {t("modals.drawer.higherPrivNote", { role: user.role })}
                   </p>
                 </div>
               ) : (
@@ -234,9 +236,9 @@ export function UserSlideOverDrawer({
                   >
                     <span className="flex items-center gap-2">
                       <Shield className="size-4 text-purple-500" />
-                      Change Permission Role
+                      {t("modals.drawer.changeRole")}
                     </span>
-                    <span className="text-[10px] text-muted-foreground uppercase">Superadmin</span>
+                    <span className="text-[10px] text-muted-foreground uppercase">{t("roles.superadmin")}</span>
                   </button>
 
                   <button
@@ -249,9 +251,9 @@ export function UserSlideOverDrawer({
                   >
                     <span className="flex items-center gap-2">
                       {isSuspended ? <UserCheck className="size-4" /> : <UserX className="size-4" />}
-                      {isSuspended ? "Reactivate Account" : "Suspend Account"}
+                      {isSuspended ? t("actions.reactivate") : t("actions.suspend")}
                     </span>
-                    <span className="text-[10px] opacity-75 uppercase">Superadmin</span>
+                    <span className="text-[10px] opacity-75 uppercase">{t("roles.superadmin")}</span>
                   </button>
 
                   <button
@@ -260,9 +262,9 @@ export function UserSlideOverDrawer({
                   >
                     <span className="flex items-center gap-2">
                       <LogOut className="size-4 text-amber-500" />
-                      Force Log Out (Revoke Sessions)
+                      {t("modals.drawer.forceLogout")}
                     </span>
-                    <span className="text-[10px] text-muted-foreground uppercase">Superadmin</span>
+                    <span className="text-[10px] text-muted-foreground uppercase">{t("roles.superadmin")}</span>
                   </button>
                 </div>
               )}
@@ -276,7 +278,7 @@ export function UserSlideOverDrawer({
               onClick={onClose}
               className="py-2 px-5 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground text-xs font-bold transition-colors"
             >
-              Close Inspector
+              {t("modals.drawer.close")}
             </button>
           </div>
 

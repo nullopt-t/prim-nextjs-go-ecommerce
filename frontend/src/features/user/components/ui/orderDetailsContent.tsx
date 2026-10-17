@@ -113,9 +113,9 @@ export default function OrderDetailsContent() {
     try {
       await userService.cancelOrder(String(id));
       setOrder({ ...order, status: "cancelled" });
-      toast.success("Order cancelled successfully");
+      toast.success(t("cancelSuccess"));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to cancel order");
+      toast.error(err instanceof Error ? err.message : t("cancelFailed"));
     } finally {
       setCancelling(false);
     }
@@ -227,7 +227,7 @@ export default function OrderDetailsContent() {
               disabled={cancelling}
               className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 border border-red-500/20 transition-colors disabled:opacity-50"
             >
-              {cancelling ? "Cancelling..." : "Cancel Order"}
+              {cancelling ? t("cancelling") : t("cancelOrder")}
             </button>
           )}
           <Link
@@ -266,7 +266,9 @@ export default function OrderDetailsContent() {
                       imageClassName="w-full h-full object-contain"
                     />
                   ) : (
-                    <span className="text-[10px] text-muted-foreground font-medium">Item</span>
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                      {t("item")}
+                    </span>
                   )}
                 </div>
               );
@@ -339,7 +341,7 @@ export default function OrderDetailsContent() {
               {formattedDiscount && (
                 <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
                   <div className="flex items-center gap-1.5">
-                    <span>Discount</span>
+                    <span>{t("discount")}</span>
                     {order.couponCode && (
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/10 border border-emerald-500/20">
                         {order.couponCode}

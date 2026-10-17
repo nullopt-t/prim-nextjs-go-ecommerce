@@ -406,7 +406,7 @@ export function AdminProducts() {
                             : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400"
                         }`}
                       >
-                        {prod.status}
+                        {t(`status.${String(prod.status).toLowerCase()}`) || prod.status}
                       </span>
                     </td>
                     <td className="py-3.5 pr-4 text-right">

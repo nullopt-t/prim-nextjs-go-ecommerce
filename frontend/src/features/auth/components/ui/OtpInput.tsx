@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 
 interface OtpInputProps {
   value: string;
@@ -18,6 +19,7 @@ export default function OtpInput({
   autoFocus = true,
 }: OtpInputProps) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const t = useTranslations("auth");
 
   const digits = Array.from({ length }, (_, i) => value[i] || "");
 
@@ -99,7 +101,7 @@ export default function OtpInput({
           onKeyDown={(e) => handleKeyDown(idx, e)}
           onPaste={handlePaste}
           onFocus={(e) => e.target.select()}
-          aria-label={`Digit ${idx + 1}`}
+          aria-label={t("otpDigit", { digit: idx + 1 })}
           className={`w-11 h-12 text-center text-lg font-semibold rounded-md border bg-background text-foreground transition-colors outline-none
             ${
               digit

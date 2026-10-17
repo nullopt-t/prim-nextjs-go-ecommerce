@@ -350,7 +350,7 @@ export function AdminCustomers() {
                             : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30"
                         }`}>
                           <span className={`size-1.5 rounded-full ${u.status === "active" ? "bg-emerald-500" : "bg-rose-500"}`} />
-                          {u.status}
+                          {t(`status.${String(u.status).toLowerCase()}`) || u.status}
                         </span>
                       </td>
 

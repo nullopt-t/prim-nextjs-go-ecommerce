@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { AdminUser } from "@/services/admin";
 import { ROLE_RANKS } from "@/lib/roles";
+import { useTranslations } from "next-intl";
 
 interface ChangeRoleModalProps {
   user: AdminUser;
@@ -20,34 +21,35 @@ interface ChangeRoleModalProps {
   onConfirm: (userId: string, newRole: AdminUser["role"]) => Promise<void>;
 }
 
-const ROLES: { value: AdminUser["role"]; label: string; desc: string; color: string }[] = [
+const ROLES: { value: AdminUser["role"]; labelKey: string; descKey: string; color: string }[] = [
   { 
     value: "customer", 
-    label: "Customer", 
-    desc: "Standard buyer account. Can browse storefront, place orders, and manage personal addresses.",
+    labelKey: "modals.changeRole.roleOptions.customer.label", 
+    descKey: "modals.changeRole.roleOptions.customer.desc",
     color: "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40"
   },
   { 
     value: "vendor", 
-    label: "Vendor Merchant", 
-    desc: "Merchant account. Can access Vendor Portal to manage catalog listings, stock, and view order fulfillment.",
+    labelKey: "modals.changeRole.roleOptions.vendor.label", 
+    descKey: "modals.changeRole.roleOptions.vendor.desc",
     color: "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/20"
   },
   { 
     value: "support", 
-    label: "Customer Support", 
-    desc: "Support staff. Can view customer orders, inspect buyer issues, and assist customers.",
+    labelKey: "modals.changeRole.roleOptions.support.label", 
+    descKey: "modals.changeRole.roleOptions.support.desc",
     color: "border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-950/20"
   },
   { 
     value: "admin", 
-    label: "Store Administrator", 
-    desc: "Operational staff. Can manage products, categories, global orders, promotions, and customer data.",
+    labelKey: "modals.changeRole.roleOptions.admin.label", 
+    descKey: "modals.changeRole.roleOptions.admin.desc",
     color: "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/20"
   },
 ];
 
 export function ChangeRoleModal({ user, callerRole = "superadmin", isOpen, onClose, onConfirm }: ChangeRoleModalProps) {
+  const t = useTranslations("admin");
   const callerRank = ROLE_RANKS[callerRole?.toLowerCase() || "customer"] || 1;
   const availableRoles = ROLES.filter((r) => (ROLE_RANKS[r.value] || 1) < callerRank);
 
@@ -88,8 +90,8 @@ export function ChangeRoleModal({ user, callerRole = "superadmin", isOpen, onClo
               <Shield className="size-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-foreground">Change User Role</h2>
-              <p className="text-xs text-muted-foreground">Manage administrative authorization tier</p>
+              <h2 className="text-base font-bold text-foreground">{t("modals.changeRole.title")}</h2>
+              <p className="text-xs text-muted-foreground">{t("modals.changeRole.subtitle")}</p>
             </div>
           </div>
           <button
@@ -103,11 +105,11 @@ export function ChangeRoleModal({ user, callerRole = "superadmin", isOpen, onClo
         {/* User Snapshot */}
         <div className="px-6 py-3.5 bg-secondary/30 border-b border-border text-xs flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="font-semibold text-foreground">{user.fullName || "Unnamed User"}</span>
+            <span className="font-semibold text-foreground">{user.fullName || t("customers.unnamed")}</span>
             <span className="font-mono text-muted-foreground">{user.email}</span>
           </div>
           <span className="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider bg-secondary text-secondary-foreground border border-border">
-            Current: {user.role}
+            {t("modals.changeRole.current", { role: user.role })}
           </span>
         </div>
 
@@ -115,7 +117,7 @@ export function ChangeRoleModal({ user, callerRole = "superadmin", isOpen, onClo
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1">
           <div className="space-y-2.5">
             <label className="text-xs font-semibold text-foreground uppercase tracking-wider block">
-              Select New Permission Tier
+              {t("modals.changeRole.selectTier")}
             </label>
             <div className="space-y-2">
               {availableRoles.map((role) => (
@@ -137,12 +139,12 @@ export function ChangeRoleModal({ user, callerRole = "superadmin", isOpen, onClo
                   />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-xs text-foreground">{role.label}</span>
+                      <span className="font-bold text-xs text-foreground">{t(role.labelKey)}</span>
                       {role.value === user.role && (
-                        <span className="text-[10px] text-muted-foreground font-medium">(current)</span>
+                        <span className="text-[10px] text-muted-foreground font-medium">{t("modals.changeRole.currentLabel")}</span>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{role.desc}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{t(role.descKey)}</p>
                   </div>
                 </label>
               ))}
@@ -153,9 +155,9 @@ export function ChangeRoleModal({ user, callerRole = "superadmin", isOpen, onClo
             <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 flex items-start gap-2.5 text-xs">
               <AlertTriangle className="size-4 shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold">Privilege Escalation Notice:</span>
+                <span className="font-bold">{t("modals.changeRole.escalationTitle")}</span>
                 <p className="text-[11px] mt-0.5 text-amber-700/90 dark:text-amber-400/90">
-                  Assigning administrative clearance allows this user to view or manage sensitive marketplace records.
+                  {t("modals.changeRole.escalationBody")}
                 </p>
               </div>
             </div>
@@ -169,7 +171,7 @@ export function ChangeRoleModal({ user, callerRole = "superadmin", isOpen, onClo
               disabled={submitting}
               className="px-4 py-2.5 rounded-xl border border-border text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
             >
-              Cancel
+              {t("actions.cancel")}
             </button>
             <button
               type="submit"
@@ -179,10 +181,10 @@ export function ChangeRoleModal({ user, callerRole = "superadmin", isOpen, onClo
               {submitting ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  <span>Updating...</span>
+                  <span>{t("modals.updating")}</span>
                 </>
               ) : (
-                <span>Confirm Role Change</span>
+                <span>{t("modals.changeRole.confirm")}</span>
               )}
             </button>
           </div>

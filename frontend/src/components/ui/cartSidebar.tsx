@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 
 export function CartSidebar() {
   const t = useTranslations("cart");
+  const tUi = useTranslations("components");
   const { cartItems, isCartOpen, closeCart } = useCart();
   const [mounted, setMounted] = useState(false);
   const hasItems = cartItems && cartItems.length > 0;
@@ -64,7 +65,7 @@ export function CartSidebar() {
           <button
             type="button"
             onClick={closeCart}
-            aria-label="Close cart"
+            aria-label={tUi("cart.closeCart")}
             className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-colors cursor-pointer"
           >
             <X className="size-5" />

@@ -9,9 +9,11 @@ import OrderDetailsTopNav from "@/features/user/components/ui/orderDetailsTopNav
 import MobileNav from "@/features/user/components/ui/mobileNav";
 import { Header, Footer } from "@/components/ui";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuthContext();
+  const t = useTranslations("overview");
   const router = useRouter();
   const pathname = usePathname();
 
@@ -26,7 +28,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-accent-brand" />
-        <p className="text-sm text-muted-foreground animate-pulse">Loading your account...</p>
+        <p className="text-sm text-muted-foreground animate-pulse">{t("loading")}</p>
       </div>
     );
   }

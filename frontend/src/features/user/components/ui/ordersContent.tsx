@@ -227,7 +227,7 @@ function OrderCard({ order }: { order: Order }) {
 
           <div className="flex flex-col min-w-0 text-xs">
             <span className="font-semibold text-foreground text-xs truncate pointer-events-none">
-              {itemSnapshots.length} {itemSnapshots.length === 1 ? "item" : "items"}
+              {t("itemCount", { count: itemSnapshots.length })}
             </span>
             <div className="text-[11px] text-muted-foreground truncate max-w-md flex flex-wrap items-center gap-1 mt-0.5">
               {itemSnapshots.map((it, idx) => (

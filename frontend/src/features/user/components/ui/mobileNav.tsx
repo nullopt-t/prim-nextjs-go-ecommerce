@@ -28,7 +28,7 @@ export default function MobileNav() {
 
   return (
     <nav
-      aria-label="Mobile bottom navigation"
+      aria-label={t("mobileNav")}
       className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-card/95 backdrop-blur-md border-t border-border shadow-lg pb-safe"
     >
       <div className="grid grid-cols-3 w-full items-center px-3 py-2">

@@ -8,6 +8,7 @@ import {
   Loader2 
 } from "lucide-react";
 import { AdminUser } from "@/services/admin";
+import { useTranslations } from "next-intl";
 
 interface RevokeSessionsModalProps {
   user: AdminUser;
@@ -17,6 +18,7 @@ interface RevokeSessionsModalProps {
 }
 
 export function RevokeSessionsModal({ user, isOpen, onClose, onConfirm }: RevokeSessionsModalProps) {
+  const t = useTranslations("admin");
   const [submitting, setSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -44,8 +46,8 @@ export function RevokeSessionsModal({ user, isOpen, onClose, onConfirm }: Revoke
               <LogOut className="size-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-foreground">Force Revoke All Sessions</h2>
-              <p className="text-xs text-muted-foreground">Terminate active credentials across all devices</p>
+              <h2 className="text-base font-bold text-foreground">{t("modals.revoke.title")}</h2>
+              <p className="text-xs text-muted-foreground">{t("modals.revoke.subtitle")}</p>
             </div>
           </div>
           <button
@@ -59,15 +61,15 @@ export function RevokeSessionsModal({ user, isOpen, onClose, onConfirm }: Revoke
         {/* Content */}
         <div className="p-6 space-y-4">
           <div className="p-3.5 rounded-xl bg-secondary/30 border border-border text-xs flex flex-col gap-1">
-            <span className="font-semibold text-foreground">{user.fullName || "User"}</span>
+            <span className="font-semibold text-foreground">{user.fullName || t("modals.revoke.user")}</span>
             <span className="font-mono text-muted-foreground">{user.email}</span>
-            <span className="font-mono text-[10px] text-muted-foreground mt-1">UUID: {user.id}</span>
+            <span className="font-mono text-[10px] text-muted-foreground mt-1">{t("modals.revoke.uuid", { id: user.id })}</span>
           </div>
 
           <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5">
             <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
             <p className="text-[11px] leading-relaxed">
-              This action will immediately delete all session tokens in Redis for this account. The user will be instantly logged out of all active web and mobile browsers on their next interaction.
+              {t("modals.revoke.body")}
             </p>
           </div>
 
@@ -79,7 +81,7 @@ export function RevokeSessionsModal({ user, isOpen, onClose, onConfirm }: Revoke
               disabled={submitting}
               className="px-4 py-2.5 rounded-xl border border-border text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
             >
-              Cancel
+              {t("actions.cancel")}
             </button>
             <button
               type="button"
@@ -90,10 +92,10 @@ export function RevokeSessionsModal({ user, isOpen, onClose, onConfirm }: Revoke
               {submitting ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  <span>Revoking...</span>
+                  <span>{t("modals.revoking")}</span>
                 </>
               ) : (
-                <span>Confirm Session Revocation</span>
+                <span>{t("modals.revoke.confirm")}</span>
               )}
             </button>
           </div>

@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { Plus, SlidersHorizontal, Trash2, X, FolderTree, Tag } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { catalogService } from "@/services/catalog";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 export function AdminAttributes() {
+  const t = useTranslations("admin");
   const [attributes, setAttributes] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
@@ -37,7 +39,7 @@ export function AdminAttributes() {
       const cats = Array.isArray(catRes?.data) ? catRes.data : (Array.isArray(catRes) ? catRes : []);
       setCategories(cats);
     } catch {
-      toast.error("Failed to load attributes or categories from server");
+      toast.error(t("attributes.toast.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -63,14 +65,14 @@ export function AdminAttributes() {
 
     try {
       await adminService.createAttribute(payload);
-      toast.success("Attribute created and linked to catalog category!");
+      toast.success(t("attributes.toast.created"));
       setNewAttrName("");
       setNewAttrCategoryId("");
       setNewAttrValueType("text");
       setIsModalOpen(false);
       loadData();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to create attribute");
+      toast.error(err?.response?.data?.message || t("attributes.toast.createFailed"));
     }
   };
 
@@ -84,7 +86,7 @@ export function AdminAttributes() {
     setAttributes(updated);
     setNewAttrValue("");
     setActiveAttrId(null);
-    toast.success("Option value added!");
+    toast.success(t("attributes.toast.valueAdded"));
   };
 
   const handleRemoveValue = (attrId: string, valToRemove: string) => {
@@ -97,13 +99,13 @@ export function AdminAttributes() {
   };
 
   const handleDeleteAttribute = async (id: string) => {
-    if (confirm("Delete attribute?")) {
+    if (confirm(t("attributes.confirmDelete"))) {
       try {
         await adminService.deleteAttribute(id);
-        toast.success("Attribute deleted");
+        toast.success(t("attributes.toast.deleted"));
         loadData();
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Failed to delete attribute");
+        toast.error(err?.response?.data?.message || t("attributes.toast.deleteFailed"));
       }
     }
   };
@@ -116,9 +118,9 @@ export function AdminAttributes() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Product Attributes</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("attributes.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Define variant attributes like Color, Size, Storage, and Specs linked to catalog categories.
+            {t("attributes.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -127,11 +129,11 @@ export function AdminAttributes() {
             onChange={(e) => setSelectedCategoryFilter(e.target.value)}
             className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
           >
-            <option value="all">All Catalog Categories</option>
-            <option value="global">Global / Unassigned</option>
+            <option value="all">{t("attributes.allCategories")}</option>
+            <option value="global">{t("attributes.globalUnassigned")}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
-                Category: {c.name}
+                {t("attributes.categoryOption", { name: c.name })}
               </option>
             ))}
           </select>
@@ -140,7 +142,7 @@ export function AdminAttributes() {
             className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0"
           >
             <Plus className="size-4" />
-            <span>New Attribute</span>
+            <span>{t("attributes.new")}</span>
           </button>
         </div>
       </div>
@@ -158,7 +160,7 @@ export function AdminAttributes() {
                       {attr.categoryName}
                     </span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground font-mono">Code: {attr.code} &bull; Type: {attr.valueType}</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">{t("attributes.meta", { code: attr.code, type: attr.valueType })}</span>
                 </div>
               </div>
               <button onClick={() => handleDeleteAttribute(attr.id)} className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg">
@@ -167,7 +169,7 @@ export function AdminAttributes() {
             </div>
 
             <div className="space-y-2">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Option Values ({attr.values.length})</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("attributes.optionValues", { count: attr.values.length })}</span>
               <div className="flex flex-wrap gap-2">
                 {attr.values.map((val) => (
                   <span key={val} className="inline-flex items-center gap-1.5 px-3 py-1 bg-secondary text-secondary-foreground text-xs font-medium rounded-lg border border-border">
@@ -186,13 +188,13 @@ export function AdminAttributes() {
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    placeholder="e.g. XL, 256GB..."
+                    placeholder={t("attributes.valuePlaceholder")}
                     value={newAttrValue}
                     onChange={(e) => setNewAttrValue(e.target.value)}
                     className="flex-1 px-3 py-1.5 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
                   />
-                  <button onClick={() => handleAddValue(attr.id)} className="px-3 py-1.5 bg-accent-brand text-white text-xs font-semibold rounded-xl">Add</button>
-                  <button onClick={() => setActiveAttrId(null)} className="px-3 py-1.5 text-xs text-muted-foreground">Cancel</button>
+                  <button onClick={() => handleAddValue(attr.id)} className="px-3 py-1.5 bg-accent-brand text-white text-xs font-semibold rounded-xl">{t("actions.add")}</button>
+                  <button onClick={() => setActiveAttrId(null)} className="px-3 py-1.5 text-xs text-muted-foreground">{t("actions.cancel")}</button>
                 </div>
               ) : (
                 <button
@@ -200,7 +202,7 @@ export function AdminAttributes() {
                   className="text-xs font-semibold text-accent-brand hover:underline flex items-center gap-1"
                 >
                   <Plus className="size-3.5" />
-                  <span>Add Option Value</span>
+                  <span>{t("attributes.addValue")}</span>
                 </button>
               )}
             </div>
@@ -211,15 +213,15 @@ export function AdminAttributes() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-background border border-border rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-            <h3 className="font-bold text-base text-foreground">Create & Link Attribute</h3>
-            <p className="text-xs text-muted-foreground">Link this attribute to a specific category in your catalog.</p>
+            <h3 className="font-bold text-base text-foreground">{t("attributes.createTitle")}</h3>
+            <p className="text-xs text-muted-foreground">{t("attributes.createSubtitle")}</p>
             <form onSubmit={handleCreateAttribute} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Attribute Name *</label>
+                <label className="text-xs font-semibold text-foreground">{t("attributes.form.name")}</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Screen Size, Color, Storage"
+                  placeholder={t("attributes.form.namePlaceholder")}
                   value={newAttrName}
                   onChange={(e) => setNewAttrName(e.target.value)}
                   className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
@@ -227,14 +229,14 @@ export function AdminAttributes() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Catalog Category *</label>
+                <label className="text-xs font-semibold text-foreground">{t("attributes.form.category")}</label>
                 <select
                   required
                   value={newAttrCategoryId}
                   onChange={(e) => setNewAttrCategoryId(e.target.value)}
                   className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
                 >
-                  <option value="">-- Select Catalog Category --</option>
+                  <option value="">{t("attributes.form.selectCategory")}</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -244,21 +246,21 @@ export function AdminAttributes() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Value Type</label>
+                <label className="text-xs font-semibold text-foreground">{t("attributes.form.valueType")}</label>
                 <select
                   value={newAttrValueType}
                   onChange={(e) => setNewAttrValueType(e.target.value)}
                   className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
                 >
-                  <option value="text">Text (e.g. Colors, Sizes)</option>
-                  <option value="number">Number (e.g. Weight, Capacity)</option>
-                  <option value="boolean">Boolean (True / False)</option>
+                  <option value="text">{t("attributes.form.typeText")}</option>
+                  <option value="number">{t("attributes.form.typeNumber")}</option>
+                  <option value="boolean">{t("attributes.form.typeBoolean")}</option>
                 </select>
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs border border-border rounded-xl">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-xs bg-accent-brand text-white font-semibold rounded-xl">Create & Link</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs border border-border rounded-xl">{t("actions.cancel")}</button>
+                <button type="submit" className="px-4 py-2 text-xs bg-accent-brand text-white font-semibold rounded-xl">{t("attributes.form.submit")}</button>
               </div>
             </form>
           </div>

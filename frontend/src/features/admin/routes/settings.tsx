@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Save, Key, Truck, Store } from "lucide-react";
 import { toast } from "sonner";
 import { adminService } from "@/services/admin";
+import { useTranslations } from "next-intl";
 
 const DEFAULT_SETTINGS: Record<string, any> = {
   storeName: "PRIM Superstore",
@@ -18,6 +19,7 @@ const DEFAULT_SETTINGS: Record<string, any> = {
 };
 
 export function AdminSettings() {
+  const t = useTranslations("admin");
   const [settings, setSettings] = useState<Record<string, any>>({ ...DEFAULT_SETTINGS });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -57,13 +59,13 @@ export function AdminSettings() {
       if (typeof window !== "undefined") {
         localStorage.setItem("prim_admin_settings", JSON.stringify(settings));
       }
-      toast.success("Store configuration saved successfully!");
+      toast.success(t("settings.toast.saved"));
     } catch (err: any) {
       // Persist locally even if API fails so changes aren't lost
       if (typeof window !== "undefined") {
         localStorage.setItem("prim_admin_settings", JSON.stringify(settings));
       }
-      toast.error(err?.response?.data?.message || "Failed to save settings");
+      toast.error(err?.response?.data?.message || t("settings.toast.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -73,9 +75,9 @@ export function AdminSettings() {
     <div className="space-y-6 w-full">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Store Configuration</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("settings.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Global store metadata, currency preferences, tax calculations, and API security keys.
+            {t("settings.subtitle")}
           </p>
         </div>
         <button
@@ -84,7 +86,7 @@ export function AdminSettings() {
           className="flex items-center gap-2 px-5 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0 disabled:opacity-50"
         >
           <Save className="size-4" />
-          <span>{saving ? "Saving…" : "Save Changes"}</span>
+          <span>{saving ? t("settings.saving") : t("settings.saveChanges")}</span>
         </button>
       </div>
 
@@ -93,12 +95,12 @@ export function AdminSettings() {
         <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
           <h3 className="font-bold text-base text-foreground flex items-center gap-2 border-b border-border pb-3">
             <Store className="size-5 text-accent-brand" />
-            <span>Store Profile</span>
+            <span>{t("settings.storeProfile")}</span>
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Store Name</label>
+              <label className="text-xs font-semibold text-foreground">{t("settings.storeName")}</label>
               <input
                 type="text"
                 value={settings.storeName || ""}
@@ -107,7 +109,7 @@ export function AdminSettings() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Customer Support Email</label>
+              <label className="text-xs font-semibold text-foreground">{t("settings.supportEmail")}</label>
               <input
                 type="email"
                 value={settings.storeEmail || ""}
@@ -119,7 +121,7 @@ export function AdminSettings() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Base Currency</label>
+              <label className="text-xs font-semibold text-foreground">{t("settings.currency")}</label>
               <input
                 type="text"
                 value={settings.currency || ""}
@@ -128,7 +130,7 @@ export function AdminSettings() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Timezone</label>
+              <label className="text-xs font-semibold text-foreground">{t("settings.timezone")}</label>
               <input
                 type="text"
                 value={settings.timezone || ""}
@@ -143,12 +145,12 @@ export function AdminSettings() {
         <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
           <h3 className="font-bold text-base text-foreground flex items-center gap-2 border-b border-border pb-3">
             <Truck className="size-5 text-accent-brand" />
-            <span>Shipping & Tax Rates</span>
+            <span>{t("settings.shippingTax")}</span>
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Standard Tax Rate (%)</label>
+              <label className="text-xs font-semibold text-foreground">{t("settings.taxRate")}</label>
               <input
                 type="number"
                 step="0.1"
@@ -158,7 +160,7 @@ export function AdminSettings() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Flat Shipping Rate (EGP)</label>
+              <label className="text-xs font-semibold text-foreground">{t("settings.flatShipping")}</label>
               <input
                 type="number"
                 step="0.01"
@@ -168,7 +170,7 @@ export function AdminSettings() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Free Shipping Minimum (EGP)</label>
+              <label className="text-xs font-semibold text-foreground">{t("settings.freeShippingMin")}</label>
               <input
                 type="number"
                 value={settings.freeShippingThreshold ?? ""}
@@ -183,12 +185,12 @@ export function AdminSettings() {
         <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
           <h3 className="font-bold text-base text-foreground flex items-center gap-2 border-b border-border pb-3">
             <Key className="size-5 text-accent-brand" />
-            <span>API Keys & Webhooks</span>
+            <span>{t("settings.apiKeys")}</span>
           </h3>
 
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Live Public API Key</label>
+              <label className="text-xs font-semibold text-foreground">{t("settings.apiKey")}</label>
               <input
                 type="password"
                 value={settings.apiKey || ""}
@@ -197,7 +199,7 @@ export function AdminSettings() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">Stripe Webhook Signing Secret</label>
+              <label className="text-xs font-semibold text-foreground">{t("settings.webhookSecret")}</label>
               <input
                 type="password"
                 value={settings.stripeWebhookSecret || ""}

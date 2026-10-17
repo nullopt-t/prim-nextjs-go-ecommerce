@@ -245,7 +245,7 @@ export function AdminInventory() {
                   <History className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-foreground">Product Audit Trail</h3>
+                  <h3 className="font-bold text-base text-foreground">{t("inventory.auditTitle")}</h3>
                   <p className="text-xs text-muted-foreground">{auditProduct.name} &bull; <span className="font-mono">{auditProduct.sku}</span></p>
                 </div>
               </div>
@@ -259,10 +259,10 @@ export function AdminInventory() {
 
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[220px]">
               {loadingAudit ? (
-                <div className="py-12 text-center text-xs text-muted-foreground">Loading audit records...</div>
+                <div className="py-12 text-center text-xs text-muted-foreground">{t("inventory.loadingAudit")}</div>
               ) : auditLogs.length === 0 ? (
                 <div className="py-12 text-center text-xs text-muted-foreground">
-                  No inventory ledger events recorded for this product yet.
+                  {t("inventory.auditEmpty")}
                 </div>
               ) : (
                 auditLogs.map((entry) => (
@@ -273,12 +273,12 @@ export function AdminInventory() {
                         <span className="text-[10px] text-muted-foreground font-mono">{entry.date}</span>
                       </div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">
-                        Recorded by: {entry.user}
+                        {t("inventory.recordedBy", { user: entry.user })}
                       </div>
                     </div>
                     <div className="text-right">
                       <span className={`text-sm font-bold ${entry.quantity > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
-                        {entry.change} units
+                        {t("inventory.units", { count: entry.change })}
                       </span>
                     </div>
                   </div>
@@ -291,7 +291,7 @@ export function AdminInventory() {
                 onClick={() => setAuditProduct(null)}
                 className="px-4 py-2 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground border border-border rounded-xl"
               >
-                Close
+                {t("actions.close")}
               </button>
             </div>
           </div>
@@ -302,12 +302,12 @@ export function AdminInventory() {
       {selectedProduct && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-background border border-border rounded-2xl max-w-sm w-full p-6 shadow-xl space-y-4">
-            <h3 className="font-bold text-base text-foreground">Adjust Stock: {selectedProduct.name}</h3>
-            <div className="text-xs text-muted-foreground">Current Stock: <strong className="text-foreground">{selectedProduct.stock} units</strong></div>
+            <h3 className="font-bold text-base text-foreground">{t("inventory.adjustTitle", { name: selectedProduct.name })}</h3>
+            <div className="text-xs text-muted-foreground">{t("inventory.currentStockLabel")} <strong className="text-foreground">{t("inventory.units", { count: selectedProduct.stock })}</strong></div>
 
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-semibold text-foreground">Stock Change (+/-)</label>
+                <label className="text-xs font-semibold text-foreground">{t("inventory.stockChange")}</label>
                 <div className="flex items-center gap-3 mt-1">
                   <button onClick={() => setAdjustAmount((prev) => prev - 1)} className="p-2 border border-border rounded-xl hover:bg-secondary">
                     <Minus className="size-4" />
@@ -325,23 +325,23 @@ export function AdminInventory() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-foreground">Reason for Adjustment</label>
+                <label className="text-xs font-semibold text-foreground">{t("inventory.reasonLabel")}</label>
                 <select
                   value={adjustReason}
                   onChange={(e) => setAdjustReason(e.target.value)}
                   className="w-full px-3 py-2 mt-1 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
                 >
-                  <option value="restock">Warehouse Restock</option>
-                  <option value="adjustment">Inventory Audit Sync / Adjustment</option>
-                  <option value="return">Customer Return</option>
-                  <option value="sale">Manual Sale Offset</option>
+                  <option value="restock">{t("inventory.reasonRestock")}</option>
+                  <option value="adjustment">{t("inventory.reasonAdjustment")}</option>
+                  <option value="return">{t("inventory.reasonReturn")}</option>
+                  <option value="sale">{t("inventory.reasonSale")}</option>
                 </select>
               </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-3 border-t border-border">
-              <button onClick={() => setSelectedProduct(null)} className="px-4 py-2 text-xs font-semibold border border-border rounded-xl">Cancel</button>
-              <button onClick={handleApplyAdjustment} className="px-4 py-2 text-xs font-semibold bg-accent-brand text-white rounded-xl">Apply Adjustment</button>
+              <button onClick={() => setSelectedProduct(null)} className="px-4 py-2 text-xs font-semibold border border-border rounded-xl">{t("actions.cancel")}</button>
+              <button onClick={handleApplyAdjustment} className="px-4 py-2 text-xs font-semibold bg-accent-brand text-white rounded-xl">{t("inventory.applyAdjustment")}</button>
             </div>
           </div>
         </div>

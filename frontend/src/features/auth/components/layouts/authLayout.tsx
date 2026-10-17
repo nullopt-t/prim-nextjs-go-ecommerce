@@ -4,9 +4,11 @@ import { Brand } from "@/components/ui/Brand";
 import { Link } from "@/i18n/navigation";
 import { House, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/context/theme";
+import { useTranslations } from "next-intl";
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   const { theme, toggle } = useTheme();
+  const t = useTranslations("auth");
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col justify-between selection:bg-accent-brand/20">
@@ -19,7 +21,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={toggle}
-              aria-label="Toggle theme"
+              aria-label={t("themeToggle")}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors cursor-pointer inline-flex items-center justify-center"
             >
               {theme === "light" ? (

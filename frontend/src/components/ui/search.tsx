@@ -52,7 +52,7 @@ export function SearchBar({ className = "" }: { className?: string }) {
         <button
           type="button"
           onClick={handleClear}
-          aria-label="Clear search"
+          aria-label={t("header.clear")}
           className="text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-muted transition-colors cursor-pointer shrink-0"
         >
           <X className="size-3.5" />

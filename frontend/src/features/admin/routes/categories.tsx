@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { Plus, Search, Edit2, Trash2, FolderTree, X, SlidersHorizontal, Tag } from "lucide-react";
 import { catalogService } from "@/services/catalog";
 import { adminService } from "@/services/admin";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 export function AdminCategories() {
+  const t = useTranslations("admin");
   const [categories, setCategories] = useState<any[]>([]);
   const [allAttributes, setAllAttributes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ export function AdminCategories() {
         icon: "FolderTree"
       })));
     } catch {
-      toast.error("Failed to load categories from server");
+      toast.error(t("categories.toast.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -74,29 +76,29 @@ export function AdminCategories() {
           name: formData.name,
           parentId: formData.parentId ? formData.parentId : undefined,
         });
-        toast.success("Category updated!");
+        toast.success(t("categories.toast.updated"));
       } else {
         await catalogService.createCategory({
           name: formData.name,
           parentId: formData.parentId ? formData.parentId : undefined,
         });
-        toast.success("New category added!");
+        toast.success(t("categories.toast.added"));
       }
       setIsModalOpen(false);
       loadCategories();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save category");
+      toast.error(err?.response?.data?.message || t("categories.toast.saveFailed"));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Categories with attached products cannot be deleted directly.")) {
+    if (confirm(t("categories.confirmDelete"))) {
       try {
         await catalogService.deleteCategory(id);
-        toast.success("Category deleted");
+        toast.success(t("categories.toast.deleted"));
         loadCategories();
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Failed to delete category");
+        toast.error(err?.response?.data?.message || t("categories.toast.deleteFailed"));
       }
     }
   };
@@ -109,9 +111,9 @@ export function AdminCategories() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Categories</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("categories.title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Organize products into hierarchical categories and subcategories.
+            {t("categories.subtitle")}
           </p>
         </div>
         <button
@@ -119,7 +121,7 @@ export function AdminCategories() {
           className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0"
         >
           <Plus className="size-4" />
-          <span>Add Category</span>
+          <span>{t("categories.add")}</span>
         </button>
       </div>
 
@@ -128,7 +130,7 @@ export function AdminCategories() {
           <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search categories..."
+            placeholder={t("categories.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden"
@@ -140,12 +142,12 @@ export function AdminCategories() {
         <table className="w-full text-left text-xs">
           <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
             <tr>
-              <th className="py-3.5 pl-4">Category Name</th>
-              <th className="py-3.5">Slug</th>
-              <th className="py-3.5">Parent Category</th>
-              <th className="py-3.5">Products Count</th>
-              <th className="py-3.5">Status</th>
-              <th className="py-3.5 pr-4 text-right">Actions</th>
+              <th className="py-3.5 pl-4">{t("categories.colName")}</th>
+              <th className="py-3.5">{t("categories.colSlug")}</th>
+              <th className="py-3.5">{t("categories.colParent")}</th>
+              <th className="py-3.5">{t("categories.colProducts")}</th>
+              <th className="py-3.5">{t("categories.colStatus")}</th>
+              <th className="py-3.5 pr-4 text-right">{t("categories.colActions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
@@ -157,7 +159,7 @@ export function AdminCategories() {
                 </td>
                 <td className="py-3.5 font-mono text-muted-foreground">{cat.slug}</td>
                 <td className="py-3.5 text-muted-foreground">{cat.parent}</td>
-                <td className="py-3.5 font-bold text-foreground">{cat.productsCount} items</td>
+                <td className="py-3.5 font-bold text-foreground">{t("categories.items", { count: cat.productsCount })}</td>
                 <td className="py-3.5">
                   <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-full text-[10px] font-bold">
                     {cat.status}
@@ -168,10 +170,10 @@ export function AdminCategories() {
                     <button
                       onClick={() => setViewingCategoryAttrs(cat)}
                       className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border flex items-center gap-1.5 transition-colors"
-                      title="Manage Category Attributes"
+                      title={t("categories.manageAttributes")}
                     >
                       <SlidersHorizontal className="size-3.5 text-accent-brand" />
-                      <span>Attributes</span>
+                      <span>{t("categories.attributes")}</span>
                     </button>
                     <button onClick={() => handleOpenModal(cat)} className="p-1.5 text-muted-foreground hover:text-accent-brand rounded-lg">
                       <Edit2 className="size-4" />
@@ -192,7 +194,7 @@ export function AdminCategories() {
           <div className="bg-background border border-border rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <h3 className="font-bold text-base text-foreground">
-                {editingCategory ? "Edit Category" : "Add New Category"}
+                {editingCategory ? t("categories.editTitle") : t("categories.addTitle")}
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="size-5" />
@@ -200,7 +202,7 @@ export function AdminCategories() {
             </div>
             <form onSubmit={handleSave} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Category Name *</label>
+                <label className="text-xs font-semibold text-foreground">{t("categories.form.name")}</label>
                 <input
                   type="text"
                   required
@@ -210,21 +212,21 @@ export function AdminCategories() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Parent Category</label>
+                <label className="text-xs font-semibold text-foreground">{t("categories.form.parent")}</label>
                 <select
                   value={formData.parentId}
                   onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
                   className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
                 >
-                  <option value="">None (Root Level)</option>
+                  <option value="">{t("categories.form.root")}</option>
                   {categories.filter(c => !editingCategory || c.id !== editingCategory.id).map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
               </div>
               <div className="flex justify-end gap-3 pt-3 border-t border-border">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs font-semibold border border-border rounded-xl">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-xs font-semibold bg-accent-brand text-white rounded-xl">Save</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs font-semibold border border-border rounded-xl">{t("actions.cancel")}</button>
+                <button type="submit" className="px-4 py-2 text-xs font-semibold bg-accent-brand text-white rounded-xl">{t("actions.save")}</button>
               </div>
             </form>
           </div>
@@ -241,8 +243,8 @@ export function AdminCategories() {
                   <SlidersHorizontal className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-foreground">Linked Attributes</h3>
-                  <p className="text-xs text-muted-foreground">{viewingCategoryAttrs.name} category specifications</p>
+                  <h3 className="font-bold text-base text-foreground">{t("categories.attrs.title")}</h3>
+                  <p className="text-xs text-muted-foreground">{t("categories.attrs.subtitle", { name: viewingCategoryAttrs.name })}</p>
                 </div>
               </div>
               <button
@@ -254,11 +256,11 @@ export function AdminCategories() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-foreground">Link New Attribute to this Category</label>
+              <label className="text-xs font-semibold text-foreground">{t("categories.attrs.linkLabel")}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder="Attribute name (e.g. Screen Size, Material)"
+                  placeholder={t("categories.attrs.linkPlaceholder")}
                   value={newLinkedAttrName}
                   onChange={(e) => setNewLinkedAttrName(e.target.value)}
                   className="flex-1 px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
@@ -278,29 +280,29 @@ export function AdminCategories() {
                         isFilterable: true,
                         sortOrder: 0
                       });
-                      toast.success(`Attribute "${newLinkedAttrName}" linked to ${viewingCategoryAttrs.name}!`);
+                      toast.success(t("categories.toast.attributeLinked", { name: newLinkedAttrName, category: viewingCategoryAttrs.name }));
                       setNewLinkedAttrName("");
                       loadCategories();
                     } catch {
-                      toast.error("Failed to link attribute to category");
+                      toast.error(t("categories.toast.linkFailed"));
                     } finally {
                       setCreatingAttr(false);
                     }
                   }}
                   className="px-4 py-2 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 disabled:opacity-50"
                 >
-                  {creatingAttr ? "Linking..." : "Link"}
+                  {creatingAttr ? t("categories.attrs.linking") : t("actions.link")}
                 </button>
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2 pt-2 min-h-[160px]">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Currently Linked Attributes
+                {t("categories.attrs.current")}
               </span>
               {allAttributes.filter(a => a.categoryId === viewingCategoryAttrs.id).length === 0 ? (
                 <div className="py-8 text-center text-xs text-muted-foreground">
-                  No attributes linked to this category yet. Type an attribute name above to create and link one.
+                  {t("categories.attrs.empty")}
                 </div>
               ) : (
                 allAttributes
@@ -313,18 +315,18 @@ export function AdminCategories() {
                       </div>
                       <button
                         onClick={async () => {
-                          if (confirm(`Unlink and delete attribute "${attr.label || attr.key}"?`)) {
+                          if (confirm(t("categories.attrs.confirmUnlink", { name: attr.label || attr.key }))) {
                             try {
                               await adminService.deleteAttribute(attr.id);
-                              toast.success("Attribute unlinked");
+                              toast.success(t("categories.toast.unlinked"));
                               loadCategories();
                             } catch {
-                              toast.error("Failed to unlink attribute");
+                              toast.error(t("categories.toast.unlinkFailed"));
                             }
                           }
                         }}
                         className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg transition-colors"
-                        title="Unlink Attribute"
+                        title={t("categories.attrs.unlink")}
                       >
                         <Trash2 className="size-4" />
                       </button>
@@ -338,7 +340,7 @@ export function AdminCategories() {
                 onClick={() => setViewingCategoryAttrs(null)}
                 className="px-4 py-2 text-xs font-semibold rounded-xl border border-border hover:bg-secondary text-foreground"
               >
-                Done
+                {t("actions.done")}
               </button>
             </div>
           </div>

@@ -63,7 +63,7 @@ export function SettingsSubNav({ activeId }: SettingsSubNavProps) {
     <div className="w-full mb-6">
       {/* ── Desktop Tab Bar (sm: and up) ── */}
       <div className="hidden sm:block border-b border-border/70">
-        <nav aria-label="Settings sub-navigation" className="flex items-center gap-2 overflow-x-auto scrollbar-none -mb-px">
+        <nav aria-label={t("subNav")} className="flex items-center gap-2 overflow-x-auto scrollbar-none -mb-px">
           {settingsSubPages.map((item) => {
             const isActive = activeId
               ? activeId === item.id

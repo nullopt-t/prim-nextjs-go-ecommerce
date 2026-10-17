@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Edit2, Trash2, ExternalLink, X } from "lucide-react";
 import { catalogService } from "@/services/catalog";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 export function AdminBrands() {
+  const t = useTranslations("admin");
   const [brands, setBrands] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -24,7 +26,7 @@ export function AdminBrands() {
         logo: b.logoUrl || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&q=80"
       })));
     } catch {
-      toast.error("Failed to load brands from server");
+      toast.error(t("brands.toast.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -57,29 +59,29 @@ export function AdminBrands() {
           name: formData.name,
           link: formData.website || undefined
         });
-        toast.success("Brand updated!");
+        toast.success(t("brands.toast.updated"));
       } else {
         await catalogService.createBrand({
           name: formData.name,
           link: formData.website || undefined
         });
-        toast.success("Brand created!");
+        toast.success(t("brands.toast.created"));
       }
       setIsModalOpen(false);
       loadBrands();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save brand");
+      toast.error(err?.response?.data?.message || t("brands.toast.saveFailed"));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Delete brand?")) {
+    if (confirm(t("brands.confirmDelete"))) {
       try {
         await catalogService.deleteBrand(id);
-        toast.success("Brand deleted");
+        toast.success(t("brands.toast.deleted"));
         loadBrands();
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Failed to delete brand");
+        toast.error(err?.response?.data?.message || t("brands.toast.deleteFailed"));
       }
     }
   };
@@ -90,15 +92,15 @@ export function AdminBrands() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Brand Partners</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage brand profiles, logos, and manufacturer links.</p>
+          <h1 className="text-2xl font-bold text-foreground">{t("brands.title")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t("brands.subtitle")}</p>
         </div>
         <button
           onClick={() => handleOpenModal()}
           className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0"
         >
           <Plus className="size-4" />
-          <span>Add Brand</span>
+          <span>{t("brands.add")}</span>
         </button>
       </div>
 
@@ -106,7 +108,7 @@ export function AdminBrands() {
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
         <input
           type="text"
-          placeholder="Search brands..."
+          placeholder={t("brands.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand"
@@ -127,18 +129,18 @@ export function AdminBrands() {
                     rel="noreferrer"
                     className="text-[10px] text-accent-brand hover:underline flex items-center gap-1 mt-0.5"
                   >
-                    <span>Visit Website</span>
+                    <span>{t("brands.visitWebsite")}</span>
                     <ExternalLink className="size-3" />
                   </a>
                 </div>
               </div>
               <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400 text-[10px] font-bold rounded-full">
-                {b.status}
+                {t(`status.${String(b.status).toLowerCase()}`) || b.status}
               </span>
             </div>
 
             <div className="flex items-center justify-between pt-3 border-t border-border text-xs">
-              <span className="text-muted-foreground font-medium">{b.productsCount} Associated Products</span>
+              <span className="text-muted-foreground font-medium">{t("brands.associatedProducts", { count: b.productsCount })}</span>
               <div className="flex items-center gap-2">
                 <button onClick={() => handleOpenModal(b)} className="p-1 text-muted-foreground hover:text-accent-brand">
                   <Edit2 className="size-4" />
@@ -156,14 +158,14 @@ export function AdminBrands() {
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-background border border-border rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="font-bold text-base text-foreground">{editingBrand ? "Edit Brand" : "Create Brand"}</h3>
+              <h3 className="font-bold text-base text-foreground">{editingBrand ? t("brands.editTitle") : t("brands.createTitle")}</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="size-5" />
               </button>
             </div>
             <form onSubmit={handleSave} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Brand Name *</label>
+                <label className="text-xs font-semibold text-foreground">{t("brands.form.name")}</label>
                 <input
                   type="text"
                   required
@@ -173,7 +175,7 @@ export function AdminBrands() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Website URL</label>
+                <label className="text-xs font-semibold text-foreground">{t("brands.form.website")}</label>
                 <input
                   type="text"
                   value={formData.website}
@@ -182,8 +184,8 @@ export function AdminBrands() {
                 />
               </div>
               <div className="flex justify-end gap-3 pt-3 border-t border-border">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs font-semibold border border-border rounded-xl">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-xs font-semibold bg-accent-brand text-white rounded-xl">Save</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs font-semibold border border-border rounded-xl">{t("actions.cancel")}</button>
+                <button type="submit" className="px-4 py-2 text-xs font-semibold bg-accent-brand text-white rounded-xl">{t("actions.save")}</button>
               </div>
             </form>
           </div>

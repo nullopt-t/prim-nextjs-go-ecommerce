@@ -22,7 +22,7 @@ export default function UserTopTabs() {
 
   return (
     <nav
-      aria-label="Account navigation"
+      aria-label={t("accountNav")}
       className="flex items-center gap-1 sm:gap-2 lg:gap-3.5 overflow-x-auto scrollbar-none px-2"
     >
       {accountTabKeys.map((tab) => {
@@ -49,7 +49,7 @@ export default function UserTopTabs() {
           className="ml-auto py-1 px-2.5 rounded-lg bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 text-xs font-bold transition-all hover:bg-purple-500/20 flex items-center gap-1.5 whitespace-nowrap"
         >
           <Shield className="size-3.5" />
-          <span>Admin Console</span>
+          <span>{t("adminConsole")}</span>
         </Link>
       )}
     </nav>

@@ -119,7 +119,7 @@ export function NotificationsDropdown() {
               </h3>
               {unreadCount > 0 && (
                 <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-accent-brand/10 text-accent-brand">
-                  {unreadCount} {locale === "ar" ? "جديد" : "new"}
+                  {unreadCount} {t("new")}
                 </span>
               )}
             </div>
@@ -141,7 +141,7 @@ export function NotificationsDropdown() {
             {loading && notifications.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground text-xs">
                 <div className="size-6 border-2 border-accent-brand border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                {locale === "ar" ? "جارِ التحميل..." : "Loading notifications..."}
+                {t("loadingNotifications")}
               </div>
             ) : notifications.length === 0 ? (
               <div className="py-12 px-4 text-center">
@@ -152,9 +152,7 @@ export function NotificationsDropdown() {
                   {t("noNotifications")}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {locale === "ar"
-                    ? "ستظهر هنا التنبيهات الخاصة بطلباتك وعروضك"
-                    : "Order updates and account alerts will appear here"}
+                  {t("noNotificationsDescription")}
                 </p>
               </div>
             ) : (
@@ -215,7 +213,7 @@ export function NotificationsDropdown() {
                       deleteNotification(item.id);
                     }}
                     className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground/60 hover:text-rose-500 rounded-lg transition-all absolute top-3 ltr:right-3 rtl:left-3"
-                    title={locale === "ar" ? "حذف التنبيه" : "Dismiss"}
+                    title={t("dismiss")}
                   >
                     <X className="size-3.5" />
                   </button>

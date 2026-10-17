@@ -484,7 +484,7 @@ export default function AddressesContent() {
                     onFocus={() => setFocusedField("fullName")}
                     onBlur={() => setFocusedField((cur) => (cur === "fullName" ? null : cur))}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    placeholder={isGiftMode ? "e.g. Gift Receiver Name" : t("placeholders.fullName")}
+                    placeholder={isGiftMode ? t("placeholders.giftReceiver") : t("placeholders.fullName")}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border/80 text-foreground text-sm focus:border-accent-brand focus:outline-hidden transition-colors"
                   />
                   <div

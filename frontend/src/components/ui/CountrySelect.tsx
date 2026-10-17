@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Search, ChevronDown, Check, Globe } from "lucide-react";
 import { getLocalizedCountries, CountryOption } from "@/utils/countries";
 
@@ -19,6 +19,7 @@ export function CountrySelect({
   className = "",
 }: CountrySelectProps) {
   const locale = useLocale();
+  const t = useTranslations("components");
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -84,7 +85,7 @@ export function CountrySelect({
     setSearchQuery("");
   };
 
-  const displayText = selectedCountry ? selectedCountry.name : value || (locale === "ar" ? "اختر الدولة..." : "Select Country...");
+  const displayText = selectedCountry ? selectedCountry.name : value || t("countrySelect.selectCountry");
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
@@ -119,7 +120,7 @@ export function CountrySelect({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={locale === "ar" ? "ابحث عن الدولة..." : "Search country..."}
+              placeholder={t("countrySelect.searchPlaceholder")}
               className="w-full bg-transparent text-foreground text-sm py-1.5 focus:outline-hidden placeholder:text-muted-foreground/70"
             />
           </div>
@@ -128,7 +129,7 @@ export function CountrySelect({
           <div className="max-h-60 overflow-y-auto p-1.5 space-y-0.5">
             {filteredCountries.length === 0 ? (
               <div className="py-6 text-center text-xs text-muted-foreground">
-                {locale === "ar" ? "لا توجد نتائج مطابقة" : "No countries found"}
+                {t("countrySelect.noResults")}
               </div>
             ) : (
               filteredCountries.map((country) => {

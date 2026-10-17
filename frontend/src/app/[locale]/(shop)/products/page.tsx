@@ -1,10 +1,14 @@
 import ProductsLayout from "@/features/products/components/layout/productsLayout";
 import { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Products Catalog | PRIM",
-  description: "Browse our premium audio and gear catalog",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta.shop.products");
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export default async function ProductsPage({
   searchParams,

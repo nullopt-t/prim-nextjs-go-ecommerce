@@ -93,7 +93,7 @@ function ReviewCard({
             type="button"
             onClick={handleDelete}
             disabled={deleting}
-            aria-label="Delete review"
+            aria-label={t("ariaDelete")}
             className="text-xs font-medium text-destructive hover:underline transition disabled:opacity-40 cursor-pointer"
           >
             {deleting ? t("deleting") : t("delete")}

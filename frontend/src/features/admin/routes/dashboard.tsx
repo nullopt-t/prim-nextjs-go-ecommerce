@@ -237,7 +237,7 @@ export function AdminDashboard() {
                               : "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400"
                           }`}
                         >
-                          {order.status}
+                          {t(`status.${String(order.status).toLowerCase()}`) || order.status}
                         </span>
                       </td>
                       <td className="py-3.5 font-bold text-foreground">{order.total}</td>

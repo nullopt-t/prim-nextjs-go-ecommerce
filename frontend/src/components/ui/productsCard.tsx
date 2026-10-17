@@ -48,6 +48,7 @@ export function ProductsCard({
 }: ProductsCardProps) {
   const tHome = useTranslations("home");
   const tCommon = useTranslations("common");
+  const tCard = useTranslations("components");
   const locale = useLocale();
   const { addToCart } = useCartContext();
   const { isWishlisted: checkIsWishlisted, toggleWishlist } = useWishlist();
@@ -94,17 +95,13 @@ export function ProductsCard({
       const res = await addToCart(payload);
       if (res.success) {
         setJustAdded(true);
-        toast.success(
-          locale === "ar"
-            ? `تمت إضافة "${productName}" إلى سلة التسوق!`
-            : `Added "${productName}" to your cart!`
-        );
+        toast.success(tCard("productsCard.addedToCart", { productName }));
         setTimeout(() => setJustAdded(false), 2000);
       } else {
-        toast.error(res.error || (locale === "ar" ? "فشل إضافة المنتج إلى السلة" : "Failed to add to cart"));
+        toast.error(res.error || tCard("productsCard.addToCartFailed"));
       }
     } catch (err: any) {
-      toast.error(err?.message || "Failed to add to cart");
+      toast.error(err?.message || tCard("productsCard.addToCartFailed"));
     } finally {
       setIsAdding(false);
     }
@@ -159,7 +156,7 @@ export function ProductsCard({
             <button
               type="button"
               onClick={handleWishlistClick}
-              aria-label="Wishlist"
+              aria-label={tCommon("header.wishlist")}
               className="absolute top-2.5 ltr:right-2.5 rtl:left-2.5 flex items-center justify-center rounded-full size-7.5 transition-all shadow-xs cursor-pointer bg-accent-brand text-white hover:bg-accent-brand/90 scale-105"
             >
               <Heart className="size-3.5 fill-current" />
@@ -221,12 +218,12 @@ export function ProductsCard({
           {justAdded ? (
             <>
               <Check className="size-3.5" />
-              <span>Added</span>
+              <span>{tCard("productsCard.added")}</span>
             </>
           ) : (
             <>
               <ShoppingBag className="size-3.5" />
-              <span>{isAdding ? "Adding..." : tHome("product.addToCart")}</span>
+              <span>{isAdding ? tCard("productsCard.adding") : tHome("product.addToCart")}</span>
             </>
           )}
         </button>
@@ -237,7 +234,7 @@ export function ProductsCard({
             className="w-full text-center text-xs text-accent-brand font-medium mt-2 hover:underline cursor-pointer"
             onClick={onRemove}
           >
-            Remove
+            {tCard("productsCard.remove")}
           </button>
         )}
       </div>

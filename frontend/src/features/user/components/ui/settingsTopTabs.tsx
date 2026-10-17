@@ -15,7 +15,7 @@ export default function SettingsTopTabs() {
 
   return (
     <nav
-      aria-label="Settings navigation"
+      aria-label={tSettings("navAriaLabel")}
       className="flex items-center gap-1 sm:gap-2 lg:gap-3.5 overflow-x-auto scrollbar-none px-2"
     >
       <Link

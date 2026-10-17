@@ -39,7 +39,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <div className="flex items-center justify-between text-xs text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-lg border border-border/40">
             <span className="flex items-center gap-1.5 text-foreground truncate">
               <Truck className="size-3 text-accent-brand shrink-0" />
-              <span>Add <strong className="text-accent-brand">{currencySymbol} {remainingForFreeShipping.toFixed(2)}</strong> for free shipping</span>
+              <span>{t("shippingAdd", { amount: `${currencySymbol} ${remainingForFreeShipping.toFixed(2)}` })}</span>
             </span>
             <span className="text-[11px] font-semibold">{Math.round(shippingProgress)}%</span>
           </div>
@@ -47,7 +47,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
         {subtotal > 0 && isFreeShipping && (
           <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 font-medium">
             <Truck className="size-3 shrink-0" />
-            <span>You unlocked Free Shipping!</span>
+            <span>{t("shippingUnlocked")}</span>
           </div>
         )}
 
@@ -65,11 +65,15 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <div className="text-end text-xs text-muted-foreground">
             {discount > 0 ? (
               <span className="text-emerald-600 dark:text-emerald-400 font-medium block">
-                -{currencySymbol} {discount.toFixed(2)} discount
+                {t("discount", { amount: `-${currencySymbol} ${discount.toFixed(2)}` })}
               </span>
             ) : null}
             <span>
-              {isFreeShipping ? "Free Shipping" : `+${currencySymbol} ${shippingCost.toFixed(2)} shipping`}
+              {isFreeShipping ? (
+                t("orderSummary.free")
+              ) : (
+                `+${currencySymbol} ${shippingCost.toFixed(2)} ${t("orderSummary.shipping")}`
+              )}
             </span>
           </div>
         </div>
@@ -88,7 +92,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
         {/* Micro Security Trust text */}
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/80">
           <ShieldCheck className="size-3 text-emerald-600" />
-          <span>Encrypted checkout</span>
+          <span>{t("encryptedCheckout")}</span>
         </div>
       </div>
     );
@@ -107,8 +111,10 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
             <span className="flex items-center gap-1.5 text-foreground">
               <Truck className="size-3.5 text-accent-brand" />
               {isFreeShipping
-                ? "You unlocked Free Shipping!"
-                : `Add ${currencySymbol} ${remainingForFreeShipping.toFixed(2)} for Free Shipping`}
+                ? t("shippingUnlocked")
+                : t("shippingAdd", {
+                    amount: `${currencySymbol} ${remainingForFreeShipping.toFixed(2)}`,
+                  })}
             </span>
             <span className="text-muted-foreground">{Math.round(shippingProgress)}%</span>
           </div>
@@ -133,7 +139,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <p className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400 font-medium">
             <span className="flex items-center gap-1">
               <Sparkles className="size-3.5" />
-              Discount ({appliedCoupon?.code})
+              {t("discountLabel", { code: appliedCoupon?.code })}
             </span>
             <span>-{currencySymbol} {discount.toFixed(2)}</span>
           </p>
@@ -145,7 +151,9 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           </span>
           <span className="text-foreground font-medium">
             {isFreeShipping ? (
-              <span className="text-emerald-600 dark:text-emerald-400 font-medium">FREE</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                {t("orderSummary.free")}
+              </span>
             ) : (
               `${currencySymbol} ${shippingCost.toFixed(2)}`
             )}
@@ -184,7 +192,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
 
       <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-4">
         <ShieldCheck className="size-3.5 text-emerald-600" />
-        <span>Secure 256-Bit SSL Encrypted Checkout</span>
+        <span>{t("sslCheckout")}</span>
       </div>
 
       <div className="mt-6 pt-4 border-t border-border/50">

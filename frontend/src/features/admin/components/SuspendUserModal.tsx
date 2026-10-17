@@ -10,6 +10,7 @@ import {
   Loader2 
 } from "lucide-react";
 import { AdminUser } from "@/services/admin";
+import { useTranslations } from "next-intl";
 
 interface SuspendUserModalProps {
   user: AdminUser;
@@ -19,6 +20,7 @@ interface SuspendUserModalProps {
 }
 
 export function SuspendUserModal({ user, isOpen, onClose, onConfirm }: SuspendUserModalProps) {
+  const t = useTranslations("admin");
   const isCurrentlySuspended = user.status === "suspended";
   const [duration, setDuration] = useState<"24h" | "7d" | "30d" | "indefinite">("7d");
   const [reason, setReason] = useState("");
@@ -73,10 +75,10 @@ export function SuspendUserModal({ user, isOpen, onClose, onConfirm }: SuspendUs
             </div>
             <div>
               <h2 className="text-base font-bold text-foreground">
-                {isCurrentlySuspended ? "Reactivate User Account" : "Suspend User Account"}
+                {isCurrentlySuspended ? t("modals.suspend.reactivateTitle") : t("modals.suspend.suspendTitle")}
               </h2>
               <p className="text-xs text-muted-foreground">
-                {isCurrentlySuspended ? "Restore marketplace access" : "Temporarily or indefinitely restrict access"}
+                {isCurrentlySuspended ? t("modals.suspend.reactivateSubtitle") : t("modals.suspend.suspendSubtitle")}
               </p>
             </div>
           </div>
@@ -91,7 +93,7 @@ export function SuspendUserModal({ user, isOpen, onClose, onConfirm }: SuspendUs
         {/* User Snapshot */}
         <div className="px-6 py-3.5 bg-secondary/30 border-b border-border text-xs flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="font-semibold text-foreground">{user.fullName || "Unnamed User"}</span>
+            <span className="font-semibold text-foreground">{user.fullName || t("customers.unnamed")}</span>
             <span className="font-mono text-muted-foreground">{user.email}</span>
           </div>
           <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border ${
@@ -99,7 +101,7 @@ export function SuspendUserModal({ user, isOpen, onClose, onConfirm }: SuspendUs
               ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
               : "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30"
           }`}>
-            {user.status}
+            {t(`status.${String(user.status).toLowerCase()}`) || user.status}
           </span>
         </div>
 
@@ -108,21 +110,21 @@ export function SuspendUserModal({ user, isOpen, onClose, onConfirm }: SuspendUs
           {isCurrentlySuspended ? (
             <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs">
               <p className="font-medium leading-relaxed">
-                Reactivating this account will restore immediate sign-in capabilities, checkout access, and active order notifications.
+                {t("modals.suspend.reactivateBody")}
               </p>
             </div>
           ) : (
             <>
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-foreground uppercase tracking-wider block">
-                  Suspension Duration
+                  {t("modals.suspend.duration")}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { id: "24h", label: "24 Hours" },
-                    { id: "7d", label: "7 Days" },
-                    { id: "30d", label: "30 Days" },
-                    { id: "indefinite", label: "Indefinite" },
+                    { id: "24h", label: t("modals.suspend.duration24h") },
+                    { id: "7d", label: t("modals.suspend.duration7d") },
+                    { id: "30d", label: t("modals.suspend.duration30d") },
+                    { id: "indefinite", label: t("modals.suspend.durationIndefinite") },
                   ].map((opt) => (
                     <button
                       key={opt.id}
@@ -142,13 +144,13 @@ export function SuspendUserModal({ user, isOpen, onClose, onConfirm }: SuspendUs
 
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground uppercase tracking-wider block">
-                  Administrative Reason (Optional)
+                  {t("modals.suspend.reason")}
                 </label>
                 <textarea
                   rows={3}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder="e.g. Terms violation, chargeback dispute, suspicious fraud score..."
+                  placeholder={t("modals.suspend.reasonPlaceholder")}
                   className="w-full p-3 rounded-xl border border-border bg-secondary/20 text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:outline-hidden resize-none"
                 />
               </div>
@@ -156,7 +158,7 @@ export function SuspendUserModal({ user, isOpen, onClose, onConfirm }: SuspendUs
               <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-400 flex items-start gap-2.5 text-xs">
                 <AlertOctagon className="size-4 shrink-0 mt-0.5" />
                 <p className="text-[11px] leading-relaxed">
-                  Suspending this user will prevent them from logging in or placing new orders. Active sessions will also be invalidated.
+                  {t("modals.suspend.warning")}
                 </p>
               </div>
             </>
@@ -170,7 +172,7 @@ export function SuspendUserModal({ user, isOpen, onClose, onConfirm }: SuspendUs
               disabled={submitting}
               className="px-4 py-2.5 rounded-xl border border-border text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
             >
-              Cancel
+              {t("actions.cancel")}
             </button>
             <button
               type="submit"
@@ -184,10 +186,10 @@ export function SuspendUserModal({ user, isOpen, onClose, onConfirm }: SuspendUs
               {submitting ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  <span>Processing...</span>
+                  <span>{t("modals.processing")}</span>
                 </>
               ) : (
-                <span>{isCurrentlySuspended ? "Confirm Reactivation" : "Suspend Account"}</span>
+                <span>{isCurrentlySuspended ? t("modals.suspend.confirmReactivate") : t("modals.suspend.confirmSuspend")}</span>
               )}
             </button>
           </div>

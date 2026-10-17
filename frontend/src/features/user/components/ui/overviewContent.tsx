@@ -70,37 +70,6 @@ function parseSnapshot(snapshot?: string): { title: string; img: string } {
   }
 }
 
-const STATUS_BADGE: Record<
-  Order["status"],
-  { label: string; icon: typeof Clock; className: string }
-> = {
-  pending: {
-    label: "Pending",
-    icon: Clock,
-    className: "text-amber-600 bg-amber-500/10 border-amber-500/20",
-  },
-  processing: {
-    label: "Processing",
-    icon: Clock,
-    className: "text-blue-600 bg-blue-500/10 border-blue-500/20",
-  },
-  shipped: {
-    label: "Shipped",
-    icon: Truck,
-    className: "text-violet-600 bg-violet-500/10 border-violet-500/20",
-  },
-  delivered: {
-    label: "Delivered",
-    icon: CheckCircle2,
-    className: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20",
-  },
-  cancelled: {
-    label: "Cancelled",
-    icon: Clock,
-    className: "text-destructive bg-destructive/10 border-destructive/20",
-  },
-};
-
 export default function OverviewContent() {
   const { user } = useAuthContext();
   const t = useTranslations("overview");
@@ -108,6 +77,37 @@ export default function OverviewContent() {
   const isRtl = locale === "ar";
   const Chevron = isRtl ? ChevronLeft : ChevronRight;
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
+
+  const STATUS_BADGE: Record<
+    Order["status"],
+    { label: string; icon: typeof Clock; className: string }
+  > = {
+    pending: {
+      label: t("status.pending"),
+      icon: Clock,
+      className: "text-amber-600 bg-amber-500/10 border-amber-500/20",
+    },
+    processing: {
+      label: t("status.processing"),
+      icon: Clock,
+      className: "text-blue-600 bg-blue-500/10 border-blue-500/20",
+    },
+    shipped: {
+      label: t("status.shipped"),
+      icon: Truck,
+      className: "text-violet-600 bg-violet-500/10 border-violet-500/20",
+    },
+    delivered: {
+      label: t("status.delivered"),
+      icon: CheckCircle2,
+      className: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20",
+    },
+    cancelled: {
+      label: t("status.cancelled"),
+      icon: Clock,
+      className: "text-destructive bg-destructive/10 border-destructive/20",
+    },
+  };
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [wishlistPreview, setWishlistPreview] = useState<WishlistItem[]>([]);
@@ -234,14 +234,16 @@ export default function OverviewContent() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm text-foreground">
-                  {user.role === "superadmin" ? "Platform Superadministrator" : "Store Administrator"}
+                  {user.role === "superadmin"
+                    ? t("staff.superadmin")
+                    : t("staff.admin")}
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-700 dark:text-purple-300">
-                  Staff Account
+                  {t("staff.badge")}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                You have elevated permissions to manage marketplace users, orders, catalog governance, and system operations.
+                {t("staff.desc")}
               </p>
             </div>
           </div>
@@ -249,7 +251,7 @@ export default function OverviewContent() {
             href="/admin/customers"
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all shadow-xs shrink-0"
           >
-            <span>Open Admin Console</span>
+            <span>{t("openAdminConsole")}</span>
             <ExternalLink className="size-3.5" />
           </Link>
         </div>

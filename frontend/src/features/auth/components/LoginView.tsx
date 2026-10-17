@@ -8,10 +8,12 @@ import { useCart } from "@/hooks/useCart";
 import { GuestCartPreview } from "./ui/GuestCartPreview";
 import { validateEmail } from "../utils/validation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 export function LoginView() {
   const router = useRouter();
   const { startChallenge } = useAuthContext();
+  const t = useTranslations("auth");
   const { cartItems } = useCart();
   const [isLoading, setIsLoading] = useState(false);
   const [mergeCart, setMergeCart] = useState(true);
@@ -53,7 +55,7 @@ export function LoginView() {
       const targetUrl = redirect ? `/auth/verify?redirect=${encodeURIComponent(redirect)}` : "/auth/verify";
 
       if (res.success) {
-        toast.success("Verification code sent to your email!");
+        toast.success(t("sign.codeSent"));
         router.push(targetUrl);
       } else {
         // Fallback navigation if offline or demo mode

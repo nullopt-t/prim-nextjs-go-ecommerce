@@ -1,10 +1,14 @@
 import AboutLayout from "@/features/about/components/layout/aboutLayout";
 import { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "About Us | PRIM",
-  description: "Learn more about PRIM's values, mission, and team",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta.shop.about");
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export default function AboutPage() {
   return <AboutLayout />;

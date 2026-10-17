@@ -37,6 +37,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 	const { user, isAuthenticated, logout } = useAuthContext();
 	const { wishlistCount } = useWishlist();
 	const t = useTranslations("common.header");
+	const tAdmin = useTranslations("admin");
 
 	const isSettingsContext = context === "settings";
 
@@ -151,7 +152,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 										</p>
 										{(user.role === "admin" || user.role === "superadmin") && (
 											<span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/20">
-												{user.role}
+												{tAdmin(`roles.${user.role}`) || user.role}
 											</span>
 										)}
 									</div>
@@ -161,7 +162,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 								<div className="flex items-center justify-between">
 									<div>
 										<p className="font-medium text-foreground text-sm">{t("account")}</p>
-										<p className="text-muted-foreground text-xs">Welcome to PRIM</p>
+										<p className="text-muted-foreground text-xs">{t("welcomeToPrim")}</p>
 									</div>
 									<Link
 										href="/auth"
