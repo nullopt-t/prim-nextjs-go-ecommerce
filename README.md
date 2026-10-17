@@ -1,152 +1,132 @@
-# PRIM — Full-Stack E-Commerce Platform
+# PRIM
 
-A production-grade, bilingual (EN/AR) e-commerce monorepo built with **Next.js 15 (App Router)** and **Go (Gin & Clean Architecture)**, backed by **PostgreSQL**, **Redis**, and **MinIO**.
+PRIM is a bilingual (English / Arabic) e-commerce platform. A Next.js storefront, account area, admin back office, and vendor portal sit on top of a Go REST API, backed by PostgreSQL for data, Redis for cache and sessions, Kafka for notifications, and MinIO for media.
 
----
+It's meant to be the whole shop, not just a demo: a catalog with variants and inventory, a cart and checkout with coupons and Cash on Delivery, customer accounts with orders and addresses, an admin back office, and a media library. Some parts (the vendor portal, saved payment cards) are intentionally still in progress.
 
-## Architecture Overview
+## What's in the box
 
-```
-                                      ┌─────────────────────────────────┐
-                                      │       Client / Browser          │
-                                      └────────────────┬────────────────┘
-                                                       │
-                                        Port 3000      │
-                                                       ▼
-                      ┌─────────────────────────────────────────────────────────────────┐
-                      │              Frontend (Next.js 15 App Router)                   │
-                      │   - React 19, TypeScript, Tailwind CSS, Lucide Icons            │
-                      │   - next-intl (Bilingual EN / AR with automatic RTL)            │
-                      │   - Turbopack Hot Reloading & Responsive Layouts                │
-                      └────────────────────────────────┬────────────────┘
-                                                       │  REST API Calls
-                                        Port 8081      │  (JWT Authentication)
-                                                       ▼
-                      ┌─────────────────────────────────────────────────────────────────┐
-                      │                 Backend Service (Go / Gin)                      │
-                      │   - Clean Architecture (Handler -> Service -> Repository)      │
-                      │   - Asynchronous Background Workers                             │
-                      │   - Air Live Reloading, Swagger / OpenAPI Documentation         │
-                      └────────────┬───────────────────┬───────────────────┬────────────┘
-                                   │                   │                   │
-                  SQL Queries      │      Cache / Queues│      Media Uploads │ S3 Protocol
-                  Port 5432        │      Port 6379     │      Port 9000     │
-                                   ▼                   ▼                   ▼
-                      ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-                      │   PostgreSQL    │ │      Redis      │ │   MinIO (S3)    │
-                      │   (Catalog, DB) │ │  (Cache/Sessions│ │ (Asset Storage) │
-                      └─────────────────┘ └─────────────────┘ └─────────────────┘
-```
+**Storefront** — bilingual EN/AR with automatic RTL, catalog browsing and filters, product pages with variants and reviews, a slide-over cart, coupons, wishlist, and checkout with saved addresses. Shipping, tax, the COD fee, available payment methods, and the maintenance/announcement banners all come from the admin settings, so changing them changes the live storefront.
 
----
+**Account area** (`/user`) — order history and details, addresses, reviews, wishlist, plus profile, preferences, session management, and a danger zone.
 
-## Tech Stack
+**Admin back office** (`/admin`) — dashboard, products and variants, categories, brands, tags, attributes, inventory with an adjustment ledger, orders and tracking, payments and refunds, promotions and redemptions, customers, media library, store settings, and system settings.
 
-### Frontend
-- **Framework:** Next.js 15 with React 19 & TypeScript
-- **Styling:** Tailwind CSS with dynamic theme variables & responsive design tokens
-- **Internationalization:** `next-intl` with full LTR (English) & RTL (Arabic) support
-- **State & Context:** React Context (`CartContext`, `CatalogContext`, `ThemeContext`)
-- **Notifications:** Sonner toasts
+**Vendor portal** (`/vendor`) — dashboard, products, inventory, orders, and payouts. This is a frontend prototype backed by mock data; the backend vendor domain hasn't landed yet.
 
-### Backend
-- **Language & Framework:** Go 1.23+, Gin Web Framework
-- **Architecture:** Clean Architecture (Handlers, Services, Repositories)
-- **Database & Cache:** PostgreSQL (pgx/sql), Redis
-- **Storage:** MinIO (S3-compatible Object Storage)
-- **Hot-Reload:** Air
-- **Database Migrations:** `golang-migrate`
-- **Documentation:** Swagger / OpenAPI via `swag`
+**Backend** — a Gin API organized into per-domain packages (handler → service → repository on a shared transaction runner), passwordless email-OTP auth with Redis sessions, Kafka-driven notifications handled by a separate worker, and MinIO uploads. Swagger docs are generated for both the public and admin surfaces.
 
----
-
-## Repository Structure
+## Architecture
 
 ```
-prim-nextjs-go-ecommerce/
-├── backend/                       # Go REST API & background workers
-│   ├── cmd/                       # Application entrypoints (api, worker)
-│   ├── configs/                   # Configuration files & Air templates
-│   ├── internal/                  # Domain packages (auth, catalog, cart, orders)
-│   ├── migrations/                # Database schema migration scripts
-│   ├── pkg/                       # Shared packages (database, storage, logger)
-│   └── docs/                      # Swagger OpenAPI specification
-├── frontend/                      # Next.js 15 bilingual storefront
-│   ├── messages/                  # Localization dictionaries (en.json, ar.json)
-│   ├── public/                    # Static assets & placeholders
-│   └── src/
-│       ├── api/                   # API client configuration
-│       ├── app/                   # Next.js App Router (shop, auth, admin)
-│       ├── components/            # Reusable UI components (cards, navbar, layout)
-│       ├── context/               # Global state (Cart, Catalog, Theme)
-│       └── features/              # Feature modules (home, products, cart, etc.)
-├── Makefile                       # Development workflow shortcuts
-├── docker-compose.dev.yml         # Full local development container stack
-└── README.md                      # Project documentation
+Browser
+└─ Frontend — Next.js 16 · React 19 · Tailwind CSS 4 · next-intl   (:3000)
+   │
+   └─ REST / JSON with a session cookie   (/api/v1)
+      │
+      └─ Backend API — Go 1.26 · Gin    (:8081)
+         │   handler → service → repository
+         │
+         ├─ PostgreSQL   catalog, orders, users, settings
+         ├─ Redis        cache, sessions, rate limits
+         ├─ MinIO        media (S3-compatible)
+         └─ Kafka        notification events
+            └─ Worker   Go 1.26, consumes Kafka
+               └─ Email and in-app notifications
 ```
 
----
+## Tech stack
 
-## Quick Start (Docker Development)
+| Layer | Stack |
+| --- | --- |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript 7, Tailwind CSS 4, next-intl, Sonner, Recharts |
+| Backend | Go 1.26, Gin, pgx, JWT, Swag |
+| Database | PostgreSQL 18 |
+| Cache & sessions | Redis 8 |
+| Messaging | Apache Kafka (KRaft) |
+| Object storage | MinIO (S3-compatible) |
+| Tooling | Docker Compose, Air (hot reload), golang-migrate, GitHub Actions, CodeQL |
 
-Ensure you have [Docker](https://docs.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed.
+## Getting started
 
-### 1. Launch the Stack
-```bash
-make up
-# Or run in the background:
-make up-d
-```
-
-### 2. Available Services & Ports
-
-| Service | URL | Description |
-|---|---|---|
-| **Storefront (Frontend)** | [http://localhost:3000](http://localhost:3000) | Next.js app with EN/AR localization |
-| **Backend API** | [http://localhost:8081](http://localhost:8081) | Go REST API Server |
-| **API Health Check** | [http://localhost:8081/health](http://localhost:8081/health) | API Liveness endpoint |
-| **Swagger Docs (Public)** | [http://localhost:8081/swagger/public/index.html](http://localhost:8081/swagger/public/index.html) | Storefront API Specs |
-| **Swagger Docs (Admin)** | [http://localhost:8081/swagger/admin/index.html](http://localhost:8081/swagger/admin/index.html) | Admin Management API Specs |
-| **MinIO Console** | [http://localhost:9001](http://localhost:9001) | S3 Object Browser (`admin` / `supersecret`) |
-| **PostgreSQL** | `localhost:5432` | DB: `prim`, User: `prim`, Pass: `prim` |
-| **Redis** | `localhost:6379` | In-memory cache & sessions |
-
----
-
-## Development Commands
-
-All standard development tasks are exposed via the top-level `Makefile`:
+You need Docker and Docker Compose. From the repository root:
 
 ```bash
-# Manage containers
-make up           # Start all services with live logs
-make up-d         # Start all services in the background
-make down         # Stop all containers
-make clean        # Stop and wipe persistent volumes
-
-# Stream logs
-make logs         # Stream all container logs
-make logs-api     # Stream Go backend logs
-make logs-frontend# Stream Next.js frontend logs
-
-# Database migrations
-make migrate-up   # Apply pending migrations
-make migrate-down # Rollback last migration
-make migrate-reset# Wipe and re-apply all migrations
+make up       # start everything and follow the logs
+make up-d     # or start it in the background
 ```
 
----
+This brings up the storefront, API, worker, PostgreSQL, Redis, Kafka, and MinIO, seeds the media bucket, and runs the migrations. The first build takes a few minutes while Go modules and npm packages download.
 
-## Features & Highlights
+Once it's up, open the storefront at <http://localhost:3000>. The API is at <http://localhost:8081>, and a quick health check lives at <http://localhost:8081/health>.
 
-- **Bilingual & Bidirectional:** Fully functional English and Arabic interface with dynamic RTL direction flipping.
-- **Card Click Isolation:** Decoupled product card image/title navigation from action buttons (Add to Cart / Wishlist) to prevent anchor hijacking.
-- **Side Drawer Cart:** Instant cart slide-over with real-time calculations, coupon discounts, and line-item management.
-- **Product Filters:** Multi-criteria filtering by category, brand, stock availability, ratings, and discounts.
-- **Hot-Reloading Everywhere:** Next.js Turbopack on the frontend and Air on the Go backend for near-instant iteration inside Docker.
+> **A note on the URL configuration.** `docker-compose.dev.yml` points the frontend and MinIO at a LAN address (`192.168.1.16`) so the stack is reachable from other devices on the network. If you only ever use your own machine, change `NEXT_PUBLIC_API_URL`, `API_URL`, `MINIO_PUBLIC_URL`, and `CLIENT_BASE_URL` in that file to `localhost`.
 
----
+### Services and ports
+
+| Service | Address | Notes |
+| --- | --- | --- |
+| Storefront | <http://localhost:3000> | Next.js app |
+| API | <http://localhost:8081> | Go REST API |
+| Health check | <http://localhost:8081/health> | Liveness |
+| Public API docs | <http://localhost:8081/api/v1/docs/public/index.html> | Swagger UI |
+| Admin API docs | <http://localhost:8081/api/v1/docs/admin/index.html> | Requires an admin session |
+| MinIO API | <http://localhost:9000> | S3 endpoint |
+| MinIO console | <http://localhost:9001> | `admin` / `supersecret` |
+| PostgreSQL | `localhost:5432` | db `prim`, user `prim`, password `prim` |
+| Redis | `localhost:6379` | |
+| Kafka | `localhost:9092` | |
+
+## Common commands
+
+Everything day-to-day is wrapped by the root `Makefile`:
+
+```bash
+make up            # start the full stack in the foreground
+make up-d          # start it detached
+make up-build      # rebuild images, then start
+make down          # stop the containers
+make clean         # stop and remove volumes (fresh database)
+
+make logs          # tail everything
+make logs-api      # only the Go API
+make logs-worker   # only the notification worker
+make logs-frontend # only the Next.js app
+
+make migrate-up    # apply pending migrations
+make migrate-down  # roll back the last migration
+make migrate-reset # drop and re-apply everything
+```
+
+More backend-specific targets (Swagger generation, binary builds, linting) live in `backend/Makefile`.
+
+## Repository layout
+
+```
+prim/
+├── backend/                     # Go API + notification worker
+│   ├── cmd/                     # entrypoints: api, worker
+│   ├── internal/                # domain packages (auth, catalog, cart, checkout, order, user, setting, ...)
+│   ├── migrations/              # SQL schema + seed data
+│   ├── pkg/                     # shared config, database, storage, logging, mail, broker
+│   ├── configs/                 # config.yaml and Air hot-reload configs
+│   ├── docs/                    # generated Swagger specs (public + admin)
+│   └── seed/                    # seed media for the catalog
+├── frontend/                    # Next.js 16 storefront, account, admin, and vendor apps
+│   ├── messages/                # en.json / ar.json
+│   ├── public/                  # static assets
+│   └── src/                     # app routes, features, context, services, hooks
+├── docker-compose.dev.yml       # the local development stack
+├── Makefile                     # development shortcuts
+└── README.md
+```
+
+## Where things stand
+
+- The **vendor portal** is frontend-only for now: its pages read from mock data until the vendor backend and API land.
+- **Saved payment methods** are a UI shell; cards aren't persisted yet, and checkout currently runs Cash on Delivery (plus any card option enabled in settings).
+- Admin settings are wired through to real behavior — checkout pricing, the maintenance gate, payment availability, and the storefront's identity and announcement banner all read from the backend settings store.
 
 ## License
 
-This project is licensed under the MIT License.
+MIT
