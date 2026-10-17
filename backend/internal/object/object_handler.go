@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/shared/validation"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
@@ -82,4 +83,22 @@ func (h *ObjectHandler) UploadMedia(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, api.DataResponse{Data: item})
+}
+
+// DeleteMedia soft-deletes a media object by ID and removes it from object
+// storage. Mirrors the lifecycle used by DeleteObject: mark 'deleting', remove
+// the binary from the bucket, then mark 'deleted'.
+func (h *ObjectHandler) DeleteMedia(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid media ID").WithCode(apierr.CodeInvalidInput))
+		return
+	}
+
+	if err := h.service.DeleteObjectByID(c.Request.Context(), id); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Media deleted"})
 }

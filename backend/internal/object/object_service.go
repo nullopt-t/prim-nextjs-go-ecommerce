@@ -2,6 +2,7 @@ package object
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"io"
@@ -155,7 +156,16 @@ func (os *ObjectService) DeleteObjectByID(ctx context.Context, id uuid.UUID) err
 		return err
 	})
 	if err != nil {
-		return apierr.New(http.StatusInternalServerError, "failed to get object by id").Wrap(err)
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			return apierr.NotFoundError("Media not found").
+				WithCode(apierr.CodeNotFound).
+				Wrap(err)
+		}
+		return apierr.InternalServerError("Failed to load media").Wrap(err)
+	}
+	// Already soft-deleted objects are gone from the listing, so surface them as not found.
+	if obj.DeletedAt != nil || obj.Status == model.ObjectStatusDeleted {
+		return apierr.NotFoundError("Media not found").WithCode(apierr.CodeNotFound)
 	}
 	return os.DeleteObject(ctx, obj.Bucket, obj.Key)
 }
@@ -234,4 +244,3 @@ func (os *ObjectService) ListMedia(ctx context.Context, limit int, cursor *pagin
 	})
 	return list, page, err
 }
-

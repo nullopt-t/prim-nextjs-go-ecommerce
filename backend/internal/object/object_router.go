@@ -27,5 +27,6 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	{
 		admin.GET("", r.handler.ListMedia)
 		admin.POST("", r.handler.UploadMedia)
+		admin.DELETE("/:id", r.handler.DeleteMedia)
 	}
 }
