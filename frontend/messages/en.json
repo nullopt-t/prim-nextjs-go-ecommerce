@@ -74,7 +74,9 @@
       "removed": "Item removed from selection",
       "unitsAvailable": "Only {count} units available",
       "decreaseQty": "Decrease quantity",
-      "increaseQty": "Increase quantity"
+      "increaseQty": "Increase quantity",
+      "updateFailed": "Failed to update item",
+      "removeFailed": "Failed to remove item"
     },
     "themeToggle": "Toggle theme",
     "backToLogin": "Back to login",
@@ -122,10 +124,22 @@
     "outOfStock": "Out of stock",
     "shippingAdd": "Add {amount} for free shipping",
     "shippingUnlocked": "You unlocked Free Shipping!",
-    "sslCheckout": "Secure 256-Bit SSL Encrypted Checkout"
+    "sslCheckout": "Secure 256-Bit SSL Encrypted Checkout",
+    "toast": {
+      "unitsAvailable": "Only {count} units available in stock",
+      "updateQuantityFailed": "Failed to update quantity",
+      "itemRemoved": "{name} removed from cart",
+      "updateItemFailed": "Failed to update item",
+      "removeFailed": "Failed to remove item"
+    }
   },
   "common": {
     "currency": "EGP",
+    "errors": {
+      "loadTitle": "Couldn't load data",
+      "loadDescription": "Something went wrong while loading this content. Please try again.",
+      "retry": "Retry"
+    },
     "filters": {
       "allCategories": "All Categories",
       "andUp": "& up",
@@ -382,7 +396,16 @@
     "toast": {
       "addedAll": "Added {count} items to your cart",
       "cleared": "Wishlist cleared successfully",
-      "itemRemoved": "\"{name}\" removed from wishlist"
+      "itemRemoved": "\"{name}\" removed from wishlist",
+      "signInRequired": "Please sign in to save items to your wishlist",
+      "addedNamed": "Saved \"{name}\" to wishlist!",
+      "added": "Saved to wishlist!",
+      "removed": "Removed from wishlist",
+      "addFailed": "Failed to add to wishlist",
+      "removeFailed": "Failed to remove from wishlist",
+      "itemRemoveFailed": "Failed to remove item",
+      "clearFailed": "Failed to clear wishlist",
+      "addAllFailed": "Failed to add some items"
     }
   },
   "addresses": {

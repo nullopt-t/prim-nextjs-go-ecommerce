@@ -8,7 +8,7 @@ import { Heart, ShoppingBag, Check } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useCartContext } from "@/context/CartContext";
 import { useWishlist } from "@/hooks/useWishlist";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
 
 export interface CardDetails {
   id: string | number;
@@ -95,13 +95,13 @@ export function ProductsCard({
       const res = await addToCart(payload);
       if (res.success) {
         setJustAdded(true);
-        toast.success(tCard("productsCard.addedToCart", { productName }));
+        notify.success(tCard("productsCard.addedToCart", { productName }));
         setTimeout(() => setJustAdded(false), 2000);
       } else {
-        toast.error(res.error || tCard("productsCard.addToCartFailed"));
+        notify.error(apiErrorMessage(res, tCard("productsCard.addToCartFailed")));
       }
     } catch (err: any) {
-      toast.error(err?.message || tCard("productsCard.addToCartFailed"));
+      notify.error(apiErrorMessage(err, tCard("productsCard.addToCartFailed")));
     } finally {
       setIsAdding(false);
     }

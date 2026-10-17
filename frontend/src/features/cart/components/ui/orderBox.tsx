@@ -7,7 +7,7 @@ import { LazyImage } from "@/components/ui/lazyImage";
 import { CartItemData } from "@/features/cart/types";
 import { useCart } from "@/hooks/useCart";
 import { Link } from "@/i18n/navigation";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
 import { useState } from "react";
 
 export default function OrderBox({ orderDetails }: { orderDetails: CartItemData }) {
@@ -36,7 +36,7 @@ export default function OrderBox({ orderDetails }: { orderDetails: CartItemData 
     }
 
     if (orderDetails.availableStock !== undefined && newQty > orderDetails.availableStock) {
-      toast.error(`Only ${orderDetails.availableStock} units available in stock`);
+      notify.error(t("toast.unitsAvailable", { count: orderDetails.availableStock }));
       return;
     }
 
@@ -44,7 +44,7 @@ export default function OrderBox({ orderDetails }: { orderDetails: CartItemData 
     const res = await updateCartItem(orderDetails.id, newQty);
     setIsUpdating(false);
     if (!res.success) {
-      toast.error(res.error || "Failed to update quantity");
+      notify.error(apiErrorMessage(res, t("toast.updateQuantityFailed")));
     }
   };
 
@@ -53,9 +53,9 @@ export default function OrderBox({ orderDetails }: { orderDetails: CartItemData 
     const res = await removeFromCart(orderDetails.id);
     setIsDeleting(false);
     if (res.success) {
-      toast.success(`${productName} removed from cart`);
+      notify.success(t("toast.itemRemoved", { name: productName }));
     } else {
-      toast.error(res.error || "Failed to remove item");
+      notify.error(apiErrorMessage(res, t("toast.removeFailed")));
     }
   };
 

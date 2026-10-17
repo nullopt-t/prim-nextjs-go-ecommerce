@@ -4,7 +4,8 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ArrowLeft, Truck, Clock, MapPin, CreditCard, User, Tag } from "lucide-react";
 import { adminService } from "@/services/admin";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
+import { ErrorState } from "@/components/ui/errorState";
 
 export function AdminOrderDetails() {
   const { id } = useParams();
@@ -15,11 +16,13 @@ export function AdminOrderDetails() {
   const [loading, setLoading] = useState(true);
   const [trackingNumber, setTrackingNumber] = useState("");
   const [noteInput, setNoteInput] = useState("");
+  const [loadError, setLoadError] = useState(false);
 
   const fetchOrderFromApi = async () => {
     if (!id) return;
     try {
       setLoading(true);
+      setLoadError(false);
       const res: any = await adminService.getOrderById(String(id));
       const remoteOrder = res?.data || res;
       if (remoteOrder) {
@@ -66,7 +69,7 @@ export function AdminOrderDetails() {
         setTrackingNumber(formatted.trackingNumber);
       }
     } catch {
-      toast.error(t("orderDetails.toast.loadFailed"));
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -80,6 +83,10 @@ export function AdminOrderDetails() {
     return <div className="p-8 text-center text-muted-foreground">{t("orderDetails.loading")}</div>;
   }
 
+  if (loadError) {
+    return <ErrorState onRetry={fetchOrderFromApi} />;
+  }
+
   if (!order) {
     return <div className="p-8 text-center text-muted-foreground">{t("orderDetails.notFound")}</div>;
   }
@@ -87,24 +94,24 @@ export function AdminOrderDetails() {
   const handleUpdateFulfillment = async (newStatus: string) => {
     try {
       await adminService.updateOrderStatus(order.id, newStatus.toLowerCase());
-      toast.success(t("orderDetails.toast.statusUpdated", { status: newStatus }));
+      notify.success(t("orderDetails.toast.statusUpdated", { status: newStatus }));
       fetchOrderFromApi();
     } catch (err: any) {
-      toast.error(err?.message || err?.response?.data?.message || t("orderDetails.toast.statusFailed"));
+      notify.error(apiErrorMessage(err, t("orderDetails.toast.statusFailed")));
       fetchOrderFromApi();
     }
   };
 
   const handleSaveTracking = async () => {
     if (!trackingNumber.trim()) {
-      toast.error(t("orderDetails.toast.enterTracking"));
+      notify.error(t("orderDetails.toast.enterTracking"));
       return;
     }
     try {
       await adminService.updateOrderTracking(order.id, trackingNumber);
-      toast.success(t("orderDetails.toast.trackingSaved"));
+      notify.success(t("orderDetails.toast.trackingSaved"));
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || t("orderDetails.toast.trackingFailed"));
+      notify.error(apiErrorMessage(err, t("orderDetails.toast.trackingFailed")));
     }
   };
 
@@ -114,11 +121,11 @@ export function AdminOrderDetails() {
 
     try {
       await adminService.updateOrderStatus(order.id, order.status.toLowerCase(), noteInput.trim());
-      toast.success(t("orderDetails.toast.noteAdded"));
+      notify.success(t("orderDetails.toast.noteAdded"));
       setNoteInput("");
       fetchOrderFromApi();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || t("orderDetails.toast.noteFailed"));
+      notify.error(apiErrorMessage(err, t("orderDetails.toast.noteFailed")));
     }
   };
 

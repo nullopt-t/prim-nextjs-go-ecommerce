@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Plus, Minus, Search, History, AlertTriangle } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
+import { ErrorState } from "@/components/ui/errorState";
 
 export function AdminInventory() {
   const t = useTranslations("admin");
@@ -16,6 +17,7 @@ export function AdminInventory() {
   const [auditProduct, setAuditProduct] = useState<any>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const handleViewAudit = async (prod: any) => {
     setAuditProduct(prod);
@@ -38,7 +40,7 @@ export function AdminInventory() {
         user: "System / Admin"
       })));
     } catch {
-      toast.error(t("inventory.toast.auditFailed"));
+      notify.error(t("inventory.toast.auditFailed"));
     } finally {
       setLoadingAudit(false);
     }
@@ -47,6 +49,7 @@ export function AdminInventory() {
   const loadInventoryData = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const [invRes, logsRes]: [any, any] = await Promise.all([
         adminService.getInventory({ pageSize: 50 }),
         adminService.getInventoryLedgers(30)
@@ -76,7 +79,7 @@ export function AdminInventory() {
         user: "Warehouse Manager"
       })));
     } catch {
-      toast.error(t("inventory.toast.loadFailed"));
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -101,14 +104,14 @@ export function AdminInventory() {
       } else if (selectedProduct.productId) {
         await adminService.adjustProductInventory(selectedProduct.productId, adjustAmount, adjustReason);
       } else {
-        toast.error(t("inventory.toast.noId"));
+        notify.error(t("inventory.toast.noId"));
         return;
       }
-      toast.success(t("inventory.toast.adjusted", { name: selectedProduct.name }));
+      notify.success(t("inventory.toast.adjusted", { name: selectedProduct.name }));
       setSelectedProduct(null);
       loadInventoryData();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || t("inventory.toast.adjustFailed"));
+      notify.error(apiErrorMessage(err, t("inventory.toast.adjustFailed")));
     }
   };
 
@@ -117,6 +120,10 @@ export function AdminInventory() {
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.sku.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (loadError) {
+    return <ErrorState onRetry={loadInventoryData} />;
+  }
 
   return (
     <div className="space-y-6">

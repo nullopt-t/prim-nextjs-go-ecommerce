@@ -1,9 +1,10 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { wishlistService, WishlistItem } from "@/services/wishlist";
 import { useAuthContext } from "@/context/AuthContext";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
 
 interface WishlistContextType {
   wishlistItems: WishlistItem[];
@@ -21,6 +22,7 @@ interface WishlistContextType {
 const WishlistContext = createContext<WishlistContextType | null>(null);
 
 export function WishlistProvider({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("wishlist");
   const { isAuthenticated } = useAuthContext();
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [wishlistCount, setWishlistCount] = useState<number>(0);
@@ -80,7 +82,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
 
   const addToWishlist = async (productId: string, variantId?: string, productName?: string): Promise<boolean> => {
     if (!isAuthenticated) {
-      toast.error("Please sign in to save items to your wishlist");
+      notify.error(t("toast.signInRequired"));
       return false;
     }
 
@@ -92,10 +94,10 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       } else {
         await refreshWishlist();
       }
-      toast.success(productName ? `Saved "${productName}" to wishlist!` : "Saved to wishlist!");
+      notify.success(productName ? t("toast.addedNamed", { name: productName }) : t("toast.added"));
       return true;
     } catch (err: any) {
-      toast.error(err?.message || "Failed to add to wishlist");
+      notify.error(apiErrorMessage(err, t("toast.addFailed")));
       return false;
     }
   };
@@ -117,10 +119,10 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
 
     try {
       await wishlistService.removeByProductId(productId, variantId);
-      toast.info(productName ? `Removed "${productName}" from wishlist` : "Removed from wishlist");
+      notify.info(productName ? t("toast.itemRemoved", { name: productName }) : t("toast.removed"));
       return true;
     } catch (err: any) {
-      toast.error(err?.message || "Failed to remove from wishlist");
+      notify.error(apiErrorMessage(err, t("toast.removeFailed")));
       await refreshWishlist();
       return false;
     }
@@ -135,10 +137,10 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
 
     try {
       await wishlistService.removeItem(itemId);
-      toast.info(productName ? `Removed "${productName}" from wishlist` : "Removed from wishlist");
+      notify.info(productName ? t("toast.itemRemoved", { name: productName }) : t("toast.removed"));
       return true;
     } catch (err: any) {
-      toast.error(err?.message || "Failed to remove item");
+      notify.error(apiErrorMessage(err, t("toast.itemRemoveFailed")));
       await refreshWishlist();
       return false;
     }
@@ -160,10 +162,10 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
 
     try {
       await wishlistService.clearWishlist();
-      toast.success("Wishlist cleared successfully");
+      notify.success(t("toast.cleared"));
       return true;
     } catch (err: any) {
-      toast.error(err?.message || "Failed to clear wishlist");
+      notify.error(apiErrorMessage(err, t("toast.clearFailed")));
       await refreshWishlist();
       return false;
     }

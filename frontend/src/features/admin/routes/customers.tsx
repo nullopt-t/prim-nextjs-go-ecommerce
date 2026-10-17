@@ -28,7 +28,8 @@ import { SuspendUserModal } from "../components/SuspendUserModal";
 import { RevokeSessionsModal } from "../components/RevokeSessionsModal";
 import { useAuthContext } from "@/context/AuthContext";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
+import { ErrorState } from "@/components/ui/errorState";
 import { ROLE_RANKS } from "@/lib/roles";
 
 export function AdminCustomers() {
@@ -56,6 +57,7 @@ export function AdminCustomers() {
   const [roleModalUser, setRoleModalUser] = useState<AdminUser | null>(null);
   const [suspendModalUser, setSuspendModalUser] = useState<AdminUser | null>(null);
   const [revokeModalUser, setRevokeModalUser] = useState<AdminUser | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   // Debounce search input
   useEffect(() => {
@@ -68,6 +70,7 @@ export function AdminCustomers() {
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await adminService.getUsers({
         page,
@@ -88,8 +91,8 @@ export function AdminCustomers() {
         const refreshed = userList.find((u) => u.id === inspectUser.id);
         if (refreshed) setInspectUser(refreshed);
       }
-    } catch (err: any) {
-      toast.error(err.message || t("customers.toast.loadFailed"));
+    } catch {
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -103,10 +106,10 @@ export function AdminCustomers() {
   const handleConfirmRoleChange = async (userId: string, newRole: AdminUser["role"]) => {
     try {
       await adminService.updateUserRole(userId, { role: newRole });
-      toast.success(t("customers.toast.roleUpdated"));
+      notify.success(t("customers.toast.roleUpdated"));
       await fetchUsers();
     } catch (err: any) {
-      toast.error(err.message || t("customers.toast.roleFailed"));
+      notify.error(apiErrorMessage(err, t("customers.toast.roleFailed")));
       throw err;
     }
   };
@@ -114,10 +117,10 @@ export function AdminCustomers() {
   const handleConfirmStatusChange = async (userId: string, status: AdminUser["status"], suspendedUntil: string | null) => {
     try {
       await adminService.updateUserStatus(userId, { status, suspendedUntil });
-      toast.success(status === "active" ? t("customers.toast.reactivated") : t("customers.toast.suspended"));
+      notify.success(status === "active" ? t("customers.toast.reactivated") : t("customers.toast.suspended"));
       await fetchUsers();
     } catch (err: any) {
-      toast.error(err.message || t("customers.toast.statusFailed"));
+      notify.error(apiErrorMessage(err, t("customers.toast.statusFailed")));
       throw err;
     }
   };
@@ -125,10 +128,10 @@ export function AdminCustomers() {
   const handleConfirmRevokeSessions = async (userId: string) => {
     try {
       await adminService.revokeUserSessions(userId);
-      toast.success(t("customers.toast.sessionsRevoked"));
+      notify.success(t("customers.toast.sessionsRevoked"));
       await fetchUsers();
     } catch (err: any) {
-      toast.error(err.message || t("customers.toast.sessionsFailed"));
+      notify.error(apiErrorMessage(err, t("customers.toast.sessionsFailed")));
       throw err;
     }
   };
@@ -172,6 +175,10 @@ export function AdminCustomers() {
         );
     }
   };
+
+  if (loadError) {
+    return <ErrorState onRetry={fetchUsers} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -422,7 +429,7 @@ export function AdminCustomers() {
                                   onClick={() => {
                                     if (confirm(t("customers.confirmDelete", { email: u.email }))) {
                                       adminService.deleteUser(u.id).then(() => {
-                                        toast.success(t("customers.toast.deleted"));
+                                        notify.success(t("customers.toast.deleted"));
                                         fetchUsers();
                                       });
                                     }

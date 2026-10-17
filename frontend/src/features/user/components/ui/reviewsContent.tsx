@@ -5,7 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { userService } from "@/services/user";
 import { Stars } from "@/components/ui/stars";
 import { useTranslations, useLocale } from "next-intl";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface Review {
@@ -63,10 +63,10 @@ function ReviewCard({
     setDeleting(true);
     try {
       await userService.deleteReview(review.id);
-      toast.success(t("toastDeleted"));
+      notify.success(t("toastDeleted"));
       onDelete(review.id);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("toastFailed"));
+      notify.error(apiErrorMessage(err, t("toastFailed")));
     } finally {
       setDeleting(false);
     }

@@ -7,7 +7,7 @@ import { userService } from "@/services/user";
 import { LazyImage } from "@/components/ui/lazyImage";
 import { normalizeMediaUrl } from "@/utils/media";
 import { useTranslations, useLocale } from "next-intl";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
 
 interface OrderItem {
   id: string;
@@ -113,9 +113,9 @@ export default function OrderDetailsContent() {
     try {
       await userService.cancelOrder(String(id));
       setOrder({ ...order, status: "cancelled" });
-      toast.success(t("cancelSuccess"));
+      notify.success(t("cancelSuccess"));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("cancelFailed"));
+      notify.error(apiErrorMessage(err, t("cancelFailed")));
     } finally {
       setCancelling(false);
     }

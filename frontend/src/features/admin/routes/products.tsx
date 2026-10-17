@@ -12,7 +12,8 @@ import { catalogService } from "@/services/catalog";
 import { adminService } from "@/services/admin";
 import { useCatalogContext } from "@/context/CatalogContext";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
+import { ErrorState } from "@/components/ui/errorState";
 
 export function AdminProducts() {
   const t = useTranslations("admin");
@@ -20,11 +21,13 @@ export function AdminProducts() {
   const [categories, setCategories] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const { refreshCatalog } = useCatalogContext() || {};
 
   const loadAll = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const [prodsRes, catsRes, brandsRes]: [any, any, any] = await Promise.all([
         catalogService.getProducts(`pageSize=100&_t=${Date.now()}`),
         catalogService.getCategories(100),
@@ -77,7 +80,7 @@ export function AdminProducts() {
         setProducts(formatted);
       }
     } catch {
-      toast.error(t("products.toast.loadFailed"));
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -123,7 +126,7 @@ export function AdminProducts() {
       // Also update the row in products list state if it differed
       setProducts((prev: any[]) => prev.map((p) => p.id === prod.id ? { ...p, stock: ledgerSum } : p));
     } catch {
-      toast.error(t("products.toast.auditFailed"));
+      notify.error(t("products.toast.auditFailed"));
     } finally {
       setLoadingAudit(false);
     }
@@ -187,7 +190,7 @@ export function AdminProducts() {
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.price || !formData.stock) {
-      toast.error(t("products.toast.requiredFields"));
+      notify.error(t("products.toast.requiredFields"));
       return;
     }
 
@@ -229,14 +232,14 @@ export function AdminProducts() {
           } else {
             await adminService.adjustProductInventory(editingProduct.id, stockDiff, reason);
           }
-          toast.success(t("products.toast.updatedLedger", { change: stockDiff > 0 ? `+${stockDiff}` : stockDiff }));
+          notify.success(t("products.toast.updatedLedger", { change: stockDiff > 0 ? `+${stockDiff}` : stockDiff }));
         } else {
-          toast.success(t("products.toast.updated"));
+          notify.success(t("products.toast.updated"));
         }
         await loadAll();
         refreshCatalog?.();
       } catch (err: any) {
-        toast.error(err?.message || t("products.toast.updatePartialFailed"));
+        notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
       }
     } else {
       const newId = `prod-${Date.now()}`;
@@ -269,7 +272,7 @@ export function AdminProducts() {
         // Ignored in mock
       }
 
-      toast.success(t("products.toast.created"));
+      notify.success(t("products.toast.created"));
     }
   };
 
@@ -283,7 +286,7 @@ export function AdminProducts() {
       } catch {
         // Ignored in mock
       }
-      toast.success(t("products.toast.deleted"));
+      notify.success(t("products.toast.deleted"));
     }
   };
 
@@ -295,6 +298,10 @@ export function AdminProducts() {
       selectedCategory === "All" || prod.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+
+  if (loadError) {
+    return <ErrorState onRetry={loadAll} />;
+  }
 
   return (
     <div className="space-y-6">

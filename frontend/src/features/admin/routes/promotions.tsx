@@ -2,17 +2,20 @@ import { useState, useEffect } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
+import { ErrorState } from "@/components/ui/errorState";
 
 export function AdminPromotions() {
   const t = useTranslations("admin");
   const [promotions, setPromotions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const loadPromos = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const res: any = await adminService.getPromotions();
       const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       setPromotions(list.map((p: any) => ({
@@ -29,7 +32,7 @@ export function AdminPromotions() {
         endDate: p.expiresAt ? p.expiresAt.slice(0, 10) : "2026-12-31"
       })));
     } catch {
-      toast.error(t("promotions.toast.loadFailed"));
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -52,10 +55,10 @@ export function AdminPromotions() {
     const nextStatus = currentStatus === "Active" ? "disabled" : "active";
     try {
       await adminService.updatePromotionStatus(id, nextStatus);
-      toast.success(t("promotions.toast.statusUpdated"));
+      notify.success(t("promotions.toast.statusUpdated"));
       loadPromos();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || t("promotions.toast.statusFailed"));
+      notify.error(apiErrorMessage(err, t("promotions.toast.statusFailed")));
     }
   };
 
@@ -81,11 +84,11 @@ export function AdminPromotions() {
 
     try {
       await adminService.createPromotion(payload);
-      toast.success(t("promotions.toast.created", { code: payload.code }));
+      notify.success(t("promotions.toast.created", { code: payload.code }));
       setIsModalOpen(false);
       loadPromos();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || t("promotions.toast.createFailed"));
+      notify.error(apiErrorMessage(err, t("promotions.toast.createFailed")));
     }
   };
 
@@ -93,13 +96,17 @@ export function AdminPromotions() {
     if (confirm(t("promotions.confirmDelete"))) {
       try {
         await adminService.deletePromotion(id);
-        toast.success(t("promotions.toast.deleted"));
+        notify.success(t("promotions.toast.deleted"));
         loadPromos();
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || t("promotions.toast.deleteFailed"));
+        notify.error(apiErrorMessage(err, t("promotions.toast.deleteFailed")));
       }
     }
   };
+
+  if (loadError) {
+    return <ErrorState onRetry={loadPromos} />;
+  }
 
   return (
     <div className="space-y-6">

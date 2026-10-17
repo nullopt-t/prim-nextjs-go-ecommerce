@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Plus, Search, Edit2, Trash2, ExternalLink, X } from "lucide-react";
 import { catalogService } from "@/services/catalog";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
+import { ErrorState } from "@/components/ui/errorState";
 
 export function AdminBrands() {
   const t = useTranslations("admin");
@@ -11,10 +12,12 @@ export function AdminBrands() {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<any>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const loadBrands = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const res: any = await catalogService.getBrands(100);
       const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
       setBrands(list.map((b: any) => ({
@@ -26,7 +29,7 @@ export function AdminBrands() {
         logo: b.logoUrl || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&q=80"
       })));
     } catch {
-      toast.error(t("brands.toast.loadFailed"));
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -59,18 +62,18 @@ export function AdminBrands() {
           name: formData.name,
           link: formData.website || undefined
         });
-        toast.success(t("brands.toast.updated"));
+        notify.success(t("brands.toast.updated"));
       } else {
         await catalogService.createBrand({
           name: formData.name,
           link: formData.website || undefined
         });
-        toast.success(t("brands.toast.created"));
+        notify.success(t("brands.toast.created"));
       }
       setIsModalOpen(false);
       loadBrands();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || t("brands.toast.saveFailed"));
+      notify.error(apiErrorMessage(err, t("brands.toast.saveFailed")));
     }
   };
 
@@ -78,15 +81,19 @@ export function AdminBrands() {
     if (confirm(t("brands.confirmDelete"))) {
       try {
         await catalogService.deleteBrand(id);
-        toast.success(t("brands.toast.deleted"));
+        notify.success(t("brands.toast.deleted"));
         loadBrands();
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || t("brands.toast.deleteFailed"));
+        notify.error(apiErrorMessage(err, t("brands.toast.deleteFailed")));
       }
     }
   };
 
   const filtered = brands.filter((b) => b.name.toLowerCase().includes(search.toLowerCase()));
+
+  if (loadError) {
+    return <ErrorState onRetry={loadBrands} />;
+  }
 
   return (
     <div className="space-y-6">

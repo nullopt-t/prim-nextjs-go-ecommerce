@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { AdminUser } from "@/services/admin";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { ROLE_RANKS } from "@/lib/roles";
 
 interface UserSlideOverDrawerProps {
@@ -51,7 +51,7 @@ export function UserSlideOverDrawer({
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
-    toast.success(t("modals.drawer.toast.copied"));
+    notify.success(t("modals.drawer.toast.copied"));
     setTimeout(() => setCopied(false), 2000);
   };
 

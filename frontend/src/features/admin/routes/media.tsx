@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { UploadCloud, Search, Trash2, Copy, Check, Eye, X } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
+import { ErrorState } from "@/components/ui/errorState";
 
 export function AdminMedia() {
   const t = useTranslations("admin");
@@ -12,10 +13,12 @@ export function AdminMedia() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const loadMedia = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const res: any = await adminService.getMedia({ pageSize: 50 });
       const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       setMediaList(list.map((m: any) => ({
@@ -28,7 +31,7 @@ export function AdminMedia() {
         uploadedAt: m.createdAt ? m.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10)
       })));
     } catch {
-      toast.error(t("media.toast.loadFailed"));
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -45,10 +48,10 @@ export function AdminMedia() {
     try {
       setIsUploading(true);
       await adminService.uploadMedia(file);
-      toast.success(t("media.toast.uploaded"));
+      notify.success(t("media.toast.uploaded"));
       await loadMedia();
     } catch (err: any) {
-      toast.error(err?.message || t("media.toast.uploadFailed"));
+      notify.error(apiErrorMessage(err, t("media.toast.uploadFailed")));
     } finally {
       setIsUploading(false);
       // Reset input value so same file can be uploaded again if needed
@@ -59,7 +62,7 @@ export function AdminMedia() {
   const handleCopyUrl = (url: string, id: string) => {
     navigator.clipboard.writeText(url);
     setCopiedId(id);
-    toast.success(t("media.toast.copied"));
+    notify.success(t("media.toast.copied"));
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -68,14 +71,18 @@ export function AdminMedia() {
       try {
         await adminService.deleteMedia(id);
         setMediaList(mediaList.filter((m) => m.id !== id));
-        toast.success(t("media.toast.deleted"));
+        notify.success(t("media.toast.deleted"));
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || t("media.toast.deleteFailed"));
+        notify.error(apiErrorMessage(err, t("media.toast.deleteFailed")));
       }
     }
   };
 
   const filtered = mediaList.filter((m) => m.name.toLowerCase().includes(search.toLowerCase()));
+
+  if (loadError) {
+    return <ErrorState onRetry={loadMedia} />;
+  }
 
   return (
     <div className="space-y-6">

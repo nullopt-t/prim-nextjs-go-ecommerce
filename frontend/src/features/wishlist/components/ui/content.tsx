@@ -2,17 +2,16 @@
 
 import { useState } from "react";
 import { ProductsGrid } from "@/components/ui/productsGrid";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useAuthContext } from "@/context/AuthContext";
 import { useCartContext } from "@/context/CartContext";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { normalizeProduct } from "@/context/CatalogContext";
 import { Link } from "@/i18n/navigation";
 
 export default function WishlistContent() {
   const t = useTranslations("wishlist");
-  const locale = useLocale();
   const { isAuthenticated } = useAuthContext();
   const { wishlistItems, loading, clearWishlist, removeFromWishlist, removeWishlistItem } = useWishlist();
   const { addToCart } = useCartContext();
@@ -43,10 +42,10 @@ export default function WishlistContent() {
         if (res.success) addedCount++;
       }
       if (addedCount > 0) {
-        toast.success(t("toast.addedAll", { count: addedCount }));
+        notify.success(t("toast.addedAll", { count: addedCount }));
       }
     } catch {
-      toast.error(locale === "ar" ? "فشلت إضافة بعض العناصر إلى السلة" : "Failed to add some items");
+      notify.error(t("toast.addAllFailed"));
     } finally {
       setIsAddingAll(false);
     }
@@ -60,7 +59,7 @@ export default function WishlistContent() {
     setIsClearing(true);
     try {
       await clearWishlist();
-      toast.success(t("toast.cleared"));
+      notify.success(t("toast.cleared"));
     } finally {
       setIsClearing(false);
     }
@@ -74,7 +73,7 @@ export default function WishlistContent() {
       } else {
         await removeFromWishlist(String(item.productId || item.id), item.variantId, productName);
       }
-      toast.success(t("toast.itemRemoved", { name: productName }));
+      notify.success(t("toast.itemRemoved", { name: productName }));
     } catch {
       // errors handled inside hook
     }

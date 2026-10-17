@@ -6,7 +6,7 @@ import { useCart } from "@/hooks/useCart";
 import { LazyImage } from "@/components/ui/lazyImage";
 import { ShoppingBag, Sparkles, Trash2, Plus, Minus, Loader2 } from "lucide-react";
 import { Toggle } from "@/components/ui/Toggle";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
 
 interface GuestCartPreviewProps {
   mergeCart: boolean;
@@ -31,7 +31,7 @@ export function GuestCartPreview({ mergeCart, onToggleMerge }: GuestCartPreviewP
     }
 
     if (availableStock !== undefined && newQty > availableStock) {
-      toast.error(t("unitsAvailable", { count: availableStock }));
+      notify.error(t("unitsAvailable", { count: availableStock }));
       return;
     }
 
@@ -39,7 +39,7 @@ export function GuestCartPreview({ mergeCart, onToggleMerge }: GuestCartPreviewP
       setBusyItemId(itemId);
       const res = await updateCartItem(itemId, newQty);
       if (!res.success) {
-        toast.error(res.error || "Failed to update item");
+        notify.error(apiErrorMessage(res, t("updateFailed")));
       }
     } finally {
       setBusyItemId(null);
@@ -51,9 +51,9 @@ export function GuestCartPreview({ mergeCart, onToggleMerge }: GuestCartPreviewP
       setBusyItemId(itemId);
       const res = await removeFromCart(itemId);
       if (res.success) {
-        toast.success(t("removed"));
+        notify.success(t("removed"));
       } else {
-        toast.error(res.error || "Failed to remove item");
+        notify.error(apiErrorMessage(res, t("removeFailed")));
       }
     } finally {
       setBusyItemId(null);

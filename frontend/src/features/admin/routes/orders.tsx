@@ -3,7 +3,8 @@ import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { Search, Filter, Eye } from "lucide-react";
 import { adminService } from "@/services/admin";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
+import { ErrorState } from "@/components/ui/errorState";
 
 export function AdminOrders() {
   const navigate = useRouter();
@@ -12,10 +13,12 @@ export function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [loadError, setLoadError] = useState(false);
 
   const loadOrders = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const res = await adminService.getOrders({
         pageSize: 50,
         status: statusFilter !== "All" ? statusFilter.toLowerCase() : undefined
@@ -43,7 +46,7 @@ export function AdminOrders() {
       }));
       setOrders(formatted);
     } catch {
-      toast.error(t("orders.toast.loadFailed"));
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -56,10 +59,10 @@ export function AdminOrders() {
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
       await adminService.updateOrderStatus(id, newStatus.toLowerCase());
-      toast.success(t("orders.toast.statusUpdated", { status: newStatus }));
+      notify.success(t("orders.toast.statusUpdated", { status: newStatus }));
       loadOrders();
     } catch (err: any) {
-      toast.error(err?.message || err?.response?.data?.message || t("orders.toast.statusUpdateFailed"));
+      notify.error(apiErrorMessage(err, t("orders.toast.statusUpdateFailed")));
       loadOrders();
     }
   };
@@ -73,6 +76,10 @@ export function AdminOrders() {
       statusFilter === "All" || o.status === statusFilter.toLowerCase();
     return matchesSearch && matchesStatus;
   });
+
+  if (loadError) {
+    return <ErrorState onRetry={loadOrders} />;
+  }
 
   return (
     <div className="space-y-6">

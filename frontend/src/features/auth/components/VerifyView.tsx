@@ -7,7 +7,7 @@ import { useAuthContext } from "@/context/AuthContext";
 import { useCart } from "@/hooks/useCart";
 import { GuestCartPreview } from "./ui/GuestCartPreview";
 import { validateOtpCode } from "../utils/validation";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
 import { useTranslations } from "next-intl";
 
 export function VerifyView() {
@@ -42,7 +42,7 @@ export function VerifyView() {
   const handleSubmit = async (_type: string, payload: { code: string }) => {
     const { isValid, error } = validateOtpCode(payload.code);
     if (!isValid && error) {
-      toast.error(error);
+      notify.error(error);
       return;
     }
 
@@ -54,7 +54,7 @@ export function VerifyView() {
         mergeCart,
       });
       if (res.success) {
-        toast.success(t("verify.welcomeBack"));
+        notify.success(t("verify.welcomeBack"));
         // Clear auth temp storage
         if (typeof window !== "undefined") {
           sessionStorage.removeItem("identifier");
@@ -65,10 +65,10 @@ export function VerifyView() {
         const destination = redirectParam ? decodeURIComponent(redirectParam) : "/";
         router.push(destination as any);
       } else {
-        toast.error(res.error || t("verify.invalidCode"));
+        notify.error(apiErrorMessage(res, t("verify.invalidCode")));
       }
     } catch {
-      toast.error(t("verify.verifyFailed"));
+      notify.error(t("verify.verifyFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -76,18 +76,18 @@ export function VerifyView() {
 
   const handleResendOtp = async () => {
     if (!email) {
-      toast.error(t("verify.noEmail"));
+      notify.error(t("verify.noEmail"));
       return;
     }
     try {
       const res = await resendChallenge({ email });
       if (res.success) {
-        toast.success(t("verify.codeResent"));
+        notify.success(t("verify.codeResent"));
       } else {
-        toast.error(res.error || t("verify.resendError"));
+        notify.error(apiErrorMessage(res, t("verify.resendError")));
       }
     } catch {
-      toast.error(t("verify.resendFailed"));
+      notify.error(t("verify.resendFailed"));
     }
   };
 

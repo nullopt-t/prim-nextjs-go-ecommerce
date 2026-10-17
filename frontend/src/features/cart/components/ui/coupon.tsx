@@ -5,7 +5,7 @@ import { CustomButton } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
 import { useCart } from "@/hooks/useCart";
 import { Tag, Check, X } from "lucide-react";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
 
 export default function Coupon() {
   const t = useTranslations("cart");
@@ -16,7 +16,7 @@ export default function Coupon() {
   const handleApply = async (couponCodeToApply?: string) => {
     const targetCode = (couponCodeToApply || code).trim();
     if (!targetCode) {
-      toast.error(t("coupon.errorEmpty", { defaultMessage: "Please enter a coupon code" }));
+      notify.error(t("coupon.errorEmpty", { defaultMessage: "Please enter a coupon code" }));
       return;
     }
 
@@ -25,12 +25,12 @@ export default function Coupon() {
     setLoading(false);
 
     if (res.success) {
-      toast.success(
+      notify.success(
         res.coupon?.message || t("coupon.applied", { code: targetCode.toUpperCase() })
       );
       setCode("");
     } else {
-      toast.error(res.error || t("coupon.invalid", { defaultMessage: "Failed to apply coupon" }));
+      notify.error(apiErrorMessage(res, t("coupon.invalid", { defaultMessage: "Failed to apply coupon" })));
     }
   };
 
@@ -57,7 +57,7 @@ export default function Coupon() {
             type="button"
             onClick={() => {
               removeCoupon();
-              toast.info(t("coupon.removed", { defaultMessage: "Coupon removed" }));
+              notify.info(t("coupon.removed", { defaultMessage: "Coupon removed" }));
             }}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors px-2 py-1 rounded-md hover:bg-background cursor-pointer"
           >

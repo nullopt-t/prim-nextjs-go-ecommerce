@@ -2,17 +2,20 @@ import { useState, useEffect } from "react";
 import { CheckCircle2, RefreshCcw, Search } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
+import { ErrorState } from "@/components/ui/errorState";
 
 export function AdminPayments() {
   const t = useTranslations("admin");
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [loadError, setLoadError] = useState(false);
 
   const loadPayments = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const res: any = await adminService.getPayments({ pageSize: 50 });
       const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       setPayments(list.map((p: any) => ({
@@ -26,7 +29,7 @@ export function AdminPayments() {
         status: p.status === "captured" ? "Succeeded" : (p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : "Pending")
       })));
     } catch {
-      toast.error(t("payments.toast.loadFailed"));
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -40,10 +43,10 @@ export function AdminPayments() {
     if (confirm(t("payments.confirmRefund", { id: pay.id }))) {
       try {
         await adminService.refundPayment(pay.id);
-        toast.success(t("payments.toast.refundIssued", { customer: pay.customer }));
+        notify.success(t("payments.toast.refundIssued", { customer: pay.customer }));
         loadPayments();
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || t("payments.toast.refundFailed"));
+        notify.error(apiErrorMessage(err, t("payments.toast.refundFailed")));
       }
     }
   };
@@ -52,10 +55,10 @@ export function AdminPayments() {
     if (confirm(t("payments.confirmMarkPaid", { id: pay.id }))) {
       try {
         await adminService.updatePaymentStatus(pay.id, "captured");
-        toast.success(t("payments.toast.markedPaid", { customer: pay.customer }));
+        notify.success(t("payments.toast.markedPaid", { customer: pay.customer }));
         loadPayments();
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || t("payments.toast.statusFailed"));
+        notify.error(apiErrorMessage(err, t("payments.toast.statusFailed")));
       }
     }
   };
@@ -66,6 +69,10 @@ export function AdminPayments() {
       p.orderId.toLowerCase().includes(search.toLowerCase()) ||
       p.customer.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (loadError) {
+    return <ErrorState onRetry={loadPayments} />;
+  }
 
   return (
     <div className="space-y-6">

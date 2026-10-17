@@ -10,7 +10,7 @@ import { useAllProducts, useProductBySlug } from "@/hooks/useCatalog";
 import { useCartContext } from "@/context/CartContext";
 import { catalogService } from "@/services/catalog";
 import { useWishlist } from "@/hooks/useWishlist";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
 
 import { ProductReview } from "../types";
 import {
@@ -244,9 +244,9 @@ export function ProductDetails() {
     const res = await addToCart(payload);
     setIsAdding(false);
     if (res.success) {
-      toast.success(tProducts("details.addedToCart", { quantity, productName }));
+      notify.success(tProducts("details.addedToCart", { quantity, productName }));
     } else {
-      toast.error(res.error || tProducts("details.addFailed"));
+      notify.error(apiErrorMessage(res, tProducts("details.addFailed")));
     }
   };
 
@@ -274,7 +274,7 @@ export function ProductDetails() {
     if (res.success) {
       navigate.push("/checkout");
     } else {
-      toast.error(res.error || tProducts("details.checkoutFailed"));
+      notify.error(apiErrorMessage(res, tProducts("details.checkoutFailed")));
     }
   };
 
@@ -286,15 +286,15 @@ export function ProductDetails() {
   const handleShare = () => {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(window.location.href);
-      toast.success(tProducts("details.linkCopied"));
+      notify.success(tProducts("details.linkCopied"));
     } else {
-      toast.info(tProducts("details.shareUrl", { url: window.location.href }));
+      notify.info(tProducts("details.shareUrl", { url: window.location.href }));
     }
   };
 
   const handleAddReview = async (newReviewData: { rating: number; title: string; content: string }) => {
     if (!product?.id) {
-      toast.error(tReviews("missingProduct"));
+      notify.error(tReviews("missingProduct"));
       return false;
     }
 
@@ -307,7 +307,7 @@ export function ProductDetails() {
       });
 
       const serverReview = res?.data || res;
-      toast.success(tReviews("submitSuccess"));
+      notify.success(tReviews("submitSuccess"));
 
       const newRev: ProductReview = {
         id: serverReview?.id || Date.now(),
@@ -335,13 +335,13 @@ export function ProductDetails() {
       const statusCode = err?.response?.status;
 
       if (errCode === "REVIEW_NOT_ELIGIBLE") {
-        toast.error(tReviews("errors.notEligible"));
+        notify.error(tReviews("errors.notEligible"));
       } else if (errCode === "REVIEW_ALREADY_EXISTS" || statusCode === 409) {
-        toast.error(tReviews("errors.alreadyExists"));
+        notify.error(tReviews("errors.alreadyExists"));
       } else if (statusCode === 401) {
-        toast.error(tReviews("errors.unauthorized"));
+        notify.error(tReviews("errors.unauthorized"));
       } else {
-        toast.error(tReviews("submitFailed"));
+        notify.error(tReviews("submitFailed"));
       }
       return false;
     }

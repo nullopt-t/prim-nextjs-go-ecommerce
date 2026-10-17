@@ -7,7 +7,7 @@ import { useAuthContext } from "@/context/AuthContext";
 import { useCart } from "@/hooks/useCart";
 import { GuestCartPreview } from "./ui/GuestCartPreview";
 import { validateEmail } from "../utils/validation";
-import { toast } from "sonner";
+import { notify } from "@/lib/notify";
 import { useTranslations } from "next-intl";
 
 export function LoginView() {
@@ -38,7 +38,7 @@ export function LoginView() {
   const handleSubmit = async (_type: string, payload: { email: string }) => {
     const { isValid, error } = validateEmail(payload.email);
     if (!isValid && error) {
-      toast.error(error);
+      notify.error(error);
       return;
     }
 
@@ -55,7 +55,7 @@ export function LoginView() {
       const targetUrl = redirect ? `/auth/verify?redirect=${encodeURIComponent(redirect)}` : "/auth/verify";
 
       if (res.success) {
-        toast.success(t("sign.codeSent"));
+        notify.success(t("sign.codeSent"));
         router.push(targetUrl);
       } else {
         // Fallback navigation if offline or demo mode

@@ -29,7 +29,7 @@ import {
 	Loader2
 } from "lucide-react";
 import { CountrySelect } from "@/components/ui/CountrySelect";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuthContext } from "@/context/AuthContext";
 import { useTranslations } from "next-intl";
@@ -136,7 +136,7 @@ export function Checkout() {
 	const handleSaveNewAddress = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!addressForm.fullName.trim() || !addressForm.line1.trim() || !addressForm.city.trim() || !addressForm.country.trim()) {
-			toast.error(t("validation.fillRequired"));
+			notify.error(t("validation.fillRequired"));
 			return;
 		}
 
@@ -144,17 +144,17 @@ export function Checkout() {
 		try {
 			const res = await addAddress(addressForm);
 			if (res.success) {
-				toast.success(tAddresses("addedSuccess"));
+				notify.success(tAddresses("addedSuccess"));
 				if (res.data?.id) {
 					setSelectedAddressId(res.data.id);
 				}
 				setIsAddingAddress(false);
 				if (refreshAddresses) await refreshAddresses();
 			} else {
-				toast.error(res.error || tAddresses("failedToAdd"));
+				notify.error(apiErrorMessage(res, tAddresses("failedToAdd")));
 			}
 		} catch (err: any) {
-			toast.error(err?.message || tAddresses("failedToAdd"));
+			notify.error(apiErrorMessage(err, tAddresses("failedToAdd")));
 		} finally {
 			setSavingAddress(false);
 		}
@@ -163,20 +163,20 @@ export function Checkout() {
 	const handleApplyCoupon = async (codeToApply?: string) => {
 		const targetCode = (codeToApply || couponInput).trim();
 		if (!targetCode) {
-			toast.error(t("validation.enterCoupon"));
+			notify.error(t("validation.enterCoupon"));
 			return;
 		}
 		setApplyingCoupon(true);
 		try {
 			const res = await applyCoupon(targetCode);
 			if (res.success) {
-				toast.success(res.coupon?.message || t("validation.couponApplied", { code: targetCode.toUpperCase() }));
+				notify.success(res.coupon?.message || t("validation.couponApplied", { code: targetCode.toUpperCase() }));
 				setCouponInput("");
 			} else {
-				toast.error(res.error || t("validation.couponFailed"));
+				notify.error(apiErrorMessage(res, t("validation.couponFailed")));
 			}
 		} catch (err: any) {
-			toast.error(err?.message || t("validation.invalidCoupon"));
+			notify.error(apiErrorMessage(err, t("validation.invalidCoupon")));
 		} finally {
 			setApplyingCoupon(false);
 		}
@@ -184,24 +184,24 @@ export function Checkout() {
 
 	const handleRemoveCoupon = () => {
 		removeCoupon();
-		toast.info(t("validation.couponRemoved"));
+		notify.info(t("validation.couponRemoved"));
 	};
 
 	// Validation helpers
 	const validateStep1 = () => {
 		if (!cartItems || cartItems.length === 0) {
-			toast.error(tCart("empty.title"));
+			notify.error(tCart("empty.title"));
 			router.push("/cart");
 			return false;
 		}
 
 		if (!addresses || addresses.length === 0) {
-			toast.error(t("validation.addAddress"));
+			notify.error(t("validation.addAddress"));
 			return false;
 		}
 
 		if (!effectiveAddressId) {
-			toast.error(t("validation.selectAddress"));
+			notify.error(t("validation.selectAddress"));
 			return false;
 		}
 
@@ -232,24 +232,24 @@ export function Checkout() {
 
 		if (paymentType === "new-card") {
 			if (!newCardData.name.trim()) {
-				toast.error(t("validation.cardName"));
+				notify.error(t("validation.cardName"));
 				return;
 			}
 			if (!newCardData.number.trim() || newCardData.number.replace(/\s/g, "").length < 13) {
-				toast.error(t("validation.cardNumber"));
+				notify.error(t("validation.cardNumber"));
 				return;
 			}
 			if (!newCardData.expiry.trim()) {
-				toast.error(t("validation.cardExpiry"));
+				notify.error(t("validation.cardExpiry"));
 				return;
 			}
 			if (!newCardData.cvc.trim() || newCardData.cvc.length < 3) {
-				toast.error(t("validation.cardCvc"));
+				notify.error(t("validation.cardCvc"));
 				return;
 			}
 		} else if (paymentType === "saved-card" && (!cards || cards.length === 0)) {
 			setPaymentType("new-card");
-			toast.error(t("validation.cardDetails"));
+			notify.error(t("validation.cardDetails"));
 			return;
 		}
 
@@ -276,11 +276,11 @@ export function Checkout() {
 				date: t("success.today"),
 			};
 			setCompletedOrder(completedOrderInfo);
-			toast.success(t("validation.orderConfirmed"));
+			notify.success(t("validation.orderConfirmed"));
 			window.scrollTo({ top: 0, behavior: "smooth" });
 		} else {
 			const errorMsg = typeof result.error === "string" ? result.error : result.error?.message || t("validation.orderFailed");
-			toast.error(errorMsg);
+			notify.error(errorMsg);
 		}
 	};
 

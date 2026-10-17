@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { userService } from "@/services/user";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
 import { useTranslations } from "next-intl";
 import { useAuthContext } from "@/context/AuthContext";
 import { useRouter } from "@/i18n/navigation";
@@ -60,9 +60,9 @@ export default function ActiveSessions() {
     try {
       await userService.deleteSession(id);
       setSessions((prev) => prev.filter((s) => s.id !== id));
-      toast.success(t("removedSuccess"));
+      notify.success(t("removedSuccess"));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : t("error"));
+      notify.error(apiErrorMessage(err, t("error")));
     } finally {
       setRevokingId(null);
     }
@@ -77,7 +77,7 @@ export default function ActiveSessions() {
       await logout();
       router.push("/auth");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to sign out");
+      notify.error(apiErrorMessage(err, "Failed to sign out"));
       setLoggingOutAll(false);
       setShowConfirmAll(false);
     }

@@ -3,7 +3,8 @@ import { Plus, Search, Edit2, Trash2, FolderTree, X, SlidersHorizontal } from "l
 import { catalogService } from "@/services/catalog";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
+import { ErrorState } from "@/components/ui/errorState";
 
 export function AdminCategories() {
   const t = useTranslations("admin");
@@ -20,10 +21,12 @@ export function AdminCategories() {
   const [creatingAttr, setCreatingAttr] = useState(false);
   const [valueDrafts, setValueDrafts] = useState<Record<string, string>>({});
   const [busyValueId, setBusyValueId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const loadCategories = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const [res, attrRes]: [any, any] = await Promise.all([
         catalogService.getCategories(100),
         adminService.getAttributes()
@@ -42,7 +45,7 @@ export function AdminCategories() {
         icon: "FolderTree"
       })));
     } catch {
-      toast.error(t("categories.toast.loadFailed"));
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -80,18 +83,18 @@ export function AdminCategories() {
           name: formData.name,
           parentId: formData.parentId ? formData.parentId : undefined,
         });
-        toast.success(t("categories.toast.updated"));
+        notify.success(t("categories.toast.updated"));
       } else {
         await catalogService.createCategory({
           name: formData.name,
           parentId: formData.parentId ? formData.parentId : undefined,
         });
-        toast.success(t("categories.toast.added"));
+        notify.success(t("categories.toast.added"));
       }
       setIsModalOpen(false);
       loadCategories();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || t("categories.toast.saveFailed"));
+      notify.error(apiErrorMessage(err, t("categories.toast.saveFailed")));
     }
   };
 
@@ -99,13 +102,17 @@ export function AdminCategories() {
     if (confirm(t("categories.confirmDelete"))) {
       try {
         await catalogService.deleteCategory(id);
-        toast.success(t("categories.toast.deleted"));
+        notify.success(t("categories.toast.deleted"));
         loadCategories();
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || t("categories.toast.deleteFailed"));
+        notify.error(apiErrorMessage(err, t("categories.toast.deleteFailed")));
       }
     }
   };
+
+  if (loadError) {
+    return <ErrorState onRetry={loadCategories} />;
+  }
 
   const filtered = categories.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
@@ -137,11 +144,11 @@ export function AdminCategories() {
         isFilterable: true,
         sortOrder: 0
       });
-      toast.success(t("categories.toast.attributeLinked", { name: label, category: viewingCategoryAttrs.name }));
+      notify.success(t("categories.toast.attributeLinked", { name: label, category: viewingCategoryAttrs.name }));
       resetAttributeForm();
       loadCategories();
     } catch {
-      toast.error(t("categories.toast.linkFailed"));
+      notify.error(t("categories.toast.linkFailed"));
     } finally {
       setCreatingAttr(false);
     }
@@ -158,11 +165,11 @@ export function AdminCategories() {
     setBusyValueId(attr.id);
     try {
       await adminService.updateAttribute(attr.id, { allowedValues: [...existing, value] });
-      toast.success(t("categories.toast.valueAdded"));
+      notify.success(t("categories.toast.valueAdded"));
       setValueDrafts((d) => ({ ...d, [attr.id]: "" }));
       loadCategories();
     } catch {
-      toast.error(t("categories.toast.valueUpdateFailed"));
+      notify.error(t("categories.toast.valueUpdateFailed"));
     } finally {
       setBusyValueId(null);
     }
@@ -173,10 +180,10 @@ export function AdminCategories() {
     setBusyValueId(attr.id);
     try {
       await adminService.updateAttribute(attr.id, { allowedValues: existing.filter((v) => v !== value) });
-      toast.success(t("categories.toast.valueRemoved"));
+      notify.success(t("categories.toast.valueRemoved"));
       loadCategories();
     } catch {
-      toast.error(t("categories.toast.valueUpdateFailed"));
+      notify.error(t("categories.toast.valueUpdateFailed"));
     } finally {
       setBusyValueId(null);
     }
@@ -186,10 +193,10 @@ export function AdminCategories() {
     if (!confirm(t("categories.attrs.confirmUnlink", { name: attr.label || attr.key }))) return;
     try {
       await adminService.deleteAttribute(attr.id);
-      toast.success(t("categories.toast.unlinked"));
+      notify.success(t("categories.toast.unlinked"));
       loadCategories();
     } catch {
-      toast.error(t("categories.toast.unlinkFailed"));
+      notify.error(t("categories.toast.unlinkFailed"));
     }
   };
 

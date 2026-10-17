@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Save, Key, Truck, Store } from "lucide-react";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
 
@@ -59,13 +59,13 @@ export function AdminSettings() {
       if (typeof window !== "undefined") {
         localStorage.setItem("prim_admin_settings", JSON.stringify(settings));
       }
-      toast.success(t("settings.toast.saved"));
+      notify.success(t("settings.toast.saved"));
     } catch (err: any) {
       // Persist locally even if API fails so changes aren't lost
       if (typeof window !== "undefined") {
         localStorage.setItem("prim_admin_settings", JSON.stringify(settings));
       }
-      toast.error(err?.response?.data?.message || t("settings.toast.saveFailed"));
+      notify.error(apiErrorMessage(err, t("settings.toast.saveFailed")));
     } finally {
       setSaving(false);
     }

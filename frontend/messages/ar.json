@@ -74,7 +74,9 @@
       "removed": "تمت إزالة المنتج من السلة",
       "unitsAvailable": "المتوفر {count} قطع فقط",
       "decreaseQty": "تقليل الكمية",
-      "increaseQty": "زيادة الكمية"
+      "increaseQty": "زيادة الكمية",
+      "updateFailed": "تعذّر تحديث العنصر",
+      "removeFailed": "تعذّر إزالة العنصر"
     },
     "themeToggle": "تبديل السمة",
     "backToLogin": "العودة إلى تسجيل الدخول",
@@ -122,10 +124,22 @@
     "outOfStock": "نفذ المخزون",
     "shippingAdd": "أضف {amount} للحصول على شحن مجاني",
     "shippingUnlocked": "لقد حصلت على شحن مجاني!",
-    "sslCheckout": "إتمام شراء آمن ومشفّر بتشفير SSL 256 بت"
+    "sslCheckout": "إتمام شراء آمن ومشفّر بتشفير SSL 256 بت",
+    "toast": {
+      "unitsAvailable": "المتوفر {count} قطع فقط في المخزون",
+      "updateQuantityFailed": "تعذّر تحديث الكمية",
+      "itemRemoved": "تمت إزالة {name} من السلة",
+      "updateItemFailed": "تعذّر تحديث العنصر",
+      "removeFailed": "تعذّر إزالة العنصر"
+    }
   },
   "common": {
     "currency": "EGP",
+    "errors": {
+      "loadTitle": "تعذّر تحميل البيانات",
+      "loadDescription": "حدث خطأ أثناء تحميل هذا المحتوى. يرجى المحاولة مرة أخرى.",
+      "retry": "إعادة المحاولة"
+    },
     "filters": {
       "allCategories": "جميع الفئات",
       "andUp": "فأكثر",
@@ -382,7 +396,16 @@
     "toast": {
       "addedAll": "تمت إضافة {count} من المنتجات إلى سلة التسوق",
       "cleared": "تم إفراغ قائمة المفضلة بنجاح",
-      "itemRemoved": "تمت إزالة \"{name}\" من المفضلة"
+      "itemRemoved": "تمت إزالة \"{name}\" من المفضلة",
+      "signInRequired": "يرجى تسجيل الدخول لحفظ المنتجات في المفضلة",
+      "addedNamed": "تم حفظ \"{name}\" في المفضلة!",
+      "added": "تم الحفظ في المفضلة!",
+      "removed": "تمت الإزالة من المفضلة",
+      "addFailed": "تعذّر الإضافة إلى المفضلة",
+      "removeFailed": "تعذّر الإزالة من المفضلة",
+      "itemRemoveFailed": "تعذّر إزالة العنصر",
+      "clearFailed": "تعذّر إفراغ قائمة المفضلة",
+      "addAllFailed": "فشلت إضافة بعض العناصر"
     }
   },
   "addresses": {

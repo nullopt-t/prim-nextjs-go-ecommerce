@@ -17,7 +17,7 @@ import {
   AlertTriangle,
   Copy,
 } from "lucide-react";
-import { toast } from "sonner";
+import { notify, apiErrorMessage } from "@/lib/notify";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 
 interface AddressFormData {
@@ -74,7 +74,7 @@ export default function AddressesContent() {
     if (!phone) return;
     navigator.clipboard.writeText(phone);
     setCopiedPhoneId(id);
-    toast.success(t("phoneCopied"));
+    notify.success(t("phoneCopied"));
     setTimeout(() => {
       setCopiedPhoneId((curr) => (curr === id ? null : curr));
     }, 2000);
@@ -112,7 +112,7 @@ export default function AddressesContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.fullName.trim() || !formData.line1.trim() || !formData.city.trim() || !formData.country.trim()) {
-      toast.error(t("validationError"));
+      notify.error(t("validationError"));
       return;
     }
 
@@ -121,18 +121,18 @@ export default function AddressesContent() {
       if (editingId) {
         const res = await updateAddress(editingId, formData);
         if (res.success) {
-          toast.success(t("updatedSuccess"));
+          notify.success(t("updatedSuccess"));
           setIsModalOpen(false);
         } else {
-          toast.error(res.error || t("failedToUpdate"));
+          notify.error(apiErrorMessage(res, t("failedToUpdate")));
         }
       } else {
         const res = await addAddress(formData);
         if (res.success) {
-          toast.success(t("addedSuccess"));
+          notify.success(t("addedSuccess"));
           setIsModalOpen(false);
         } else {
-          toast.error(res.error || t("failedToAdd"));
+          notify.error(apiErrorMessage(res, t("failedToAdd")));
         }
       }
     } finally {
@@ -145,9 +145,9 @@ export default function AddressesContent() {
     try {
       const res = await setDefaultAddress(id);
       if (res.success) {
-        toast.success(t("defaultSuccess"));
+        notify.success(t("defaultSuccess"));
       } else {
-        toast.error(res.error || t("failedToSetDefault"));
+        notify.error(apiErrorMessage(res, t("failedToSetDefault")));
       }
     } finally {
       setSettingDefaultId(null);
@@ -165,10 +165,10 @@ export default function AddressesContent() {
     try {
       const res = await deleteAddress(id);
       if (res.success) {
-        toast.success(t("removedSuccess"));
+        notify.success(t("removedSuccess"));
         setAddressToDelete(null);
       } else {
-        toast.error(res.error || t("failedToDelete"));
+        notify.error(apiErrorMessage(res, t("failedToDelete")));
       }
     } finally {
       setDeletingId(null);
