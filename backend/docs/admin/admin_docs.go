@@ -4474,19 +4474,7 @@ const docTemplateadmin = `{
                 }
             }
         }
-    },
-    "securityDefinitions": {
-        "BearerAuth": {
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header"
-        }
-    },
-    "security": [
-        {
-            "BearerAuth": []
-        }
-    ]
+    }
 }`
 
 // SwaggerInfoadmin holds exported Swagger Info so clients can modify it

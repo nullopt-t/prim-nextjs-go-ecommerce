@@ -3058,11 +3058,4 @@ paths:
       summary: Restore a soft-deleted product variant
       tags:
       - Admin Product Variants
-security:
-- BearerAuth: []
-securityDefinitions:
-  BearerAuth:
-    in: header
-    name: Authorization
-    type: apiKey
 swagger: "2.0"

@@ -2747,11 +2747,4 @@ paths:
       summary: Remove product from wishlist
       tags:
       - Wishlist
-security:
-- BearerAuth: []
-securityDefinitions:
-  BearerAuth:
-    in: header
-    name: Authorization
-    type: apiKey
 swagger: "2.0"

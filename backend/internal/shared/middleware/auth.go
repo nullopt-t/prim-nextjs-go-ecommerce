@@ -148,7 +148,7 @@ func Authenticate(sessionStore SessionStore) gin.HandlerFunc {
 	}
 }
 
-// OptionalAuthenticate attempts to authenticate via the session cookie or Bearer header if present,
+// OptionalAuthenticate attempts to authenticate via the session cookie if present,
 // setting user context without aborting or returning 401 if unauthenticated or absent.
 // This is used on public routes that can provide enriched responses when logged in.
 func OptionalAuthenticate(sessionStore SessionStore) gin.HandlerFunc {

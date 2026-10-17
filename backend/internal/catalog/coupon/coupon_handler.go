@@ -89,7 +89,6 @@ func toCouponResponse(c *model.Coupon) CouponResponse {
 //	@Description	Returns all promotional coupons (Admin only)
 //	@Tags			Coupons
 //	@Produce		json
-//	@Security		BearerAuth
 //	@Success		200	{object}	api.DataResponse
 //	@Router			/admin/promotions [get]
 func (h *CouponHandler) ListCoupons(c *gin.Context) {
@@ -133,7 +132,6 @@ func (h *CouponHandler) ListCoupons(c *gin.Context) {
 //	@Tags			Coupons
 //	@Produce		json
 //	@Param			id	path		string	true	"Coupon UUID"
-//	@Security		BearerAuth
 //	@Success		200	{object}	api.DataResponse
 //	@Router			/admin/promotions/{id} [get]
 func (h *CouponHandler) GetCouponByID(c *gin.Context) {
@@ -160,7 +158,6 @@ func (h *CouponHandler) GetCouponByID(c *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			request	body		CreateCouponRequest	true	"Create coupon request"
-//	@Security		BearerAuth
 //	@Success		201		{object}	api.DataResponse
 //	@Router			/admin/promotions [post]
 func (h *CouponHandler) CreateCoupon(c *gin.Context) {
@@ -211,7 +208,6 @@ func (h *CouponHandler) CreateCoupon(c *gin.Context) {
 //	@Produce		json
 //	@Param			id		path		string				true	"Coupon UUID"
 //	@Param			request	body		UpdateStatusRequest	true	"Update status request"
-//	@Security		BearerAuth
 //	@Success		200		{object}	api.MessageResponse
 //	@Router			/admin/promotions/{id}/status [patch]
 func (h *CouponHandler) UpdateStatus(c *gin.Context) {
@@ -242,7 +238,6 @@ func (h *CouponHandler) UpdateStatus(c *gin.Context) {
 //	@Tags			Coupons
 //	@Produce		json
 //	@Param			id	path		string	true	"Coupon UUID"
-//	@Security		BearerAuth
 //	@Success		200	{object}	api.MessageResponse
 //	@Router			/admin/promotions/{id} [delete]
 func (h *CouponHandler) DeleteCoupon(c *gin.Context) {
@@ -293,7 +288,6 @@ func toRedemptionResponse(e *RedemptionEntry) CouponRedemptionResponse {
 //	@Tags			Coupons
 //	@Produce		json
 //	@Param			id	path		string	true	"Coupon UUID"
-//	@Security		BearerAuth
 //	@Success		200	{object}	api.DataResponse
 //	@Router			/admin/promotions/{id}/redemptions [get]
 func (h *CouponHandler) ListRedemptions(c *gin.Context) {

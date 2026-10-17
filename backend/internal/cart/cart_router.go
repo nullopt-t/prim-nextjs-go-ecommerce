@@ -28,7 +28,7 @@ func NewRouter(handler *CartHandler, sessionStore middleware.SessionStore) *Cart
 // MapRoutes registers the shopping cart REST API endpoints onto the provided Gin RouterGroup.
 // All cart endpoints reside under the "/cart" prefix and utilize OptionalAuthenticate middleware.
 // OptionalAuthenticate permits both unauthenticated guest visitors (identified by session cookies)
-// and authenticated customers (identified by bearer session tokens) to interact with their carts.
+// and authenticated customers (identified by session cookies) to interact with their carts.
 func (r *CartRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	// Initialize the /cart route sub-group from the base API router group.
 	cartGroup := vgroup.Group("/cart")
