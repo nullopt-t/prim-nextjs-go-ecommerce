@@ -41,6 +41,12 @@ const (
 	CodeInvalidOrExpired      = "INVALID_OR_EXPIRED"
 	// CodeInternalError represents unexpected backend panics or system failures.
 	CodeInternalError         = "INTERNAL_ERROR"
+	// CodeClientClosedRequest represents a request the client abandoned (disconnected or aborted) before a response could be sent.
+	CodeClientClosedRequest   = "CLIENT_CLOSED_REQUEST"
+	// CodeServiceUnavailable represents a transient inability to serve a request, such as a downstream outage or resource exhaustion.
+	CodeServiceUnavailable    = "SERVICE_UNAVAILABLE"
+	// CodeGatewayTimeout represents an upstream dependency (e.g. the database) that failed to respond in time.
+	CodeGatewayTimeout        = "GATEWAY_TIMEOUT"
 	// CodeInvalidReference represents invalid foreign key relationships.
 	CodeInvalidReference      = "INVALID_REFERENCE"
 	// CodeInvalidQueryParameter represents unparseable or out-of-range URL query parameters.
