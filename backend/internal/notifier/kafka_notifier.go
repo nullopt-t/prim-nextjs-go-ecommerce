@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/middleware"
 	"github.com/nullopt-t/prim-backend/internal/shared/job"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/broker/kafka"
 	"github.com/nullopt-t/prim-backend/pkg/log"

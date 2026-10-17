@@ -29,7 +29,7 @@ HTTP request
 
 Shared concerns live outside the domains:
 
-- `internal/middleware` — auth, RBAC, CORS, locale, rate limiting, error handling, caching
+- `internal/shared/middleware` — auth, RBAC, CORS, locale, rate limiting, error handling, caching
 - `pkg/config` — YAML + environment configuration
 - `pkg/database` — connection pool and the `TxRunner` used for transactions
 - `pkg/broker/kafka` — producer used by the API
@@ -184,7 +184,7 @@ backend/
 │   ├── object/               # media uploads
 │   ├── setting/              # store settings + maintenance middleware
 │   ├── notifier/             # Kafka consumer and email sender
-│   ├── middleware/           # auth, RBAC, CORS, locale, rate limit, errors
+│   ├── shared/               # middleware, error codes, jobs, OTP, crypto, email templates
 │   └── model/                # database models
 ├── pkg/                      # config, database, log, storage, mail, broker, api helpers
 ├── configs/                  # config.yaml and Air configs

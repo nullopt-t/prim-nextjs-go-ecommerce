@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/nullopt-t/prim-backend/internal/auth"
-	"github.com/nullopt-t/prim-backend/internal/middleware"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 )
 
 func (s *AuthTestSuite) authenticateAndGetCookies(email string) []*http.Cookie {

@@ -2,7 +2,7 @@ package user
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/nullopt-t/prim-backend/internal/middleware"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 )
 
 // NotificationRouter manages route definitions and middleware bindings for user notification endpoints.

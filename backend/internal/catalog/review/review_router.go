@@ -2,8 +2,8 @@ package review
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/nullopt-t/prim-backend/internal/middleware"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 )
 
 // ReviewRouter configures the HTTP routes and middleware for customer review interactions

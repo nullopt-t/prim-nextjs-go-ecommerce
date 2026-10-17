@@ -1,6 +1,3 @@
-// Package errcode defines standard business domain error codes for the order and checkout subdomains.
-// These error constants are mapped to API error responses to provide structured, machine-readable
-// failure categories to client applications and upstream consumers.
 package errcode
 
 // Business Domain Error Codes for Order Subdomain.

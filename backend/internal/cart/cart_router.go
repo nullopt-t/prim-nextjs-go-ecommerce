@@ -4,7 +4,7 @@ package cart
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/nullopt-t/prim-backend/internal/middleware"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 )
 
 // CartRouter defines the HTTP route mappings and middleware bindings for all shopping cart operations.
