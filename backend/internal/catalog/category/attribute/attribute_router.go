@@ -27,6 +27,7 @@ func (r *AttributeRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	{
 		adminAttrs.GET("", r.handler.ListAttributes)
 		adminAttrs.POST("", r.handler.CreateAttribute)
+		adminAttrs.PATCH("/:id", r.handler.UpdateAttribute)
 		adminAttrs.DELETE("/:id", r.handler.DeleteAttribute)
 	}
 }

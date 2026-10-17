@@ -171,6 +171,10 @@ export const adminService = {
     return api.post(`/api/v1/admin/attributes`, payload);
   },
 
+  updateAttribute: async (id: string, payload: any): Promise<any> => {
+    return api.patch(`/api/v1/admin/attributes/${id}`, payload);
+  },
+
   deleteAttribute: async (id: string): Promise<any> => {
     return api.delete(`/api/v1/admin/attributes/${id}`);
   },

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit2, Trash2, FolderTree, X, SlidersHorizontal, Tag } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, FolderTree, X, SlidersHorizontal } from "lucide-react";
 import { catalogService } from "@/services/catalog";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
@@ -15,7 +15,11 @@ export function AdminCategories() {
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [viewingCategoryAttrs, setViewingCategoryAttrs] = useState<any>(null);
   const [newLinkedAttrName, setNewLinkedAttrName] = useState("");
+  const [newLinkedAttrType, setNewLinkedAttrType] = useState("text");
+  const [newLinkedAttrValues, setNewLinkedAttrValues] = useState("");
   const [creatingAttr, setCreatingAttr] = useState(false);
+  const [valueDrafts, setValueDrafts] = useState<Record<string, string>>({});
+  const [busyValueId, setBusyValueId] = useState<string | null>(null);
 
   const loadCategories = async () => {
     try {
@@ -107,6 +111,88 @@ export function AdminCategories() {
     c.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const categoryAttributes = (categoryId: string) =>
+    allAttributes.filter((a) => a.categoryId === categoryId);
+
+  const parseAttributeValues = (raw: string) =>
+    raw.split(",").map((v) => v.trim()).filter(Boolean);
+
+  const resetAttributeForm = () => {
+    setNewLinkedAttrName("");
+    setNewLinkedAttrType("text");
+    setNewLinkedAttrValues("");
+  };
+
+  const handleCreateLinkedAttribute = async () => {
+    const label = newLinkedAttrName.trim();
+    if (!label || !viewingCategoryAttrs) return;
+    setCreatingAttr(true);
+    try {
+      await adminService.createAttribute({
+        categoryId: viewingCategoryAttrs.id,
+        key: label.toLowerCase().replace(/\s+/g, "_"),
+        label,
+        valueType: newLinkedAttrType,
+        allowedValues: parseAttributeValues(newLinkedAttrValues),
+        isFilterable: true,
+        sortOrder: 0
+      });
+      toast.success(t("categories.toast.attributeLinked", { name: label, category: viewingCategoryAttrs.name }));
+      resetAttributeForm();
+      loadCategories();
+    } catch {
+      toast.error(t("categories.toast.linkFailed"));
+    } finally {
+      setCreatingAttr(false);
+    }
+  };
+
+  const handleAddAttributeValue = async (attr: any) => {
+    const value = (valueDrafts[attr.id] || "").trim();
+    if (!value) return;
+    const existing: string[] = Array.isArray(attr.allowedValues) ? attr.allowedValues : [];
+    if (existing.includes(value)) {
+      setValueDrafts((d) => ({ ...d, [attr.id]: "" }));
+      return;
+    }
+    setBusyValueId(attr.id);
+    try {
+      await adminService.updateAttribute(attr.id, { allowedValues: [...existing, value] });
+      toast.success(t("categories.toast.valueAdded"));
+      setValueDrafts((d) => ({ ...d, [attr.id]: "" }));
+      loadCategories();
+    } catch {
+      toast.error(t("categories.toast.valueUpdateFailed"));
+    } finally {
+      setBusyValueId(null);
+    }
+  };
+
+  const handleRemoveAttributeValue = async (attr: any, value: string) => {
+    const existing: string[] = Array.isArray(attr.allowedValues) ? attr.allowedValues : [];
+    setBusyValueId(attr.id);
+    try {
+      await adminService.updateAttribute(attr.id, { allowedValues: existing.filter((v) => v !== value) });
+      toast.success(t("categories.toast.valueRemoved"));
+      loadCategories();
+    } catch {
+      toast.error(t("categories.toast.valueUpdateFailed"));
+    } finally {
+      setBusyValueId(null);
+    }
+  };
+
+  const handleDeleteAttribute = async (attr: any) => {
+    if (!confirm(t("categories.attrs.confirmUnlink", { name: attr.label || attr.key }))) return;
+    try {
+      await adminService.deleteAttribute(attr.id);
+      toast.success(t("categories.toast.unlinked"));
+      loadCategories();
+    } catch {
+      toast.error(t("categories.toast.unlinkFailed"));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
@@ -174,6 +260,9 @@ export function AdminCategories() {
                     >
                       <SlidersHorizontal className="size-3.5 text-accent-brand" />
                       <span>{t("categories.attributes")}</span>
+                      <span className="px-1.5 py-0.5 rounded-md bg-background text-[10px] font-bold text-muted-foreground">
+                        {categoryAttributes(cat.id).length}
+                      </span>
                     </button>
                     <button onClick={() => handleOpenModal(cat)} className="p-1.5 text-muted-foreground hover:text-accent-brand rounded-lg">
                       <Edit2 className="size-4" />
@@ -255,43 +344,40 @@ export function AdminCategories() {
               </button>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="text-xs font-semibold text-foreground">{t("categories.attrs.linkLabel")}</label>
-              <div className="flex items-center gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <input
                   type="text"
                   placeholder={t("categories.attrs.linkPlaceholder")}
                   value={newLinkedAttrName}
                   onChange={(e) => setNewLinkedAttrName(e.target.value)}
+                  className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
+                />
+                <select
+                  value={newLinkedAttrType}
+                  onChange={(e) => setNewLinkedAttrType(e.target.value)}
+                  className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
+                >
+                  <option value="text">{t("categories.attrs.types.text")}</option>
+                  <option value="number">{t("categories.attrs.types.number")}</option>
+                  <option value="boolean">{t("categories.attrs.types.boolean")}</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder={t("categories.attrs.valuesPlaceholder")}
+                  value={newLinkedAttrValues}
+                  onChange={(e) => setNewLinkedAttrValues(e.target.value)}
                   className="flex-1 px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
                 />
                 <button
                   disabled={creatingAttr || !newLinkedAttrName.trim()}
-                  onClick={async () => {
-                    if (!newLinkedAttrName.trim()) return;
-                    setCreatingAttr(true);
-                    try {
-                      await adminService.createAttribute({
-                        categoryId: viewingCategoryAttrs.id,
-                        key: newLinkedAttrName.toLowerCase().replace(/\s+/g, "_"),
-                        label: newLinkedAttrName.trim(),
-                        valueType: "text",
-                        allowedValues: [],
-                        isFilterable: true,
-                        sortOrder: 0
-                      });
-                      toast.success(t("categories.toast.attributeLinked", { name: newLinkedAttrName, category: viewingCategoryAttrs.name }));
-                      setNewLinkedAttrName("");
-                      loadCategories();
-                    } catch {
-                      toast.error(t("categories.toast.linkFailed"));
-                    } finally {
-                      setCreatingAttr(false);
-                    }
-                  }}
-                  className="px-4 py-2 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 disabled:opacity-50"
+                  onClick={handleCreateLinkedAttribute}
+                  className="px-4 py-2 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 disabled:opacity-50 shrink-0"
                 >
-                  {creatingAttr ? t("categories.attrs.linking") : t("actions.link")}
+                  {creatingAttr ? t("categories.attrs.linking") : t("actions.add")}
                 </button>
               </div>
             </div>
@@ -300,38 +386,73 @@ export function AdminCategories() {
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 {t("categories.attrs.current")}
               </span>
-              {allAttributes.filter(a => a.categoryId === viewingCategoryAttrs.id).length === 0 ? (
+              {categoryAttributes(viewingCategoryAttrs.id).length === 0 ? (
                 <div className="py-8 text-center text-xs text-muted-foreground">
                   {t("categories.attrs.empty")}
                 </div>
               ) : (
-                allAttributes
-                  .filter(a => a.categoryId === viewingCategoryAttrs.id)
-                  .map((attr) => (
-                    <div key={attr.id} className="p-3 border border-border rounded-xl bg-secondary/15 flex items-center justify-between text-xs">
-                      <div>
-                        <div className="font-semibold text-foreground">{attr.label || attr.key}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono">key: {attr.key} &bull; type: {attr.valueType}</div>
+                categoryAttributes(viewingCategoryAttrs.id).map((attr) => {
+                  const values: string[] = Array.isArray(attr.allowedValues) ? attr.allowedValues : [];
+                  const isBusy = busyValueId === attr.id;
+                  return (
+                    <div key={attr.id} className="p-3 border border-border rounded-xl bg-secondary/15 space-y-2.5 text-xs">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-semibold text-foreground">{attr.label || attr.key}</div>
+                          <div className="text-[10px] text-muted-foreground font-mono">key: {attr.key} &bull; type: {attr.valueType}</div>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteAttribute(attr)}
+                          className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg transition-colors"
+                          title={t("categories.attrs.unlink")}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
                       </div>
-                      <button
-                        onClick={async () => {
-                          if (confirm(t("categories.attrs.confirmUnlink", { name: attr.label || attr.key }))) {
-                            try {
-                              await adminService.deleteAttribute(attr.id);
-                              toast.success(t("categories.toast.unlinked"));
-                              loadCategories();
-                            } catch {
-                              toast.error(t("categories.toast.unlinkFailed"));
+
+                      {values.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {values.map((value) => (
+                            <span key={value} className="inline-flex items-center gap-1 px-2 py-0.5 bg-secondary text-secondary-foreground rounded-lg border border-border">
+                              <span>{value}</span>
+                              <button
+                                disabled={isBusy}
+                                onClick={() => handleRemoveAttributeValue(attr, value)}
+                                className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+                                title={t("categories.attrs.removeValue")}
+                              >
+                                <X className="size-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder={t("categories.attrs.valuePlaceholder")}
+                          value={valueDrafts[attr.id] || ""}
+                          onChange={(e) => setValueDrafts((d) => ({ ...d, [attr.id]: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddAttributeValue(attr);
                             }
-                          }
-                        }}
-                        className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg transition-colors"
-                        title={t("categories.attrs.unlink")}
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
+                          }}
+                          className="flex-1 px-2.5 py-1.5 bg-background border border-border rounded-lg text-xs text-foreground focus:outline-hidden"
+                        />
+                        <button
+                          disabled={isBusy || !(valueDrafts[attr.id] || "").trim()}
+                          onClick={() => handleAddAttributeValue(attr)}
+                          className="px-3 py-1.5 bg-secondary text-secondary-foreground border border-border font-semibold rounded-lg hover:bg-secondary/80 disabled:opacity-50 shrink-0"
+                        >
+                          {t("categories.attrs.addValue")}
+                        </button>
+                      </div>
                     </div>
-                  ))
+                  );
+                })
               )}
             </div>
 

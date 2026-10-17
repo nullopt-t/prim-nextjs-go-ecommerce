@@ -2,6 +2,7 @@ package attribute
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/pkg/database"
@@ -38,6 +39,27 @@ func (s *AttributeService) CreateAttribute(ctx context.Context, ai *AttributeIte
 			ai.ValueType = "text"
 		}
 		return s.repo.CreateAttribute(ctx, tx, ai)
+	})
+}
+
+// UpdateAttributeInput describes the optional attribute fields to patch.
+type UpdateAttributeInput struct {
+	Label         *string
+	ValueType     *string
+	AllowedValues json.RawMessage
+	IsFilterable  *bool
+	SortOrder     *int
+}
+
+func (s *AttributeService) UpdateAttribute(ctx context.Context, id uuid.UUID, in UpdateAttributeInput) error {
+	return s.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
+		return s.repo.UpdateAttribute(ctx, tx, id, UpdateAttributeFields{
+			Label:         in.Label,
+			ValueType:     in.ValueType,
+			AllowedValues: in.AllowedValues,
+			IsFilterable:  in.IsFilterable,
+			SortOrder:     in.SortOrder,
+		})
 	})
 }
 

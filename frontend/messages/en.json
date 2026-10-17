@@ -698,40 +698,6 @@
       "save": "Save",
       "suspend": "Suspend Account"
     },
-    "attributes": {
-      "title": "Product Attributes",
-      "subtitle": "Define variant attributes like Color, Size, Storage, and Specs linked to catalog categories.",
-      "new": "New Attribute",
-      "createTitle": "Create & Link Attribute",
-      "createSubtitle": "Link this attribute to a specific category in your catalog.",
-      "allCategories": "All Catalog Categories",
-      "globalUnassigned": "Global / Unassigned",
-      "categoryOption": "Category: {name}",
-      "optionValues": "Option Values ({count})",
-      "valuePlaceholder": "e.g. XL, 256GB...",
-      "addValue": "Add Option Value",
-      "meta": "Code: {code} • Type: {type}",
-      "confirmDelete": "Delete attribute?",
-      "form": {
-        "name": "Attribute Name *",
-        "namePlaceholder": "e.g. Screen Size, Color, Storage",
-        "category": "Catalog Category *",
-        "selectCategory": "-- Select Catalog Category --",
-        "valueType": "Value Type",
-        "typeText": "Text (e.g. Colors, Sizes)",
-        "typeNumber": "Number (e.g. Weight, Capacity)",
-        "typeBoolean": "Boolean (True / False)",
-        "submit": "Create & Link"
-      },
-      "toast": {
-        "loadFailed": "Failed to load attributes or categories from server",
-        "created": "Attribute created and linked to catalog category!",
-        "createFailed": "Failed to create attribute",
-        "deleted": "Attribute deleted",
-        "deleteFailed": "Failed to delete attribute",
-        "valueAdded": "Option value added!"
-      }
-    },
     "brands": {
       "title": "Brand Partners",
       "subtitle": "Manage brand profiles, logos, and manufacturer links.",
@@ -778,15 +744,24 @@
         "root": "None (Root Level)"
       },
       "attrs": {
-        "title": "Linked Attributes",
-        "subtitle": "{name} category specifications",
-        "current": "Currently Linked Attributes",
-        "empty": "No attributes linked to this category yet. Type an attribute name above to create and link one.",
-        "linkLabel": "Link New Attribute to this Category",
+        "title": "Manage Attributes",
+        "subtitle": "Curate the attributes applied to the {name} category",
+        "current": "Attributes for this category",
+        "empty": "No attributes yet. Add one above to describe products in this category.",
+        "linkLabel": "Add Attribute to this Category",
         "linkPlaceholder": "Attribute name (e.g. Screen Size, Material)",
-        "linking": "Linking...",
-        "unlink": "Unlink Attribute",
-        "confirmUnlink": "Unlink and delete attribute \"{name}\"?"
+        "valuesPlaceholder": "Option values, comma separated (optional, e.g. Red, Blue)",
+        "valuePlaceholder": "Add option value (e.g. XL)",
+        "addValue": "Add value",
+        "removeValue": "Remove value",
+        "linking": "Adding...",
+        "unlink": "Delete Attribute",
+        "confirmUnlink": "Delete attribute \"{name}\" from this category?",
+        "types": {
+          "text": "Text (Colors, Sizes)",
+          "number": "Number (Weight, Capacity)",
+          "boolean": "Boolean (True / False)"
+        }
       },
       "toast": {
         "loadFailed": "Failed to load categories from server",
@@ -795,10 +770,13 @@
         "deleted": "Category deleted",
         "deleteFailed": "Failed to delete category",
         "saveFailed": "Failed to save category",
-        "attributeLinked": "Attribute \"{name}\" linked to {category}!",
-        "linkFailed": "Failed to link attribute to category",
-        "unlinked": "Attribute unlinked",
-        "unlinkFailed": "Failed to unlink attribute"
+        "attributeLinked": "Attribute \"{name}\" added to {category}!",
+        "linkFailed": "Failed to add attribute to category",
+        "unlinked": "Attribute deleted",
+        "unlinkFailed": "Failed to delete attribute",
+        "valueAdded": "Option value added",
+        "valueRemoved": "Option value removed",
+        "valueUpdateFailed": "Failed to update attribute values"
       }
     },
     "customers": {
@@ -1163,7 +1141,6 @@
         "orders": "Orders",
         "products": "Products",
         "categories": "Categories",
-        "attributes": "Attributes",
         "brands": "Brands",
         "inventory": "Inventory",
         "promotions": "Promotions",

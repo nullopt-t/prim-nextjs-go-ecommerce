@@ -3,7 +3,6 @@ export { AdminDashboard } from "./routes/dashboard";
 export { AdminProducts } from "./routes/products";
 export { AdminCategories } from "./routes/categories";
 export { AdminBrands } from "./routes/brands";
-export { AdminAttributes } from "./routes/attributes";
 export { AdminMedia } from "./routes/media";
 export { AdminInventory } from "./routes/inventory";
 export { AdminOrders } from "./routes/orders";
