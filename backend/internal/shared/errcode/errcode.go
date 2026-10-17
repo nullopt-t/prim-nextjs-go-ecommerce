@@ -6,5 +6,5 @@
 //
 // Codes are grouped by subdomain in sibling files: product.go, variant.go,
 // brand.go, category.go, tag.go, media.go, inventory.go, review.go, wishlist.go,
-// coupon.go, and order.go.
+// coupon.go, order.go, and cart.go.
 package errcode
