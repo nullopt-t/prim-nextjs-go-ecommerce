@@ -39,7 +39,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/nullopt-t/prim-backend/internal/auth"
-	"github.com/nullopt-t/prim-backend/internal/catalog/cart"
+	"github.com/nullopt-t/prim-backend/internal/cart"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/checkout"

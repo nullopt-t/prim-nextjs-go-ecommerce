@@ -3,7 +3,7 @@ package app
 import (
 	"github.com/nullopt-t/prim-backend/internal/auth"
 	"github.com/nullopt-t/prim-backend/internal/catalog/brand"
-	"github.com/nullopt-t/prim-backend/internal/catalog/cart"
+	"github.com/nullopt-t/prim-backend/internal/cart"
 	"github.com/nullopt-t/prim-backend/internal/catalog/category"
 	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
 	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
