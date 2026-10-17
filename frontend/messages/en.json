@@ -1299,7 +1299,38 @@
         "title": "Core Services Health",
         "subtitle": "Real-time heartbeat and connection status for backend database, queues, cache, and object storage.",
         "healthy": "Healthy",
-        "allOperational": "100% Operational"
+        "degraded": "Degraded",
+        "unhealthy": "Unhealthy",
+        "unknown": "Unknown",
+        "allOperational": "100% Operational",
+        "partialOperational": "{up} of {total} Operational",
+        "metric": {
+          "port": "Port {port}",
+          "latency": "Latency {value}ms",
+          "lag": "{value} Lag",
+          "connected": "Connected",
+          "online": "Online",
+          "offline": "Offline",
+          "unavailable": "Unavailable"
+        },
+        "services": {
+          "postgres": {
+            "name": "PostgreSQL Database",
+            "info": "Active Pool"
+          },
+          "redis": {
+            "name": "Redis Cache & Sessions",
+            "info": "In-Memory Store"
+          },
+          "kafka": {
+            "name": "Kafka Message Broker",
+            "info": "Notifications Topic"
+          },
+          "minio": {
+            "name": "MinIO S3 Storage",
+            "info": "Product Media Bucket"
+          }
+        }
       },
       "actions": {
         "purgeCache": "Purge Server Cache",

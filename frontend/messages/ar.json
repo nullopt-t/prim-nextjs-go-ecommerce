@@ -1299,7 +1299,38 @@
         "title": "حالة الخدمات الأساسية",
         "subtitle": "نبض الاتصال المباشر وحالة قواعد البيانات وقوائم الرسائل والتخزين المؤقت وتخزين الوسائط.",
         "healthy": "سليم",
-        "allOperational": "تعمل بنسبة 100%"
+        "degraded": "أداء متدهور",
+        "unhealthy": "معطّل",
+        "unknown": "غير معروف",
+        "allOperational": "تعمل بنسبة 100%",
+        "partialOperational": "{up} من {total} تعمل",
+        "metric": {
+          "port": "المنفذ {port}",
+          "latency": "زمن الاستجابة {value} م.ث",
+          "lag": "تأخر {value}",
+          "connected": "متصل",
+          "online": "متصل",
+          "offline": "غير متصل",
+          "unavailable": "غير متاح"
+        },
+        "services": {
+          "postgres": {
+            "name": "قاعدة بيانات PostgreSQL",
+            "info": "مجمّع الاتصالات النشط"
+          },
+          "redis": {
+            "name": "Redis للتخزين المؤقت والجلسات",
+            "info": "مخزن في الذاكرة"
+          },
+          "kafka": {
+            "name": "وسيط رسائل Kafka",
+            "info": "موضوع الإشعارات"
+          },
+          "minio": {
+            "name": "تخزين MinIO S3",
+            "info": "حاوية وسائط المنتجات"
+          }
+        }
       },
       "actions": {
         "purgeCache": "إفراغ الذاكرة المؤقتة",

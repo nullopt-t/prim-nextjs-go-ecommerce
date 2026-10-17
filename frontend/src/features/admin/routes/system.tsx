@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Sliders,
-  Cpu,
   Trash2,
-  Server,
   Activity,
   Save,
   CheckCircle2,
@@ -15,7 +13,7 @@ import {
   Radio
 } from "lucide-react";
 import { notify, apiErrorMessage } from "@/lib/notify";
-import { adminService } from "@/services/admin";
+import { adminService, type SystemHealthReport, type SystemServiceHealth } from "@/services/admin";
 import { useTranslations } from "next-intl";
 
 const DEFAULT_SYSTEM_SETTINGS: Record<string, any> = {
@@ -24,12 +22,49 @@ const DEFAULT_SYSTEM_SETTINGS: Record<string, any> = {
   mockEmailNotifications: false
 };
 
+// Heartbeat interval for re-polling the core services health endpoint.
+const HEALTH_POLL_MS = 15000;
+
+// Static presentation for each probed service. Live status, port, latency, and
+// lag are overlaid from the backend health report.
+const SERVICE_NODES = [
+  { key: "postgres", icon: Database, metric: "latency", defaultPort: 5432 },
+  { key: "redis", icon: Layers, metric: "latency", defaultPort: 6379 },
+  { key: "kafka", icon: Radio, metric: "lag", defaultPort: 9092 },
+  { key: "minio", icon: HardDrive, metric: "online", defaultPort: 9000 }
+] as const;
+
+const STATUS_STYLES: Record<string, { badge: string; dot: string }> = {
+  healthy: {
+    badge: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    dot: "bg-emerald-500"
+  },
+  degraded: {
+    badge: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+    dot: "bg-amber-500"
+  },
+  unhealthy: {
+    badge: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+    dot: "bg-rose-500"
+  },
+  unknown: {
+    badge: "bg-secondary/40 text-muted-foreground border-border/60",
+    dot: "bg-muted-foreground"
+  }
+};
+
+function formatLatency(value?: number): string {
+  if (typeof value !== "number" || Number.isNaN(value)) return "0";
+  return value.toFixed(1);
+}
+
 export function AdminSystem() {
   const t = useTranslations("admin");
   const [settings, setSettings] = useState<Record<string, any>>({ ...DEFAULT_SYSTEM_SETTINGS });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [purgingCache, setPurgingCache] = useState(false);
+  const [health, setHealth] = useState<SystemHealthReport | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -58,6 +93,42 @@ export function AdminSystem() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadHealth = async () => {
+      try {
+        const res = await adminService.getSystemHealth();
+        if (isMounted) setHealth(res?.data ?? null);
+      } catch {
+        if (isMounted) setHealth(null);
+      }
+    };
+    loadHealth();
+    const interval = setInterval(loadHealth, HEALTH_POLL_MS);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const healthByKey = useMemo(() => {
+    const map: Record<string, SystemServiceHealth> = {};
+    (health?.services ?? []).forEach((service) => {
+      map[service.key] = service;
+    });
+    return map;
+  }, [health]);
+
+  const totalServices = SERVICE_NODES.length;
+  const healthyServices = (health?.services ?? []).filter((s) => s.status === "healthy").length;
+  const overallStatus = health?.status ?? "unknown";
+  const overallStyle = STATUS_STYLES[overallStatus] ?? STATUS_STYLES.unknown;
+  const overallLabel = !health
+    ? t("system.infrastructure.unknown")
+    : overallStatus === "healthy"
+      ? t("system.infrastructure.allOperational")
+      : t("system.infrastructure.partialOperational", { up: healthyServices, total: totalServices });
 
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -97,8 +168,14 @@ export function AdminSystem() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("system.title")}</h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent-brand/10 text-accent-brand border border-accent-brand/20">
-              {t("system.statusOnline")}
+            <span
+              className={
+                health && overallStatus !== "healthy"
+                  ? `px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${overallStyle.badge}`
+                  : "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent-brand/10 text-accent-brand border border-accent-brand/20"
+              }
+            >
+              {health && overallStatus !== "healthy" ? overallLabel : t("system.statusOnline")}
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">{t("system.subtitle")}</p>
@@ -174,61 +251,62 @@ export function AdminSystem() {
                 {t("system.infrastructure.subtitle")}
               </p>
             </div>
-            <span className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+            <span className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border ${overallStyle.badge}`}>
               <CheckCircle2 className="size-3.5" />
-              <span>{t("system.infrastructure.allOperational")}</span>
+              <span>{overallLabel}</span>
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
-            {[
-              {
-                name: "PostgreSQL Database",
-                icon: Database,
-                status: t("system.infrastructure.healthy"),
-                detail: "Port 5432 • Active Pool • Latency 0.8ms",
-                color: "text-emerald-500"
-              },
-              {
-                name: "Redis Cache & Sessions",
-                icon: Layers,
-                status: t("system.infrastructure.healthy"),
-                detail: "Port 6379 • In-Memory Store • Latency 0.2ms",
-                color: "text-emerald-500"
-              },
-              {
-                name: "Kafka Message Broker",
-                icon: Radio,
-                status: t("system.infrastructure.healthy"),
-                detail: "Port 9092 • Notifications Topic • 0 Lag",
-                color: "text-emerald-500"
-              },
-              {
-                name: "MinIO S3 Storage",
-                icon: HardDrive,
-                status: t("system.infrastructure.healthy"),
-                detail: "Port 9000 • Product Media Bucket • Online",
-                color: "text-emerald-500"
-              }
-            ].map((node) => {
+            {SERVICE_NODES.map((node) => {
               const NodeIcon = node.icon;
+              const service = healthByKey[node.key];
+              const status = service?.status ?? "unknown";
+              const style = STATUS_STYLES[status] ?? STATUS_STYLES.unknown;
+              const port = service?.port ?? node.defaultPort;
+
+              let metric: string;
+              if (!service) {
+                metric = t("system.infrastructure.metric.unavailable");
+              } else if (node.metric === "latency") {
+                metric = t("system.infrastructure.metric.latency", {
+                  value: formatLatency(service.latencyMs)
+                });
+              } else if (node.metric === "lag") {
+                metric =
+                  typeof service.lag === "number"
+                    ? t("system.infrastructure.metric.lag", { value: service.lag })
+                    : t("system.infrastructure.metric.connected");
+              } else {
+                metric =
+                  status === "healthy"
+                    ? t("system.infrastructure.metric.online")
+                    : t("system.infrastructure.metric.offline");
+              }
+
+              const detail = `${t("system.infrastructure.metric.port", { port })} • ${t(
+                `system.infrastructure.services.${node.key}.info`
+              )} • ${metric}`;
+
               return (
                 <div
-                  key={node.name}
+                  key={node.key}
                   className="p-4 rounded-xl border border-border/70 bg-secondary/10 flex flex-col justify-between space-y-3"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <NodeIcon className="size-4 text-accent-brand shrink-0" />
-                      <span className="font-bold text-xs text-foreground truncate">{node.name}</span>
+                      <span className="font-bold text-xs text-foreground truncate">
+                        {t(`system.infrastructure.services.${node.key}.name`)}
+                      </span>
                     </div>
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-                      <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      {node.status}
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${style.badge}`}>
+                      <span className={`size-1.5 rounded-full ${style.dot} ${status === "healthy" ? "animate-pulse" : ""}`}></span>
+                      {t(`system.infrastructure.${status}`)}
                     </span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground font-mono">
-                    {node.detail}
+                  <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">
+                    {detail}
                   </span>
                 </div>
               );

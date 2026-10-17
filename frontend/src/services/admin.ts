@@ -36,6 +36,23 @@ export interface UpdateStatusPayload {
   suspendedUntil?: string | null;
 }
 
+export type SystemServiceStatus = "healthy" | "degraded" | "unhealthy";
+
+export interface SystemServiceHealth {
+  key: "postgres" | "redis" | "kafka" | "minio" | string;
+  status: SystemServiceStatus;
+  port: number;
+  latencyMs: number;
+  lag?: number;
+  error?: string;
+}
+
+export interface SystemHealthReport {
+  status: SystemServiceStatus;
+  checkedAt: string;
+  services: SystemServiceHealth[];
+}
+
 export const adminService = {
   // Users Management
   getUsers: async (params?: ListUsersParams): Promise<ListUsersResponse> => {
@@ -213,6 +230,11 @@ export const adminService = {
 
   adjustProductInventory: async (productId: string, quantity: number, reason: string): Promise<any> => {
     return api.post(`/api/v1/admin/inventory/products/${productId}/adjust`, { quantity, reason });
+  },
+
+  // System
+  getSystemHealth: async (): Promise<{ data: SystemHealthReport }> => {
+    return api.get(`/api/v1/admin/system/health`);
   },
 
   // Settings

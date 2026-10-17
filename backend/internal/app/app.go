@@ -19,7 +19,9 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/setting"
+	"github.com/nullopt-t/prim-backend/internal/shared/job"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
+	"github.com/nullopt-t/prim-backend/internal/system"
 	"github.com/nullopt-t/prim-backend/internal/user"
 	"github.com/nullopt-t/prim-backend/internal/wishlist"
 
@@ -312,6 +314,25 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	settingRouter := setting.NewRouter(settingHandler, sessionService)
 	settingRouter.MapRoutes(v1)
 	settingRouter.MapPublicRoutes(v1)
+
+	// system health
+	systemService := system.NewService(
+		app.db,
+		app.redisClient,
+		app.minioClient,
+		system.Config{
+			KafkaBrokers:       app.config.KafkaCfg.Brokers,
+			KafkaGroupID:       app.config.KafkaCfg.GroupID,
+			NotificationsTopic: job.TopicNotificationsEmail,
+			Bucket:             "product-media",
+			PostgresPort:       app.config.DBCfg.DBPort,
+			RedisPort:          app.config.RedisCfg.Port,
+			MinioEndpoint:      app.config.MinioCfg.Endpoint,
+		},
+	)
+	systemHandler := system.NewHandler(systemService)
+	systemRouter := system.NewRouter(systemHandler, sessionService)
+	systemRouter.MapRoutes(v1)
 }
 
 func (app *App) Shutdown() {
