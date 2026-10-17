@@ -375,10 +375,6 @@ CREATE TABLE IF NOT EXISTS coupons (
     )
 );
 
--- Enforce at most one redemption per user per coupon at the DB level
-CREATE UNIQUE INDEX IF NOT EXISTS idx_coupon_redemptions_coupon_user
-    ON coupon_redemptions (coupon_id, user_id);
-
 
 -- =====================================================================
 -- ORDERS
@@ -449,6 +445,10 @@ CREATE TABLE IF NOT EXISTS coupon_redemptions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_coupon_redemptions_coupon_id ON coupon_redemptions (coupon_id);
+
+-- Enforce at most one redemption per user per coupon at the DB level
+CREATE UNIQUE INDEX IF NOT EXISTS idx_coupon_redemptions_coupon_user
+    ON coupon_redemptions (coupon_id, user_id);
 
 
 -- =====================================================================
