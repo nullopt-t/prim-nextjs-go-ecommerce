@@ -564,7 +564,25 @@ func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, st
 // RefundPayment sets the payment status to refunded.
 func (s *OrderService) RefundPayment(ctx context.Context, id uuid.UUID) error {
 	return s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		return s.orderRepo.UpdatePaymentStatus(ctx, tx, id, "refunded")
+		status, err := s.orderRepo.GetPaymentStatusForUpdate(ctx, tx, id)
+		if err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.NotFoundError("Payment not found").WithCode(apierr.CodeNotFound)
+			}
+			return err
+		}
+
+		// Only a captured payment holds funds that can be returned. Refunding a
+		// pending/authorized/failed payment would fabricate a refund, and a second
+		// refund of an already-refunded payment would double-count it.
+		switch status {
+		case "captured":
+			return s.orderRepo.UpdatePaymentStatus(ctx, tx, id, "refunded")
+		case "refunded":
+			return apierr.ConflictError("Payment has already been refunded")
+		default:
+			return apierr.ConflictError("Only captured payments can be refunded")
+		}
 	})
 }
 

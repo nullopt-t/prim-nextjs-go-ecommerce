@@ -556,7 +556,7 @@ func (h *OrderHandler) RefundPayment(c *gin.Context) {
 	}
 
 	if err := h.orderService.RefundPayment(c.Request.Context(), id); err != nil {
-		_ = c.Error(apierr.InternalServerError("Failed to refund payment").Wrap(err))
+		_ = c.Error(err)
 		return
 	}
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Payment marked as refunded"})

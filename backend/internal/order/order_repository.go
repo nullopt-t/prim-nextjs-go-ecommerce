@@ -771,6 +771,18 @@ func (r *Repository) UpdatePaymentStatus(ctx context.Context, qe database.QueryE
 	return err
 }
 
+// GetPaymentStatusForUpdate locks a payment row and returns its current status.
+// Callers use it to validate state transitions (e.g. only captured payments may
+// be refunded) while serializing concurrent updates on the same payment.
+func (r *Repository) GetPaymentStatusForUpdate(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (string, error) {
+	var status string
+	err := qe.QueryRow(ctx, `SELECT status FROM payments WHERE id = $1 FOR UPDATE`, id).Scan(&status)
+	if err != nil {
+		return "", fmt.Errorf("get payment status for update: %w", err)
+	}
+	return status, nil
+}
+
 func (r *Repository) UpdateOrderTracking(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID, trackingNumber string) error {
 	query := `UPDATE orders SET tracking_number = $1, updated_at = NOW() WHERE id = $2`
 	tag, err := qe.Exec(ctx, query, trackingNumber, orderID)
