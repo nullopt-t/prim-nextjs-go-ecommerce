@@ -1276,7 +1276,8 @@
         "settings": "Settings",
         "system": "System",
         "mediaLibrary": "Media Library",
-        "usersStaff": "Users & Staff"
+        "usersStaff": "Users & Staff",
+        "audit": "Audit Trail"
       },
       "badges": {
         "lowStock": "Low Stock",
@@ -1466,6 +1467,25 @@
       "next": "Next page",
       "page": "Page {page}",
       "showing": "Showing {shown}"
+    },
+    "audit": {
+      "title": "Audit Trail",
+      "subtitle": "Immutable record of privileged back-office actions — who changed what, and when.",
+      "filterAction": "Filter by action (e.g. user.role.update)",
+      "filterEntityType": "Entity type (e.g. user)",
+      "filterActor": "Actor UUID",
+      "apply": "Apply Filters",
+      "clear": "Clear",
+      "colTime": "Time",
+      "colActor": "Actor",
+      "colAction": "Action",
+      "colEntity": "Entity",
+      "colMethod": "Method",
+      "colStatus": "Status",
+      "colIp": "IP",
+      "empty": "No audit entries match these filters",
+      "payload": "Request payload",
+      "metadata": "Route parameters"
     }
   },
   "vendor": {

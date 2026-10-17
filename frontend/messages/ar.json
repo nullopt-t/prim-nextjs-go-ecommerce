@@ -1276,7 +1276,8 @@
         "settings": "الإعدادات",
         "system": "النظام",
         "mediaLibrary": "مكتبة الوسائط",
-        "usersStaff": "المستخدمون والموظفون"
+        "usersStaff": "المستخدمون والموظفون",
+        "audit": "سجل التدقيق"
       },
       "badges": {
         "lowStock": "مخزون منخفض",
@@ -1466,6 +1467,25 @@
       "next": "الصفحة التالية",
       "page": "صفحة {page}",
       "showing": "عرض {shown}"
+    },
+    "audit": {
+      "title": "سجل التدقيق",
+      "subtitle": "سجل غير قابل للتعديل للعمليات الإدارية الحساسة — من غيّر ماذا ومتى.",
+      "filterAction": "تصفية حسب الإجراء (مثال: user.role.update)",
+      "filterEntityType": "نوع الكيان (مثال: user)",
+      "filterActor": "معرّف المستخدم (UUID)",
+      "apply": "تطبيق التصفية",
+      "clear": "مسح",
+      "colTime": "الوقت",
+      "colActor": "المُنفّذ",
+      "colAction": "الإجراء",
+      "colEntity": "الكيان",
+      "colMethod": "الطريقة",
+      "colStatus": "الحالة",
+      "colIp": "عنوان IP",
+      "empty": "لا توجد سجلات تدقيق مطابقة",
+      "payload": "بيانات الطلب",
+      "metadata": "معطيات المسار"
     }
   },
   "vendor": {

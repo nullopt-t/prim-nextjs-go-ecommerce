@@ -59,6 +59,35 @@ export interface SystemHealthReport {
   services: SystemServiceHealth[];
 }
 
+export interface AuditLogEntry {
+  id: string;
+  actorId: string | null;
+  actorRole: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  method: string;
+  path: string;
+  statusCode: number;
+  ipAddress: string;
+  userAgent: string;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface ListAuditParams {
+  cursor?: string;
+  pageSize?: number;
+  action?: string;
+  entityType?: string;
+  entityId?: string;
+  actorId?: string;
+  from?: string;
+  to?: string;
+}
+
 export const adminService = {
   // Users Management
   getUsers: async (params?: ListUsersParams): Promise<ListUsersResponse> => {
@@ -241,6 +270,21 @@ export const adminService = {
   // System
   getSystemHealth: async (): Promise<{ data: SystemHealthReport }> => {
     return api.get(`/api/v1/admin/system/health`);
+  },
+
+  // Audit trail (superadmin only)
+  getAuditLogs: async (params?: ListAuditParams): Promise<{ data: AuditLogEntry[]; meta: any }> => {
+    const query = new URLSearchParams();
+    if (params?.cursor) query.set("cursor", params.cursor);
+    if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+    if (params?.action) query.set("action", params.action);
+    if (params?.entityType) query.set("entityType", params.entityType);
+    if (params?.entityId) query.set("entityId", params.entityId);
+    if (params?.actorId) query.set("actorId", params.actorId);
+    if (params?.from) query.set("from", params.from);
+    if (params?.to) query.set("to", params.to);
+    const qs = query.toString();
+    return api.get(`/api/v1/admin/audit${qs ? `?${qs}` : ""}`);
   },
 
   // Settings

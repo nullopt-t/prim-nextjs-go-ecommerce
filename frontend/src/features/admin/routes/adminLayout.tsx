@@ -19,9 +19,11 @@ import {
   User,
   LogOut,
   ShieldCheck,
+  ScrollText,
   Sun,
   Moon,
-  Languages
+  Languages,
+  type LucideIcon,
 } from "lucide-react";
 import { useTheme } from "@/context/theme";
 import { useLocale, useTranslations } from "next-intl";
@@ -63,7 +65,15 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
     navigate.push("/");
   };
 
-  const navItems = [
+  const navItems: {
+    nameKey: string;
+    path: string;
+    icon: LucideIcon;
+    exact?: boolean;
+    badge?: string;
+    badgeKey?: string;
+    superadminOnly?: boolean;
+  }[] = [
     { nameKey: "layout.nav.dashboard", path: "/admin", icon: LayoutDashboard, exact: true },
     { nameKey: "layout.nav.products", path: "/admin/products", icon: Package },
     { nameKey: "layout.nav.categories", path: "/admin/categories", icon: FolderTree },
@@ -76,7 +86,12 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
     { nameKey: "layout.nav.promotions", path: "/admin/promotions", icon: Percent },
     { nameKey: "layout.nav.settings", path: "/admin/settings", icon: Settings },
     { nameKey: "layout.nav.system", path: "/admin/system", icon: ShieldCheck },
+    { nameKey: "layout.nav.audit", path: "/admin/audit", icon: ScrollText, superadminOnly: true },
   ];
+
+  const visibleNavItems = navItems.filter(
+    (item) => !item.superadminOnly || user?.role === "superadmin"
+  );
 
   return (
     <div className="min-h-screen bg-muted/20 text-foreground flex flex-col font-sans">
@@ -228,7 +243,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
               {t("layout.management")}
             </div>
 
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path);
               return (

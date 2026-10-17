@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/minio/minio-go/v7"
+	"github.com/nullopt-t/prim-backend/internal/audit"
 	"github.com/nullopt-t/prim-backend/internal/auth"
 	"github.com/nullopt-t/prim-backend/internal/cart"
 	"github.com/nullopt-t/prim-backend/internal/catalog/brand"
@@ -69,6 +70,14 @@ type App struct {
 }
 
 func (app *App) setupRoutes(router *gin.Engine) {
+	txRunner := database.NewTxRunner(app.db)
+
+	// audit records privileged admin mutations. It is registered before
+	// ErrorHandler so it observes the final status written by the error mapper
+	// (e.g. 400/403/500) rather than the default 200.
+	auditService := audit.NewService(txRunner, audit.NewRepository())
+	router.Use(auditService.Middleware())
+
 	// setup middlewares
 	router.Use(middleware.ErrorHandler(app.logger))
 	router.Use(middleware.CORS(app.config.AllowedOrigins...))
@@ -81,7 +90,6 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	v1.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
-	txRunner := database.NewTxRunner(app.db)
 
 	// settings: constructed early so the maintenance gate can wrap the whole API
 	// surface before any routes are mounted.
@@ -333,6 +341,11 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	systemHandler := system.NewHandler(systemService)
 	systemRouter := system.NewRouter(systemHandler, sessionService)
 	systemRouter.MapRoutes(v1)
+
+	// audit trail (superadmin only)
+	auditHandler := audit.NewHandler(auditService)
+	auditRouter := audit.NewRouter(auditHandler, sessionService)
+	auditRouter.MapRoutes(v1)
 }
 
 func (app *App) Shutdown() {
