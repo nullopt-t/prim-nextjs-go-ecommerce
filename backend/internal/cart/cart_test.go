@@ -95,7 +95,7 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	s.db = db
 
-	schemaBytes, err := os.ReadFile("../../../migrations/000001_init_sechema.up.sql")
+	schemaBytes, err := os.ReadFile("../../migrations/000001_init_sechema.up.sql")
 	require.NoError(s.T(), err)
 	_, err = db.Exec(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
@@ -629,7 +629,7 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MergeIntoUserCart() {
 	bUser1, _ := json.Marshal(cart.AddItemRequest{VariantID: v2, Quantity: 3})
 	reqU1 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(bUser1))
 	reqU1.Header.Set("Content-Type", "application/json")
-	reqU1.Header.Set("Authorization", "Bearer "+token)
+	reqU1.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	wU1 := httptest.NewRecorder()
 	s.router.ServeHTTP(wU1, reqU1)
 	s.Require().Equal(http.StatusOK, wU1.Code)
@@ -637,7 +637,7 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MergeIntoUserCart() {
 	bUser2, _ := json.Marshal(cart.AddItemRequest{VariantID: v3, Quantity: 1})
 	reqU2 := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(bUser2))
 	reqU2.Header.Set("Content-Type", "application/json")
-	reqU2.Header.Set("Authorization", "Bearer "+token)
+	reqU2.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	wU2 := httptest.NewRecorder()
 	s.router.ServeHTTP(wU2, reqU2)
 	s.Require().Equal(http.StatusOK, wU2.Code)
@@ -652,7 +652,7 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MergeIntoUserCart() {
 	// - v3: qty 1 (user)
 	// Total items = 7 units, 3 distinct lines
 	reqUserCart := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
-	reqUserCart.Header.Set("Authorization", "Bearer "+token)
+	reqUserCart.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	wUserCart := httptest.NewRecorder()
 	s.router.ServeHTTP(wUserCart, reqUserCart)
 

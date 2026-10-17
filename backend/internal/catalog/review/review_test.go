@@ -232,7 +232,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_01_CreateReview_SuccessAndValidation() {
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	w := httptest.NewRecorder()
 	s.router.ServeHTTP(w, req)
 
@@ -260,7 +260,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_01_CreateReview_SuccessAndValidation() {
 	wDup := httptest.NewRecorder()
 	reqDup := httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(reqBody))
 	reqDup.Header.Set("Content-Type", "application/json")
-	reqDup.Header.Set("Authorization", "Bearer "+token)
+	reqDup.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	s.router.ServeHTTP(wDup, reqDup)
 
 	s.Require().Equal(http.StatusConflict, wDup.Code)
@@ -276,7 +276,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_01_CreateReview_SuccessAndValidation() {
 	wRating := httptest.NewRecorder()
 	reqRating := httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(badRatingBody))
 	reqRating.Header.Set("Content-Type", "application/json")
-	reqRating.Header.Set("Authorization", "Bearer "+token)
+	reqRating.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	s.router.ServeHTTP(wRating, reqRating)
 
 	s.Require().Equal(http.StatusBadRequest, wRating.Code)
@@ -294,7 +294,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_01_CreateReview_SuccessAndValidation() {
 	wAuto := httptest.NewRecorder()
 	reqAuto := httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(autoReqBody))
 	reqAuto.Header.Set("Content-Type", "application/json")
-	reqAuto.Header.Set("Authorization", "Bearer "+autoToken)
+	reqAuto.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: autoToken})
 	s.router.ServeHTTP(wAuto, reqAuto)
 
 	s.Require().Equal(http.StatusCreated, wAuto.Code)
@@ -314,7 +314,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_01_CreateReview_SuccessAndValidation() {
 	wNotEligible := httptest.NewRecorder()
 	reqNotEligible := httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(unpurchasedBody))
 	reqNotEligible.Header.Set("Content-Type", "application/json")
-	reqNotEligible.Header.Set("Authorization", "Bearer "+unpurchasedToken)
+	reqNotEligible.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: unpurchasedToken})
 	s.router.ServeHTTP(wNotEligible, reqNotEligible)
 
 	s.Require().Equal(http.StatusForbidden, wNotEligible.Code)
@@ -343,7 +343,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_02_CustomerGetAndUpdateMyReview() {
 
 	// 1. GET /api/v1/reviews/me
 	reqMe := httptest.NewRequest(http.MethodGet, "/api/v1/reviews/me", nil)
-	reqMe.Header.Set("Authorization", "Bearer "+token)
+	reqMe.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	wMe := httptest.NewRecorder()
 	s.router.ServeHTTP(wMe, reqMe)
 
@@ -355,7 +355,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_02_CustomerGetAndUpdateMyReview() {
 
 	// 2. GET /api/v1/reviews/:id
 	reqGet := httptest.NewRequest(http.MethodGet, "/api/v1/reviews/"+createdReview.ID.String(), nil)
-	reqGet.Header.Set("Authorization", "Bearer "+token)
+	reqGet.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	wGet := httptest.NewRecorder()
 	s.router.ServeHTTP(wGet, reqGet)
 
@@ -373,7 +373,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_02_CustomerGetAndUpdateMyReview() {
 	})
 	reqPatch := httptest.NewRequest(http.MethodPatch, "/api/v1/reviews/"+createdReview.ID.String(), bytes.NewReader(updateBody))
 	reqPatch.Header.Set("Content-Type", "application/json")
-	reqPatch.Header.Set("Authorization", "Bearer "+token)
+	reqPatch.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	wPatch := httptest.NewRecorder()
 	s.router.ServeHTTP(wPatch, reqPatch)
 
@@ -385,7 +385,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_02_CustomerGetAndUpdateMyReview() {
 
 	// 4. DELETE /api/v1/reviews/:id
 	reqDel := httptest.NewRequest(http.MethodDelete, "/api/v1/reviews/"+createdReview.ID.String(), nil)
-	reqDel.Header.Set("Authorization", "Bearer "+token)
+	reqDel.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	wDel := httptest.NewRecorder()
 	s.router.ServeHTTP(wDel, reqDel)
 
@@ -393,7 +393,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_02_CustomerGetAndUpdateMyReview() {
 
 	// Verify it's gone
 	reqGetDeleted := httptest.NewRequest(http.MethodGet, "/api/v1/reviews/"+createdReview.ID.String(), nil)
-	reqGetDeleted.Header.Set("Authorization", "Bearer "+token)
+	reqGetDeleted.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	wGetDeleted := httptest.NewRecorder()
 	s.router.ServeHTTP(wGetDeleted, reqGetDeleted)
 	s.Require().Equal(http.StatusNotFound, wGetDeleted.Code)
@@ -417,7 +417,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_03_AdminModerationLifecycle() {
 
 	// 1. GET /api/v1/admin/reviews?status=pending
 	reqList := httptest.NewRequest(http.MethodGet, "/api/v1/admin/reviews?status=pending", nil)
-	reqList.Header.Set("Authorization", "Bearer "+adminToken)
+	reqList.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: adminToken})
 	wList := httptest.NewRecorder()
 	s.router.ServeHTTP(wList, reqList)
 
@@ -432,7 +432,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_03_AdminModerationLifecycle() {
 	})
 	reqStatus := httptest.NewRequest(http.MethodPatch, "/api/v1/admin/reviews/"+rv.ID.String()+"/status", bytes.NewReader(statusBody))
 	reqStatus.Header.Set("Content-Type", "application/json")
-	reqStatus.Header.Set("Authorization", "Bearer "+adminToken)
+	reqStatus.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: adminToken})
 	wStatus := httptest.NewRecorder()
 	s.router.ServeHTTP(wStatus, reqStatus)
 
@@ -443,7 +443,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_03_AdminModerationLifecycle() {
 
 	// Verify status updated via GET /admin/reviews/:id
 	reqAdminGet := httptest.NewRequest(http.MethodGet, "/api/v1/admin/reviews/"+rv.ID.String(), nil)
-	reqAdminGet.Header.Set("Authorization", "Bearer "+adminToken)
+	reqAdminGet.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: adminToken})
 	wAdminGet := httptest.NewRecorder()
 	s.router.ServeHTTP(wAdminGet, reqAdminGet)
 	s.Require().Equal(http.StatusOK, wAdminGet.Code)
@@ -454,7 +454,7 @@ func (s *ReviewHTTPTestSuite) TestHTTP_03_AdminModerationLifecycle() {
 
 	// 3. Admin Delete
 	reqAdminDel := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/reviews/"+rv.ID.String(), nil)
-	reqAdminDel.Header.Set("Authorization", "Bearer "+adminToken)
+	reqAdminDel.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: adminToken})
 	wAdminDel := httptest.NewRecorder()
 	s.router.ServeHTTP(wAdminDel, reqAdminDel)
 	s.Require().Equal(http.StatusOK, wAdminDel.Code)

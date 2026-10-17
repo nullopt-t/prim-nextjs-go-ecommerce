@@ -98,7 +98,7 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	s.db = db
 
-	schemaBytes, err := os.ReadFile("../../../migrations/000001_init_sechema.up.sql")
+	schemaBytes, err := os.ReadFile("../../migrations/000001_init_sechema.up.sql")
 	require.NoError(s.T(), err)
 	_, err = db.Exec(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
@@ -275,7 +275,7 @@ func (s *WishlistHTTPTestSuite) TestAddToWishlist_Success() {
 		"productId": s.product1ID.String(),
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -309,7 +309,7 @@ func (s *WishlistHTTPTestSuite) TestAddToWishlist_DuplicateConflict() {
 
 	// First addition
 	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body))
-	req1.Header.Set("Authorization", "Bearer "+token)
+	req1.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	req1.Header.Set("Content-Type", "application/json")
 	w1 := httptest.NewRecorder()
 	s.router.ServeHTTP(w1, req1)
@@ -317,7 +317,7 @@ func (s *WishlistHTTPTestSuite) TestAddToWishlist_DuplicateConflict() {
 
 	// Second addition
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body))
-	req2.Header.Set("Authorization", "Bearer "+token)
+	req2.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	req2.Header.Set("Content-Type", "application/json")
 	w2 := httptest.NewRecorder()
 	s.router.ServeHTTP(w2, req2)
@@ -331,7 +331,7 @@ func (s *WishlistHTTPTestSuite) TestAddToWishlist_ProductNotFound() {
 		"productId": uuid.NewString(),
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -346,7 +346,7 @@ func (s *WishlistHTTPTestSuite) TestAddToWishlist_UnpublishedProduct() {
 		"productId": s.product3ID.String(),
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -372,7 +372,7 @@ func (s *WishlistHTTPTestSuite) TestGetMyWishlist_And_Count() {
 	// Add product 1
 	body1, _ := json.Marshal(map[string]any{"productId": s.product1ID.String()})
 	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body1))
-	req1.Header.Set("Authorization", "Bearer "+token)
+	req1.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	req1.Header.Set("Content-Type", "application/json")
 	w1 := httptest.NewRecorder()
 	s.router.ServeHTTP(w1, req1)
@@ -381,7 +381,7 @@ func (s *WishlistHTTPTestSuite) TestGetMyWishlist_And_Count() {
 	// Add product 2
 	body2, _ := json.Marshal(map[string]any{"productId": s.product2ID.String()})
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body2))
-	req2.Header.Set("Authorization", "Bearer "+token)
+	req2.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	req2.Header.Set("Content-Type", "application/json")
 	w2 := httptest.NewRecorder()
 	s.router.ServeHTTP(w2, req2)
@@ -389,7 +389,7 @@ func (s *WishlistHTTPTestSuite) TestGetMyWishlist_And_Count() {
 
 	// Test GET /wishlist/count
 	countReq := httptest.NewRequest(http.MethodGet, "/api/v1/wishlist/count", nil)
-	countReq.Header.Set("Authorization", "Bearer "+token)
+	countReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	countW := httptest.NewRecorder()
 	s.router.ServeHTTP(countW, countReq)
 	s.Require().Equal(http.StatusOK, countW.Code)
@@ -403,7 +403,7 @@ func (s *WishlistHTTPTestSuite) TestGetMyWishlist_And_Count() {
 
 	// Test GET /wishlist
 	listReq := httptest.NewRequest(http.MethodGet, "/api/v1/wishlist?page=1&pageSize=10", nil)
-	listReq.Header.Set("Authorization", "Bearer "+token)
+	listReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	listW := httptest.NewRecorder()
 	s.router.ServeHTTP(listW, listReq)
 	s.Require().Equal(http.StatusOK, listW.Code)
@@ -423,7 +423,7 @@ func (s *WishlistHTTPTestSuite) TestCheckInWishlist() {
 
 	// Initially false
 	checkReq := httptest.NewRequest(http.MethodGet, "/api/v1/wishlist/check/"+s.product1ID.String(), nil)
-	checkReq.Header.Set("Authorization", "Bearer "+token)
+	checkReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	checkW := httptest.NewRecorder()
 	s.router.ServeHTTP(checkW, checkReq)
 	s.Require().Equal(http.StatusOK, checkW.Code)
@@ -439,7 +439,7 @@ func (s *WishlistHTTPTestSuite) TestCheckInWishlist() {
 	// Add product 1
 	body, _ := json.Marshal(map[string]any{"productId": s.product1ID.String()})
 	addReq := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body))
-	addReq.Header.Set("Authorization", "Bearer "+token)
+	addReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	addReq.Header.Set("Content-Type", "application/json")
 	addW := httptest.NewRecorder()
 	s.router.ServeHTTP(addW, addReq)
@@ -447,7 +447,7 @@ func (s *WishlistHTTPTestSuite) TestCheckInWishlist() {
 
 	// Now check again -> true
 	checkReq2 := httptest.NewRequest(http.MethodGet, "/api/v1/wishlist/check/"+s.product1ID.String(), nil)
-	checkReq2.Header.Set("Authorization", "Bearer "+token)
+	checkReq2.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	checkW2 := httptest.NewRecorder()
 	s.router.ServeHTTP(checkW2, checkReq2)
 	s.Require().Equal(http.StatusOK, checkW2.Code)
@@ -464,7 +464,7 @@ func (s *WishlistHTTPTestSuite) TestRemoveItem_ByID() {
 	// Add product 1
 	body, _ := json.Marshal(map[string]any{"productId": s.product1ID.String()})
 	addReq := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body))
-	addReq.Header.Set("Authorization", "Bearer "+token)
+	addReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	addReq.Header.Set("Content-Type", "application/json")
 	addW := httptest.NewRecorder()
 	s.router.ServeHTTP(addW, addReq)
@@ -477,14 +477,14 @@ func (s *WishlistHTTPTestSuite) TestRemoveItem_ByID() {
 
 	// Delete by item ID
 	delReq := httptest.NewRequest(http.MethodDelete, "/api/v1/wishlist/items/"+addResp.Data.ID, nil)
-	delReq.Header.Set("Authorization", "Bearer "+token)
+	delReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	delW := httptest.NewRecorder()
 	s.router.ServeHTTP(delW, delReq)
 	s.Require().Equal(http.StatusOK, delW.Code)
 
 	// Check it's gone
 	checkReq := httptest.NewRequest(http.MethodGet, "/api/v1/wishlist/check/"+s.product1ID.String(), nil)
-	checkReq.Header.Set("Authorization", "Bearer "+token)
+	checkReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	checkW := httptest.NewRecorder()
 	s.router.ServeHTTP(checkW, checkReq)
 	s.Require().Equal(http.StatusOK, checkW.Code)
@@ -502,7 +502,7 @@ func (s *WishlistHTTPTestSuite) TestRemoveItem_ByProductID() {
 	// Add product 2
 	body, _ := json.Marshal(map[string]any{"productId": s.product2ID.String()})
 	addReq := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body))
-	addReq.Header.Set("Authorization", "Bearer "+token)
+	addReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	addReq.Header.Set("Content-Type", "application/json")
 	addW := httptest.NewRecorder()
 	s.router.ServeHTTP(addW, addReq)
@@ -510,14 +510,14 @@ func (s *WishlistHTTPTestSuite) TestRemoveItem_ByProductID() {
 
 	// Delete by product ID
 	delReq := httptest.NewRequest(http.MethodDelete, "/api/v1/wishlist/products/"+s.product2ID.String(), nil)
-	delReq.Header.Set("Authorization", "Bearer "+token)
+	delReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	delW := httptest.NewRecorder()
 	s.router.ServeHTTP(delW, delReq)
 	s.Require().Equal(http.StatusOK, delW.Code)
 
 	// Deleting again -> 404
 	delReq2 := httptest.NewRequest(http.MethodDelete, "/api/v1/wishlist/products/"+s.product2ID.String(), nil)
-	delReq2.Header.Set("Authorization", "Bearer "+token)
+	delReq2.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	delW2 := httptest.NewRecorder()
 	s.router.ServeHTTP(delW2, delReq2)
 	s.Require().Equal(http.StatusNotFound, delW2.Code)
@@ -529,7 +529,7 @@ func (s *WishlistHTTPTestSuite) TestClearWishlist() {
 	// Add product 1 and product 2
 	body1, _ := json.Marshal(map[string]any{"productId": s.product1ID.String()})
 	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body1))
-	req1.Header.Set("Authorization", "Bearer "+token)
+	req1.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	req1.Header.Set("Content-Type", "application/json")
 	w1 := httptest.NewRecorder()
 	s.router.ServeHTTP(w1, req1)
@@ -537,7 +537,7 @@ func (s *WishlistHTTPTestSuite) TestClearWishlist() {
 
 	body2, _ := json.Marshal(map[string]any{"productId": s.product2ID.String()})
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body2))
-	req2.Header.Set("Authorization", "Bearer "+token)
+	req2.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	req2.Header.Set("Content-Type", "application/json")
 	w2 := httptest.NewRecorder()
 	s.router.ServeHTTP(w2, req2)
@@ -545,7 +545,7 @@ func (s *WishlistHTTPTestSuite) TestClearWishlist() {
 
 	// Clear wishlist
 	clearReq := httptest.NewRequest(http.MethodDelete, "/api/v1/wishlist", nil)
-	clearReq.Header.Set("Authorization", "Bearer "+token)
+	clearReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	clearW := httptest.NewRecorder()
 	s.router.ServeHTTP(clearW, clearReq)
 	s.Require().Equal(http.StatusOK, clearW.Code)
@@ -557,7 +557,7 @@ func (s *WishlistHTTPTestSuite) TestClearWishlist() {
 
 	// Verify count is 0
 	countReq := httptest.NewRequest(http.MethodGet, "/api/v1/wishlist/count", nil)
-	countReq.Header.Set("Authorization", "Bearer "+token)
+	countReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	countW := httptest.NewRecorder()
 	s.router.ServeHTTP(countW, countReq)
 	s.Require().Equal(http.StatusOK, countW.Code)
@@ -575,7 +575,7 @@ func (s *WishlistHTTPTestSuite) TestClearWishlist_WithQueryProductId() {
 	// Add product 1 and product 2
 	body1, _ := json.Marshal(map[string]any{"productId": s.product1ID.String()})
 	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body1))
-	req1.Header.Set("Authorization", "Bearer "+token)
+	req1.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	req1.Header.Set("Content-Type", "application/json")
 	w1 := httptest.NewRecorder()
 	s.router.ServeHTTP(w1, req1)
@@ -583,7 +583,7 @@ func (s *WishlistHTTPTestSuite) TestClearWishlist_WithQueryProductId() {
 
 	body2, _ := json.Marshal(map[string]any{"productId": s.product2ID.String()})
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body2))
-	req2.Header.Set("Authorization", "Bearer "+token)
+	req2.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	req2.Header.Set("Content-Type", "application/json")
 	w2 := httptest.NewRecorder()
 	s.router.ServeHTTP(w2, req2)
@@ -591,14 +591,14 @@ func (s *WishlistHTTPTestSuite) TestClearWishlist_WithQueryProductId() {
 
 	// Delete product 1 via DELETE /wishlist?productId=...
 	delReq := httptest.NewRequest(http.MethodDelete, "/api/v1/wishlist?productId="+s.product1ID.String(), nil)
-	delReq.Header.Set("Authorization", "Bearer "+token)
+	delReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	delW := httptest.NewRecorder()
 	s.router.ServeHTTP(delW, delReq)
 	s.Require().Equal(http.StatusOK, delW.Code)
 
 	// Count should now be 1
 	countReq := httptest.NewRequest(http.MethodGet, "/api/v1/wishlist/count", nil)
-	countReq.Header.Set("Authorization", "Bearer "+token)
+	countReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	countW := httptest.NewRecorder()
 	s.router.ServeHTTP(countW, countReq)
 	s.Require().Equal(http.StatusOK, countW.Code)
@@ -618,7 +618,7 @@ func (s *WishlistHTTPTestSuite) TestAddToWishlist_WithSpecificVariant() {
 		"variantId": s.product1Variant2ID.String(),
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/wishlist", bytes.NewReader(body))
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 
@@ -645,7 +645,7 @@ func (s *WishlistHTTPTestSuite) TestAddToWishlist_WithSpecificVariant() {
 
 	// Test check wishlist endpoint with variantId
 	checkReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/wishlist/check/%s?variantId=%s", s.product1ID.String(), s.product1Variant2ID.String()), nil)
-	checkReq.Header.Set("Authorization", "Bearer "+token)
+	checkReq.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
 	checkW := httptest.NewRecorder()
 	s.router.ServeHTTP(checkW, checkReq)
 	s.Require().Equal(http.StatusOK, checkW.Code)
