@@ -114,7 +114,7 @@ export default function Hero() {
       onMouseEnter={() => setIsPlaying(false)}
       onMouseLeave={() => setIsPlaying(true)}
       aria-roledescription="carousel"
-      aria-label="Promotions Billboard"
+      aria-label={t("billboard")}
     >
       {/* Billboard Main Layout: Clean split with typography and cutout photography */}
       <div className="relative px-6 py-8 sm:px-10 sm:py-10 md:px-14 md:py-12 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-12 min-h-[290px] sm:min-h-[320px]">
@@ -187,7 +187,7 @@ export default function Hero() {
               <button
                 key={slide.id}
                 onClick={() => setCurrentIndex(idx)}
-                aria-label={`Go to slide ${idx + 1}`}
+                aria-label={t("goToSlide", { slide: idx + 1 })}
                 className={`h-2.5 rounded-full transition-all duration-200 cursor-pointer ${
                   isActive
                     ? "w-7 bg-foreground"
@@ -202,7 +202,7 @@ export default function Hero() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setIsPlaying((prev) => !prev)}
-            aria-label={isPlaying ? "Pause carousel" : "Play carousel"}
+            aria-label={isPlaying ? t("pauseCarousel") : t("playCarousel")}
             className="h-11 w-11 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
             {isPlaying ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
@@ -210,7 +210,7 @@ export default function Hero() {
 
           <button
             onClick={prevSlide}
-            aria-label="Previous slide"
+            aria-label={t("previousSlide")}
             className="h-11 w-11 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
             <ChevronLeft className="size-4.5 rtl:rotate-180" />
@@ -218,7 +218,7 @@ export default function Hero() {
 
           <button
             onClick={nextSlide}
-            aria-label="Next slide"
+            aria-label={t("nextSlide")}
             className="h-11 w-11 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
             <ChevronRight className="size-4.5 rtl:rotate-180" />
