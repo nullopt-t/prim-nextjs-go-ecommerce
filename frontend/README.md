@@ -75,7 +75,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8081
 API_URL=http://localhost:8081
 ```
 
-`NEXT_PUBLIC_API_URL` is used by the browser and the server-side rewrite proxy (`/api/*` → backend); `API_URL` is the server-side fallback. In the browser, API calls go through same-origin `/api/*` paths so the session cookie behaves correctly.
+`NEXT_PUBLIC_API_URL` is the API origin the browser calls directly, with credentialed requests — so the backend has to list the frontend origin in `CORS_ALLOWED_ORIGINS`. `API_URL` is used for server-side requests (and falls back to `NEXT_PUBLIC_API_URL`). Keep the API on the same site as the frontend (same host, different port is fine, e.g. `localhost:3000` → `localhost:8081`): the session cookie is `SameSite=Lax`, so pointing it at a different site would stop the cookie from being sent.
 
 ## Scripts
 
