@@ -1,7 +1,9 @@
 const getBaseUrl = () => {
-  // In the browser, use relative paths to leverage Next.js rewrite proxy (same-origin cookies)
+  // The browser calls the API on its own origin, with credentialed requests, so
+  // the backend must allow this origin via CORS. The server prefers the
+  // internal API_URL when one is configured.
   if (typeof window !== "undefined") {
-    return "";
+    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
   }
   return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
 };
@@ -89,6 +91,42 @@ export const api = {
     }),
   delete: <T = any>(endpoint: string, options?: RequestInit) =>
     request<T>(endpoint, { method: "DELETE", ...options }),
+  /**
+   * Fetches a binary/CSV endpoint with credentials and saves it to disk via an
+   * object URL. Reuses the same base URL and auth handling as `request`.
+   */
+  download: async (endpoint: string, filename: string, options?: RequestInit): Promise<void> => {
+    const url = endpoint.startsWith("http") ? endpoint : `${getBaseUrl()}${endpoint}`;
+    const locale = getActiveLocale();
+
+    const response = await fetch(url, {
+      credentials: "include",
+      headers: {
+        "Accept-Language": locale,
+        ...options?.headers,
+      },
+      ...options,
+    });
+
+    if (response.status === 401) {
+      handleAuthRedirect();
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.message || `HTTP Error ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  },
   upload: <T = any>(endpoint: string, formData: FormData, options?: RequestInit) => {
     const url = endpoint.startsWith("http") ? endpoint : `${getBaseUrl()}${endpoint}`;
     const locale = getActiveLocale();

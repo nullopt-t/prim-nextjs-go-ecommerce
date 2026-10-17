@@ -373,10 +373,18 @@ func (h *OrderHandler) AdminListOrders(c *gin.Context) {
 		statusPtr = &s
 	}
 
+	dateFrom, dateTo, err := parseDateRangeQuery(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
 	orders, page, err := h.orderService.ListOrders(
 		c.Request.Context(),
 		customerIDPtr,
 		statusPtr,
+		dateFrom,
+		dateTo,
 		q,
 	)
 	if err != nil {
@@ -469,7 +477,24 @@ func (h *OrderHandler) ListPayments(c *gin.Context) {
 		return
 	}
 
-	payments, page, err := h.orderService.ListPayments(c.Request.Context(), q.PageSize, cursor)
+	var statusPtr *string
+	if s := c.Query("status"); s != "" {
+		statusPtr = &s
+	}
+
+	dateFrom, dateTo, err := parseDateRangeQuery(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	payments, page, err := h.orderService.ListPayments(c.Request.Context(), PaymentListFilter{
+		Status:   statusPtr,
+		DateFrom: dateFrom,
+		DateTo:   dateTo,
+		Limit:    q.PageSize,
+		Cursor:   cursor,
+	})
 	if err != nil {
 		_ = c.Error(apierr.InternalServerError("Failed to fetch payments").Wrap(err))
 		return
@@ -571,4 +596,44 @@ func (h *OrderHandler) UpdateOrderTracking(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Tracking number updated successfully"})
+}
+
+// parseDateRangeQuery reads optional dateFrom/dateTo query params into a time
+// range. Each value accepts RFC3339 or a plain YYYY-MM-DD date; a bare date for
+// dateTo is expanded to the end of that day.
+func parseDateRangeQuery(c *gin.Context) (*time.Time, *time.Time, error) {
+	var from, to *time.Time
+
+	if v := c.Query("dateFrom"); v != "" {
+		t, err := parseOrderTime(v, false)
+		if err != nil {
+			return nil, nil, apierr.BadRequestError("Invalid dateFrom (RFC3339 or YYYY-MM-DD expected)").
+				WithCode(apierr.CodeInvalidInput)
+		}
+		from = &t
+	}
+	if v := c.Query("dateTo"); v != "" {
+		t, err := parseOrderTime(v, true)
+		if err != nil {
+			return nil, nil, apierr.BadRequestError("Invalid dateTo (RFC3339 or YYYY-MM-DD expected)").
+				WithCode(apierr.CodeInvalidInput)
+		}
+		to = &t
+	}
+
+	return from, to, nil
+}
+
+func parseOrderTime(v string, endOfDay bool) (time.Time, error) {
+	if t, err := time.Parse(time.RFC3339, v); err == nil {
+		return t, nil
+	}
+	t, err := time.Parse("2006-01-02", v)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if endOfDay {
+		t = t.Add(24*time.Hour - time.Second)
+	}
+	return t, nil
 }

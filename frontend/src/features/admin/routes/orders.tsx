@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { Search, Filter, Eye } from "lucide-react";
+import { Search, Filter, Eye, Download } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { formatDateTime } from "@/lib/datetime";
@@ -16,7 +16,10 @@ export function AdminOrders() {
   const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [exporting, setExporting] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const { cursor, hasPrev, next, prev, reset, page } = useCursorPagination();
 
@@ -27,7 +30,9 @@ export function AdminOrders() {
       const res = await adminService.getOrders({
         cursor: cursor || undefined,
         pageSize: 50,
-        status: statusFilter !== "All" ? statusFilter.toLowerCase() : undefined
+        status: statusFilter !== "all" ? statusFilter.toLowerCase() : undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
       });
       const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       const formatted = list.map((so: any) => ({
@@ -57,7 +62,7 @@ export function AdminOrders() {
     } finally {
       setLoading(false);
     }
-  }, [cursor, statusFilter]);
+  }, [cursor, statusFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     loadOrders();
@@ -74,13 +79,29 @@ export function AdminOrders() {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      await adminService.exportReport("orders", {
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+      });
+      notify.success(t("reports.exportStarted", { type: t("reports.types.orders") }));
+    } catch (err: any) {
+      notify.error(apiErrorMessage(err, t("reports.exportFailed")));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const filtered = orders.filter((o) => {
     const matchesSearch =
       o.id.toLowerCase().includes(search.toLowerCase()) ||
       o.customer.toLowerCase().includes(search.toLowerCase()) ||
       o.email.toLowerCase().includes(search.toLowerCase());
     const matchesStatus =
-      statusFilter === "All" || o.status === statusFilter.toLowerCase();
+      statusFilter === "all" || o.status === statusFilter.toLowerCase();
     return matchesSearch && matchesStatus;
   });
 
@@ -111,8 +132,31 @@ export function AdminOrders() {
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto md:justify-end">
           <Filter className="size-4 text-muted-foreground" />
+          <input
+            type="date"
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              reset();
+            }}
+            className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+            aria-label={t("reports.from")}
+          />
+          <span className="text-muted-foreground text-xs">–</span>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              reset();
+            }}
+            className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+            aria-label={t("reports.to")}
+          />
           <select
             value={statusFilter}
             onChange={(e) => {
@@ -128,6 +172,14 @@ export function AdminOrders() {
             <option value="delivered">{t("status.delivered")}</option>
             <option value="cancelled">{t("status.cancelled")}</option>
           </select>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-xs font-semibold text-foreground hover:bg-secondary/40 disabled:opacity-50 transition-colors"
+          >
+            <Download className="size-3.5" />
+            {t("actions.export")}
+          </button>
         </div>
       </div>
 

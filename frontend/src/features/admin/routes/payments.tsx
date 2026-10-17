@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { CheckCircle2, RefreshCcw, Search } from "lucide-react";
+import { CheckCircle2, RefreshCcw, Search, Download } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/lib/notify";
@@ -13,14 +13,22 @@ export function AdminPayments() {
   const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [exporting, setExporting] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const { cursor, hasPrev, next, prev, page } = useCursorPagination();
+  const { cursor, hasPrev, next, prev, reset, page } = useCursorPagination();
 
   const loadPayments = useCallback(async () => {
     try {
       setLoading(true);
       setLoadError(false);
-      const res: any = await adminService.getPayments({ cursor: cursor || undefined, pageSize: 50 });
+      const res: any = await adminService.getPayments({
+        cursor: cursor || undefined,
+        pageSize: 50,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      });
       const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       setPayments(list.map((p: any) => ({
         id: p.id,
@@ -38,11 +46,26 @@ export function AdminPayments() {
     } finally {
       setLoading(false);
     }
-  }, [cursor]);
+  }, [cursor, dateFrom, dateTo]);
 
   useEffect(() => {
     loadPayments();
   }, [loadPayments]);
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      await adminService.exportReport("payments", {
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      });
+      notify.success(t("reports.exportStarted", { type: t("reports.types.payments") }));
+    } catch (err: any) {
+      notify.error(apiErrorMessage(err, t("reports.exportFailed")));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleIssueRefund = async (pay: any) => {
     if (confirm(t("payments.confirmRefund", { id: pay.id }))) {
@@ -90,8 +113,8 @@ export function AdminPayments() {
         </div>
       </div>
 
-      <div className="bg-background border border-border rounded-2xl p-4 shadow-xs">
-        <div className="relative max-w-sm">
+      <div className="bg-background border border-border rounded-2xl p-4 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="relative w-full md:max-w-sm">
           <Search className="absolute start-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
@@ -100,6 +123,39 @@ export function AdminPayments() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full ps-10 pe-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
           />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="date"
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              reset();
+            }}
+            className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+            aria-label={t("reports.from")}
+          />
+          <span className="text-muted-foreground text-xs">–</span>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              reset();
+            }}
+            className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+            aria-label={t("reports.to")}
+          />
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-xs font-semibold text-foreground hover:bg-secondary/40 disabled:opacity-50 transition-colors"
+          >
+            <Download className="size-3.5" />
+            {t("actions.export")}
+          </button>
         </div>
       </div>
 

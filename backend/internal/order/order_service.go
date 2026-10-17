@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
@@ -305,11 +306,12 @@ func (s *OrderService) GetCustomerOrders(ctx context.Context, customerID uuid.UU
 	return orders, nil
 }
 
-// ListOrders retrieves a keyset-paginated set of orders filtered by optional customer ID or status.
+// ListOrders retrieves a keyset-paginated set of orders filtered by optional customer ID, status, or date range.
 func (s *OrderService) ListOrders(
 	ctx context.Context,
 	customerID *uuid.UUID,
 	status *string,
+	dateFrom, dateTo *time.Time,
 	q pagination.ListQuery,
 ) ([]model.Order, *pagination.CursorPage, error) {
 	var orders []model.Order
@@ -329,6 +331,8 @@ func (s *OrderService) ListOrders(
 		filter := OrderListFilter{
 			CustomerID: customerID,
 			Status:     status,
+			DateFrom:   dateFrom,
+			DateTo:     dateTo,
 			Limit:      pageSize,
 			Cursor:     cursor,
 		}
@@ -539,12 +543,12 @@ func (s *OrderService) GetDashboardStats(ctx context.Context) (*DashboardStats, 
 }
 
 // ListPayments returns a keyset-paginated list of payment transactions.
-func (s *OrderService) ListPayments(ctx context.Context, limit int, cursor *pagination.Keyset) ([]PaymentItem, *pagination.CursorPage, error) {
+func (s *OrderService) ListPayments(ctx context.Context, filter PaymentListFilter) ([]PaymentItem, *pagination.CursorPage, error) {
 	var payments []PaymentItem
 	var page *pagination.CursorPage
 	err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
-		payments, page, err = s.orderRepo.ListPayments(ctx, db, limit, cursor)
+		payments, page, err = s.orderRepo.ListPayments(ctx, db, filter)
 		return err
 	})
 	return payments, page, err

@@ -721,7 +721,8 @@
       "link": "Link",
       "reactivate": "Reactivate Account",
       "save": "Save",
-      "suspend": "Suspend Account"
+      "suspend": "Suspend Account",
+      "export": "Export"
     },
     "brands": {
       "title": "Brand Partners",
@@ -1277,7 +1278,8 @@
         "system": "System",
         "mediaLibrary": "Media Library",
         "usersStaff": "Users & Staff",
-        "audit": "Audit Trail"
+        "audit": "Audit Trail",
+        "reports": "Reports"
       },
       "badges": {
         "lowStock": "Low Stock",
@@ -1486,6 +1488,32 @@
       "empty": "No audit entries match these filters",
       "payload": "Request payload",
       "metadata": "Route parameters"
+    },
+    "reports": {
+      "title": "Reports & Exports",
+      "subtitle": "Date-ranged sales performance and CSV exports of operational data.",
+      "from": "From",
+      "to": "To",
+      "groupBy": "Group by",
+      "groupByDay": "Daily",
+      "groupByMonth": "Monthly",
+      "revenue": "Revenue",
+      "orders": "Orders",
+      "aov": "Avg. Order Value",
+      "cancelled": "Cancelled Orders",
+      "period": "Period",
+      "export": "Export data",
+      "exportHint": "CSV, up to 10,000 rows, using the date range above",
+      "exporting": "Preparing…",
+      "exportStarted": "{type} export started",
+      "exportFailed": "Export failed",
+      "empty": "No sales in this period",
+      "types": {
+        "orders": "Orders",
+        "payments": "Payments",
+        "customers": "Customers",
+        "inventory": "Inventory"
+      }
     }
   },
   "vendor": {

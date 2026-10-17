@@ -19,6 +19,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/notifier"
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/order"
+	"github.com/nullopt-t/prim-backend/internal/report"
 	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/shared/job"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
@@ -346,6 +347,12 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	auditHandler := audit.NewHandler(auditService)
 	auditRouter := audit.NewRouter(auditHandler, sessionService)
 	auditRouter.MapRoutes(v1)
+
+	// reporting & exports
+	reportService := report.NewService(txRunner, report.NewRepository())
+	reportHandler := report.NewHandler(reportService)
+	reportRouter := report.NewRouter(reportHandler, sessionService)
+	reportRouter.MapRoutes(v1)
 }
 
 func (app *App) Shutdown() {

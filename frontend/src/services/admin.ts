@@ -88,6 +88,35 @@ export interface ListAuditParams {
   to?: string;
 }
 
+export interface SalesPoint {
+  period: string;
+  revenue: number;
+  orders: number;
+}
+
+export interface SalesTotals {
+  revenue: number;
+  orders: number;
+  averageOrderValue: number;
+  cancelledOrders: number;
+}
+
+export interface SalesReport {
+  from: string | null;
+  to: string | null;
+  groupBy: "day" | "month";
+  totals: SalesTotals;
+  series: SalesPoint[];
+}
+
+export type ReportExportType = "orders" | "payments" | "customers" | "inventory";
+
+export interface ReportQuery {
+  dateFrom?: string;
+  dateTo?: string;
+  status?: string;
+}
+
 export const adminService = {
   // Users Management
   getUsers: async (params?: ListUsersParams): Promise<ListUsersResponse> => {
@@ -124,12 +153,14 @@ export const adminService = {
   },
 
   // Orders Management
-  getOrders: async (params?: { cursor?: string; pageSize?: number; customerId?: string; status?: string }): Promise<any> => {
+  getOrders: async (params?: { cursor?: string; pageSize?: number; customerId?: string; status?: string; dateFrom?: string; dateTo?: string }): Promise<any> => {
     const query = new URLSearchParams();
     if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     if (params?.customerId) query.set("customerId", params.customerId);
     if (params?.status && params.status !== "all") query.set("status", params.status);
+    if (params?.dateFrom) query.set("dateFrom", params.dateFrom);
+    if (params?.dateTo) query.set("dateTo", params.dateTo);
 
     const qs = query.toString();
     const endpoint = `/api/v1/admin/orders${qs ? `?${qs}` : ""}`;
@@ -184,10 +215,13 @@ export const adminService = {
   },
 
   // Payments
-  getPayments: async (params?: { cursor?: string; pageSize?: number }): Promise<any> => {
+  getPayments: async (params?: { cursor?: string; pageSize?: number; status?: string; dateFrom?: string; dateTo?: string }): Promise<any> => {
     const query = new URLSearchParams();
     if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+    if (params?.status && params.status !== "all") query.set("status", params.status);
+    if (params?.dateFrom) query.set("dateFrom", params.dateFrom);
+    if (params?.dateTo) query.set("dateTo", params.dateTo);
     const qs = query.toString();
     return api.get(`/api/v1/admin/payments${qs ? `?${qs}` : ""}`);
   },
@@ -285,6 +319,26 @@ export const adminService = {
     if (params?.to) query.set("to", params.to);
     const qs = query.toString();
     return api.get(`/api/v1/admin/audit${qs ? `?${qs}` : ""}`);
+  },
+
+  // Reports & exports
+  getSalesReport: async (params?: ReportQuery & { groupBy?: "day" | "month" }): Promise<{ data: SalesReport }> => {
+    const query = new URLSearchParams();
+    if (params?.dateFrom) query.set("dateFrom", params.dateFrom);
+    if (params?.dateTo) query.set("dateTo", params.dateTo);
+    if (params?.groupBy) query.set("groupBy", params.groupBy);
+    const qs = query.toString();
+    return api.get(`/api/v1/admin/reports/sales${qs ? `?${qs}` : ""}`);
+  },
+
+  exportReport: async (type: ReportExportType, params?: ReportQuery): Promise<void> => {
+    const query = new URLSearchParams();
+    query.set("type", type);
+    if (params?.dateFrom) query.set("dateFrom", params.dateFrom);
+    if (params?.dateTo) query.set("dateTo", params.dateTo);
+    if (params?.status) query.set("status", params.status);
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    await api.download(`/api/v1/admin/reports/export?${query.toString()}`, `${type}-${stamp}.csv`);
   },
 
   // Settings

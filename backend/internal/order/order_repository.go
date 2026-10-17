@@ -433,6 +433,10 @@ type OrderListFilter struct {
 	CustomerID *uuid.UUID
 	// Status optionally restricts listing to a specific order status string.
 	Status *string
+	// DateFrom optionally restricts listing to orders created at/after this time.
+	DateFrom *time.Time
+	// DateTo optionally restricts listing to orders created at/before this time.
+	DateTo *time.Time
 	// Limit controls page size.
 	Limit int
 	// Offset controls page offset.
@@ -469,6 +473,18 @@ func (r *Repository) ListOrders(
 	if filter.Status != nil && *filter.Status != "" {
 		query += fmt.Sprintf(" AND o.status = $%d::order_status", i)
 		args = append(args, *filter.Status)
+		i++
+	}
+
+	if filter.DateFrom != nil {
+		query += fmt.Sprintf(" AND o.created_at >= $%d", i)
+		args = append(args, *filter.DateFrom)
+		i++
+	}
+
+	if filter.DateTo != nil {
+		query += fmt.Sprintf(" AND o.created_at <= $%d", i)
+		args = append(args, *filter.DateTo)
 		i++
 	}
 
@@ -673,7 +689,21 @@ func (r *Repository) GetDashboardStats(ctx context.Context, qe database.QueryExe
 	return stats, nil
 }
 
-func (r *Repository) ListPayments(ctx context.Context, qe database.QueryExecutor, limit int, cursor *pagination.Keyset) ([]PaymentItem, *pagination.CursorPage, error) {
+// PaymentListFilter narrows a payments listing.
+type PaymentListFilter struct {
+	// Status optionally restricts listing to a specific payment status.
+	Status *string
+	// DateFrom optionally restricts listing to payments created at/after this time.
+	DateFrom *time.Time
+	// DateTo optionally restricts listing to payments created at/before this time.
+	DateTo *time.Time
+	// Limit controls page size.
+	Limit int
+	// Cursor, when set, switches the query to keyset pagination on (created_at, id) DESC.
+	Cursor *pagination.Keyset
+}
+
+func (r *Repository) ListPayments(ctx context.Context, qe database.QueryExecutor, filter PaymentListFilter) ([]PaymentItem, *pagination.CursorPage, error) {
 	query := `
 		SELECT p.id, p.order_id, p.amount, p.currency, p.status, p.provider, p.provider_transaction_id,
 		       COALESCE(o.customer_email, 'customer@example.com'), p.created_at, p.updated_at
@@ -684,14 +714,32 @@ func (r *Repository) ListPayments(ctx context.Context, qe database.QueryExecutor
 	args := []any{}
 	i := 1
 
-	keysetClause, keysetArgs := pagination.KeysetClause("p", cursor, i)
+	if filter.Status != nil && *filter.Status != "" {
+		query += fmt.Sprintf(" AND p.status = $%d::payment_status", i)
+		args = append(args, *filter.Status)
+		i++
+	}
+
+	if filter.DateFrom != nil {
+		query += fmt.Sprintf(" AND p.created_at >= $%d", i)
+		args = append(args, *filter.DateFrom)
+		i++
+	}
+
+	if filter.DateTo != nil {
+		query += fmt.Sprintf(" AND p.created_at <= $%d", i)
+		args = append(args, *filter.DateTo)
+		i++
+	}
+
+	keysetClause, keysetArgs := pagination.KeysetClause("p", filter.Cursor, i)
 	query += keysetClause
 	args = append(args, keysetArgs...)
 	i += len(keysetArgs)
 
 	query += pagination.KeysetOrderBy("p")
 	query += fmt.Sprintf(" LIMIT $%d", i)
-	args = append(args, limit+1)
+	args = append(args, filter.Limit+1)
 
 	rows, err := qe.Query(ctx, query, args...)
 	if err != nil {
@@ -711,7 +759,7 @@ func (r *Repository) ListPayments(ctx context.Context, qe database.QueryExecutor
 		payments = append(payments, pi)
 	}
 
-	payments, page := pagination.NewCursorPageFrom(payments, limit, func(p PaymentItem) pagination.Keyset {
+	payments, page := pagination.NewCursorPageFrom(payments, filter.Limit, func(p PaymentItem) pagination.Keyset {
 		return pagination.Keyset{CreatedAt: p.CreatedAt, ID: p.ID}
 	})
 	return payments, page, nil
