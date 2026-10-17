@@ -1,25 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { UploadCloud, Search, Trash2, Copy, Check, Eye, X } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/lib/notify";
+import { formatDateTime } from "@/lib/datetime";
 import { ErrorState } from "@/components/ui/errorState";
+import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
+import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
 
 export function AdminMedia() {
   const t = useTranslations("admin");
   const [mediaList, setMediaList] = useState<any[]>([]);
+  const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [previewItem, setPreviewItem] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const { cursor, hasPrev, next, prev, page } = useCursorPagination();
 
-  const loadMedia = async () => {
+  const loadMedia = useCallback(async () => {
     try {
       setLoading(true);
       setLoadError(false);
-      const res: any = await adminService.getMedia({ pageSize: 50 });
+      const res: any = await adminService.getMedia({ cursor: cursor || undefined, pageSize: 50 });
       const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       setMediaList(list.map((m: any) => ({
         id: m.id,
@@ -28,18 +33,19 @@ export function AdminMedia() {
         type: (m.contentType || "").includes("image") ? "Image" : "Media",
         dimensions: "1200x1200",
         url: m.url || `http://localhost:9000/${m.bucket || "product-media"}/${m.objectKey}`,
-        uploadedAt: m.createdAt ? m.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10)
+        uploadedAt: formatDateTime(m.createdAt)
       })));
+      if (res?.meta) setMeta(res.meta);
     } catch {
       setLoadError(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, [cursor]);
 
   useEffect(() => {
     loadMedia();
-  }, []);
+  }, [loadMedia]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -100,13 +106,13 @@ export function AdminMedia() {
 
       <div className="bg-background border border-border rounded-2xl p-4 shadow-xs">
         <div className="relative max-w-sm">
-          <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
+          <Search className="absolute start-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
             placeholder={t("media.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+            className="w-full ps-10 pe-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
           />
         </div>
       </div>
@@ -137,6 +143,18 @@ export function AdminMedia() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
+        <CursorPager
+          hasPrev={hasPrev}
+          hasMore={meta.hasMore}
+          page={page}
+          onPrev={prev}
+          onNext={() => next(meta.nextCursor)}
+          loading={loading}
+          shown={filtered.length}
+        />
       </div>
 
       {previewItem && (

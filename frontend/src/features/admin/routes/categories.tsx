@@ -1,14 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Plus, Search, Edit2, Trash2, FolderTree, X, SlidersHorizontal } from "lucide-react";
 import { catalogService } from "@/services/catalog";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { ErrorState } from "@/components/ui/errorState";
+import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
+import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
+
+function mapCategory(c: any) {
+  return {
+    id: c.id,
+    name: c.name,
+    slug: c.slug || c.name.toLowerCase().replace(/\s+/g, "-"),
+    parent: c.parentName || "None",
+    parentId: c.parentId,
+    productsCount: c.productCount || 0,
+    status: "Active",
+    icon: "FolderTree",
+  };
+}
 
 export function AdminCategories() {
   const t = useTranslations("admin");
   const [categories, setCategories] = useState<any[]>([]);
+  // Full (unpaginated) category list backing the parent selector in the modal.
+  const [allCategories, setAllCategories] = useState<any[]>([]);
+  const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [allAttributes, setAllAttributes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -22,38 +40,55 @@ export function AdminCategories() {
   const [valueDrafts, setValueDrafts] = useState<Record<string, string>>({});
   const [busyValueId, setBusyValueId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { cursor, hasPrev, next, prev, reset, page } = useCursorPagination();
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       setLoading(true);
       setLoadError(false);
       const [res, attrRes]: [any, any] = await Promise.all([
-        catalogService.getCategories(100),
+        catalogService.getCategories({ cursor: cursor || undefined, pageSize: 20, keyset: true, search: debouncedSearch || undefined }),
         adminService.getAttributes()
       ]);
       const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
       const attrs = Array.isArray(attrRes?.data) ? attrRes.data : (Array.isArray(attrRes) ? attrRes : []);
       setAllAttributes(attrs);
-      setCategories(list.map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        slug: c.slug || c.name.toLowerCase().replace(/\s+/g, "-"),
-        parent: c.parentName || "None",
-        parentId: c.parentId,
-        productsCount: c.productCount || 0,
-        status: "Active",
-        icon: "FolderTree"
-      })));
+      setCategories(list.map(mapCategory));
+      if (res?.meta) setMeta(res.meta);
     } catch {
       setLoadError(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, [cursor, debouncedSearch]);
+
+  const loadAllCategories = useCallback(async () => {
+    try {
+      const res: any = await catalogService.getCategories(100);
+      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setAllCategories(list.map(mapCategory));
+    } catch {
+      // The parent selector simply stays empty if this auxiliary fetch fails.
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAllCategories();
+  }, [loadAllCategories]);
 
   useEffect(() => {
     loadCategories();
-  }, []);
+  }, [loadCategories]);
+
+  // Debounce the search box and restart pagination whenever the query changes.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      reset();
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search, reset]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -93,6 +128,7 @@ export function AdminCategories() {
       }
       setIsModalOpen(false);
       loadCategories();
+      loadAllCategories();
     } catch (err: any) {
       notify.error(apiErrorMessage(err, t("categories.toast.saveFailed")));
     }
@@ -104,6 +140,7 @@ export function AdminCategories() {
         await catalogService.deleteCategory(id);
         notify.success(t("categories.toast.deleted"));
         loadCategories();
+        loadAllCategories();
       } catch (err: any) {
         notify.error(apiErrorMessage(err, t("categories.toast.deleteFailed")));
       }
@@ -114,9 +151,7 @@ export function AdminCategories() {
     return <ErrorState onRetry={loadCategories} />;
   }
 
-  const filtered = categories.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = categories;
 
   const categoryAttributes = (categoryId: string) =>
     allAttributes.filter((a) => a.categoryId === categoryId);
@@ -220,45 +255,41 @@ export function AdminCategories() {
 
       <div className="bg-background border border-border rounded-2xl p-4 shadow-xs">
         <div className="relative max-w-sm">
-          <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
+          <Search className="absolute start-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
             placeholder={t("categories.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden"
+            className="w-full ps-10 pe-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden"
           />
         </div>
       </div>
 
       <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-start text-xs">
           <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
             <tr>
-              <th className="py-3.5 pl-4">{t("categories.colName")}</th>
+              <th className="py-3.5 ps-4">{t("categories.colName")}</th>
               <th className="py-3.5">{t("categories.colSlug")}</th>
               <th className="py-3.5">{t("categories.colParent")}</th>
               <th className="py-3.5">{t("categories.colProducts")}</th>
               <th className="py-3.5">{t("categories.colStatus")}</th>
-              <th className="py-3.5 pr-4 text-right">{t("categories.colActions")}</th>
+              <th className="py-3.5 pe-4 text-end">{t("categories.colActions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
             {filtered.map((cat) => (
               <tr key={cat.id} className="hover:bg-secondary/20 transition-colors">
-                <td className="py-3.5 pl-4 font-semibold text-foreground flex items-center gap-2">
+                <td className="py-3.5 ps-4 font-semibold text-foreground flex items-center gap-2">
                   <FolderTree className="size-4 text-accent-brand" />
                   <span>{cat.name}</span>
                 </td>
                 <td className="py-3.5 font-mono text-muted-foreground">{cat.slug}</td>
                 <td className="py-3.5 text-muted-foreground">{cat.parent}</td>
                 <td className="py-3.5 font-bold text-foreground">{t("categories.items", { count: cat.productsCount })}</td>
-                <td className="py-3.5">
-                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-full text-[10px] font-bold">
-                    {cat.status}
-                  </span>
-                </td>
-                <td className="py-3.5 pr-4 text-right">
+                <td className="py-3.5 text-foreground">{cat.status}</td>
+                <td className="py-3.5 pe-4 text-end">
                   <div className="flex items-center justify-end gap-1.5">
                     <button
                       onClick={() => setViewingCategoryAttrs(cat)}
@@ -283,6 +314,16 @@ export function AdminCategories() {
             ))}
           </tbody>
         </table>
+
+        <CursorPager
+          hasPrev={hasPrev}
+          hasMore={meta.hasMore}
+          page={page}
+          onPrev={prev}
+          onNext={() => next(meta.nextCursor)}
+          loading={loading}
+          shown={filtered.length}
+        />
       </div>
 
       {isModalOpen && (
@@ -315,7 +356,7 @@ export function AdminCategories() {
                   className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
                 >
                   <option value="">{t("categories.form.root")}</option>
-                  {categories.filter(c => !editingCategory || c.id !== editingCategory.id).map((c) => (
+                  {allCategories.filter(c => !editingCategory || c.id !== editingCategory.id).map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>

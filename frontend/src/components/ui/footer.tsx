@@ -1,4 +1,5 @@
 import { Brand } from "@/components/ui/Brand";
+import { StoreContactInfo } from "@/components/ui/storeContactInfo";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 
@@ -87,6 +88,7 @@ export function Footer() {
             <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
               {t("footer.footerDescription")}
             </p>
+            <StoreContactInfo />
           </div>
           {sections.map((value) => (
             <div key={value.id} className="flex-1">

@@ -1,25 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { Search, Filter, Eye } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { notify, apiErrorMessage } from "@/lib/notify";
+import { formatDateTime } from "@/lib/datetime";
 import { ErrorState } from "@/components/ui/errorState";
+import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
+import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
 
 export function AdminOrders() {
   const navigate = useRouter();
   const t = useTranslations("admin");
   const [orders, setOrders] = useState<any[]>([]);
+  const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [loadError, setLoadError] = useState(false);
+  const { cursor, hasPrev, next, prev, reset, page } = useCursorPagination();
 
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
     try {
       setLoading(true);
       setLoadError(false);
       const res = await adminService.getOrders({
+        cursor: cursor || undefined,
         pageSize: 50,
         status: statusFilter !== "All" ? statusFilter.toLowerCase() : undefined
       });
@@ -28,7 +34,7 @@ export function AdminOrders() {
         id: so.id,
         customer: so.customerEmail ? so.customerEmail.split("@")[0] : "Customer",
         email: so.customerEmail || "customer@example.com",
-        date: so.createdAt ? new Date(so.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+        date: formatDateTime(so.createdAt),
         total: `EGP ${((so.totalAmount || 0) / 100).toFixed(2)}`,
         discount: so.discountAmount ? `EGP ${((so.discountAmount || 0) / 100).toFixed(2)}` : null,
         couponCode: so.couponCode || null,
@@ -41,20 +47,21 @@ export function AdminOrders() {
         trackingNumber: so.trackingNumber || "",
         itemsList: so.items || [],
         history: [
-          { date: so.createdAt ? new Date(so.createdAt).toISOString().slice(0, 10) : "Today", note: "Order placed successfully." }
+          { date: formatDateTime(so.createdAt), note: "Order placed successfully." }
         ]
       }));
       setOrders(formatted);
+      if (res?.meta) setMeta(res.meta);
     } catch {
       setLoadError(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, [cursor, statusFilter]);
 
   useEffect(() => {
     loadOrders();
-  }, [statusFilter]);
+  }, [loadOrders]);
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
@@ -94,13 +101,13 @@ export function AdminOrders() {
 
       <div className="bg-background border border-border rounded-2xl p-4 shadow-xs flex flex-col md:flex-row gap-4 justify-between items-center">
         <div className="relative w-full md:w-80">
-          <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
+          <Search className="absolute start-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
             placeholder={t("orders.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+            className="w-full ps-10 pe-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
           />
         </div>
 
@@ -108,7 +115,10 @@ export function AdminOrders() {
           <Filter className="size-4 text-muted-foreground" />
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              reset();
+            }}
             className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
           >
             <option value="all">{t("status.all")}</option>
@@ -123,22 +133,22 @@ export function AdminOrders() {
 
       <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-start text-xs">
             <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
               <tr>
-                <th className="py-3.5 pl-4">{t("orders.colOrderId")}</th>
+                <th className="py-3.5 ps-4">{t("orders.colOrderId")}</th>
                 <th className="py-3.5">{t("orders.colDate")}</th>
                 <th className="py-3.5">{t("orders.colCustomer")}</th>
                 <th className="py-3.5">{t("orders.colTotal")}</th>
                 <th className="py-3.5">{t("orders.colPayment")}</th>
                 <th className="py-3.5">{t("orders.colFulfillment")}</th>
-                <th className="py-3.5 pr-4 text-right">{t("orders.colAction")}</th>
+                <th className="py-3.5 pe-4 text-end">{t("orders.colAction")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {filtered.map((order) => (
                 <tr key={order.id} className="hover:bg-secondary/20 transition-colors">
-                  <td className="py-3.5 pl-4 font-mono font-bold text-foreground">{order.id}</td>
+                  <td className="py-3.5 ps-4 font-mono font-bold text-foreground">{order.id}</td>
                   <td className="py-3.5 text-muted-foreground">{order.date}</td>
                   <td className="py-3.5">
                     <div className="font-semibold text-foreground">{order.customer}</div>
@@ -159,10 +169,8 @@ export function AdminOrders() {
                       </div>
                     )}
                   </td>
-                  <td className="py-3.5">
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400 font-bold rounded-full text-[10px]">
-                      {order.paymentStatus}
-                    </span>
+                  <td className="py-3.5 text-foreground">
+                    {order.paymentStatus}
                   </td>
                   <td className="py-3.5">
                     <select
@@ -200,7 +208,7 @@ export function AdminOrders() {
                       )}
                     </select>
                   </td>
-                  <td className="py-3.5 pr-4 text-right">
+                  <td className="py-3.5 pe-4 text-end">
                     <button
                       onClick={() => navigate.push(`/admin/orders/${order.id}`)}
                       className="p-1.5 text-muted-foreground hover:text-accent-brand hover:bg-secondary rounded-lg transition-colors"
@@ -214,6 +222,16 @@ export function AdminOrders() {
             </tbody>
           </table>
         </div>
+
+        <CursorPager
+          hasPrev={hasPrev}
+          hasMore={meta.hasMore}
+          page={page}
+          onPrev={prev}
+          onNext={() => next(meta.nextCursor)}
+          loading={loading}
+          shown={filtered.length}
+        />
       </div>
     </div>
   );

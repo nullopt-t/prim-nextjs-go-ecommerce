@@ -282,7 +282,7 @@ func (bh *BrandHandler) ListBrands(c *gin.Context) {
 		http.StatusOK,
 		api.PaginatedResponse{
 			Data: res,
-			Meta: result.Page,
+			Meta: result.Meta(),
 		},
 	)
 }
@@ -326,7 +326,7 @@ func (bh *BrandHandler) ListAdminBrands(c *gin.Context) {
 		http.StatusOK,
 		api.PaginatedResponse{
 			Data: res,
-			Meta: result.Page,
+			Meta: result.Meta(),
 		},
 	)
 }

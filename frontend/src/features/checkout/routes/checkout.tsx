@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "@/hooks/useCart";
-import { calculateCartTotals } from "@/features/cart/utils/cartCalculations";
+import { calculateCartTotals, SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from "@/features/cart/utils/cartCalculations";
 import { useCheckout } from "@/hooks/useOrders";
 import { useAddresses, usePaymentMethods } from "@/hooks/useUserAccount";
 import { useRouter } from "@/i18n/navigation";
@@ -32,6 +32,7 @@ import { CountrySelect } from "@/components/ui/CountrySelect";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuthContext } from "@/context/AuthContext";
+import { usePublicSettings } from "@/context/PublicSettingsContext";
 import { useTranslations } from "next-intl";
 
 function generateOrderCode() {
@@ -82,6 +83,7 @@ export function Checkout() {
 	const { addresses, addAddress, refreshAddresses, loading: addressesLoading } = useAddresses();
 	const { cards } = usePaymentMethods();
 	const router = useRouter();
+	const { settings: storeSettings } = usePublicSettings();
 
 	// Step management: 1: Delivery Address, 2: Delivery Speed, 3: Payment & Confirm
 	const [currentStep, setCurrentStep] = useState(1);
@@ -96,6 +98,14 @@ export function Checkout() {
 	const [deliveryNotes, setDeliveryNotes] = useState("");
 	const [paymentType, setPaymentType] = useState("cod"); // default to COD
 	const [selectedCardId, setSelectedCardId] = useState("");
+
+	// Keep the selected payment method valid when the admin disables COD.
+	useEffect(() => {
+		if (!storeSettings) return;
+		if (paymentType === "cod" && storeSettings.allowCod === false) {
+			setPaymentType(storeSettings.allowCards === false ? "saved-card" : "new-card");
+		}
+	}, [storeSettings, paymentType]);
 
 	const [newCardData, setNewCardData] = useState({
 		name: "",
@@ -112,14 +122,28 @@ export function Checkout() {
 	const effectiveCardId = selectedCardId || cards?.find((c: any) => c.isDefault)?.id || cards?.[0]?.id || "";
 
 	// Calculations using standard cartCalculations utility
+	const standardShippingCost = storeSettings?.flatRateShipping ?? STANDARD_SHIPPING_COST;
+	const freeShippingThreshold = storeSettings?.freeShippingThreshold ?? SHIPPING_THRESHOLD;
+
 	const {
 		subtotal,
 		discount,
 		isFreeShipping: isStandardFree,
-	} = calculateCartTotals(cartItems, appliedCoupon);
+	} = calculateCartTotals(cartItems, appliedCoupon, freeShippingThreshold, standardShippingCost);
 
-	const shippingCost = shippingSpeed === "express" ? 15.00 : (isStandardFree ? 0 : 9.99);
-	const finalTotal = Math.max(0, subtotal - discount + shippingCost);
+	const shippingCost = shippingSpeed === "express" ? 15.00 : (isStandardFree ? 0 : standardShippingCost);
+
+	// Tax is only charged on top when prices are configured as tax-exclusive.
+	const taxRate = storeSettings?.taxRatePercent ?? 0;
+	const taxAmount =
+		!storeSettings?.pricesIncludeTax && taxRate > 0
+			? Math.max(0, (subtotal - discount) * (taxRate / 100))
+			: 0;
+
+	// Cash-on-delivery surcharge, applied only when COD is the selected method.
+	const codFee = paymentType === "cod" && storeSettings?.allowCod ? storeSettings?.codFee ?? 0 : 0;
+
+	const finalTotal = Math.max(0, subtotal - discount + shippingCost + taxAmount + codFee);
 
 	const resolvedAddressString = resolveShippingAddress(addresses, effectiveAddressId);
 
@@ -909,7 +933,7 @@ export function Checkout() {
 												<div>
 													<span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("steps.shipping")}</span>
 													<p className="text-xs sm:text-sm font-semibold text-foreground">
-														{shippingSpeed === "express" ? t("delivery.expressRecap") : t("delivery.standardRecap", { price: isStandardFree ? tCart("orderSummary.free") : "EGP 9.99" })}
+														{shippingSpeed === "express" ? t("delivery.expressRecap") : t("delivery.standardRecap", { price: isStandardFree ? tCart("orderSummary.free") : `EGP ${standardShippingCost.toFixed(2)}` })}
 													</p>
 												</div>
 											</div>
@@ -938,7 +962,7 @@ export function Checkout() {
 
 										{/* Payment Tabs */}
 										<div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6">
-											{cards.length > 0 && (
+											{storeSettings?.allowCards !== false && cards.length > 0 && (
 												<button
 													type="button"
 													onClick={() => setPaymentType("saved-card")}
@@ -952,6 +976,7 @@ export function Checkout() {
 													<span>{t("payment.savedCard")}</span>
 												</button>
 											)}
+											{storeSettings?.allowCards !== false && (
 											<button
 												type="button"
 												onClick={() => setPaymentType("new-card")}
@@ -964,6 +989,8 @@ export function Checkout() {
 												<CreditCard className="size-4" />
 												<span>{t("payment.creditCard")}</span>
 											</button>
+											)}
+											{storeSettings?.allowCards !== false && (
 											<button
 												type="button"
 												onClick={() => setPaymentType("apple-pay")}
@@ -976,6 +1003,8 @@ export function Checkout() {
 												<Smartphone className="size-4" />
 												<span>{t("payment.digital")}</span>
 											</button>
+											)}
+											{storeSettings?.allowCod !== false && (
 											<button
 												type="button"
 												onClick={() => setPaymentType("cod")}
@@ -988,6 +1017,7 @@ export function Checkout() {
 												<Banknote className="size-4" />
 												<span>{t("payment.cod")}</span>
 											</button>
+											)}
 										</div>
 
 										{/* Payment method content */}
@@ -1236,8 +1266,15 @@ export function Checkout() {
 
 								<div className="flex justify-between text-muted-foreground">
 									<span>{t("summary.taxes")}</span>
-									<span className="font-medium text-foreground">EGP 0.00</span>
+									<span className="font-medium text-foreground">EGP {taxAmount.toFixed(2)}</span>
 								</div>
+
+								{codFee > 0 && (
+									<div className="flex justify-between text-muted-foreground">
+										<span>{t("summary.codFee")}</span>
+										<span className="font-medium text-foreground">EGP {codFee.toFixed(2)}</span>
+									</div>
+								)}
 
 								<div className="flex justify-between items-center text-lg font-bold text-foreground pt-3 border-t border-border">
 									<span>{t("summary.total")}</span>

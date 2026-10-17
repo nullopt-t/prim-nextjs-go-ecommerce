@@ -209,7 +209,7 @@ func (h *CategoryHandler) ListCategories(c *gin.Context) {
 		http.StatusOK,
 		api.PaginatedResponse{
 			Data: toPublicCategoryResponseList(result.Items),
-			Meta: result.Page,
+			Meta: result.Meta(),
 		},
 	)
 }
@@ -249,7 +249,7 @@ func (h *CategoryHandler) ListAdminCategories(c *gin.Context) {
 		http.StatusOK,
 		api.PaginatedResponse{
 			Data: toAdminCategoryResponseList(result.Items),
-			Meta: result.Page,
+			Meta: result.Meta(),
 		},
 	)
 }

@@ -93,6 +93,15 @@ type ListQuery struct {
 	// PageSize is the requested number of items per page.
 	PageSize int `form:"pageSize" example:"10"`
 
+	// Cursor is an opaque keyset token. When present, repositories should use
+	// keyset pagination instead of OFFSET.
+	Cursor   string `form:"cursor" example:"eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9"`
+
+	// KeysetMode explicitly requests keyset pagination even when no cursor has
+	// been supplied yet (i.e. for the very first page). Endpoints that still
+	// serve classic OFFSET pagination use this to opt in per request.
+	KeysetMode bool `form:"keyset" example:"true"`
+
 	// Offset is the computed SQL OFFSET (0-based) for database queries.
 	Offset   int `form:"-"`
 
@@ -155,6 +164,15 @@ func (q *ListQuery) Process(opt QueryOptions) *ListQuery {
 	q.parseSort()
 
 	return q
+}
+
+// Keyset decodes the optional opaque cursor token into a keyset position.
+// It returns (nil, nil) when no cursor was supplied and ErrInvalidCursor when malformed.
+func (q *ListQuery) Keyset() (*Keyset, error) {
+	if q == nil || q.Cursor == "" {
+		return nil, nil
+	}
+	return DecodeCursor(q.Cursor)
 }
 
 // parseSort parses comma-separated sort strings with optional leading '-' for descending order.

@@ -14,6 +14,7 @@ import {
 import { useNotifications } from "@/context/NotificationContext";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
+import { formatDateTime } from "@/lib/datetime";
 
 export function NotificationsDropdown() {
   const {
@@ -189,14 +190,7 @@ export function NotificationsDropdown() {
                       {item.message}
                     </p>
                     <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground/70">
-                      <span>
-                        {new Date(item.createdAt).toLocaleDateString(locale, {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
+                      <span>{formatDateTime(item.createdAt, locale)}</span>
                       {item.actionUrl && (
                         <span className="flex items-center gap-0.5 text-accent-brand">
                           <ExternalLink className="size-2.5" />

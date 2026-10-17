@@ -1,24 +1,29 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Plus, Search, Edit2, Trash2, ExternalLink, X } from "lucide-react";
 import { catalogService } from "@/services/catalog";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { ErrorState } from "@/components/ui/errorState";
+import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
+import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
 
 export function AdminBrands() {
   const t = useTranslations("admin");
   const [brands, setBrands] = useState<any[]>([]);
+  const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<any>(null);
   const [loadError, setLoadError] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { cursor, hasPrev, next, prev, reset, page } = useCursorPagination();
 
-  const loadBrands = async () => {
+  const loadBrands = useCallback(async () => {
     try {
       setLoading(true);
       setLoadError(false);
-      const res: any = await catalogService.getBrands(100);
+      const res: any = await catalogService.getBrands({ cursor: cursor || undefined, pageSize: 20, keyset: true, search: debouncedSearch || undefined });
       const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
       setBrands(list.map((b: any) => ({
         id: b.id,
@@ -28,16 +33,26 @@ export function AdminBrands() {
         status: "Active",
         logo: b.logoUrl || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&q=80"
       })));
+      if (res?.meta) setMeta(res.meta);
     } catch {
       setLoadError(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, [cursor, debouncedSearch]);
 
   useEffect(() => {
     loadBrands();
-  }, []);
+  }, [loadBrands]);
+
+  // Debounce the search box and restart pagination whenever the query changes.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      reset();
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search, reset]);
 
   const [formData, setFormData] = useState({ name: "", website: "", logo: "" });
 
@@ -89,7 +104,7 @@ export function AdminBrands() {
     }
   };
 
-  const filtered = brands.filter((b) => b.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = brands;
 
   if (loadError) {
     return <ErrorState onRetry={loadBrands} />;
@@ -112,13 +127,13 @@ export function AdminBrands() {
       </div>
 
       <div className="relative max-w-md">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
         <input
           type="text"
           placeholder={t("brands.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand"
+          className="w-full ps-10 pe-4 py-2.5 bg-background border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand"
         />
       </div>
 
@@ -141,7 +156,7 @@ export function AdminBrands() {
                   </a>
                 </div>
               </div>
-              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400 text-[10px] font-bold rounded-full">
+              <span className="text-foreground">
                 {t(`status.${String(b.status).toLowerCase()}`) || b.status}
               </span>
             </div>
@@ -159,6 +174,18 @@ export function AdminBrands() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
+        <CursorPager
+          hasPrev={hasPrev}
+          hasMore={meta.hasMore}
+          page={page}
+          onPrev={prev}
+          onNext={() => next(meta.nextCursor)}
+          loading={loading}
+          shown={filtered.length}
+        />
       </div>
 
       {isModalOpen && (

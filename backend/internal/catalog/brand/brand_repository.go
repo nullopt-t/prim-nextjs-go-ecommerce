@@ -30,6 +30,8 @@ type UpdateBrandFields struct {
 type ListBrandOptions struct {
 	Query          *pagination.ListQuery
 	IncludeDeleted bool
+	// Cursor, when set, switches the query to keyset pagination on (created_at, id) DESC.
+	Cursor *pagination.Keyset
 }
 
 type BrandRepository struct{}
@@ -209,7 +211,48 @@ func (br *BrandRepository) List(
 		argIdx++
 	}
 
+	cursorMode := opts.Cursor != nil || q.KeysetMode
+	if opts.Cursor != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("(created_at, id) < ($%d, $%d)", argIdx, argIdx+1))
+		args = append(args, opts.Cursor.CreatedAt, opts.Cursor.ID)
+		argIdx += 2
+	}
+
 	whereStmt := strings.Join(whereClauses, " AND ")
+
+	if cursorMode {
+		selectQuery := fmt.Sprintf(`
+		SELECT
+			id,
+			name,
+			link,
+			logo_object_id,
+			created_at,
+			updated_at,
+			deleted_at
+		FROM product_brands
+		WHERE %s
+		%s
+		LIMIT $%d
+	`, whereStmt, pagination.KeysetOrderBy(""), argIdx)
+
+		queryArgs := append(slices.Clone(args), q.PageSize+1)
+
+		rows, err := qe.Query(ctx, selectQuery, queryArgs...)
+		if err != nil {
+			return nil, fmt.Errorf("list brands select: %w", err)
+		}
+
+		brands, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[model.ProductBrand])
+		if err != nil {
+			return nil, fmt.Errorf("list brands collect rows: %w", err)
+		}
+
+		items, page := pagination.NewCursorPageFrom(brands, q.PageSize, func(b *model.ProductBrand) pagination.Keyset {
+			return pagination.Keyset{CreatedAt: b.CreatedAt, ID: b.ID}
+		})
+		return pagination.NewCursorPagedResult(items, page), nil
+	}
 
 	// 1. Total Count Query
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM product_brands WHERE %s", whereStmt)

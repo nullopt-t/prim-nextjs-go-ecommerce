@@ -7,8 +7,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/validation"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 )
 
 type CouponHandler struct {
@@ -50,6 +52,7 @@ type CouponResponse struct {
 	StartsAt      *string `json:"startsAt,omitempty" example:"2026-06-01T00:00:00Z"`
 	ExpiresAt     *string `json:"expiresAt,omitempty" example:"2026-08-31T23:59:59Z"`
 	Status        string  `json:"status" example:"active"`
+	UsageCount    int     `json:"usageCount" example:"42"`
 	CreatedAt     string  `json:"createdAt" example:"2026-06-01T00:00:00Z"`
 	UpdatedAt     string  `json:"updatedAt" example:"2026-06-01T00:00:00Z"`
 }
@@ -65,6 +68,7 @@ func toCouponResponse(c *model.Coupon) CouponResponse {
 		UsageLimit:    c.UsageLimit,
 		PerUserLimit:  c.PerUserLimit,
 		Status:        string(c.Status),
+		UsageCount:    c.UsageCount,
 		CreatedAt:     c.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:     c.UpdatedAt.Format(time.RFC3339),
 	}
@@ -89,13 +93,26 @@ func toCouponResponse(c *model.Coupon) CouponResponse {
 //	@Success		200	{object}	api.DataResponse
 //	@Router			/admin/promotions [get]
 func (h *CouponHandler) ListCoupons(c *gin.Context) {
+	var q pagination.ListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 20, MaxPageSize: 100})
+
 	var filter ListCouponFilter
 	if st := c.Query("status"); st != "" {
 		s := model.CouponStatus(st)
 		filter.Status = &s
 	}
 
-	coupons, err := h.couponService.ListCoupons(c.Request.Context(), filter)
+	cursor, err := q.Keyset()
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
+	coupons, page, err := h.couponService.ListCoupons(c.Request.Context(), filter, q.PageSize, cursor)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -106,7 +123,7 @@ func (h *CouponHandler) ListCoupons(c *gin.Context) {
 		res[i] = toCouponResponse(cp)
 	}
 
-	c.JSON(http.StatusOK, api.DataResponse{Data: res})
+	c.JSON(http.StatusOK, api.SuccessResponse{Data: res, Meta: page})
 }
 
 // GetCouponByID godoc
@@ -241,4 +258,74 @@ func (h *CouponHandler) DeleteCoupon(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Promotion deleted"})
+}
+
+type CouponRedemptionResponse struct {
+	ID             string  `json:"id" example:"c1000000-0000-0000-0000-000000000001"`
+	UserID         *string `json:"userId,omitempty" example:"10000000-0000-0000-0000-000000000003"`
+	UserName       *string `json:"userName,omitempty" example:"Jane Doe"`
+	UserEmail      *string `json:"userEmail,omitempty" example:"jane@example.com"`
+	OrderID        string  `json:"orderId" example:"90000000-0000-0000-0000-000000000002"`
+	DiscountAmount int64   `json:"discountAmount" example:"13000"`
+	CreatedAt      string  `json:"createdAt" example:"2026-06-01T00:00:00Z"`
+}
+
+func toRedemptionResponse(e *RedemptionEntry) CouponRedemptionResponse {
+	resp := CouponRedemptionResponse{
+		ID:             e.ID.String(),
+		OrderID:        e.OrderID.String(),
+		DiscountAmount: e.DiscountAmount,
+		CreatedAt:      e.CreatedAt.Format(time.RFC3339),
+		UserName:       e.UserName,
+		UserEmail:      e.UserEmail,
+	}
+	if e.UserID != nil {
+		v := e.UserID.String()
+		resp.UserID = &v
+	}
+	return resp
+}
+
+// ListRedemptions godoc
+//
+//	@Summary		List coupon redemptions (usage log)
+//	@Description	Returns every user and order that redeemed a coupon code (Admin only)
+//	@Tags			Coupons
+//	@Produce		json
+//	@Param			id	path		string	true	"Coupon UUID"
+//	@Security		BearerAuth
+//	@Success		200	{object}	api.DataResponse
+//	@Router			/admin/promotions/{id}/redemptions [get]
+func (h *CouponHandler) ListRedemptions(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid coupon ID"))
+		return
+	}
+
+	var q pagination.ListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 50, MaxPageSize: 100})
+
+	cursor, err := q.Keyset()
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
+	entries, page, err := h.couponService.ListRedemptions(c.Request.Context(), id, q.PageSize, cursor)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	res := make([]CouponRedemptionResponse, len(entries))
+	for i, e := range entries {
+		res[i] = toRedemptionResponse(e)
+	}
+
+	c.JSON(http.StatusOK, api.SuccessResponse{Data: res, Meta: page})
 }

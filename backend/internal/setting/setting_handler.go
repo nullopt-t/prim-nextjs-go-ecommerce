@@ -31,23 +31,43 @@ type UpdateSettingsRequest struct {
 // GetSettings godoc
 //
 //	@Summary		Get administrative settings
-//	@Description	Returns all persisted admin settings as a key/value map.
+//	@Description	Returns the resolved admin settings (persisted overrides merged onto defaults).
 //	@Tags			Admin Settings
 //	@Accept			json
 //	@Produce		json
 //	@Failure		401	{object}	api.UnauthorizedErrorResponse	"Authentication required"
 //	@Failure		403	{object}	api.ForbiddenErrorResponse		"Admin privileges required"
 //	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
-//	@Success		200	{object}	api.DataResponse{data=SettingsMap}	"Current settings"
+//	@Success		200	{object}	api.DataResponse{data=Config}	"Current settings"
 //	@Router			/admin/settings [get]
 func (h *Handler) GetSettings(c *gin.Context) {
-	settings, err := h.service.GetSettings(c.Request.Context())
+	cfg, err := h.service.GetConfig(c.Request.Context())
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	c.JSON(http.StatusOK, api.DataResponse{Data: settings})
+	c.JSON(http.StatusOK, api.DataResponse{Data: cfg})
+}
+
+// GetPublicSettings godoc
+//
+//	@Summary		Get public storefront settings
+//	@Description	Returns the non-sensitive settings used by the storefront (identity, currency, announcement, shipping, maintenance state).
+//	@Tags			Settings
+//	@Accept			json
+//	@Produce		json
+//	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200	{object}	api.DataResponse{data=PublicConfig}	"Public settings"
+//	@Router			/settings/public [get]
+func (h *Handler) GetPublicSettings(c *gin.Context) {
+	cfg, err := h.service.GetPublicConfig(c.Request.Context())
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{Data: cfg})
 }
 
 // UpdateSettings godoc

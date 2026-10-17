@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { ArrowLeft, Truck, Clock, MapPin, CreditCard, User, Tag } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { notify, apiErrorMessage } from "@/lib/notify";
+import { formatDateTime } from "@/lib/datetime";
 import { ErrorState } from "@/components/ui/errorState";
 
 export function AdminOrderDetails() {
@@ -30,7 +31,7 @@ export function AdminOrderDetails() {
           id: remoteOrder.id,
           customer: remoteOrder.customerEmail ? remoteOrder.customerEmail.split("@")[0] : "Customer",
           email: remoteOrder.customerEmail || "customer@example.com",
-          date: remoteOrder.createdAt ? new Date(remoteOrder.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+          date: formatDateTime(remoteOrder.createdAt),
           total: `EGP ${((remoteOrder.totalAmount || 0) / 100).toFixed(2)}`,
           discount: remoteOrder.discountAmount ? `EGP ${((remoteOrder.discountAmount || 0) / 100).toFixed(2)}` : null,
           discountAmount: remoteOrder.discountAmount || 0,
@@ -62,7 +63,7 @@ export function AdminOrderDetails() {
             };
           }),
           history: [
-            { date: remoteOrder.createdAt ? new Date(remoteOrder.createdAt).toISOString().slice(0, 10) : "Today", note: "Order placed successfully." }
+            { date: formatDateTime(remoteOrder.createdAt), note: "Order placed successfully." }
           ]
         };
         setOrder(formatted);
@@ -148,19 +149,7 @@ export function AdminOrderDetails() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-foreground">{t("orderDetails.title")}</h1>
-            <span
-              className={`px-3 py-0.5 rounded-full text-xs font-bold ${
-                order.status === "Delivered"
-                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"
-                  : order.status === "Processing"
-                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400"
-                  : order.status === "Canceled" || order.status === "Cancelled"
-                  ? "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-400"
-                  : "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-400"
-              }`}
-            >
-              {order.status}
-            </span>
+            <span className="text-xs text-foreground">{order.status}</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">{t("orderDetails.placedOn", { date: order.date })}</p>
         </div>

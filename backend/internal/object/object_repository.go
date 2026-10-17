@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
@@ -162,21 +163,29 @@ func (or *ObjectRepository) GetByIDs(
 func (or *ObjectRepository) ListMedia(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	limit, offset int,
-) ([]*model.Object, int, error) {
-	var total int
-	_ = qe.QueryRow(ctx, `SELECT COUNT(*) FROM storage_objects WHERE deleted_at IS NULL`).Scan(&total)
-
+	limit int,
+	cursor *pagination.Keyset,
+) ([]*model.Object, *pagination.CursorPage, error) {
 	query := `
 		SELECT id, bucket, object_key, content_type, file_size, status, created_at, updated_at, deleted_at
 		FROM storage_objects
 		WHERE deleted_at IS NULL
-		ORDER BY created_at DESC
-		LIMIT $1 OFFSET $2
 	`
-	rows, err := qe.Query(ctx, query, limit, offset)
+	args := []any{}
+	i := 1
+
+	keysetClause, keysetArgs := pagination.KeysetClause("", cursor, i)
+	query += keysetClause
+	args = append(args, keysetArgs...)
+	i += len(keysetArgs)
+
+	query += pagination.KeysetOrderBy("")
+	query += fmt.Sprintf(" LIMIT $%d", i)
+	args = append(args, limit+1)
+
+	rows, err := qe.Query(ctx, query, args...)
 	if err != nil {
-		return nil, 0, fmt.Errorf("list media: %w", err)
+		return nil, nil, fmt.Errorf("list media: %w", err)
 	}
 	defer rows.Close()
 
@@ -187,9 +196,13 @@ func (or *ObjectRepository) ListMedia(
 			&obj.ID, &obj.Bucket, &obj.Key, &obj.ContentType,
 			&obj.FileSize, &obj.Status, &obj.CreatedAt, &obj.UpdatedAt, &obj.DeletedAt,
 		); err != nil {
-			return nil, 0, fmt.Errorf("scan media: %w", err)
+			return nil, nil, fmt.Errorf("scan media: %w", err)
 		}
 		objects = append(objects, obj)
 	}
-	return objects, total, nil
+
+	objects, page := pagination.NewCursorPageFrom(objects, limit, func(o *model.Object) pagination.Keyset {
+		return pagination.Keyset{CreatedAt: o.CreatedAt, ID: o.ID}
+	})
+	return objects, page, nil
 }

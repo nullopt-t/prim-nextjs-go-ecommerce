@@ -345,25 +345,40 @@ func (r *ProductRepository) List(
 		argIdx++
 	}
 
+	cursor, err := q.Keyset()
+	if err != nil {
+		return nil, fmt.Errorf("list products: %w", err)
+	}
+	cursorMode := cursor != nil || q.KeysetMode
+	if cursor != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("(p.created_at, p.id) < ($%d, $%d)", argIdx, argIdx+1))
+		args = append(args, cursor.CreatedAt, cursor.ID)
+		argIdx += 2
+	}
+
 	whereStmt := ""
 	if len(whereClauses) > 0 {
 		whereStmt = "WHERE " + strings.Join(whereClauses, " AND ")
 	}
 
-	// 1. Total Count
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p LEFT JOIN product_brands b ON p.brand_id = b.id LEFT JOIN product_categories c ON p.category_id = c.id %s", whereStmt)
+	// 1. Total Count (skipped for keyset pagination, which needs no total)
 	var total int
-	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, fmt.Errorf("count products: %w", err)
-	}
+	if !cursorMode {
+		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p LEFT JOIN product_brands b ON p.brand_id = b.id LEFT JOIN product_categories c ON p.category_id = c.id %s", whereStmt)
+		if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+			return nil, fmt.Errorf("count products: %w", err)
+		}
 
-	if total == 0 {
-		return pagination.NewPagedResult([]*ProductCardReadModel{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
+		if total == 0 {
+			return pagination.NewPagedResult([]*ProductCardReadModel{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
+		}
 	}
 
 	// 2. Sorting
 	orderBy := "ORDER BY p.created_at DESC"
-	if len(q.Sort) > 0 {
+	if cursorMode {
+		orderBy = pagination.KeysetOrderBy("p")
+	} else if len(q.Sort) > 0 {
 		sortParts := make([]string, 0, len(q.Sort))
 		for _, sort := range q.Sort {
 			dbField, ok := allowedProductSortFields[strings.ToLower(sort.Field)]
@@ -382,6 +397,13 @@ func (r *ProductRepository) List(
 	}
 
 	// 3. Paginated Select
+	tail := fmt.Sprintf("LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
+	queryArgs := append(slices.Clone(args), q.PageSize, q.Offset)
+	if cursorMode {
+		tail = fmt.Sprintf("LIMIT $%d", argIdx)
+		queryArgs = append(slices.Clone(args), q.PageSize+1)
+	}
+
 	selectQuery := fmt.Sprintf(`
 		SELECT
 			p.id,
@@ -420,10 +442,8 @@ func (r *ProductRepository) List(
 		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_default = true AND pv.deleted_at IS NULL
 		%s
 		%s
-		LIMIT $%d OFFSET $%d
-	`, whereStmt, orderBy, argIdx, argIdx+1)
-
-	queryArgs := append(slices.Clone(args), q.PageSize, q.Offset)
+		%s
+	`, whereStmt, orderBy, tail)
 
 	rows, err := qe.Query(ctx, selectQuery, queryArgs...)
 	if err != nil {
@@ -502,6 +522,13 @@ func (r *ProductRepository) List(
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate product list items: %w", err)
+	}
+
+	if cursorMode {
+		items, page := pagination.NewCursorPageFrom(items, q.PageSize, func(p *ProductCardReadModel) pagination.Keyset {
+			return pagination.Keyset{CreatedAt: p.CreatedAt, ID: p.ID}
+		})
+		return pagination.NewCursorPagedResult(items, page), nil
 	}
 
 	return pagination.NewPagedResult(items, pagination.NewPage(q.Page, q.PageSize, total)), nil

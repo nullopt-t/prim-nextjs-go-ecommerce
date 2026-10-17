@@ -208,40 +208,28 @@ export function AdminDashboard() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-start text-xs">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
-                    <th className="pb-3 pl-2">{t("dashboard.orderId")}</th>
+                    <th className="pb-3 ps-2">{t("dashboard.orderId")}</th>
                     <th className="pb-3">{t("dashboard.customer")}</th>
                     <th className="pb-3">{t("dashboard.status")}</th>
                     <th className="pb-3">{t("dashboard.total")}</th>
-                    <th className="pb-3 pr-2 text-right">{t("dashboard.action")}</th>
+                    <th className="pb-3 pe-2 text-end">{t("dashboard.action")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
                   {recentOrders.map((order) => (
                     <tr key={order.id} className="hover:bg-secondary/20 transition-colors">
-                      <td className="py-3.5 pl-2 font-mono font-bold text-foreground text-xs line-clamp-1">{order.id}</td>
+                      <td className="py-3.5 ps-2 font-mono font-bold text-foreground text-xs line-clamp-1">{order.id}</td>
                       <td className="py-3.5">
                         <div className="font-medium text-foreground">{order.customer}</div>
                       </td>
-                      <td className="py-3.5">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            order.status === "Delivered"
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"
-                              : order.status === "Processing"
-                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400"
-                              : order.status === "Shipped"
-                              ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-400"
-                              : "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400"
-                          }`}
-                        >
-                          {t(`status.${String(order.status).toLowerCase()}`) || order.status}
-                        </span>
+                      <td className="py-3.5 text-foreground">
+                        {t(`status.${String(order.status).toLowerCase()}`) || order.status}
                       </td>
                       <td className="py-3.5 font-bold text-foreground">{order.total}</td>
-                      <td className="py-3.5 pr-2 text-right">
+                      <td className="py-3.5 pe-2 text-end">
                         <button
                           onClick={() => navigate.push(`/admin/orders/${order.id}`)}
                           className="p-1.5 text-muted-foreground hover:text-accent-brand hover:bg-secondary rounded-lg transition-colors"

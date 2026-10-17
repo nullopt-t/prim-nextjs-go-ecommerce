@@ -75,6 +75,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
     { nameKey: "layout.nav.payments", path: "/admin/payments", icon: CreditCard },
     { nameKey: "layout.nav.promotions", path: "/admin/promotions", icon: Percent },
     { nameKey: "layout.nav.settings", path: "/admin/settings", icon: Settings },
+    { nameKey: "layout.nav.system", path: "/admin/system", icon: ShieldCheck },
   ];
 
   return (
@@ -112,13 +113,13 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
               <div className="size-8 rounded-full bg-accent-brand/10 border border-accent-brand/30 text-accent-brand flex items-center justify-center font-bold text-xs uppercase">
                 {user?.email ? user.email.slice(0, 2) : "SA"}
               </div>
-              <div className="hidden sm:flex flex-col text-left">
+              <div className="hidden sm:flex flex-col text-start">
                 <span className="text-xs font-semibold text-foreground leading-none">
                   {user?.name || (user?.role === "superadmin" ? t("roles.superadmin") : t("roles.administrator"))}
                 </span>
                 <span className="text-[10px] text-muted-foreground">{user?.email || "superadmin@prim.com"}</span>
               </div>
-              <ChevronDown className="size-3.5 text-muted-foreground ml-1" />
+              <ChevronDown className="size-3.5 text-muted-foreground ms-1" />
             </button>
 
             {userMenuOpen && (
@@ -126,7 +127,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                 <div className="px-4 py-3 border-b border-border/70 bg-secondary/20">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-xs text-foreground truncate">{user?.name || t("roles.superadmin")}</p>
-                    <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
                       {user?.role || "superadmin"}
                     </span>
                   </div>
@@ -139,7 +140,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                     onClick={() => {
                       toggleTheme();
                     }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors cursor-pointer text-start"
                   >
                     <div className="flex items-center gap-2.5">
                       {theme === "light" ? <Moon className="size-4 text-muted-foreground" /> : <Sun className="size-4 text-muted-foreground" />}
@@ -153,7 +154,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                     onClick={() => {
                       toggleLanguage();
                     }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors cursor-pointer text-start"
                   >
                     <div className="flex items-center gap-2.5">
                       <Languages className="size-4 text-muted-foreground" />
@@ -262,12 +263,15 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
           </div>
 
           <div className="p-3 border-t border-border bg-secondary/30">
-            <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground">
+            <Link
+              href="/admin/system"
+              className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+            >
               <div className="flex items-center gap-2">
                 <ShieldCheck className="size-4 text-emerald-500" />
                 <span>{t("layout.systemHealth")}</span>
               </div>
-            </div>
+            </Link>
           </div>
         </aside>
 

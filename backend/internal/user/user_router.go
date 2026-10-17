@@ -45,15 +45,14 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		// GET /api/v1/admin/users/:id - View user details by UUID (Admin or Superadmin)
 		adminUsers.GET("/:id", r.handler.GetUserByID)
 
-		// DELETE /api/v1/admin/users/:id - Delete account (Superadmin only)
-		adminUsers.DELETE("/:id", middleware.Authorize(model.SuperRole), r.handler.DeleteUser)
-
-		// Superadmin-only mutation endpoints: require highest administrative clearance
+		// Account management endpoints: Admin and Superadmin (enforces strict role rank hierarchy in service)
+		// DELETE /api/v1/admin/users/:id - Delete account
+		adminUsers.DELETE("/:id", middleware.Authorize(model.AdminRole), r.handler.DeleteUser)
 		// PATCH /api/v1/admin/users/:id/role - Alter user administrative role tier
-		adminUsers.PATCH("/:id/role", middleware.Authorize(model.SuperRole), r.handler.UpdateUserRole)
+		adminUsers.PATCH("/:id/role", middleware.Authorize(model.AdminRole), r.handler.UpdateUserRole)
 		// PATCH /api/v1/admin/users/:id/status - Alter account standing (suspend, activate)
-		adminUsers.PATCH("/:id/status", middleware.Authorize(model.SuperRole), r.handler.UpdateAccountStatus)
+		adminUsers.PATCH("/:id/status", middleware.Authorize(model.AdminRole), r.handler.UpdateAccountStatus)
 		// POST /api/v1/admin/users/:id/revoke-sessions - Invalidate all active user login sessions
-		adminUsers.POST("/:id/revoke-sessions", middleware.Authorize(model.SuperRole), r.handler.RevokeUserSessions)
+		adminUsers.POST("/:id/revoke-sessions", middleware.Authorize(model.AdminRole), r.handler.RevokeUserSessions)
 	}
 }

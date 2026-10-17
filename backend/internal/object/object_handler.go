@@ -26,7 +26,13 @@ func (h *ObjectHandler) ListMedia(c *gin.Context) {
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 50, MaxPageSize: 100})
 
-	media, total, err := h.service.ListMedia(c.Request.Context(), q.PageSize, q.Offset)
+	cursor, err := q.Keyset()
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
+	media, page, err := h.service.ListMedia(c.Request.Context(), q.PageSize, cursor)
 	if err != nil {
 		_ = c.Error(apierr.InternalServerError("Failed to fetch media").Wrap(err))
 		return
@@ -34,10 +40,7 @@ func (h *ObjectHandler) ListMedia(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": media,
-		"meta": gin.H{
-			"totalItems": total,
-			"pageSize":   q.PageSize,
-		},
+		"meta": page,
 	})
 }
 

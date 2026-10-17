@@ -45,6 +45,7 @@ import { CatalogProvider } from "@/context/CatalogContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { NotificationProvider } from "@/context/NotificationContext";
+import { PublicSettingsProvider } from "@/context/PublicSettingsContext";
 
 import { CartSidebar } from "@/components/ui/cartSidebar";
 import { ResponsiveToaster } from "@/components/ui/responsiveToaster";
@@ -75,20 +76,22 @@ export default async function RootLayout({
       <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       <body className={`antialiased ${locale === "ar" ? "font-arabic" : "font-sans"}`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <ThemeProvider>
-            <AuthProvider>
-              <WishlistProvider>
-                <NotificationProvider>
-                  <CatalogProvider>
-                    <CartProvider>
-                      {children}
-                      <CartSidebar />
-                    </CartProvider>
-                  </CatalogProvider>
-                </NotificationProvider>
-              </WishlistProvider>
-            </AuthProvider>
-          </ThemeProvider>
+          <PublicSettingsProvider>
+            <ThemeProvider>
+              <AuthProvider>
+                <WishlistProvider>
+                  <NotificationProvider>
+                    <CatalogProvider>
+                      <CartProvider>
+                        {children}
+                        <CartSidebar />
+                      </CartProvider>
+                    </CatalogProvider>
+                  </NotificationProvider>
+                </WishlistProvider>
+              </AuthProvider>
+            </ThemeProvider>
+          </PublicSettingsProvider>
           <ResponsiveToaster richColors />
         </NextIntlClientProvider>
       </body>

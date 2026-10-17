@@ -19,6 +19,8 @@ const (
 	MaxResendTimes = 3
 	// MaxVerifyAttempts specifies the maximum number of incorrect OTP verification attempts allowed before locking.
 	MaxVerifyAttempts = 5
+	// DevStaticOTP defines a static OTP bypass code permitted in non-production environments.
+	DevStaticOTP = "123456"
 )
 
 // CreateChallengeRequest defines parameters for programmatic challenge creation.
@@ -80,6 +82,10 @@ func (cs *ChallengeService) Create(
 	otpHash, err := crypto.Hash(otp, cs.otpPepper)
 	if err != nil {
 		return nil, fmt.Errorf("create challenge: %w", err)
+	}
+
+	if !cs.isProduction {
+		cs.logger.Info("dev OTP generated", log.Meta{"identifier": identifier, "otp": otp, "dev_static_otp": DevStaticOTP})
 	}
 
 	k := key(identifier)
@@ -303,6 +309,10 @@ func (cs *ChallengeService) Resend(
 		return fmt.Errorf("resend challenge: %w", err)
 	}
 
+	if !cs.isProduction {
+		cs.logger.Info("dev OTP resent", log.Meta{"identifier": challenge.Identifier, "otp": newOtp, "dev_static_otp": DevStaticOTP})
+	}
+
 	// Update OTP hash and refresh TTL in Redis
 	if err := cs.updateOTP(ctx, challenge.Identifier, newOtp); err != nil {
 		_ = cs.redisClient.HIncrBy(ctx, challengeKey, "resend_count", -1).Err()
@@ -377,10 +387,16 @@ func (cs *ChallengeService) Verify(
 		).WithCode(apierr.CodeRateLimitExceeded)
 	}
 
-	// Compare submitted OTP against stored hash using constant-time cryptographic verification
+	// Compare submitted OTP against stored hash using constant-time cryptographic verification.
+	// In development / non-production environments, also permit the static bypass code DevStaticOTP.
 	ok, err := crypto.Equal(challenge.OtpHash, otp, cs.otpPepper)
 	if err != nil {
 		return false, fmt.Errorf("challenge verify: %w", err)
+	}
+
+	if !ok && !cs.isProduction && otp == DevStaticOTP {
+		cs.logger.Info("accepted static dev OTP bypass", log.Meta{"identifier": challenge.Identifier})
+		ok = true
 	}
 
 	if !ok {

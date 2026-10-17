@@ -11,3 +11,4 @@ export { AdminCustomers } from "./routes/customers";
 export { AdminPayments } from "./routes/payments";
 export { AdminPromotions } from "./routes/promotions";
 export { AdminSettings } from "./routes/settings";
+export { AdminSystem } from "./routes/system";

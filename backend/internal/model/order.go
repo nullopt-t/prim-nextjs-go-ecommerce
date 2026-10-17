@@ -79,6 +79,8 @@ type Order struct {
 	ShippingAmount int64
 	// TaxAmount is the tax amount applied to the order in cents.
 	TaxAmount int64
+	// CODFee is the cash-on-delivery surcharge applied to the order in cents.
+	CODFee int64
 	// TotalAmount is the final charged sum (subtotal - discounts + tax + shipping) in cents.
 	TotalAmount int64
 	// Currency is the transaction currency code (e.g. "USD").

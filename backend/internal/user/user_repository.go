@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
@@ -129,6 +130,8 @@ type UserListFilter struct {
 	Search *string
 	Limit  int
 	Offset int
+	// Cursor, when set, switches the query to keyset pagination on (created_at, id) DESC.
+	Cursor *pagination.Keyset
 }
 
 // ListUsers dynamically builds and executes a parameterized SQL query to retrieve
@@ -165,8 +168,16 @@ func (r *UserRepository) ListUsers(
 		i++
 	}
 
-	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", i, i+1)
-	args = append(args, filter.Limit, filter.Offset)
+	// Keyset pagination: restrict to rows strictly older than the cursor, then
+	// over-fetch a single extra row so the caller can detect whether more remain.
+	keysetClause, keysetArgs := pagination.KeysetClause("", filter.Cursor, i)
+	query += keysetClause
+	args = append(args, keysetArgs...)
+	i += len(keysetArgs)
+
+	query += pagination.KeysetOrderBy("")
+	query += fmt.Sprintf(" LIMIT $%d", i)
+	args = append(args, filter.Limit+1)
 
 	rows, err := qe.Query(ctx, query, args...)
 	if err != nil {

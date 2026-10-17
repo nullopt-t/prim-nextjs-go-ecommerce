@@ -28,6 +28,7 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.GET("", r.handler.ListCoupons)
 		admin.POST("", r.handler.CreateCoupon)
 		admin.GET("/:id", r.handler.GetCouponByID)
+		admin.GET("/:id/redemptions", r.handler.ListRedemptions)
 		admin.PATCH("/:id/status", r.handler.UpdateStatus)
 		admin.DELETE("/:id", r.handler.DeleteCoupon)
 	}

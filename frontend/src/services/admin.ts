@@ -1,4 +1,5 @@
 import { api } from "@/api/client";
+import type { CursorMeta } from "@/lib/pagination";
 
 export interface AdminUser {
   id: string;
@@ -13,17 +14,8 @@ export interface AdminUser {
   updatedAt: string;
 }
 
-export interface PaginationMeta {
-  page: number;
-  pageSize: number;
-  totalItems: number;
-  totalPages: number;
-  hasPrevious: boolean;
-  hasNext: boolean;
-}
-
 export interface ListUsersParams {
-  page?: number;
+  cursor?: string;
   pageSize?: number;
   search?: string;
   role?: string;
@@ -32,7 +24,7 @@ export interface ListUsersParams {
 
 export interface ListUsersResponse {
   data: AdminUser[];
-  meta: PaginationMeta;
+  meta: CursorMeta;
 }
 
 export interface UpdateRolePayload {
@@ -48,7 +40,7 @@ export const adminService = {
   // Users Management
   getUsers: async (params?: ListUsersParams): Promise<ListUsersResponse> => {
     const query = new URLSearchParams();
-    if (params?.page) query.set("page", String(params.page));
+    if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     if (params?.search) query.set("search", params.search);
     if (params?.role && params.role !== "all") query.set("role", params.role);
@@ -80,9 +72,9 @@ export const adminService = {
   },
 
   // Orders Management
-  getOrders: async (params?: { page?: number; pageSize?: number; customerId?: string; status?: string }): Promise<any> => {
+  getOrders: async (params?: { cursor?: string; pageSize?: number; customerId?: string; status?: string }): Promise<any> => {
     const query = new URLSearchParams();
-    if (params?.page) query.set("page", String(params.page));
+    if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     if (params?.customerId) query.set("customerId", params.customerId);
     if (params?.status && params.status !== "all") query.set("status", params.status);
@@ -110,8 +102,13 @@ export const adminService = {
   },
 
   // Promotions
-  getPromotions: async (): Promise<any> => {
-    return api.get(`/api/v1/admin/promotions`);
+  getPromotions: async (params?: { cursor?: string; pageSize?: number; status?: string }): Promise<any> => {
+    const query = new URLSearchParams();
+    if (params?.cursor) query.set("cursor", params.cursor);
+    if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+    if (params?.status && params.status !== "all") query.set("status", params.status);
+    const qs = query.toString();
+    return api.get(`/api/v1/admin/promotions${qs ? `?${qs}` : ""}`);
   },
 
   createPromotion: async (payload: any): Promise<any> => {
@@ -126,10 +123,18 @@ export const adminService = {
     return api.delete(`/api/v1/admin/promotions/${id}`);
   },
 
-  // Payments
-  getPayments: async (params?: { page?: number; pageSize?: number }): Promise<any> => {
+  getPromotionRedemptions: async (id: string, params?: { cursor?: string; pageSize?: number }): Promise<any> => {
     const query = new URLSearchParams();
-    if (params?.page) query.set("page", String(params.page));
+    if (params?.cursor) query.set("cursor", params.cursor);
+    if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+    const qs = query.toString();
+    return api.get(`/api/v1/admin/promotions/${id}/redemptions${qs ? `?${qs}` : ""}`);
+  },
+
+  // Payments
+  getPayments: async (params?: { cursor?: string; pageSize?: number }): Promise<any> => {
+    const query = new URLSearchParams();
+    if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     const qs = query.toString();
     return api.get(`/api/v1/admin/payments${qs ? `?${qs}` : ""}`);
@@ -144,9 +149,9 @@ export const adminService = {
   },
 
   // Media Library
-  getMedia: async (params?: { page?: number; pageSize?: number }): Promise<any> => {
+  getMedia: async (params?: { cursor?: string; pageSize?: number }): Promise<any> => {
     const query = new URLSearchParams();
-    if (params?.page) query.set("page", String(params.page));
+    if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     const qs = query.toString();
     return api.get(`/api/v1/admin/media${qs ? `?${qs}` : ""}`);
@@ -180,20 +185,21 @@ export const adminService = {
   },
 
   // Inventory
-  getInventory: async (params?: { page?: number; pageSize?: number }): Promise<any> => {
+  getInventory: async (params?: { cursor?: string; pageSize?: number }): Promise<any> => {
     const query = new URLSearchParams();
-    if (params?.page) query.set("page", String(params.page));
+    if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     const qs = query.toString();
     return api.get(`/api/v1/admin/inventory${qs ? `?${qs}` : ""}`);
   },
 
-  getInventoryLedgers: async (params?: number | { limit?: number; variantId?: string; productId?: string }): Promise<any> => {
+  getInventoryLedgers: async (params?: number | { cursor?: string; pageSize?: number; variantId?: string; productId?: string }): Promise<any> => {
     const query = new URLSearchParams();
     if (typeof params === "number") {
-      query.set("limit", String(params));
+      query.set("pageSize", String(params));
     } else if (params) {
-      if (params.limit) query.set("limit", String(params.limit));
+      if (params.cursor) query.set("cursor", params.cursor);
+      if (params.pageSize) query.set("pageSize", String(params.pageSize));
       if (params.variantId) query.set("variantId", params.variantId);
       if (params.productId) query.set("productId", params.productId);
     }

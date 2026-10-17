@@ -5,19 +5,24 @@ import PaymentMethods from "@/features/cart/components/ui/paymentMethods";
 import { useTranslations } from "next-intl";
 import { useCart } from "@/hooks/useCart";
 import { useRouter } from "@/i18n/navigation";
+import { usePublicSettings } from "@/context/PublicSettingsContext";
 import { Truck, Sparkles, ShieldCheck } from "lucide-react";
 
-import { calculateCartTotals } from "@/features/cart/utils/cartCalculations";
+import { calculateCartTotals, SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from "@/features/cart/utils/cartCalculations";
 
 export default function PaymentBox({ compact = false }: { compact?: boolean }) {
   const t = useTranslations("cart");
   const tCommon = useTranslations("common");
   const { cartItems, appliedCoupon, closeCart } = useCart();
   const router = useRouter();
+  const { settings: storeSettings } = usePublicSettings();
 
   if (!cartItems || cartItems.length === 0) {
     return null;
   }
+
+  const standardShippingCost = storeSettings?.flatRateShipping ?? STANDARD_SHIPPING_COST;
+  const freeShippingThreshold = storeSettings?.freeShippingThreshold ?? SHIPPING_THRESHOLD;
 
   const {
     subtotal,
@@ -26,8 +31,14 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
     isFreeShipping,
     remainingForFreeShipping,
     shippingProgress,
-    total,
-  } = calculateCartTotals(cartItems, appliedCoupon);
+  } = calculateCartTotals(cartItems, appliedCoupon, freeShippingThreshold, standardShippingCost);
+
+  const taxRate = storeSettings?.taxRatePercent ?? 0;
+  const taxAmount =
+    !storeSettings?.pricesIncludeTax && taxRate > 0
+      ? Math.max(0, (subtotal - discount) * (taxRate / 100))
+      : 0;
+  const total = Math.max(0, subtotal - discount + shippingCost + taxAmount);
 
   const currencySymbol = tCommon("currency");
 
@@ -163,7 +174,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <span className="text-muted-foreground">
             {t("orderSummary.tax", { defaultMessage: "Estimated Tax" })}
           </span>
-          <span className="text-foreground font-medium">{currencySymbol} 0.00</span>
+          <span className="text-foreground font-medium">{currencySymbol} {taxAmount.toFixed(2)}</span>
         </p>
       </div>
 

@@ -733,6 +733,11 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
+	if _, err := q.Keyset(); err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
 	result, err := h.service.List(c.Request.Context(), &q, false)
 	if err != nil {
 		_ = c.Error(err)
@@ -746,7 +751,7 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.PaginatedResponse{
 		Data: itemsRes,
-		Meta: result.Page,
+		Meta: result.Meta(),
 	})
 }
 
@@ -769,6 +774,11 @@ func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
+	if _, err := q.Keyset(); err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
 	result, err := h.service.AdminList(c.Request.Context(), &q, true)
 	if err != nil {
 		_ = c.Error(err)
@@ -777,7 +787,7 @@ func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.PaginatedResponse{
 		Data: result.Items,
-		Meta: result.Page,
+		Meta: result.Meta(),
 	})
 }
 

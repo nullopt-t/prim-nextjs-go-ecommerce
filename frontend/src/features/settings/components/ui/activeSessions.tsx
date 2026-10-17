@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { userService } from "@/services/user";
 import { notify, apiErrorMessage } from "@/lib/notify";
+import { formatDateTime } from "@/lib/datetime";
 import { useTranslations } from "next-intl";
 import { useAuthContext } from "@/context/AuthContext";
 import { useRouter } from "@/i18n/navigation";
@@ -155,7 +156,7 @@ export default function ActiveSessions() {
                         {(session.lastActive || session.lastSeenAt) && (
                           <>
                             <span>•</span>
-                            <span>{new Date((session.lastActive || session.lastSeenAt)!).toLocaleDateString()}</span>
+                            <span>{formatDateTime(session.lastActive || session.lastSeenAt)}</span>
                           </>
                         )}
                       </div>

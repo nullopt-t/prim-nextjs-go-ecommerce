@@ -8,6 +8,18 @@ type PagedResult[T any] struct {
 
 	// Page contains page numbers, item counts, and boundary navigation flags.
 	Page  *Page `json:"page"`
+
+	// Cursor is populated instead of Page when the caller requested keyset pagination.
+	Cursor *CursorPage `json:"cursor,omitempty"`
+}
+
+// Meta returns whichever navigation metadata applies: cursor metadata when keyset
+// pagination was used, otherwise classic page metadata.
+func (r *PagedResult[T]) Meta() any {
+	if r.Cursor != nil {
+		return r.Cursor
+	}
+	return r.Page
 }
 
 // NewPagedResult constructs a PagedResult container from the provided item slice and page metadata.
@@ -23,6 +35,20 @@ func NewPagedResult[T any](items []*T, page *Page) *PagedResult[T] {
 	return &PagedResult[T]{
 		Items: items,
 		Page:  page,
+	}
+}
+
+// NewCursorPagedResult constructs a PagedResult container carrying keyset metadata.
+func NewCursorPagedResult[T any](items []*T, cursor *CursorPage) *PagedResult[T] {
+	if items == nil {
+		items = []*T{}
+	}
+	if cursor == nil {
+		cursor = &CursorPage{}
+	}
+	return &PagedResult[T]{
+		Items:  items,
+		Cursor: cursor,
 	}
 }
 

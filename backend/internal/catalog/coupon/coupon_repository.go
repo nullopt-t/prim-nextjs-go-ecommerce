@@ -6,15 +6,33 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
 type ListCouponFilter struct {
 	Status *model.CouponStatus
+	// Limit is the page size; repositories over-fetch one row to detect more.
+	Limit int
+	// Cursor, when set, switches the query to keyset pagination on (created_at, id) DESC.
+	Cursor *pagination.Keyset
+}
+
+// RedemptionEntry is a single coupon redemption joined with the redeeming
+// user's profile details, used by the admin promotion usage log.
+type RedemptionEntry struct {
+	ID             uuid.UUID
+	UserID         *uuid.UUID
+	UserName       *string
+	UserEmail      *string
+	OrderID        uuid.UUID
+	DiscountAmount int64
+	CreatedAt      time.Time
 }
 
 type CouponRepository struct{}
@@ -107,8 +125,10 @@ func (r *CouponRepository) GetByCode(ctx context.Context, qe database.QueryExecu
 	return &c, nil
 }
 
-// List returns coupons matching optional filters, ordered chronologically descending.
-func (r *CouponRepository) List(ctx context.Context, qe database.QueryExecutor, filter ListCouponFilter) ([]*model.Coupon, error) {
+// List returns coupons matching optional filters, ordered newest first. The
+// secondary id sort breaks ties (e.g. rows seeded with identical created_at)
+// so the order stays stable across updates instead of following heap layout.
+func (r *CouponRepository) List(ctx context.Context, qe database.QueryExecutor, filter ListCouponFilter) ([]*model.Coupon, *pagination.CursorPage, error) {
 	var (
 		sb   strings.Builder
 		args []interface{}
@@ -117,21 +137,31 @@ func (r *CouponRepository) List(ctx context.Context, qe database.QueryExecutor, 
 
 	sb.WriteString(`
 		SELECT id, code, discount_type, discount_value, currency, min_cart_amount,
-		       usage_limit, per_user_limit, starts_at, expires_at, status, created_at, updated_at
+		       usage_limit, per_user_limit, starts_at, expires_at, status, created_at, updated_at,
+		       (SELECT COUNT(*) FROM coupon_redemptions r WHERE r.coupon_id = coupons.id) AS usage_count
 		FROM coupons
+		WHERE 1=1
 	`)
 
 	if filter.Status != nil {
-		sb.WriteString(fmt.Sprintf(" WHERE status = $%d::coupon_status", idx))
+		sb.WriteString(fmt.Sprintf(" AND status = $%d::coupon_status", idx))
 		args = append(args, string(*filter.Status))
 		idx++
 	}
 
-	sb.WriteString(" ORDER BY created_at DESC")
+	if filter.Cursor != nil {
+		sb.WriteString(fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", idx, idx+1))
+		args = append(args, filter.Cursor.CreatedAt, filter.Cursor.ID)
+		idx += 2
+	}
+
+	sb.WriteString(" ORDER BY created_at DESC, id DESC")
+	sb.WriteString(fmt.Sprintf(" LIMIT $%d", idx))
+	args = append(args, filter.Limit+1)
 
 	rows, err := qe.Query(ctx, sb.String(), args...)
 	if err != nil {
-		return nil, fmt.Errorf("list coupons: %w", err)
+		return nil, nil, fmt.Errorf("list coupons: %w", err)
 	}
 	defer rows.Close()
 
@@ -147,9 +177,9 @@ func (r *CouponRepository) List(ctx context.Context, qe database.QueryExecutor, 
 		if err := rows.Scan(
 			&c.ID, &c.Code, &c.DiscountType, &c.DiscountValue, &c.Currency,
 			&minCartAmount, &usageLimit, &perUserLimit, &c.StartsAt, &c.ExpiresAt,
-			&c.Status, &c.CreatedAt, &c.UpdatedAt,
+			&c.Status, &c.CreatedAt, &c.UpdatedAt, &c.UsageCount,
 		); err != nil {
-			return nil, fmt.Errorf("scan coupon: %w", err)
+			return nil, nil, fmt.Errorf("scan coupon: %w", err)
 		}
 
 		if minCartAmount.Valid {
@@ -168,10 +198,13 @@ func (r *CouponRepository) List(ctx context.Context, qe database.QueryExecutor, 
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate coupons: %w", err)
+		return nil, nil, fmt.Errorf("iterate coupons: %w", err)
 	}
 
-	return list, nil
+	list, page := pagination.NewCursorPageFrom(list, filter.Limit, func(c *model.Coupon) pagination.Keyset {
+		return pagination.Keyset{CreatedAt: c.CreatedAt, ID: c.ID}
+	})
+	return list, page, nil
 }
 
 // Create inserts a new coupon into the database.
@@ -260,4 +293,67 @@ func (r *CouponRepository) RecordRedemption(ctx context.Context, qe database.Que
 	return qe.QueryRow(ctx, query,
 		red.ID, red.CouponID, red.UserID, red.OrderID, red.DiscountAmount,
 	).Scan(&red.CreatedAt)
+}
+
+// ListRedemptions returns every redemption of a coupon, newest first, joined
+// with the redeeming user's name and email for the admin usage log.
+func (r *CouponRepository) ListRedemptions(ctx context.Context, qe database.QueryExecutor, couponID uuid.UUID, limit int, cursor *pagination.Keyset) ([]*RedemptionEntry, *pagination.CursorPage, error) {
+	query := `
+		SELECT r.id, r.user_id, u.full_name, u.email, r.order_id, r.discount_amount, r.created_at
+		FROM coupon_redemptions r
+		LEFT JOIN users u ON u.id = r.user_id
+		WHERE r.coupon_id = $1
+	`
+	args := []any{couponID}
+	i := 2
+
+	keysetClause, keysetArgs := pagination.KeysetClause("r", cursor, i)
+	query += keysetClause
+	args = append(args, keysetArgs...)
+	i += len(keysetArgs)
+
+	query += pagination.KeysetOrderBy("r")
+	query += fmt.Sprintf(" LIMIT $%d", i)
+	args = append(args, limit+1)
+
+	rows, err := qe.Query(ctx, query, args...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list coupon redemptions: %w", err)
+	}
+	defer rows.Close()
+
+	var list []*RedemptionEntry
+	for rows.Next() {
+		var (
+			e         RedemptionEntry
+			userName  sql.NullString
+			userEmail sql.NullString
+		)
+
+		if err := rows.Scan(
+			&e.ID, &e.UserID, &userName, &userEmail, &e.OrderID, &e.DiscountAmount, &e.CreatedAt,
+		); err != nil {
+			return nil, nil, fmt.Errorf("scan coupon redemption: %w", err)
+		}
+
+		if userName.Valid {
+			v := userName.String
+			e.UserName = &v
+		}
+		if userEmail.Valid {
+			v := userEmail.String
+			e.UserEmail = &v
+		}
+
+		list = append(list, &e)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("iterate coupon redemptions: %w", err)
+	}
+
+	list, page := pagination.NewCursorPageFrom(list, limit, func(e *RedemptionEntry) pagination.Keyset {
+		return pagination.Keyset{CreatedAt: e.CreatedAt, ID: e.ID}
+	})
+	return list, page, nil
 }

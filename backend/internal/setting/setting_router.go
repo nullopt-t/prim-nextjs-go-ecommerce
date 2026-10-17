@@ -32,3 +32,12 @@ func (r *SettingRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.PUT("", r.handler.UpdateSettings)
 	}
 }
+
+// MapPublicRoutes binds the unauthenticated storefront settings endpoint.
+func (r *SettingRouter) MapPublicRoutes(vgroup *gin.RouterGroup) {
+	public := vgroup.Group("/settings")
+	public.Use(middleware.PublicCache(60))
+	{
+		public.GET("/public", r.handler.GetPublicSettings)
+	}
+}

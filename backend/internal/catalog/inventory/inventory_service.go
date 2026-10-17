@@ -589,25 +589,26 @@ func (s *InventoryService) CheckAvailability(
 	return stock.AvailableQuantity >= quantity, stock, nil
 }
 
-func (s *InventoryService) ListInventoryOverview(ctx context.Context, limit, offset int) ([]InventoryStockItem, int, error) {
+func (s *InventoryService) ListInventoryOverview(ctx context.Context, limit int, cursor *pagination.Keyset) ([]InventoryStockItem, *pagination.CursorPage, error) {
 	var items []InventoryStockItem
-	var total int
+	var page *pagination.CursorPage
 	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
-		items, total, err = s.repo.ListInventoryOverview(ctx, db, limit, offset)
+		items, page, err = s.repo.ListInventoryOverview(ctx, db, limit, cursor)
 		return err
 	})
-	return items, total, err
+	return items, page, err
 }
 
-func (s *InventoryService) ListRecentLedgers(ctx context.Context, limit int, variantID *uuid.UUID, productID *uuid.UUID) ([]InventoryLedgerItem, error) {
+func (s *InventoryService) ListRecentLedgers(ctx context.Context, limit int, cursor *pagination.Keyset, variantID *uuid.UUID, productID *uuid.UUID) ([]InventoryLedgerItem, *pagination.CursorPage, error) {
 	var list []InventoryLedgerItem
+	var page *pagination.CursorPage
 	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
-		list, err = s.repo.ListRecentLedgers(ctx, db, limit, variantID, productID)
+		list, page, err = s.repo.ListRecentLedgers(ctx, db, limit, cursor, variantID, productID)
 		return err
 	})
-	return list, err
+	return list, page, err
 }
 
 func (s *InventoryService) AdjustInventory(ctx context.Context, variantID uuid.UUID, delta int, reason string) error {

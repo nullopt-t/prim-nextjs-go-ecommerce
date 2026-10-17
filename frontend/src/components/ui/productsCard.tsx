@@ -165,7 +165,7 @@ export function ProductsCard({
         </div>
 
         {/* Content details */}
-        <div className="p-2.5 sm:p-3 text-left rtl:text-right">
+        <div className="p-2.5 sm:p-3 text-start">
           <Link
             href={productHref}
             className="block group/title"

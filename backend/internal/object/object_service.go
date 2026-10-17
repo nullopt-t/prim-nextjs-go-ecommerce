@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
@@ -207,15 +208,15 @@ type MediaItem struct {
 	CreatedAt   string    `json:"createdAt"`
 }
 
-func (os *ObjectService) ListMedia(ctx context.Context, limit, offset int) ([]MediaItem, int, error) {
+func (os *ObjectService) ListMedia(ctx context.Context, limit int, cursor *pagination.Keyset) ([]MediaItem, *pagination.CursorPage, error) {
 	var list []MediaItem
-	var total int
+	var page *pagination.CursorPage
 	err := os.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
-		objects, count, err := os.objectRepo.ListMedia(ctx, db, limit, offset)
+		objects, p, err := os.objectRepo.ListMedia(ctx, db, limit, cursor)
 		if err != nil {
 			return err
 		}
-		total = count
+		page = p
 		for _, obj := range objects {
 			url := os.storageProvider.GetPublicURL(obj.Bucket, obj.Key)
 			list = append(list, MediaItem{
@@ -231,6 +232,6 @@ func (os *ObjectService) ListMedia(ctx context.Context, limit, offset int) ([]Me
 		}
 		return nil
 	})
-	return list, total, err
+	return list, page, err
 }
 

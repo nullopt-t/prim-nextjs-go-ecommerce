@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Plus,
   Search,
@@ -14,22 +14,35 @@ import { useCatalogContext } from "@/context/CatalogContext";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { ErrorState } from "@/components/ui/errorState";
+import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
+import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
 
 export function AdminProducts() {
   const t = useTranslations("admin");
   const [products, setProducts] = useState<any[]>([]);
+  const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [categories, setCategories] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const { refreshCatalog } = useCatalogContext() || {};
+  const { cursor, hasPrev, next, prev, reset, page } = useCursorPagination();
 
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     try {
       setLoading(true);
       setLoadError(false);
+
+      const productQuery = new URLSearchParams({ pageSize: "20", keyset: "true", _t: String(Date.now()) });
+      if (cursor) productQuery.set("cursor", cursor);
+      if (debouncedSearch) productQuery.set("search", debouncedSearch);
+      if (selectedCategory !== "All") productQuery.set("category", selectedCategory);
+
       const [prodsRes, catsRes, brandsRes]: [any, any, any] = await Promise.all([
-        catalogService.getProducts(`pageSize=100&_t=${Date.now()}`),
+        catalogService.getProducts(productQuery.toString()),
         catalogService.getCategories(100),
         catalogService.getBrands(100)
       ]);
@@ -41,57 +54,63 @@ export function AdminProducts() {
       setBrands(brandList);
 
       const list = Array.isArray(prodsRes) ? prodsRes : (Array.isArray(prodsRes?.data) ? prodsRes.data : []);
-      if (list.length > 0) {
-        const formatted = list.map((p: any) => {
-          let categoryName = "Electronics";
-          if (typeof p.category === "string") {
-            categoryName = p.category;
-          } else if (p.category && typeof p.category === "object" && p.category.name) {
-            categoryName = p.category.name;
-          } else if (Array.isArray(p.categories) && p.categories.length > 0) {
-            categoryName = typeof p.categories[0] === "string" ? p.categories[0] : (p.categories[0]?.name || "Electronics");
-          }
+      const formatted = list.map((p: any) => {
+        let categoryName = "Electronics";
+        if (typeof p.category === "string") {
+          categoryName = p.category;
+        } else if (p.category && typeof p.category === "object" && p.category.name) {
+          categoryName = p.category.name;
+        } else if (Array.isArray(p.categories) && p.categories.length > 0) {
+          categoryName = typeof p.categories[0] === "string" ? p.categories[0] : (p.categories[0]?.name || "Electronics");
+        }
 
-          let brandName = "PRIM";
-          if (typeof p.brand === "string") {
-            brandName = p.brand;
-          } else if (p.brand && typeof p.brand === "object" && p.brand.name) {
-            brandName = p.brand.name;
-          }
+        let brandName = "PRIM";
+        if (typeof p.brand === "string") {
+          brandName = p.brand;
+        } else if (p.brand && typeof p.brand === "object" && p.brand.name) {
+          brandName = p.brand.name;
+        }
 
-          return {
-            id: p.id || p.slug,
-            variantId: p.variantId,
-            name: p.title || p.product?.en || p.name || "Product",
-            sku: p.sku || `SKU-${(p.id || "001").slice(0, 8)}`,
-            category: categoryName,
-            brand: brandName,
-            price: p.extractedPrice || (typeof p.price === "number" ? p.price : parseFloat(String(p.price || "0").replace(/[^0-9.-]+/g, "")) || 0),
-            compareAtPrice: p.extractedOriginalPrice || (p.originalPrice ? parseFloat(String(p.originalPrice).replace(/[^0-9.-]+/g, "")) : null),
-            cost: 0,
-            stock: typeof p.stockQuantity === "number" ? p.stockQuantity : (p.stockCount || (p.stock !== undefined ? p.stock : 0)),
-            lowStockThreshold: 10,
-            status: p.status || (p.inStock || p.stockQuantity > 0 ? "Active" : "Out of Stock"),
-            image: p.thumbnail || p.img || p.image || "/placeholder.png",
-            variants: p.variants || [],
-            salesCount: 0
-          };
-        });
-        setProducts(formatted);
-      }
+        return {
+          id: p.id || p.slug,
+          variantId: p.variantId,
+          name: p.title || p.product?.en || p.name || "Product",
+          sku: p.sku || `SKU-${(p.id || "001").slice(0, 8)}`,
+          category: categoryName,
+          brand: brandName,
+          price: p.extractedPrice || (typeof p.price === "number" ? p.price : parseFloat(String(p.price || "0").replace(/[^0-9.-]+/g, "")) || 0),
+          compareAtPrice: p.extractedOriginalPrice || (p.originalPrice ? parseFloat(String(p.originalPrice).replace(/[^0-9.-]+/g, "")) : null),
+          cost: 0,
+          stock: typeof p.stockQuantity === "number" ? p.stockQuantity : (p.stockCount || (p.stock !== undefined ? p.stock : 0)),
+          lowStockThreshold: 10,
+          status: p.status || (p.inStock || p.stockQuantity > 0 ? "Active" : "Out of Stock"),
+          image: p.thumbnail || p.img || p.image || "/placeholder.png",
+          variants: p.variants || [],
+          salesCount: 0
+        };
+      });
+      setProducts(formatted);
+      if (prodsRes?.meta) setMeta(prodsRes.meta);
     } catch {
       setLoadError(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, [cursor, debouncedSearch, selectedCategory]);
 
   useEffect(() => {
     loadAll();
-  }, []);
+  }, [loadAll]);
 
-  const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  // Debounce the search box and restart pagination whenever the query changes.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      reset();
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search, reset]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [auditProduct, setAuditProduct] = useState<any>(null);
@@ -103,7 +122,7 @@ export function AdminProducts() {
     setLoadingAudit(true);
     try {
       const res = await adminService.getInventoryLedgers({
-        limit: 50,
+        pageSize: 50,
         productId: prod.id
       });
       const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
@@ -290,14 +309,7 @@ export function AdminProducts() {
     }
   };
 
-  const filteredProducts = products.filter((prod) => {
-    const matchesSearch =
-      prod.name.toLowerCase().includes(search.toLowerCase()) ||
-      prod.sku.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "All" || prod.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredProducts = products;
 
   if (loadError) {
     return <ErrorState onRetry={loadAll} />;
@@ -325,13 +337,13 @@ export function AdminProducts() {
       {/* Filters Bar */}
       <div className="bg-background border border-border rounded-2xl p-4 shadow-xs flex flex-col md:flex-row gap-4 justify-between items-center">
         <div className="relative w-full md:w-80">
-          <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
+          <Search className="absolute start-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
             placeholder={t("products.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
+            className="w-full ps-10 pe-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
           />
         </div>
 
@@ -339,7 +351,10 @@ export function AdminProducts() {
           <Filter className="size-4 text-muted-foreground" />
           <select
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+            onChange={(e) => {
+              setSelectedCategory(e.target.value);
+              reset();
+            }}
             className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
           >
             <option value="All">{t("products.allCategories")}</option>
@@ -355,23 +370,23 @@ export function AdminProducts() {
       {/* Products Table */}
       <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-start text-xs">
             <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
               <tr>
-                <th className="py-3.5 pl-4">{t("products.colProduct")}</th>
+                <th className="py-3.5 ps-4">{t("products.colProduct")}</th>
                 <th className="py-3.5">{t("products.colSku")}</th>
                 <th className="py-3.5">{t("products.colCategory")}</th>
                 <th className="py-3.5">{t("products.colPrice")}</th>
                 <th className="py-3.5">{t("products.colStock")}</th>
                 <th className="py-3.5">{t("products.colStatus")}</th>
-                <th className="py-3.5 pr-4 text-right">{t("products.colActions")}</th>
+                <th className="py-3.5 pe-4 text-end">{t("products.colActions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((prod) => (
                   <tr key={prod.id} className="hover:bg-secondary/20 transition-colors">
-                    <td className="py-3.5 pl-4">
+                    <td className="py-3.5 ps-4">
                       <div className="flex items-center gap-3">
                         <img
                           src={prod.image}
@@ -405,18 +420,10 @@ export function AdminProducts() {
                         {t("products.units", { count: prod.stock })}
                       </span>
                     </td>
-                    <td className="py-3.5">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          prod.status === "Active"
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"
-                            : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400"
-                        }`}
-                      >
-                        {t(`status.${String(prod.status).toLowerCase()}`) || prod.status}
-                      </span>
+                    <td className="py-3.5 text-foreground">
+                      {t(`status.${String(prod.status).toLowerCase()}`) || prod.status}
                     </td>
-                    <td className="py-3.5 pr-4 text-right">
+                    <td className="py-3.5 pe-4 text-end">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleViewAudit(prod)}
@@ -453,6 +460,16 @@ export function AdminProducts() {
             </tbody>
           </table>
         </div>
+
+        <CursorPager
+          hasPrev={hasPrev}
+          hasMore={meta.hasMore}
+          page={page}
+          onPrev={prev}
+          onNext={() => next(meta.nextCursor)}
+          loading={loading}
+          shown={filteredProducts.length}
+        />
       </div>
 
       {/* Create / Edit Modal */}
@@ -605,7 +622,7 @@ export function AdminProducts() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="text-right">
+                <div className="text-end">
                   <div className="text-[10px] text-muted-foreground uppercase font-semibold">{t("products.audit.currentStock")}</div>
                   <div className="text-xs font-bold text-accent-brand">{t("products.units", { count: auditProduct.stock })}</div>
                 </div>
@@ -618,7 +635,7 @@ export function AdminProducts() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[220px]">
+            <div className="flex-1 overflow-y-auto space-y-2 pe-1 min-h-[220px]">
               {loadingAudit ? (
                 <div className="py-12 text-center text-xs text-muted-foreground">{t("products.audit.loading")}</div>
               ) : auditLogs.length === 0 ? (
@@ -639,7 +656,7 @@ export function AdminProducts() {
                         SKU: {entry.sku} &bull; {entry.date} &bull; Ref: {entry.ledgerId}
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-end">
                       <span className={`text-sm font-bold ${entry.quantity > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
                         {t("products.units", { count: entry.change })}
                       </span>

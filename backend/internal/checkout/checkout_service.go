@@ -7,12 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/order"
+	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
@@ -64,12 +66,19 @@ type AddressService interface {
 	GetAddress(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*model.UserAddress, error)
 }
 
+// SettingsProvider exposes the effective store configuration used to price
+// orders (shipping, taxes, payment availability, reservation TTL).
+type SettingsProvider interface {
+	GetConfig(ctx context.Context) (setting.Config, error)
+}
+
 type CheckoutService struct {
 	cartService      CartService
 	orderService     OrderService
 	inventoryService InventoryService
 	userService      UserService
 	addressService   AddressService
+	settings         SettingsProvider
 	runner           database.Runner
 }
 
@@ -79,6 +88,7 @@ func NewService(
 	userService UserService,
 	addressService AddressService,
 	inventoryService InventoryService,
+	settings SettingsProvider,
 	runner ...database.Runner,
 ) *CheckoutService {
 	s := &CheckoutService{
@@ -87,11 +97,27 @@ func NewService(
 		userService:      userService,
 		addressService:   addressService,
 		inventoryService: inventoryService,
+		settings:         settings,
 	}
 	if len(runner) > 0 {
 		s.runner = runner[0]
 	}
 	return s
+}
+
+// resolveConfig returns the effective store configuration, falling back to the
+// built-in defaults if the settings provider is absent or fails. Falling back
+// keeps checkout available (with historical pricing) rather than failing closed
+// on a transient settings read error.
+func (s *CheckoutService) resolveConfig(ctx context.Context) setting.Config {
+	if s.settings == nil {
+		return setting.DefaultConfig()
+	}
+	cfg, err := s.settings.GetConfig(ctx)
+	if err != nil {
+		return setting.DefaultConfig()
+	}
+	return cfg
 }
 
 type CheckoutInput struct {
@@ -107,6 +133,8 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 	}
 
 	var createdOrder *model.Order
+
+	cfg := s.resolveConfig(ctx)
 
 	// One transaction covers cart lock, authoritative pricing, coupon validation
 	// and redemption, stock reservation, order creation, payment recording, and
@@ -298,11 +326,43 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			}
 		}
 
-		// 5. Charge shipping consistently with the cart-quote rule:
-		//    free shipping at/above 15000 minor units, 999 otherwise.
+		// 5. Apply the admin-configured shipping rule: free at/above the
+		//    configured threshold, otherwise the configured flat rate.
 		var shippingCost int64
-		if grossTotal > 0 && grossTotal < 15000 {
-			shippingCost = 999
+		if threshold := cfg.FreeShippingThresholdMinorUnits(); grossTotal > 0 && grossTotal < threshold {
+			shippingCost = cfg.ShippingMinorUnits()
+		}
+
+		// 5b. Resolve and validate the requested payment method against the
+		//     admin-configured payment availability, then apply any COD fee.
+		paymentMethod := strings.ToLower(strings.TrimSpace(in.PaymentMethod))
+		isCOD := paymentMethod == "" || paymentMethod == "cod" || paymentMethod == "cash_on_delivery"
+		if isCOD && !cfg.AllowCOD {
+			return apierr.BadRequestError("Cash on delivery is currently unavailable").
+				WithCode("PAYMENT_METHOD_UNAVAILABLE")
+		}
+		if !isCOD && !cfg.AllowCards {
+			return apierr.BadRequestError("Online card payments are currently unavailable").
+				WithCode("PAYMENT_METHOD_UNAVAILABLE")
+		}
+		normalizedPaymentMethod := "cash_on_delivery"
+		if !isCOD {
+			normalizedPaymentMethod = paymentMethod
+		}
+		var codFee int64
+		if isCOD {
+			codFee = cfg.CODFeeMinorUnits()
+		}
+
+		// 5c. Apply tax unless prices are already tax-inclusive. Tax is computed
+		//     on the discounted subtotal so it is never charged on discounts.
+		var taxAmount int64
+		if !cfg.PricesIncludeTax && cfg.TaxRatePercent > 0 {
+			taxable := grossTotal - totalDiscount
+			if taxable < 0 {
+				taxable = 0
+			}
+			taxAmount = int64(math.Round(float64(taxable) * cfg.TaxRatePercent / 100.0))
 		}
 
 		// 6. Reserve stock for every item (reservation at checkout; committed on
@@ -314,6 +374,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 					VariantID: item.VariantID,
 					CartID:    &cart.ID,
 					Quantity:  item.Quantity,
+					Duration:  time.Duration(cfg.ReservationTTLMinutes()) * time.Minute,
 				}); err != nil {
 					return err
 				}
@@ -341,6 +402,9 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			CouponCode:      appliedCouponCode,
 			DiscountAmount:  totalDiscount,
 			ShippingAmount:  shippingCost,
+			TaxAmount:       taxAmount,
+			CODFee:          codFee,
+			PaymentMethod:   normalizedPaymentMethod,
 			Currency:        currency,
 			Items:           orderItems,
 		}
@@ -363,10 +427,9 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		}
 
 		// 9. Record the payment transaction; surface errors so the transaction rolls back.
-		provider := "cash_on_delivery"
+		provider := normalizedPaymentMethod
 		providerTxID := fmt.Sprintf("COD-%s", createdOrder.ID.String()[:8])
-		if in.PaymentMethod != "" && in.PaymentMethod != "cod" && in.PaymentMethod != "cash_on_delivery" {
-			provider = in.PaymentMethod
+		if provider != "cash_on_delivery" {
 			providerTxID = fmt.Sprintf("PAY-%s", createdOrder.ID.String()[:8])
 		}
 
@@ -413,6 +476,8 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 	if s.runner == nil {
 		return nil, apierr.InternalServerError("Database runner unavailable")
 	}
+
+	cfg := s.resolveConfig(ctx)
 
 	var grossTotal int64 = 0
 	if userID != nil || sessionID != nil {
@@ -526,10 +591,11 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 			calculatedDiscount = grossTotal
 		}
 
-		// Standard shipping threshold: 15000 cents (150 EGP), cost: 999 cents (9.99 EGP)
+		// Shipping follows the admin-configured rule: free at/above the configured
+		// threshold, otherwise the configured flat rate.
 		var shippingCost int64 = 0
-		if grossTotal > 0 && grossTotal < 15000 {
-			shippingCost = 999
+		if threshold := cfg.FreeShippingThresholdMinorUnits(); grossTotal > 0 && grossTotal < threshold {
+			shippingCost = cfg.ShippingMinorUnits()
 		}
 
 		finalTotal := grossTotal - calculatedDiscount + shippingCost

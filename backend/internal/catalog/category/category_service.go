@@ -210,14 +210,20 @@ func (cs *CategoryService) ListCategories(
 		q = &pagination.ListQuery{}
 	}
 
+	cursor, err := q.Keyset()
+	if err != nil {
+		return nil, apierr.BadRequestError("Invalid pagination cursor").Wrap(err)
+	}
+
 	var result *pagination.PagedResult[model.ProductCategory]
 
-	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err = cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		result, repoErr = cs.repo.List(ctx, db, ListCategoryOptions{
 			ListQuery:        q,
 			IncludeDeleted:   in.IncludeDeleted,
 			OnlyWithProducts: in.OnlyWithProducts,
+			Cursor:           cursor,
 		})
 		return repoErr
 	})

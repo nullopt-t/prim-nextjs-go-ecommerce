@@ -44,6 +44,10 @@ type Coupon struct {
 	Status        CouponStatus       `json:"status"`
 	CreatedAt     time.Time          `json:"createdAt"`
 	UpdatedAt     time.Time          `json:"updatedAt"`
+
+	// UsageCount is the number of times the coupon has been redeemed. It is not a
+	// stored column: it is populated by list queries for admin display.
+	UsageCount int `json:"usageCount"`
 }
 
 // CouponRedemption tracks an individual application of a coupon by a user for an order.

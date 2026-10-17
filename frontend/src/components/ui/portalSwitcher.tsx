@@ -76,7 +76,7 @@ export function PortalSwitcher() {
                     router.push(portal.path);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                  className={`w-full text-start px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
                     portal.active
                       ? "bg-accent-brand text-white shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary"

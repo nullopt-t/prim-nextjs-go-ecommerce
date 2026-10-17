@@ -390,6 +390,7 @@ CREATE TABLE IF NOT EXISTS orders (
     discount_amount     bigint NOT NULL DEFAULT 0,
     shipping_amount     bigint NOT NULL DEFAULT 0,
     tax_amount          bigint NOT NULL DEFAULT 0,
+    cod_fee             bigint NOT NULL DEFAULT 0,
     total_amount        bigint NOT NULL,
     currency            text NOT NULL DEFAULT 'EGP',
     payment_method      text NOT NULL DEFAULT 'pending',

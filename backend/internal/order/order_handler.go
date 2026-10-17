@@ -3,7 +3,6 @@ package order
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -78,6 +77,8 @@ type OrderResponse struct {
 	ShippingAmount int64 `json:"shippingAmount"`
 	// TaxAmount is the tax amount applied to the order in minor currency units.
 	TaxAmount int64 `json:"taxAmount"`
+	// CODFee is the cash-on-delivery surcharge applied to the order in minor currency units.
+	CODFee int64 `json:"codFee"`
 	// TotalAmount is the final monetary charge in minor currency units after discounts.
 	TotalAmount int64 `json:"totalAmount"`
 	// Currency is the 3-letter ISO currency code.
@@ -106,16 +107,17 @@ func mapOrderResponse(o *model.Order) OrderResponse {
 			PostalCode: o.ShippingAddress.PostalCode,
 			Country:    o.ShippingAddress.Country,
 		},
-		Status:          o.Status,
-		DiscountAmount:  o.DiscountAmount,
-		ShippingAmount:  o.ShippingAmount,
-		TaxAmount:       o.TaxAmount,
-		TotalAmount:     o.TotalAmount,
-		Currency:        o.Currency,
-		PaymentMethod:   o.PaymentMethod,
-		TrackingNumber:  o.TrackingNumber,
-		CreatedAt:       o.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:       o.UpdatedAt.Format(time.RFC3339),
+		Status:         o.Status,
+		DiscountAmount: o.DiscountAmount,
+		ShippingAmount: o.ShippingAmount,
+		TaxAmount:      o.TaxAmount,
+		CODFee:         o.CODFee,
+		TotalAmount:    o.TotalAmount,
+		Currency:       o.Currency,
+		PaymentMethod:  o.PaymentMethod,
+		TrackingNumber: o.TrackingNumber,
+		CreatedAt:      o.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:      o.UpdatedAt.Format(time.RFC3339),
 	}
 
 	if o.CustomerID != nil {
@@ -357,12 +359,7 @@ func (h *OrderHandler) AdminListOrders(c *gin.Context) {
 		return
 	}
 
-	if q.PageSize <= 0 {
-		q.PageSize = 10
-	}
-	if q.Page <= 0 {
-		q.Page = 1
-	}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
 	var customerIDPtr *uuid.UUID
 	if cidStr := c.Query("customerId"); cidStr != "" {
@@ -380,8 +377,7 @@ func (h *OrderHandler) AdminListOrders(c *gin.Context) {
 		c.Request.Context(),
 		customerIDPtr,
 		statusPtr,
-		q.Page,
-		q.PageSize,
+		q,
 	)
 	if err != nil {
 		_ = c.Error(err)
@@ -460,20 +456,20 @@ func (h *OrderHandler) GetDashboard(c *gin.Context) {
 //	@Success		200			{object}	gin.H
 //	@Router			/admin/payments [get]
 func (h *OrderHandler) ListPayments(c *gin.Context) {
-	limit := 50
-	offset := 0
-	if l := c.Query("pageSize"); l != "" {
-		if val, err := strconv.Atoi(l); err == nil && val > 0 {
-			limit = val
-		}
+	var q pagination.ListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		validation.ValidationError(c, err)
+		return
 	}
-	if p := c.Query("page"); p != "" {
-		if val, err := strconv.Atoi(p); err == nil && val > 0 {
-			offset = (val - 1) * limit
-		}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 50, MaxPageSize: 100})
+
+	cursor, err := q.Keyset()
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
 	}
 
-	payments, total, err := h.orderService.ListPayments(c.Request.Context(), limit, offset)
+	payments, page, err := h.orderService.ListPayments(c.Request.Context(), q.PageSize, cursor)
 	if err != nil {
 		_ = c.Error(apierr.InternalServerError("Failed to fetch payments").Wrap(err))
 		return
@@ -481,10 +477,7 @@ func (h *OrderHandler) ListPayments(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": payments,
-		"meta": gin.H{
-			"totalItems": total,
-			"pageSize":   limit,
-		},
+		"meta": page,
 	})
 }
 
@@ -579,4 +572,3 @@ func (h *OrderHandler) UpdateOrderTracking(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Tracking number updated successfully"})
 }
-

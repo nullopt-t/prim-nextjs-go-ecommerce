@@ -48,6 +48,10 @@ type CreateOrderInput struct {
 	ShippingAmount int64
 	// TaxAmount is the tax amount applied to the order in minor units.
 	TaxAmount int64
+	// CODFee is the cash-on-delivery surcharge applied to the order in minor units.
+	CODFee int64
+	// PaymentMethod is the normalized payment method selected at checkout.
+	PaymentMethod string
 	// Currency is the 3-letter currency code (e.g., "USD").
 	Currency string
 	// Items is the non-empty list of line items included in the purchase.
@@ -137,7 +141,7 @@ func (s *OrderService) CreateOrderWithTx(
 		orderItems = append(orderItems, item)
 	}
 
-	finalTotal := totalAmount - in.DiscountAmount + in.ShippingAmount + in.TaxAmount
+	finalTotal := totalAmount - in.DiscountAmount + in.ShippingAmount + in.TaxAmount + in.CODFee
 	if finalTotal < 0 {
 		finalTotal = 0
 	}
@@ -153,6 +157,8 @@ func (s *OrderService) CreateOrderWithTx(
 		DiscountAmount:  in.DiscountAmount,
 		ShippingAmount:  in.ShippingAmount,
 		TaxAmount:       in.TaxAmount,
+		CODFee:          in.CODFee,
+		PaymentMethod:   in.PaymentMethod,
 		TotalAmount:     finalTotal,
 		Currency:        in.Currency,
 		Items:           orderItems,
@@ -299,36 +305,32 @@ func (s *OrderService) GetCustomerOrders(ctx context.Context, customerID uuid.UU
 	return orders, nil
 }
 
-// ListOrders retrieves a paginated set of orders filtered by optional customer ID or status.
+// ListOrders retrieves a keyset-paginated set of orders filtered by optional customer ID or status.
 func (s *OrderService) ListOrders(
 	ctx context.Context,
 	customerID *uuid.UUID,
 	status *string,
-	page int,
-	pageSize int,
-) ([]model.Order, *pagination.Page, error) {
+	q pagination.ListQuery,
+) ([]model.Order, *pagination.CursorPage, error) {
 	var orders []model.Order
-	var pageMeta *pagination.Page
+	var pageMeta *pagination.CursorPage
 
-	err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	cursor, err := q.Keyset()
+	if err != nil {
+		return nil, nil, apierr.BadRequestError("Invalid pagination cursor").Wrap(err)
+	}
+
+	err = s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		pageSize := q.PageSize
 		if pageSize <= 0 {
 			pageSize = 10
 		}
-		if page <= 0 {
-			page = 1
-		}
-		offset := (page - 1) * pageSize
 
 		filter := OrderListFilter{
 			CustomerID: customerID,
 			Status:     status,
 			Limit:      pageSize,
-			Offset:     offset,
-		}
-
-		totalCount, err := s.orderRepo.CountOrders(ctx, db, filter)
-		if err != nil {
-			return err
+			Cursor:     cursor,
 		}
 
 		res, err := s.orderRepo.ListOrders(ctx, db, filter)
@@ -336,8 +338,9 @@ func (s *OrderService) ListOrders(
 			return err
 		}
 
-		orders = res
-		pageMeta = pagination.NewPage(page, pageSize, totalCount)
+		orders, pageMeta = pagination.NewCursorPageFrom(res, pageSize, func(o model.Order) pagination.Keyset {
+			return pagination.Keyset{CreatedAt: o.CreatedAt, ID: o.ID}
+		})
 		return nil
 	})
 
@@ -535,16 +538,16 @@ func (s *OrderService) GetDashboardStats(ctx context.Context) (*DashboardStats, 
 	return stats, err
 }
 
-// ListPayments returns a paginated list of payment transactions.
-func (s *OrderService) ListPayments(ctx context.Context, limit, offset int) ([]PaymentItem, int, error) {
+// ListPayments returns a keyset-paginated list of payment transactions.
+func (s *OrderService) ListPayments(ctx context.Context, limit int, cursor *pagination.Keyset) ([]PaymentItem, *pagination.CursorPage, error) {
 	var payments []PaymentItem
-	var total int
+	var page *pagination.CursorPage
 	err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
-		payments, total, err = s.orderRepo.ListPayments(ctx, db, limit, offset)
+		payments, page, err = s.orderRepo.ListPayments(ctx, db, limit, cursor)
 		return err
 	})
-	return payments, total, err
+	return payments, page, err
 }
 
 // UpdatePaymentStatus changes the status of a payment record.
@@ -567,4 +570,3 @@ func (s *OrderService) UpdateOrderTracking(ctx context.Context, id uuid.UUID, tr
 		return s.orderRepo.UpdateOrderTracking(ctx, tx, id, trackingNumber)
 	})
 }
-

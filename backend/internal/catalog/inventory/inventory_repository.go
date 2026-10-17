@@ -432,6 +432,7 @@ type InventoryStockItem struct {
 	Price             int64     `json:"price"`
 	Currency          string    `json:"currency"`
 	Thumbnail         string    `json:"thumbnail"`
+	CreatedAt         time.Time `json:"createdAt"`
 }
 
 type InventoryLedgerItem struct {
@@ -445,10 +446,7 @@ type InventoryLedgerItem struct {
 	CreatedAt    time.Time `json:"createdAt"`
 }
 
-func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, qe database.QueryExecutor, limit, offset int) ([]InventoryStockItem, int, error) {
-	var total int
-	_ = qe.QueryRow(ctx, `SELECT COUNT(*) FROM product_variants WHERE deleted_at IS NULL`).Scan(&total)
-
+func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, qe database.QueryExecutor, limit int, cursor *pagination.Keyset) ([]InventoryStockItem, *pagination.CursorPage, error) {
 	query := `
 		SELECT 
 			pv.id,
@@ -459,16 +457,27 @@ func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, qe data
 			COALESCE((SELECT SUM(quantity) FROM inventory_ledgers WHERE variant_id = pv.id), 0)::int AS on_hand,
 			COALESCE((SELECT SUM(quantity) FROM inventory_reservations WHERE variant_id = pv.id AND released_at IS NULL AND expires_at > NOW()), 0)::int AS reserved,
 			pv.price,
-			pv.currency
+			pv.currency,
+			pv.created_at
 		FROM product_variants pv
 		JOIN products p ON pv.product_id = p.id
 		WHERE pv.deleted_at IS NULL
-		ORDER BY on_hand ASC, pv.created_at DESC
-		LIMIT $1 OFFSET $2
 	`
-	rows, err := qe.Query(ctx, query, limit, offset)
+	args := []any{}
+	i := 1
+
+	keysetClause, keysetArgs := pagination.KeysetClause("pv", cursor, i)
+	query += keysetClause
+	args = append(args, keysetArgs...)
+	i += len(keysetArgs)
+
+	query += pagination.KeysetOrderBy("pv")
+	query += fmt.Sprintf(" LIMIT $%d", i)
+	args = append(args, limit+1)
+
+	rows, err := qe.Query(ctx, query, args...)
 	if err != nil {
-		return nil, 0, fmt.Errorf("list inventory: %w", err)
+		return nil, nil, fmt.Errorf("list inventory: %w", err)
 	}
 	defer rows.Close()
 
@@ -485,8 +494,9 @@ func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, qe data
 			&item.ReservedQuantity,
 			&item.Price,
 			&item.Currency,
+			&item.CreatedAt,
 		); err != nil {
-			return nil, 0, fmt.Errorf("scan inventory item: %w", err)
+			return nil, nil, fmt.Errorf("scan inventory item: %w", err)
 		}
 		item.AvailableQuantity = item.OnHandQuantity - item.ReservedQuantity
 		if item.AvailableQuantity < 0 {
@@ -495,10 +505,14 @@ func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, qe data
 		item.IsInStock = item.AvailableQuantity > 0
 		list = append(list, item)
 	}
-	return list, total, nil
+
+	list, page := pagination.NewCursorPageFrom(list, limit, func(it InventoryStockItem) pagination.Keyset {
+		return pagination.Keyset{CreatedAt: it.CreatedAt, ID: it.VariantID}
+	})
+	return list, page, nil
 }
 
-func (r *InventoryRepository) ListRecentLedgers(ctx context.Context, qe database.QueryExecutor, limit int, variantID *uuid.UUID, productID *uuid.UUID) ([]InventoryLedgerItem, error) {
+func (r *InventoryRepository) ListRecentLedgers(ctx context.Context, qe database.QueryExecutor, limit int, cursor *pagination.Keyset, variantID *uuid.UUID, productID *uuid.UUID) ([]InventoryLedgerItem, *pagination.CursorPage, error) {
 	query := `
 		SELECT il.id, il.variant_id, p.title, pv.title, pv.sku, il.quantity, il.reason, il.created_at
 		FROM inventory_ledgers il
@@ -521,12 +535,18 @@ func (r *InventoryRepository) ListRecentLedgers(ctx context.Context, qe database
 		i++
 	}
 
-	query += fmt.Sprintf(" ORDER BY il.created_at DESC LIMIT $%d", i)
-	args = append(args, limit)
+	keysetClause, keysetArgs := pagination.KeysetClause("il", cursor, i)
+	query += keysetClause
+	args = append(args, keysetArgs...)
+	i += len(keysetArgs)
+
+	query += pagination.KeysetOrderBy("il")
+	query += fmt.Sprintf(" LIMIT $%d", i)
+	args = append(args, limit+1)
 
 	rows, err := qe.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("list recent ledgers: %w", err)
+		return nil, nil, fmt.Errorf("list recent ledgers: %w", err)
 	}
 	defer rows.Close()
 
@@ -536,10 +556,14 @@ func (r *InventoryRepository) ListRecentLedgers(ctx context.Context, qe database
 		if err := rows.Scan(
 			&item.ID, &item.VariantID, &item.ProductName, &item.VariantTitle, &item.SKU, &item.Quantity, &item.Reason, &item.CreatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("scan ledger: %w", err)
+			return nil, nil, fmt.Errorf("scan ledger: %w", err)
 		}
 		list = append(list, item)
 	}
-	return list, nil
+
+	list, page := pagination.NewCursorPageFrom(list, limit, func(it InventoryLedgerItem) pagination.Keyset {
+		return pagination.Keyset{CreatedAt: it.CreatedAt, ID: it.ID}
+	})
+	return list, page, nil
 }
 

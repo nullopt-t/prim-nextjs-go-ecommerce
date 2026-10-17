@@ -27,7 +27,13 @@ func (h *InventoryHandler) ListInventoryOverview(c *gin.Context) {
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 50, MaxPageSize: 100})
 
-	items, total, err := h.service.ListInventoryOverview(c.Request.Context(), q.PageSize, q.Offset)
+	cursor, err := q.Keyset()
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
+	items, page, err := h.service.ListInventoryOverview(c.Request.Context(), q.PageSize, cursor)
 	if err != nil {
 		_ = c.Error(apierr.InternalServerError("Failed to fetch inventory overview").Wrap(err))
 		return
@@ -35,10 +41,7 @@ func (h *InventoryHandler) ListInventoryOverview(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": items,
-		"meta": gin.H{
-			"totalItems": total,
-			"pageSize":   q.PageSize,
-		},
+		"meta": page,
 	})
 }
 
@@ -64,12 +67,18 @@ func (h *InventoryHandler) ListRecentLedgers(c *gin.Context) {
 		}
 	}
 
-	ledgers, err := h.service.ListRecentLedgers(c.Request.Context(), q.PageSize, variantUUID, productUUID)
+	cursor, err := q.Keyset()
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
+	ledgers, page, err := h.service.ListRecentLedgers(c.Request.Context(), q.PageSize, cursor, variantUUID, productUUID)
 	if err != nil {
 		_ = c.Error(apierr.InternalServerError("Failed to fetch ledgers").Wrap(err))
 		return
 	}
-	c.JSON(http.StatusOK, api.DataResponse{Data: ledgers})
+	c.JSON(http.StatusOK, api.SuccessResponse{Data: ledgers, Meta: page})
 }
 
 type AdjustInventoryRequest struct {

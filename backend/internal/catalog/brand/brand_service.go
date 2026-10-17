@@ -180,12 +180,18 @@ func (bs *BrandService) listBrands(
 		q = &pagination.ListQuery{}
 	}
 
+	cursor, err := q.Keyset()
+	if err != nil {
+		return nil, apierr.BadRequestError("Invalid pagination cursor").Wrap(err)
+	}
+
 	var result *pagination.PagedResult[model.ProductBrand]
-	err := bs.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err = bs.runner.WithDB(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		result, repoErr = bs.brandRepo.List(ctx, db, ListBrandOptions{
 			Query:          q,
 			IncludeDeleted: opts.includeDeleted,
+			Cursor:         cursor,
 		})
 		if repoErr != nil {
 			return repoErr

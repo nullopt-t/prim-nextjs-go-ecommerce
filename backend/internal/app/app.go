@@ -1,18 +1,18 @@
 package app
 
 import (
+	"github.com/minio/minio-go/v7"
 	"github.com/nullopt-t/prim-backend/internal/auth"
-	"github.com/nullopt-t/prim-backend/internal/catalog/brand"
 	"github.com/nullopt-t/prim-backend/internal/cart"
+	"github.com/nullopt-t/prim-backend/internal/catalog/brand"
 	"github.com/nullopt-t/prim-backend/internal/catalog/category"
 	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
 	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
+	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/catalog/review"
 	"github.com/nullopt-t/prim-backend/internal/catalog/tag"
-	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
-	"github.com/nullopt-t/prim-backend/internal/wishlist"
 	"github.com/nullopt-t/prim-backend/internal/checkout"
 	"github.com/nullopt-t/prim-backend/internal/http/swagger"
 	"github.com/nullopt-t/prim-backend/internal/middleware"
@@ -21,7 +21,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/user"
-	"github.com/minio/minio-go/v7"
+	"github.com/nullopt-t/prim-backend/internal/wishlist"
 
 	"context"
 	"fmt"
@@ -81,6 +81,12 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	})
 	txRunner := database.NewTxRunner(app.db)
 
+	// settings: constructed early so the maintenance gate can wrap the whole API
+	// surface before any routes are mounted.
+	settingRepo := setting.NewRepository()
+	settingService := setting.NewService(txRunner, settingRepo)
+	v1.Use(setting.MaintenanceMiddleware(settingService))
+
 	kafkaCfg := brokerkafka.DefaultConfig(app.config.KafkaCfg.Brokers, app.config.KafkaCfg.GroupID)
 	app.kafkaProducer = brokerkafka.NewProducer(kafkaCfg)
 	notifier := notifier.NewKafkaNotifier(app.kafkaProducer, app.logger)
@@ -95,7 +101,6 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		userRepo,
 		app.logger,
 	)
-
 
 	challengeService := auth.NewChallengeService(
 		app.redisClient,
@@ -132,7 +137,6 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	objectHandler := object.NewHandler(objectService)
 	objectRouter := object.NewRouter(objectHandler, sessionService)
 	objectRouter.MapRoutes(v1)
-
 
 	brandRepo := brand.NewRepository()
 	brandService := brand.NewService(
@@ -190,7 +194,6 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	inventoryHandler := inventory.NewHandler(inventoryService)
 	inventoryRouter := inventory.NewRouter(inventoryHandler, sessionService)
 	inventoryRouter.MapRoutes(v1)
-
 
 	variantRepository := variant.NewRepository()
 	variantService := variant.NewService(
@@ -294,7 +297,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	orderRouter.MapRoutes(v1)
 
 	// checkout
-	checkoutService := checkout.NewService(cartService, orderService, userService, addressService, inventoryService, txRunner)
+	checkoutService := checkout.NewService(cartService, orderService, userService, addressService, inventoryService, settingService, txRunner)
 	checkoutHandler := checkout.NewHandler(checkoutService)
 	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionService)
 	checkoutRouter.MapRoutes(v1)
@@ -307,11 +310,10 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	couponRouter.MapRoutes(v1)
 
 	// settings
-	settingRepo := setting.NewRepository()
-	settingService := setting.NewService(txRunner, settingRepo)
 	settingHandler := setting.NewHandler(settingService)
 	settingRouter := setting.NewRouter(settingHandler, sessionService)
 	settingRouter.MapRoutes(v1)
+	settingRouter.MapPublicRoutes(v1)
 }
 
 func (app *App) Shutdown() {

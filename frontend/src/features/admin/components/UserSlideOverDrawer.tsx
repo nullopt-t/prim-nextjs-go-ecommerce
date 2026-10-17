@@ -20,6 +20,7 @@ import {
 import { AdminUser } from "@/services/admin";
 import { useTranslations } from "next-intl";
 import { notify } from "@/lib/notify";
+import { formatDateTime } from "@/lib/datetime";
 import { ROLE_RANKS } from "@/lib/roles";
 
 interface UserSlideOverDrawerProps {
@@ -108,17 +109,13 @@ export function UserSlideOverDrawer({
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3.5 rounded-xl bg-secondary/30 border border-border flex flex-col gap-1">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("modals.drawer.accessRole")}</span>
-                <span className="text-xs font-bold text-foreground capitalize flex items-center gap-1.5">
-                  <Shield className="size-3.5 text-purple-500" />
+                <span className="text-xs font-bold text-foreground capitalize">
                   {t(`roles.${user.role}`) || user.role}
                 </span>
               </div>
               <div className="p-3.5 rounded-xl bg-secondary/30 border border-border flex flex-col gap-1">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("modals.drawer.accountState")}</span>
-                <span className={`text-xs font-bold capitalize flex items-center gap-1.5 ${
-                  user.status === "active" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                }`}>
-                  <span className={`size-2 rounded-full ${user.status === "active" ? "bg-emerald-500" : "bg-rose-500"}`} />
+                <span className="text-xs font-bold capitalize text-foreground">
                   {t(`status.${String(user.status).toLowerCase()}`) || user.status}
                 </span>
               </div>
@@ -134,7 +131,7 @@ export function UserSlideOverDrawer({
                     <span className="font-mono text-[11px] text-foreground truncate">{user.id}</span>
                     <button
                       onClick={() => copyToClipboard(user.id)}
-                      className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors ml-2"
+                      className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors ms-2"
                       title={t("modals.drawer.copyId")}
                     >
                       {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
@@ -172,11 +169,7 @@ export function UserSlideOverDrawer({
                     <Calendar className="size-3.5" /> {t("modals.drawer.registered")}
                   </span>
                   <span className="font-medium text-foreground">
-                    {new Date(user.createdAt).toLocaleDateString(undefined, { 
-                      month: "short", 
-                      day: "numeric", 
-                      year: "numeric" 
-                    })}
+                    {formatDateTime(user.createdAt)}
                   </span>
                 </div>
 
@@ -185,11 +178,7 @@ export function UserSlideOverDrawer({
                     <Clock className="size-3.5" /> {t("modals.drawer.lastModified")}
                   </span>
                   <span className="font-medium text-foreground">
-                    {new Date(user.updatedAt).toLocaleDateString(undefined, { 
-                      month: "short", 
-                      day: "numeric", 
-                      year: "numeric" 
-                    })}
+                    {formatDateTime(user.updatedAt)}
                   </span>
                 </div>
 
@@ -197,7 +186,7 @@ export function UserSlideOverDrawer({
                   <div className="flex justify-between items-center pt-2 border-t border-border/60 text-rose-600 dark:text-rose-400">
                     <span className="font-semibold">{t("modals.drawer.suspensionExpires")}</span>
                     <span className="font-mono text-[11px]">
-                      {new Date(user.suspendedUntil).toLocaleString()}
+                      {formatDateTime(user.suspendedUntil)}
                     </span>
                   </div>
                 )}
@@ -206,7 +195,7 @@ export function UserSlideOverDrawer({
                   <div className="flex justify-between items-center pt-2 border-t border-border/60 text-amber-600 dark:text-amber-400">
                     <span className="font-semibold">{t("modals.drawer.lockExpires")}</span>
                     <span className="font-mono text-[11px]">
-                      {new Date(user.lockedUntil).toLocaleTimeString()}
+                      {formatDateTime(user.lockedUntil)}
                     </span>
                   </div>
                 )}

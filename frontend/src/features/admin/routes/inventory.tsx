@@ -1,13 +1,16 @@
-import { useState, useEffect } from "react";
-import { Plus, Minus, Search, History, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, Minus, Search, History } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { ErrorState } from "@/components/ui/errorState";
+import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
+import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
 
 export function AdminInventory() {
   const t = useTranslations("admin");
   const [products, setProducts] = useState<any[]>([]);
+  const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -18,13 +21,14 @@ export function AdminInventory() {
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const { cursor, hasPrev, next, prev, page } = useCursorPagination();
 
   const handleViewAudit = async (prod: any) => {
     setAuditProduct(prod);
     setLoadingAudit(true);
     try {
       const res = await adminService.getInventoryLedgers({
-        limit: 50,
+        pageSize: 50,
         variantId: prod.variantId,
         productId: prod.productId
       });
@@ -46,12 +50,12 @@ export function AdminInventory() {
     }
   };
 
-  const loadInventoryData = async () => {
+  const loadInventoryData = useCallback(async () => {
     try {
       setLoading(true);
       setLoadError(false);
       const [invRes, logsRes]: [any, any] = await Promise.all([
-        adminService.getInventory({ pageSize: 50 }),
+        adminService.getInventory({ cursor: cursor || undefined, pageSize: 50 }),
         adminService.getInventoryLedgers(30)
       ]);
 
@@ -67,6 +71,7 @@ export function AdminInventory() {
         image: it.thumbnail || "http://localhost:9000/catalog/products/macbook-air-15-m3.jpg",
         lowStockThreshold: 10
       })));
+      if (invRes?.meta) setMeta(invRes.meta);
 
       const ledgerList = Array.isArray(logsRes?.data) ? logsRes.data : (Array.isArray(logsRes) ? logsRes : []);
       setLogs(ledgerList.map((l: any) => ({
@@ -83,11 +88,11 @@ export function AdminInventory() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [cursor]);
 
   useEffect(() => {
     loadInventoryData();
-  }, []);
+  }, [loadInventoryData]);
 
   const handleAdjustStock = (prod: any) => {
     setSelectedProduct(prod);
@@ -138,13 +143,13 @@ export function AdminInventory() {
 
       <div className="bg-background border border-border rounded-2xl p-4 shadow-xs">
         <div className="relative max-w-sm">
-          <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
+          <Search className="absolute start-3.5 top-2.5 size-4 text-muted-foreground" />
           <input
             type="text"
             placeholder={t("inventory.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+            className="w-full ps-10 pe-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
           />
         </div>
       </div>
@@ -157,20 +162,20 @@ export function AdminInventory() {
             <span className="text-xs text-muted-foreground">{t("inventory.catalogItems", { count: products.length })}</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-start text-xs">
               <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
                 <tr>
-                  <th className="py-3 pl-4">{t("inventory.colProduct")}</th>
+                  <th className="py-3 ps-4">{t("inventory.colProduct")}</th>
                   <th className="py-3">{t("inventory.colSku")}</th>
                   <th className="py-3">{t("inventory.colStockOnHand")}</th>
                   <th className="py-3">{t("inventory.colStatus")}</th>
-                  <th className="py-3 pr-4 text-right">{t("inventory.colActions")}</th>
+                  <th className="py-3 pe-4 text-end">{t("inventory.colActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
                 {filtered.map((prod) => (
                   <tr key={prod.id} className="hover:bg-secondary/20 transition-colors">
-                    <td className="py-3.5 pl-4">
+                    <td className="py-3.5 ps-4">
                       <div className="flex items-center gap-2.5">
                         <img src={prod.image} alt={prod.name} className="size-9 rounded-lg object-cover border border-border" />
                         <span className="font-semibold text-foreground line-clamp-1">{prod.name}</span>
@@ -178,18 +183,12 @@ export function AdminInventory() {
                     </td>
                     <td className="py-3.5 font-mono text-muted-foreground">{prod.sku}</td>
                     <td className="py-3.5 font-bold text-foreground">{t("inventory.units", { count: prod.stock })}</td>
-                    <td className="py-3.5">
-                      {prod.stock <= (prod.lowStockThreshold || 10) ? (
-                        <span className="px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400 font-bold rounded-full text-[10px] inline-flex items-center gap-1">
-                          <AlertTriangle className="size-3" /> {t("status.lowStock")}
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400 font-bold rounded-full text-[10px]">
-                          {t("status.inStock")}
-                        </span>
-                      )}
+                    <td className="py-3.5 text-foreground">
+                      {prod.stock <= (prod.lowStockThreshold || 10)
+                        ? t("status.lowStock")
+                        : t("status.inStock")}
                     </td>
-                    <td className="py-3.5 pr-4 text-right">
+                    <td className="py-3.5 pe-4 text-end">
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleViewAudit(prod)}
@@ -212,6 +211,16 @@ export function AdminInventory() {
               </tbody>
             </table>
           </div>
+
+          <CursorPager
+            hasPrev={hasPrev}
+            hasMore={meta.hasMore}
+            page={page}
+            onPrev={prev}
+            onNext={() => next(meta.nextCursor)}
+            loading={loading}
+            shown={filtered.length}
+          />
         </div>
 
         {/* Audit Log Timeline */}
@@ -221,7 +230,7 @@ export function AdminInventory() {
               <History className="size-4 text-accent-brand" />
               <h3 className="font-bold text-sm text-foreground">{t("inventory.globalAuditLog")}</h3>
             </div>
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pe-1">
               {logs.map((log) => (
                 <div key={log.id} className="p-3 border border-border rounded-xl bg-secondary/10 space-y-1 text-xs">
                   <div className="flex items-center justify-between">
@@ -264,7 +273,7 @@ export function AdminInventory() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[220px]">
+            <div className="flex-1 overflow-y-auto space-y-2 pe-1 min-h-[220px]">
               {loadingAudit ? (
                 <div className="py-12 text-center text-xs text-muted-foreground">{t("inventory.loadingAudit")}</div>
               ) : auditLogs.length === 0 ? (
@@ -283,7 +292,7 @@ export function AdminInventory() {
                         {t("inventory.recordedBy", { user: entry.user })}
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-end">
                       <span className={`text-sm font-bold ${entry.quantity > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
                         {t("inventory.units", { count: entry.change })}
                       </span>

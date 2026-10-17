@@ -1,5 +1,6 @@
 import React from "react";
 import MainLayout from "@/components/layouts/mainLayout";
+import { MaintenanceGate } from "@/components/ui";
 import Recently from "@/features/home/components/ui/recently";
 
 export default function ShopLayout({
@@ -8,8 +9,10 @@ export default function ShopLayout({
   children: React.ReactNode;
 }) {
   return (
-    <MainLayout recently={<Recently />}>
-      {children}
-    </MainLayout>
+    <MaintenanceGate>
+      <MainLayout recently={<Recently />}>
+        {children}
+      </MainLayout>
+    </MaintenanceGate>
   );
 }

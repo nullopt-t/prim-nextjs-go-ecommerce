@@ -46,6 +46,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/middleware"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/order"
+	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/user"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/config"
@@ -189,6 +190,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 		s.userService,
 		s.addressService,
 		s.inventoryService,
+		setting.NewService(s.txRunner, setting.NewRepository()),
 		s.txRunner,
 	)
 

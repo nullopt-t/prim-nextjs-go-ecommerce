@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
@@ -38,9 +39,9 @@ func (r *Repository) CreateOrder(
 	query := `
 		INSERT INTO orders (
 			id, customer_id, customer_email, shipping_address,
-			status, coupon_id, discount_amount, shipping_amount, tax_amount, total_amount, currency,
+			status, coupon_id, discount_amount, shipping_amount, tax_amount, cod_fee, total_amount, currency,
 			payment_method, tracking_number, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now(), now())
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now(), now())
 		RETURNING created_at, updated_at
 	`
 	err = qe.QueryRow(
@@ -55,6 +56,7 @@ func (r *Repository) CreateOrder(
 		o.DiscountAmount,
 		o.ShippingAmount,
 		o.TaxAmount,
+		o.CODFee,
 		o.TotalAmount,
 		o.Currency,
 		o.PaymentMethod,
@@ -122,7 +124,7 @@ func (r *Repository) GetOrderByID(
 ) (*model.Order, error) {
 	query := `
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
-		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount,
+		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
 		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
 		       o.created_at, o.updated_at,
 		       c.code
@@ -147,6 +149,7 @@ func (r *Repository) GetOrderByID(
 		&o.DiscountAmount,
 		&o.ShippingAmount,
 		&o.TaxAmount,
+		&o.CODFee,
 		&o.TotalAmount,
 		&o.Currency,
 		&paymentMethod,
@@ -184,7 +187,7 @@ func (r *Repository) GetOrderByIDForUpdate(
 ) (*model.Order, error) {
 	query := `
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
-		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount,
+		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
 		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
 		       o.created_at, o.updated_at,
 		       c.code
@@ -210,6 +213,7 @@ func (r *Repository) GetOrderByIDForUpdate(
 		&o.DiscountAmount,
 		&o.ShippingAmount,
 		&o.TaxAmount,
+		&o.CODFee,
 		&o.TotalAmount,
 		&o.Currency,
 		&paymentMethod,
@@ -247,7 +251,7 @@ func (r *Repository) GetOrdersByCustomerID(
 ) ([]model.Order, error) {
 	query := `
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
-		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount,
+		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
 		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
 		       o.created_at, o.updated_at,
 		       c.code
@@ -279,6 +283,7 @@ func (r *Repository) GetOrdersByCustomerID(
 			&o.DiscountAmount,
 			&o.ShippingAmount,
 			&o.TaxAmount,
+			&o.CODFee,
 			&o.TotalAmount,
 			&o.Currency,
 			&paymentMethod,
@@ -432,6 +437,8 @@ type OrderListFilter struct {
 	Limit int
 	// Offset controls page offset.
 	Offset int
+	// Cursor, when set, switches the query to keyset pagination on (created_at, id) DESC.
+	Cursor *pagination.Keyset
 }
 
 // ListOrders fetches a filtered, paginated slice of orders from the database.
@@ -442,7 +449,7 @@ func (r *Repository) ListOrders(
 ) ([]model.Order, error) {
 	query := `
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
-		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount,
+		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
 		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
 		       o.created_at, o.updated_at,
 		       c.code
@@ -465,8 +472,16 @@ func (r *Repository) ListOrders(
 		i++
 	}
 
-	query += fmt.Sprintf(" ORDER BY o.created_at DESC LIMIT $%d OFFSET $%d", i, i+1)
-	args = append(args, filter.Limit, filter.Offset)
+	// Keyset pagination: restrict to orders strictly older than the cursor and
+	// over-fetch one row so the caller can detect whether more remain.
+	keysetClause, keysetArgs := pagination.KeysetClause("o", filter.Cursor, i)
+	query += keysetClause
+	args = append(args, keysetArgs...)
+	i += len(keysetArgs)
+
+	query += pagination.KeysetOrderBy("o")
+	query += fmt.Sprintf(" LIMIT $%d", i)
+	args = append(args, filter.Limit+1)
 
 	rows, err := qe.Query(ctx, query, args...)
 	if err != nil {
@@ -491,6 +506,7 @@ func (r *Repository) ListOrders(
 			&o.DiscountAmount,
 			&o.ShippingAmount,
 			&o.TaxAmount,
+			&o.CODFee,
 			&o.TotalAmount,
 			&o.Currency,
 			&paymentMethod,
@@ -657,21 +673,29 @@ func (r *Repository) GetDashboardStats(ctx context.Context, qe database.QueryExe
 	return stats, nil
 }
 
-func (r *Repository) ListPayments(ctx context.Context, qe database.QueryExecutor, limit, offset int) ([]PaymentItem, int, error) {
-	var total int
-	_ = qe.QueryRow(ctx, `SELECT COUNT(*) FROM payments`).Scan(&total)
-
+func (r *Repository) ListPayments(ctx context.Context, qe database.QueryExecutor, limit int, cursor *pagination.Keyset) ([]PaymentItem, *pagination.CursorPage, error) {
 	query := `
 		SELECT p.id, p.order_id, p.amount, p.currency, p.status, p.provider, p.provider_transaction_id,
 		       COALESCE(o.customer_email, 'customer@example.com'), p.created_at, p.updated_at
 		FROM payments p
 		LEFT JOIN orders o ON p.order_id = o.id
-		ORDER BY p.created_at DESC
-		LIMIT $1 OFFSET $2
+		WHERE 1=1
 	`
-	rows, err := qe.Query(ctx, query, limit, offset)
+	args := []any{}
+	i := 1
+
+	keysetClause, keysetArgs := pagination.KeysetClause("p", cursor, i)
+	query += keysetClause
+	args = append(args, keysetArgs...)
+	i += len(keysetArgs)
+
+	query += pagination.KeysetOrderBy("p")
+	query += fmt.Sprintf(" LIMIT $%d", i)
+	args = append(args, limit+1)
+
+	rows, err := qe.Query(ctx, query, args...)
 	if err != nil {
-		return nil, 0, fmt.Errorf("list payments: %w", err)
+		return nil, nil, fmt.Errorf("list payments: %w", err)
 	}
 	defer rows.Close()
 
@@ -682,11 +706,15 @@ func (r *Repository) ListPayments(ctx context.Context, qe database.QueryExecutor
 			&pi.ID, &pi.OrderID, &pi.Amount, &pi.Currency, &pi.Status, &pi.Provider, &pi.ProviderTransactionID,
 			&pi.CustomerEmail, &pi.CreatedAt, &pi.UpdatedAt,
 		); err != nil {
-			return nil, 0, fmt.Errorf("scan payment: %w", err)
+			return nil, nil, fmt.Errorf("scan payment: %w", err)
 		}
 		payments = append(payments, pi)
 	}
-	return payments, total, nil
+
+	payments, page := pagination.NewCursorPageFrom(payments, limit, func(p PaymentItem) pagination.Keyset {
+		return pagination.Keyset{CreatedAt: p.CreatedAt, ID: p.ID}
+	})
+	return payments, page, nil
 }
 
 func (r *Repository) UpdatePaymentStatus(ctx context.Context, qe database.QueryExecutor, id uuid.UUID, status string) error {
@@ -714,4 +742,3 @@ func derefString(s *string) string {
 	}
 	return *s
 }
-

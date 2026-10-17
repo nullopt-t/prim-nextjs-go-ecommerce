@@ -146,20 +146,24 @@ func (s *UserService) GetUserByIdentifier(
 	return user, nil
 }
 
-// GetAllUsers queries a paginated list of non-deleted users matching optional role and status filters.
+// GetAllUsers queries a keyset-paginated list of non-deleted users matching optional role and status filters.
 func (s *UserService) GetAllUsers(
 	ctx context.Context,
 	q pagination.ListQuery,
 	role *string,
 	status *string,
-) ([]model.User, *pagination.Page, error) {
+) ([]model.User, *pagination.CursorPage, error) {
 	var users []model.User
-	var page *pagination.Page
+	var page *pagination.CursorPage
 
-	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		// PageSize/Offset are already clamped and overflow-safe from ListQuery.Process
+	cursor, err := q.Keyset()
+	if err != nil {
+		return nil, nil, apierr.BadRequestError("Invalid pagination cursor").Wrap(err)
+	}
+
+	err = s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		// PageSize is already clamped and overflow-safe from ListQuery.Process
 		limit := q.PageSize
-		offset := q.Offset
 
 		var searchPtr *string
 		if q.Search != "" {
@@ -171,12 +175,7 @@ func (s *UserService) GetAllUsers(
 			Status: status,
 			Search: searchPtr,
 			Limit:  limit,
-			Offset: offset,
-		}
-
-		totalCount, err := s.repo.CountUsers(ctx, db, filter)
-		if err != nil {
-			return err
+			Cursor: cursor,
 		}
 
 		uList, err := s.repo.ListUsers(ctx, db, filter)
@@ -184,8 +183,9 @@ func (s *UserService) GetAllUsers(
 			return err
 		}
 
-		users = uList
-		page = pagination.NewPage(q.Page, limit, totalCount)
+		users, page = pagination.NewCursorPageFrom(uList, limit, func(u model.User) pagination.Keyset {
+			return pagination.Keyset{CreatedAt: u.CreatedAt, ID: u.ID}
+		})
 		return nil
 	})
 

@@ -200,6 +200,8 @@ type ListCategoryOptions struct {
 	ListQuery        *pagination.ListQuery
 	IncludeDeleted   bool // set true for admin views
 	OnlyWithProducts bool // set true for public customer views to omit empty categories
+	// Cursor, when set, switches the query to keyset pagination on (created_at, id) DESC.
+	Cursor *pagination.Keyset
 }
 
 func (cr *CategoryRepository) List(
@@ -233,7 +235,62 @@ func (cr *CategoryRepository) List(
 		argID++
 	}
 
+	cursorMode := opts.Cursor != nil || q.KeysetMode
+	if opts.Cursor != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("(created_at, id) < ($%d, $%d)", argID, argID+1))
+		args = append(args, opts.Cursor.CreatedAt, opts.Cursor.ID)
+		argID += 2
+	}
+
 	whereStmt := strings.Join(whereClauses, " AND ")
+
+	if cursorMode {
+		selectQuery := fmt.Sprintf(`
+		SELECT
+			id,
+			parent_id,
+			name,
+			created_at,
+			updated_at,
+			deleted_at
+		FROM product_categories
+		WHERE %s
+		%s
+		LIMIT $%d
+	`, whereStmt, pagination.KeysetOrderBy(""), argID)
+
+		args = append(args, q.PageSize+1)
+
+		rows, err := qe.Query(ctx, selectQuery, args...)
+		if err != nil {
+			return nil, fmt.Errorf("list product categories query: %w", err)
+		}
+		defer rows.Close()
+
+		categories := make([]*model.ProductCategory, 0, q.PageSize)
+		for rows.Next() {
+			var cat model.ProductCategory
+			if err := rows.Scan(
+				&cat.ID,
+				&cat.ParentID,
+				&cat.Name,
+				&cat.CreatedAt,
+				&cat.UpdatedAt,
+				&cat.DeletedAt,
+			); err != nil {
+				return nil, fmt.Errorf("scan product category row: %w", err)
+			}
+			categories = append(categories, &cat)
+		}
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("iterate product category rows: %w", err)
+		}
+
+		items, page := pagination.NewCursorPageFrom(categories, q.PageSize, func(c *model.ProductCategory) pagination.Keyset {
+			return pagination.Keyset{CreatedAt: c.CreatedAt, ID: c.ID}
+		})
+		return pagination.NewCursorPagedResult(items, page), nil
+	}
 
 	// 1. Total matching count
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM product_categories WHERE %s", whereStmt)

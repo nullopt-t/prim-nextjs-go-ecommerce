@@ -12,6 +12,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
@@ -99,18 +100,21 @@ func (s *CouponService) GetByCode(ctx context.Context, code string) (*model.Coup
 	return c, nil
 }
 
-// ListCoupons returns all coupons matching the given filter.
-func (s *CouponService) ListCoupons(ctx context.Context, filter ListCouponFilter) ([]*model.Coupon, error) {
+// ListCoupons returns a keyset-paginated set of coupons matching the given filter.
+func (s *CouponService) ListCoupons(ctx context.Context, filter ListCouponFilter, limit int, cursor *pagination.Keyset) ([]*model.Coupon, *pagination.CursorPage, error) {
 	var list []*model.Coupon
+	var page *pagination.CursorPage
+	filter.Limit = limit
+	filter.Cursor = cursor
 	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
-		list, err = s.repo.List(ctx, db, filter)
+		list, page, err = s.repo.List(ctx, db, filter)
 		return err
 	})
 	if err != nil {
-		return nil, s.handleError(err, "Failed to list coupons")
+		return nil, nil, s.handleError(err, "Failed to list coupons")
 	}
-	return list, nil
+	return list, page, nil
 }
 
 // CreateCoupon validates and creates a new promotional coupon.
@@ -201,6 +205,26 @@ func (s *CouponService) Delete(ctx context.Context, id uuid.UUID) error {
 		return s.handleError(err, "Failed to delete coupon")
 	}
 	return nil
+}
+
+// ListRedemptions returns the usage log for a coupon, newest first. The coupon
+// is verified first so an unknown ID yields a 404 rather than an empty log.
+func (s *CouponService) ListRedemptions(ctx context.Context, couponID uuid.UUID, limit int, cursor *pagination.Keyset) ([]*RedemptionEntry, *pagination.CursorPage, error) {
+	if _, err := s.GetByID(ctx, couponID); err != nil {
+		return nil, nil, err
+	}
+
+	var list []*RedemptionEntry
+	var page *pagination.CursorPage
+	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		list, page, err = s.repo.ListRedemptions(ctx, db, couponID, limit, cursor)
+		return err
+	})
+	if err != nil {
+		return nil, nil, s.handleError(err, "Failed to list coupon redemptions")
+	}
+	return list, page, nil
 }
 
 // ValidateAndCalculate validates a coupon code against a gross cart subtotal and optional customer ID,

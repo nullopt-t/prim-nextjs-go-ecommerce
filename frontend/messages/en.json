@@ -135,6 +135,8 @@
   },
   "common": {
     "currency": "EGP",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
     "errors": {
       "loadTitle": "Couldn't load data",
       "loadDescription": "Something went wrong while loading this content. Please try again.",
@@ -908,7 +910,7 @@
       "subtitle": "Monitor real-time warehouse stock levels, perform manual adjustments, and track stock audit logs.",
       "searchPlaceholder": "Search inventory by product or SKU...",
       "currentStockLevels": "Current Stock Levels",
-      "catalogItems": "{count} catalog items",
+      "catalogItems": "{count} variants shown",
       "globalAuditLog": "Global Stock Audit Log",
       "viewAudit": "View Audit Trail",
       "units": "{count} units",
@@ -1102,6 +1104,42 @@
       "valid": "Valid: {date}",
       "usageProgress": "Usage Progress:",
       "typeLabel": "Type: {type}",
+      "type": {
+        "percentage": "Percentage",
+        "fixedAmount": "Fixed amount"
+      },
+      "colCode": "Code",
+      "colDiscount": "Discount",
+      "colUsage": "Usage",
+      "colValidity": "Validity",
+      "colStatus": "Status",
+      "colActions": "Actions",
+      "viewLog": "Usage log",
+      "log": {
+        "title": "Usage log — {code}",
+        "empty": "No one has used this code yet.",
+        "loadFailed": "Failed to load the usage log",
+        "loadMore": "Load more",
+        "colUser": "User",
+        "colOrder": "Order",
+        "colDiscount": "Discount",
+        "colDate": "Date",
+        "customer": "Customer",
+        "unknownUser": "Deleted user"
+      },
+      "share": {
+        "button": "Share as card",
+        "title": "Share promotion",
+        "promoCode": "PROMO CODE",
+        "cta": "Use this code at checkout",
+        "validUntil": "Valid until {date}",
+        "hint": "Copy the card and paste it into WhatsApp, Instagram, or any chat.",
+        "copyImage": "Copy image",
+        "download": "Download",
+        "copied": "Promotion card copied — paste it anywhere!",
+        "copyFailed": "Couldn't copy the card image",
+        "downloaded": "Promotion card downloaded"
+      },
       "confirmDelete": "Delete promo code?",
       "form": {
         "code": "Promo Code *",
@@ -1127,24 +1165,89 @@
     },
     "settings": {
       "title": "Store Configuration",
-      "subtitle": "Global store metadata, currency preferences, tax calculations, and API security keys.",
-      "storeProfile": "Store Profile",
-      "storeName": "Store Name",
-      "supportEmail": "Customer Support Email",
-      "currency": "Base Currency",
-      "timezone": "Timezone",
-      "shippingTax": "Shipping & Tax Rates",
-      "flatShipping": "Flat Shipping Rate (EGP)",
-      "freeShippingMin": "Free Shipping Minimum (EGP)",
-      "taxRate": "Standard Tax Rate (%)",
-      "apiKeys": "API Keys & Webhooks",
-      "apiKey": "Live Public API Key",
-      "webhookSecret": "Stripe Webhook Signing Secret",
+      "subtitle": "Global store metadata, regional preferences, delivery rules, checkout policies, and integrations.",
       "saveChanges": "Save Changes",
       "saving": "Saving…",
+      "tabs": {
+        "general": "General Profile",
+        "shipping": "Shipping & Delivery",
+        "payments": "Payments & Tax",
+        "notifications": "Notifications & Email",
+        "security": "Security & Integrations",
+        "system": "System"
+      },
+      "sections": {
+        "storeIdentity": "Store Identity",
+        "storeIdentityDesc": "Basic branding, contact details, and customer support channels.",
+        "regional": "Regional & Localization",
+        "regionalDesc": "Currency units, time zone rules, and language configurations.",
+        "announcement": "Storefront Announcement Banner",
+        "announcementDesc": "Display an alert or promotional ribbon across the top of the storefront.",
+        "deliveryRates": "Delivery Fees & Thresholds",
+        "deliveryRatesDesc": "Standard delivery pricing, free shipping qualification, and estimated arrival windows.",
+        "paymentMethods": "Accepted Payment Methods",
+        "paymentMethodsDesc": "Enable or disable customer checkout channels and handling surcharges.",
+        "taxRules": "Taxes & Checkout Rules",
+        "taxRulesDesc": "Value-added taxes and inventory holding duration during checkout.",
+        "emailNotifications": "Customer Notifications",
+        "emailNotificationsDesc": "Automated order lifecycle and delivery event notifications.",
+        "adminAlerts": "Staff & Management Alerts",
+        "adminAlertsDesc": "Internal email notifications for critical operational events.",
+        "apiKeys": "API Credentials & Webhooks",
+        "apiKeysDesc": "Payment gateway publishable keys and external webhook verification tokens.",
+        "maintenance": "Store Maintenance Mode",
+        "maintenanceDesc": "Temporarily pause storefront ordering for maintenance or stock replenishment.",
+        "cacheManagement": "Cache & Performance",
+        "cacheManagementDesc": "Control HTTP response caching headers, edge CDN propagation, and memory caches.",
+        "developerDiagnostics": "Diagnostics & Debugging",
+        "developerDiagnosticsDesc": "Developer flags, test bypass toggles, and backend log verbosity levels.",
+        "infrastructureHealth": "System Infrastructure Health",
+        "infrastructureHealthDesc": "Live status of core services and external microservices."
+      },
+      "fields": {
+        "storeName": "Store Name",
+        "storeEmail": "Support Email",
+        "storePhone": "Support Phone",
+        "storeAddress": "Store Address / Headquarters",
+        "currency": "Base Currency",
+        "timezone": "Timezone",
+        "defaultLocale": "Default Language",
+        "announcementEnabled": "Enable Top Announcement Banner",
+        "announcementText": "Announcement Text",
+        "flatShipping": "Standard Shipping Rate (EGP)",
+        "freeShippingMin": "Free Shipping Minimum (EGP)",
+        "estimatedDeliveryDays": "Estimated Delivery Window",
+        "allowCod": "Enable Cash on Delivery (COD)",
+        "codFee": "COD Handling Surcharge (EGP)",
+        "allowCards": "Enable Credit / Debit Cards",
+        "taxRate": "Standard Tax / VAT Rate (%)",
+        "pricesIncludeTax": "Catalog prices already include VAT / tax",
+        "cartReservationMinutes": "Cart Item Hold Duration (Minutes)",
+        "notifyOrderConfirmation": "Order Confirmation Email",
+        "notifyOrderShipped": "Shipping & Tracking Update Email",
+        "adminNotificationEmail": "Internal Notification Email",
+        "notifyLowStock": "Alert on low product inventory",
+        "apiKey": "Live Public API Key",
+        "webhookSecret": "Payment Webhook Secret",
+        "maintenanceMode": "Enable Storefront Maintenance Mode",
+        "maintenanceMessage": "Maintenance Notice Message",
+        "disableCache": "Disable Public HTTP & CDN Caching",
+        "disableCacheDesc": "Instructs browsers, CDNs, and proxies to always fetch fresh data without storing cache copies.",
+        "logLevel": "Server Log Verbosity",
+        "enableDevOtpBypass": "Allow Static Dev OTP (123456)",
+        "enableDevOtpBypassDesc": "Permits 123456 as a valid verification code for testing auth without third-party email providers.",
+        "mockEmailNotifications": "Mock Email Deliveries",
+        "mockEmailNotificationsDesc": "Logs email payloads to console instead of attempting outbound SMTP network connections."
+      },
+      "actions": {
+        "purgeCache": "Purge Server Cache",
+        "purging": "Purging…",
+        "cachePurged": "Cache purged successfully"
+      },
       "toast": {
         "saved": "Store configuration saved successfully!",
-        "saveFailed": "Failed to save settings"
+        "saveFailed": "Failed to save settings",
+        "loadFailed": "Failed to load settings"
       }
     },
     "layout": {
@@ -1171,12 +1274,42 @@
         "payments": "Payments",
         "media": "Media Library",
         "settings": "Settings",
+        "system": "System",
         "mediaLibrary": "Media Library",
         "usersStaff": "Users & Staff"
       },
       "badges": {
         "lowStock": "Low Stock",
         "newOrders": "4 New"
+      }
+    },
+    "system": {
+      "title": "System & Infrastructure",
+      "subtitle": "Cache invalidation controls, network performance rules, and live infrastructure operational metrics.",
+      "statusOnline": "All Systems Operational",
+      "saveChanges": "Save Changes",
+      "saving": "Saving…",
+      "cache": {
+        "title": "Cache & Performance",
+        "subtitle": "Manage HTTP response caching headers, edge CDN propagation, and memory caches.",
+        "disableCache": "Disable Public HTTP & CDN Caching",
+        "disableCacheDesc": "Instructs browsers, CDNs, and proxies to always fetch fresh data without storing cache copies."
+      },
+      "infrastructure": {
+        "title": "Core Services Health",
+        "subtitle": "Real-time heartbeat and connection status for backend database, queues, cache, and object storage.",
+        "healthy": "Healthy",
+        "allOperational": "100% Operational"
+      },
+      "actions": {
+        "purgeCache": "Purge Server Cache",
+        "purging": "Purging…",
+        "cachePurged": "Cache purged successfully",
+        "purgeFailed": "Failed to purge cache"
+      },
+      "toast": {
+        "saved": "System settings saved successfully!",
+        "saveFailed": "Failed to save system settings"
       }
     },
     "roles": {
@@ -1204,6 +1337,7 @@
       "inactive": "Inactive",
       "suspended": "Suspended",
       "disabled": "Disabled",
+      "archived": "Archived",
       "succeeded": "Succeeded",
       "outOfStock": "Out of Stock",
       "out of stock": "Out of Stock"
@@ -1289,6 +1423,12 @@
         "body": "This action will immediately delete all session tokens in Redis for this account. The user will be instantly logged out of all active web and mobile browsers on their next interaction.",
         "confirm": "Confirm Session Revocation"
       }
+    },
+    "pagination": {
+      "prev": "Previous page",
+      "next": "Next page",
+      "page": "Page {page}",
+      "showing": "Showing {shown}"
     }
   },
   "vendor": {
@@ -1558,6 +1698,7 @@
       "express": "Express",
       "standard": "Standard",
       "taxes": "Estimated Taxes",
+      "codFee": "Cash on Delivery Fee",
       "total": "Total to Pay",
       "secure": "Guaranteed Safe & Encrypted Checkout",
       "shipTo": "Ship To"
