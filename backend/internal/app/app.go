@@ -19,6 +19,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/notifier"
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/order"
+	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/user"
 	"github.com/minio/minio-go/v7"
 
@@ -304,6 +305,13 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	couponHandler := coupon.NewHandler(couponService)
 	couponRouter := coupon.NewRouter(couponHandler, sessionService)
 	couponRouter.MapRoutes(v1)
+
+	// settings
+	settingRepo := setting.NewRepository()
+	settingService := setting.NewService(txRunner, settingRepo)
+	settingHandler := setting.NewHandler(settingService)
+	settingRouter := setting.NewRouter(settingHandler, sessionService)
+	settingRouter.MapRoutes(v1)
 }
 
 func (app *App) Shutdown() {
