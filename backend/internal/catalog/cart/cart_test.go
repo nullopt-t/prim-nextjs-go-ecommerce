@@ -15,7 +15,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/auth"
 	"github.com/nullopt-t/prim-backend/internal/catalog/cart"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
-	"github.com/nullopt-t/prim-backend/internal/catalog/variant"
+	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/middleware"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/pkg/api"

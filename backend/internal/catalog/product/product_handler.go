@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/catalog/category"
-	"github.com/nullopt-t/prim-backend/internal/catalog/variant"
+	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/validation"
 	"github.com/nullopt-t/prim-backend/pkg/api"
