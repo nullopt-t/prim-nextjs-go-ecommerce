@@ -12,7 +12,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/catalog/review"
 	"github.com/nullopt-t/prim-backend/internal/catalog/tag"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
-	"github.com/nullopt-t/prim-backend/internal/catalog/wishlist"
+	"github.com/nullopt-t/prim-backend/internal/wishlist"
 	"github.com/nullopt-t/prim-backend/internal/checkout"
 	"github.com/nullopt-t/prim-backend/internal/http/swagger"
 	"github.com/nullopt-t/prim-backend/internal/middleware"

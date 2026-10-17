@@ -14,7 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/auth"
-	"github.com/nullopt-t/prim-backend/internal/catalog/wishlist"
+	"github.com/nullopt-t/prim-backend/internal/wishlist"
 	"github.com/nullopt-t/prim-backend/internal/middleware"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/pkg/api"
