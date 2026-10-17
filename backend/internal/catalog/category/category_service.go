@@ -253,33 +253,6 @@ func (cs *CategoryService) AdminList(
 	})
 }
 
-func (cs *CategoryService) ListAttributes(ctx context.Context) ([]AttributeItem, error) {
-	var list []AttributeItem
-	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		var err error
-		list, err = cs.repo.ListAttributes(ctx, db)
-		return err
-	})
-	return list, err
-}
-
-func (cs *CategoryService) CreateAttribute(ctx context.Context, ai *AttributeItem) error {
-	return cs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		if ai.ID == uuid.Nil {
-			ai.ID = uuid.New()
-		}
-		if ai.ValueType == "" {
-			ai.ValueType = "text"
-		}
-		return cs.repo.CreateAttribute(ctx, tx, ai)
-	})
-}
-
-func (cs *CategoryService) DeleteAttribute(ctx context.Context, id uuid.UUID) error {
-	return cs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {
-		return cs.repo.DeleteAttribute(ctx, tx, id)
-	})
-}
 
 func (cs *CategoryService) DeleteCategory(ctx context.Context, id uuid.UUID) error {
 	return cs.dr.WithTx(ctx, func(tx database.QueryExecutor) error {

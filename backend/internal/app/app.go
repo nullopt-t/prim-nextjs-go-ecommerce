@@ -5,6 +5,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/catalog/brand"
 	"github.com/nullopt-t/prim-backend/internal/catalog/cart"
 	"github.com/nullopt-t/prim-backend/internal/catalog/category"
+	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
 	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
@@ -165,6 +166,18 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	)
 	categoryRouter := category.NewRouter(categoryHandler, sessionService)
 	categoryRouter.MapRoutes(v1)
+
+	// attribute
+	attributeRepo := attribute.NewRepository()
+	attributeService := attribute.NewService(
+		txRunner,
+		attributeRepo,
+	)
+	attributeHandler := attribute.NewHandler(
+		attributeService,
+	)
+	attributeRouter := attribute.NewRouter(attributeHandler, sessionService)
+	attributeRouter.MapRoutes(v1)
 
 	// inventory
 	inventoryRepo := inventory.NewRepository()
