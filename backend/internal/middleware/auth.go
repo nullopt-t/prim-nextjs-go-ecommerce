@@ -85,14 +85,10 @@ func Authorize(allowedRoles ...model.UserRole) gin.HandlerFunc {
 	}
 }
 
-// extractSessionID extracts the session identifier from the session cookie or Authorization Bearer header.
+// extractSessionID extracts the session identifier from the session cookie.
 func extractSessionID(c *gin.Context) string {
 	if cookie, err := c.Cookie(SessionCookieName); err == nil && cookie != "" {
 		return cookie
-	}
-	authHeader := c.GetHeader("Authorization")
-	if strings.HasPrefix(authHeader, "Bearer ") {
-		return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 	}
 	return ""
 }
