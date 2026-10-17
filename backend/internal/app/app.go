@@ -258,7 +258,6 @@ func (app *App) setupRoutes(router *gin.Engine) {
 
 	authRouter := auth.NewRouter(
 		authHandler,
-		app.config.KeysCfg,
 		rateLimiter,
 		app.logger,
 		sessionService,
@@ -269,7 +268,6 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	userHandler := user.NewHandler(
 		userService,
 		rateLimiter,
-		app.config.KeysCfg,
 		app.logger,
 	)
 

@@ -10,19 +10,17 @@ import (
 // Router registers and manages HTTP route bindings for authentication flows,
 // public passwordless challenge handshakes, rate limiting policies, and protected session operations.
 type Router struct {
-	authHandler   *Handler
-	secrets       config.Secrets
-	limiter       middleware.RateLimiter
-	logger        log.Logger
-	sessionStore  middleware.SessionStore
-	rateLimitCfg  config.RateLimitConfig
+	authHandler  *Handler
+	limiter      middleware.RateLimiter
+	logger       log.Logger
+	sessionStore middleware.SessionStore
+	rateLimitCfg config.RateLimitConfig
 }
 
 // NewRouter constructs a new authentication router with dependencies needed for routing,
 // rate limiting enforcement, and session authentication middleware.
 func NewRouter(
 	ah *Handler,
-	secrets config.Secrets,
 	limiter middleware.RateLimiter,
 	logger log.Logger,
 	sessionStore middleware.SessionStore,
@@ -30,7 +28,6 @@ func NewRouter(
 ) *Router {
 	r := &Router{
 		authHandler:  ah,
-		secrets:      secrets,
 		limiter:      limiter,
 		logger:       logger,
 		sessionStore: sessionStore,

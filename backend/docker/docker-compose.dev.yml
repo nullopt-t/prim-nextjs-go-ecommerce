@@ -22,14 +22,7 @@ x-app-env: &app-env # Database
   # Server
   HTTP_PORT: "${HTTP_PORT:-8081}"
 
-  # JWT
-  JWT_ACCESS_SECRET: dev-access-secret
-  JWT_REFRESH_SECRET: dev-refresh-secret
-  JWT_RESET_PASS_SECRET: dev-reset-secret
-
   # Auth
-  JWT_ISSUER: prim
-  JWT_AUDIENCE: prim-api
   OTP_HASH_PEPPER: dev-otp-pepper-change-me-in-production
 
   # Client

@@ -40,7 +40,7 @@ Browser
 | Layer | Stack |
 | --- | --- |
 | Frontend | Next.js 16 (App Router), React 19, TypeScript 7, Tailwind CSS 4, next-intl, Sonner, Recharts |
-| Backend | Go 1.26, Gin, pgx, JWT, Swag |
+| Backend | Go 1.26, Gin, pgx, Swag |
 | Database | PostgreSQL 18 |
 | Cache & sessions | Redis 8 |
 | Messaging | Apache Kafka (KRaft) |

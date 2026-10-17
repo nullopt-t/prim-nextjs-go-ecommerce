@@ -34,11 +34,6 @@ minio:
   secret_key: "supersecret"
 
 secrets:
-  jwt_access_secret: "dev-access-secret"
-  jwt_refresh_secret: "dev-refresh-secret"
-  jwt_reset_pass_secret: "dev-reset-secret"
-  jwt_issuer: "prim"
-  jwt_audience: "prim-api"
   otp_hash_pepper: "dev-otp-pepper-change-me-in-production"
 
 auth:

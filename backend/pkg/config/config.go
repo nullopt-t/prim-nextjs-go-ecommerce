@@ -77,24 +77,9 @@ type SMTPConfig struct {
 	FromName string `yaml:"from_name" env:"SMTP_FROM_NAME" env-default:"Prim"`
 }
 
-// Secrets contains sensitive cryptographic keys used for JWT signing and verification.
+// Secrets contains sensitive cryptographic keys used by the authentication flow.
 // Default fallback values are strictly prohibited in production environments.
 type Secrets struct {
-	// JwtAccessTokenSecretKey signs short-lived user access tokens.
-	JwtAccessTokenSecretKey string `yaml:"jwt_access_secret" env:"JWT_ACCESS_SECRET" env-default:"jwt-access-secret-key"`
-
-	// JwtRefreshTokenSecretKey signs long-lived session refresh tokens.
-	JwtRefreshTokenSecretKey string `yaml:"jwt_refresh_secret" env:"JWT_REFRESH_SECRET" env-default:"jwt-refresh-secret-key"`
-
-	// JwtResetPassTokenSecretKey signs single-use password reset tokens.
-	JwtResetPassTokenSecretKey string `yaml:"jwt_reset_pass_secret" env:"JWT_RESET_PASS_SECRET" env-default:"jwt-reset-pass-secret-key"`
-
-	// JwtIssuer identifies the issuer of JWT tokens; validated at verification time.
-	JwtIssuer string `yaml:"jwt_issuer" env:"JWT_ISSUER" env-default:"prim"`
-
-	// JwtAudience is the intended audience of JWT tokens; validated at verification time.
-	JwtAudience string `yaml:"jwt_audience" env:"JWT_AUDIENCE" env-default:"prim-api"`
-
 	// OTPHashPepper is the server-side pepper keying HMAC-SHA-256 for OTP challenge hashes.
 	// It must be kept secret; it prevents precomputation attacks over the small OTP space
 	// if Redis contents are exposed. Never use the development default in production.
@@ -193,7 +178,7 @@ type Config struct {
 	// SMTPCfg holds outbound mail transport configuration.
 	SMTPCfg SMTPConfig `yaml:"smtp"`
 
-	// KeysCfg holds cryptographic keys for JWT tokens.
+	// KeysCfg holds cryptographic keys used by the authentication flow.
 	KeysCfg Secrets `yaml:"secrets"`
 
 	// SvPort is maintained for backward compatibility. Canonical source is ServerCfg.Port.
@@ -248,17 +233,8 @@ func Load(configPath ...string) (Config, error) {
 	// Post-processing durations & environment flags
 	cfg.IsProduction = strings.EqualFold(cfg.Env, "production")
 
-	// Validate production JWT secrets
+	// Validate production secrets
 	if cfg.IsProduction {
-		if cfg.KeysCfg.JwtAccessTokenSecretKey == "" || cfg.KeysCfg.JwtAccessTokenSecretKey == "jwt-access-secret-key" {
-			return cfg, fmt.Errorf("insecure default JWT access token secret key must not be used in production")
-		}
-		if cfg.KeysCfg.JwtRefreshTokenSecretKey == "" || cfg.KeysCfg.JwtRefreshTokenSecretKey == "jwt-refresh-secret-key" {
-			return cfg, fmt.Errorf("insecure default JWT refresh token secret key must not be used in production")
-		}
-		if cfg.KeysCfg.JwtResetPassTokenSecretKey == "" || cfg.KeysCfg.JwtResetPassTokenSecretKey == "jwt-reset-pass-secret-key" {
-			return cfg, fmt.Errorf("insecure default JWT reset password token secret key must not be used in production")
-		}
 		if cfg.KeysCfg.OTPHashPepper == "" || cfg.KeysCfg.OTPHashPepper == "dev-otp-pepper-change-me-in-production" {
 			return cfg, fmt.Errorf("insecure default OTP hash pepper must not be used in production")
 		}

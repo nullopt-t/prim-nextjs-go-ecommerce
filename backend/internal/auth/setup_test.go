@@ -121,12 +121,6 @@ func (s *AuthTestSuite) SetupSuite() {
 	userRepo := user.NewPostgresRepository()
 	userService := user.NewService(txRunner, userRepo, logger)
 
-	secrets := config.Secrets{
-		JwtAccessTokenSecretKey: "access",
-		JwtRefreshTokenSecretKey: "refresh",
-		JwtIssuer:               "test-issuer",
-		JwtAudience:             "test-audience",
-	}
 	authService := auth.NewAuthService(
 		logger,
 		challengeService,
@@ -148,7 +142,6 @@ func (s *AuthTestSuite) SetupSuite() {
 	rateLimiter := security.NewRateLimiter(s.redisClient)
 	authRouter := auth.NewRouter(
 		authHandler,
-		secrets,
 		rateLimiter,
 		logger,
 		sessionService,

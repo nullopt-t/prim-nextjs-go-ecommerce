@@ -10,7 +10,6 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/api/security"
-	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/log"
 
 	"github.com/gin-gonic/gin"
@@ -95,7 +94,6 @@ func ToUserListResponse(users []model.User) UsersResponse {
 type Handler struct {
 	userService *UserService
 	limiter     *security.RateLimiter
-	secrets     config.Secrets
 	logger      log.Logger
 }
 
@@ -103,13 +101,11 @@ type Handler struct {
 func NewHandler(
 	userService *UserService,
 	limiter *security.RateLimiter,
-	secrets config.Secrets,
 	logger log.Logger,
 ) *Handler {
 	return &Handler{
 		userService: userService,
 		limiter:     limiter,
-		secrets:     secrets,
 		logger:      logger,
 	}
 }

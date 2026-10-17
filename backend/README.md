@@ -9,7 +9,7 @@ The Go API behind PRIM: REST endpoints for the storefront and admin back office,
 - **Cache & sessions:** Redis 8
 - **Message broker:** Apache Kafka (KRaft)
 - **Object storage:** MinIO (S3-compatible)
-- **Auth:** JWT sessions stored in Redis, passwordless email OTP
+- **Auth:** Passwordless email OTP with server-side sessions stored in Redis
 - **API docs:** Swagger / OpenAPI, generated with `swag`
 - **Migrations:** `golang-migrate`
 - **Hot reload:** Air
@@ -131,8 +131,6 @@ Configuration comes from `configs/config.yaml`, overridden by environment variab
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_DB` | `localhost` / `6379` / empty / `0` | Redis |
 | `KAFKA_BROKERS` / `KAFKA_GROUP_ID` | `localhost:9092` / `prim-notification-workers` | Notification events |
 | `MINIO_ENDPOINT` / `MINIO_PUBLIC_URL` / `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | `minio:9000` / `http://localhost:9000` / `admin` / `supersecret` | Object storage |
-| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` / `JWT_RESET_PASS_SECRET` | dev secrets | Replace in production |
-| `JWT_ISSUER` / `JWT_AUDIENCE` | `prim` / `prim-api` | Token claims |
 | `OTP_HASH_PEPPER` | dev value | Peppers OTP hashes |
 | `CLIENT_BASE_URL` | `http://localhost:3000` | Used to build links in emails |
 | `CORS_ALLOWED_ORIGINS` | — | Comma-separated allow list |
