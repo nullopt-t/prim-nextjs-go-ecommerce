@@ -107,7 +107,7 @@ export function UserSlideOverDrawer({
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             
             {/* Quick Status Bar */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="p-3.5 rounded-xl bg-secondary/30 border border-border flex flex-col gap-1">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("modals.drawer.accessRole")}</span>
                 <span className="text-xs font-bold text-foreground capitalize">

@@ -267,53 +267,55 @@ export function AdminCategories() {
       </div>
 
       <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
-        <table className="w-full text-start text-xs">
-          <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
-            <tr>
-              <th className="py-3.5 ps-4">{t("categories.colName")}</th>
-              <th className="py-3.5">{t("categories.colSlug")}</th>
-              <th className="py-3.5">{t("categories.colParent")}</th>
-              <th className="py-3.5">{t("categories.colProducts")}</th>
-              <th className="py-3.5">{t("categories.colStatus")}</th>
-              <th className="py-3.5 pe-4 text-end">{t("categories.colActions")}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/60">
-            {filtered.map((cat) => (
-              <tr key={cat.id} className="hover:bg-secondary/20 transition-colors">
-                <td className="py-3.5 ps-4 font-semibold text-foreground flex items-center gap-2">
-                  <FolderTree className="size-4 text-accent-brand" />
-                  <span>{cat.name}</span>
-                </td>
-                <td className="py-3.5 font-mono text-muted-foreground">{cat.slug}</td>
-                <td className="py-3.5 text-muted-foreground">{cat.parent}</td>
-                <td className="py-3.5 font-bold text-foreground">{t("categories.items", { count: cat.productsCount })}</td>
-                <td className="py-3.5 text-foreground">{cat.status}</td>
-                <td className="py-3.5 pe-4 text-end">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <button
-                      onClick={() => setViewingCategoryAttrs(cat)}
-                      className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border flex items-center gap-1.5 transition-colors"
-                      title={t("categories.manageAttributes")}
-                    >
-                      <SlidersHorizontal className="size-3.5 text-accent-brand" />
-                      <span>{t("categories.attributes")}</span>
-                      <span className="px-1.5 py-0.5 rounded-md bg-background text-[10px] font-bold text-muted-foreground">
-                        {categoryAttributes(cat.id).length}
-                      </span>
-                    </button>
-                    <button onClick={() => handleOpenModal(cat)} className="p-1.5 text-muted-foreground hover:text-accent-brand rounded-lg">
-                      <Edit2 className="size-4" />
-                    </button>
-                    <button onClick={() => handleDelete(cat.id)} className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg">
-                      <Trash2 className="size-4" />
-                    </button>
-                  </div>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-max text-start text-xs">
+            <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
+              <tr>
+                <th className="py-3.5 ps-4">{t("categories.colName")}</th>
+                <th className="py-3.5">{t("categories.colSlug")}</th>
+                <th className="py-3.5">{t("categories.colParent")}</th>
+                <th className="py-3.5">{t("categories.colProducts")}</th>
+                <th className="py-3.5">{t("categories.colStatus")}</th>
+                <th className="py-3.5 pe-4 text-end">{t("categories.colActions")}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {filtered.map((cat) => (
+                <tr key={cat.id} className="hover:bg-secondary/20 transition-colors">
+                  <td className="py-3.5 ps-4 font-semibold text-foreground flex items-center gap-2">
+                    <FolderTree className="size-4 text-accent-brand" />
+                    <span>{cat.name}</span>
+                  </td>
+                  <td className="py-3.5 font-mono text-muted-foreground">{cat.slug}</td>
+                  <td className="py-3.5 text-muted-foreground">{cat.parent}</td>
+                  <td className="py-3.5 font-bold text-foreground">{t("categories.items", { count: cat.productsCount })}</td>
+                  <td className="py-3.5 text-foreground">{cat.status}</td>
+                  <td className="py-3.5 pe-4 text-end">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        onClick={() => setViewingCategoryAttrs(cat)}
+                        className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border flex items-center gap-1.5 transition-colors"
+                        title={t("categories.manageAttributes")}
+                      >
+                        <SlidersHorizontal className="size-3.5 text-accent-brand" />
+                        <span>{t("categories.attributes")}</span>
+                        <span className="px-1.5 py-0.5 rounded-md bg-background text-[10px] font-bold text-muted-foreground">
+                          {categoryAttributes(cat.id).length}
+                        </span>
+                      </button>
+                      <button onClick={() => handleOpenModal(cat)} className="p-1.5 text-muted-foreground hover:text-accent-brand rounded-lg">
+                        <Edit2 className="size-4" />
+                      </button>
+                      <button onClick={() => handleDelete(cat.id)} className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg">
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <CursorPager
           hasPrev={hasPrev}

@@ -370,7 +370,7 @@ export function AdminProducts() {
       {/* Products Table */}
       <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-start text-xs">
+          <table className="w-full min-w-max text-start text-xs">
             <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
               <tr>
                 <th className="py-3.5 ps-4">{t("products.colProduct")}</th>
@@ -501,7 +501,7 @@ export function AdminProducts() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-foreground">{t("products.form.sku")}</label>
                   <input
@@ -527,7 +527,7 @@ export function AdminProducts() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-foreground">{t("products.form.price")}</label>
                   <input

@@ -208,7 +208,7 @@ export function AdminDashboard() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-start text-xs">
+              <table className="w-full min-w-max text-start text-xs">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
                     <th className="pb-3 ps-2">{t("dashboard.orderId")}</th>

@@ -119,7 +119,7 @@ export function SuspendUserModal({ user, isOpen, onClose, onConfirm }: SuspendUs
                 <label className="text-xs font-semibold text-foreground uppercase tracking-wider block">
                   {t("modals.suspend.duration")}
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {[
                     { id: "24h", label: t("modals.suspend.duration24h") },
                     { id: "7d", label: t("modals.suspend.duration7d") },

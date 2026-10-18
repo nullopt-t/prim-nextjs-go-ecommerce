@@ -257,7 +257,7 @@ export function AdminPromotions() {
 
       <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-start text-xs">
+          <table className="w-full min-w-max text-start text-xs">
             <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
               <tr>
                 <th className="py-3.5 ps-4">
@@ -377,7 +377,7 @@ export function AdminPromotions() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-foreground">{t("promotions.form.discountType")}</label>
                   <select
@@ -448,7 +448,7 @@ export function AdminPromotions() {
                   {t("promotions.log.empty")}
                 </p>
               ) : (
-                <table className="w-full text-start text-xs">
+                <table className="w-full min-w-max text-start text-xs">
                   <thead className="text-muted-foreground font-semibold uppercase tracking-wider border-b border-border">
                     <tr>
                       <th className="py-2.5">{t("promotions.log.colUser")}</th>

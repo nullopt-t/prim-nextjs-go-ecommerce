@@ -156,7 +156,7 @@ export function AdminAudit() {
 
       <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-start text-xs">
+          <table className="w-full min-w-max text-start text-xs">
             <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
               <tr>
                 <th className="py-3.5 ps-4 text-start">{t("audit.colTime")}</th>
@@ -246,7 +246,7 @@ export function AdminAudit() {
                 <X className="size-5" />
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
               <div>
                 <strong>{t("audit.colTime")}:</strong> {formatDateTime(detail.createdAt)}
               </div>

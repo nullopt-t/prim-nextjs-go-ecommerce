@@ -162,7 +162,7 @@ export function AdminInventory() {
             <span className="text-xs text-muted-foreground">{t("inventory.catalogItems", { count: products.length })}</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-start text-xs">
+            <table className="w-full min-w-max text-start text-xs">
               <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
                 <tr>
                   <th className="py-3 ps-4">{t("inventory.colProduct")}</th>
