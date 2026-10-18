@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { UploadCloud, Search, Trash2, Copy, Check, Eye, X } from "lucide-react";
 import { adminService } from "@/services/admin";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useAuthContext } from "@/context/AuthContext";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { formatDateTime } from "@/lib/datetime";
@@ -11,6 +11,7 @@ import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
 
 export function AdminMedia() {
   const t = useTranslations("admin");
+  const locale = useLocale();
   const { user } = useAuthContext();
   const isSuperadmin = user?.role === "superadmin";
   const [mediaList, setMediaList] = useState<any[]>([]);
@@ -36,7 +37,7 @@ export function AdminMedia() {
         type: (m.contentType || "").includes("image") ? "Image" : "Media",
         dimensions: "1200x1200",
         url: m.url || `http://localhost:9000/${m.bucket || "product-media"}/${m.objectKey}`,
-        uploadedAt: formatDateTime(m.createdAt)
+        uploadedAt: formatDateTime(m.createdAt, locale)
       })));
       if (res?.meta) setMeta(res.meta);
     } catch {
@@ -44,7 +45,7 @@ export function AdminMedia() {
     } finally {
       setLoading(false);
     }
-  }, [cursor]);
+  }, [cursor, locale]);
 
   useEffect(() => {
     loadMedia();
@@ -164,20 +165,44 @@ export function AdminMedia() {
 
       {previewItem && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-foreground truncate">{previewItem.name}</h3>
-              <button onClick={() => setPreviewItem(null)} className="text-muted-foreground hover:text-foreground">
+          <div className="bg-background border border-border rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-border">
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("media.preview")}
+                </div>
+                <h3 className="font-bold text-base text-foreground truncate">{previewItem.name}</h3>
+              </div>
+              <button
+                onClick={() => setPreviewItem(null)}
+                className="-me-1 shrink-0 rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                aria-label={t("actions.close")}
+              >
                 <X className="size-5" />
               </button>
             </div>
-            <div className="aspect-square rounded-xl overflow-hidden border border-border">
-              <img src={previewItem.url} alt={previewItem.name} className="w-full h-full object-contain bg-black/5" />
-            </div>
-            <div className="text-xs text-muted-foreground space-y-1">
-              <div><strong>{t("media.size")}</strong> {previewItem.size}</div>
-              <div><strong>{t("media.dimensions")}</strong> {previewItem.dimensions}</div>
-              <div><strong>{t("media.uploaded")}</strong> {previewItem.uploadedAt}</div>
+            <div className="p-5 space-y-4">
+              <div className="aspect-square rounded-xl overflow-hidden border border-border">
+                <img src={previewItem.url} alt={previewItem.name} className="w-full h-full object-contain bg-black/5" />
+              </div>
+              <dl className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 text-xs">
+                <div className="space-y-0.5">
+                  <dt className="font-medium text-muted-foreground">{t("media.size")}</dt>
+                  <dd className="text-foreground font-mono" dir="ltr">
+                    {previewItem.size}
+                  </dd>
+                </div>
+                <div className="space-y-0.5">
+                  <dt className="font-medium text-muted-foreground">{t("media.dimensions")}</dt>
+                  <dd className="text-foreground font-mono" dir="ltr">
+                    {previewItem.dimensions}
+                  </dd>
+                </div>
+                <div className="space-y-0.5">
+                  <dt className="font-medium text-muted-foreground">{t("media.uploaded")}</dt>
+                  <dd className="text-foreground">{previewItem.uploadedAt}</dd>
+                </div>
+              </dl>
             </div>
           </div>
         </div>

@@ -189,51 +189,72 @@ export function AdminSessions() {
 
       {detail && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <ShieldAlert className="size-4 text-accent-brand" />
-                {t("sessions.detailTitle")}
-              </h3>
+          <div className="bg-background border border-border rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-border">
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("sessions.detailTitle")}
+                </div>
+                <h3 className="font-bold text-base text-foreground flex items-center gap-2">
+                  <ShieldAlert className="size-4 text-accent-brand shrink-0" />
+                  <span className="truncate">{detail.fullName || detail.email}</span>
+                </h3>
+              </div>
               <button
                 onClick={() => setDetail(null)}
-                className="text-muted-foreground hover:text-foreground"
+                className="-me-1 shrink-0 rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                 aria-label={t("actions.close")}
               >
                 <X className="size-5" />
               </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-muted-foreground">
-              <div className="col-span-2">
-                <strong className="text-foreground">{t("sessions.colUser")}:</strong>{" "}
-                {detail.fullName || detail.email} ({detail.email})
+
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 px-5 py-5 text-xs">
+              <div className="sm:col-span-2 space-y-0.5">
+                <dt className="font-medium text-muted-foreground">{t("sessions.colUser")}</dt>
+                <dd className="text-foreground" dir="ltr">
+                  {detail.fullName ? `${detail.fullName} (${detail.email})` : detail.email}
+                </dd>
               </div>
-              <div>
-                <strong className="text-foreground">{t("sessions.colRole")}:</strong> {detail.role}
+              <div className="space-y-0.5">
+                <dt className="font-medium text-muted-foreground">{t("sessions.colRole")}</dt>
+                <dd>
+                  <span
+                    className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${roleBadge(detail.role)}`}
+                  >
+                    {t(`roles.${detail.role}`)}
+                  </span>
+                </dd>
               </div>
-              <div>
-                <strong className="text-foreground">{t("sessions.colIp")}:</strong> {detail.ipAddress || "—"}
+              <div className="space-y-0.5">
+                <dt className="font-medium text-muted-foreground">{t("sessions.colIp")}</dt>
+                <dd className="text-foreground font-mono" dir="ltr">
+                  {detail.ipAddress || "—"}
+                </dd>
               </div>
-              <div>
-                <strong className="text-foreground">{t("sessions.colCreated")}:</strong>{" "}
-                {formatDateTime(detail.createdAt, locale)}
+              <div className="space-y-0.5">
+                <dt className="font-medium text-muted-foreground">{t("sessions.colCreated")}</dt>
+                <dd className="text-foreground">{formatDateTime(detail.createdAt, locale)}</dd>
               </div>
-              <div>
-                <strong className="text-foreground">{t("sessions.colLastActive")}:</strong>{" "}
-                {formatDateTime(detail.lastActive, locale)}
+              <div className="space-y-0.5">
+                <dt className="font-medium text-muted-foreground">{t("sessions.colLastActive")}</dt>
+                <dd className="text-foreground">{formatDateTime(detail.lastActive, locale)}</dd>
               </div>
-              <div className="col-span-2 break-all">
-                <strong className="text-foreground">{t("sessions.colDevice")}:</strong>{" "}
-                {detail.userAgent || "—"}
+              <div className="sm:col-span-2 space-y-0.5">
+                <dt className="font-medium text-muted-foreground">{t("sessions.sessionId")}</dt>
+                <dd className="text-foreground font-mono break-all" dir="ltr">
+                  {detail.id}
+                </dd>
               </div>
-              <div className="col-span-2">
-                <strong className="text-foreground">{t("sessions.sessionId")}:</strong>{" "}
-                <span className="font-mono text-[10px]">
-                  {detail.id.length > 16 ? `${detail.id.slice(0, 16)}…` : detail.id}
-                </span>
+              <div className="sm:col-span-2 space-y-0.5">
+                <dt className="font-medium text-muted-foreground">{t("sessions.colDevice")}</dt>
+                <dd className="text-foreground break-all" dir="ltr">
+                  {detail.userAgent || "—"}
+                </dd>
               </div>
-            </div>
-            <div className="flex justify-end">
+            </dl>
+
+            <div className="flex justify-end px-5 pb-5">
               <button
                 onClick={() => handleRevoke(detail)}
                 disabled={detail.current || revoking === detail.id}
