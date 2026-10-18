@@ -1383,7 +1383,15 @@
       "archived": "مؤرشف",
       "succeeded": "تم بنجاح",
       "outOfStock": "نفذ المخزون",
-      "out of stock": "نفذ المخزون"
+      "out of stock": "نفذ المخزون",
+      "paid": "مدفوع",
+      "refunded": "مسترد",
+      "failed": "فشل",
+      "authorized": "مصرّح به",
+      "captured": "محصّل",
+      "draft": "مسودة",
+      "published": "منشور",
+      "deleted": "محذوف"
     },
     "modals": {
       "processing": "جارٍ المعالجة...",

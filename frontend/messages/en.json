@@ -1383,7 +1383,15 @@
       "archived": "Archived",
       "succeeded": "Succeeded",
       "outOfStock": "Out of Stock",
-      "out of stock": "Out of Stock"
+      "out of stock": "Out of Stock",
+      "paid": "Paid",
+      "refunded": "Refunded",
+      "failed": "Failed",
+      "authorized": "Authorized",
+      "captured": "Captured",
+      "draft": "Draft",
+      "published": "Published",
+      "deleted": "Deleted"
     },
     "modals": {
       "processing": "Processing...",
