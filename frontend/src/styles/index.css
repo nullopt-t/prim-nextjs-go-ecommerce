@@ -131,4 +131,24 @@ input {
 	.rtable td > * {
 		min-width: 0;
 	}
+
+	/* Cells holding several values (e.g. name + email): keep the label beside
+	   the first line and stack the remaining values underneath it instead of
+	   spreading them across the row. */
+	.rtable td:has(> * + *) {
+		display: grid;
+		grid-template-columns: max-content minmax(0, 1fr);
+		align-items: start;
+		column-gap: 0.75rem;
+	}
+
+	.rtable td:has(> * + *)::before {
+		grid-column: 1;
+		max-width: none;
+		overflow-wrap: normal;
+	}
+
+	.rtable td:has(> * + *) > * {
+		grid-column: 2;
+	}
 }

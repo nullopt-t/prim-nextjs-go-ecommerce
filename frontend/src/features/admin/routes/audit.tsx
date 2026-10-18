@@ -99,8 +99,8 @@ export function AdminAudit() {
       </div>
 
       <div className="bg-background border border-border rounded-2xl p-4 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-          <div className="relative lg:col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="relative sm:col-span-2">
             <Search className="absolute start-3 top-2.5 size-4 text-muted-foreground" />
             <input
               type="text"
@@ -124,19 +124,19 @@ export function AdminAudit() {
             onChange={(e) => setDraft((d) => ({ ...d, actorId: e.target.value }))}
             className={`${inputClass} font-mono`}
           />
-          <div className="flex items-center gap-2 lg:col-span-2">
+          <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-4">
             <input
               type="date"
               value={draft.from}
               onChange={(e) => setDraft((d) => ({ ...d, from: e.target.value }))}
-              className={inputClass}
+              className={`${inputClass} sm:w-auto`}
             />
             <span className="text-muted-foreground text-xs">–</span>
             <input
               type="date"
               value={draft.to}
               onChange={(e) => setDraft((d) => ({ ...d, to: e.target.value }))}
-              className={inputClass}
+              className={`${inputClass} sm:w-auto`}
             />
           </div>
         </div>
@@ -180,35 +180,28 @@ export function AdminAudit() {
                   <td className="py-3.5 ps-4 text-muted-foreground whitespace-nowrap">
                     {formatDateTime(entry.createdAt, locale)}
                   </td>
-                  <td className="py-3.5">
-                    <div className="font-semibold text-foreground">{entry.actorRole || "—"}</div>
-                    <div className="font-mono text-[10px] text-muted-foreground">
-                      {entry.actorId ? `${entry.actorId.slice(0, 8)}…` : "—"}
-                    </div>
+                  <td className="py-3.5 font-semibold text-foreground">{entry.actorRole || "—"}</td>
+                  <td className="py-3.5 font-mono font-semibold text-foreground">
+                    <span dir="ltr">{entry.action}</span>
                   </td>
-                  <td className="py-3.5 font-mono font-semibold text-foreground">{entry.action}</td>
-                  <td className="py-3.5 text-muted-foreground">
-                    <span className="font-semibold text-foreground">{entry.entityType || "—"}</span>
-                    {entry.entityId ? (
-                      <span className="font-mono text-[10px] ms-1">
-                        {entry.entityId.length > 12 ? `${entry.entityId.slice(0, 12)}…` : entry.entityId}
-                      </span>
-                    ) : null}
+                  <td className="py-3.5 font-semibold text-foreground">
+                    <span dir="ltr">{entry.entityType || "—"}</span>
                   </td>
                   <td className="py-3.5">
-                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-secondary/60 text-muted-foreground">
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-secondary/60 text-muted-foreground" dir="ltr">
                       {entry.method}
                     </span>
                   </td>
                   <td className="py-3.5">
                     <span
                       className={`font-mono font-bold text-[11px] px-1.5 py-0.5 rounded ${statusTone(entry.statusCode)}`}
+                      dir="ltr"
                     >
                       {entry.statusCode}
                     </span>
                   </td>
                   <td className="py-3.5 pe-4 font-mono text-[10px] text-muted-foreground">
-                    {entry.ipAddress || "—"}
+                    {entry.ipAddress ? <span dir="ltr">{entry.ipAddress}</span> : "—"}
                   </td>
                 </tr>
               ))}
@@ -239,7 +232,7 @@ export function AdminAudit() {
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-background border border-border rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-foreground font-mono">{detail.action}</h3>
+              <h3 className="font-bold text-sm text-foreground font-mono" dir="ltr">{detail.action}</h3>
               <button
                 onClick={() => setDetail(null)}
                 className="text-muted-foreground hover:text-foreground"
@@ -253,19 +246,29 @@ export function AdminAudit() {
                 <strong>{t("audit.colTime")}:</strong> {formatDateTime(detail.createdAt, locale)}
               </div>
               <div>
-                <strong>{t("audit.colActor")}:</strong> {detail.actorRole} ({detail.actorId || "—"})
+                <strong>{t("audit.colActor")}:</strong> {detail.actorRole}{" "}
+                <span dir="ltr">({detail.actorId || "—"})</span>
               </div>
               <div>
-                <strong>{t("audit.colEntity")}:</strong> {detail.entityType} / {detail.entityId || "—"}
+                <strong>{t("audit.colEntity")}:</strong>{" "}
+                <span dir="ltr">
+                  {detail.entityType} / {detail.entityId || "—"}
+                </span>
               </div>
               <div>
-                <strong>{t("audit.colStatus")}:</strong> {detail.statusCode}
+                <strong>{t("audit.colStatus")}:</strong> <span dir="ltr">{detail.statusCode}</span>
               </div>
               <div className="col-span-2">
-                <strong>{t("audit.colMethod")}:</strong> {detail.method} {detail.path}
+                <strong>{t("audit.colMethod")}:</strong>{" "}
+                <span dir="ltr">
+                  {detail.method} {detail.path}
+                </span>
               </div>
               <div className="col-span-2">
-                <strong>{t("audit.colIp")}:</strong> {detail.ipAddress} — {detail.userAgent}
+                <strong>{t("audit.colIp")}:</strong>{" "}
+                <span dir="ltr">
+                  {detail.ipAddress} — {detail.userAgent}
+                </span>
               </div>
             </div>
             {detail.after && (
