@@ -18,7 +18,7 @@ import {
   ExternalLink 
 } from "lucide-react";
 import { AdminUser } from "@/services/admin";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { notify } from "@/lib/notify";
 import { formatDateTime } from "@/lib/datetime";
 import { ROLE_RANKS } from "@/lib/roles";
@@ -47,6 +47,7 @@ export function UserSlideOverDrawer({
   const [copied, setCopied] = useState(false);
   const t = useTranslations("admin");
 
+  const locale = useLocale();
   if (!isOpen || !user) return null;
 
   const copyToClipboard = (text: string) => {
@@ -71,8 +72,8 @@ export function UserSlideOverDrawer({
         onClick={onClose}
       />
 
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-card border-l border-border shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-200">
+      <div className="fixed inset-y-0 right-0 rtl:left-0 rtl:right-auto max-w-full flex ps-10 pe-0 rtl:ps-0 rtl:pe-10">
+        <div className="w-screen max-w-md bg-card border-s border-border shadow-2xl flex flex-col justify-between animate-in slide-in-from-right rtl:slide-in-from-left duration-200">
           
           {/* Header */}
           <div className="p-6 border-b border-border bg-muted/20 flex items-start justify-between">
@@ -170,7 +171,7 @@ export function UserSlideOverDrawer({
                     <Calendar className="size-3.5" /> {t("modals.drawer.registered")}
                   </span>
                   <span className="font-medium text-foreground">
-                    {formatDateTime(user.createdAt)}
+                    {formatDateTime(user.createdAt, locale)}
                   </span>
                 </div>
 
@@ -179,7 +180,7 @@ export function UserSlideOverDrawer({
                     <Clock className="size-3.5" /> {t("modals.drawer.lastModified")}
                   </span>
                   <span className="font-medium text-foreground">
-                    {formatDateTime(user.updatedAt)}
+                    {formatDateTime(user.updatedAt, locale)}
                   </span>
                 </div>
 
@@ -187,7 +188,7 @@ export function UserSlideOverDrawer({
                   <div className="flex justify-between items-center pt-2 border-t border-border/60 text-rose-600 dark:text-rose-400">
                     <span className="font-semibold">{t("modals.drawer.suspensionExpires")}</span>
                     <span className="font-mono text-[11px]">
-                      {formatDateTime(user.suspendedUntil)}
+                      {formatDateTime(user.suspendedUntil, locale)}
                     </span>
                   </div>
                 )}
@@ -196,7 +197,7 @@ export function UserSlideOverDrawer({
                   <div className="flex justify-between items-center pt-2 border-t border-border/60 text-amber-600 dark:text-amber-400">
                     <span className="font-semibold">{t("modals.drawer.lockExpires")}</span>
                     <span className="font-mono text-[11px]">
-                      {formatDateTime(user.lockedUntil)}
+                      {formatDateTime(user.lockedUntil, locale)}
                     </span>
                   </div>
                 )}

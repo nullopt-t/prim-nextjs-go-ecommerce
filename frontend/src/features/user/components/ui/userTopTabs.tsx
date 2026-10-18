@@ -46,7 +46,7 @@ export default function UserTopTabs() {
       {isStaff && (
         <Link
           href="/admin/customers"
-          className="ml-auto py-1 px-2.5 rounded-lg bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 text-xs font-bold transition-all hover:bg-purple-500/20 flex items-center gap-1.5 whitespace-nowrap"
+          className="ms-auto py-1 px-2.5 rounded-lg bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 text-xs font-bold transition-all hover:bg-purple-500/20 flex items-center gap-1.5 whitespace-nowrap"
         >
           <Shield className="size-3.5" />
           <span>{t("adminConsole")}</span>

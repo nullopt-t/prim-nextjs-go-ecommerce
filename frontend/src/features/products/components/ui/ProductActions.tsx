@@ -70,7 +70,7 @@ export function ProductActions({
       <div className="flex items-center gap-4 mb-6">
         <div className="flex items-center gap-1.5">
           <Stars starsNum={stars} />
-          <span className="text-sm font-medium text-foreground ml-1">{stars}</span>
+          <span className="text-sm font-medium text-foreground ms-1">{stars}</span>
         </div>
         <div className="w-1 h-1 rounded-full bg-border" />
         <span className="text-sm text-muted-foreground underline decoration-dashed cursor-pointer hover:text-foreground transition-colors">
@@ -97,7 +97,7 @@ export function ProductActions({
       {colors.length > 0 && (
         <fieldset className="flex flex-col gap-3 mb-8">
           <legend className="text-sm font-medium text-foreground">
-            {t("actions.color")} <span className="text-muted-foreground ml-1">{colors[selectedColor]?.name || ""}</span>
+            {t("actions.color")} <span className="text-muted-foreground ms-1">{colors[selectedColor]?.name || ""}</span>
           </legend>
           <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label={t("actions.selectColor")}>
             {colors.map((color, idx) => {

@@ -76,7 +76,7 @@ export function ProductReviews({
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <span className="w-10 text-right text-xs text-muted-foreground">{pct}%</span>
+                    <span className="w-10 text-end text-xs text-muted-foreground">{pct}%</span>
                   </div>
                 );
               })}

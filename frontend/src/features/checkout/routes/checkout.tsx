@@ -326,7 +326,7 @@ export function Checkout() {
 							{t("success.desc")}
 						</p>
 
-						<div className="w-full bg-secondary/40 border border-border/80 rounded-2xl p-6 text-left mb-8 flex flex-col gap-4">
+						<div className="w-full bg-secondary/40 border border-border/80 rounded-2xl p-6 text-start mb-8 flex flex-col gap-4">
 							<div className="flex justify-between items-center pb-3 border-b border-border/50 text-sm">
 								<span className="text-muted-foreground font-medium">{t("success.orderNumber")}</span>
 								<span className="font-mono font-bold text-foreground">{completedOrder.id}</span>

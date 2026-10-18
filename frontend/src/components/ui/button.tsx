@@ -24,7 +24,7 @@ export function CustomButton({
       onClick={onClick}
       {...props}
     >
-      {icon && <span className="inline-block mr-2">{icon}</span>}
+      {icon && <span className="inline-block me-2">{icon}</span>}
       {text || children}
     </button>
   );

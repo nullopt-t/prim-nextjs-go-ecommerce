@@ -53,7 +53,7 @@ export function QuantitySelector({
         type="button"
         onClick={handleDecrement}
         disabled={disabled || currentValue <= min}
-        className="h-full flex-1 flex items-center justify-center border-r border-border/80 hover:bg-secondary/70 transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer text-sm font-semibold"
+        className="h-full flex-1 flex items-center justify-center border-e border-border/80 hover:bg-secondary/70 transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer text-sm font-semibold"
       >
         -
       </button>
@@ -64,7 +64,7 @@ export function QuantitySelector({
         type="button"
         onClick={handleIncrement}
         disabled={disabled || currentValue >= max}
-        className="h-full flex-1 flex items-center justify-center border-l border-border/80 hover:bg-secondary/70 transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer text-sm font-semibold"
+        className="h-full flex-1 flex items-center justify-center border-s border-border/80 hover:bg-secondary/70 transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer text-sm font-semibold"
       >
         +
       </button>

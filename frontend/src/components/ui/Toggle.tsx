@@ -21,7 +21,7 @@ export function Toggle({ isEnabled, onChange }: ToggleProps) {
         ${isEnabled ? "bg-accent-brand" : "bg-switch-background"}
         
         before:absolute
-        before:left-0.5
+        before:start-0.5
         before:top-0.5
         before:h-5
         before:w-5
@@ -31,7 +31,7 @@ export function Toggle({ isEnabled, onChange }: ToggleProps) {
         before:content-['']
         before:transition-transform
         before:duration-300
-        ${isEnabled ? "before:translate-x-6" : ""}
+        ${isEnabled ? "before:translate-x-6 rtl:before:-translate-x-6" : ""}
       `}
     >
       <input
