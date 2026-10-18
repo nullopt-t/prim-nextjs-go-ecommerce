@@ -98,7 +98,7 @@ export function AdminAudit() {
       </div>
 
       <div className="bg-background border border-border rounded-2xl p-4 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="relative lg:col-span-2">
             <Search className="absolute start-3 top-2.5 size-4 text-muted-foreground" />
             <input
@@ -123,7 +123,7 @@ export function AdminAudit() {
             onChange={(e) => setDraft((d) => ({ ...d, actorId: e.target.value }))}
             className={`${inputClass} font-mono`}
           />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 lg:col-span-2">
             <input
               type="date"
               value={draft.from}
