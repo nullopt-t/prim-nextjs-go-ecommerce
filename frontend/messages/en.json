@@ -1249,7 +1249,8 @@
         "saved": "Store configuration saved successfully!",
         "saveFailed": "Failed to save settings",
         "loadFailed": "Failed to load settings"
-      }
+      },
+      "superadminOnly": "Only superadmins can change store settings"
     },
     "layout": {
       "toggleNav": "Toggle Navigation",
@@ -1350,7 +1351,8 @@
       "toast": {
         "saved": "System settings saved successfully!",
         "saveFailed": "Failed to save system settings"
-      }
+      },
+      "superadminOnly": "Only superadmins can change system settings"
     },
     "roles": {
       "superadmin": "Superadmin",

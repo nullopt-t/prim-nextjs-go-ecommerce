@@ -351,13 +351,15 @@ export function AdminCustomers() {
 
                           {canManageUser && (
                             <>
-                              <button
-                                onClick={() => setRoleModalUser(u)}
-                                className="p-1.5 rounded-lg text-purple-600 hover:text-purple-700 hover:bg-purple-500/10 transition-colors"
-                                title={t("customers.changeRole")}
-                              >
-                                <Shield className="size-4" />
-                              </button>
+                              {currentUser?.role === "superadmin" && (
+                                <button
+                                  onClick={() => setRoleModalUser(u)}
+                                  className="p-1.5 rounded-lg text-purple-600 hover:text-purple-700 hover:bg-purple-500/10 transition-colors"
+                                  title={t("customers.changeRole")}
+                                >
+                                  <Shield className="size-4" />
+                                </button>
+                              )}
 
                               <button
                                 onClick={() => setRevokeModalUser(u)}

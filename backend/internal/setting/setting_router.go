@@ -29,7 +29,8 @@ func (r *SettingRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	)
 	{
 		admin.GET("", r.handler.GetSettings)
-		admin.PUT("", r.handler.UpdateSettings)
+		// PUT /admin/settings mutates global storefront configuration: Superadmin only.
+		admin.PUT("", middleware.Authorize(model.SuperRole), r.handler.UpdateSettings)
 	}
 }
 

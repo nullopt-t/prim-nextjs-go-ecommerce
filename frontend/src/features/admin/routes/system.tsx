@@ -16,6 +16,7 @@ import {
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { adminService, type SystemHealthReport, type SystemServiceHealth } from "@/services/admin";
 import { useTranslations } from "next-intl";
+import { useAuthContext } from "@/context/AuthContext";
 
 const DEFAULT_SYSTEM_SETTINGS: Record<string, any> = {
   disableCache: false,
@@ -120,6 +121,8 @@ function Sparkline({ values, className }: { values: number[]; className?: string
 
 export function AdminSystem() {
   const t = useTranslations("admin");
+  const { user } = useAuthContext();
+  const isSuperadmin = user?.role === "superadmin";
   const [settings, setSettings] = useState<Record<string, any>>({ ...DEFAULT_SYSTEM_SETTINGS });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -296,7 +299,8 @@ export function AdminSystem() {
 
         <button
           onClick={() => handleSave()}
-          disabled={saving || loading}
+          disabled={saving || loading || !isSuperadmin}
+          title={!isSuperadmin ? t("system.superadminOnly") : undefined}
           className="flex items-center gap-2 px-5 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0 disabled:opacity-50 cursor-pointer"
         >
           <Save className="size-4" />

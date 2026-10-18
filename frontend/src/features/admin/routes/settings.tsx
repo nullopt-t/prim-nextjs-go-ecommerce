@@ -21,6 +21,7 @@ import {
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
+import { useAuthContext } from "@/context/AuthContext";
 
 type SettingsTab = "general" | "shipping" | "payments" | "notifications" | "security";
 
@@ -66,6 +67,8 @@ const DEFAULT_SETTINGS: Record<string, any> = {
 
 export function AdminSettings() {
   const t = useTranslations("admin");
+  const { user } = useAuthContext();
+  const isSuperadmin = user?.role === "superadmin";
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [settings, setSettings] = useState<Record<string, any>>({ ...DEFAULT_SETTINGS });
   const [loading, setLoading] = useState(true);
@@ -134,7 +137,8 @@ export function AdminSettings() {
 
         <button
           onClick={() => handleSave()}
-          disabled={saving || loading}
+          disabled={saving || loading || !isSuperadmin}
+          title={!isSuperadmin ? t("settings.superadminOnly") : undefined}
           className="flex items-center gap-2 px-5 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0 disabled:opacity-50"
         >
           <Save className="size-4" />

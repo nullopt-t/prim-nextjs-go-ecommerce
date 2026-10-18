@@ -556,8 +556,18 @@ func (s *OrderService) ListPayments(ctx context.Context, filter PaymentListFilte
 
 // UpdatePaymentStatus changes the status of a payment record.
 func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, status string) error {
+	if !model.PaymentStatus(status).IsValid() {
+		return apierr.BadRequestError(fmt.Sprintf("Invalid payment status '%s'", status)).WithCode(apierr.CodeInvalidInput)
+	}
 	return s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		return s.orderRepo.UpdatePaymentStatus(ctx, tx, id, status)
+		err := s.orderRepo.UpdatePaymentStatus(ctx, tx, id, status)
+		if err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.NotFoundError("Payment not found").WithCode(apierr.CodeNotFound)
+			}
+			return err
+		}
+		return nil
 	})
 }
 

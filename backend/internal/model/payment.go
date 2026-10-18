@@ -23,6 +23,18 @@ const (
 	StatusRefunded PaymentStatus = "refunded"
 )
 
+// IsValid reports whether the status matches one of the database enum values
+// for payment_status. It guards status writes against invalid input before the
+// value reaches PostgreSQL's stricter enum cast.
+func (s PaymentStatus) IsValid() bool {
+	switch s {
+	case StatusPending, StatusAuthorized, StatusCaptured, StatusFailed, StatusRefunded:
+		return true
+	default:
+		return false
+	}
+}
+
 // Payment represents a customer payment transaction record matching the 'payments' table schema.
 type Payment struct {
 	// ID is the unique database UUID for the payment record.

@@ -55,8 +55,9 @@ func (r *OrderRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	{
 		adminRoot.GET("/dashboard", r.handler.GetDashboard)
 		adminRoot.GET("/payments", r.handler.ListPayments)
-		adminRoot.PATCH("/payments/:id/status", r.handler.UpdatePaymentStatus)
-		adminRoot.POST("/payments/:id/refund", r.handler.RefundPayment)
+		// Payment mutations move money and are irreversible: Superadmin only.
+		adminRoot.PATCH("/payments/:id/status", middleware.Authorize(model.SuperRole), r.handler.UpdatePaymentStatus)
+		adminRoot.POST("/payments/:id/refund", middleware.Authorize(model.SuperRole), r.handler.RefundPayment)
 	}
 
 	// Customer order endpoints group: protected by customer session authentication.

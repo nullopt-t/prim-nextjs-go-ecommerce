@@ -72,15 +72,15 @@ func (h *Handler) GetPublicSettings(c *gin.Context) {
 
 // UpdateSettings godoc
 //
-//	@Summary		Update administrative settings
-//	@Description	Upserts the provided key/value settings within a single transaction.
+//	@Summary		Update administrative settings (Superadmin)
+//	@Description	Upserts the provided key/value settings within a single transaction. Superadmin only.
 //	@Tags			Admin Settings
 //	@Accept			json
 //	@Produce		json
 //	@Param			data	body		UpdateSettingsRequest					true	"Settings key/value payload"
 //	@Failure		400		{object}	api.BadRequestErrorResponse				"Invalid request body"
 //	@Failure		401		{object}	api.UnauthorizedErrorResponse			"Authentication required"
-//	@Failure		403		{object}	api.ForbiddenErrorResponse				"Admin privileges required"
+//	@Failure		403		{object}	api.ForbiddenErrorResponse				"Superadmin privileges required"
 //	@Failure		500		{object}	api.InternalServerErrorResponse			"Internal server error"
 //	@Success		200		{object}	api.MessageResponse						"Update confirmation message"
 //	@Router			/admin/settings [put]

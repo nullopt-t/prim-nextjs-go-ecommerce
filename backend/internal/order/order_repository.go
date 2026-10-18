@@ -767,8 +767,14 @@ func (r *Repository) ListPayments(ctx context.Context, qe database.QueryExecutor
 
 func (r *Repository) UpdatePaymentStatus(ctx context.Context, qe database.QueryExecutor, id uuid.UUID, status string) error {
 	query := `UPDATE payments SET status = $1::payment_status, updated_at = NOW() WHERE id = $2`
-	_, err := qe.Exec(ctx, query, status, id)
-	return err
+	tag, err := qe.Exec(ctx, query, status, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
 }
 
 // GetPaymentStatusForUpdate locks a payment row and returns its current status.

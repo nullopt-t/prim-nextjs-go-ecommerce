@@ -61,6 +61,7 @@ export function UserSlideOverDrawer({
   const callerRank = ROLE_RANKS[currentUserRole?.toLowerCase() || "customer"] || 1;
   const targetRank = ROLE_RANKS[user.role?.toLowerCase() || "customer"] || 1;
   const canManage = !isSelf && callerRank > targetRank;
+  const isSuperadmin = currentUserRole?.toLowerCase() === "superadmin";
 
   return (
     <div className="fixed inset-0 z-40 overflow-hidden">
@@ -219,16 +220,18 @@ export function UserSlideOverDrawer({
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  <button
-                    onClick={() => onChangeRole(user)}
-                    className="w-full py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-secondary text-foreground text-xs font-semibold transition-colors flex items-center justify-between"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Shield className="size-4 text-purple-500" />
-                      {t("modals.drawer.changeRole")}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground uppercase">{t("roles.superadmin")}</span>
-                  </button>
+                  {isSuperadmin && (
+                    <button
+                      onClick={() => onChangeRole(user)}
+                      className="w-full py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-secondary text-foreground text-xs font-semibold transition-colors flex items-center justify-between"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Shield className="size-4 text-purple-500" />
+                        {t("modals.drawer.changeRole")}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground uppercase">{t("roles.superadmin")}</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={() => onSuspend(user)}

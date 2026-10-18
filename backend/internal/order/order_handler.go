@@ -508,13 +508,16 @@ func (h *OrderHandler) ListPayments(c *gin.Context) {
 
 // UpdatePaymentStatus godoc
 //
-//	@Summary		Update payment status (Admin)
-//	@Description	Updates status of a payment transaction.
+//	@Summary		Update payment status (Superadmin)
+//	@Description	Updates status of a payment transaction. Superadmin only.
 //	@Tags			Admin Payments
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string	true	"Payment UUID"
 //	@Param			status	body		map[string]string	true	"Status"
+//	@Failure		400		{object}	api.BadRequestErrorResponse	"Invalid UUID, body, or payment status"
+//	@Failure		403		{object}	api.ForbiddenErrorResponse	"Superadmin privileges required"
+//	@Failure		404		{object}	api.NotFoundErrorResponse	"Payment not found"
 //	@Success		200		{object}	api.MessageResponse
 //	@Router			/admin/payments/{id}/status [patch]
 func (h *OrderHandler) UpdatePaymentStatus(c *gin.Context) {
@@ -533,7 +536,7 @@ func (h *OrderHandler) UpdatePaymentStatus(c *gin.Context) {
 	}
 
 	if err := h.orderService.UpdatePaymentStatus(c.Request.Context(), id, req.Status); err != nil {
-		_ = c.Error(apierr.InternalServerError("Failed to update payment status").Wrap(err))
+		_ = c.Error(err)
 		return
 	}
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Payment status updated successfully"})
@@ -541,11 +544,15 @@ func (h *OrderHandler) UpdatePaymentStatus(c *gin.Context) {
 
 // RefundPayment godoc
 //
-//	@Summary		Refund payment (Admin)
-//	@Description	Marks a payment transaction as refunded.
+//	@Summary		Refund payment (Superadmin)
+//	@Description	Marks a payment transaction as refunded. Superadmin only.
 //	@Tags			Admin Payments
 //	@Produce		json
 //	@Param			id	path		string	true	"Payment UUID"
+//	@Failure		400		{object}	api.BadRequestErrorResponse	"Invalid payment UUID"
+//	@Failure		403		{object}	api.ForbiddenErrorResponse	"Superadmin privileges required"
+//	@Failure		404		{object}	api.NotFoundErrorResponse	"Payment not found"
+//	@Failure		409		{object}	api.ConflictErrorResponse	"Payment is not in a refundable state"
 //	@Success		200	{object}	api.MessageResponse
 //	@Router			/admin/payments/{id}/refund [post]
 func (h *OrderHandler) RefundPayment(c *gin.Context) {

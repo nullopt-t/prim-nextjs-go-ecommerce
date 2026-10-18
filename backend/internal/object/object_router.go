@@ -27,6 +27,7 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	{
 		admin.GET("", r.handler.ListMedia)
 		admin.POST("", r.handler.UploadMedia)
-		admin.DELETE("/:id", r.handler.DeleteMedia)
+		// DELETE /admin/media/:id destructively removes stored objects: Superadmin only.
+		admin.DELETE("/:id", middleware.Authorize(model.SuperRole), r.handler.DeleteMedia)
 	}
 }

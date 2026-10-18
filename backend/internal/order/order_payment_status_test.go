@@ -1,0 +1,103 @@
+package order_test
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/nullopt-t/prim-backend/internal/order"
+	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/database"
+)
+
+// paymentStatusExecutor returns a caller-controlled command tag so tests can
+// simulate both an updated row and a missing payment (UPDATE 0).
+type paymentStatusExecutor struct{ tag pgconn.CommandTag }
+
+func (e paymentStatusExecutor) Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error) {
+	return e.tag, nil
+}
+
+func (e paymentStatusExecutor) Query(context.Context, string, ...interface{}) (pgx.Rows, error) {
+	return nil, nil
+}
+
+func (e paymentStatusExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Row { return nil }
+
+type paymentStatusRunner struct{ tag pgconn.CommandTag }
+
+func (r paymentStatusRunner) WithTx(_ context.Context, fn func(context.Context, database.QueryExecutor) error) error {
+	return fn(context.Background(), paymentStatusExecutor{tag: r.tag})
+}
+
+func (r paymentStatusRunner) WithDB(_ context.Context, fn func(database.QueryExecutor) error) error {
+	return fn(paymentStatusExecutor{tag: r.tag})
+}
+
+func TestUpdatePaymentStatusValidation(t *testing.T) {
+	updated := pgconn.NewCommandTag("UPDATE 1")
+	missing := pgconn.NewCommandTag("UPDATE 0")
+
+	cases := []struct {
+		name       string
+		tag        pgconn.CommandTag
+		status     string
+		wantStatus int
+		wantCode   string
+		wantErr    bool
+	}{
+		{
+			name:   "valid status updates the row",
+			tag:    updated,
+			status: "captured",
+		},
+		{
+			name:       "unknown status is a bad request",
+			tag:        updated,
+			status:     "bogus",
+			wantStatus: 400,
+			wantCode:   apierr.CodeInvalidInput,
+			wantErr:    true,
+		},
+		{
+			name:       "empty status is a bad request",
+			tag:        updated,
+			status:     "",
+			wantStatus: 400,
+			wantCode:   apierr.CodeInvalidInput,
+			wantErr:    true,
+		},
+		{
+			name:       "missing payment is not found",
+			tag:        missing,
+			status:     "captured",
+			wantStatus: 404,
+			wantCode:   apierr.CodeNotFound,
+			wantErr:    true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := order.NewService(paymentStatusRunner{tag: tc.tag}, order.NewRepository(), nil)
+
+			err := svc.UpdatePaymentStatus(context.Background(), uuid.New(), tc.status)
+			if !tc.wantErr {
+				require.NoError(t, err)
+				return
+			}
+
+			require.Error(t, err)
+			var apiErr *apierr.APIError
+			require.True(t, errors.As(err, &apiErr))
+			assert.Equal(t, tc.wantStatus, apiErr.Status)
+			assert.Equal(t, tc.wantCode, apiErr.Code)
+		})
+	}
+}

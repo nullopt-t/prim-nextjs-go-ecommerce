@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { CheckCircle2, RefreshCcw, Search, Download } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
+import { useAuthContext } from "@/context/AuthContext";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { ErrorState } from "@/components/ui/errorState";
 import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
@@ -9,6 +10,9 @@ import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
 
 export function AdminPayments() {
   const t = useTranslations("admin");
+  const { user } = useAuthContext();
+  const isSuperadmin = user?.role === "superadmin";
+
   const [payments, setPayments] = useState<any[]>([]);
   const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [loading, setLoading] = useState(true);
@@ -187,7 +191,7 @@ export function AdminPayments() {
                     {t(`status.${String(pay.status).toLowerCase()}`) || pay.status}
                   </td>
                   <td className="py-3.5 pe-4 text-end space-x-2">
-                    {pay.status === "Pending" && (
+                    {isSuperadmin && pay.status === "Pending" && (
                       <button
                         onClick={() => handleMarkPaid(pay)}
                         className="px-2.5 py-1 text-[11px] font-semibold text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg transition-colors inline-flex items-center gap-1"
@@ -196,7 +200,7 @@ export function AdminPayments() {
                         <span>{t("payments.markPaid")}</span>
                       </button>
                     )}
-                    {pay.status === "Succeeded" && (
+                    {isSuperadmin && pay.status === "Succeeded" && (
                       <button
                         onClick={() => handleIssueRefund(pay)}
                         className="px-2.5 py-1 text-[11px] font-semibold text-destructive bg-destructive/10 hover:bg-destructive/20 rounded-lg transition-colors inline-flex items-center gap-1"

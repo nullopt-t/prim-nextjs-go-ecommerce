@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { UploadCloud, Search, Trash2, Copy, Check, Eye, X } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
+import { useAuthContext } from "@/context/AuthContext";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { formatDateTime } from "@/lib/datetime";
 import { ErrorState } from "@/components/ui/errorState";
@@ -10,6 +11,8 @@ import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
 
 export function AdminMedia() {
   const t = useTranslations("admin");
+  const { user } = useAuthContext();
+  const isSuperadmin = user?.role === "superadmin";
   const [mediaList, setMediaList] = useState<any[]>([]);
   const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [loading, setLoading] = useState(true);
@@ -129,9 +132,11 @@ export function AdminMedia() {
                 <button onClick={() => handleCopyUrl(item.url, item.id)} className="p-2 bg-white/90 text-black rounded-lg hover:bg-white" title={t("media.copyLink")}>
                   {copiedId === item.id ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
                 </button>
-                <button onClick={() => handleDelete(item.id)} className="p-2 bg-white/90 text-red-600 rounded-lg hover:bg-white" title={t("actions.delete")}>
-                  <Trash2 className="size-4" />
-                </button>
+                {isSuperadmin && (
+                  <button onClick={() => handleDelete(item.id)} className="p-2 bg-white/90 text-red-600 rounded-lg hover:bg-white" title={t("actions.delete")}>
+                    <Trash2 className="size-4" />
+                  </button>
+                )}
               </div>
             </div>
             <div className="p-3 border-t border-border">
