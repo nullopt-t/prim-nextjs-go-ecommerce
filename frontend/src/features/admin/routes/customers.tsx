@@ -21,7 +21,7 @@ import { ChangeRoleModal } from "../components/ChangeRoleModal";
 import { SuspendUserModal } from "../components/SuspendUserModal";
 import { RevokeSessionsModal } from "../components/RevokeSessionsModal";
 import { useAuthContext } from "@/context/AuthContext";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { ErrorState } from "@/components/ui/errorState";
 import { ROLE_RANKS } from "@/lib/roles";
@@ -29,6 +29,7 @@ import { ROLE_RANKS } from "@/lib/roles";
 export function AdminCustomers() {
   const { user: currentUser } = useAuthContext();
   const t = useTranslations("admin");
+  const locale = useLocale();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
 
@@ -332,7 +333,7 @@ export function AdminCustomers() {
 
                       {/* Joined Date */}
                       <td className="py-3 px-4 whitespace-nowrap text-muted-foreground font-mono text-[11px]">
-                        {new Date(u.createdAt).toLocaleDateString(undefined, {
+                        {new Date(u.createdAt).toLocaleDateString(locale, {
                           year: "numeric",
                           month: "short",
                           day: "numeric",

@@ -244,21 +244,27 @@
           "desc": "Immerse yourself with premium acoustic performance and noise-canceling headphones crafted for daily focus.",
           "highlight": "Pure Sound.",
           "tag": "Featured Collection",
-          "title": "Next-Gen Audio & Gear"
+          "title": "Next-Gen Audio & Gear",
+          "badge": "DEAL OF THE DAY",
+          "productAlt": "Premium Wireless Headphones"
         },
         "slide2": {
           "cta": "Shop Tech Deals",
           "desc": "Upgrade your desk setup with ultra-slim mechanical keyboards, ergonomic monitors, and precision accessories.",
           "highlight": "Up to 40% Off.",
           "tag": "Special Offers",
-          "title": "Smart Tech Essentials"
+          "title": "Smart Tech Essentials",
+          "badge": "TOP TECH PICK",
+          "productAlt": "Custom Mechanical Keyboards"
         },
         "slide3": {
           "cta": "Discover More",
           "desc": "Timeless watches, handcrafted leather bags, and sleek everyday carry items built with modern utility.",
           "highlight": "Designed to Last.",
           "tag": "New Arrivals",
-          "title": "Minimalist Lifestyle"
+          "title": "Minimalist Lifestyle",
+          "badge": "CERTIFIED REFURBISHED",
+          "productAlt": "Smart Lifestyle Watch"
         }
       },
       "title": "Everything you need, ",
@@ -996,7 +1002,10 @@
         "enterTracking": "Please enter a tracking number",
         "noteAdded": "Note added to timeline!",
         "noteFailed": "Failed to add timeline note"
-      }
+      },
+      "orderPlaced": "Order placed successfully.",
+      "noShippingAddress": "No shipping address provided",
+      "orderItem": "Order Item"
     },
     "orders": {
       "title": "Customer Orders",
@@ -1886,7 +1895,7 @@
       "description": "The public customer storefront is segregated from internal operations. Choose which workspace environment you wish to launch:",
       "includedFeatures": "Included Features:",
       "launch": "Launch {portal}",
-      "returnNote": "You can return to this Route Manager anytime at {code}/portal{/code} or via the floating Portal Switcher."
+      "returnNote": "You can return to this Route Manager anytime at <code>/portal</code> or via the floating Portal Switcher."
     },
     "cards": {
       "public": {

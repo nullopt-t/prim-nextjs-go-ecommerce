@@ -4,7 +4,7 @@ import { ResponsiveTable } from "@/components/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
 import { Search, X, ScrollText } from "lucide-react";
 import { adminService, type AuditLogEntry } from "@/services/admin";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { ErrorState } from "@/components/ui/errorState";
 import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
@@ -28,6 +28,7 @@ const emptyFilters: AuditFilters = {
 
 export function AdminAudit() {
   const t = useTranslations("admin");
+  const locale = useLocale();
   const [entries, setEntries] = useState<AuditLogEntry[]>([]);
   const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [loading, setLoading] = useState(true);
@@ -177,7 +178,7 @@ export function AdminAudit() {
                   className="hover:bg-secondary/20 transition-colors cursor-pointer"
                 >
                   <td className="py-3.5 ps-4 text-muted-foreground whitespace-nowrap">
-                    {formatDateTime(entry.createdAt)}
+                    {formatDateTime(entry.createdAt, locale)}
                   </td>
                   <td className="py-3.5">
                     <div className="font-semibold text-foreground">{entry.actorRole || "—"}</div>
@@ -249,7 +250,7 @@ export function AdminAudit() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
               <div>
-                <strong>{t("audit.colTime")}:</strong> {formatDateTime(detail.createdAt)}
+                <strong>{t("audit.colTime")}:</strong> {formatDateTime(detail.createdAt, locale)}
               </div>
               <div>
                 <strong>{t("audit.colActor")}:</strong> {detail.actorRole} ({detail.actorId || "—"})

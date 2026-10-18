@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { userService } from "@/services/user";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { formatDateTime } from "@/lib/datetime";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useAuthContext } from "@/context/AuthContext";
 import { useRouter } from "@/i18n/navigation";
 import { Laptop, Smartphone, Globe, Shield, Trash2, RefreshCw, LogOut } from "lucide-react";
@@ -30,6 +30,7 @@ function parseDevice(userAgent?: string) {
 
 export default function ActiveSessions() {
   const t = useTranslations("settings.sessions");
+  const locale = useLocale();
   const { logout } = useAuthContext();
   const router = useRouter();
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -156,7 +157,7 @@ export default function ActiveSessions() {
                         {(session.lastActive || session.lastSeenAt) && (
                           <>
                             <span>•</span>
-                            <span>{formatDateTime(session.lastActive || session.lastSeenAt)}</span>
+                            <span>{formatDateTime(session.lastActive || session.lastSeenAt, locale)}</span>
                           </>
                         )}
                       </div>

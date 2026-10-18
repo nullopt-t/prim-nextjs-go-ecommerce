@@ -4,7 +4,7 @@ import { ResponsiveTable } from "@/components/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
 import { MonitorSmartphone, RefreshCcw, ShieldAlert, X } from "lucide-react";
 import { adminService, type StaffSession } from "@/services/admin";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { ErrorState } from "@/components/ui/errorState";
 import { formatDateTime } from "@/lib/datetime";
@@ -13,6 +13,7 @@ const STAFF_ROLES = ["all", "superadmin", "admin", "support", "vendor"] as const
 
 export function AdminSessions() {
   const t = useTranslations("admin");
+  const locale = useLocale();
   const [sessions, setSessions] = useState<StaffSession[]>([]);
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
@@ -150,10 +151,10 @@ export function AdminSessions() {
                     {session.ipAddress || "—"}
                   </td>
                   <td className="py-3.5 text-muted-foreground whitespace-nowrap">
-                    {formatDateTime(session.createdAt)}
+                    {formatDateTime(session.createdAt, locale)}
                   </td>
                   <td className="py-3.5 text-muted-foreground whitespace-nowrap">
-                    {formatDateTime(session.lastActive)}
+                    {formatDateTime(session.lastActive, locale)}
                   </td>
                   <td className="py-3.5 pe-4 text-end" onClick={(e) => e.stopPropagation()}>
                     <button
@@ -215,11 +216,11 @@ export function AdminSessions() {
               </div>
               <div>
                 <strong className="text-foreground">{t("sessions.colCreated")}:</strong>{" "}
-                {formatDateTime(detail.createdAt)}
+                {formatDateTime(detail.createdAt, locale)}
               </div>
               <div>
                 <strong className="text-foreground">{t("sessions.colLastActive")}:</strong>{" "}
-                {formatDateTime(detail.lastActive)}
+                {formatDateTime(detail.lastActive, locale)}
               </div>
               <div className="col-span-2 break-all">
                 <strong className="text-foreground">{t("sessions.colDevice")}:</strong>{" "}

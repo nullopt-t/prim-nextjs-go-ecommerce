@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   const { theme, toggle } = useTheme();
   const t = useTranslations("auth");
+  const tFooter = useTranslations("common.footer");
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col justify-between selection:bg-accent-brand/20">
@@ -41,7 +42,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
 
       {/* Bottom flat footer without top border line */}
       <footer className="w-full px-3 sm:px-6 lg:px-8 text-center py-4 text-xs text-muted-foreground">
-        © {new Date().getFullYear()} PRIM. All rights reserved.
+        {tFooter("copyright", { year: new Date().getFullYear() })}
       </footer>
     </div>
   );

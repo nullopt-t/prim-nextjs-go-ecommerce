@@ -1,7 +1,7 @@
 import { ResponsiveTable } from "@/components/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "@/i18n/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Search, Filter, Eye, Download } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { notify, apiErrorMessage } from "@/lib/notify";
@@ -13,6 +13,7 @@ import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
 export function AdminOrders() {
   const navigate = useRouter();
   const t = useTranslations("admin");
+  const locale = useLocale();
   const [orders, setOrders] = useState<any[]>([]);
   const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [loading, setLoading] = useState(true);
@@ -40,20 +41,20 @@ export function AdminOrders() {
         id: so.id,
         customer: so.customerEmail ? so.customerEmail.split("@")[0] : "Customer",
         email: so.customerEmail || "customer@example.com",
-        date: formatDateTime(so.createdAt),
+        date: formatDateTime(so.createdAt, locale),
         total: `EGP ${((so.totalAmount || 0) / 100).toFixed(2)}`,
         discount: so.discountAmount ? `EGP ${((so.discountAmount || 0) / 100).toFixed(2)}` : null,
         couponCode: so.couponCode || null,
         status: so.status ? so.status.toLowerCase() : "pending",
         fulfillmentStatus: so.status === "shipped" || so.status === "delivered" ? "Fulfilled" : "Unfulfilled",
-        paymentStatus: so.status === "cancelled" ? "Canceled" : "Paid",
+        paymentStatus: so.status === "cancelled" ? "cancelled" : "paid",
         items: Array.isArray(so.items) ? so.items.length : 0,
         shippingAddress: so.shippingAddress ? `${so.shippingAddress.street || ""}, ${so.shippingAddress.city || ""}` : "Online Order",
         paymentMethod: so.paymentMethod || "—",
         trackingNumber: so.trackingNumber || "",
         itemsList: so.items || [],
         history: [
-          { date: formatDateTime(so.createdAt), note: "Order placed successfully." }
+          { date: formatDateTime(so.createdAt, locale), note: "Order placed successfully." }
         ]
       }));
       setOrders(formatted);
@@ -223,7 +224,7 @@ export function AdminOrders() {
                     )}
                   </td>
                   <td className="py-3.5 text-foreground">
-                    {order.paymentStatus}
+                    {t(`status.${order.paymentStatus}`)}
                   </td>
                   <td className="py-3.5">
                     <select

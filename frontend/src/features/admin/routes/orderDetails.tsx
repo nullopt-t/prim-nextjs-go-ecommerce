@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Truck, Clock, MapPin, CreditCard, User, Tag } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { notify, apiErrorMessage } from "@/lib/notify";
@@ -13,6 +13,7 @@ export function AdminOrderDetails() {
   const navigate = useRouter();
   const t = useTranslations("admin");
 
+  const locale = useLocale();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [trackingNumber, setTrackingNumber] = useState("");
@@ -31,7 +32,7 @@ export function AdminOrderDetails() {
           id: remoteOrder.id,
           customer: remoteOrder.customerEmail ? remoteOrder.customerEmail.split("@")[0] : "Customer",
           email: remoteOrder.customerEmail || "customer@example.com",
-          date: formatDateTime(remoteOrder.createdAt),
+          date: formatDateTime(remoteOrder.createdAt, locale),
           total: `EGP ${((remoteOrder.totalAmount || 0) / 100).toFixed(2)}`,
           discount: remoteOrder.discountAmount ? `EGP ${((remoteOrder.discountAmount || 0) / 100).toFixed(2)}` : null,
           discountAmount: remoteOrder.discountAmount || 0,
@@ -39,12 +40,12 @@ export function AdminOrderDetails() {
           couponId: remoteOrder.couponId || null,
           status: remoteOrder.status ? remoteOrder.status.toLowerCase() : "pending",
           fulfillmentStatus: remoteOrder.status === "shipped" || remoteOrder.status === "delivered" ? "Fulfilled" : "Unfulfilled",
-          paymentStatus: remoteOrder.status === "cancelled" ? "Canceled" : "Paid",
-          shippingAddress: remoteOrder.shippingAddress ? `${remoteOrder.shippingAddress.street || ""}, ${remoteOrder.shippingAddress.city || ""}, ${remoteOrder.shippingAddress.state || ""} ${remoteOrder.shippingAddress.postalCode || ""}` : "No shipping address provided",
+          paymentStatus: remoteOrder.status === "cancelled" ? "cancelled" : "paid",
+          shippingAddress: remoteOrder.shippingAddress ? `${remoteOrder.shippingAddress.street || ""}, ${remoteOrder.shippingAddress.city || ""}, ${remoteOrder.shippingAddress.state || ""} ${remoteOrder.shippingAddress.postalCode || ""}` : t("orderDetails.noShippingAddress"),
           paymentMethod: remoteOrder.paymentMethod || "—",
           trackingNumber: remoteOrder.trackingNumber || "",
           items: (Array.isArray(remoteOrder.items) ? remoteOrder.items : []).map((it: any) => {
-            let itemName = "Order Item";
+            let itemName = t("orderDetails.orderItem");
             if (typeof it.productSnapshot === "string") {
               try {
                 const parsed = JSON.parse(it.productSnapshot);
@@ -63,7 +64,7 @@ export function AdminOrderDetails() {
             };
           }),
           history: [
-            { date: formatDateTime(remoteOrder.createdAt), note: "Order placed successfully." }
+            { date: formatDateTime(remoteOrder.createdAt, locale), note: t("orderDetails.orderPlaced") }
           ]
         };
         setOrder(formatted);
@@ -322,7 +323,7 @@ export function AdminOrderDetails() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("orderDetails.statusLabel")}</span>
-                <span className="font-bold text-emerald-600">{order.paymentStatus}</span>
+                <span className="font-bold text-emerald-600">{t(`status.${order.paymentStatus}`)}</span>
               </div>
             </div>
           </div>

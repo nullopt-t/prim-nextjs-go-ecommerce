@@ -24,8 +24,8 @@ interface SlideData {
   ctaKey: string;
   link: string;
   productImage: string;
-  productAlt: string;
-  badgeText: string;
+  productAltKey: string;
+  badgeKey: string;
   bannerBg: string;
   badgeBg: string;
   ctaClass: string;
@@ -41,8 +41,8 @@ const SLIDES: SlideData[] = [
     ctaKey: "slides.slide1.cta",
     link: "/products",
     productImage: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=85&w=800",
-    productAlt: "Premium Wireless Headphones",
-    badgeText: "DEAL OF THE DAY",
+    productAltKey: "slides.slide1.productAlt",
+    badgeKey: "slides.slide1.badge",
     bannerBg: "bg-[#f7f7f7] dark:bg-secondary/40",
     badgeBg: "bg-red-600 text-white",
     ctaClass: "bg-foreground text-background hover:bg-foreground/90",
@@ -56,8 +56,8 @@ const SLIDES: SlideData[] = [
     ctaKey: "slides.slide2.cta",
     link: "/products",
     productImage: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&q=85&w=800",
-    productAlt: "Custom Mechanical Keyboards",
-    badgeText: "TOP TECH PICK",
+    productAltKey: "slides.slide2.productAlt",
+    badgeKey: "slides.slide2.badge",
     bannerBg: "bg-[#eef2f6] dark:bg-secondary/40",
     badgeBg: "bg-sky-600 text-white",
     ctaClass: "bg-foreground text-background hover:bg-foreground/90",
@@ -71,8 +71,8 @@ const SLIDES: SlideData[] = [
     ctaKey: "slides.slide3.cta",
     link: "/products",
     productImage: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=85&w=800",
-    productAlt: "Smart Lifestyle Watch",
-    badgeText: "CERTIFIED REFURBISHED",
+    productAltKey: "slides.slide3.productAlt",
+    badgeKey: "slides.slide3.badge",
     bannerBg: "bg-[#f5f5f0] dark:bg-secondary/40",
     badgeBg: "bg-emerald-700 text-white",
     ctaClass: "bg-foreground text-background hover:bg-foreground/90",
@@ -125,7 +125,7 @@ export default function Hero() {
             <span
               className={`px-2.5 py-0.5 rounded text-[11px] font-black tracking-wider uppercase ${activeSlide.badgeBg}`}
             >
-              {activeSlide.badgeText}
+              {t(activeSlide.badgeKey)}
             </span>
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               {t(activeSlide.tagKey)}
@@ -170,7 +170,7 @@ export default function Hero() {
             <img
               key={activeSlide.id}
               src={activeSlide.productImage}
-              alt={activeSlide.productAlt}
+              alt={t(activeSlide.productAltKey)}
               className="w-full h-full object-cover rounded-xl transition-transform duration-500 ease-out group-hover/hero:scale-102"
             />
           </div>
