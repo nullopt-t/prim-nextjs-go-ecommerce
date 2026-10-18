@@ -1280,6 +1280,7 @@
         "mediaLibrary": "مكتبة الوسائط",
         "usersStaff": "المستخدمون والموظفون",
         "audit": "سجل التدقيق",
+        "sessions": "الجلسات",
         "reports": "التقارير"
       },
       "badges": {
@@ -1515,6 +1516,31 @@
         "payments": "المدفوعات",
         "customers": "العملاء",
         "inventory": "المخزون"
+      }
+    },
+    "sessions": {
+      "title": "جلسات الطاقم",
+      "subtitle": "راجع الأجهزة النشطة للطاقم وأبطل الجلسات المشبوهة أو القديمة.",
+      "refresh": "تحديث",
+      "allRoles": "كل الأدوار",
+      "colUser": "المستخدم",
+      "colRole": "الدور",
+      "colDevice": "الجهاز",
+      "colIp": "عنوان IP",
+      "colCreated": "أُنشئت",
+      "colLastActive": "آخر نشاط",
+      "colAction": "إجراء",
+      "thisDevice": "هذا الجهاز",
+      "revoke": "إبطال",
+      "cannotRevokeCurrent": "لا يمكنك إبطال الجلسة الحالية من هنا",
+      "empty": "لا توجد جلسات طاقم نشطة.",
+      "loading": "جارٍ تحميل الجلسات…",
+      "detailTitle": "تفاصيل الجلسة",
+      "sessionId": "معرّف الجلسة",
+      "confirmRevoke": "إبطال جلسة {email}؟ سيتم تسجيل خروج هذا الجهاز فورًا.",
+      "toast": {
+        "revoked": "تم إبطال الجلسة.",
+        "revokeFailed": "تعذّر إبطال الجلسة."
       }
     }
   },

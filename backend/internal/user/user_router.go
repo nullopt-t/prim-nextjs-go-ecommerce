@@ -14,6 +14,8 @@ type UserHandler interface {
 	UpdateUserRole(c *gin.Context)
 	UpdateAccountStatus(c *gin.Context)
 	RevokeUserSessions(c *gin.Context)
+	ListStaffSessions(c *gin.Context)
+	RevokeStaffSession(c *gin.Context)
 }
 
 // Router configures routing and administrative authorization hierarchies for /admin/users endpoints.
@@ -54,5 +56,20 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		adminUsers.PATCH("/:id/status", middleware.Authorize(model.AdminRole), r.handler.UpdateAccountStatus)
 		// POST /api/v1/admin/users/:id/revoke-sessions - Invalidate all active user login sessions
 		adminUsers.POST("/:id/revoke-sessions", middleware.Authorize(model.AdminRole), r.handler.RevokeUserSessions)
+	}
+
+	// Staff session oversight: view and revoke any active staff device. Both
+	// endpoints expose or terminate privileged credentials, so they are
+	// superadmin-only.
+	adminSessions := vgroup.Group("/admin/sessions")
+	adminSessions.Use(
+		middleware.Authenticate(r.sessionStore),
+		middleware.Authorize(model.SuperRole),
+	)
+	{
+		// GET /api/v1/admin/sessions - List active staff sessions/devices
+		adminSessions.GET("", r.handler.ListStaffSessions)
+		// DELETE /api/v1/admin/sessions/:id - Revoke a single active session
+		adminSessions.DELETE("/:id", r.handler.RevokeStaffSession)
 	}
 }

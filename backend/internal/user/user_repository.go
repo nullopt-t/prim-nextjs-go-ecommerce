@@ -258,6 +258,66 @@ func (r *UserRepository) CountUsers(
 	return count, nil
 }
 
+// ListByRoles returns every non-deleted user whose role is in the given set.
+// It is intentionally unpaginated: session oversight only needs the (small)
+// population of staff accounts, never the full customer table.
+func (r *UserRepository) ListByRoles(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	roles []model.UserRole,
+) ([]model.User, error) {
+	names := make([]string, len(roles))
+	for i, role := range roles {
+		names[i] = string(role)
+	}
+
+	query := `
+		SELECT id, email, full_name, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
+		FROM users
+		WHERE deleted_at IS NULL AND role::text = ANY($1)
+		ORDER BY created_at
+	`
+
+	rows, err := qe.Query(ctx, query, names)
+	if err != nil {
+		return nil, fmt.Errorf("list users by roles query: %w", err)
+	}
+	defer rows.Close()
+
+	var users []model.User
+	for rows.Next() {
+		var u model.User
+		var roleStr string
+		var statusStr string
+
+		if err := rows.Scan(
+			&u.ID,
+			&u.Identifier,
+			&u.FullName,
+			&roleStr,
+			&u.IsEmailVerified,
+			&statusStr,
+			&u.SuspendedUntil,
+			&u.LockedUntil,
+			&u.CreatedAt,
+			&u.UpdatedAt,
+			&u.DeletedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan user by role row: %w", err)
+		}
+
+		u.Role = model.UserRole(roleStr)
+		u.Status = model.AccountStatus(statusStr)
+		users = append(users, u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("users by roles iteration error: %w", err)
+	}
+
+	return users, nil
+}
+
 // UpdateRole changes the user's authorization tier (e.g. customer, admin, superadmin).
 // Returns database.ErrNotFound if the user does not exist or has been soft-deleted.
 func (r *UserRepository) UpdateRole(
@@ -326,4 +386,3 @@ func (r *UserRepository) SoftDelete(
 	}
 	return nil
 }
-

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,10 +17,14 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
-// SessionManager defines the session revocation contract required by the user domain
-// to forcefully terminate all active Redis sessions for a user upon security events or administrative action.
+// SessionManager defines the session contracts required by the user domain:
+// reading active sessions for oversight, targeted revocation, and forced
+// termination of all sessions for a user on security events.
 type SessionManager interface {
 	DeleteAllSessions(ctx context.Context, userID uuid.UUID) error
+	GetUserSessions(ctx context.Context, userID uuid.UUID) ([]model.UserSession, error)
+	GetSessionByID(ctx context.Context, sessionID string) (*model.UserSession, error)
+	DeleteSessionByID(ctx context.Context, userID uuid.UUID, sessionID string) error
 }
 
 // RoleRank defines numeric privilege levels for role hierarchy enforcement.
@@ -481,4 +487,148 @@ func (s *UserService) RevokeAllUserSessions(
 	return nil
 }
 
+// staffRoles lists the roles considered "staff" for session oversight. Customer
+// sessions are deliberately excluded: they are numerous and out of scope for
+// device management.
+var staffRoles = []model.UserRole{
+	model.SuperRole,
+	model.AdminRole,
+	model.SupportRole,
+	model.VendorRole,
+}
 
+// StaffSession is the administrative view of an active staff login device.
+type StaffSession struct {
+	ID         string    `json:"id"`
+	UserID     uuid.UUID `json:"userId"`
+	Email      string    `json:"email"`
+	FullName   *string   `json:"fullName,omitempty"`
+	Role       string    `json:"role"`
+	UserAgent  string    `json:"userAgent"`
+	IPAddress  string    `json:"ipAddress"`
+	CreatedAt  time.Time `json:"createdAt"`
+	LastActive time.Time `json:"lastActive"`
+	// Current marks the session making the oversight request.
+	Current bool `json:"current"`
+}
+
+// ListStaffSessions aggregates every active Redis session belonging to a staff
+// account, optionally narrowed to a single staff role. Results are sorted by
+// most recent activity so suspicious or forgotten devices surface first.
+func (s *UserService) ListStaffSessions(
+	ctx context.Context,
+	roleFilter *string,
+	currentSessionID string,
+) ([]StaffSession, error) {
+	roles := staffRoles
+	if roleFilter != nil && *roleFilter != "" {
+		role := model.UserRole(strings.ToLower(strings.TrimSpace(*roleFilter)))
+		if GetRoleRank(role) < GetRoleRank(model.VendorRole) {
+			return nil, apierr.BadRequestError("role must be a staff role (vendor, support, admin or superadmin)").
+				WithCode(apierr.CodeInvalidInput)
+		}
+		roles = []model.UserRole{role}
+	}
+
+	if s.sessions == nil {
+		return nil, apierr.InternalServerError("Session store unavailable")
+	}
+
+	var users []model.User
+	if err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		var repoErr error
+		users, repoErr = s.repo.ListByRoles(ctx, db, roles)
+		return repoErr
+	}); err != nil {
+		return nil, apierr.InternalServerError("Failed to list staff accounts").Wrap(err)
+	}
+
+	sessions := make([]StaffSession, 0)
+	for _, u := range users {
+		userSessions, err := s.sessions.GetUserSessions(ctx, u.ID)
+		if err != nil {
+			s.logger.Warn("failed to list sessions for staff user", log.Meta{
+				"userId": u.ID.String(),
+				"error":  err.Error(),
+			})
+			continue
+		}
+		for _, sess := range userSessions {
+			sessions = append(sessions, StaffSession{
+				ID:         sess.ID,
+				UserID:     sess.UserID,
+				Email:      u.Identifier,
+				FullName:   u.FullName,
+				Role:       string(u.Role),
+				UserAgent:  sess.UserAgent,
+				IPAddress:  sess.IPAddress,
+				CreatedAt:  sess.CreatedAt,
+				LastActive: sess.LastActive,
+				Current:    sess.ID == currentSessionID,
+			})
+		}
+	}
+
+	sort.Slice(sessions, func(i, j int) bool {
+		return sessions[i].LastActive.After(sessions[j].LastActive)
+	})
+
+	return sessions, nil
+}
+
+// RevokeStaffSession terminates a single active session by ID on behalf of an
+// administrator. A caller may revoke their own other devices, and may revoke a
+// lower-ranked user's session; equal or higher rank is refused to prevent one
+// admin from locking out a peer or superadmin.
+func (s *UserService) RevokeStaffSession(
+	ctx context.Context,
+	sessionID string,
+	callerID uuid.UUID,
+) error {
+	if strings.TrimSpace(sessionID) == "" {
+		return apierr.BadRequestError("Session ID is required").WithCode(apierr.CodeInvalidInput)
+	}
+	if s.sessions == nil {
+		return apierr.InternalServerError("Session store unavailable")
+	}
+
+	sess, err := s.sessions.GetSessionByID(ctx, sessionID)
+	if err != nil {
+		var ae *apierr.APIError
+		if errors.As(err, &ae) && ae.Status == http.StatusUnauthorized {
+			return apierr.NotFoundError("Session not found").WithCode(apierr.CodeNotFound)
+		}
+		return apierr.InternalServerError("Failed to load session").Wrap(err)
+	}
+
+	caller, err := s.GetUserByID(ctx, callerID)
+	if err != nil {
+		return apierr.UnauthorizedError("Caller not found")
+	}
+
+	if sess.UserID != callerID {
+		target, err := s.GetUserByID(ctx, sess.UserID)
+		if err != nil {
+			return err
+		}
+		if GetRoleRank(caller.Role) <= GetRoleRank(target.Role) {
+			return apierr.ForbiddenError("You cannot revoke sessions of a user with equal or higher privileges").
+				WithCode("CANNOT_MODIFY_EQUAL_OR_HIGHER_ROLE")
+		}
+	}
+
+	if err := s.sessions.DeleteSessionByID(ctx, sess.UserID, sessionID); err != nil {
+		var ae *apierr.APIError
+		if errors.As(err, &ae) {
+			return err
+		}
+		return apierr.InternalServerError("Failed to revoke session").Wrap(err)
+	}
+
+	s.logger.Info("staff session revoked", log.Meta{
+		"sessionId": sessionID,
+		"userId":    sess.UserID.String(),
+		"revokedBy": callerID.String(),
+	})
+	return nil
+}

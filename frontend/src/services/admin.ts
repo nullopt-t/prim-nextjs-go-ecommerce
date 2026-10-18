@@ -77,6 +77,19 @@ export interface AuditLogEntry {
   createdAt: string;
 }
 
+export interface StaffSession {
+  id: string;
+  userId: string;
+  email: string;
+  fullName?: string | null;
+  role: AdminUser["role"];
+  userAgent: string;
+  ipAddress: string;
+  createdAt: string;
+  lastActive: string;
+  current: boolean;
+}
+
 export interface ListAuditParams {
   cursor?: string;
   pageSize?: number;
@@ -146,6 +159,16 @@ export const adminService = {
 
   revokeUserSessions: async (id: string): Promise<{ message: string }> => {
     return api.post<{ message: string }>(`/api/v1/admin/users/${id}/revoke-sessions`, {});
+  },
+
+  // Staff session oversight (superadmin)
+  getStaffSessions: async (role?: string): Promise<{ data: StaffSession[] }> => {
+    const qs = role ? `?role=${encodeURIComponent(role)}` : "";
+    return api.get<{ data: StaffSession[] }>(`/api/v1/admin/sessions${qs}`);
+  },
+
+  revokeStaffSession: async (sessionId: string): Promise<{ message: string }> => {
+    return api.delete<{ message: string }>(`/api/v1/admin/sessions/${encodeURIComponent(sessionId)}`);
   },
 
   deleteUser: async (id: string): Promise<{ message: string }> => {

@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   ScrollText,
   BarChart3,
+  MonitorSmartphone,
   Sun,
   Moon,
   Languages,
@@ -89,6 +90,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
     { nameKey: "layout.nav.settings", path: "/admin/settings", icon: Settings },
     { nameKey: "layout.nav.system", path: "/admin/system", icon: ShieldCheck },
     { nameKey: "layout.nav.audit", path: "/admin/audit", icon: ScrollText, superadminOnly: true },
+    { nameKey: "layout.nav.sessions", path: "/admin/sessions", icon: MonitorSmartphone, superadminOnly: true },
   ];
 
   const visibleNavItems = navItems.filter(

@@ -1280,6 +1280,7 @@
         "mediaLibrary": "Media Library",
         "usersStaff": "Users & Staff",
         "audit": "Audit Trail",
+        "sessions": "Sessions",
         "reports": "Reports"
       },
       "badges": {
@@ -1515,6 +1516,31 @@
         "payments": "Payments",
         "customers": "Customers",
         "inventory": "Inventory"
+      }
+    },
+    "sessions": {
+      "title": "Staff sessions",
+      "subtitle": "Review active staff devices and revoke suspicious or stale sessions.",
+      "refresh": "Refresh",
+      "allRoles": "All roles",
+      "colUser": "User",
+      "colRole": "Role",
+      "colDevice": "Device",
+      "colIp": "IP address",
+      "colCreated": "Created",
+      "colLastActive": "Last active",
+      "colAction": "Action",
+      "thisDevice": "This device",
+      "revoke": "Revoke",
+      "cannotRevokeCurrent": "You cannot revoke the current session from here",
+      "empty": "No active staff sessions.",
+      "loading": "Loading sessions…",
+      "detailTitle": "Session details",
+      "sessionId": "Session ID",
+      "confirmRevoke": "Revoke the session for {email}? That device will be signed out immediately.",
+      "toast": {
+        "revoked": "Session revoked.",
+        "revokeFailed": "Failed to revoke session."
       }
     }
   },

@@ -2,6 +2,7 @@ package user
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/nullopt-t/prim-backend/internal/model"
@@ -329,6 +330,62 @@ func (h *Handler) RevokeUserSessions(c *gin.Context) {
 	})
 }
 
+// ListStaffSessions godoc
+//
+//	@Summary		List active staff sessions
+//	@Description	Returns every active session/device belonging to a staff account, newest activity first. Superadmin only.
+//	@Tags			Admin Users
+//	@Produce		json
+//	@Param			role	query		string	false	"Filter by staff role (vendor, support, admin, superadmin)"
+//	@Failure		400		{object}	api.BadRequestErrorResponse	"Invalid role filter"
+//	@Failure		401		{object}	api.UnauthorizedErrorResponse	"Authentication required"
+//	@Failure		403		{object}	api.ForbiddenErrorResponse	"Superadmin privileges required"
+//	@Success		200		{object}	api.DataResponse	"Active staff sessions"
+//	@Router			/admin/sessions [get]
+func (h *Handler) ListStaffSessions(c *gin.Context) {
+	var roleFilter *string
+	if raw := strings.TrimSpace(c.Query("role")); raw != "" {
+		roleFilter = &raw
+	}
 
+	currentSessionID, _ := c.Get("sessionID")
+	sessionID, _ := currentSessionID.(string)
 
+	sessions, err := h.userService.ListStaffSessions(c.Request.Context(), roleFilter, sessionID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 
+	c.JSON(http.StatusOK, api.DataResponse{Data: sessions})
+}
+
+// RevokeStaffSession godoc
+//
+//	@Summary		Revoke a staff session
+//	@Description	Terminates one active session by ID. The caller must outrank the session owner. Superadmin only.
+//	@Tags			Admin Users
+//	@Produce		json
+//	@Param			id	path		string	true	"Session ID"
+//	@Failure		400	{object}	api.BadRequestErrorResponse	"Missing session ID"
+//	@Failure		401	{object}	api.UnauthorizedErrorResponse	"Authentication required"
+//	@Failure		403	{object}	api.ForbiddenErrorResponse	"Insufficient privileges"
+//	@Failure		404	{object}	api.NotFoundErrorResponse	"Session not found"
+//	@Success		200	{object}	api.MessageResponse
+//	@Router			/admin/sessions/{id} [delete]
+func (h *Handler) RevokeStaffSession(c *gin.Context) {
+	callerID, err := getUserIDFromContext(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	if err := h.userService.RevokeStaffSession(c.Request.Context(), c.Param("id"), callerID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{
+		Message: "Session revoked successfully",
+	})
+}
