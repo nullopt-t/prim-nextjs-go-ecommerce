@@ -77,3 +77,58 @@ input {
 		animation: none;
 	}
 }
+
+/* ── Responsive data tables: stack label/value cards on small screens ── */
+@media (max-width: 639px) {
+	.rtable {
+		display: block;
+		width: 100%;
+		min-width: 0;
+	}
+
+	.rtable thead {
+		display: none;
+	}
+
+	.rtable tbody {
+		display: block;
+	}
+
+	.rtable tr {
+		display: block;
+		padding-block: 0.25rem;
+	}
+
+	.rtable td {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 0.75rem;
+		width: 100%;
+		padding: 0.3rem 1rem;
+		text-align: end;
+		overflow-wrap: anywhere;
+	}
+
+	.rtable td::before {
+		content: attr(data-label);
+		flex: 0 0 auto;
+		max-width: 45%;
+		font-weight: 600;
+		text-align: start;
+		color: var(--color-muted-foreground);
+	}
+
+	.rtable td:not([data-label])::before {
+		content: none;
+	}
+
+	.rtable td[colspan] {
+		display: block;
+		text-align: center;
+	}
+
+	.rtable td > * {
+		min-width: 0;
+	}
+}

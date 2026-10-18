@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "@/components/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Minus, Search, History } from "lucide-react";
 import { adminService } from "@/services/admin";
@@ -162,7 +163,7 @@ export function AdminInventory() {
             <span className="text-xs text-muted-foreground">{t("inventory.catalogItems", { count: products.length })}</span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-max text-start text-xs">
+            <ResponsiveTable className="w-full sm:min-w-max text-start text-xs">
               <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
                 <tr>
                   <th className="py-3 ps-4">{t("inventory.colProduct")}</th>
@@ -209,7 +210,7 @@ export function AdminInventory() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </ResponsiveTable>
           </div>
 
           <CursorPager

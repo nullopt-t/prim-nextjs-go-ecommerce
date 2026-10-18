@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "@/components/ui/responsiveTable";
 import { useState, useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
@@ -208,7 +209,7 @@ export function AdminDashboard() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-max text-start text-xs">
+              <ResponsiveTable className="w-full sm:min-w-max text-start text-xs">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
                     <th className="pb-3 ps-2">{t("dashboard.orderId")}</th>
@@ -241,7 +242,7 @@ export function AdminDashboard() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </ResponsiveTable>
             </div>
           </div>
         </div>

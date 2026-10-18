@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "@/components/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
@@ -185,7 +186,7 @@ export function AdminOrders() {
 
       <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-max text-start text-xs">
+          <ResponsiveTable className="w-full sm:min-w-max text-start text-xs">
             <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
               <tr>
                 <th className="py-3.5 ps-4">{t("orders.colOrderId")}</th>
@@ -272,7 +273,7 @@ export function AdminOrders() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </ResponsiveTable>
         </div>
 
         <CursorPager

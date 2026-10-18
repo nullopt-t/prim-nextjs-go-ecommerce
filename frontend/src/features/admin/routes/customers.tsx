@@ -1,5 +1,6 @@
 "use client";
 
+import { ResponsiveTable } from "@/components/ui/responsiveTable";
 import React, { useState, useEffect, useCallback } from "react";
 import { 
   Search, 
@@ -222,7 +223,7 @@ export function AdminCustomers() {
       {/* Dense User Table */}
       <div className="bg-background border border-border/80 rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-max text-start border-collapse text-xs">
+          <ResponsiveTable className="w-full sm:min-w-max text-start border-collapse text-xs">
             <thead>
               <tr className="border-b border-border/80 bg-muted/20 text-muted-foreground uppercase text-[10px] font-bold tracking-wider">
                 <th className="py-3 px-4">{t("customers.colIdentity")}</th>
@@ -394,7 +395,7 @@ export function AdminCustomers() {
                 })
               )}
             </tbody>
-          </table>
+          </ResponsiveTable>
         </div>
 
         {/* Pagination Bar */}

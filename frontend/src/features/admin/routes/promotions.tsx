@@ -1,3 +1,4 @@
+import { ResponsiveTable } from "@/components/ui/responsiveTable";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Plus, Trash2, X, ArrowUp, ArrowDown, ArrowUpDown, ScrollText, Loader2, Share2 } from "lucide-react";
 import { adminService } from "@/services/admin";
@@ -257,7 +258,7 @@ export function AdminPromotions() {
 
       <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-max text-start text-xs">
+          <ResponsiveTable className="w-full sm:min-w-max text-start text-xs">
             <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
               <tr>
                 <th className="py-3.5 ps-4">
@@ -340,7 +341,7 @@ export function AdminPromotions() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </ResponsiveTable>
         </div>
 
         <CursorPager
@@ -448,7 +449,7 @@ export function AdminPromotions() {
                   {t("promotions.log.empty")}
                 </p>
               ) : (
-                <table className="w-full min-w-max text-start text-xs">
+                <ResponsiveTable className="w-full sm:min-w-max text-start text-xs">
                   <thead className="text-muted-foreground font-semibold uppercase tracking-wider border-b border-border">
                     <tr>
                       <th className="py-2.5">{t("promotions.log.colUser")}</th>
@@ -480,7 +481,7 @@ export function AdminPromotions() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </ResponsiveTable>
               )}
             </div>
 

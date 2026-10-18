@@ -1,5 +1,6 @@
 "use client";
 
+import { ResponsiveTable } from "@/components/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
 import { MonitorSmartphone, RefreshCcw, ShieldAlert, X } from "lucide-react";
 import { adminService, type StaffSession } from "@/services/admin";
@@ -103,7 +104,7 @@ export function AdminSessions() {
 
       <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-max text-start text-xs">
+          <ResponsiveTable className="w-full sm:min-w-max text-start text-xs">
             <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
               <tr>
                 <th className="py-3.5 ps-4 text-start">{t("sessions.colUser")}</th>
@@ -176,7 +177,7 @@ export function AdminSessions() {
                 </tr>
               )}
             </tbody>
-          </table>
+          </ResponsiveTable>
         </div>
         {loading && sessions.length === 0 && (
           <div className="py-10 text-center text-xs text-muted-foreground">
