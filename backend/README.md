@@ -29,7 +29,7 @@ HTTP request
 
 Shared concerns live outside the domains:
 
-- `internal/shared/middleware` — auth, RBAC, CORS, locale, rate limiting, error handling, caching
+- `internal/shared/middleware` — auth, RBAC, CORS, locale, rate limiting, error handling, caching, gzip response compression
 - `pkg/config` — YAML + environment configuration
 - `pkg/database` — connection pool and the `TxRunner` used for transactions
 - `pkg/broker/kafka` — producer used by the API

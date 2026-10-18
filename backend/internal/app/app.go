@@ -73,6 +73,11 @@ type App struct {
 func (app *App) setupRoutes(router *gin.Engine) {
 	txRunner := database.NewTxRunner(app.db)
 
+	// compression negotiates gzip for the (text-heavy) JSON/CSV responses. It is
+	// registered before ErrorHandler so it observes the fully rendered body and
+	// final status, including mapped error responses.
+	router.Use(middleware.Compress())
+
 	// audit records privileged admin mutations. It is registered before
 	// ErrorHandler so it observes the final status written by the error mapper
 	// (e.g. 400/403/500) rather than the default 200.
