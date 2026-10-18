@@ -230,61 +230,86 @@ export function AdminAudit() {
 
       {detail && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-foreground font-mono" dir="ltr">{detail.action}</h3>
+          <div className="bg-background border border-border rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-border">
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("audit.title")}
+                </div>
+                <h3 className="font-bold text-base text-foreground font-mono truncate" dir="ltr">
+                  {detail.action}
+                </h3>
+              </div>
               <button
                 onClick={() => setDetail(null)}
-                className="text-muted-foreground hover:text-foreground"
+                className="-me-1 shrink-0 rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                 aria-label={t("actions.close")}
               >
                 <X className="size-5" />
               </button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
-              <div>
-                <strong>{t("audit.colTime")}:</strong> {formatDateTime(detail.createdAt, locale)}
+
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 px-5 py-5 text-xs">
+              <div className="space-y-0.5">
+                <dt className="font-medium text-muted-foreground">{t("audit.colTime")}</dt>
+                <dd className="text-foreground">{formatDateTime(detail.createdAt, locale)}</dd>
               </div>
-              <div>
-                <strong>{t("audit.colActor")}:</strong> {detail.actorRole}{" "}
-                <span dir="ltr">({detail.actorId || "—"})</span>
+              <div className="space-y-0.5">
+                <dt className="font-medium text-muted-foreground">{t("audit.colActor")}</dt>
+                <dd className="text-foreground" dir="ltr">
+                  {detail.actorRole}{" "}
+                  <span className="font-mono text-muted-foreground">({detail.actorId || "—"})</span>
+                </dd>
               </div>
-              <div>
-                <strong>{t("audit.colEntity")}:</strong>{" "}
-                <span dir="ltr">
+              <div className="space-y-0.5">
+                <dt className="font-medium text-muted-foreground">{t("audit.colEntity")}</dt>
+                <dd className="text-foreground font-mono" dir="ltr">
                   {detail.entityType} / {detail.entityId || "—"}
-                </span>
+                </dd>
               </div>
-              <div>
-                <strong>{t("audit.colStatus")}:</strong> <span dir="ltr">{detail.statusCode}</span>
+              <div className="space-y-0.5">
+                <dt className="font-medium text-muted-foreground">{t("audit.colStatus")}</dt>
+                <dd>
+                  <span
+                    className={`inline-block font-mono font-bold text-[11px] px-1.5 py-0.5 rounded ${statusTone(detail.statusCode)}`}
+                    dir="ltr"
+                  >
+                    {detail.statusCode}
+                  </span>
+                </dd>
               </div>
-              <div className="col-span-2">
-                <strong>{t("audit.colMethod")}:</strong>{" "}
-                <span dir="ltr">
+              <div className="sm:col-span-2 space-y-0.5">
+                <dt className="font-medium text-muted-foreground">{t("audit.colMethod")}</dt>
+                <dd className="text-foreground font-mono break-all" dir="ltr">
                   {detail.method} {detail.path}
-                </span>
+                </dd>
               </div>
-              <div className="col-span-2">
-                <strong>{t("audit.colIp")}:</strong>{" "}
-                <span dir="ltr">
+              <div className="sm:col-span-2 space-y-0.5">
+                <dt className="font-medium text-muted-foreground">{t("audit.colIp")}</dt>
+                <dd className="text-foreground font-mono break-all" dir="ltr">
                   {detail.ipAddress} — {detail.userAgent}
-                </span>
+                </dd>
               </div>
-            </div>
-            {detail.after && (
-              <div>
-                <div className="text-xs font-semibold text-foreground mb-1">{t("audit.payload")}</div>
-                <pre className="text-[11px] bg-secondary/40 border border-border rounded-xl p-3 overflow-x-auto">
-                  {JSON.stringify(detail.after, null, 2)}
-                </pre>
-              </div>
-            )}
-            {detail.metadata && (
-              <div>
-                <div className="text-xs font-semibold text-foreground mb-1">{t("audit.metadata")}</div>
-                <pre className="text-[11px] bg-secondary/40 border border-border rounded-xl p-3 overflow-x-auto">
-                  {JSON.stringify(detail.metadata, null, 2)}
-                </pre>
+            </dl>
+
+            {(detail.after || detail.metadata) && (
+              <div className="px-5 pb-5 space-y-4">
+                {detail.after && (
+                  <div>
+                    <div className="text-xs font-semibold text-foreground mb-1">{t("audit.payload")}</div>
+                    <pre className="text-[11px] bg-secondary/40 border border-border rounded-xl p-3 overflow-x-auto" dir="ltr">
+                      {JSON.stringify(detail.after, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {detail.metadata && (
+                  <div>
+                    <div className="text-xs font-semibold text-foreground mb-1">{t("audit.metadata")}</div>
+                    <pre className="text-[11px] bg-secondary/40 border border-border rounded-xl p-3 overflow-x-auto" dir="ltr">
+                      {JSON.stringify(detail.metadata, null, 2)}
+                    </pre>
+                  </div>
+                )}
               </div>
             )}
           </div>
