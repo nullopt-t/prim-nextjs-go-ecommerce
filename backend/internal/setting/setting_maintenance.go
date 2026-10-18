@@ -21,6 +21,10 @@ func MaintenanceMiddleware(svc *Service) gin.HandlerFunc {
 
 		cfg, err := svc.GetConfig(c.Request.Context())
 		if err == nil && cfg.MaintenanceMode {
+			// Advertise a longer cool-down than transient infra failures: the
+			// storefront stays down until an operator disables maintenance mode.
+			c.Header("Retry-After", "300")
+			c.Header("Cache-Control", "no-store, private")
 			c.AbortWithStatusJSON(http.StatusServiceUnavailable, api.ErrorResponse{
 				Code:    "MAINTENANCE_MODE",
 				Message: cfg.MaintenanceMessage,

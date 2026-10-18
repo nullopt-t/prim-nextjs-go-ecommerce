@@ -62,6 +62,7 @@ func ErrorHandler(logger log.Logger) gin.HandlerFunc {
 		// letting them surface as a generic 500.
 		if mapped, ok := classifyInfraError(c.Errors.Last().Err); ok {
 			c.Header("Cache-Control", "no-store, private")
+			setRetryAfterHint(c, mapped.Status)
 			lastErr := c.Errors.Last().Err
 			meta := log.Meta{
 				"status":  mapped.Status,
@@ -110,6 +111,7 @@ func ErrorHandler(logger log.Logger) gin.HandlerFunc {
 		var ae *apierr.APIError
 		if errors.As(err, &ae) {
 			// Write formatted structured API error JSON response
+			setRetryAfterHint(c, ae.Status)
 			c.JSON(ae.Status, api.ErrorResponse{
 				Code:    ae.Code,
 				Message: ae.Error(),

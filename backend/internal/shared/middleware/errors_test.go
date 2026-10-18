@@ -166,3 +166,63 @@ func TestErrorHandler_MapsRawContextCanceledTo499(t *testing.T) {
 		t.Fatalf("status = %d, want %d", w.Code, statusClientClosedRequest)
 	}
 }
+
+// Transient 503/504 responses must advertise Retry-After so clients back off,
+// while terminal 5xx (and 4xx) responses must not.
+func TestErrorHandler_RetryAfterHint(t *testing.T) {
+	cases := []struct {
+		name      string
+		err       error
+		wantCode  int
+		wantRetry bool
+	}{
+		{
+			name:      "database timeout is 504 with retry hint",
+			err:       apierr.InternalServerError("Failed to list products").Wrap(database.ErrTimeout).WithStack(),
+			wantCode:  http.StatusGatewayTimeout,
+			wantRetry: true,
+		},
+		{
+			name:      "connection failure is 503 with retry hint",
+			err:       apierr.InternalServerError("Failed to list products").Wrap(database.ErrConnectionFailure).WithStack(),
+			wantCode:  http.StatusServiceUnavailable,
+			wantRetry: true,
+		},
+		{
+			name:      "direct service unavailable carries retry hint",
+			err:       apierr.New(http.StatusServiceUnavailable, "Service temporarily unavailable").WithCode(apierr.CodeServiceUnavailable),
+			wantCode:  http.StatusServiceUnavailable,
+			wantRetry: true,
+		},
+		{
+			name:      "internal error has no retry hint",
+			err:       apierr.InternalServerError("Failed to list products").WithStack(),
+			wantCode:  http.StatusInternalServerError,
+			wantRetry: false,
+		},
+		{
+			name:      "conflict has no retry hint",
+			err:       apierr.ConflictError("Concurrent modification"),
+			wantCode:  http.StatusConflict,
+			wantRetry: false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			logger := &recordingLogger{}
+			w := serveError(t, logger, tc.err, httptest.NewRequest(http.MethodGet, "/api/v1/products", nil))
+
+			if w.Code != tc.wantCode {
+				t.Fatalf("status = %d, want %d", w.Code, tc.wantCode)
+			}
+			got := w.Header().Get("Retry-After")
+			if tc.wantRetry && got != retryAfterSeconds {
+				t.Fatalf("Retry-After = %q, want %q", got, retryAfterSeconds)
+			}
+			if !tc.wantRetry && got != "" {
+				t.Fatalf("Retry-After = %q, want none", got)
+			}
+		})
+	}
+}
