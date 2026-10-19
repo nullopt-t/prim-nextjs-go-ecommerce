@@ -1,0 +1,134 @@
+[
+  {
+    "brand": "Apple",
+    "key": "brands/apple-logo.png",
+    "size": 15939,
+    "link": "https://apple.com"
+  },
+  {
+    "brand": "Samsung",
+    "key": "brands/samsung-logo.png",
+    "size": 14984,
+    "link": "https://samsung.com"
+  },
+  {
+    "brand": "Nike",
+    "key": "brands/nike-logo.png",
+    "size": 11010,
+    "link": "https://nike.com"
+  },
+  {
+    "brand": "Sony",
+    "key": "brands/sony-logo.png",
+    "size": 14536,
+    "link": "https://sony.com"
+  },
+  {
+    "brand": "Adidas",
+    "key": "brands/adidas-logo.png",
+    "size": 14583,
+    "link": "https://adidas.com"
+  },
+  {
+    "brand": "Dell",
+    "key": "brands/dell-logo.png",
+    "size": 31976,
+    "link": "https://dell.com"
+  },
+  {
+    "brand": "Logitech",
+    "key": "brands/logitech-logo.png",
+    "size": 20277,
+    "link": "https://logitech.com"
+  },
+  {
+    "brand": "Bose",
+    "key": "brands/bose-logo.png",
+    "size": 7911,
+    "link": "https://bose.com"
+  },
+  {
+    "brand": "Asus",
+    "key": "brands/asus-logo.png",
+    "size": 10965,
+    "link": "https://asus.com"
+  },
+  {
+    "brand": "Calvin Klein",
+    "key": "brands/calvin-klein-logo.png",
+    "size": 13556,
+    "link": "https://calvinklein.com"
+  },
+  {
+    "brand": "Heshe",
+    "key": "brands/heshe-logo.png",
+    "size": 3789,
+    "link": "https://heshe.com"
+  },
+  {
+    "brand": "Huawei",
+    "key": "brands/huawei-logo.png",
+    "size": 27413,
+    "link": "https://huawei.com"
+  },
+  {
+    "brand": "IWC",
+    "key": "brands/iwc-logo.png",
+    "size": 25769,
+    "link": "https://iwc.com"
+  },
+  {
+    "brand": "Lenovo",
+    "key": "brands/lenovo-logo.png",
+    "size": 11931,
+    "link": "https://lenovo.com"
+  },
+  {
+    "brand": "Longines",
+    "key": "brands/longines-logo.png",
+    "size": 20643,
+    "link": "https://longines.com"
+  },
+  {
+    "brand": "Off White",
+    "key": "brands/off-white-logo.png",
+    "size": 4858,
+    "link": "https://off---white.com"
+  },
+  {
+    "brand": "Oppo",
+    "key": "brands/oppo-logo.png",
+    "size": 15208,
+    "link": "https://oppo.com"
+  },
+  {
+    "brand": "PRIM Select",
+    "key": "brands/prim-select-logo.png",
+    "size": 5975,
+    "link": null
+  },
+  {
+    "brand": "Prada",
+    "key": "brands/prada-logo.png",
+    "size": 12122,
+    "link": "https://prada.com"
+  },
+  {
+    "brand": "Puma",
+    "key": "brands/puma-logo.png",
+    "size": 17069,
+    "link": "https://puma.com"
+  },
+  {
+    "brand": "Rolex",
+    "key": "brands/rolex-logo.png",
+    "size": 11909,
+    "link": "https://rolex.com"
+  },
+  {
+    "brand": "Vivo",
+    "key": "brands/vivo-logo.png",
+    "size": 12315,
+    "link": "https://vivo.com"
+  }
+]

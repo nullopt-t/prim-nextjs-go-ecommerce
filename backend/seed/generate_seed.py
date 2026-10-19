@@ -29,28 +29,33 @@ extra_images_by_slug = {p["slug"]: list(p["images"]) for p in extra_products}
 _original_path = os.path.join(SEED_DIR, "data", "original_images.json")
 original_images_by_slug = json.load(open(_original_path)) if os.path.exists(_original_path) else {}
 
-# Brand logos
-brand_logos = [
-    ("brands/apple-logo.png", "image/png", 45000),
-    ("brands/samsung-logo.png", "image/png", 38000),
-    ("brands/nike-logo.png", "image/png", 32000),
-    ("brands/sony-logo.png", "image/png", 29000),
-    ("brands/adidas-logo.png", "image/png", 35000),
-    ("brands/dell-logo.png", "image/png", 41000),
-    ("brands/logitech-logo.png", "image/png", 28000),
-    ("brands/bose-logo.png", "image/png", 31000),
-]
+# Brand logos: one distinct, real logo per brand (see fetch_brand_logos.py).
+_brand_logos_path = os.path.join(SEED_DIR, "data", "brand_logos.json")
+brand_logo_defs = json.load(open(_brand_logos_path)) if os.path.exists(_brand_logos_path) else []
+# Fallback for a checkout without the generated manifest.
+if not brand_logo_defs:
+    brand_logo_defs = [
+        {"brand": "Apple", "key": "brands/apple-logo.png", "size": 45000, "link": "https://apple.com"},
+        {"brand": "Samsung", "key": "brands/samsung-logo.png", "size": 38000, "link": "https://samsung.com"},
+        {"brand": "Nike", "key": "brands/nike-logo.png", "size": 32000, "link": "https://nike.com"},
+        {"brand": "Sony", "key": "brands/sony-logo.png", "size": 29000, "link": "https://sony.com"},
+        {"brand": "Adidas", "key": "brands/adidas-logo.png", "size": 35000, "link": "https://adidas.com"},
+        {"brand": "Dell", "key": "brands/dell-logo.png", "size": 41000, "link": "https://dell.com"},
+        {"brand": "Logitech", "key": "brands/logitech-logo.png", "size": 28000, "link": "https://logitech.com"},
+        {"brand": "Bose", "key": "brands/bose-logo.png", "size": 31000, "link": "https://bose.com"},
+    ]
 
 brand_logo_map = {}
+brand_link_map = {}
 storage_objects = []
 image_to_obj_id = {}
 obj_idx = 1
 
-for key, ctype, size in brand_logos:
+for _b in brand_logo_defs:
     obj_id = hex_id(0x80000000, obj_idx)
-    storage_objects.append((obj_id, 'catalog', key, ctype, size))
-    brand_name = key.split("/")[1].replace("-logo.png", "").capitalize()
-    brand_logo_map[brand_name] = obj_id
+    storage_objects.append((obj_id, 'catalog', _b["key"], 'image/png', _b["size"]))
+    brand_logo_map[_b["brand"]] = obj_id
+    brand_link_map[_b["brand"]] = _b.get("link")
     obj_idx += 1
 
 # Register the real per-product photos (originals + extras) with their on-disk
@@ -581,21 +586,16 @@ addresses = [
 ]
 
 brands_list = [
-    ("Apple", "https://apple.com", brand_logo_map["Apple"]),
-    ("Samsung", "https://samsung.com", brand_logo_map["Samsung"]),
-    ("Nike", "https://nike.com", brand_logo_map["Nike"]),
-    ("Sony", "https://sony.com", brand_logo_map["Sony"]),
-    ("Adidas", "https://adidas.com", brand_logo_map["Adidas"]),
-    ("Dell", "https://dell.com", brand_logo_map["Dell"]),
-    ("Logitech", "https://logitech.com", brand_logo_map["Logitech"]),
-    ("Bose", "https://bose.com", brand_logo_map["Bose"]),
+    (b["brand"], b.get("link"), brand_logo_map.get(b["brand"]))
+    for b in brand_logo_defs
 ]
 
-# Brands introduced by the extra catalogue (unbranded items use a house brand).
+# Any brand used by the catalogue but absent from the logo manifest still gets a
+# row (without a logo) so products can always reference it.
 _existing_brand_names = [b[0] for b in brands_list]
 for _name in sorted({p["brand"] for p in extra_products}):
     if _name not in _existing_brand_names:
-        brands_list.append((_name, None, None))
+        brands_list.append((_name, None, brand_logo_map.get(_name)))
 
 brands = []
 brand_id_by_name = {}
