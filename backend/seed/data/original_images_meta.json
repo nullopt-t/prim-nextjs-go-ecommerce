@@ -1,0 +1,28 @@
+{
+  "galaxy-s24-ultra": [
+    {
+      "key": "products/galaxy-s24-ultra.jpg",
+      "host": "9to5google.com",
+      "white": 0.13,
+      "url": "https://9to5google.com/wp-content/uploads/sites/4/2024/09/Samsung-Galaxy-S24-Ultra-9.jpg?quality=82&strip=all&resize=1200,628"
+    },
+    {
+      "key": "products/galaxy-s24-ultra-2.jpg",
+      "host": "s100.divarcdn.com",
+      "white": 0.0,
+      "url": "https://s100.divarcdn.com/static/photo/neda/post/lfu7xfniyU1gr1mYZxt_VA/df5d4f9c-9958-4166-8269-e19a90e4123f.jpg"
+    },
+    {
+      "key": "products/galaxy-s24-ultra-3.jpg",
+      "host": "i.ikman-st.com",
+      "white": 0.05,
+      "url": "https://i.ikman-st.com/samsung-galaxy-s24-ultra-5g-256gb-12gb-ram-used-for-sale-colombo-8/4a59e24d-d528-410c-93c0-502d37527b44/1200/630/fitted.jpg"
+    },
+    {
+      "key": "products/galaxy-s24-ultra-4.jpg",
+      "host": "www.picclickimg.com",
+      "white": 1.0,
+      "url": "https://www.picclickimg.com/dwwAAeSwsaNq1LEx/SAMSUNG-GALAXY-S24-ULTRA-5G-RECONDITIONNÉ-512-Go.webp"
+    }
+  ]
+}

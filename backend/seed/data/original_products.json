@@ -1,0 +1,686 @@
+[
+  {
+    "slug": "adidas-adizero-adios-pro-3",
+    "title": "Adidas Adizero Adios Pro 3",
+    "brand": "Adidas",
+    "category": "Shoes"
+  },
+  {
+    "slug": "adidas-beckenbauer-track-jacket",
+    "title": "Adidas Originals Beckenbauer Track Jacket",
+    "brand": "Adidas",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "adidas-campus-00s",
+    "title": "Adidas Campus 00s",
+    "brand": "Adidas",
+    "category": "Shoes"
+  },
+  {
+    "slug": "adidas-essentials-3-stripes-top",
+    "title": "Adidas Essentials 3-Stripes Warm-Up Top",
+    "brand": "Adidas",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "adidas-firebird-track-top",
+    "title": "Adidas Originals Firebird Track Top",
+    "brand": "Adidas",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "adidas-gazelle-bold",
+    "title": "Adidas Gazelle Bold Shoes",
+    "brand": "Adidas",
+    "category": "Shoes"
+  },
+  {
+    "slug": "adidas-own-the-run-jacket",
+    "title": "Adidas Own The Run Hooded Wind Jacket",
+    "brand": "Adidas",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "adidas-samba-classic",
+    "title": "Adidas Samba Classic",
+    "brand": "Adidas",
+    "category": "Shoes"
+  },
+  {
+    "slug": "adidas-stan-smith",
+    "title": "Adidas Stan Smith",
+    "brand": "Adidas",
+    "category": "Shoes"
+  },
+  {
+    "slug": "adidas-terrex-rain-jacket",
+    "title": "Adidas Terrex Multi 2.5L Rain Jacket",
+    "brand": "Adidas",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "adidas-terrex-windweave-pro",
+    "title": "Adidas Terrex Agravic Windweave Pro",
+    "brand": "Adidas",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "adidas-tiro-23-pants",
+    "title": "Adidas Tiro 23 League Training Pants",
+    "brand": "Adidas",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "adidas-ultraboost-light",
+    "title": "Adidas Ultraboost Light",
+    "brand": "Adidas",
+    "category": "Shoes"
+  },
+  {
+    "slug": "airpods-3rd-gen",
+    "title": "AirPods (3rd Gen)",
+    "brand": "Apple",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "airpods-max",
+    "title": "AirPods Max",
+    "brand": "Apple",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "airpods-pro-2-usb-c",
+    "title": "AirPods Pro (2nd Gen) USB-C",
+    "brand": "Apple",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "alienware-m16-r2",
+    "title": "Dell Alienware m16 R2",
+    "brand": "Dell",
+    "category": "Laptops"
+  },
+  {
+    "slug": "apple-magic-keyboard-touch-id",
+    "title": "Magic Keyboard with Touch ID and Numeric Keypad",
+    "brand": "Apple",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "apple-magic-trackpad",
+    "title": "Magic Trackpad",
+    "brand": "Apple",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "apple-pencil-pro",
+    "title": "Apple Pencil Pro",
+    "brand": "Apple",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "apple-watch-se-2",
+    "title": "Apple Watch SE (2nd Gen)",
+    "brand": "Apple",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "apple-watch-series-9",
+    "title": "Apple Watch Series 9",
+    "brand": "Apple",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "apple-watch-ultra-2",
+    "title": "Apple Watch Ultra 2",
+    "brand": "Apple",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "astro-a50-x-headset",
+    "title": "Logitech G ASTRO A50 X Wireless Gaming Headset",
+    "brand": "Logitech",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "bose-qc-ultra-earbuds",
+    "title": "Bose QuietComfort Ultra Earbuds",
+    "brand": "Bose",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "bose-qc-ultra-headphones",
+    "title": "Bose QuietComfort Ultra Headphones",
+    "brand": "Bose",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "bose-quietcomfort-45",
+    "title": "Bose QuietComfort Headphones",
+    "brand": "Bose",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "bose-soundlink-flex",
+    "title": "Bose SoundLink Flex Bluetooth Speaker",
+    "brand": "Bose",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "bose-soundlink-max",
+    "title": "Bose SoundLink Max Portable Speaker",
+    "brand": "Bose",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "dell-g16-gaming",
+    "title": "Dell G16 Gaming Laptop",
+    "brand": "Dell",
+    "category": "Laptops"
+  },
+  {
+    "slug": "dell-hd22q-dock",
+    "title": "Dell Dual Charge Dock (HD22Q)",
+    "brand": "Dell",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "dell-inspiron-16-plus",
+    "title": "Dell Inspiron 16 Plus",
+    "brand": "Dell",
+    "category": "Laptops"
+  },
+  {
+    "slug": "dell-km5221w-combo",
+    "title": "Dell Pro Wireless Keyboard and Mouse (KM5221W)",
+    "brand": "Dell",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "dell-latitude-9440",
+    "title": "Dell Latitude 9440 2-in-1",
+    "brand": "Dell",
+    "category": "Laptops"
+  },
+  {
+    "slug": "dell-precision-5680",
+    "title": "Dell Precision 5680 Workstation",
+    "brand": "Dell",
+    "category": "Laptops"
+  },
+  {
+    "slug": "dell-premier-wl7024",
+    "title": "Dell Premier Wireless ANC Headset (WL7024)",
+    "brand": "Dell",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "dell-ultrasharp-32-4k-u3223qe",
+    "title": "Dell UltraSharp 32 4K USB-C Hub Monitor (U3223QE)",
+    "brand": "Dell",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "dell-ultrasharp-38-curved",
+    "title": "Dell UltraSharp 38 Curved USB-C Hub Monitor",
+    "brand": "Dell",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "dell-xps-13-plus",
+    "title": "Dell XPS 13 Plus",
+    "brand": "Dell",
+    "category": "Laptops"
+  },
+  {
+    "slug": "dell-xps-15-oled",
+    "title": "Dell XPS 15 OLED",
+    "brand": "Dell",
+    "category": "Laptops"
+  },
+  {
+    "slug": "dualsense-charging-station",
+    "title": "DualSense Charging Station",
+    "brand": "Sony",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "dualsense-edge-controller",
+    "title": "DualSense Edge Wireless Controller",
+    "brand": "Sony",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "dualsense-wireless-controller",
+    "title": "DualSense Wireless Controller",
+    "brand": "Sony",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "galaxy-a35-5g",
+    "title": "Galaxy A35 5G",
+    "brand": "Samsung",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "galaxy-a55-5g",
+    "title": "Galaxy A55 5G",
+    "brand": "Samsung",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "galaxy-book4-360-15",
+    "title": "Galaxy Book4 360 15\"",
+    "brand": "Samsung",
+    "category": "Laptops"
+  },
+  {
+    "slug": "galaxy-book4-pro-360",
+    "title": "Galaxy Book4 Pro 360",
+    "brand": "Samsung",
+    "category": "Laptops"
+  },
+  {
+    "slug": "galaxy-book4-ultra",
+    "title": "Galaxy Book4 Ultra",
+    "brand": "Samsung",
+    "category": "Laptops"
+  },
+  {
+    "slug": "galaxy-s24-base",
+    "title": "Galaxy S24",
+    "brand": "Samsung",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "galaxy-s24-plus",
+    "title": "Galaxy S24 Plus",
+    "brand": "Samsung",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "galaxy-s24-ultra",
+    "title": "Galaxy S24 Ultra",
+    "brand": "Samsung",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "galaxy-tab-a9-plus",
+    "title": "Galaxy Tab A9 Plus",
+    "brand": "Samsung",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "galaxy-tab-s9-fe-plus",
+    "title": "Galaxy Tab S9 FE Plus",
+    "brand": "Samsung",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "galaxy-tab-s9-ultra",
+    "title": "Galaxy Tab S9 Ultra",
+    "brand": "Samsung",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "galaxy-watch-7",
+    "title": "Galaxy Watch 7",
+    "brand": "Samsung",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "galaxy-watch-fe",
+    "title": "Galaxy Watch FE",
+    "brand": "Samsung",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "galaxy-watch-ultra",
+    "title": "Galaxy Watch Ultra",
+    "brand": "Samsung",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "galaxy-z-flip-6",
+    "title": "Galaxy Z Flip6",
+    "brand": "Samsung",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "galaxy-z-fold-6",
+    "title": "Galaxy Z Fold6",
+    "brand": "Samsung",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "ipad-air-13-m2",
+    "title": "iPad Air 13\" M2",
+    "brand": "Apple",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "ipad-mini-6",
+    "title": "iPad mini (6th Gen)",
+    "brand": "Apple",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "ipad-pro-13-m4-oled",
+    "title": "iPad Pro 13\" M4 OLED",
+    "brand": "Apple",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "iphone-15-base",
+    "title": "iPhone 15",
+    "brand": "Apple",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "iphone-15-plus",
+    "title": "iPhone 15 Plus",
+    "brand": "Apple",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "iphone-15-pro",
+    "title": "iPhone 15 Pro",
+    "brand": "Apple",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "iphone-15-pro-max",
+    "title": "iPhone 15 Pro Max",
+    "brand": "Apple",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "iphone-se-3rd-gen",
+    "title": "iPhone SE (3rd Gen)",
+    "brand": "Apple",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "logitech-brio-4k",
+    "title": "Logitech Brio 4K Ultra HD Webcam",
+    "brand": "Logitech",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "logitech-g-fits-earbuds",
+    "title": "Logitech G Fits True Wireless Gaming Earbuds",
+    "brand": "Logitech",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "logitech-g-pro-x-2",
+    "title": "Logitech G PRO X 2 LIGHTSPEED Gaming Headset",
+    "brand": "Logitech",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "logitech-g-pro-x-superlight-2",
+    "title": "Logitech G PRO X SUPERLIGHT 2 Gaming Mouse",
+    "brand": "Logitech",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "logitech-g-pro-x-tkl",
+    "title": "Logitech G PRO X TKL Wireless Gaming Keyboard",
+    "brand": "Logitech",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "logitech-g29-racing-wheel",
+    "title": "Logitech G29 Driving Force Racing Wheel",
+    "brand": "Logitech",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "logitech-g502-x-plus",
+    "title": "Logitech G502 X PLUS Wireless RGB Mouse",
+    "brand": "Logitech",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "logitech-g915-lightspeed",
+    "title": "Logitech G915 LIGHTSPEED Wireless RGB Keyboard",
+    "brand": "Logitech",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "logitech-lift-vertical-mouse",
+    "title": "Logitech Lift Vertical Ergonomic Mouse",
+    "brand": "Logitech",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "logitech-mx-keys-s",
+    "title": "Logitech MX Keys S Wireless Keyboard",
+    "brand": "Logitech",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "logitech-mx-master-3s",
+    "title": "Logitech MX Master 3S Wireless Mouse",
+    "brand": "Logitech",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "logitech-wave-keys",
+    "title": "Logitech Wave Keys Ergonomic Wireless Keyboard",
+    "brand": "Logitech",
+    "category": "Computer Accessories"
+  },
+  {
+    "slug": "macbook-air-15-m3",
+    "title": "MacBook Air 15\" M3",
+    "brand": "Apple",
+    "category": "Laptops"
+  },
+  {
+    "slug": "macbook-pro-14-m3-base",
+    "title": "MacBook Pro 14\" M3 Base",
+    "brand": "Apple",
+    "category": "Laptops"
+  },
+  {
+    "slug": "macbook-pro-14-m3-pro",
+    "title": "MacBook Pro 14\" M3 Pro",
+    "brand": "Apple",
+    "category": "Laptops"
+  },
+  {
+    "slug": "macbook-pro-16-m3-max",
+    "title": "MacBook Pro 16\" M3 Max",
+    "brand": "Apple",
+    "category": "Laptops"
+  },
+  {
+    "slug": "magic-keyboard-ipad-pro-13",
+    "title": "Magic Keyboard for iPad Pro 13\"",
+    "brand": "Apple",
+    "category": "Tablets & Wearables"
+  },
+  {
+    "slug": "nike-acg-insects-top",
+    "title": "Nike ACG 'Insects' Dri-FIT ADV Top",
+    "brand": "Nike",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "nike-acg-storm-fit-jacket",
+    "title": "Nike ACG Storm-FIT Cascade Rains Jacket",
+    "brand": "Nike",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "nike-air-force-1-07",
+    "title": "Nike Air Force 1 '07",
+    "brand": "Nike",
+    "category": "Shoes"
+  },
+  {
+    "slug": "nike-air-jordan-1-high",
+    "title": "Nike Air Jordan 1 Retro High OG",
+    "brand": "Nike",
+    "category": "Shoes"
+  },
+  {
+    "slug": "nike-air-max-plus",
+    "title": "Nike Air Max Plus (Tn)",
+    "brand": "Nike",
+    "category": "Shoes"
+  },
+  {
+    "slug": "nike-club-fleece-pullover",
+    "title": "Nike Sportswear Club Fleece Pullover",
+    "brand": "Nike",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "nike-dri-fit-miler-tee",
+    "title": "Nike Dri-FIT UV Miler Running Tee",
+    "brand": "Nike",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "nike-dunk-low-retro",
+    "title": "Nike Dunk Low Retro",
+    "brand": "Nike",
+    "category": "Shoes"
+  },
+  {
+    "slug": "nike-invincible-3",
+    "title": "Nike Invincible 3 Cushion Running",
+    "brand": "Nike",
+    "category": "Shoes"
+  },
+  {
+    "slug": "nike-metcon-9",
+    "title": "Nike Metcon 9 Training Shoes",
+    "brand": "Nike",
+    "category": "Shoes"
+  },
+  {
+    "slug": "nike-pegasus-41",
+    "title": "Nike Pegasus 41 Road Running",
+    "brand": "Nike",
+    "category": "Shoes"
+  },
+  {
+    "slug": "nike-pro-dri-fit-ls",
+    "title": "Nike Pro Dri-FIT Tight Long Sleeve",
+    "brand": "Nike",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "nike-tech-fleece-joggers",
+    "title": "Nike Tech Fleece Jogger Pants",
+    "brand": "Nike",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "nike-tech-fleece-windrunner",
+    "title": "Nike Tech Fleece Windrunner Full-Zip",
+    "brand": "Nike",
+    "category": "Outerwear"
+  },
+  {
+    "slug": "nike-vaporfly-3",
+    "title": "Nike Vaporfly 3 Road Racing",
+    "brand": "Nike",
+    "category": "Shoes"
+  },
+  {
+    "slug": "playstation-5-slim-console",
+    "title": "PlayStation 5 Slim Console",
+    "brand": "Sony",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "playstation-portal-remote-player",
+    "title": "PlayStation Portal Remote Player",
+    "brand": "Sony",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "playstation-vr2-bundle",
+    "title": "PlayStation VR2 Horizon Call of the Mountain Bundle",
+    "brand": "Sony",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "ps5-slim-console-covers",
+    "title": "PlayStation 5 Console Covers (Slim)",
+    "brand": "Sony",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "pulse-elite-headset",
+    "title": "PULSE Elite Wireless Headset",
+    "brand": "Sony",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "pulse-explore-earbuds",
+    "title": "PULSE Explore Wireless Earbuds",
+    "brand": "Sony",
+    "category": "Gaming Consoles"
+  },
+  {
+    "slug": "sony-linkbuds-s",
+    "title": "Sony LinkBuds S Noise Canceling Earbuds",
+    "brand": "Sony",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "sony-srs-xb100",
+    "title": "Sony SRS-XB100 Compact Speaker",
+    "brand": "Sony",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "sony-ult-wear",
+    "title": "Sony ULT WEAR Bass Headphones",
+    "brand": "Sony",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "sony-wf-1000xm5",
+    "title": "Sony WF-1000XM5 True Wireless Earbuds",
+    "brand": "Sony",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "sony-wh-1000xm5",
+    "title": "Sony WH-1000XM5 Wireless Noise Canceling",
+    "brand": "Sony",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "sony-wh-ch720n",
+    "title": "Sony WH-CH720N Noise Canceling",
+    "brand": "Sony",
+    "category": "Audio & Headphones"
+  },
+  {
+    "slug": "sony-xperia-1-vi",
+    "title": "Sony Xperia 1 VI",
+    "brand": "Sony",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "sony-xperia-5-v",
+    "title": "Sony Xperia 5 V",
+    "brand": "Sony",
+    "category": "Smartphones"
+  },
+  {
+    "slug": "vaio-sx14-ultra",
+    "title": "Sony VAIO SX14 Ultra",
+    "brand": "Sony",
+    "category": "Laptops"
+  }
+]

@@ -24,6 +24,11 @@ _extra_path = os.path.join(SEED_DIR, "data", "extra_products.json")
 extra_products = json.load(open(_extra_path)) if os.path.exists(_extra_path) else []
 extra_images_by_slug = {p["slug"]: list(p["images"]) for p in extra_products}
 
+# Original catalogue products re-imaged with real, product-specific photos.
+# Produced by fetch_original_media.py into seed/data/original_images.json.
+_original_path = os.path.join(SEED_DIR, "data", "original_images.json")
+original_images_by_slug = json.load(open(_original_path)) if os.path.exists(_original_path) else {}
+
 # Brand logos
 brand_logos = [
     ("brands/apple-logo.png", "image/png", 45000),
@@ -34,18 +39,6 @@ brand_logos = [
     ("brands/dell-logo.png", "image/png", 41000),
     ("brands/logitech-logo.png", "image/png", 28000),
     ("brands/bose-logo.png", "image/png", 31000),
-]
-
-# Gallery angles & contextual detail angles
-all_context_angles = [
-    "products/laptop-angle-keyboard.jpg", "products/laptop-angle-side.jpg", "products/laptop-lifestyle-desk.jpg",
-    "products/phone-angle-camera.jpg", "products/phone-angle-screen.jpg", "products/phone-lifestyle-hand.jpg",
-    "products/audio-case-detail.jpg", "products/audio-lifestyle-wear.jpg", "products/audio-cushion-macro.jpg",
-    "products/shoe-sole-traction.jpg", "products/shoe-heel-angle.jpg", "products/shoe-pair-overhead.jpg",
-    "products/apparel-fabric-texture.jpg", "products/apparel-zipper-detail.jpg", "products/apparel-model-back.jpg",
-    "products/tablet-pencil-drawing.jpg", "products/wearable-wrist-display.jpg",
-    "products/accessory-sensor-bottom.jpg", "products/accessory-desk-setup.jpg",
-    "products/gaming-controller-macro.jpg", "products/gaming-console-stand.jpg",
 ]
 
 brand_logo_map = {}
@@ -60,22 +53,15 @@ for key, ctype, size in brand_logos:
     brand_logo_map[brand_name] = obj_id
     obj_idx += 1
 
-# Register all contextual gallery angles
-for ang in all_context_angles:
-    if ang not in image_to_obj_id:
-        obj_id = hex_id(0x80000000, obj_idx)
-        storage_objects.append((obj_id, 'catalog', ang, 'image/jpeg', 120000))
-        image_to_obj_id[ang] = obj_id
-        obj_idx += 1
-
-# Register the extra product images (real per-product photos) with their
-# on-disk size so storage_objects reflects reality.
-_extra_media_dir = os.path.join(SEED_DIR, "media", "catalog")
-for _p in extra_products:
-    for _img in _p["images"]:
+# Register the real per-product photos (originals + extras) with their on-disk
+# size so storage_objects reflects reality and no byte-identical image is shared
+# between two different products.
+_media_dir = os.path.join(SEED_DIR, "media", "catalog")
+for _images in list(original_images_by_slug.values()) + [p["images"] for p in extra_products]:
+    for _img in _images:
         if _img not in image_to_obj_id:
             _obj_id = hex_id(0x80000000, obj_idx)
-            _disk = os.path.join(_extra_media_dir, _img)
+            _disk = os.path.join(_media_dir, _img)
             _size = os.path.getsize(_disk) if os.path.exists(_disk) else 150000
             storage_objects.append((_obj_id, 'catalog', _img, 'image/jpeg', _size))
             image_to_obj_id[_img] = _obj_id
@@ -548,6 +534,9 @@ for _p in extra_products:
 
 
 for cat_name, brand_name, title, slug, desc, highlights, var_list in catalog_defs:
+    # Products carrying a real-image manifest are already registered above.
+    if slug in original_images_by_slug or slug in extra_images_by_slug:
+        continue
     prod_img = f"products/{slug}.jpg"
     if prod_img not in image_to_obj_id:
         obj_id = hex_id(0x80000000, obj_idx)
@@ -685,8 +674,14 @@ inventory_ledgers = []
 
 prod_counter = 1
 def resolve_variant_gallery(cat, brand, title, slug, var_list, current_v_idx):
-    # Extra products ship with a full set of real, product-specific images and
-    # must not have the generic category "context" shots appended.
+    # Products with a real-image manifest (originals re-imaged + extras) ship
+    # with a full set of real, product-specific images and must not have the
+    # generic category "context" shots appended.
+    if slug in original_images_by_slug:
+        imgs = original_images_by_slug[slug]
+        # Default variant carries the full gallery; other variants show their
+        # own distinct photo so images are not repeated within a product.
+        return list(imgs) if current_v_idx == 0 else [imgs[current_v_idx % len(imgs)]]
     if slug in extra_images_by_slug:
         return list(extra_images_by_slug[slug])
 
@@ -794,6 +789,9 @@ for cat_name, brand_name, title, slug, desc, highlights, var_list in catalog_def
         v_cross = v_item[2]
         v_attrs = v_item[3]
         v_img_key = v_item[4] if len(v_item) > 4 else prod_main_img
+        _manifest = original_images_by_slug.get(slug) or extra_images_by_slug.get(slug)
+        if _manifest:  # real-image manifest: give each variant its own photo
+            v_img_key = _manifest[v_idx % len(_manifest)]
         v_thumb_id = image_to_obj_id[v_img_key]
         
         v_id = hex_id(0x70000000, var_counter)
