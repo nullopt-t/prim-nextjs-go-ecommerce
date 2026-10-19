@@ -986,6 +986,11 @@
       "preview": "Preview",
       "copyLink": "Copy Link",
       "confirmDelete": "Delete this media asset?",
+      "loadingMore": "Loading more media...",
+      "allLoaded": "All media loaded",
+      "loadMoreFailed": "Couldn't load more media",
+      "empty": "No media files found",
+      "noResults": "No media files match your search",
       "toast": {
         "loadFailed": "Failed to load media assets from server",
         "uploaded": "File uploaded to media library!",
