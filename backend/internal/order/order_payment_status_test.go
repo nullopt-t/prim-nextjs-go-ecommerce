@@ -28,7 +28,22 @@ func (e paymentStatusExecutor) Query(context.Context, string, ...interface{}) (p
 	return nil, nil
 }
 
-func (e paymentStatusExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Row { return nil }
+// paymentStatusRow is a minimal pgx.Row that satisfies the SELECTs made before
+// the payment UPDATE (currently: resolving the owning order id).
+type paymentStatusRow struct{ orderID uuid.UUID }
+
+func (r paymentStatusRow) Scan(dest ...any) error {
+	if len(dest) > 0 {
+		if p, ok := dest[0].(*uuid.UUID); ok {
+			*p = r.orderID
+		}
+	}
+	return nil
+}
+
+func (e paymentStatusExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Row {
+	return paymentStatusRow{orderID: uuid.New()}
+}
 
 type paymentStatusRunner struct{ tag pgconn.CommandTag }
 

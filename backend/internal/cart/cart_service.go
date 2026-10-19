@@ -117,43 +117,9 @@ func (s *CartService) lockCart(
 	userID *uuid.UUID,
 	sessionID *string,
 ) (*model.Cart, error) {
-	var cart *model.Cart
-	var err error
-	switch {
-	case userID != nil:
-		cart, err = s.cartRepo.GetCartByUserIDForUpdate(ctx, tx, *userID)
-	case sessionID != nil:
-		cart, err = s.cartRepo.GetCartBySessionIDForUpdate(ctx, tx, *sessionID)
-	default:
-		return nil, apierr.BadRequestError("User ID or Session ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
+	cart, err := s.getOrCreateCartForUpdate(ctx, tx, userID, sessionID)
 	if err != nil {
-		if errors.Is(database.MapError(err), database.ErrNotFound) {
-			newCart := &model.Cart{
-				ID:        uuid.New(),
-				UserID:    userID,
-				SessionID: sessionID,
-			}
-			if createErr := s.cartRepo.CreateCart(ctx, tx, newCart); createErr != nil {
-				// Partial unique index on carts(user_id) lets one concurrent
-				// creation win; fetch the existing active cart instead of a 500.
-				if errors.Is(database.MapError(createErr), database.ErrConflict) && userID != nil {
-					if existing, gErr := s.cartRepo.GetCartByUserIDForUpdate(ctx, tx, *userID); gErr == nil {
-						cart = existing
-					} else if gErr != nil {
-						return nil, gErr
-					}
-				} else {
-					return nil, createErr
-				}
-			} else {
-				cart = newCart
-			}
-		} else {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	items, itemsErr := s.cartRepo.GetCartItems(ctx, tx, cart.ID)
@@ -163,6 +129,62 @@ func (s *CartService) lockCart(
 
 	cart.Items = items
 	return cart, nil
+}
+
+// getOrCreateCartForUpdate resolves the cart for the given owner inside the
+// caller's transaction with a FOR UPDATE lock, inserting a new cart when none
+// exists. Concurrent creators are tolerated rather than surfacing a 500: the
+// partial unique index on carts(user_id) lets exactly one INSERT win, and the
+// losing request re-reads the winning row. This is the single get-or-create
+// path shared by lockCart, AddItem and MergeGuestCart so the race handling
+// cannot drift between call sites.
+func (s *CartService) getOrCreateCartForUpdate(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	userID *uuid.UUID,
+	sessionID *string,
+) (*model.Cart, error) {
+	if userID == nil && sessionID == nil {
+		return nil, apierr.BadRequestError("User ID or Session ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	var (
+		cart *model.Cart
+		err  error
+	)
+	if userID != nil {
+		cart, err = s.cartRepo.GetCartByUserIDForUpdate(ctx, tx, *userID)
+	} else {
+		cart, err = s.cartRepo.GetCartBySessionIDForUpdate(ctx, tx, *sessionID)
+	}
+
+	if err == nil {
+		return cart, nil
+	}
+	if !errors.Is(database.MapError(err), database.ErrNotFound) {
+		return nil, err
+	}
+
+	newCart := &model.Cart{
+		ID:        uuid.New(),
+		UserID:    userID,
+		SessionID: sessionID,
+	}
+	if createErr := s.cartRepo.CreateCart(ctx, tx, newCart); createErr != nil {
+		// Only the user-owned cart is protected by a unique index, so only that
+		// path can be recovered by re-reading the concurrently-created row.
+		if errors.Is(database.MapError(createErr), database.ErrConflict) && userID != nil {
+			existing, gErr := s.cartRepo.GetCartByUserIDForUpdate(ctx, tx, *userID)
+			if gErr != nil {
+				return nil, gErr
+			}
+			return existing, nil
+		}
+		return nil, createErr
+	}
+
+	return newCart, nil
 }
 
 // enrichCart hydrates a cart's line items using a pooled connection.
@@ -303,30 +325,9 @@ func (s *CartService) AddItem(
 
 	txErr := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		var err error
-		switch {
-		case userID != nil:
-			cart, err = s.cartRepo.GetCartByUserIDForUpdate(ctx, tx, *userID)
-		case sessionID != nil:
-			cart, err = s.cartRepo.GetCartBySessionIDForUpdate(ctx, tx, *sessionID)
-		default:
-			return apierr.BadRequestError("User ID or Session ID is required").
-				WithCode(apierr.CodeInvalidInput)
-		}
-
+		cart, err = s.getOrCreateCartForUpdate(ctx, tx, userID, sessionID)
 		if err != nil {
-			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				newCart := &model.Cart{
-					ID:        uuid.New(),
-					UserID:    userID,
-					SessionID: sessionID,
-				}
-				if createErr := s.cartRepo.CreateCart(ctx, tx, newCart); createErr != nil {
-					return createErr
-				}
-				cart = newCart
-			} else {
-				return err
-			}
+			return err
 		}
 
 		existingItem, getErr := s.cartRepo.GetItemByVariantID(ctx, tx, cart.ID, v.ID)
@@ -535,20 +536,9 @@ func (s *CartService) MergeGuestCart(
 			return gErr
 		}
 
-		userCart, uErr := s.cartRepo.GetCartByUserIDForUpdate(ctx, tx, userID)
+		userCart, uErr := s.getOrCreateCartForUpdate(ctx, tx, &userID, nil)
 		if uErr != nil {
-			if errors.Is(database.MapError(uErr), database.ErrNotFound) {
-				newCart := &model.Cart{
-					ID:     uuid.New(),
-					UserID: &userID,
-				}
-				if cErr := s.cartRepo.CreateCart(ctx, tx, newCart); cErr != nil {
-					return cErr
-				}
-				userCart = newCart
-			} else {
-				return uErr
-			}
+			return uErr
 		}
 
 		guestItems, err := s.cartRepo.GetCartItems(ctx, tx, guestCart.ID)

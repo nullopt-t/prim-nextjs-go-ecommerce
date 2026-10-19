@@ -364,7 +364,12 @@ func (r *ProductRepository) List(
 	// 1. Total Count (skipped for keyset pagination, which needs no total)
 	var total int
 	if !cursorMode {
-		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p LEFT JOIN product_brands b ON p.brand_id = b.id LEFT JOIN product_categories c ON p.category_id = c.id %s", whereStmt)
+		// Count and select must use identical joins. In particular the brand and
+	// category joins carry the same `deleted_at IS NULL` predicate as the select:
+	// a soft-deleted brand/category must not satisfy a `b.name`/`c.name` search
+	// in the count while the select (which nulls those joins out) excludes the
+	// row, otherwise the reported total disagrees with the returned rows.
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL %s", whereStmt)
 		if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 			return nil, fmt.Errorf("count products: %w", err)
 		}

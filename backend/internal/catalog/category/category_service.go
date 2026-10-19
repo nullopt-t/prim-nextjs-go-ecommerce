@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
@@ -199,6 +199,8 @@ type ListCategoriesInput struct {
 	Query            *pagination.ListQuery
 	IncludeDeleted   bool
 	OnlyWithProducts bool
+	WithParentName   bool
+	WithProductCount bool
 }
 
 func (cs *CategoryService) ListCategories(
@@ -223,6 +225,8 @@ func (cs *CategoryService) ListCategories(
 			ListQuery:        q,
 			IncludeDeleted:   in.IncludeDeleted,
 			OnlyWithProducts: in.OnlyWithProducts,
+			WithParentName:   in.WithParentName,
+			WithProductCount: in.WithProductCount,
 			Cursor:           cursor,
 		})
 		return repoErr
@@ -254,11 +258,12 @@ func (cs *CategoryService) AdminList(
 		q = &pagination.ListQuery{}
 	}
 	return cs.ListCategories(ctx, ListCategoriesInput{
-		Query:          q,
-		IncludeDeleted: true,
+		Query:            q,
+		IncludeDeleted:   true,
+		WithParentName:   true,
+		WithProductCount: true,
 	})
 }
-
 
 func (cs *CategoryService) DeleteCategory(ctx context.Context, id uuid.UUID) error {
 	return cs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {

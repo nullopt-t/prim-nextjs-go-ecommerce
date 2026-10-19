@@ -71,6 +71,9 @@ type InventoryReservation struct {
 	VariantID uuid.UUID
 	// CartID is the optional associated Cart UUID holding this reservation.
 	CartID *uuid.UUID
+	// OrderID is the optional associated Order UUID. It is the handle used to
+	// commit the hold on payment, release it on cancellation, and expire it.
+	OrderID *uuid.UUID
 	// Quantity is the number of units placed on hold.
 	Quantity int
 	// ExpiresAt is the timestamp after which unfulfilled reservations are automatically released.

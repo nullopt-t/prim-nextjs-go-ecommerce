@@ -1,6 +1,7 @@
 package cart
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -8,19 +9,47 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/shared/validation"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 )
 
-type CartHandler struct {
-	cartService *CartService
+// StoreConfigProvider exposes the effective store configuration (shipping
+// threshold and flat rate) so the cart summary can quote shipping with exactly
+// the same rule that checkout charges.
+type StoreConfigProvider interface {
+	GetConfig(ctx context.Context) (setting.Config, error)
 }
 
-func NewHandler(cartService *CartService) *CartHandler {
-	return &CartHandler{
+type CartHandler struct {
+	cartService *CartService
+	settings    StoreConfigProvider
+}
+
+func NewHandler(cartService *CartService, settings ...StoreConfigProvider) *CartHandler {
+	h := &CartHandler{
 		cartService: cartService,
 	}
+	if len(settings) > 0 {
+		h.settings = settings[0]
+	}
+	return h
+}
+
+// resolveStoreConfig returns the effective store configuration, falling back to
+// the built-in defaults when the provider is absent or errors. This mirrors
+// CheckoutService.resolveConfig so the cart quote and the charged amount cannot
+// diverge on a transient settings read failure.
+func (h *CartHandler) resolveStoreConfig(ctx context.Context) setting.Config {
+	if h.settings == nil {
+		return setting.DefaultConfig()
+	}
+	cfg, err := h.settings.GetConfig(ctx)
+	if err != nil {
+		return setting.DefaultConfig()
+	}
+	return cfg
 }
 
 // AddItemRequest defines the request body payload for adding a product variant to the cart.
@@ -96,7 +125,7 @@ type CartResponse struct {
 
 // mapCartResponse transforms the internal domain model.Cart into a client-facing CartResponse.
 // It computes line item subtotals, aggregated cart totals, item counts, and resolves fallback titles and thumbnails.
-func mapCartResponse(cart *model.Cart) CartResponse {
+func (h *CartHandler) mapCartResponse(ctx context.Context, cart *model.Cart) CartResponse {
 	if cart == nil {
 		return CartResponse{Items: []CartItemResponse{}}
 	}
@@ -162,11 +191,14 @@ func mapCartResponse(cart *model.Cart) CartResponse {
 	res.Currency = cartCurrency
 	res.ItemCount = itemCount
 
-	// Charge shipping consistently with the checkout rule:
-	// free shipping at or above 15000 minor units, 999 otherwise.
+	// Quote shipping with the same admin-configured rule checkout charges:
+	// the configured flat rate below the free-shipping threshold, free at/above
+	// it. Reading it here (instead of a hardcoded 9.99/150) keeps the cart total
+	// and the final order total in agreement.
+	cfg := h.resolveStoreConfig(ctx)
 	var shippingCost int64
-	if subtotal > 0 && subtotal < 15000 {
-		shippingCost = 999
+	if threshold := cfg.FreeShippingThresholdMinorUnits(); subtotal > 0 && subtotal < threshold {
+		shippingCost = cfg.ShippingMinorUnits()
 	}
 
 	res.Summary = CartSummaryResponse{
@@ -262,7 +294,7 @@ func (h *CartHandler) GetCart(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.DataResponse{Data: mapCartResponse(cart)})
+	c.JSON(http.StatusOK, api.DataResponse{Data: h.mapCartResponse(c.Request.Context(), cart)})
 }
 
 // AddItem godoc
@@ -293,7 +325,7 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.DataResponse{Data: mapCartResponse(cart)})
+	c.JSON(http.StatusOK, api.DataResponse{Data: h.mapCartResponse(c.Request.Context(), cart)})
 }
 
 // UpdateItemQuantity godoc
@@ -331,7 +363,7 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.DataResponse{Data: mapCartResponse(cart)})
+	c.JSON(http.StatusOK, api.DataResponse{Data: h.mapCartResponse(c.Request.Context(), cart)})
 }
 
 // RemoveItem godoc
@@ -361,7 +393,7 @@ func (h *CartHandler) RemoveItem(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.DataResponse{Data: mapCartResponse(cart)})
+	c.JSON(http.StatusOK, api.DataResponse{Data: h.mapCartResponse(c.Request.Context(), cart)})
 }
 
 // ClearCart godoc

@@ -47,6 +47,11 @@ export const catalogService = {
 
   getProductBySlug: (slug: string) => api.get(`/api/v1/products/${slug}`),
   getCategories: (params?: CatalogListParams) => api.get(`/api/v1/categories${buildCatalogListQuery(params ?? 50)}`),
+  // Admin listing: unlike the public endpoint it includes categories with no
+  // products (such as top-level parents) and soft-deleted rows, and returns
+  // parentId/parentName for the taxonomy table and parent selector.
+  getAdminCategories: (params?: CatalogListParams) =>
+    api.get(`/api/v1/admin/categories${buildCatalogListQuery(params ?? 100)}`),
   getBrands: (params?: CatalogListParams) => api.get(`/api/v1/brands${buildCatalogListQuery(params ?? 50)}`),
   getTags: () => api.get("/api/v1/tags"),
   getVariantById: (id: string) => api.get(`/api/v1/variants/${id}`),

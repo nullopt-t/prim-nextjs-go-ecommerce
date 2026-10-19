@@ -54,6 +54,10 @@ type ReserveStockInput struct {
 	VariantID uuid.UUID
 	// CartID optionally associates this reservation with a customer cart.
 	CartID    *uuid.UUID
+	// OrderID optionally associates this reservation with the order that placed
+	// the hold. When set, the hold is keyed to the order (not upserted against
+	// an existing cart hold) so it can be committed or released deterministically.
+	OrderID   *uuid.UUID
 	// Quantity is the positive number of units to reserve.
 	Quantity  int
 	// Duration specifies how long the reservation remains valid before auto-expiration (defaults to 15m).
@@ -437,8 +441,10 @@ func (s *InventoryService) reserveStockInTx(
 		return nil, err
 	}
 
-	// Check if active cart reservation already exists to extend / upsert
-	if in.CartID != nil {
+	// Check if active cart reservation already exists to extend / upsert.
+	// This path is only for plain cart holds (no order yet); an order-linked
+	// hold is always a fresh row so its lifecycle stays deterministic.
+	if in.CartID != nil && in.OrderID == nil {
 		existing, err := s.repo.GetActiveCartReservation(ctx, tx, *in.CartID, in.VariantID)
 		if err == nil && existing != nil {
 			// stock.AvailableQuantity already subtracts existing.Quantity; account for existing hold
@@ -470,6 +476,7 @@ func (s *InventoryService) reserveStockInTx(
 		ID:        uuid.New(),
 		VariantID: in.VariantID,
 		CartID:    in.CartID,
+		OrderID:   in.OrderID,
 		Quantity:  in.Quantity,
 		ExpiresAt: time.Now().Add(ttl),
 	}
@@ -629,6 +636,104 @@ func (s *InventoryService) CommitReservation(
 	}
 
 	return nil
+}
+
+// CommitReservationsForOrderWithTx converts every unreleased reservation for an
+// order into a finalized sale deduction within the caller's transaction. It is
+// called when payment is captured: each held unit becomes a negative 'sale'
+// ledger entry and the hold is marked released. Holds whose TTL just lapsed but
+// which the reaper has not yet released are still honoured (physical on-hand is
+// re-checked, so truly unavailable units fail closed). The operation is
+// idempotent — a second call finds no unreleased holds and does nothing.
+func (s *InventoryService) CommitReservationsForOrderWithTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	orderID uuid.UUID,
+) error {
+	if orderID == uuid.Nil {
+		return apierr.BadRequestError("Order ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	reservations, err := s.repo.GetUnreleasedReservationsForOrder(ctx, tx, orderID)
+	if err != nil {
+		return err
+	}
+
+	for _, res := range reservations {
+		// Serialize stock deductions per variant across concurrent commits.
+		if err := s.repo.LockVariantForUpdate(ctx, tx, res.VariantID); err != nil {
+			return err
+		}
+
+		stock, err := s.repo.GetStock(ctx, tx, res.VariantID)
+		if err != nil {
+			return err
+		}
+		if stock.OnHandQuantity < res.Quantity {
+			return apierr.BadRequestError(
+				fmt.Sprintf("Insufficient physical on-hand stock (%d) to commit reservation (%d)", stock.OnHandQuantity, res.Quantity),
+			).WithCode(errcode.CodeInsufficientInventory)
+		}
+
+		if err := s.repo.ReleaseReservation(ctx, tx, res.ID); err != nil {
+			return err
+		}
+
+		ledger := &model.InventoryLedger{
+			ID:        uuid.New(),
+			VariantID: res.VariantID,
+			Quantity:  -res.Quantity,
+			Reason:    model.InventoryReasonSale,
+		}
+		if err := s.repo.CreateLedger(ctx, tx, ledger); err != nil {
+			return err
+		}
+	}
+
+	// Defensive: release anything still unreleased for this order (e.g. a hold
+	// inserted concurrently) so it cannot linger and be committed twice.
+	if _, err := s.repo.ReleaseReservationsForOrder(ctx, tx, orderID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ReleaseReservationsForOrderWithTx releases every unreleased hold for an order
+// and reports how many were released. A zero count means the order had no live
+// hold left — i.e. its stock was already committed as a sale — which callers
+// use to decide whether stock needs restoring on cancellation.
+func (s *InventoryService) ReleaseReservationsForOrderWithTx(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	orderID uuid.UUID,
+) (int64, error) {
+	if orderID == uuid.Nil {
+		return 0, apierr.BadRequestError("Order ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	return s.repo.ReleaseReservationsForOrder(ctx, tx, orderID)
+}
+
+// ExpiredReservationOrderIDs lists the distinct orders whose checkout hold has
+// expired without being committed or released. The reservation reaper consumes
+// this to cancel stale pending orders and return their held stock to salable.
+func (s *InventoryService) ExpiredReservationOrderIDs(ctx context.Context) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var e error
+		ids, e = s.repo.ExpiredReservationOrderIDs(ctx, db)
+		return e
+	})
+	if err != nil {
+		return nil, apierr.InternalServerError("Failed to list expired reservation orders").
+			WithCode(apierr.CodeInternalError).
+			Wrap(err).
+			WithStack()
+	}
+	return ids, nil
 }
 
 // CheckAvailability checks whether a variant has at least quantity units of salable stock available.

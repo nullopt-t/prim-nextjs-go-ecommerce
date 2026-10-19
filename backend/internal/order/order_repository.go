@@ -663,7 +663,13 @@ func (r *Repository) GetDashboardStats(ctx context.Context, qe database.QueryExe
 		return nil, fmt.Errorf("get order aggregates: %w", err)
 	}
 
-	_ = qe.QueryRow(ctx, `SELECT COUNT(*) FROM products WHERE deleted_at IS NULL`).Scan(&stats.TotalProducts)
+	// Product count and daily sales feed the admin dashboard tiles/charts.
+	// Propagating their errors (rather than silently returning zeroes) keeps
+	// the dashboard honest: a transient DB failure surfaces as an error the
+	// UI can retry instead of an all-zero "healthy" dashboard.
+	if err := qe.QueryRow(ctx, `SELECT COUNT(*) FROM products WHERE deleted_at IS NULL`).Scan(&stats.TotalProducts); err != nil {
+		return nil, fmt.Errorf("get total products: %w", err)
+	}
 
 	salesQuery := `
 		SELECT 
@@ -676,14 +682,19 @@ func (r *Repository) GetDashboardStats(ctx context.Context, qe database.QueryExe
 		LIMIT 14
 	`
 	rows, err := qe.Query(ctx, salesQuery)
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var ds DailySales
-			if err := rows.Scan(&ds.Date, &ds.Sales, &ds.Orders); err == nil {
-				stats.RecentSales = append(stats.RecentSales, ds)
-			}
+	if err != nil {
+		return nil, fmt.Errorf("get recent sales: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var ds DailySales
+		if err := rows.Scan(&ds.Date, &ds.Sales, &ds.Orders); err != nil {
+			return nil, fmt.Errorf("scan recent sales: %w", err)
 		}
+		stats.RecentSales = append(stats.RecentSales, ds)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate recent sales: %w", err)
 	}
 
 	return stats, nil
@@ -787,6 +798,18 @@ func (r *Repository) GetPaymentStatusForUpdate(ctx context.Context, qe database.
 		return "", fmt.Errorf("get payment status for update: %w", err)
 	}
 	return status, nil
+}
+
+// GetPaymentOrderIDForUpdate locks a payment row and returns its owning order
+// id, so a status transition (e.g. capture) can act on the order's inventory
+// reservations within the same transaction.
+func (r *Repository) GetPaymentOrderIDForUpdate(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (uuid.UUID, error) {
+	var orderID uuid.UUID
+	err := qe.QueryRow(ctx, `SELECT order_id FROM payments WHERE id = $1 FOR UPDATE`, id).Scan(&orderID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("get payment order id for update: %w", err)
+	}
+	return orderID, nil
 }
 
 func (r *Repository) UpdateOrderTracking(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID, trackingNumber string) error {

@@ -65,6 +65,15 @@ type InventoryService interface {
 	// AdjustStockWithTx restores/adjusts stock within the caller's transaction so
 	// cancellation and restock remain atomic with the order status transition.
 	AdjustStockWithTx(ctx context.Context, tx database.QueryExecutor, in inventory.AdjustStockInput) (*model.InventoryStock, error)
+	// CommitReservationsForOrderWithTx turns the order's live stock holds into
+	// finalized sale deductions when payment is captured.
+	CommitReservationsForOrderWithTx(ctx context.Context, tx database.QueryExecutor, orderID uuid.UUID) error
+	// ReleaseReservationsForOrderWithTx releases the order's live stock holds and
+	// reports how many were released (0 means stock was already committed).
+	ReleaseReservationsForOrderWithTx(ctx context.Context, tx database.QueryExecutor, orderID uuid.UUID) (int64, error)
+	// ExpiredReservationOrderIDs lists orders whose checkout hold has expired,
+	// for the reservation reaper.
+	ExpiredReservationOrderIDs(ctx context.Context) ([]uuid.UUID, error)
 }
 
 // OrderService orchestrates database transactions, order status state machine validation,
@@ -228,7 +237,16 @@ func (s *OrderService) restockOrderItems(
 	if err != nil {
 		return fmt.Errorf("fetch order items for restock: %w", err)
 	}
+	return s.restockItems(ctx, tx, items)
+}
 
+// restockItems writes a compensating 'return' ledger entry for each line item,
+// returning previously deducted units to salable stock.
+func (s *OrderService) restockItems(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	items []model.OrderItem,
+) error {
 	for _, item := range items {
 		if s.inventoryService != nil {
 			if _, err := s.inventoryService.AdjustStockWithTx(
@@ -255,6 +273,50 @@ func (s *OrderService) restockOrderItems(
 	}
 
 	return nil
+}
+
+// releaseOrRestockOnCancel fetches the order's line items and then resolves
+// inventory for a cancelled order (see releaseOrRestockCancelItems).
+func (s *OrderService) releaseOrRestockOnCancel(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	orderID uuid.UUID,
+) error {
+	items, err := s.orderRepo.GetOrderItems(ctx, tx, orderID)
+	if err != nil {
+		return fmt.Errorf("fetch order items for cancellation: %w", err)
+	}
+	return s.releaseOrRestockCancelItems(ctx, tx, orderID, items)
+}
+
+// releaseOrRestockCancelItems resolves inventory when an order is cancelled.
+//
+// An order's stock can be in one of two states, and only one compensation is
+// correct for each:
+//   - still HELD by a live reservation (order never paid): releasing the hold
+//     returns the units to salable stock. No ledger entry is written because the
+//     units were never deducted from on-hand.
+//   - already COMMITTED as a sale (order was paid): there is no live hold left,
+//     so the deducted units must be returned via a compensating 'return' ledger.
+//
+// Distinguishing the two prevents the previous double-count, where cancelling an
+// unpaid order added stock that had never been removed.
+func (s *OrderService) releaseOrRestockCancelItems(
+	ctx context.Context,
+	tx database.QueryExecutor,
+	orderID uuid.UUID,
+	items []model.OrderItem,
+) error {
+	if s.inventoryService != nil {
+		released, err := s.inventoryService.ReleaseReservationsForOrderWithTx(ctx, tx, orderID)
+		if err != nil {
+			return fmt.Errorf("release reservations for cancelled order %s: %w", orderID, err)
+		}
+		if released > 0 {
+			return nil
+		}
+	}
+	return s.restockItems(ctx, tx, items)
 }
 
 // GetOrderByID loads an order by its UUID within a read-only database query execution block.
@@ -414,7 +476,7 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 			).WithCode(errcode.CodeInvalidOrderStatus)
 		}
 
-		restocking := ord.Status != model.OrderStatusCancelled && status == model.OrderStatusCancelled
+		cancelling := ord.Status != model.OrderStatusCancelled && status == model.OrderStatusCancelled
 
 		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, id, status); err != nil {
 			return err
@@ -423,10 +485,11 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 			return err
 		}
 
-		// Restore stock when an order is cancelled (by admin or customer) so the
-		// reserved/purchased quantities return to salable stock in the same transaction.
-		if restocking {
-			if err := s.restockOrderItems(ctx, tx, id); err != nil {
+		// Resolve inventory on cancellation: release a still-held reservation
+		// (unpaid order) or restock a committed sale (paid order), in the same
+		// transaction as the status change.
+		if cancelling {
+			if err := s.releaseOrRestockOnCancel(ctx, tx, id); err != nil {
 				return err
 			}
 		}
@@ -490,27 +553,10 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 			return fmt.Errorf("fetch order items for cancellation: %w", err)
 		}
 
-		// Restore stock for purchased items within the same transaction
-		for _, item := range items {
-			if s.inventoryService != nil {
-				_, err := s.inventoryService.AdjustStockWithTx(ctx, tx, inventory.AdjustStockInput{
-					VariantID: item.VariantID,
-					Quantity:  item.Quantity,
-					Reason:    string(model.InventoryReasonReturn),
-				})
-				if err != nil {
-					return fmt.Errorf("restore inventory for cancelled item %s: %w", item.ID, err)
-				}
-			} else {
-				// Directly record inventory restoration ledger within the transaction
-				ledgerQuery := `
-					INSERT INTO inventory_ledgers (id, variant_id, quantity, reason, created_at)
-					VALUES ($1, $2, $3, 'return'::inventory_reason, now())
-				`
-				if _, err := tx.Exec(ctx, ledgerQuery, uuid.New(), item.VariantID, item.Quantity); err != nil {
-					return fmt.Errorf("restore inventory ledger for cancelled item %s: %w", item.ID, err)
-				}
-			}
+		// Resolve inventory: release the still-held reservation (unpaid order) or
+		// restock the committed sale (paid order) within the same transaction.
+		if err := s.releaseOrRestockCancelItems(ctx, tx, id, items); err != nil {
+			return err
 		}
 
 		// Update any associated captured or pending payment records to refunded / failed
@@ -529,6 +575,91 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 
 		return nil
 	})
+}
+
+// ReapExpiredReservations cancels pending orders whose checkout hold has expired
+// and releases those holds, returning the number of orders cancelled. It is
+// safe to run repeatedly and from multiple instances: each order is locked FOR
+// UPDATE and only transitions while still pending, so concurrent runs are
+// idempotent (the loser observes a non-pending status and does nothing).
+func (s *OrderService) ReapExpiredReservations(ctx context.Context) (int, error) {
+	if s.inventoryService == nil {
+		return 0, nil
+	}
+
+	orderIDs, err := s.inventoryService.ExpiredReservationOrderIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	cancelled := 0
+	for _, orderID := range orderIDs {
+		didCancel, err := s.expirePendingOrder(ctx, orderID)
+		if err != nil {
+			s.logger.Error("failed to expire stale pending order", log.Meta{
+				"orderId": orderID.String(),
+				"error":   err.Error(),
+			})
+			continue
+		}
+		if didCancel {
+			cancelled++
+		}
+	}
+
+	return cancelled, nil
+}
+
+// expirePendingOrder cancels one pending order and releases its lapsed hold in a
+// single transaction, reporting whether a transition occurred.
+func (s *OrderService) expirePendingOrder(ctx context.Context, orderID uuid.UUID) (bool, error) {
+	didCancel := false
+	err := s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, orderID)
+		if err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return nil // order already removed; nothing to do
+			}
+			return err
+		}
+
+		// Only a still-pending order is eligible. A paid/fulfilled order has
+		// already committed its hold and would not appear in the expired set.
+		if ord.Status != model.OrderStatusPending {
+			return nil
+		}
+		if !CanTransitionOrderStatus(ord.Status, model.OrderStatusCancelled) {
+			return nil
+		}
+
+		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, orderID, model.OrderStatusCancelled); err != nil {
+			return err
+		}
+		note := "Auto-cancelled: checkout reservation expired"
+		if err := s.orderRepo.AddStatusHistory(ctx, tx, orderID, model.OrderStatusCancelled, &note); err != nil {
+			return err
+		}
+
+		// The hold lapsed without ever being committed, so there is no stock to
+		// restock — releasing the reservation is the complete reversal.
+		if _, err := s.inventoryService.ReleaseReservationsForOrderWithTx(ctx, tx, orderID); err != nil {
+			return err
+		}
+
+		// Fail the never-captured payment so it no longer looks receivable.
+		paymentQuery := `
+			UPDATE payments
+			SET status = 'failed'::payment_status, updated_at = now()
+			WHERE order_id = $1 AND status IN ('pending'::payment_status, 'authorized'::payment_status)
+		`
+		if _, err := tx.Exec(ctx, paymentQuery, orderID); err != nil {
+			return fmt.Errorf("fail stale payment for order %s: %w", orderID, err)
+		}
+
+		didCancel = true
+		return nil
+	})
+	return didCancel, err
 }
 
 // GetDashboardStats aggregates live metrics for administrative reporting.
@@ -554,18 +685,36 @@ func (s *OrderService) ListPayments(ctx context.Context, filter PaymentListFilte
 	return payments, page, err
 }
 
-// UpdatePaymentStatus changes the status of a payment record.
+// UpdatePaymentStatus changes the status of a payment record. Transitioning a
+// payment to 'captured' is the point of sale: the owning order's live stock
+// reservations are committed into sale deductions in the same transaction.
 func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, status string) error {
 	if !model.PaymentStatus(status).IsValid() {
 		return apierr.BadRequestError(fmt.Sprintf("Invalid payment status '%s'", status)).WithCode(apierr.CodeInvalidInput)
 	}
 	return s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		err := s.orderRepo.UpdatePaymentStatus(ctx, tx, id, status)
+		// Lock the payment row and resolve its order up front.
+		orderID, err := s.orderRepo.GetPaymentOrderIDForUpdate(ctx, tx, id)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Payment not found").WithCode(apierr.CodeNotFound)
 			}
 			return err
+		}
+
+		if err := s.orderRepo.UpdatePaymentStatus(ctx, tx, id, status); err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.NotFoundError("Payment not found").WithCode(apierr.CodeNotFound)
+			}
+			return err
+		}
+
+		// Capture = sale. Commit the order's holds (deduct on-hand stock). The
+		// operation is idempotent, so re-capturing cannot double-deduct.
+		if status == string(model.StatusCaptured) && s.inventoryService != nil {
+			if err := s.inventoryService.CommitReservationsForOrderWithTx(ctx, tx, orderID); err != nil {
+				return err
+			}
 		}
 		return nil
 	})

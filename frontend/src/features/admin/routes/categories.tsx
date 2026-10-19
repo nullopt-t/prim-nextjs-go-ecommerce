@@ -1,6 +1,8 @@
 import { ResponsiveTable } from "@/components/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Search, Edit2, Trash2, FolderTree, X, SlidersHorizontal } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, FolderTree, X, SlidersHorizontal, Table2, Network } from "lucide-react";
+import CategoryTreeMap from "@/features/admin/components/CategoryTreeMap";
+import CategoryProductsPanel from "@/features/admin/components/CategoryProductsPanel";
 import { catalogService } from "@/services/catalog";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
@@ -42,6 +44,9 @@ export function AdminCategories() {
   const [busyValueId, setBusyValueId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"table" | "map">("table");
+  // Category highlighted in the map; its products are listed in the side panel.
+  const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const { cursor, hasPrev, next, prev, reset, page } = useCursorPagination();
 
   const loadCategories = useCallback(async () => {
@@ -49,13 +54,15 @@ export function AdminCategories() {
       setLoading(true);
       setLoadError(false);
       const [res, attrRes]: [any, any] = await Promise.all([
-        catalogService.getCategories({ cursor: cursor || undefined, pageSize: 20, keyset: true, search: debouncedSearch || undefined }),
+        catalogService.getAdminCategories({ cursor: cursor || undefined, pageSize: 20, keyset: true, search: debouncedSearch || undefined }),
         adminService.getAttributes()
       ]);
       const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
       const attrs = Array.isArray(attrRes?.data) ? attrRes.data : (Array.isArray(attrRes) ? attrRes : []);
       setAllAttributes(attrs);
-      setCategories(list.map(mapCategory));
+      // The admin endpoint includes soft-deleted rows; this table only renders
+      // active taxonomy nodes (status is not modelled separately in the UI).
+      setCategories(list.filter((c: any) => !c.deletedAt).map(mapCategory));
       if (res?.meta) setMeta(res.meta);
     } catch {
       setLoadError(true);
@@ -66,9 +73,16 @@ export function AdminCategories() {
 
   const loadAllCategories = useCallback(async () => {
     try {
-      const res: any = await catalogService.getCategories(100);
+      // Admin listing so empty top-level parents are selectable as parents.
+      const res: any = await catalogService.getAdminCategories(100);
       const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      setAllCategories(list.map(mapCategory));
+      const mapped = list.filter((c: any) => !c.deletedAt).map(mapCategory);
+      setAllCategories(mapped);
+      // Keep the map selection pointing at the refreshed row, or clear it if the
+      // category was deleted.
+      setSelectedCategory((current: any) =>
+        current ? mapped.find((c: any) => c.id === current.id) ?? null : null
+      );
     } catch {
       // The parent selector simply stays empty if this auxiliary fetch fails.
     }
@@ -245,15 +259,43 @@ export function AdminCategories() {
             {t("categories.subtitle")}
           </p>
         </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0"
-        >
-          <Plus className="size-4" />
-          <span>{t("categories.add")}</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="inline-flex items-center rounded-xl border border-border bg-secondary/30 p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              aria-pressed={viewMode === "table"}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                viewMode === "table" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Table2 className="size-3.5" />
+              <span>{t("categories.viewTable")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("map")}
+              aria-pressed={viewMode === "map"}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                viewMode === "map" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Network className="size-3.5" />
+              <span>{t("categories.viewMap")}</span>
+            </button>
+          </div>
+          <button
+            onClick={() => handleOpenModal()}
+            className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0"
+          >
+            <Plus className="size-4" />
+            <span>{t("categories.add")}</span>
+          </button>
+        </div>
       </div>
 
+      {viewMode === "table" ? (
+        <>
       <div className="bg-background border border-border rounded-2xl p-4 shadow-xs">
         <div className="relative max-w-sm">
           <Search className="absolute start-3.5 top-2.5 size-4 text-muted-foreground" />
@@ -328,6 +370,30 @@ export function AdminCategories() {
           shown={filtered.length}
         />
       </div>
+        </>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <CategoryTreeMap
+            categories={allCategories}
+            selectedId={selectedCategory?.id}
+            onSelect={(category) => setSelectedCategory(category)}
+            emptyLabel={t("categories.mapEmpty")}
+            emptyNodeLabel={t("categories.mapEmptyNode")}
+            itemsLabel={(count) => t("categories.items", { count })}
+            hint={t("categories.mapHint")}
+            collapseLabel={t("categories.collapseNode")}
+            expandLabel={t("categories.expandNode")}
+            collapseAllLabel={t("categories.collapseAll")}
+            expandAllLabel={t("categories.expandAll")}
+          />
+          <CategoryProductsPanel
+            category={selectedCategory}
+            categories={allCategories}
+            onEdit={() => selectedCategory && handleOpenModal(selectedCategory)}
+            onClear={() => setSelectedCategory(null)}
+          />
+        </div>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">

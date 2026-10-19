@@ -3,6 +3,8 @@ package middleware
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -21,7 +23,65 @@ var (
 
 	// ErrInvalidUserSubject indicates that the user subject extracted from context or token is malformed.
 	ErrInvalidUserSubject = errors.New("invalid user subject")
+
+	// ErrStaleSession indicates that a session is structurally valid but points
+	// at a user account that no longer exists (deleted, or removed out-of-band
+	// by a database reseed). It is treated as an authentication failure so the
+	// client re-authenticates instead of surfacing a downstream 500.
+	ErrStaleSession = errors.New("session references a non-existent user")
 )
+
+// UserValidator reports whether a session's principal still exists. It is used
+// to reject a stale session (for example after a database reseed) before any
+// handler tries to write a row that references the missing user.
+type UserValidator interface {
+	// UserExists reports whether the user still exists and is not soft-deleted.
+	UserExists(ctx context.Context, userID uuid.UUID) (bool, error)
+}
+
+// validatingSessionStore wraps a SessionStore and rejects authenticated sessions
+// whose user no longer exists. Guest sessions and sessions with a nil user are
+// passed through untouched. Infrastructure failures while checking existence are
+// surfaced as errors (mapped to 5xx), never silently accepted.
+type validatingSessionStore struct {
+	store     SessionStore
+	validator UserValidator
+}
+
+// NewValidatingSessionStore decorates store with user-existence validation. If
+// either argument is nil the original store is returned unchanged, so callers
+// that have no user validator (tests, minimal deployments) are unaffected.
+func NewValidatingSessionStore(store SessionStore, validator UserValidator) SessionStore {
+	if store == nil || validator == nil {
+		return store
+	}
+	return &validatingSessionStore{store: store, validator: validator}
+}
+
+// GetSessionByID loads the session and, for authenticated sessions, verifies the
+// referenced user still exists. A missing user yields ErrStaleSession; a lookup
+// failure yields a 5xx API error so it is not mistaken for a bad credential.
+func (v *validatingSessionStore) GetSessionByID(ctx context.Context, sessionID string) (*model.UserSession, error) {
+	session, err := v.store.GetSessionByID(ctx, sessionID)
+	if err != nil || session == nil {
+		return session, err
+	}
+
+	// Anonymous sessions carry no principal to validate.
+	if session.Type == model.SessionTypeGuest || session.UserID == uuid.Nil {
+		return session, nil
+	}
+
+	exists, err := v.validator.UserExists(ctx, session.UserID)
+	if err != nil {
+		return nil, apierr.InternalServerError("Failed to validate session").Wrap(err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("%w: user %s", ErrStaleSession, session.UserID)
+	}
+
+	return session, nil
+}
 
 const (
 	// SessionCookieName is the canonical single session cookie name for pure server sessions.
@@ -93,6 +153,18 @@ func extractSessionID(c *gin.Context) string {
 	return ""
 }
 
+// clearSessionCookie expires the canonical session cookie (and any legacy auth
+// cookies) so a client holding a revoked or stale session stops presenting it.
+// Attributes are omitted because a browser matches a deletion cookie by name,
+// domain and path, not by its Secure/HttpOnly flags.
+func clearSessionCookie(c *gin.Context) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(SessionCookieName, "", -1, "/", "", false, true)
+	c.SetCookie("session_id", "", -1, "/", "", false, true)
+	c.SetCookie("access_token", "", -1, "/", "", false, true)
+	c.SetCookie("refresh_token", "", -1, "/", "", false, true)
+}
+
 // Authenticate provides pure server-side session authentication middleware.
 // It looks up the session ID via the SessionStore, loads the user_id and userRole,
 // and sets them in the Gin context. If the session cookie is missing, invalid, or expired,
@@ -112,11 +184,21 @@ func Authenticate(sessionStore SessionStore) gin.HandlerFunc {
 		// Retrieve session record from session storage using the request context for tracing/cancellation
 		session, err := sessionStore.GetSessionByID(c.Request.Context(), sessionID)
 		if err != nil {
-			var ae *apierr.APIError
-			if errors.As(err, &ae) {
-				_ = c.Error(err)
-			} else {
-				_ = c.Error(apierr.UnauthorizedError())
+			switch {
+			case errors.Is(err, ErrStaleSession):
+				// The session is well-formed but its user is gone. Treat it as an
+				// authentication failure and clear the cookie so the client
+				// re-authenticates instead of retrying a dead session.
+				clearSessionCookie(c)
+				_ = c.Error(apierr.UnauthorizedError("Session is no longer valid").
+					WithCode(apierr.CodeUnauthorized))
+			default:
+				var ae *apierr.APIError
+				if errors.As(err, &ae) {
+					_ = c.Error(err)
+				} else {
+					_ = c.Error(apierr.UnauthorizedError())
+				}
 			}
 			c.Abort()
 			return
@@ -156,7 +238,14 @@ func OptionalAuthenticate(sessionStore SessionStore) gin.HandlerFunc {
 		sessionID := extractSessionID(c)
 
 		if sessionID != "" {
-			if session, err := sessionStore.GetSessionByID(c.Request.Context(), sessionID); err == nil && session != nil {
+			session, err := sessionStore.GetSessionByID(c.Request.Context(), sessionID)
+			if err != nil && errors.Is(err, ErrStaleSession) {
+				// The cookie points at a session whose user is gone. Drop it so the
+				// client stops presenting a dead credential, then continue as an
+				// anonymous visitor (this middleware never aborts).
+				clearSessionCookie(c)
+			}
+			if err == nil && session != nil {
 				// Prevent guest session privilege escalation in optional authentication
 				if session.Type != model.SessionTypeGuest && session.UserID != uuid.Nil {
 					c.Set("sessionID", session.ID)

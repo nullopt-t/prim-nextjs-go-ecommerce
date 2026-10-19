@@ -1,7 +1,7 @@
 -- =====================================================================
 -- PRIM E-COMMERCE DATABASE SCHEMA (Production Hardened)
 -- PostgreSQL
--- Consolidated: 000001_init_sechema + 000003 + 000004 + 000005 + 000006
+-- Consolidated (dev): 000001_init_sechema + 000003_audit_log + 000004_reservation_order_link
 -- =====================================================================
 
 BEGIN;
@@ -335,6 +335,13 @@ CREATE TABLE IF NOT EXISTS inventory_reservations (
     id             uuid NOT NULL,
     variant_id     uuid NOT NULL,
     cart_id        uuid NULL,
+    -- order_id links a reservation to the order created by the checkout that
+    -- placed the hold. It is the key used to commit the hold on payment,
+    -- release it on cancellation, and expire it from the maintenance reaper.
+    -- The FK to orders is added after the orders table is created, further
+    -- below (orders is defined after this table, so it cannot be referenced
+    -- inline here).
+    order_id       uuid NULL,
     quantity       int NOT NULL,
     expires_at     timestamptz NOT NULL,
     created_at     timestamptz NOT NULL DEFAULT now(),
@@ -347,6 +354,13 @@ CREATE TABLE IF NOT EXISTS inventory_reservations (
 
 CREATE INDEX IF NOT EXISTS idx_inventory_reservations_variant_id ON inventory_reservations (variant_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_reservations_expires_at ON inventory_reservations (expires_at) WHERE released_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_inventory_reservations_order_id ON inventory_reservations (order_id);
+
+-- At most one live reservation per (order, variant), so a retried checkout for
+-- the same order cannot double-hold the same SKU.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_reservations_order_variant
+    ON inventory_reservations (order_id, variant_id)
+    WHERE order_id IS NOT NULL AND released_at IS NULL;
 
 
 -- =====================================================================
@@ -403,6 +417,19 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 
 CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON orders (customer_id);
+
+-- Now that orders exists, link reservations to the order that created the hold.
+-- ON DELETE CASCADE keeps reservations consistent with hard order deletion.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'inventory_reservations_order_id_fkey'
+    ) THEN
+        ALTER TABLE inventory_reservations
+            ADD CONSTRAINT inventory_reservations_order_id_fkey
+            FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS order_items (
     id                   uuid NOT NULL,
@@ -561,5 +588,34 @@ CREATE TABLE IF NOT EXISTS admin_settings (
     updated_at  timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (id)
 );
+
+
+-- =====================================================================
+-- AUDIT LOG: append-only trail of privileged back-office mutations
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS audit_log (
+    id           uuid        NOT NULL DEFAULT gen_random_uuid(),
+    actor_id     uuid        NULL,
+    actor_role   text        NOT NULL DEFAULT '',
+    action       text        NOT NULL,
+    entity_type  text        NOT NULL DEFAULT '',
+    entity_id    text        NOT NULL DEFAULT '',
+    method       text        NOT NULL DEFAULT '',
+    path         text        NOT NULL DEFAULT '',
+    status_code  integer     NOT NULL DEFAULT 0,
+    ip_address   text        NOT NULL DEFAULT '',
+    user_agent   text        NOT NULL DEFAULT '',
+    before_state jsonb       NULL,
+    after_state  jsonb       NULL,
+    metadata     jsonb       NULL,
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log (created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_actor_id   ON audit_log (actor_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_action     ON audit_log (action);
+CREATE INDEX IF NOT EXISTS idx_audit_log_entity     ON audit_log (entity_type, entity_id);
 
 COMMIT;

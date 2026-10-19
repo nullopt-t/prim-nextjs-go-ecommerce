@@ -19,7 +19,10 @@ const (
 	MaxResendTimes = 3
 	// MaxVerifyAttempts specifies the maximum number of incorrect OTP verification attempts allowed before locking.
 	MaxVerifyAttempts = 5
-	// DevStaticOTP defines a static OTP bypass code permitted in non-production environments.
+	// DevStaticOTP is a deliberate, temporary development affordance: the email
+	// notification pipeline is not wired up yet, so developers cannot receive a
+	// real OTP. It is accepted only when isProduction is false (gated below).
+	// This MUST be removed once email delivery is live — tracked in NEXT_TASKS.md.
 	DevStaticOTP = "123456"
 )
 
@@ -388,7 +391,13 @@ func (cs *ChallengeService) Verify(
 	}
 
 	// Compare submitted OTP against stored hash using constant-time cryptographic verification.
-	// In development / non-production environments, also permit the static bypass code DevStaticOTP.
+	//
+	// Development-only bypass: the email notification pipeline is not implemented
+	// yet, so a developer cannot receive a real code. When the app is not running
+	// as production (APP_ENV != "production"), the static DevStaticOTP is also
+	// accepted. This is intentionally scoped to non-production and is a known
+	// temporary trade-off — do NOT extend it to production, and delete it once
+	// email delivery works (tracked in NEXT_TASKS.md).
 	ok, err := crypto.Equal(challenge.OtpHash, otp, cs.otpPepper)
 	if err != nil {
 		return false, fmt.Errorf("challenge verify: %w", err)

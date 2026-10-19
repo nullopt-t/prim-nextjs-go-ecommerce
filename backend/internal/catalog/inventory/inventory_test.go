@@ -626,6 +626,105 @@ func (s *InventoryTestSuite) Test05_DatabaseConstraintViolations() {
 	s.Equal("23503", pgErr.Code) // foreign_key_violation
 }
 
+// =========================================================================
+// 8. Order-linked reservation lifecycle (commit / release / expiry)
+// =========================================================================
+
+func (s *InventoryTestSuite) createTestOrder() uuid.UUID {
+	orderID := uuid.New()
+	_, err := s.db.Exec(context.Background(), `
+		INSERT INTO orders (id, customer_email, shipping_address, status, total_amount)
+		VALUES ($1, $2, '{}'::jsonb, 'pending', 0)
+	`, orderID, "buyer-"+uuid.NewString()+"@example.com")
+	require.NoError(s.T(), err)
+	return orderID
+}
+
+// Test08_OrderReservationCommitAndRelease verifies that an order-linked hold can
+// be turned into a sale (commit) or returned to salable stock (release), and
+// that both operations are idempotent.
+func (s *InventoryTestSuite) Test08_OrderReservationCommitAndRelease() {
+	ctx := context.Background()
+	variantID := s.createTestVariant()
+
+	_, err := s.service.AdjustStock(ctx, inventory.AdjustStockInput{
+		VariantID: variantID, Quantity: 10, Reason: "restock",
+	})
+	s.Require().NoError(err)
+
+	// Commit path: a hold of 3 becomes a completed sale.
+	orderID := s.createTestOrder()
+	_, err = s.service.ReserveStock(ctx, inventory.ReserveStockInput{
+		VariantID: variantID, OrderID: &orderID, Quantity: 3,
+	})
+	s.Require().NoError(err)
+
+	stock, err := s.service.GetStockByVariantID(ctx, variantID)
+	s.Require().NoError(err)
+	s.Equal(10, stock.OnHandQuantity)
+	s.Equal(3, stock.ReservedQuantity)
+	s.Equal(7, stock.AvailableQuantity)
+
+	s.Require().NoError(s.service.CommitReservationsForOrderWithTx(ctx, s.db, orderID))
+	stock, err = s.service.GetStockByVariantID(ctx, variantID)
+	s.Require().NoError(err)
+	s.Equal(7, stock.OnHandQuantity)
+	s.Equal(0, stock.ReservedQuantity)
+	s.Equal(7, stock.AvailableQuantity)
+
+	// Idempotent: committing an order with no live hold is a no-op.
+	s.Require().NoError(s.service.CommitReservationsForOrderWithTx(ctx, s.db, orderID))
+	stock, err = s.service.GetStockByVariantID(ctx, variantID)
+	s.Require().NoError(err)
+	s.Equal(7, stock.OnHandQuantity)
+
+	// Release path: a live hold returns to salable stock without touching on-hand.
+	orderID2 := s.createTestOrder()
+	_, err = s.service.ReserveStock(ctx, inventory.ReserveStockInput{
+		VariantID: variantID, OrderID: &orderID2, Quantity: 2,
+	})
+	s.Require().NoError(err)
+
+	released, err := s.service.ReleaseReservationsForOrderWithTx(ctx, s.db, orderID2)
+	s.Require().NoError(err)
+	s.Equal(int64(1), released)
+
+	stock, err = s.service.GetStockByVariantID(ctx, variantID)
+	s.Require().NoError(err)
+	s.Equal(7, stock.OnHandQuantity)
+	s.Equal(0, stock.ReservedQuantity)
+	s.Equal(7, stock.AvailableQuantity)
+
+	// A second release finds no live hold and reports zero (the signal callers
+	// use to decide whether a committed sale needs restocking).
+	released, err = s.service.ReleaseReservationsForOrderWithTx(ctx, s.db, orderID2)
+	s.Require().NoError(err)
+	s.Equal(int64(0), released)
+}
+
+// Test09_ExpiredReservationOrderIDs reports orders whose hold has lapsed, which
+// the maintenance reaper consumes to cancel stale pending orders.
+func (s *InventoryTestSuite) Test09_ExpiredReservationOrderIDs() {
+	ctx := context.Background()
+	variantID := s.createTestVariant()
+
+	_, err := s.service.AdjustStock(ctx, inventory.AdjustStockInput{
+		VariantID: variantID, Quantity: 5, Reason: "restock",
+	})
+	s.Require().NoError(err)
+
+	orderID := s.createTestOrder()
+	_, err = s.db.Exec(ctx, `
+		INSERT INTO inventory_reservations (id, variant_id, order_id, quantity, expires_at, created_at)
+		VALUES ($1, $2, $3, 1, now() - interval '1 minute', now())
+	`, uuid.New(), variantID, orderID)
+	s.Require().NoError(err)
+
+	ids, err := s.service.ExpiredReservationOrderIDs(ctx)
+	s.Require().NoError(err)
+	s.Contains(ids, orderID)
+}
+
 func TestInventoryTestSuite(t *testing.T) {
 	suite.Run(t, new(InventoryTestSuite))
 }

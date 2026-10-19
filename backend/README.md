@@ -29,7 +29,7 @@ HTTP request
 
 Shared concerns live outside the domains:
 
-- `internal/shared/middleware` — auth, RBAC, CORS, locale, rate limiting, error handling, caching, gzip response compression
+- `internal/shared/middleware` — auth, RBAC, CORS, locale, rate limiting, error handling, caching, gzip response compression, security headers (nosniff, CSP, HSTS)
 - `pkg/config` — YAML + environment configuration
 - `pkg/database` — connection pool and the `TxRunner` used for transactions
 - `pkg/broker/kafka` — producer used by the API
@@ -54,6 +54,37 @@ Shared concerns live outside the domains:
 | `object` | Media uploads and the media library |
 | `setting` | Store settings, public settings, maintenance gate |
 
+### Stock reservation lifecycle
+
+Checkout never deducts stock by guessing: it creates a reservation row linked to
+the order, and that hold is resolved explicitly.
+
+- **Cash on delivery** is confirmed when placed, so its reservation is committed
+  immediately in the checkout transaction (on-hand is deducted). It is never
+  cancelled by the expiry reaper.
+- **Online payment** holds stock for the configured reservation window. The hold
+  is committed into a sale when an admin marks the payment `captured`; if the
+  window lapses first, the reaper cancels the still-pending order and releases
+  the hold back to salable stock.
+- **Cancellation** resolves the correct compensation: release a still-held
+  reservation (unpaid order), or write a `return` ledger entry when the sale was
+  already committed (paid order). This avoids the old double-count where
+  cancelling an unpaid order inflated stock.
+- The **worker** runs the reservation reaper once a minute. Both commit and
+  release are transactional and idempotent, so overlapping runs and multiple
+  worker/API instances are safe.
+
+Reservations are keyed by `order_id` (`inventory_reservations.order_id`,
+migration `000004`). Stock math is: `on_hand` = sum of ledger entries,
+`reserved` = live holds, `available` = `max(on_hand - reserved, 0)`.
+
+### Media uploads
+
+`POST /admin/media` accepts raster images only (JPEG, PNG, GIF, WebP, AVIF) up
+to 10 MiB. The handler sniffs the real bytes rather than trusting the client's
+`Content-Type`, which rejects SVG and other script-bearing payloads that could
+cause stored XSS when served from the public bucket.
+
 ## Quick start
 
 The easiest path is the full stack from the repository root:
@@ -68,7 +99,7 @@ To run just the API against your own Postgres/Redis, from `backend/`:
 
 ```bash
 go run ./cmd/api      # the API
-go run ./cmd/worker   # the notification worker
+go run ./cmd/worker   # Kafka notification worker + reservation reaper
 ```
 
 Or use the backend's own compose stack (API + Postgres + Redis + MinIO) from `backend/`:

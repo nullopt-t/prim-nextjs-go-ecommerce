@@ -37,8 +37,12 @@ type AdminCategoryResponse struct {
 	ID uuid.UUID `json:"id" example:"40000000-0000-0000-0000-000000000002"`
 	// Optional UUID of the parent category for nested tree hierarchies
 	ParentID *uuid.UUID `json:"parentId,omitempty" example:"40000000-0000-0000-0000-000000000001"`
+	// Display name of the parent category, omitted for root categories
+	ParentName string `json:"parentName,omitempty" example:"Electronics"`
 	// Category name
 	Name string `json:"name" example:"Electronics"`
+	// Number of active products assigned directly to this category
+	ProductCount int `json:"productCount" example:"19"`
 	// Timestamp when category was created (RFC3339)
 	CreatedAt string `json:"createdAt" example:"2026-06-30T15:47:19Z"`
 	// Timestamp when category was last updated (RFC3339)
@@ -56,11 +60,13 @@ func toPublicCategoryResponse(c *model.ProductCategory) PublicCategoryResponse {
 
 func toAdminCategoryResponse(c *model.ProductCategory) AdminCategoryResponse {
 	res := AdminCategoryResponse{
-		ID:        c.ID,
-		ParentID:  c.ParentID,
-		Name:      c.Name,
-		CreatedAt: c.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: c.UpdatedAt.Format(time.RFC3339),
+		ID:           c.ID,
+		ParentID:     c.ParentID,
+		ParentName:   c.ParentName,
+		Name:         c.Name,
+		ProductCount: c.ProductCount,
+		CreatedAt:    c.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:    c.UpdatedAt.Format(time.RFC3339),
 	}
 	if c.DeletedAt != nil {
 		deletedStr := c.DeletedAt.Format(time.RFC3339)
@@ -330,4 +336,3 @@ func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Category deleted"})
 }
-

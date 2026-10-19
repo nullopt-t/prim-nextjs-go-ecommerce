@@ -21,10 +21,12 @@ type Consumer struct {
 
 // NewConsumer creates a consumer connected to a specific topic and groupID.
 func NewConsumer(cfg Config, topic string) *Consumer {
+	// kafka-go interprets StartOffset as an absolute partition offset when it is
+	// >= 0, and as the FirstOffset (-2) / LastOffset (-1) sentinels otherwise.
+	// 0 is therefore a valid absolute offset (the first message of the partition)
+	// and must NOT be rewritten to LastOffset. DefaultConfig explicitly selects
+	// LastOffset, so the zero value is never relied upon as "tail".
 	startOffset := cfg.StartOffset
-	if startOffset == 0 {
-		startOffset = kafka.LastOffset
-	}
 
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        cfg.Brokers,

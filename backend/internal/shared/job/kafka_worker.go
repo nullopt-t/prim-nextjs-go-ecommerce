@@ -120,21 +120,51 @@ func (w *KafkaWorker) run(ctx context.Context, wg *sync.WaitGroup) {
 			event.LastError = err.Error()
 			dlqBytes, _ := json.Marshal(event)
 			if w.producer != nil {
-				// Publish to the DLQ with a detached timeout context so a
-				// cancelled request context cannot silence the DLQ write and
-				// lose the message.
-				dlqCtx := ctx
-				if dlqCtx.Err() != nil {
+				// Publish to the DLQ before committing the source offset. If the
+				// broker/DLQ is unavailable, retry with backoff rather than moving
+				// on: committing a later message would advance the consumer-group
+				// offset past this one and lose it permanently. Blocking this
+				// worker applies backpressure, which is the safe failure mode for
+				// a notification pipeline.
+				backoff := time.Second
+				for attempt := 1; ; attempt++ {
+					// Use a detached timeout when shutdown has cancelled the
+					// worker context, so the DLQ write is not silenced.
+					pubCtx := ctx
 					var cancel context.CancelFunc
-					dlqCtx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-					defer cancel()
-				}
-				if err := w.producer.Publish(dlqCtx, TopicNotificationsDLQ, string(msg.Key), dlqBytes); err != nil {
-					w.logger.Error("failed to publish event to DLQ", log.Meta{
-						"topic":   w.topic,
-						"eventId": event.EventID.String(),
-						"error":   err,
+					if pubCtx.Err() != nil {
+						pubCtx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+					}
+					dlqErr := w.producer.Publish(pubCtx, TopicNotificationsDLQ, string(msg.Key), dlqBytes)
+					if cancel != nil {
+						cancel()
+					}
+					if dlqErr == nil {
+						break
+					}
+
+					w.logger.Error("failed to publish event to DLQ; will retry without committing offset", log.Meta{
+						"topic":     w.topic,
+						"eventId":   event.EventID.String(),
+						"partition": msg.Partition,
+						"offset":    msg.Offset,
+						"attempt":   attempt,
+						"error":     dlqErr,
 					})
+
+					select {
+					case <-time.After(backoff):
+					case <-ctx.Done():
+						// Leave the offset uncommitted so the message is
+						// redelivered when the worker restarts.
+						return
+					}
+					if backoff < 5*time.Second {
+						backoff *= 2
+						if backoff > 5*time.Second {
+							backoff = 5 * time.Second
+						}
+					}
 				}
 			}
 		}

@@ -627,10 +627,11 @@ func (s *CheckoutTestSuite) TestCheckout_Success_CreatesOrderPaymentAndReservesS
 	s.Equal("pending", p.Status)
 	s.Equal("cash_on_delivery", p.Provider)
 
-	// Stock is reserved (not yet committed): on-hand untouched, availability reduced.
+	// COD is confirmed at checkout, so its stock is committed immediately: the
+	// sale ledger reduces on-hand and no reservation is left outstanding.
 	stock := s.fetchStock(variantID)
-	s.Equal(10, stock.OnHandQuantity)
-	s.Equal(2, stock.ReservedQuantity)
+	s.Equal(8, stock.OnHandQuantity)
+	s.Equal(0, stock.ReservedQuantity)
 	s.Equal(8, stock.AvailableQuantity)
 
 	// Cart is cleared atomically with the order.

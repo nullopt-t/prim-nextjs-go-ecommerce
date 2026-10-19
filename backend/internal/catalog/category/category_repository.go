@@ -57,7 +57,13 @@ func (cr *CategoryRepository) get(
 	args ...any,
 ) (*model.ProductCategory, error) {
 	query := fmt.Sprintf(`
-		SELECT id, parent_id, name, created_at, updated_at
+		SELECT
+			id,
+			parent_id,
+			name,
+			(SELECT COUNT(*) FROM products p WHERE p.category_id = product_categories.id AND p.deleted_at IS NULL),
+			created_at,
+			updated_at
 		FROM product_categories
 		WHERE %s
 	`, whereClause)
@@ -67,11 +73,18 @@ func (cr *CategoryRepository) get(
 		&category.ID,
 		&category.ParentID,
 		&category.Name,
+		&category.ProductCount,
 		&category.CreatedAt,
 		&category.UpdatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get product category: %w", err)
+	}
+
+	// Resolve the parent's display name for callers that expose the parent
+	// (notably the admin category detail endpoint).
+	if err := cr.attachParentNames(ctx, qe, []*model.ProductCategory{category}); err != nil {
+		return nil, err
 	}
 	return category, nil
 }
@@ -200,8 +213,67 @@ type ListCategoryOptions struct {
 	ListQuery        *pagination.ListQuery
 	IncludeDeleted   bool // set true for admin views
 	OnlyWithProducts bool // set true for public customer views to omit empty categories
+	// WithParentName resolves each category's parent display name. Used by admin
+	// views, which show a Parent column but only store the parent UUID.
+	WithParentName bool
+	// WithProductCount resolves the number of active products per category. Used
+	// by admin views (table "Products" column and the category tree map).
+	WithProductCount bool
 	// Cursor, when set, switches the query to keyset pagination on (created_at, id) DESC.
 	Cursor *pagination.Keyset
+}
+
+// attachParentNames resolves the display names of the given categories' parents
+// in a single query and stores them on each category. It is a no-op when no
+// category has a parent, so public listings that do not need the names pay
+// nothing beyond this check.
+func (cr *CategoryRepository) attachParentNames(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	categories []*model.ProductCategory,
+) error {
+	parentIDs := make([]uuid.UUID, 0, len(categories))
+	seen := make(map[uuid.UUID]struct{}, len(categories))
+	for _, category := range categories {
+		if category.ParentID == nil || *category.ParentID == uuid.Nil {
+			continue
+		}
+		if _, ok := seen[*category.ParentID]; ok {
+			continue
+		}
+		seen[*category.ParentID] = struct{}{}
+		parentIDs = append(parentIDs, *category.ParentID)
+	}
+
+	if len(parentIDs) == 0 {
+		return nil
+	}
+
+	rows, err := qe.Query(ctx, `SELECT id, name FROM product_categories WHERE id = ANY($1)`, parentIDs)
+	if err != nil {
+		return fmt.Errorf("resolve category parent names: %w", err)
+	}
+	defer rows.Close()
+
+	names := make(map[uuid.UUID]string, len(parentIDs))
+	for rows.Next() {
+		var id uuid.UUID
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return fmt.Errorf("scan category parent name: %w", err)
+		}
+		names[id] = name
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate category parent names: %w", err)
+	}
+
+	for _, category := range categories {
+		if category.ParentID != nil {
+			category.ParentName = names[*category.ParentID]
+		}
+	}
+	return nil
 }
 
 func (cr *CategoryRepository) List(
@@ -244,12 +316,20 @@ func (cr *CategoryRepository) List(
 
 	whereStmt := strings.Join(whereClauses, " AND ")
 
+	// Correlated count for admin views. Zero when not requested so scans stay
+	// uniform across public and admin queries.
+	productCountColumn := "0"
+	if opts.WithProductCount {
+		productCountColumn = "(SELECT COUNT(*) FROM products p WHERE p.category_id = product_categories.id AND p.deleted_at IS NULL)"
+	}
+
 	if cursorMode {
 		selectQuery := fmt.Sprintf(`
 		SELECT
 			id,
 			parent_id,
 			name,
+			%s,
 			created_at,
 			updated_at,
 			deleted_at
@@ -257,7 +337,7 @@ func (cr *CategoryRepository) List(
 		WHERE %s
 		%s
 		LIMIT $%d
-	`, whereStmt, pagination.KeysetOrderBy(""), argID)
+	`, productCountColumn, whereStmt, pagination.KeysetOrderBy(""), argID)
 
 		args = append(args, q.PageSize+1)
 
@@ -274,6 +354,7 @@ func (cr *CategoryRepository) List(
 				&cat.ID,
 				&cat.ParentID,
 				&cat.Name,
+				&cat.ProductCount,
 				&cat.CreatedAt,
 				&cat.UpdatedAt,
 				&cat.DeletedAt,
@@ -284,6 +365,12 @@ func (cr *CategoryRepository) List(
 		}
 		if err := rows.Err(); err != nil {
 			return nil, fmt.Errorf("iterate product category rows: %w", err)
+		}
+
+		if opts.WithParentName {
+			if err := cr.attachParentNames(ctx, qe, categories); err != nil {
+				return nil, err
+			}
 		}
 
 		items, page := pagination.NewCursorPageFrom(categories, q.PageSize, func(c *model.ProductCategory) pagination.Keyset {
@@ -329,6 +416,7 @@ func (cr *CategoryRepository) List(
 			id,
 			parent_id,
 			name,
+			%s,
 			created_at,
 			updated_at,
 			deleted_at
@@ -336,7 +424,7 @@ func (cr *CategoryRepository) List(
 		WHERE %s
 		%s
 		LIMIT $%d OFFSET $%d
-	`, whereStmt, orderBy, argID, argID+1)
+	`, productCountColumn, whereStmt, orderBy, argID, argID+1)
 
 	args = append(args, q.PageSize, q.Offset)
 
@@ -353,6 +441,7 @@ func (cr *CategoryRepository) List(
 			&cat.ID,
 			&cat.ParentID,
 			&cat.Name,
+			&cat.ProductCount,
 			&cat.CreatedAt,
 			&cat.UpdatedAt,
 			&cat.DeletedAt,
@@ -364,6 +453,12 @@ func (cr *CategoryRepository) List(
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate product category rows: %w", err)
+	}
+
+	if opts.WithParentName {
+		if err := cr.attachParentNames(ctx, qe, categories); err != nil {
+			return nil, err
+		}
 	}
 
 	page := pagination.NewPage(q.Page, q.PageSize, total)
@@ -381,4 +476,3 @@ func (cr *CategoryRepository) SoftDeleteCategory(ctx context.Context, qe databas
 	}
 	return nil
 }
-

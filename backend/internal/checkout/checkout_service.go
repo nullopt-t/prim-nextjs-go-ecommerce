@@ -56,6 +56,10 @@ type InventoryService interface {
 	// ReserveStockWithTx places a temporary stock hold inside the caller's
 	// transaction so checkout stays atomic.
 	ReserveStockWithTx(ctx context.Context, tx database.QueryExecutor, in inventory.ReserveStockInput) (*model.InventoryReservation, error)
+	// CommitReservationsForOrderWithTx finalizes the order's holds into sale
+	// deductions. Checkout uses it for cash-on-delivery orders, which are
+	// confirmed immediately and therefore need no payment window.
+	CommitReservationsForOrderWithTx(ctx context.Context, tx database.QueryExecutor, orderID uuid.UUID) error
 }
 
 type UserService interface {
@@ -371,23 +375,10 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			taxAmount = int64(math.Round(float64(taxable) * cfg.TaxRatePercent / 100.0))
 		}
 
-		// 6. Reserve stock for every item (reservation at checkout; committed on
-		//    payment, released on expiry or cancellation). All reservations live in
-		//    this transaction and roll back with it on any failure.
-		if s.inventoryService != nil {
-			for _, item := range orderItems {
-				if _, err := s.inventoryService.ReserveStockWithTx(ctx, tx, inventory.ReserveStockInput{
-					VariantID: item.VariantID,
-					CartID:    &cart.ID,
-					Quantity:  item.Quantity,
-					Duration:  time.Duration(cfg.ReservationTTLMinutes()) * time.Minute,
-				}); err != nil {
-					return err
-				}
-			}
-		}
-
-		// 7. Create the order inside this transaction.
+		// 6. Create the order inside this transaction. It is created before the
+		//    stock holds so each reservation can be linked to the order id and
+		//    later committed (on payment) or released (on cancellation/expiry)
+		//    deterministically.
 		addr := &model.Address{
 			Street:  shippingAddr.Line1,
 			City:    shippingAddr.City,
@@ -419,6 +410,36 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		createdOrder, createErr = s.orderService.CreateOrderWithTx(ctx, tx, orderIn)
 		if createErr != nil {
 			return createErr
+		}
+
+		// 7. Reserve stock for every item, linked to the order. The hold is
+		//    committed into a sale when payment is captured and released if the
+		//    order is cancelled or the hold expires. All reservations live in
+		//    this transaction and roll back with it on any failure.
+		if s.inventoryService != nil {
+			for _, item := range orderItems {
+				if _, err := s.inventoryService.ReserveStockWithTx(ctx, tx, inventory.ReserveStockInput{
+					VariantID: item.VariantID,
+					CartID:    &cart.ID,
+					OrderID:   &createdOrder.ID,
+					Quantity:  item.Quantity,
+					Duration:  time.Duration(cfg.ReservationTTLMinutes()) * time.Minute,
+				}); err != nil {
+					return err
+				}
+			}
+
+			// Cash-on-delivery orders are confirmed the moment they are placed:
+			// payment is collected on delivery, so there is no online payment
+			// window to hold stock for. Commit the deduction immediately so the
+			// units leave salable stock and the expiry reaper never cancels a
+			// legitimate COD order. Card orders keep their hold until the
+			// payment is captured.
+			if isCOD {
+				if err := s.inventoryService.CommitReservationsForOrderWithTx(ctx, tx, createdOrder.ID); err != nil {
+					return err
+				}
+			}
 		}
 
 		// 8. Record the coupon redemption; surface errors so the transaction rolls back.
@@ -549,7 +570,9 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 		// Check global usage limit
 		if usageLimit.Valid {
 			var usedCount int
-			_ = db.QueryRow(ctx, `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1`, cID).Scan(&usedCount)
+			if countErr := db.QueryRow(ctx, `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1`, cID).Scan(&usedCount); countErr != nil {
+				return apierr.InternalServerError("Failed to check coupon usage").Wrap(countErr)
+			}
 			if usedCount >= int(usageLimit.Int32) {
 				return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' usage limit has been reached", cCode)).WithCode("COUPON_USAGE_LIMIT_EXCEEDED")
 			}
@@ -562,7 +585,9 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 				userLimit = int(perUserLimit.Int32)
 			}
 			var userUsedCount int
-			_ = db.QueryRow(ctx, `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1 AND user_id = $2`, cID, *userID).Scan(&userUsedCount)
+			if countErr := db.QueryRow(ctx, `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1 AND user_id = $2`, cID, *userID).Scan(&userUsedCount); countErr != nil {
+				return apierr.InternalServerError("Failed to check per-user coupon limit").Wrap(countErr)
+			}
 			if userUsedCount >= userLimit {
 				return apierr.BadRequestError(fmt.Sprintf("You have already used coupon '%s' the maximum allowable times", cCode)).WithCode("COUPON_USER_LIMIT_EXCEEDED")
 			}

@@ -89,6 +89,11 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	router.Use(middleware.CORS(app.config.AllowedOrigins...))
 	router.Use(middleware.Locale())
 
+	// OWASP baseline security headers on every response (nosniff, frame denial,
+	// HSTS, referrer/permissions policy, CSP). The Swagger docs paths receive a
+	// relaxed, self-only CSP so the interactive docs keep working.
+	router.Use(middleware.SecurityHeadersExcept())
+
 	v1 := router.Group("/api/v1")
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -134,7 +139,13 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	)
 	userService.SetSessionManager(sessionService)
 
-	swagger.SetUpDocs(v1, sessionService)
+	// Wrap the session store so a session whose user was deleted — or removed
+	// out-of-band by a database reseed — is rejected with 401 instead of
+	// surfacing a foreign-key failure in the first handler that writes a
+	// user-referencing row (cart, address, wishlist, ...).
+	sessionStore := middleware.NewValidatingSessionStore(sessionService, userService)
+
+	swagger.SetUpDocs(v1, sessionStore)
 
 	authService := auth.NewAuthService(
 		app.logger,
@@ -151,7 +162,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		app.storageProvider,
 	)
 	objectHandler := object.NewHandler(objectService)
-	objectRouter := object.NewRouter(objectHandler, sessionService)
+	objectRouter := object.NewRouter(objectHandler, sessionStore)
 	objectRouter.MapRoutes(v1)
 
 	brandRepo := brand.NewRepository()
@@ -163,7 +174,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	brandHandler := brand.NewHandler(
 		brandService,
 	)
-	brandRouter := brand.NewRouter(brandHandler, sessionService)
+	brandRouter := brand.NewRouter(brandHandler, sessionStore)
 	brandRouter.MapRoutes(v1)
 
 	tagRepo := tag.NewRepository()
@@ -174,7 +185,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	tagHandler := tag.NewHandler(
 		tagService,
 	)
-	tagRouter := tag.NewRouter(tagHandler, sessionService)
+	tagRouter := tag.NewRouter(tagHandler, sessionStore)
 	tagRouter.MapRoutes(v1)
 
 	categoryRepo := category.NewRepository()
@@ -185,7 +196,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	categoryHandler := category.NewHandler(
 		categoryService,
 	)
-	categoryRouter := category.NewRouter(categoryHandler, sessionService)
+	categoryRouter := category.NewRouter(categoryHandler, sessionStore)
 	categoryRouter.MapRoutes(v1)
 
 	// attribute
@@ -197,7 +208,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	attributeHandler := attribute.NewHandler(
 		attributeService,
 	)
-	attributeRouter := attribute.NewRouter(attributeHandler, sessionService)
+	attributeRouter := attribute.NewRouter(attributeHandler, sessionStore)
 	attributeRouter.MapRoutes(v1)
 
 	// inventory
@@ -208,7 +219,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		inventoryRepo,
 	)
 	inventoryHandler := inventory.NewHandler(inventoryService)
-	inventoryRouter := inventory.NewRouter(inventoryHandler, sessionService)
+	inventoryRouter := inventory.NewRouter(inventoryHandler, sessionStore)
 	inventoryRouter.MapRoutes(v1)
 
 	variantRepository := variant.NewRepository()
@@ -221,14 +232,14 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	)
 
 	variantHandler := variant.NewHandler(variantService)
-	variantRouter := variant.NewRouter(variantHandler, sessionService)
+	variantRouter := variant.NewRouter(variantHandler, sessionStore)
 	variantRouter.MapRoutes(v1)
 
 	// review
 	reviewRepo := review.NewReviewRepository()
 	reviewService := review.NewService(txRunner, reviewRepo)
 	reviewHandler := review.NewHandler(reviewService)
-	reviewRouter := review.NewRouter(reviewHandler, sessionService)
+	reviewRouter := review.NewRouter(reviewHandler, sessionStore)
 	reviewRouter.MapRoutes(v1)
 
 	// product
@@ -246,21 +257,21 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		reviewService,
 	)
 	productHandler := product.NewHandler(productService)
-	productRouter := product.NewRouter(productHandler, sessionService)
+	productRouter := product.NewRouter(productHandler, sessionStore)
 	productRouter.MapRoutes(v1)
 
 	// cart
 	cartRepo := cart.NewRepository()
 	cartService := cart.NewService(txRunner, cartRepo, variantService, productService, inventoryService)
-	cartHandler := cart.NewHandler(cartService)
-	cartRouter := cart.NewRouter(cartHandler, sessionService)
+	cartHandler := cart.NewHandler(cartService, settingService)
+	cartRouter := cart.NewRouter(cartHandler, sessionStore)
 	cartRouter.MapRoutes(v1)
 
 	// wishlist
 	wishlistRepo := wishlist.NewWishlistRepository()
 	wishlistService := wishlist.NewService(txRunner, wishlistRepo, productService, objectService, app.logger)
 	wishlistHandler := wishlist.NewHandler(wishlistService)
-	wishlistRouter := wishlist.NewRouter(wishlistHandler, sessionService)
+	wishlistRouter := wishlist.NewRouter(wishlistHandler, sessionStore)
 	wishlistRouter.MapRoutes(v1)
 
 	authHandler := auth.NewAuthHandler(
@@ -276,7 +287,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		authHandler,
 		rateLimiter,
 		app.logger,
-		sessionService,
+		sessionStore,
 		app.config.RateLimitCfg,
 	)
 	authRouter.MapRoutes(v1)
@@ -287,45 +298,45 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		app.logger,
 	)
 
-	userRouter := user.NewRouter(userHandler, sessionService)
+	userRouter := user.NewRouter(userHandler, sessionStore)
 
 	userRouter.MapRoutes(v1)
 
 	notificationRepo := user.NewNotificationRepository()
 	notificationService := user.NewNotificationService(txRunner, notificationRepo, app.logger)
 	notificationHandler := user.NewNotificationHandler(notificationService)
-	notificationRouter := user.NewNotificationRouter(notificationHandler, sessionService)
+	notificationRouter := user.NewNotificationRouter(notificationHandler, sessionStore)
 	notificationRouter.MapRoutes(v1)
 
 	addressRepo := user.NewAddressRepository()
 	addressService := user.NewAddressService(txRunner, addressRepo, app.logger)
 	addressHandler := user.NewAddressHandler(addressService)
-	addressRouter := user.NewAddressRouter(addressHandler, sessionService)
+	addressRouter := user.NewAddressRouter(addressHandler, sessionStore)
 	addressRouter.MapRoutes(v1)
 
 	// order
 	orderRepo := order.NewRepository()
 	orderService := order.NewService(txRunner, orderRepo, app.logger, inventoryService)
 	orderHandler := order.NewHandler(orderService)
-	orderRouter := order.NewRouter(orderHandler, sessionService)
+	orderRouter := order.NewRouter(orderHandler, sessionStore)
 	orderRouter.MapRoutes(v1)
 
 	// checkout
 	checkoutService := checkout.NewService(cartService, orderService, userService, addressService, inventoryService, settingService, txRunner)
 	checkoutHandler := checkout.NewHandler(checkoutService)
-	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionService)
+	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionStore)
 	checkoutRouter.MapRoutes(v1)
 
 	// coupon & promotions
 	couponRepo := coupon.NewRepository()
 	couponService := coupon.NewService(txRunner, couponRepo)
 	couponHandler := coupon.NewHandler(couponService)
-	couponRouter := coupon.NewRouter(couponHandler, sessionService)
+	couponRouter := coupon.NewRouter(couponHandler, sessionStore)
 	couponRouter.MapRoutes(v1)
 
 	// settings
 	settingHandler := setting.NewHandler(settingService)
-	settingRouter := setting.NewRouter(settingHandler, sessionService)
+	settingRouter := setting.NewRouter(settingHandler, sessionStore)
 	settingRouter.MapRoutes(v1)
 	settingRouter.MapPublicRoutes(v1)
 
@@ -345,18 +356,18 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		},
 	)
 	systemHandler := system.NewHandler(systemService)
-	systemRouter := system.NewRouter(systemHandler, sessionService)
+	systemRouter := system.NewRouter(systemHandler, sessionStore)
 	systemRouter.MapRoutes(v1)
 
 	// audit trail (superadmin only)
 	auditHandler := audit.NewHandler(auditService)
-	auditRouter := audit.NewRouter(auditHandler, sessionService)
+	auditRouter := audit.NewRouter(auditHandler, sessionStore)
 	auditRouter.MapRoutes(v1)
 
 	// reporting & exports
 	reportService := report.NewService(txRunner, report.NewRepository())
 	reportHandler := report.NewHandler(reportService)
-	reportRouter := report.NewRouter(reportHandler, sessionService)
+	reportRouter := report.NewRouter(reportHandler, sessionStore)
 	reportRouter.MapRoutes(v1)
 }
 

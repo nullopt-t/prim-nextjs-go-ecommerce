@@ -232,11 +232,12 @@ func (r *InventoryRepository) CreateReservation(
 			id,
 			variant_id,
 			cart_id,
+			order_id,
 			quantity,
 			expires_at,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, $5, now())
+		VALUES ($1, $2, $3, $4, $5, $6, now())
 		RETURNING created_at
 	`
 
@@ -246,6 +247,7 @@ func (r *InventoryRepository) CreateReservation(
 		res.ID,
 		res.VariantID,
 		res.CartID,
+		res.OrderID,
 		res.Quantity,
 		res.ExpiresAt,
 	).Scan(&res.CreatedAt)
@@ -269,6 +271,7 @@ func (r *InventoryRepository) GetReservationByID(
 			id,
 			variant_id,
 			cart_id,
+			order_id,
 			quantity,
 			expires_at,
 			created_at,
@@ -305,6 +308,7 @@ func (r *InventoryRepository) GetActiveCartReservation(
 			id,
 			variant_id,
 			cart_id,
+			order_id,
 			quantity,
 			expires_at,
 			created_at,
@@ -417,6 +421,105 @@ func (r *InventoryRepository) ReleaseExpiredReservations(
 	}
 
 	return cmd.RowsAffected(), nil
+}
+
+// GetUnreleasedReservationsForOrder returns every unreleased reservation
+// belonging to an order, row-locking them FOR UPDATE so concurrent
+// commit/release operations for the same order serialize.
+//
+// It deliberately does not filter on expires_at: a payment can be captured in
+// the window between a hold lapsing and the reaper releasing it. The caller
+// re-checks physical on-hand stock before committing, so an expired hold can
+// still be honoured safely (or fail closed if the units are truly gone).
+func (r *InventoryRepository) GetUnreleasedReservationsForOrder(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	orderID uuid.UUID,
+) ([]*model.InventoryReservation, error) {
+	query := `
+		SELECT
+			id,
+			variant_id,
+			cart_id,
+			order_id,
+			quantity,
+			expires_at,
+			created_at,
+			released_at
+		FROM inventory_reservations
+		WHERE order_id = $1 AND released_at IS NULL
+		ORDER BY created_at ASC
+		FOR UPDATE
+	`
+
+	rows, err := qe.Query(ctx, query, orderID)
+	if err != nil {
+		return nil, fmt.Errorf("query unreleased order reservations: %w", err)
+	}
+
+	reservations, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[model.InventoryReservation])
+	if err != nil {
+		return nil, fmt.Errorf("collect unreleased order reservations: %w", err)
+	}
+
+	return reservations, nil
+}
+
+// ReleaseReservationsForOrder marks every unreleased reservation for an order as
+// released and returns the number of holds released. A zero count means the
+// order had no live hold left (it was already committed or already released),
+// which callers use to decide whether stock needs restoring.
+func (r *InventoryRepository) ReleaseReservationsForOrder(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	orderID uuid.UUID,
+) (int64, error) {
+	query := `
+		UPDATE inventory_reservations
+		SET released_at = now()
+		WHERE order_id = $1 AND released_at IS NULL
+	`
+
+	cmd, err := qe.Exec(ctx, query, orderID)
+	if err != nil {
+		return 0, fmt.Errorf("release order reservations: %w", err)
+	}
+
+	return cmd.RowsAffected(), nil
+}
+
+// ExpiredReservationOrderIDs returns the distinct order IDs that still hold an
+// expired, unreleased reservation. The maintenance reaper uses this to cancel
+// stale pending orders whose checkout hold lapsed.
+func (r *InventoryRepository) ExpiredReservationOrderIDs(
+	ctx context.Context,
+	qe database.QueryExecutor,
+) ([]uuid.UUID, error) {
+	query := `
+		SELECT DISTINCT order_id
+		FROM inventory_reservations
+		WHERE order_id IS NOT NULL AND released_at IS NULL AND expires_at <= now()
+	`
+
+	rows, err := qe.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query expired reservation orders: %w", err)
+	}
+	defer rows.Close()
+
+	ids := make([]uuid.UUID, 0)
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan expired reservation order: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate expired reservation orders: %w", err)
+	}
+
+	return ids, nil
 }
 
 type InventoryStockItem struct {

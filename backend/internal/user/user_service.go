@@ -133,6 +133,27 @@ func (s *UserService) GetUserByIDWithTx(
 	return s.getUserByID(ctx, tx, userID)
 }
 
+// UserExists reports whether a non-deleted user with the given id exists. It is
+// used by the authentication layer to detect sessions whose principal was
+// removed out-of-band (for example a database reseed), so those requests fail
+// with 401 instead of hitting a foreign-key error on the first write.
+func (s *UserService) UserExists(ctx context.Context, userID uuid.UUID) (bool, error) {
+	if userID == uuid.Nil {
+		return false, nil
+	}
+
+	var exists bool
+	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		var repoErr error
+		exists, repoErr = s.repo.ExistsByID(ctx, db, userID)
+		return repoErr
+	})
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 func (s *UserService) getUserByID(
 	ctx context.Context,
 	exec database.QueryExecutor,
@@ -252,6 +273,16 @@ func (s *UserService) DeleteUserByID(
 			WithCode("CANNOT_MODIFY_EQUAL_OR_HIGHER_ROLE")
 	}
 
+	// Revoke all active sessions BEFORE the soft delete, and fail closed. The
+	// auth middleware trusts the session snapshot, so a still-valid session
+	// would let a deleted account keep operating until its TTL expired.
+	if s.sessions != nil {
+		if err := s.sessions.DeleteAllSessions(ctx, userID); err != nil {
+			s.logger.Error("failed to revoke user sessions upon deletion", log.Meta{"userId": userID, "error": err.Error()})
+			return apierr.InternalServerError("Failed to revoke user sessions").Wrap(err)
+		}
+	}
+
 	err = s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.repo.SoftDelete(ctx, db, userID)
 	})
@@ -262,13 +293,6 @@ func (s *UserService) DeleteUserByID(
 		}
 		s.logger.Error("failed to delete user", log.Meta{"userId": userID, "error": err.Error()})
 		return apierr.InternalServerError("Failed to delete user").Wrap(err)
-	}
-
-	// Invalidate all active sessions for the deleted user
-	if s.sessions != nil {
-		if err := s.sessions.DeleteAllSessions(ctx, userID); err != nil {
-			s.logger.Warn("failed to revoke user sessions upon deletion", log.Meta{"userId": userID, "error": err.Error()})
-		}
 	}
 
 	s.logger.Info("user successfully deleted", log.Meta{"userId": userID})
@@ -344,6 +368,17 @@ func (s *UserService) UpdateUserRole(
 			WithCode("MULTIPLE_SUPERADMINS_FORBIDDEN")
 	}
 
+	// Revoke existing sessions BEFORE committing the role change, and fail
+	// closed. Authenticate() trusts the role carried in the session snapshot
+	// without a per-request DB re-check, so an un-revoked session would retain
+	// its previous privileges until it expired. Revoking first guarantees we
+	// never commit a privilege change we failed to enforce; the worst case is an
+	// unnecessary logout if the subsequent update fails.
+	if err := s.RevokeAllUserSessions(ctx, targetUserID, callerID); err != nil {
+		s.logger.Error("failed to revoke sessions on role update", log.Meta{"userId": targetUserID, "error": err.Error()})
+		return err
+	}
+
 	// Update role in database
 	err = s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.repo.UpdateRole(ctx, db, targetUserID, newRole)
@@ -360,11 +395,6 @@ func (s *UserService) UpdateUserRole(
 		}
 		s.logger.Error("failed to update user role", log.Meta{"userId": targetUserID, "role": newRole, "error": err.Error()})
 		return apierr.InternalServerError("Failed to update user role").Wrap(err)
-	}
-
-	// Revoke existing active sessions so permissions/roles update immediately
-	if err := s.RevokeAllUserSessions(ctx, targetUserID, callerID); err != nil {
-		s.logger.Warn("failed to revoke sessions on role update", log.Meta{"userId": targetUserID, "error": err.Error()})
 	}
 
 	s.logger.Info("user role updated", log.Meta{"userId": targetUserID, "newRole": newRole, "updatedBy": callerID})
@@ -420,9 +450,19 @@ func (s *UserService) UpdateAccountStatus(
 		suspendedUntil = nil
 	}
 
+	// Revoke active sessions BEFORE committing a suspension/deletion, and fail
+	// closed: the session snapshot carries the account's role/status, so an
+	// un-revoked suspended account would keep operating until its session TTL.
+	if newStatus == model.StatusSuspended || newStatus == model.StatusDeleted {
+		if err := s.RevokeAllUserSessions(ctx, targetUserID, callerID); err != nil {
+			s.logger.Error("failed to revoke sessions on account status update", log.Meta{"userId": targetUserID, "error": err.Error()})
+			return err
+		}
+	}
+
 	// Update status in PostgreSQL. A deleted status is a real soft delete:
 	// status and deleted_at are set atomically so the account disappears from
-	// listings and its sessions are revoked below.
+	// listings.
 	err = s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
 		if newStatus == model.StatusDeleted {
 			return s.repo.SoftDelete(ctx, db, targetUserID)
@@ -437,13 +477,6 @@ func (s *UserService) UpdateAccountStatus(
 		}
 		s.logger.Error("failed to update user status", log.Meta{"userId": targetUserID, "status": newStatus, "error": err.Error()})
 		return apierr.InternalServerError("Failed to update user status").Wrap(err)
-	}
-
-	// Invalidate active sessions immediately on suspension or deletion
-	if newStatus == model.StatusSuspended || newStatus == model.StatusDeleted {
-		if err := s.RevokeAllUserSessions(ctx, targetUserID, callerID); err != nil {
-			s.logger.Warn("failed to revoke sessions on account status update", log.Meta{"userId": targetUserID, "error": err.Error()})
-		}
 	}
 
 	s.logger.Info("user status updated", log.Meta{"userId": targetUserID, "newStatus": newStatus, "updatedBy": callerID})

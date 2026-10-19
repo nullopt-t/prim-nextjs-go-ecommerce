@@ -70,6 +70,23 @@ func (r *UserRepository) GetByIdentifier(
 	return r.get(ctx, qe, userFilter{Identifier: &identifier})
 }
 
+// ExistsByID reports whether a non-deleted user with the given UUID exists.
+// It runs a lightweight existence probe (no row materialization) so session
+// validation on the request path does not pay the cost of a full user fetch.
+func (r *UserRepository) ExistsByID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	id uuid.UUID,
+) (bool, error) {
+	query := `SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND deleted_at IS NULL)`
+
+	var exists bool
+	if err := qe.QueryRow(ctx, query, id).Scan(&exists); err != nil {
+		return false, fmt.Errorf("check user existence: %w", err)
+	}
+	return exists, nil
+}
+
 // get executes a parameterized SELECT query against users with deleted_at IS NULL,
 // scanning account status, suspension/lockout windows, and timestamps into the model.User struct.
 func (r *UserRepository) get(

@@ -6,9 +6,12 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/notifier"
+	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/shared/html"
 	"github.com/nullopt-t/prim-backend/internal/shared/job"
 	"github.com/nullopt-t/prim-backend/internal/user"
@@ -44,6 +47,16 @@ func main() {
 	txRunner := database.NewTxRunner(db)
 	notificationRepo := user.NewNotificationRepository()
 	notificationService := user.NewNotificationService(txRunner, notificationRepo, logger)
+
+	// Reservation lifecycle: the reaper cancels pending orders whose checkout
+	// hold expired and returns their held stock to salable. The complementary
+	// branch (committing holds into sales on payment capture) runs in the API
+	// process where payments are updated.
+	inventoryRepo := inventory.NewRepository()
+	inventoryService := inventory.NewService(logger, txRunner, inventoryRepo)
+	orderRepo := order.NewRepository()
+	orderService := order.NewService(txRunner, orderRepo, logger, inventoryService)
+	reservationReaper := order.NewReservationReaper(orderService, logger, time.Minute)
 
 	// 2. Initialize Kafka Consumer & Producer
 	kafkaCfg := brokerkafka.DefaultConfig(cfg.KafkaCfg.Brokers, cfg.KafkaCfg.GroupID)
@@ -101,9 +114,10 @@ func main() {
 		3,
 	)
 
-	wg.Add(2)
+	wg.Add(3)
 	go emailWorker.Start(ctx, &wg)
 	go inappWorker.Start(ctx, &wg)
+	go reservationReaper.Start(ctx, &wg)
 
 	logger.Info("Kafka notification worker pools active and consuming messages...")
 

@@ -149,6 +149,15 @@ func (r *AttributeRepository) UpdateAttribute(
 
 func (r *AttributeRepository) DeleteAttribute(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) error {
 	query := `DELETE FROM category_attributes WHERE id = $1`
-	_, err := qe.Exec(ctx, query, id)
-	return err
+	cmd, err := qe.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("delete attribute: %w", err)
+	}
+	// A DELETE that matched no row means the attribute does not exist (or was
+	// already removed). Surfacing pgx.ErrNoRows lets the service layer map this
+	// to a 404 instead of returning a misleading 200 success.
+	if cmd.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
 }
