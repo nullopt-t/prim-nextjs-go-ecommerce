@@ -22,6 +22,14 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+// noopObjectResolver satisfies inventory.ObjectURLResolver for tests that do
+// not exercise thumbnail URL resolution.
+type noopObjectResolver struct{}
+
+func (noopObjectResolver) GetObjectURL(_ context.Context, bucket, key string) string {
+	return "https://cdn.test/" + bucket + "/" + key
+}
+
 type InventoryTestSuite struct {
 	suite.Suite
 	pgContainer *postgres.PostgresContainer
@@ -70,7 +78,7 @@ func (s *InventoryTestSuite) SetupSuite() {
 	txRunner := database.NewTxRunner(s.db)
 	logger := log.NewConsoleLogger()
 	s.repo = inventory.NewRepository()
-	s.service = inventory.NewService(logger, txRunner, s.repo)
+	s.service = inventory.NewService(logger, txRunner, s.repo, noopObjectResolver{})
 
 	// Create base Category and Product for Foreign Key relations
 	s.categoryID = uuid.New()

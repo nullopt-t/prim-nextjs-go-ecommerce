@@ -1,6 +1,6 @@
 import { ResponsiveTable } from "@/components/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Minus, Search, History } from "lucide-react";
+import { Plus, Minus, Search, History, ImageOff } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/lib/notify";
@@ -69,7 +69,7 @@ export function AdminInventory() {
         sku: it.sku,
         stock: it.onHandQuantity !== undefined ? it.onHandQuantity : 25,
         available: it.availableQuantity !== undefined ? it.availableQuantity : 25,
-        image: it.thumbnail || "http://localhost:9000/catalog/products/macbook-air-15-m3.jpg",
+        image: it.thumbnail || "",
         lowStockThreshold: 10
       })));
       if (invRes?.meta) setMeta(invRes.meta);
@@ -178,7 +178,22 @@ export function AdminInventory() {
                   <tr key={prod.id} className="hover:bg-secondary/20 transition-colors">
                     <td className="py-3.5 ps-4">
                       <div className="flex items-center gap-2.5">
-                        <img src={prod.image} alt={prod.name} className="size-9 rounded-lg object-cover border border-border" />
+                        {prod.image ? (
+                          <img
+                            src={prod.image}
+                            alt={prod.name}
+                            loading="lazy"
+                            className="size-9 shrink-0 rounded-lg border border-border object-cover"
+                          />
+                        ) : (
+                          <span
+                            title={t("inventory.noImage")}
+                            className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground"
+                          >
+                            <ImageOff className="size-4" aria-hidden />
+                            <span className="sr-only">{t("inventory.noImage")}</span>
+                          </span>
+                        )}
                         <span className="font-semibold text-foreground line-clamp-1">{prod.name}</span>
                       </div>
                     </td>

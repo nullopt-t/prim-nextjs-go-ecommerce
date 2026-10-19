@@ -957,6 +957,7 @@
       "colStockOnHand": "المخزون المتوفر",
       "colStatus": "الحالة",
       "colActions": "الإجراءات",
+      "noImage": "لا توجد صورة",
       "audit": "تدقيق",
       "auditTitle": "سجل تدقيق المنتج",
       "loadingAudit": "جارٍ تحميل سجلات التدقيق...",

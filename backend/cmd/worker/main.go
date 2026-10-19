@@ -53,7 +53,9 @@ func main() {
 	// branch (committing holds into sales on payment capture) runs in the API
 	// process where payments are updated.
 	inventoryRepo := inventory.NewRepository()
-	inventoryService := inventory.NewService(logger, txRunner, inventoryRepo)
+	// The worker only drives reservation expiry, which never resolves image
+	// URLs, so the object URL resolver is intentionally nil here.
+	inventoryService := inventory.NewService(logger, txRunner, inventoryRepo, nil)
 	orderRepo := order.NewRepository()
 	orderService := order.NewService(txRunner, orderRepo, logger, inventoryService)
 	reservationReaper := order.NewReservationReaper(orderService, logger, time.Minute)

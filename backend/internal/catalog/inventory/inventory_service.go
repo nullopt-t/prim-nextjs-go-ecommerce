@@ -17,24 +17,35 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
+// ObjectURLResolver resolves a stored object's public URL. It is satisfied by
+// the object service and kept as a narrow interface so inventory does not need
+// to depend on the whole object domain.
+type ObjectURLResolver interface {
+	GetObjectURL(ctx context.Context, bucket, key string) string
+}
+
 // InventoryService provides domain logic and transaction orchestration for inventory ledgers,
 // stock reservations, and inventory balance calculations.
 type InventoryService struct {
-	logger log.Logger
-	dr     database.Runner
-	repo   *InventoryRepository
+	logger         log.Logger
+	dr             database.Runner
+	repo           *InventoryRepository
+	objectResolver ObjectURLResolver
 }
 
-// NewService constructs a new InventoryService instance with the given logger, database runner, and repository.
+// NewService constructs a new InventoryService instance with the given logger,
+// database runner, repository, and object URL resolver.
 func NewService(
 	logger log.Logger,
 	dr database.Runner,
 	repo *InventoryRepository,
+	objectResolver ObjectURLResolver,
 ) *InventoryService {
 	return &InventoryService{
-		logger: logger,
-		dr:     dr,
-		repo:   repo,
+		logger:         logger,
+		dr:             dr,
+		repo:           repo,
+		objectResolver: objectResolver,
 	}
 }
 
@@ -758,7 +769,21 @@ func (s *InventoryService) ListInventoryOverview(ctx context.Context, limit int,
 		items, page, err = s.repo.ListInventoryOverview(ctx, db, limit, cursor)
 		return err
 	})
-	return items, page, err
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Build public image URLs outside the DB callback: URL construction is pure
+	// and must not hold a pooled connection.
+	if s.objectResolver != nil {
+		for i := range items {
+			if items[i].thumbBucket != "" && items[i].thumbKey != "" {
+				items[i].Thumbnail = s.objectResolver.GetObjectURL(ctx, items[i].thumbBucket, items[i].thumbKey)
+			}
+		}
+	}
+
+	return items, page, nil
 }
 
 func (s *InventoryService) ListRecentLedgers(ctx context.Context, limit int, cursor *pagination.Keyset, variantID *uuid.UUID, productID *uuid.UUID) ([]InventoryLedgerItem, *pagination.CursorPage, error) {

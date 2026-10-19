@@ -534,8 +534,16 @@ type InventoryStockItem struct {
 	IsInStock         bool      `json:"isInStock"`
 	Price             int64     `json:"price"`
 	Currency          string    `json:"currency"`
-	Thumbnail         string    `json:"thumbnail"`
-	CreatedAt         time.Time `json:"createdAt"`
+	// Thumbnail is the resolved public URL of the variant's cover image. The
+	// service fills it in from thumbBucket/thumbKey after the query runs.
+	Thumbnail string    `json:"thumbnail"`
+	CreatedAt time.Time `json:"createdAt"`
+
+	// thumbBucket/thumbKey are the storage coordinates of the image chosen for
+	// this row (variant thumbnail, else product thumbnail, else first variant
+	// media). They are unexported so they never leak into the JSON response.
+	thumbBucket string
+	thumbKey    string
 }
 
 type InventoryLedgerItem struct {
@@ -561,9 +569,21 @@ func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, qe data
 			COALESCE((SELECT SUM(quantity) FROM inventory_reservations WHERE variant_id = pv.id AND released_at IS NULL AND expires_at > NOW()), 0)::int AS reserved,
 			pv.price,
 			pv.currency,
-			pv.created_at
+			pv.created_at,
+			COALESCE(vso.bucket, pso.bucket, vmso.bucket) AS thumb_bucket,
+			COALESCE(vso.object_key, pso.object_key, vmso.object_key) AS thumb_key
 		FROM product_variants pv
 		JOIN products p ON pv.product_id = p.id
+		LEFT JOIN storage_objects vso ON pv.thumbnail_object_id = vso.id
+		LEFT JOIN storage_objects pso ON p.thumbnail_object_id = pso.id
+		LEFT JOIN LATERAL (
+			SELECT so.bucket, so.object_key
+			FROM variant_media vm
+			JOIN storage_objects so ON vm.object_id = so.id
+			WHERE vm.variant_id = pv.id
+			ORDER BY vm.sort_order ASC
+			LIMIT 1
+		) vmso ON TRUE
 		WHERE pv.deleted_at IS NULL
 	`
 	args := []any{}
@@ -587,6 +607,7 @@ func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, qe data
 	var list []InventoryStockItem
 	for rows.Next() {
 		var item InventoryStockItem
+		var thumbBucket, thumbKey *string
 		if err := rows.Scan(
 			&item.VariantID,
 			&item.ProductID,
@@ -598,8 +619,14 @@ func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, qe data
 			&item.Price,
 			&item.Currency,
 			&item.CreatedAt,
+			&thumbBucket,
+			&thumbKey,
 		); err != nil {
 			return nil, nil, fmt.Errorf("scan inventory item: %w", err)
+		}
+		if thumbBucket != nil && thumbKey != nil {
+			item.thumbBucket = *thumbBucket
+			item.thumbKey = *thumbKey
 		}
 		item.AvailableQuantity = item.OnHandQuantity - item.ReservedQuantity
 		if item.AvailableQuantity < 0 {

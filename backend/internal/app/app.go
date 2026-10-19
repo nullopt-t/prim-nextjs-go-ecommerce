@@ -217,6 +217,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		app.logger,
 		txRunner,
 		inventoryRepo,
+		objectService,
 	)
 	inventoryHandler := inventory.NewHandler(inventoryService)
 	inventoryRouter := inventory.NewRouter(inventoryHandler, sessionStore)
