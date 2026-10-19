@@ -7,6 +7,23 @@ import { ErrorState } from "@/components/ui/errorState";
 import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
 
+// Distinct per-brand placeholder used only when a brand has no uploaded logo,
+// so the list never falls back to one shared stock image.
+const brandPlaceholder = (name: string) => {
+  const initials =
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((word) => word[0]?.toUpperCase() ?? "")
+      .join("") || "?";
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96">` +
+    `<rect width="96" height="96" rx="20" fill="#eef2f7"/>` +
+    `<text x="48" y="59" font-family="system-ui,-apple-system,sans-serif" font-size="34" font-weight="700" fill="#334155" text-anchor="middle">${initials}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
 export function AdminBrands() {
   const t = useTranslations("admin");
   const [brands, setBrands] = useState<any[]>([]);
@@ -31,7 +48,7 @@ export function AdminBrands() {
         website: b.link || b.website || "https://prim.com",
         productsCount: b.productCount || 0,
         status: "Active",
-        logo: b.logoUrl || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&q=80"
+        logo: b.logoUrl || brandPlaceholder(b.name)
       })));
       if (res?.meta) setMeta(res.meta);
     } catch {
@@ -62,7 +79,7 @@ export function AdminBrands() {
       setFormData({ name: brand.name, website: brand.website, logo: brand.logo });
     } else {
       setEditingBrand(null);
-      setFormData({ name: "", website: "https://", logo: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&q=80" });
+      setFormData({ name: "", website: "https://", logo: "" });
     }
     setIsModalOpen(true);
   };
