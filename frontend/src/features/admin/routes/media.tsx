@@ -4,6 +4,7 @@ import { adminService } from "@/services/admin";
 import { useLocale, useTranslations } from "next-intl";
 import { useAuthContext } from "@/context/AuthContext";
 import { notify, apiErrorMessage } from "@/lib/notify";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { formatDateTime } from "@/lib/datetime";
 import { ErrorState } from "@/components/ui/errorState";
 import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
@@ -11,6 +12,7 @@ import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
 
 export function AdminMedia() {
   const t = useTranslations("admin");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const { user } = useAuthContext();
   const isSuperadmin = user?.role === "superadmin";
@@ -69,8 +71,12 @@ export function AdminMedia() {
     }
   };
 
-  const handleCopyUrl = (url: string, id: string) => {
-    navigator.clipboard.writeText(url);
+  const handleCopyUrl = async (url: string, id: string) => {
+    const copied = await copyTextToClipboard(url);
+    if (!copied) {
+      notify.error(tCommon("errors.copyFailed"));
+      return;
+    }
     setCopiedId(id);
     notify.success(t("media.toast.copied"));
     setTimeout(() => setCopiedId(null), 2000);

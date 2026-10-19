@@ -140,7 +140,8 @@
     "errors": {
       "loadTitle": "Couldn't load data",
       "loadDescription": "Something went wrong while loading this content. Please try again.",
-      "retry": "Retry"
+      "retry": "Retry",
+      "copyFailed": "Couldn't copy to clipboard"
     },
     "filters": {
       "allCategories": "All Categories",

@@ -20,6 +20,7 @@ import {
 import { AdminUser } from "@/services/admin";
 import { useLocale, useTranslations } from "next-intl";
 import { notify } from "@/lib/notify";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { formatDateTime } from "@/lib/datetime";
 import { ROLE_RANKS } from "@/lib/roles";
 
@@ -46,12 +47,17 @@ export function UserSlideOverDrawer({
 }: UserSlideOverDrawerProps) {
   const [copied, setCopied] = useState(false);
   const t = useTranslations("admin");
+  const tCommon = useTranslations("common");
 
   const locale = useLocale();
   if (!isOpen || !user) return null;
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = async (text: string) => {
+    const copiedOk = await copyTextToClipboard(text);
+    if (!copiedOk) {
+      notify.error(tCommon("errors.copyFailed"));
+      return;
+    }
     setCopied(true);
     notify.success(t("modals.drawer.toast.copied"));
     setTimeout(() => setCopied(false), 2000);

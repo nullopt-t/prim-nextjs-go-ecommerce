@@ -18,6 +18,7 @@ import {
   Copy,
 } from "lucide-react";
 import { notify, apiErrorMessage } from "@/lib/notify";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { CountrySelect } from "@/components/ui/CountrySelect";
 
 interface AddressFormData {
@@ -48,6 +49,7 @@ const INITIAL_FORM: AddressFormData = {
 
 export default function AddressesContent() {
   const t = useTranslations("addresses");
+  const tCommon = useTranslations("common");
   const { user } = useAuthContext();
   const {
     addresses,
@@ -70,9 +72,13 @@ export default function AddressesContent() {
   const [addressToDelete, setAddressToDelete] = useState<any | null>(null);
   const [copiedPhoneId, setCopiedPhoneId] = useState<string | null>(null);
 
-  const copyPhoneToClipboard = (id: string, phone: string) => {
+  const copyPhoneToClipboard = async (id: string, phone: string) => {
     if (!phone) return;
-    navigator.clipboard.writeText(phone);
+    const copied = await copyTextToClipboard(phone);
+    if (!copied) {
+      notify.error(tCommon("errors.copyFailed"));
+      return;
+    }
     setCopiedPhoneId(id);
     notify.success(t("phoneCopied"));
     setTimeout(() => {

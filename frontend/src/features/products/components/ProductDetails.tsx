@@ -11,6 +11,7 @@ import { useCartContext } from "@/context/CartContext";
 import { catalogService } from "@/services/catalog";
 import { useWishlist } from "@/hooks/useWishlist";
 import { notify, apiErrorMessage } from "@/lib/notify";
+import { copyTextToClipboard } from "@/lib/clipboard";
 
 import { ProductReview } from "../types";
 import {
@@ -283,11 +284,12 @@ export function ProductDetails() {
     await toggleWishlist(String(product.id), activeVariant?.id, productName);
   };
 
-  const handleShare = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
+  const handleShare = async () => {
+    const copied = await copyTextToClipboard(window.location.href);
+    if (copied) {
       notify.success(tProducts("details.linkCopied"));
     } else {
+      // Fall back to showing the URL so the user can copy it manually.
       notify.info(tProducts("details.shareUrl", { url: window.location.href }));
     }
   };
