@@ -87,6 +87,7 @@ func (br *BrandRepository) get(
 			name,
 			link,
 			logo_object_id,
+			(SELECT COUNT(*) FROM products p WHERE p.brand_id = product_brands.id AND p.deleted_at IS NULL) AS product_count,
 			created_at,
 			updated_at,
 			deleted_at
@@ -227,6 +228,7 @@ func (br *BrandRepository) List(
 			name,
 			link,
 			logo_object_id,
+			(SELECT COUNT(*) FROM products p WHERE p.brand_id = product_brands.id AND p.deleted_at IS NULL) AS product_count,
 			created_at,
 			updated_at,
 			deleted_at
@@ -292,6 +294,7 @@ func (br *BrandRepository) List(
 			name,
 			link,
 			logo_object_id,
+			(SELECT COUNT(*) FROM products p WHERE p.brand_id = product_brands.id AND p.deleted_at IS NULL) AS product_count,
 			created_at,
 			updated_at,
 			deleted_at

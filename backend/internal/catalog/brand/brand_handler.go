@@ -49,6 +49,8 @@ type BrandResponse struct {
 	Link *string `json:"link,omitempty" example:"https://apple.com"`
 	// Publicly accessible URL for the brand logo
 	LogoURL *string `json:"logoUrl,omitempty" example:"https://example.com/apple-logo.png"`
+	// Number of active products associated with the brand
+	ProductCount int `json:"productCount" example:"28"`
 }
 
 type AdminBrandResponse struct {
@@ -60,6 +62,8 @@ type AdminBrandResponse struct {
 	Link *string `json:"link,omitempty" example:"https://apple.com"`
 	// Publicly accessible URL for the brand logo
 	LogoURL *string `json:"logoUrl,omitempty" example:"https://example.com/apple-logo.png"`
+	// Number of active products associated with the brand
+	ProductCount int `json:"productCount" example:"28"`
 	// Timestamp when brand was created (RFC3339)
 	CreatedAt string `json:"createdAt" example:"2026-07-01T05:04:38Z"`
 	// Timestamp when brand was last updated (RFC3339)
@@ -377,21 +381,23 @@ func (bh *BrandHandler) UploadBrandLogo(c *gin.Context) {
 
 func mapBrandResponse(brand *model.ProductBrand) *BrandResponse {
 	return &BrandResponse{
-		ID:      brand.ID.String(),
-		Name:    brand.Name,
-		Link:    brand.Link,
-		LogoURL: brand.LogoURL,
+		ID:           brand.ID.String(),
+		Name:         brand.Name,
+		Link:         brand.Link,
+		LogoURL:      brand.LogoURL,
+		ProductCount: brand.ProductCount,
 	}
 }
 
 func mapAdminBrandResponse(brand *model.ProductBrand) *AdminBrandResponse {
 	res := &AdminBrandResponse{
-		ID:        brand.ID.String(),
-		Name:      brand.Name,
-		Link:      brand.Link,
-		LogoURL:   brand.LogoURL,
-		CreatedAt: brand.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: brand.UpdatedAt.Format(time.RFC3339),
+		ID:           brand.ID.String(),
+		Name:         brand.Name,
+		Link:         brand.Link,
+		LogoURL:      brand.LogoURL,
+		ProductCount: brand.ProductCount,
+		CreatedAt:    brand.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:    brand.UpdatedAt.Format(time.RFC3339),
 	}
 	if brand.DeletedAt != nil {
 		deletedStr := brand.DeletedAt.Format(time.RFC3339)

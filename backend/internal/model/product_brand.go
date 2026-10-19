@@ -18,6 +18,9 @@ type ProductBrand struct {
 	LogoObjectID *uuid.UUID
 	// LogoURL is the resolved public CDN URL for the brand logo image.
 	LogoURL *string
+	// ProductCount is the number of active products associated with the brand.
+	// It is computed on read and is not persisted on the brand row.
+	ProductCount int
 	// CreatedAt is the timestamp when the brand record was created.
 	CreatedAt time.Time
 	// UpdatedAt is the timestamp when brand details were last modified.
