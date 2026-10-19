@@ -1,0 +1,897 @@
+[
+  {
+    "slug": "asus-zenbook-pro-dual-screen-laptop",
+    "title": "Asus Zenbook Pro Dual Screen Laptop",
+    "brand": "Asus",
+    "category": "Laptops",
+    "description": "The Asus Zenbook Pro Dual Screen Laptop is a high-performance device with dual screens, providing productivity and versatility for creative professionals.",
+    "highlights": [
+      "3 year warranty",
+      "Ships in 1 month",
+      "7 days return policy"
+    ],
+    "price": 90000,
+    "crossed_price": 112500,
+    "images": [
+      "products/asus-zenbook-pro-dual-screen-laptop.jpg",
+      "products/asus-zenbook-pro-dual-screen-laptop-2.jpg",
+      "products/asus-zenbook-pro-dual-screen-laptop-3.jpg"
+    ]
+  },
+  {
+    "slug": "huawei-matebook-x-pro",
+    "title": "Huawei Matebook X Pro",
+    "brand": "Huawei",
+    "category": "Laptops",
+    "description": "The Huawei Matebook X Pro is a slim and stylish laptop with a high-resolution touchscreen display, offering a premium experience for users on the go.",
+    "highlights": [
+      "No warranty",
+      "Ships overnight",
+      "60 days return policy"
+    ],
+    "price": 70000,
+    "crossed_price": 87500,
+    "images": [
+      "products/huawei-matebook-x-pro.jpg",
+      "products/huawei-matebook-x-pro-2.jpg",
+      "products/huawei-matebook-x-pro-3.jpg"
+    ]
+  },
+  {
+    "slug": "lenovo-yoga-920",
+    "title": "Lenovo Yoga 920",
+    "brand": "Lenovo",
+    "category": "Laptops",
+    "description": "The Lenovo Yoga 920 is a 2-in-1 convertible laptop with a flexible hinge, allowing you to use it as a laptop or tablet, offering versatility and portability.",
+    "highlights": [
+      "6 months warranty",
+      "Ships in 2 weeks",
+      "No return policy"
+    ],
+    "price": 55000,
+    "crossed_price": 68750,
+    "images": [
+      "products/lenovo-yoga-920.jpg",
+      "products/lenovo-yoga-920-2.jpg",
+      "products/lenovo-yoga-920-3.jpg"
+    ]
+  },
+  {
+    "slug": "new-dell-xps-13-9300-laptop",
+    "title": "New DELL XPS 13 9300 Laptop",
+    "brand": "Dell",
+    "category": "Laptops",
+    "description": "The New DELL XPS 13 9300 Laptop is a compact and powerful device, featuring a virtually borderless InfinityEdge display and high-end performance for various tasks.",
+    "highlights": [
+      "2 year warranty",
+      "Ships in 2 weeks",
+      "60 days return policy"
+    ],
+    "price": 75000,
+    "crossed_price": 93750,
+    "images": [
+      "products/new-dell-xps-13-9300-laptop.jpg",
+      "products/new-dell-xps-13-9300-laptop-2.jpg",
+      "products/new-dell-xps-13-9300-laptop-3.jpg"
+    ]
+  },
+  {
+    "slug": "iphone-13-pro",
+    "title": "iPhone 13 Pro",
+    "brand": "Apple",
+    "category": "Smartphones",
+    "description": "The iPhone 13 Pro is a cutting-edge smartphone with a powerful camera system, high-performance chip, and stunning display. It offers advanced features for users who demand top-notch technology.",
+    "highlights": [
+      "3 year warranty",
+      "Ships in 2 weeks",
+      "7 days return policy"
+    ],
+    "price": 55000,
+    "crossed_price": 68750,
+    "images": [
+      "products/iphone-13-pro.jpg",
+      "products/iphone-13-pro-2.jpg",
+      "products/iphone-13-pro-3.jpg"
+    ]
+  },
+  {
+    "slug": "iphone-x",
+    "title": "iPhone X",
+    "brand": "Apple",
+    "category": "Smartphones",
+    "description": "The iPhone X is a flagship smartphone featuring a bezel-less OLED display, facial recognition technology (Face ID), and impressive performance. It represents a milestone in iPhone design and innovation.",
+    "highlights": [
+      "3 months warranty",
+      "Ships in 3-5 business days",
+      "7 days return policy"
+    ],
+    "price": 45000,
+    "crossed_price": 56250,
+    "images": [
+      "products/iphone-x.jpg",
+      "products/iphone-x-2.jpg",
+      "products/iphone-x-3.jpg"
+    ]
+  },
+  {
+    "slug": "samsung-galaxy-s10",
+    "title": "Samsung Galaxy S10",
+    "brand": "Samsung",
+    "category": "Smartphones",
+    "description": "The Samsung Galaxy S10 is a flagship device featuring a dynamic AMOLED display, versatile camera system, and powerful performance. It represents innovation and excellence in smartphone technology.",
+    "highlights": [
+      "No warranty",
+      "Ships in 2 weeks",
+      "30 days return policy"
+    ],
+    "price": 35000,
+    "crossed_price": 43750,
+    "images": [
+      "products/samsung-galaxy-s10.jpg",
+      "products/samsung-galaxy-s10-2.jpg",
+      "products/samsung-galaxy-s10-3.jpg"
+    ]
+  },
+  {
+    "slug": "samsung-galaxy-s8",
+    "title": "Samsung Galaxy S8",
+    "brand": "Samsung",
+    "category": "Smartphones",
+    "description": "The Samsung Galaxy S8 is a premium smartphone with an Infinity Display, offering a stunning visual experience. It boasts advanced camera capabilities and cutting-edge technology.",
+    "highlights": [
+      "2 year warranty",
+      "Ships in 1 week",
+      "No return policy"
+    ],
+    "price": 25000,
+    "crossed_price": 31250,
+    "images": [
+      "products/samsung-galaxy-s8.jpg",
+      "products/samsung-galaxy-s8-2.jpg",
+      "products/samsung-galaxy-s8-3.jpg"
+    ]
+  },
+  {
+    "slug": "oppo-k1",
+    "title": "Oppo K1",
+    "brand": "Oppo",
+    "category": "Smartphones",
+    "description": "The Oppo K1 series offers a range of smartphones with various features and specifications. Known for their stylish design and reliable performance, the Oppo K1 series caters to diverse user preferences.",
+    "highlights": [
+      "1 month warranty",
+      "Ships in 1-2 business days",
+      "30 days return policy"
+    ],
+    "price": 15000,
+    "crossed_price": 18750,
+    "images": [
+      "products/oppo-k1.jpg",
+      "products/oppo-k1-2.jpg",
+      "products/oppo-k1-3.jpg",
+      "products/oppo-k1-4.jpg"
+    ]
+  },
+  {
+    "slug": "vivo-x21",
+    "title": "Vivo X21",
+    "brand": "Vivo",
+    "category": "Smartphones",
+    "description": "The Vivo X21 is a premium smartphone with a focus on cutting-edge technology. It features an in-display fingerprint sensor, a high-resolution display, and advanced camera capabilities.",
+    "highlights": [
+      "1 year warranty",
+      "Ships in 1-2 business days",
+      "60 days return policy"
+    ],
+    "price": 25000,
+    "crossed_price": 31250,
+    "images": [
+      "products/vivo-x21.jpg",
+      "products/vivo-x21-2.jpg",
+      "products/vivo-x21-3.jpg"
+    ]
+  },
+  {
+    "slug": "ipad-mini-2021-starlight",
+    "title": "iPad Mini 2021 Starlight",
+    "brand": "Apple",
+    "category": "Tablets & Wearables",
+    "description": "The iPad Mini 2021 in Starlight is a compact and powerful tablet from Apple. Featuring a stunning Retina display, powerful A-series chip, and a sleek design, it offers a premium tablet experience.",
+    "highlights": [
+      "2 year warranty",
+      "Ships in 1-2 business days",
+      "No return policy"
+    ],
+    "price": 25000,
+    "crossed_price": 31250,
+    "images": [
+      "products/ipad-mini-2021-starlight.jpg",
+      "products/ipad-mini-2021-starlight-2.jpg",
+      "products/ipad-mini-2021-starlight-3.jpg",
+      "products/ipad-mini-2021-starlight-4.jpg"
+    ]
+  },
+  {
+    "slug": "samsung-galaxy-tab-s8-plus-grey",
+    "title": "Samsung Galaxy Tab S8 Plus Grey",
+    "brand": "Samsung",
+    "category": "Tablets & Wearables",
+    "description": "The Samsung Galaxy Tab S8 Plus in Grey is a high-performance Android tablet by Samsung. With a large AMOLED display, powerful processor, and S Pen support, it's ideal for productivity and entertainment.",
+    "highlights": [
+      "3 months warranty",
+      "Ships in 2 weeks",
+      "7 days return policy"
+    ],
+    "price": 30000,
+    "crossed_price": 37500,
+    "images": [
+      "products/samsung-galaxy-tab-s8-plus-grey.jpg",
+      "products/samsung-galaxy-tab-s8-plus-grey-2.jpg",
+      "products/samsung-galaxy-tab-s8-plus-grey-3.jpg",
+      "products/samsung-galaxy-tab-s8-plus-grey-4.jpg"
+    ]
+  },
+  {
+    "slug": "samsung-galaxy-tab-white",
+    "title": "Samsung Galaxy Tab White",
+    "brand": "Samsung",
+    "category": "Tablets & Wearables",
+    "description": "The Samsung Galaxy Tab in White is a sleek and versatile Android tablet. With a vibrant display, long-lasting battery, and a range of features, it offers a great user experience for various tasks.",
+    "highlights": [
+      "3 months warranty",
+      "Ships overnight",
+      "7 days return policy"
+    ],
+    "price": 17500,
+    "crossed_price": 21875,
+    "images": [
+      "products/samsung-galaxy-tab-white.jpg",
+      "products/samsung-galaxy-tab-white-2.jpg",
+      "products/samsung-galaxy-tab-white-3.jpg",
+      "products/samsung-galaxy-tab-white-4.jpg"
+    ]
+  },
+  {
+    "slug": "nike-air-jordan-1-red-and-black",
+    "title": "Nike Air Jordan 1 Red And Black",
+    "brand": "Nike",
+    "category": "Shoes",
+    "description": "The Nike Air Jordan 1 in Red and Black is an iconic basketball sneaker known for its stylish design and high-performance features, making it a favorite among sneaker enthusiasts and athletes.",
+    "highlights": [
+      "1 year warranty",
+      "Ships in 1 week",
+      "No return policy"
+    ],
+    "price": 7500,
+    "crossed_price": 9375,
+    "images": [
+      "products/nike-air-jordan-1-red-and-black.jpg",
+      "products/nike-air-jordan-1-red-and-black-2.jpg",
+      "products/nike-air-jordan-1-red-and-black-3.jpg",
+      "products/nike-air-jordan-1-red-and-black-4.jpg"
+    ]
+  },
+  {
+    "slug": "puma-future-rider-trainers",
+    "title": "Puma Future Rider Trainers",
+    "brand": "Puma",
+    "category": "Shoes",
+    "description": "The Puma Future Rider Trainers offer a blend of retro style and modern comfort. Perfect for casual wear, these trainers provide a fashionable and comfortable option for everyday use.",
+    "highlights": [
+      "5 year warranty",
+      "Ships in 1-2 business days",
+      "90 days return policy"
+    ],
+    "price": 4500,
+    "crossed_price": 5625,
+    "images": [
+      "products/puma-future-rider-trainers.jpg",
+      "products/puma-future-rider-trainers-2.jpg",
+      "products/puma-future-rider-trainers-3.jpg",
+      "products/puma-future-rider-trainers-4.jpg"
+    ]
+  },
+  {
+    "slug": "sports-sneakers-off-white-red",
+    "title": "Sports Sneakers Off White & Red",
+    "brand": "Off White",
+    "category": "Shoes",
+    "description": "The Sports Sneakers in Off White and Red combine style and functionality, making them a fashionable choice for sports enthusiasts. The red and off-white color combination adds a bold and energetic touch.",
+    "highlights": [
+      "1 week warranty",
+      "Ships in 3-5 business days",
+      "30 days return policy"
+    ],
+    "price": 6000,
+    "crossed_price": 7500,
+    "images": [
+      "products/sports-sneakers-off-white-red.jpg",
+      "products/sports-sneakers-off-white-red-2.jpg",
+      "products/sports-sneakers-off-white-red-3.jpg",
+      "products/sports-sneakers-off-white-red-4.jpg"
+    ]
+  },
+  {
+    "slug": "calvin-klein-heel-shoes",
+    "title": "Calvin Klein Heel Shoes",
+    "brand": "Calvin Klein",
+    "category": "Shoes",
+    "description": "Calvin Klein Heel Shoes are elegant and sophisticated, designed for formal occasions. With a classic design and high-quality materials, they complement your stylish ensemble.",
+    "highlights": [
+      "2 year warranty",
+      "Ships in 1 week",
+      "60 days return policy"
+    ],
+    "price": 3999,
+    "crossed_price": 4999,
+    "images": [
+      "products/calvin-klein-heel-shoes.jpg",
+      "products/calvin-klein-heel-shoes-2.jpg",
+      "products/calvin-klein-heel-shoes-3.jpg",
+      "products/calvin-klein-heel-shoes-4.jpg"
+    ]
+  },
+  {
+    "slug": "golden-shoes-woman",
+    "title": "Golden Shoes Woman",
+    "brand": "PRIM Select",
+    "category": "Shoes",
+    "description": "The Golden Shoes for Women are a glamorous choice for special occasions. Featuring a golden hue and stylish design, they add a touch of luxury to your outfit.",
+    "highlights": [
+      "6 months warranty",
+      "Ships in 2 weeks",
+      "7 days return policy"
+    ],
+    "price": 2500,
+    "crossed_price": 3125,
+    "images": [
+      "products/golden-shoes-woman.jpg",
+      "products/golden-shoes-woman-2.jpg",
+      "products/golden-shoes-woman-3.jpg",
+      "products/golden-shoes-woman-4.jpg"
+    ]
+  },
+  {
+    "slug": "red-shoes",
+    "title": "Red Shoes",
+    "brand": "PRIM Select",
+    "category": "Shoes",
+    "description": "The Red Shoes make a bold statement with their vibrant red color. Whether for a party or a casual outing, these shoes add a pop of color and style to your wardrobe.",
+    "highlights": [
+      "No warranty",
+      "Ships in 1 month",
+      "60 days return policy"
+    ],
+    "price": 1750,
+    "crossed_price": 2188,
+    "images": [
+      "products/red-shoes.jpg",
+      "products/red-shoes-2.jpg",
+      "products/red-shoes-3.jpg",
+      "products/red-shoes-4.jpg"
+    ]
+  },
+  {
+    "slug": "blue-black-check-shirt",
+    "title": "Blue & Black Check Shirt",
+    "brand": "PRIM Select",
+    "category": "Shirts",
+    "description": "The Blue & Black Check Shirt is a stylish and comfortable men's shirt featuring a classic check pattern. Made from high-quality fabric, it's suitable for both casual and semi-formal occasions.",
+    "highlights": [
+      "3 year warranty",
+      "Ships in 3-5 business days",
+      "30 days return policy"
+    ],
+    "price": 1500,
+    "crossed_price": 1875,
+    "images": [
+      "products/blue-black-check-shirt.jpg",
+      "products/blue-black-check-shirt-2.jpg",
+      "products/blue-black-check-shirt-3.jpg",
+      "products/blue-black-check-shirt-4.jpg"
+    ]
+  },
+  {
+    "slug": "man-plaid-shirt",
+    "title": "Man Plaid Shirt",
+    "brand": "PRIM Select",
+    "category": "Shirts",
+    "description": "The Man Plaid Shirt is a timeless and versatile men's shirt with a classic plaid pattern. Its comfortable fit and casual style make it a wardrobe essential for various occasions.",
+    "highlights": [
+      "1 week warranty",
+      "Ships in 1-2 business days",
+      "7 days return policy"
+    ],
+    "price": 1750,
+    "crossed_price": 2188,
+    "images": [
+      "products/man-plaid-shirt.jpg",
+      "products/man-plaid-shirt-2.jpg",
+      "products/man-plaid-shirt-3.jpg",
+      "products/man-plaid-shirt-4.jpg"
+    ]
+  },
+  {
+    "slug": "men-check-shirt",
+    "title": "Men Check Shirt",
+    "brand": "PRIM Select",
+    "category": "Shirts",
+    "description": "The Men Check Shirt is a classic and versatile shirt featuring a stylish check pattern. Suitable for various occasions, it adds a smart and polished touch to your wardrobe.",
+    "highlights": [
+      "No warranty",
+      "Ships in 1-2 business days",
+      "30 days return policy"
+    ],
+    "price": 1400,
+    "crossed_price": 1750,
+    "images": [
+      "products/men-check-shirt.jpg",
+      "products/men-check-shirt-2.jpg",
+      "products/men-check-shirt-3.jpg",
+      "products/men-check-shirt-4.jpg"
+    ]
+  },
+  {
+    "slug": "blue-frock",
+    "title": "Blue Frock",
+    "brand": "PRIM Select",
+    "category": "Tops",
+    "description": "The Blue Frock is a charming and stylish dress for various occasions. With a vibrant blue color and a comfortable design, it adds a touch of elegance to your wardrobe.",
+    "highlights": [
+      "Lifetime warranty",
+      "Ships in 2 weeks",
+      "60 days return policy"
+    ],
+    "price": 1500,
+    "crossed_price": 1875,
+    "images": [
+      "products/blue-frock.jpg",
+      "products/blue-frock-2.jpg",
+      "products/blue-frock-3.jpg",
+      "products/blue-frock-4.jpg"
+    ]
+  },
+  {
+    "slug": "girl-summer-dress",
+    "title": "Girl Summer Dress",
+    "brand": "PRIM Select",
+    "category": "Tops",
+    "description": "The Girl Summer Dress is a cute and breezy dress designed for warm weather. With playful patterns and lightweight fabric, it's perfect for keeping cool and stylish during the summer.",
+    "highlights": [
+      "Lifetime warranty",
+      "Ships in 1 month",
+      "60 days return policy"
+    ],
+    "price": 999,
+    "crossed_price": 1249,
+    "images": [
+      "products/girl-summer-dress.jpg",
+      "products/girl-summer-dress-2.jpg",
+      "products/girl-summer-dress-3.jpg",
+      "products/girl-summer-dress-4.jpg"
+    ]
+  },
+  {
+    "slug": "gray-dress",
+    "title": "Gray Dress",
+    "brand": "PRIM Select",
+    "category": "Tops",
+    "description": "The Gray Dress is a versatile and chic option for various occasions. With a neutral gray color, it can be dressed up or down, making it a wardrobe staple for any fashion-forward individual.",
+    "highlights": [
+      "1 month warranty",
+      "Ships in 1 month",
+      "90 days return policy"
+    ],
+    "price": 1750,
+    "crossed_price": 2188,
+    "images": [
+      "products/gray-dress.jpg",
+      "products/gray-dress-2.jpg",
+      "products/gray-dress-3.jpg",
+      "products/gray-dress-4.jpg"
+    ]
+  },
+  {
+    "slug": "black-women-s-gown",
+    "title": "Black Women's Gown",
+    "brand": "PRIM Select",
+    "category": "Dresses",
+    "description": "The Black Women's Gown is an elegant and timeless evening gown. With a sleek black design, it's perfect for formal events and special occasions, exuding sophistication and style.",
+    "highlights": [
+      "Lifetime warranty",
+      "Ships in 1 week",
+      "No return policy"
+    ],
+    "price": 6500,
+    "crossed_price": 8125,
+    "images": [
+      "products/black-women-s-gown.jpg",
+      "products/black-women-s-gown-2.jpg",
+      "products/black-women-s-gown-3.jpg",
+      "products/black-women-s-gown-4.jpg"
+    ]
+  },
+  {
+    "slug": "dress-pea",
+    "title": "Dress Pea",
+    "brand": "PRIM Select",
+    "category": "Dresses",
+    "description": "The Dress Pea is a stylish and comfortable dress with a pea pattern. Perfect for casual outings, it adds a playful and fun element to your wardrobe, making it a great choice for day-to-day wear.",
+    "highlights": [
+      "2 year warranty",
+      "Ships overnight",
+      "90 days return policy"
+    ],
+    "price": 2500,
+    "crossed_price": 3125,
+    "images": [
+      "products/dress-pea.jpg",
+      "products/dress-pea-2.jpg",
+      "products/dress-pea-3.jpg",
+      "products/dress-pea-4.jpg"
+    ]
+  },
+  {
+    "slug": "corset-leather-with-skirt",
+    "title": "Corset Leather With Skirt",
+    "brand": "PRIM Select",
+    "category": "Dresses",
+    "description": "The Corset Leather With Skirt is a bold and edgy ensemble that combines a stylish corset with a matching skirt. Ideal for fashion-forward individuals, it makes a statement at any event.",
+    "highlights": [
+      "2 year warranty",
+      "Ships overnight",
+      "30 days return policy"
+    ],
+    "price": 4500,
+    "crossed_price": 5625,
+    "images": [
+      "products/corset-leather-with-skirt.jpg",
+      "products/corset-leather-with-skirt-2.jpg",
+      "products/corset-leather-with-skirt-3.jpg",
+      "products/corset-leather-with-skirt-4.jpg"
+    ]
+  },
+  {
+    "slug": "black-sun-glasses",
+    "title": "Black Sun Glasses",
+    "brand": "PRIM Select",
+    "category": "Sunglasses",
+    "description": "The Black Sun Glasses are a classic and stylish choice, featuring a sleek black frame and tinted lenses. They provide both UV protection and a fashionable look.",
+    "highlights": [
+      "No warranty",
+      "Ships in 1-2 business days",
+      "7 days return policy"
+    ],
+    "price": 1500,
+    "crossed_price": 1875,
+    "images": [
+      "products/black-sun-glasses.jpg",
+      "products/black-sun-glasses-2.jpg",
+      "products/black-sun-glasses-3.jpg"
+    ]
+  },
+  {
+    "slug": "classic-sun-glasses",
+    "title": "Classic Sun Glasses",
+    "brand": "PRIM Select",
+    "category": "Sunglasses",
+    "description": "The Classic Sun Glasses offer a timeless design with a neutral frame and UV-protected lenses. These sunglasses are versatile and suitable for various occasions.",
+    "highlights": [
+      "6 months warranty",
+      "Ships in 1 month",
+      "90 days return policy"
+    ],
+    "price": 1250,
+    "crossed_price": 1562,
+    "images": [
+      "products/classic-sun-glasses.jpg",
+      "products/classic-sun-glasses-2.jpg",
+      "products/classic-sun-glasses-3.jpg"
+    ]
+  },
+  {
+    "slug": "green-and-black-glasses",
+    "title": "Green and Black Glasses",
+    "brand": "PRIM Select",
+    "category": "Sunglasses",
+    "description": "The Green and Black Glasses feature a bold combination of green and black colors, adding a touch of vibrancy to your eyewear collection. They are both stylish and eye-catching.",
+    "highlights": [
+      "1 year warranty",
+      "Ships overnight",
+      "30 days return policy"
+    ],
+    "price": 1750,
+    "crossed_price": 2188,
+    "images": [
+      "products/green-and-black-glasses.jpg",
+      "products/green-and-black-glasses-2.jpg",
+      "products/green-and-black-glasses-3.jpg"
+    ]
+  },
+  {
+    "slug": "rolex-submariner-watch",
+    "title": "Rolex Submariner Watch",
+    "brand": "Rolex",
+    "category": "Watches",
+    "description": "The Rolex Submariner is a legendary dive watch with a rich history. Known for its durability and water resistance, it's a symbol of adventure and exploration.",
+    "highlights": [
+      "5 year warranty",
+      "Ships in 1 month",
+      "90 days return policy"
+    ],
+    "price": 700000,
+    "crossed_price": 875000,
+    "images": [
+      "products/rolex-submariner-watch.jpg",
+      "products/rolex-submariner-watch-2.jpg",
+      "products/rolex-submariner-watch-3.jpg"
+    ]
+  },
+  {
+    "slug": "rolex-datejust",
+    "title": "Rolex Datejust",
+    "brand": "Rolex",
+    "category": "Watches",
+    "description": "The Rolex Datejust is an iconic and versatile timepiece with a date window. Known for its timeless design and reliability, it's a symbol of Rolex's watchmaking excellence.",
+    "highlights": [
+      "2 year warranty",
+      "Ships in 1 month",
+      "7 days return policy"
+    ],
+    "price": 550000,
+    "crossed_price": 687500,
+    "images": [
+      "products/rolex-datejust.jpg",
+      "products/rolex-datejust-2.jpg",
+      "products/rolex-datejust-3.jpg"
+    ]
+  },
+  {
+    "slug": "longines-master-collection",
+    "title": "Longines Master Collection",
+    "brand": "Longines",
+    "category": "Watches",
+    "description": "The Longines Master Collection is an elegant and refined watch known for its precision and craftsmanship. With a timeless design, it's a symbol of luxury and sophistication.",
+    "highlights": [
+      "1 week warranty",
+      "Ships in 1-2 business days",
+      "7 days return policy"
+    ],
+    "price": 75000,
+    "crossed_price": 93750,
+    "images": [
+      "products/longines-master-collection.jpg",
+      "products/longines-master-collection-2.jpg",
+      "products/longines-master-collection-3.jpg"
+    ]
+  },
+  {
+    "slug": "iwc-ingenieur-automatic-steel",
+    "title": "IWC Ingenieur Automatic Steel",
+    "brand": "IWC",
+    "category": "Watches",
+    "description": "The IWC Ingenieur Automatic Steel watch is a durable and sophisticated timepiece. With a stainless steel case and automatic movement, it combines precision and style for watch enthusiasts.",
+    "highlights": [
+      "1 year warranty",
+      "Ships overnight",
+      "No return policy"
+    ],
+    "price": 250000,
+    "crossed_price": 312500,
+    "images": [
+      "products/iwc-ingenieur-automatic-steel.jpg",
+      "products/iwc-ingenieur-automatic-steel-2.jpg",
+      "products/iwc-ingenieur-automatic-steel-3.jpg"
+    ]
+  },
+  {
+    "slug": "women-s-wrist-watch",
+    "title": "Women's Wrist Watch",
+    "brand": "PRIM Select",
+    "category": "Watches",
+    "description": "The Women's Wrist Watch is a versatile and fashionable timepiece for everyday wear. With a comfortable strap and a simple yet elegant design, it complements various styles.",
+    "highlights": [
+      "1 year warranty",
+      "Ships in 2 weeks",
+      "No return policy"
+    ],
+    "price": 6500,
+    "crossed_price": 8125,
+    "images": [
+      "products/women-s-wrist-watch.jpg",
+      "products/women-s-wrist-watch-2.jpg",
+      "products/women-s-wrist-watch-3.jpg"
+    ]
+  },
+  {
+    "slug": "apple-airpods",
+    "title": "Apple Airpods",
+    "brand": "Apple",
+    "category": "Mobile Accessories",
+    "description": "The Apple Airpods offer a seamless wireless audio experience. With easy pairing, high-quality sound, and Siri integration, they are perfect for on-the-go listening.",
+    "highlights": [
+      "3 year warranty",
+      "Ships in 3-5 business days",
+      "No return policy"
+    ],
+    "price": 6500,
+    "crossed_price": 8125,
+    "images": [
+      "products/apple-airpods.jpg",
+      "products/apple-airpods-2.jpg",
+      "products/apple-airpods-3.jpg"
+    ]
+  },
+  {
+    "slug": "apple-watch-series-4-gold",
+    "title": "Apple Watch Series 4 Gold",
+    "brand": "Apple",
+    "category": "Mobile Accessories",
+    "description": "The Apple Watch Series 4 in Gold is a stylish and advanced smartwatch with features like heart rate monitoring, fitness tracking, and a beautiful Retina display.",
+    "highlights": [
+      "6 months warranty",
+      "Ships in 1 month",
+      "No return policy"
+    ],
+    "price": 17500,
+    "crossed_price": 21875,
+    "images": [
+      "products/apple-watch-series-4-gold.jpg",
+      "products/apple-watch-series-4-gold-2.jpg",
+      "products/apple-watch-series-4-gold-3.jpg"
+    ]
+  },
+  {
+    "slug": "iphone-12-silicone-case-with-magsafe-plum",
+    "title": "iPhone 12 Silicone Case with MagSafe Plum",
+    "brand": "Apple",
+    "category": "Mobile Accessories",
+    "description": "The iPhone 12 Silicone Case with MagSafe in Plum is a stylish and protective case designed for the iPhone 12. It features MagSafe technology for easy attachment of accessories.",
+    "highlights": [
+      "3 months warranty",
+      "Ships in 3-5 business days",
+      "90 days return policy"
+    ],
+    "price": 1500,
+    "crossed_price": 1875,
+    "images": [
+      "products/iphone-12-silicone-case-with-magsafe-plum.jpg",
+      "products/iphone-12-silicone-case-with-magsafe-plum-2.jpg",
+      "products/iphone-12-silicone-case-with-magsafe-plum-3.jpg",
+      "products/iphone-12-silicone-case-with-magsafe-plum-4.jpg"
+    ]
+  },
+  {
+    "slug": "prada-women-bag",
+    "title": "Prada Women Bag",
+    "brand": "Prada",
+    "category": "Bags",
+    "description": "The Prada Women Bag is an iconic designer bag that exudes elegance and luxury. Crafted with precision and featuring the Prada logo, it's a statement piece for fashion enthusiasts.",
+    "highlights": [
+      "3 year warranty",
+      "Ships in 1-2 business days",
+      "60 days return policy"
+    ],
+    "price": 30000,
+    "crossed_price": 37500,
+    "images": [
+      "products/prada-women-bag.jpg",
+      "products/prada-women-bag-2.jpg",
+      "products/prada-women-bag-3.jpg"
+    ]
+  },
+  {
+    "slug": "heshe-women-s-leather-bag",
+    "title": "Heshe Women's Leather Bag",
+    "brand": "Heshe",
+    "category": "Bags",
+    "description": "The Heshe Women's Leather Bag is a luxurious and high-quality leather bag for the sophisticated woman. With a timeless design and durable craftsmanship, it's a versatile accessory.",
+    "highlights": [
+      "5 year warranty",
+      "Ships overnight",
+      "90 days return policy"
+    ],
+    "price": 6500,
+    "crossed_price": 8125,
+    "images": [
+      "products/heshe-women-s-leather-bag.jpg",
+      "products/heshe-women-s-leather-bag-2.jpg",
+      "products/heshe-women-s-leather-bag-3.jpg"
+    ]
+  },
+  {
+    "slug": "white-faux-leather-backpack",
+    "title": "White Faux Leather Backpack",
+    "brand": "PRIM Select",
+    "category": "Bags",
+    "description": "The White Faux Leather Backpack is a trendy and practical backpack for the modern woman. With a sleek white design and ample storage space, it's perfect for both casual and on-the-go styles.",
+    "highlights": [
+      "2 year warranty",
+      "Ships in 1 week",
+      "90 days return policy"
+    ],
+    "price": 2000,
+    "crossed_price": 2500,
+    "images": [
+      "products/white-faux-leather-backpack.jpg",
+      "products/white-faux-leather-backpack-2.jpg",
+      "products/white-faux-leather-backpack-3.jpg"
+    ]
+  },
+  {
+    "slug": "green-crystal-earring",
+    "title": "Green Crystal Earring",
+    "brand": "PRIM Select",
+    "category": "Jewellery",
+    "description": "The Green Crystal Earring is a dazzling accessory that features a vibrant green crystal. With a classic design, it adds a touch of elegance to your ensemble, perfect for formal or special occasions.",
+    "highlights": [
+      "5 year warranty",
+      "Ships in 3-5 business days",
+      "60 days return policy"
+    ],
+    "price": 1500,
+    "crossed_price": 1875,
+    "images": [
+      "products/green-crystal-earring.jpg",
+      "products/green-crystal-earring-2.jpg",
+      "products/green-crystal-earring-3.jpg"
+    ]
+  },
+  {
+    "slug": "tropical-earring",
+    "title": "Tropical Earring",
+    "brand": "PRIM Select",
+    "category": "Jewellery",
+    "description": "The Tropical Earring is a fun and playful accessory inspired by tropical elements. Featuring vibrant colors and a lively design, it's perfect for adding a touch of summer to your look.",
+    "highlights": [
+      "3 year warranty",
+      "Ships in 1-2 business days",
+      "7 days return policy"
+    ],
+    "price": 999,
+    "crossed_price": 1249,
+    "images": [
+      "products/tropical-earring.jpg",
+      "products/tropical-earring-2.jpg",
+      "products/tropical-earring-3.jpg"
+    ]
+  },
+  {
+    "slug": "baseball-glove",
+    "title": "Baseball Glove",
+    "brand": "PRIM Select",
+    "category": "Sports & Outdoors",
+    "description": "The Baseball Glove is a protective glove worn by baseball players. It is designed to catch and field the baseball, providing players with comfort and control during the game.",
+    "highlights": [
+      "Lifetime warranty",
+      "Ships in 2 weeks",
+      "90 days return policy"
+    ],
+    "price": 1250,
+    "crossed_price": 1562,
+    "images": [
+      "products/baseball-glove.jpg",
+      "products/baseball-glove-2.jpg",
+      "products/baseball-glove-3.jpg"
+    ]
+  },
+  {
+    "slug": "cricket-helmet",
+    "title": "Cricket Helmet",
+    "brand": "PRIM Select",
+    "category": "Sports & Outdoors",
+    "description": "The Cricket Helmet is a protective headgear worn by cricket players, especially batsmen and wicketkeepers. It provides protection against fast bowling and bouncers.",
+    "highlights": [
+      "Lifetime warranty",
+      "Ships overnight",
+      "60 days return policy"
+    ],
+    "price": 2250,
+    "crossed_price": 2812,
+    "images": [
+      "products/cricket-helmet.jpg",
+      "products/cricket-helmet-2.jpg",
+      "products/cricket-helmet-3.jpg",
+      "products/cricket-helmet-4.jpg"
+    ]
+  }
+]

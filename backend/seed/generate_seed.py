@@ -16,6 +16,14 @@ def json_esc(obj):
     s = json.dumps(obj)
     return "'" + s.replace("'", "''") + "'::jsonb"
 
+# Extra catalogue products with real, product-specific product images.
+# Produced by fetch_extra_media.py into seed/data/extra_products.json and the
+# matching JPEGs under seed/media/catalog/products/.
+SEED_DIR = os.path.dirname(os.path.abspath(__file__))
+_extra_path = os.path.join(SEED_DIR, "data", "extra_products.json")
+extra_products = json.load(open(_extra_path)) if os.path.exists(_extra_path) else []
+extra_images_by_slug = {p["slug"]: list(p["images"]) for p in extra_products}
+
 # Brand logos
 brand_logos = [
     ("brands/apple-logo.png", "image/png", 45000),
@@ -59,6 +67,19 @@ for ang in all_context_angles:
         storage_objects.append((obj_id, 'catalog', ang, 'image/jpeg', 120000))
         image_to_obj_id[ang] = obj_id
         obj_idx += 1
+
+# Register the extra product images (real per-product photos) with their
+# on-disk size so storage_objects reflects reality.
+_extra_media_dir = os.path.join(SEED_DIR, "media", "catalog")
+for _p in extra_products:
+    for _img in _p["images"]:
+        if _img not in image_to_obj_id:
+            _obj_id = hex_id(0x80000000, obj_idx)
+            _disk = os.path.join(_extra_media_dir, _img)
+            _size = os.path.getsize(_disk) if os.path.exists(_disk) else 150000
+            storage_objects.append((_obj_id, 'catalog', _img, 'image/jpeg', _size))
+            image_to_obj_id[_img] = _obj_id
+            obj_idx += 1
 
 # Catalog Definitions with explicit multi-variants where applicable
 # Format: (category, brand, title, slug, desc, highlights, [ (var_title, price, crossed_price, attrs, optional_image_file) ])
@@ -516,6 +537,15 @@ catalog_defs = [
     ]),
 ]
 
+# Append the extra catalogue products. Each is a single "Standard" variant whose
+# gallery is the full set of real, product-specific images.
+for _p in extra_products:
+    catalog_defs.append((
+        _p["category"], _p["brand"], _p["title"], _p["slug"], _p["description"],
+        _p["highlights"],
+        [("Standard", _p["price"], _p["crossed_price"], {}, _p["images"][0])],
+    ))
+
 
 for cat_name, brand_name, title, slug, desc, highlights, var_list in catalog_defs:
     prod_img = f"products/{slug}.jpg"
@@ -572,6 +602,12 @@ brands_list = [
     ("Bose", "https://bose.com", brand_logo_map["Bose"]),
 ]
 
+# Brands introduced by the extra catalogue (unbranded items use a house brand).
+_existing_brand_names = [b[0] for b in brands_list]
+for _name in sorted({p["brand"] for p in extra_products}):
+    if _name not in _existing_brand_names:
+        brands_list.append((_name, None, None))
+
 brands = []
 brand_id_by_name = {}
 for i, (name, link, logo_id) in enumerate(brands_list, 1):
@@ -611,6 +647,23 @@ cat_id_by_name = {
     'Gaming Consoles': hex_id(0x40000000, 19),
 }
 
+# Extra leaf categories introduced by the added catalogue products.
+_extra_categories = [
+    (hex_id(0x40000000, 21), hex_id(0x40000000, 3), 'Shirts'),
+    (hex_id(0x40000000, 23), hex_id(0x40000000, 3), 'Dresses'),
+    (hex_id(0x40000000, 25), hex_id(0x40000000, 3), 'Tops'),
+    (hex_id(0x40000000, 27), None, 'Accessories'),
+    (hex_id(0x40000000, 29), hex_id(0x40000000, 27), 'Watches'),
+    (hex_id(0x40000000, 31), hex_id(0x40000000, 27), 'Sunglasses'),
+    (hex_id(0x40000000, 33), hex_id(0x40000000, 27), 'Bags'),
+    (hex_id(0x40000000, 35), hex_id(0x40000000, 27), 'Jewellery'),
+    (hex_id(0x40000000, 37), hex_id(0x40000000, 1), 'Mobile Accessories'),
+    (hex_id(0x40000000, 39), None, 'Sports & Outdoors'),
+]
+for _cid, _parent, _name in _extra_categories:
+    categories.append((_cid, _parent, _name))
+    cat_id_by_name[_name] = _cid
+
 category_attributes = [
     (hex_id(0x41000000, 1), cat_id_by_name['Laptops'], 'ram', 'RAM Capacity', 'enum', ["8GB", "16GB", "18GB", "32GB", "36GB", "48GB", "64GB"], True, 1),
     (hex_id(0x41000000, 2), cat_id_by_name['Laptops'], 'storage', 'Storage Size', 'enum', ["256GB", "512GB", "1TB", "2TB", "4TB"], True, 2),
@@ -632,6 +685,11 @@ inventory_ledgers = []
 
 prod_counter = 1
 def resolve_variant_gallery(cat, brand, title, slug, var_list, current_v_idx):
+    # Extra products ship with a full set of real, product-specific images and
+    # must not have the generic category "context" shots appended.
+    if slug in extra_images_by_slug:
+        return list(extra_images_by_slug[slug])
+
     current_var = var_list[current_v_idx]
     v_hero = current_var[4] if len(current_var) > 4 and current_var[4] else f"products/{slug}.jpg"
     gallery = [v_hero]
@@ -762,7 +820,7 @@ for cat_name, brand_name, title, slug, desc, highlights, var_list in catalog_def
 # Generate SQL Output
 lines = []
 lines.append("-- =====================================================================")
-lines.append("-- PRIM E-COMMERCE COMPREHENSIVE SEED DATA (114 Products with Variant Media)")
+lines.append(f"-- PRIM E-COMMERCE COMPREHENSIVE SEED DATA ({len(products)} Products with Variant Media)")
 lines.append("-- PostgreSQL")
 lines.append("-- =====================================================================")
 lines.append("\nBEGIN;\n")
@@ -825,7 +883,7 @@ lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 
 # 8. products
 lines.append("-- =====================================================================")
-lines.append("-- 8. PRODUCTS (114 Unique Products)")
+lines.append(f"-- 8. PRODUCTS ({len(products)} Unique Products)")
 lines.append("-- =====================================================================")
 lines.append("INSERT INTO products (id, brand_id, category_id, slug, title, description, highlights, status, product_type, thumbnail_object_id, created_at, updated_at) VALUES")
 val_rows = [f"({esc(p[0])}, {esc(p[1])}, {esc(p[2])}, {esc(p[3])}, {esc(p[4])}, {esc(p[5])}, {json_esc(p[6])}, {esc(p[7])}, {esc(p[8])}, {esc(p[9])}, now() - INTERVAL '40 days', now() - INTERVAL '40 days')" for p in products]
@@ -1056,7 +1114,7 @@ lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 
 # 22. reviews
 lines.append("-- =====================================================================")
-lines.append("-- 22. REVIEWS (Seeded for all 114 products)")
+lines.append(f"-- 22. REVIEWS (Seeded for all {len(products)} products)")
 lines.append("-- =====================================================================")
 lines.append("INSERT INTO reviews (id, product_id, user_id, order_item_id, rating, title, body, status, created_at, updated_at) VALUES")
 val_rows = [f"({esc(rv[0])}, {esc(rv[1])}, {esc(rv[2])}, {esc(rv[3])}, {rv[4]}, {esc(rv[5])}, {esc(rv[6])}, {esc(rv[7])}, now() - INTERVAL '{random.randint(2, 20)} days', now() - INTERVAL '1 day')" for rv in reviews_data]
