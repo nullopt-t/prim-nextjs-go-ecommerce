@@ -35,9 +35,9 @@ type auditEntryResponse struct {
 	StatusCode int             `json:"statusCode"`
 	IPAddress  string          `json:"ipAddress"`
 	UserAgent  string          `json:"userAgent"`
-	Before     json.RawMessage `json:"before,omitempty"`
-	After      json.RawMessage `json:"after,omitempty"`
-	Metadata   json.RawMessage `json:"metadata,omitempty"`
+	Before     json.RawMessage `json:"before,omitempty" swaggertype:"object"`
+	After      json.RawMessage `json:"after,omitempty" swaggertype:"object"`
+	Metadata   json.RawMessage `json:"metadata,omitempty" swaggertype:"object"`
 	CreatedAt  string          `json:"createdAt"`
 }
 

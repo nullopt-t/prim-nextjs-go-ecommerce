@@ -461,7 +461,7 @@ func (h *OrderHandler) GetDashboard(c *gin.Context) {
 //	@Produce		json
 //	@Param			page		query	int	false	"Page number"
 //	@Param			pageSize	query	int	false	"Items per page"
-//	@Success		200			{object}	gin.H
+//	@Success		200			{object}	api.PaginatedResponse{data=[]PaymentItem,meta=pagination.CursorPage}
 //	@Router			/admin/payments [get]
 func (h *OrderHandler) ListPayments(c *gin.Context) {
 	var q pagination.ListQuery

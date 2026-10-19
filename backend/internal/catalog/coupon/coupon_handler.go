@@ -87,7 +87,7 @@ func toCouponResponse(c *model.Coupon) CouponResponse {
 //
 //	@Summary		List promotions and coupons
 //	@Description	Returns all promotional coupons (Admin only)
-//	@Tags			Coupons
+//	@Tags			Admin Coupons
 //	@Produce		json
 //	@Success		200	{object}	api.DataResponse
 //	@Router			/admin/promotions [get]
@@ -129,7 +129,7 @@ func (h *CouponHandler) ListCoupons(c *gin.Context) {
 //
 //	@Summary		Get coupon details
 //	@Description	Returns coupon details by UUID (Admin only)
-//	@Tags			Coupons
+//	@Tags			Admin Coupons
 //	@Produce		json
 //	@Param			id	path		string	true	"Coupon UUID"
 //	@Success		200	{object}	api.DataResponse
@@ -154,7 +154,7 @@ func (h *CouponHandler) GetCouponByID(c *gin.Context) {
 //
 //	@Summary		Create promotional coupon
 //	@Description	Creates a new coupon code with usage rules (Admin only)
-//	@Tags			Coupons
+//	@Tags			Admin Coupons
 //	@Accept			json
 //	@Produce		json
 //	@Param			request	body		CreateCouponRequest	true	"Create coupon request"
@@ -203,7 +203,7 @@ func (h *CouponHandler) CreateCoupon(c *gin.Context) {
 //
 //	@Summary		Update coupon status
 //	@Description	Activates, disables, or archives a coupon (Admin only)
-//	@Tags			Coupons
+//	@Tags			Admin Coupons
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string				true	"Coupon UUID"
@@ -235,7 +235,7 @@ func (h *CouponHandler) UpdateStatus(c *gin.Context) {
 //
 //	@Summary		Delete coupon
 //	@Description	Deletes a promotion coupon by ID (Admin only)
-//	@Tags			Coupons
+//	@Tags			Admin Coupons
 //	@Produce		json
 //	@Param			id	path		string	true	"Coupon UUID"
 //	@Success		200	{object}	api.MessageResponse
@@ -285,7 +285,7 @@ func toRedemptionResponse(e *RedemptionEntry) CouponRedemptionResponse {
 //
 //	@Summary		List coupon redemptions (usage log)
 //	@Description	Returns every user and order that redeemed a coupon code (Admin only)
-//	@Tags			Coupons
+//	@Tags			Admin Coupons
 //	@Produce		json
 //	@Param			id	path		string	true	"Coupon UUID"
 //	@Success		200	{object}	api.DataResponse

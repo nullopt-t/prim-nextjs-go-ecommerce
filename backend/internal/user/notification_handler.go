@@ -33,7 +33,7 @@ type NotificationItemResponse struct {
 	Message   string          `json:"message"`
 	Category  string          `json:"category"`
 	ActionURL *string         `json:"actionUrl,omitempty"`
-	Metadata  json.RawMessage `json:"metadata,omitempty"`
+	Metadata  json.RawMessage `json:"metadata,omitempty" swaggertype:"object"`
 	IsRead    bool            `json:"isRead"`
 	ReadAt    *string         `json:"readAt,omitempty"`
 	CreatedAt string          `json:"createdAt"`

@@ -3,8 +3,9 @@ definitions:
   AddItemRequest:
     properties:
       quantity:
-        description: Quantity of units to add (must be at least 1)
+        description: Quantity of units to add (must be between 1 and 999)
         example: 2
+        maximum: 999
         type: integer
       variantId:
         description: Product Variant UUID to add to the cart
@@ -20,26 +21,12 @@ definitions:
         description: Product UUID to save to wishlist
         example: 60000000-0000-0000-0000-000000000001
         type: string
+      variantId:
+        description: Optional specific product variant UUID to save
+        example: 70000000-0000-0000-0000-000000000001
+        type: string
     required:
     - productId
-    type: object
-  AddressRequest:
-    properties:
-      city:
-        type: string
-      country:
-        type: string
-      postalCode:
-        type: string
-      state:
-        type: string
-      street:
-        type: string
-    required:
-    - city
-    - country
-    - postalCode
-    - street
     type: object
   AddressResponse:
     properties:
@@ -47,36 +34,67 @@ definitions:
         type: string
       country:
         type: string
+      createdAt:
+        type: string
+      fullName:
+        type: string
+      id:
+        type: string
+      isDefault:
+        type: boolean
+      label:
+        type: string
+      line1:
+        type: string
+      line2:
+        type: string
+      phone:
+        type: string
       postalCode:
         type: string
       state:
         type: string
-      street:
+      updatedAt:
         type: string
+      userId:
+        type: string
+    type: object
+  ApplyCouponRequest:
+    properties:
+      code:
+        type: string
+    required:
+    - code
     type: object
   BadReqResponse:
     properties:
       code:
+        description: Code is the machine-readable error token ("VALIDATION_FAILED").
         example: VALIDATION_FAILED
         type: string
       details:
+        description: Details contains individual field-level validation errors.
         items:
           $ref: '#/definitions/FieldError'
         type: array
       message:
+        description: Message describes the validation failure summary.
         example: Invalid request input or malformed payload
         type: string
     type: object
   BadRequestErrorResponse:
     properties:
       code:
+        description: Code is the machine-readable error token ("VALIDATION_FAILED").
         example: VALIDATION_FAILED
         type: string
       details:
+        description: Details contains individual field-level validation errors.
         items:
           $ref: '#/definitions/FieldError'
         type: array
       message:
+        description: Message describes the validation failure summary.
         example: Invalid request input or malformed payload
         type: string
     type: object
@@ -158,7 +176,7 @@ definitions:
     properties:
       currency:
         description: Active store currency code
-        example: USD
+        example: EGP
         type: string
       id:
         description: Cart UUID
@@ -210,16 +228,18 @@ definitions:
     properties:
       couponId:
         type: string
-      customerEmail:
+      paymentMethod:
         type: string
-      shippingAddress:
-        $ref: '#/definitions/AddressRequest'
+      shippingAddressId:
+        type: string
     required:
-    - shippingAddress
+    - shippingAddressId
     type: object
   CheckoutResponse:
     properties:
       orderId:
+        type: string
+      paymentStatus:
         type: string
       status:
         type: string
@@ -231,6 +251,56 @@ definitions:
         type: string
       message:
         example: A resource with this identifier or name already exists
+        type: string
+    type: object
+  CouponValidationResult:
+    properties:
+      code:
+        type: string
+      discountAmount:
+        type: integer
+      discountPercent:
+        type: integer
+      discountType:
+        type: string
+      discountValue:
+        type: integer
+      fixedDiscount:
+        type: number
+      id:
+        type: string
+      message:
+        type: string
+      minCartAmount:
+        type: integer
+      shipping:
+        type: integer
+      subtotal:
+        type: integer
+      total:
+        type: integer
+    type: object
+  CreateAddressInput:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      fullName:
+        type: string
+      isDefault:
+        type: boolean
+      label:
+        type: string
+      line1:
+        type: string
+      line2:
+        type: string
+      phone:
+        type: string
+      postalCode:
+        type: string
+      state:
         type: string
     type: object
   CreateReviewRequest:
@@ -264,30 +334,40 @@ definitions:
     type: object
   DataResponse:
     properties:
-      data: {}
+      data:
+        description: Data holds the response payload.
     type: object
   ErrorResponse:
     properties:
       code:
+        description: Code is the machine-readable error token ("INTERNAL_ERROR").
         example: INTERNAL_ERROR
         type: string
       details:
+        description: Details contains optional validation details if applicable.
         items:
           $ref: '#/definitions/FieldError'
         type: array
       message:
+        description: Message describes the error condition.
         example: An unexpected internal server error occurred
         type: string
     type: object
   FieldError:
     properties:
       constraint:
+        description: Constraint is the validation tag or rule that was violated (e.g.,
+          "min", "required", "email").
         example: min
         type: string
       field:
+        description: Field is the name of the request property that failed validation
+          (e.g., "quantity", "email").
         example: quantity
         type: string
       message:
+        description: Message is the user-friendly explanation of why the value is
+          invalid.
         example: quantity must be at least 1
         type: string
     type: object
@@ -315,6 +395,8 @@ definitions:
         type: string
       id:
         type: string
+      identifier:
+        type: string
       role:
         type: string
       status:
@@ -323,6 +405,7 @@ definitions:
   MessageResponse:
     properties:
       message:
+        description: Message conveys the completion status or outcome of a mutation.
         example: Operation completed successfully
         type: string
     type: object
@@ -335,46 +418,118 @@ definitions:
         example: The requested resource was not found
         type: string
     type: object
+  NotificationCountResponse:
+    properties:
+      count:
+        type: integer
+    type: object
+  NotificationItemResponse:
+    properties:
+      actionUrl:
+        type: string
+      category:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      isRead:
+        type: boolean
+      message:
+        type: string
+      metadata:
+        type: object
+      readAt:
+        type: string
+      title:
+        type: string
+    type: object
   OrderItemResponse:
     properties:
       id:
+        description: ID is the unique UUID of the order line item.
         type: string
       priceAtPurchase:
+        description: PriceAtPurchase is the unit price in minor units (e.g. cents)
+          at checkout time.
         type: integer
       productSnapshot:
+        description: ProductSnapshot contains immutable JSON metadata captured at
+          checkout (e.g. title, SKU, media).
         type: string
       quantity:
+        description: Quantity is the number of units purchased.
         type: integer
       variantId:
+        description: VariantID is the product variant purchased in this line item.
         type: string
     type: object
   OrderResponse:
     properties:
+      codFee:
+        description: CODFee is the cash-on-delivery surcharge applied to the order
+          in minor currency units.
+        type: integer
+      couponCode:
+        description: CouponCode is the human-readable applied voucher or coupon code.
+        type: string
       couponId:
+        description: CouponID is the optional applied promotional voucher or coupon
+          UUID.
         type: string
       createdAt:
+        description: CreatedAt is the RFC3339 creation timestamp.
         type: string
       currency:
+        description: Currency is the 3-letter ISO currency code.
         type: string
       customerEmail:
+        description: CustomerEmail is the contact email address for transactional
+          notifications.
         type: string
       customerId:
+        description: CustomerID is the optional authenticated user UUID who placed
+          the order.
         type: string
       discountAmount:
+        description: DiscountAmount is the deducted amount in minor currency units.
         type: integer
       id:
+        description: ID is the unique order UUID.
         type: string
       items:
+        description: Items lists the individual line items in this order.
         items:
           $ref: '#/definitions/OrderItemResponse'
         type: array
+      paymentMethod:
+        description: PaymentMethod is the payment method used for the order.
+        type: string
       shippingAddress:
-        $ref: '#/definitions/AddressResponse'
-      status:
-        $ref: '#/definitions/OrderStatus'
-      totalAmount:
+        allOf:
+        - $ref: '#/definitions/AddressResponse'
+        description: ShippingAddress is the destination address.
+      shippingAmount:
+        description: ShippingAmount is the shipping charge applied to the order in
+          minor currency units.
         type: integer
+      status:
+        allOf:
+        - $ref: '#/definitions/OrderStatus'
+        description: Status is the current state of the order lifecycle.
+      taxAmount:
+        description: TaxAmount is the tax amount applied to the order in minor currency
+          units.
+        type: integer
+      totalAmount:
+        description: TotalAmount is the final monetary charge in minor currency units
+          after discounts.
+        type: integer
+      trackingNumber:
+        description: TrackingNumber is the carrier tracking number for shipped orders.
+        type: string
       updatedAt:
+        description: UpdatedAt is the RFC3339 last update timestamp.
         type: string
     type: object
   OrderStatus:
@@ -384,7 +539,8 @@ definitions:
     - processing
     - shipped
     - delivered
-    - canceled
+    - cancelled
+    - cancelled
     - refunded
     type: string
     x-enum-varnames:
@@ -393,33 +549,45 @@ definitions:
     - OrderStatusProcessing
     - OrderStatusShipped
     - OrderStatusDelivered
+    - OrderStatusCancelled
     - OrderStatusCanceled
     - OrderStatusRefunded
   Page:
     properties:
       hasNext:
+        description: HasNext is true if there is a page following the current page.
         example: true
         type: boolean
       hasPrevious:
+        description: HasPrevious is true if there is a page preceding the current
+          page.
         example: false
         type: boolean
       page:
+        description: Page is the current 1-based page index.
         example: 1
         type: integer
       pageSize:
+        description: PageSize is the maximum number of items per page.
         example: 10
         type: integer
       totalItems:
+        description: TotalItems is the total count of matching items across all pages.
         example: 20
         type: integer
       totalPages:
+        description: TotalPages is the total number of pages calculated from TotalItems
+          and PageSize.
         example: 2
         type: integer
     type: object
   PaginatedResponse:
     properties:
-      data: {}
-      meta: {}
+      data:
+        description: Data contains the slice of paginated items.
+      meta:
+        description: Meta contains the pagination metadata (page, pageSize, totalItems,
+          totalPages).
     type: object
   ProductBrandSummary:
     properties:
@@ -444,7 +612,7 @@ definitions:
         description: Associated brand summary
       currency:
         description: Currency ISO code
-        example: USD
+        example: EGP
         type: string
       description:
         description: Detailed product description
@@ -514,7 +682,7 @@ definitions:
         description: Category information
       currency:
         description: Currency ISO code
-        example: USD
+        example: EGP
         type: string
       extractedOriginalPrice:
         description: Numeric original price
@@ -524,6 +692,14 @@ definitions:
         description: Numeric price value
         example: 2499
         type: number
+      id:
+        description: Product UUID
+        example: 60000000-0000-0000-0000-000000000001
+        type: string
+      inStock:
+        description: In stock flag
+        example: true
+        type: boolean
       originalPrice:
         description: Formatted crossed-out original price
         example: $2999.00
@@ -536,10 +712,18 @@ definitions:
         allOf:
         - $ref: '#/definitions/ProductRatingSummaryResponse'
         description: Rating summary and score breakdown
+      sku:
+        description: Stock Keeping Unit
+        example: MAC-PRO-001
+        type: string
       slug:
         description: URL-friendly unique slug
         example: macbook-pro-16
         type: string
+      stockQuantity:
+        description: Real-time on-hand available stock count
+        example: 50
+        type: integer
       thumbnail:
         description: Product card thumbnail URL
         example: https://example.com/thumb.jpg
@@ -547,6 +731,10 @@ definitions:
       title:
         description: Product display title
         example: MacBook Pro 16"
+        type: string
+      variantId:
+        description: Default variant UUID
+        example: 70000000-0000-0000-0000-000000000001
         type: string
     type: object
   ProductRatingSummaryResponse:
@@ -591,10 +779,6 @@ definitions:
         description: Score from 1 to 5 stars
         example: 5
         type: integer
-      status:
-        description: 'Moderation state: pending, approved, rejected'
-        example: approved
-        type: string
       title:
         description: Optional review heading title
         example: Unbelievable performance!
@@ -627,7 +811,7 @@ definitions:
         type: object
       currency:
         description: Currency ISO code
-        example: USD
+        example: EGP
         type: string
       extractedOriginalPrice:
         description: Numeric original MSRP price
@@ -686,6 +870,47 @@ definitions:
         example: Electronics
         type: string
     type: object
+  PublicConfig:
+    properties:
+      allowCards:
+        type: boolean
+      allowCod:
+        type: boolean
+      announcementEnabled:
+        type: boolean
+      announcementText:
+        type: string
+      codFee:
+        type: number
+      currency:
+        type: string
+      defaultLocale:
+        type: string
+      estimatedDeliveryDays:
+        type: string
+      flatRateShipping:
+        type: number
+      freeShippingThreshold:
+        type: number
+      maintenanceMessage:
+        type: string
+      maintenanceMode:
+        type: boolean
+      pricesIncludeTax:
+        type: boolean
+      storeAddress:
+        type: string
+      storeEmail:
+        type: string
+      storeName:
+        type: string
+      storePhone:
+        type: string
+      taxRatePercent:
+        type: number
+      timezone:
+        type: string
+    type: object
   PublicStockResponse:
     properties:
       availableQuantity:
@@ -708,17 +933,17 @@ definitions:
         example: true
         type: boolean
     type: object
-  RefreshTokenRequest:
-    properties:
-      refreshToken:
-        type: string
-    type: object
   ResendChallengeRequest:
     properties:
       email:
         type: string
     required:
     - email
+    type: object
+  ReviewEligibilityResponse:
+    properties:
+      canReview:
+        type: boolean
     type: object
   ReviewResponse:
     properties:
@@ -774,11 +999,13 @@ definitions:
   Sort:
     properties:
       field:
+        description: Field is the database column or property name to sort by.
         example: name
         type: string
       order:
         allOf:
         - $ref: '#/definitions/SortOrder'
+        description: Order is the sort direction (SortAsc or SortDesc).
         example: asc
     type: object
   SortOrder:
@@ -832,13 +1059,6 @@ definitions:
         example: https://example.com/media/image.webp
         type: string
     type: object
-  SuccessResponse:
-    properties:
-      data: {}
-      message:
-        type: string
-      meta: {}
-    type: object
   TagResponse:
     properties:
       id:
@@ -862,18 +1082,44 @@ definitions:
   UnauthorizedResponse:
     properties:
       code:
+        description: Code is the machine-readable error token ("UNAUTHORIZED").
         example: UNAUTHORIZED
         type: string
       message:
+        description: Message describes the authentication failure.
         example: Authentication token is missing or invalid
+        type: string
+    type: object
+  UpdateAddressInput:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      fullName:
+        type: string
+      isDefault:
+        type: boolean
+      label:
+        type: string
+      line1:
+        type: string
+      line2:
+        type: string
+      phone:
+        type: string
+      postalCode:
+        type: string
+      state:
         type: string
     type: object
   UpdateQuantityRequest:
     properties:
       quantity:
-        description: New total quantity desired for this cart item (must be at least
-          1)
+        description: New total quantity desired for this cart item (must be between
+          1 and 999)
         example: 3
+        maximum: 999
         type: integer
     required:
     - quantity
@@ -895,24 +1141,51 @@ definitions:
         example: Updated review headline
         type: string
     type: object
+  UserRole:
+    enum:
+    - superadmin
+    - admin
+    - support
+    - vendor
+    - customer
+    type: string
+    x-enum-varnames:
+    - SuperRole
+    - AdminRole
+    - SupportRole
+    - VendorRole
+    - CustomerRole
   UserSession:
     properties:
       createdAt:
-        type: string
-      currentRefreshJti:
+        description: CreatedAt is the timestamp when the session was created.
         type: string
       id:
+        description: ID is the unique random session token stored in client cookies.
         type: string
       ipAddress:
+        description: IPAddress records the client network IP address at session creation.
         type: string
       lastActive:
+        description: LastActive is the timestamp of the latest request made with this
+          session.
         type: string
       type:
-        $ref: '#/definitions/SessionType'
+        allOf:
+        - $ref: '#/definitions/SessionType'
+        description: Type indicates guest or authenticated session lifecycle state.
       userAgent:
+        description: UserAgent records the client browser or device signature.
         type: string
       userId:
+        description: UserID is the database UUID of the authenticated user (uuid.Nil
+          for guest sessions).
         type: string
+      userRole:
+        allOf:
+        - $ref: '#/definitions/UserRole'
+        description: UserRole specifies the authorization role (e.g., "customer",
+          "admin").
     type: object
   VariantMediaResponse:
     properties:
@@ -968,7 +1241,7 @@ definitions:
         type: object
       currency:
         description: Currency ISO code
-        example: USD
+        example: EGP
         type: string
       extractedOriginalPrice:
         description: Numeric original price value
@@ -1022,6 +1295,8 @@ definitions:
         type: string
       email:
         type: string
+      merge_cart:
+        type: boolean
     required:
     - code
     - email
@@ -1066,6 +1341,10 @@ definitions:
         description: Customer UUID owning this wishlist item
         example: 10000000-0000-0000-0000-000000000002
         type: string
+      variantId:
+        description: Saved Variant UUID if specific variant was selected
+        example: 70000000-0000-0000-0000-000000000001
+        type: string
     type: object
   WishlistProductResponse:
     properties:
@@ -1079,7 +1358,7 @@ definitions:
         type: string
       currency:
         description: Currency ISO code
-        example: USD
+        example: EGP
         type: string
       description:
         description: Detailed product description
@@ -1124,6 +1403,16 @@ definitions:
       title:
         description: Product display title
         example: MacBook Pro 16"
+        type: string
+      variantId:
+        description: Variant specific details
+        example: 70000000-0000-0000-0000-000000000001
+        type: string
+      variantSku:
+        example: SKU-MBP-16
+        type: string
+      variantTitle:
+        example: Space Black
         type: string
     type: object
 host: localhost:8080
@@ -1294,44 +1583,26 @@ paths:
       summary: fetch session user data
       tags:
       - Auth
-  /auth/refresh:
-    post:
-      consumes:
-      - application/json
-      description: Rotate refresh token and issue new access and refresh tokens.
-      parameters:
-      - description: Refresh Token
-        in: body
-        name: refresh_token
-        schema:
-          $ref: '#/definitions/RefreshTokenRequest'
+  /auth/sessions:
+    delete:
+      description: Revokes and deletes all active sessions from Redis and clears auth
+        cookies.
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/BadReqResponse'
+        "204":
+          description: No Content
         "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/UnauthorizedResponse'
-        "429":
-          description: Too Many Requests
-          schema:
-            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/InternalServerErrorResponse'
-      summary: Rotate refresh token and issue new access and refresh tokens.
+      summary: Revoke all active user sessions
       tags:
       - Auth
-  /auth/sessions:
     get:
       description: Fetches all active login sessions stored in Redis for the current
         user.
@@ -1372,10 +1643,8 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/MessageResponse'
+        "204":
+          description: No Content
         "401":
           description: Unauthorized
           schema:
@@ -1394,19 +1663,38 @@ paths:
       description: Returns a paginated list of active product brands for customer
         storefront browsing.
       parameters:
-      - example: 1
+      - description: |-
+          Cursor is an opaque keyset token. When present, repositories should use
+          keyset pagination instead of OFFSET.
+        example: eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9
+        in: query
+        name: cursor
+        type: string
+      - description: |-
+          KeysetMode explicitly requests keyset pagination even when no cursor has
+          been supplied yet (i.e. for the very first page). Endpoints that still
+          serve classic OFFSET pagination use this to opt in per request.
+        example: true
+        in: query
+        name: keyset
+        type: boolean
+      - description: Page is the requested 1-based page number from query parameters.
+        example: 1
         in: query
         name: page
         type: integer
-      - example: 10
+      - description: PageSize is the requested number of items per page.
+        example: 10
         in: query
         name: pageSize
         type: integer
-      - example: television
+      - description: Search is an optional free-text search query string.
+        example: television
         in: query
         name: search
         type: string
       - collectionFormat: csv
+        description: RawSort contains the raw sort query strings (e.g. ["name,-created_at"]).
         example:
         - name
         - -created_at
@@ -1445,11 +1733,6 @@ paths:
   /cart:
     delete:
       description: Removes all items from the current cart.
-      parameters:
-      - description: Guest Session ID
-        in: header
-        name: X-Session-ID
-        type: string
       produces:
       - application/json
       responses:
@@ -1465,11 +1748,6 @@ paths:
     get:
       description: Fetches the current user's or guest session's shopping cart and
         item details.
-      parameters:
-      - description: Guest Session ID
-        in: header
-        name: X-Session-ID
-        type: string
       produces:
       - application/json
       responses:
@@ -1500,10 +1778,6 @@ paths:
       description: Adds a product variant with specified quantity to the shopping
         cart.
       parameters:
-      - description: Guest Session ID
-        in: header
-        name: X-Session-ID
-        type: string
       - description: Item variant and quantity
         in: body
         name: body
@@ -1546,10 +1820,6 @@ paths:
         name: id
         required: true
         type: string
-      - description: Guest Session ID
-        in: header
-        name: X-Session-ID
-        type: string
       produces:
       - application/json
       responses:
@@ -1586,10 +1856,6 @@ paths:
         in: path
         name: id
         required: true
-        type: string
-      - description: Guest Session ID
-        in: header
-        name: X-Session-ID
         type: string
       - description: New quantity
         in: body
@@ -1631,19 +1897,38 @@ paths:
       description: Returns a paginated list of active product categories for customer
         browsing and navigation.
       parameters:
-      - example: 1
+      - description: |-
+          Cursor is an opaque keyset token. When present, repositories should use
+          keyset pagination instead of OFFSET.
+        example: eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9
+        in: query
+        name: cursor
+        type: string
+      - description: |-
+          KeysetMode explicitly requests keyset pagination even when no cursor has
+          been supplied yet (i.e. for the very first page). Endpoints that still
+          serve classic OFFSET pagination use this to opt in per request.
+        example: true
+        in: query
+        name: keyset
+        type: boolean
+      - description: Page is the requested 1-based page number from query parameters.
+        example: 1
         in: query
         name: page
         type: integer
-      - example: 10
+      - description: PageSize is the requested number of items per page.
+        example: 10
         in: query
         name: pageSize
         type: integer
-      - example: television
+      - description: Search is an optional free-text search query string.
+        example: television
         in: query
         name: search
         type: string
       - collectionFormat: csv
+        description: RawSort contains the raw sort query strings (e.g. ["name,-created_at"]).
         example:
         - name
         - -created_at
@@ -1718,6 +2003,41 @@ paths:
       summary: Perform checkout
       tags:
       - Checkout
+  /coupons/apply:
+    post:
+      consumes:
+      - application/json
+      description: Validates and applies a coupon code, returning discount details.
+      parameters:
+      - description: Coupon Code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/ApplyCouponRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Coupon details
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/CouponValidationResult'
+              type: object
+        "400":
+          description: Invalid or expired coupon
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Apply coupon
+      tags:
+      - Coupons
   /orders:
     get:
       description: Returns a list of orders belonging to the authenticated customer.
@@ -1787,6 +2107,47 @@ paths:
       summary: Get order by ID
       tags:
       - Orders
+  /orders/{id}/cancel:
+    post:
+      description: Allows a customer to cancel their order if it is in pending or
+        confirmed status.
+      parameters:
+      - description: Order UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cancellation confirmation
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Invalid UUID or order cannot be cancelled
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "403":
+          description: Not authorized to cancel this order
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Order not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Cancel order
+      tags:
+      - Orders
   /products:
     get:
       description: Returns a paginated list of active, published products for customer
@@ -1809,19 +2170,38 @@ paths:
         in: query
         name: category
         type: string
-      - example: 1
+      - description: |-
+          Cursor is an opaque keyset token. When present, repositories should use
+          keyset pagination instead of OFFSET.
+        example: eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9
+        in: query
+        name: cursor
+        type: string
+      - description: |-
+          KeysetMode explicitly requests keyset pagination even when no cursor has
+          been supplied yet (i.e. for the very first page). Endpoints that still
+          serve classic OFFSET pagination use this to opt in per request.
+        example: true
+        in: query
+        name: keyset
+        type: boolean
+      - description: Page is the requested 1-based page number from query parameters.
+        example: 1
         in: query
         name: page
         type: integer
-      - example: 10
+      - description: PageSize is the requested number of items per page.
+        example: 10
         in: query
         name: pageSize
         type: integer
-      - example: television
+      - description: Search is an optional free-text search query string.
+        example: television
         in: query
         name: search
         type: string
       - collectionFormat: csv
+        description: RawSort contains the raw sort query strings (e.g. ["name,-created_at"]).
         example:
         - name
         - -created_at
@@ -1873,19 +2253,38 @@ paths:
         name: product_id
         required: true
         type: string
-      - example: 1
+      - description: |-
+          Cursor is an opaque keyset token. When present, repositories should use
+          keyset pagination instead of OFFSET.
+        example: eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9
+        in: query
+        name: cursor
+        type: string
+      - description: |-
+          KeysetMode explicitly requests keyset pagination even when no cursor has
+          been supplied yet (i.e. for the very first page). Endpoints that still
+          serve classic OFFSET pagination use this to opt in per request.
+        example: true
+        in: query
+        name: keyset
+        type: boolean
+      - description: Page is the requested 1-based page number from query parameters.
+        example: 1
         in: query
         name: page
         type: integer
-      - example: 10
+      - description: PageSize is the requested number of items per page.
+        example: 10
         in: query
         name: pageSize
         type: integer
-      - example: television
+      - description: Search is an optional free-text search query string.
+        example: television
         in: query
         name: search
         type: string
       - collectionFormat: csv
+        description: RawSort contains the raw sort query strings (e.g. ["name,-created_at"]).
         example:
         - name
         - -created_at
@@ -1966,19 +2365,38 @@ paths:
         name: slug
         required: true
         type: string
-      - example: 1
+      - description: |-
+          Cursor is an opaque keyset token. When present, repositories should use
+          keyset pagination instead of OFFSET.
+        example: eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9
+        in: query
+        name: cursor
+        type: string
+      - description: |-
+          KeysetMode explicitly requests keyset pagination even when no cursor has
+          been supplied yet (i.e. for the very first page). Endpoints that still
+          serve classic OFFSET pagination use this to opt in per request.
+        example: true
+        in: query
+        name: keyset
+        type: boolean
+      - description: Page is the requested 1-based page number from query parameters.
+        example: 1
         in: query
         name: page
         type: integer
-      - example: 10
+      - description: PageSize is the requested number of items per page.
+        example: 10
         in: query
         name: pageSize
         type: integer
-      - example: television
+      - description: Search is an optional free-text search query string.
+        example: television
         in: query
         name: search
         type: string
       - collectionFormat: csv
+        description: RawSort contains the raw sort query strings (e.g. ["name,-created_at"]).
         example:
         - name
         - -created_at
@@ -2052,6 +2470,80 @@ paths:
       tags:
       - Products
   /reviews:
+    get:
+      description: Returns a paginated list of approved reviews for storefront display.
+      parameters:
+      - description: Filter by Product UUID
+        in: query
+        name: productId
+        type: string
+      - description: |-
+          Cursor is an opaque keyset token. When present, repositories should use
+          keyset pagination instead of OFFSET.
+        example: eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9
+        in: query
+        name: cursor
+        type: string
+      - description: |-
+          KeysetMode explicitly requests keyset pagination even when no cursor has
+          been supplied yet (i.e. for the very first page). Endpoints that still
+          serve classic OFFSET pagination use this to opt in per request.
+        example: true
+        in: query
+        name: keyset
+        type: boolean
+      - description: Page is the requested 1-based page number from query parameters.
+        example: 1
+        in: query
+        name: page
+        type: integer
+      - description: PageSize is the requested number of items per page.
+        example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - description: Search is an optional free-text search query string.
+        example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        description: RawSort contains the raw sort query strings (e.g. ["name,-created_at"]).
+        example:
+        - name
+        - -created_at
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Paginated list of approved reviews
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/ReviewResponse'
+                  type: array
+                meta:
+                  $ref: '#/definitions/Page'
+              type: object
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: List public approved reviews
+      tags:
+      - Reviews
     post:
       consumes:
       - application/json
@@ -2139,7 +2631,8 @@ paths:
       tags:
       - Reviews
     get:
-      description: Retrieves a review by its unique identifier.
+      description: Retrieves a review by its unique identifier. Only approved reviews
+        are publicly visible; pending or rejected reviews require the author's identity.
       parameters:
       - description: Review ID
         in: path
@@ -2225,24 +2718,80 @@ paths:
       summary: Update user's review
       tags:
       - Reviews
+  /reviews/eligibility:
+    get:
+      description: Checks whether the authenticated user has purchased and received
+        the product and can review it.
+      parameters:
+      - description: Product UUID
+        in: query
+        name: productId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Eligibility status
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/ReviewEligibilityResponse'
+              type: object
+        "400":
+          description: Invalid product ID
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Check review eligibility
+      tags:
+      - Reviews
   /reviews/me:
     get:
       description: Returns a paginated list of all reviews written by the authenticated
         user.
       parameters:
-      - example: 1
+      - description: |-
+          Cursor is an opaque keyset token. When present, repositories should use
+          keyset pagination instead of OFFSET.
+        example: eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9
+        in: query
+        name: cursor
+        type: string
+      - description: |-
+          KeysetMode explicitly requests keyset pagination even when no cursor has
+          been supplied yet (i.e. for the very first page). Endpoints that still
+          serve classic OFFSET pagination use this to opt in per request.
+        example: true
+        in: query
+        name: keyset
+        type: boolean
+      - description: Page is the requested 1-based page number from query parameters.
+        example: 1
         in: query
         name: page
         type: integer
-      - example: 10
+      - description: PageSize is the requested number of items per page.
+        example: 10
         in: query
         name: pageSize
         type: integer
-      - example: television
+      - description: Search is an optional free-text search query string.
+        example: television
         in: query
         name: search
         type: string
       - collectionFormat: csv
+        description: RawSort contains the raw sort query strings (e.g. ["name,-created_at"]).
         example:
         - name
         - -created_at
@@ -2278,6 +2827,31 @@ paths:
       summary: List current user's reviews
       tags:
       - Reviews
+  /settings/public:
+    get:
+      consumes:
+      - application/json
+      description: Returns the non-sensitive settings used by the storefront (identity,
+        currency, announcement, shipping, maintenance state).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Public settings
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/PublicConfig'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Get public storefront settings
+      tags:
+      - Settings
   /tags:
     get:
       consumes:
@@ -2285,19 +2859,38 @@ paths:
       description: Returns a paginated list of active product tags for customer storefront
         filtering.
       parameters:
-      - example: 1
+      - description: |-
+          Cursor is an opaque keyset token. When present, repositories should use
+          keyset pagination instead of OFFSET.
+        example: eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9
+        in: query
+        name: cursor
+        type: string
+      - description: |-
+          KeysetMode explicitly requests keyset pagination even when no cursor has
+          been supplied yet (i.e. for the very first page). Endpoints that still
+          serve classic OFFSET pagination use this to opt in per request.
+        example: true
+        in: query
+        name: keyset
+        type: boolean
+      - description: Page is the requested 1-based page number from query parameters.
+        example: 1
         in: query
         name: page
         type: integer
-      - example: 10
+      - description: PageSize is the requested number of items per page.
+        example: 10
         in: query
         name: pageSize
         type: integer
-      - example: television
+      - description: Search is an optional free-text search query string.
+        example: television
         in: query
         name: search
         type: string
       - collectionFormat: csv
+        description: RawSort contains the raw sort query strings (e.g. ["name,-created_at"]).
         example:
         - name
         - -created_at
@@ -2333,6 +2926,354 @@ paths:
       summary: List active product tags
       tags:
       - Tags
+  /user/addresses:
+    get:
+      description: Returns all active saved shipping and billing addresses for the
+        authenticated customer.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/AddressResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+      summary: List saved user addresses
+      tags:
+      - Addresses
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Address details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/CreateAddressInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/AddressResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+      summary: Create new address
+      tags:
+      - Addresses
+  /user/addresses/{id}:
+    delete:
+      parameters:
+      - description: Address UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      summary: Delete address
+      tags:
+      - Addresses
+    get:
+      parameters:
+      - description: Address UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/AddressResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      summary: Get address details
+      tags:
+      - Addresses
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Address UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Address details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateAddressInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/AddressResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      summary: Update address
+      tags:
+      - Addresses
+  /user/addresses/{id}/default:
+    patch:
+      parameters:
+      - description: Address UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/AddressResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      summary: Set address as default
+      tags:
+      - Addresses
+  /user/notifications:
+    get:
+      description: Returns a paginated list of in-app notifications localized to the
+        active site language.
+      parameters:
+      - description: |-
+          Cursor is an opaque keyset token. When present, repositories should use
+          keyset pagination instead of OFFSET.
+        example: eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9
+        in: query
+        name: cursor
+        type: string
+      - description: |-
+          KeysetMode explicitly requests keyset pagination even when no cursor has
+          been supplied yet (i.e. for the very first page). Endpoints that still
+          serve classic OFFSET pagination use this to opt in per request.
+        example: true
+        in: query
+        name: keyset
+        type: boolean
+      - description: Page is the requested 1-based page number from query parameters.
+        example: 1
+        in: query
+        name: page
+        type: integer
+      - description: PageSize is the requested number of items per page.
+        example: 10
+        in: query
+        name: pageSize
+        type: integer
+      - description: Search is an optional free-text search query string.
+        example: television
+        in: query
+        name: search
+        type: string
+      - collectionFormat: csv
+        description: RawSort contains the raw sort query strings (e.g. ["name,-created_at"]).
+        example:
+        - name
+        - -created_at
+        in: query
+        items:
+          type: string
+        name: sort
+        type: array
+      - description: Filter by unread only
+        in: query
+        name: unreadOnly
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/NotificationItemResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+      summary: List user notifications
+      tags:
+      - Notifications
+  /user/notifications/{id}:
+    delete:
+      parameters:
+      - description: Notification UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      summary: Delete notification
+      tags:
+      - Notifications
+  /user/notifications/{id}/read:
+    patch:
+      parameters:
+      - description: Notification UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      summary: Mark notification as read
+      tags:
+      - Notifications
+  /user/notifications/mark-all-read:
+    patch:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+      summary: Mark all notifications as read
+      tags:
+      - Notifications
+  /user/notifications/unread-count:
+    get:
+      description: Returns total count of unread notifications for the user's navbar
+        badge.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/NotificationCountResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+      summary: Get unread notifications count
+      tags:
+      - Notifications
   /variants/{id}:
     get:
       description: Retrieves specific product variant (SKU) details by its UUID.
@@ -2485,6 +3426,10 @@ paths:
         in: query
         name: productId
         type: string
+      - description: Optional variant UUID to remove
+        in: query
+        name: variantId
+        type: string
       - description: Optional item UUID to remove
         in: query
         name: itemId
@@ -2519,19 +3464,38 @@ paths:
       description: Returns a paginated list of products saved in the authenticated
         user's wishlist.
       parameters:
-      - example: 1
+      - description: |-
+          Cursor is an opaque keyset token. When present, repositories should use
+          keyset pagination instead of OFFSET.
+        example: eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9
+        in: query
+        name: cursor
+        type: string
+      - description: |-
+          KeysetMode explicitly requests keyset pagination even when no cursor has
+          been supplied yet (i.e. for the very first page). Endpoints that still
+          serve classic OFFSET pagination use this to opt in per request.
+        example: true
+        in: query
+        name: keyset
+        type: boolean
+      - description: Page is the requested 1-based page number from query parameters.
+        example: 1
         in: query
         name: page
         type: integer
-      - example: 10
+      - description: PageSize is the requested number of items per page.
+        example: 10
         in: query
         name: pageSize
         type: integer
-      - example: television
+      - description: Search is an optional free-text search query string.
+        example: television
         in: query
         name: search
         type: string
       - collectionFormat: csv
+        description: RawSort contains the raw sort query strings (e.g. ["name,-created_at"]).
         example:
         - name
         - -created_at
@@ -2615,13 +3579,17 @@ paths:
       - Wishlist
   /wishlist/check/{productId}:
     get:
-      description: Checks whether a specific product is saved in the authenticated
-        user's wishlist.
+      description: Checks whether a specific product (or variant) is saved in the
+        authenticated user's wishlist.
       parameters:
       - description: Product UUID
         in: path
         name: productId
         required: true
+        type: string
+      - description: Optional Variant UUID
+        in: query
+        name: variantId
         type: string
       produces:
       - application/json
@@ -2714,12 +3682,17 @@ paths:
       - Wishlist
   /wishlist/products/{productId}:
     delete:
-      description: Deletes a product from the user's wishlist by the product UUID.
+      description: Deletes a product from the user's wishlist by the product UUID
+        (and optional variantId).
       parameters:
       - description: Product UUID
         in: path
         name: productId
         required: true
+        type: string
+      - description: Optional Variant UUID
+        in: query
+        name: variantId
         type: string
       produces:
       - application/json

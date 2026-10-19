@@ -264,63 +264,6 @@ const docTemplatepublic = `{
                 }
             }
         },
-        "/auth/refresh": {
-            "post": {
-                "description": "Rotate refresh token and issue new access and refresh tokens.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Rotate refresh token and issue new access and refresh tokens.",
-                "parameters": [
-                    {
-                        "description": "Refresh Token",
-                        "name": "refresh_token",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/RefreshTokenRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/UnauthorizedResponse"
-                        }
-                    },
-                    "429": {
-                        "description": "Too Many Requests",
-                        "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/InternalServerErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/auth/sessions": {
             "get": {
                 "description": "Fetches all active login sessions stored in Redis for the current user.",
@@ -366,6 +309,33 @@ const docTemplatepublic = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "description": "Revokes and deletes all active sessions from Redis and clears auth cookies.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Revoke all active user sessions",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/auth/sessions/{id}": {
@@ -388,11 +358,8 @@ const docTemplatepublic = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/MessageResponse"
-                        }
+                    "204": {
+                        "description": "No Content"
                     },
                     "401": {
                         "description": "Unauthorized",
@@ -424,20 +391,37 @@ const docTemplatepublic = `{
                 "summary": "List active product brands",
                 "parameters": [
                     {
+                        "type": "string",
+                        "example": "eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9",
+                        "description": "Cursor is an opaque keyset token. When present, repositories should use\nkeyset pagination instead of OFFSET.",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "example": true,
+                        "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
+                        "name": "keyset",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "example": 1,
+                        "description": "Page is the requested 1-based page number from query parameters.",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "example": 10,
+                        "description": "PageSize is the requested number of items per page.",
                         "name": "pageSize",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "example": "television",
+                        "description": "Search is an optional free-text search query string.",
                         "name": "search",
                         "in": "query"
                     },
@@ -451,6 +435,7 @@ const docTemplatepublic = `{
                             "name",
                             "-created_at"
                         ],
+                        "description": "RawSort contains the raw sort query strings (e.g. [\"name,-created_at\"]).",
                         "name": "sort",
                         "in": "query"
                     }
@@ -505,14 +490,6 @@ const docTemplatepublic = `{
                     "Cart"
                 ],
                 "summary": "Get shopping cart",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Guest Session ID",
-                        "name": "X-Session-ID",
-                        "in": "header"
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Cart details",
@@ -555,14 +532,6 @@ const docTemplatepublic = `{
                     "Cart"
                 ],
                 "summary": "Clear cart",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Guest Session ID",
-                        "name": "X-Session-ID",
-                        "in": "header"
-                    }
-                ],
                 "responses": {
                     "204": {
                         "description": "Cart cleared"
@@ -590,12 +559,6 @@ const docTemplatepublic = `{
                 ],
                 "summary": "Add item to cart",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Guest Session ID",
-                        "name": "X-Session-ID",
-                        "in": "header"
-                    },
                     {
                         "description": "Item variant and quantity",
                         "name": "body",
@@ -663,12 +626,6 @@ const docTemplatepublic = `{
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Guest Session ID",
-                        "name": "X-Session-ID",
-                        "in": "header"
                     }
                 ],
                 "responses": {
@@ -729,12 +686,6 @@ const docTemplatepublic = `{
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Guest Session ID",
-                        "name": "X-Session-ID",
-                        "in": "header"
                     },
                     {
                         "description": "New quantity",
@@ -801,20 +752,37 @@ const docTemplatepublic = `{
                 "summary": "List active product categories",
                 "parameters": [
                     {
+                        "type": "string",
+                        "example": "eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9",
+                        "description": "Cursor is an opaque keyset token. When present, repositories should use\nkeyset pagination instead of OFFSET.",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "example": true,
+                        "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
+                        "name": "keyset",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "example": 1,
+                        "description": "Page is the requested 1-based page number from query parameters.",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "example": 10,
+                        "description": "PageSize is the requested number of items per page.",
                         "name": "pageSize",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "example": "television",
+                        "description": "Search is an optional free-text search query string.",
                         "name": "search",
                         "in": "query"
                     },
@@ -828,6 +796,7 @@ const docTemplatepublic = `{
                             "name",
                             "-created_at"
                         ],
+                        "description": "RawSort contains the raw sort query strings (e.g. [\"name,-created_at\"]).",
                         "name": "sort",
                         "in": "query"
                     }
@@ -925,6 +894,64 @@ const docTemplatepublic = `{
                         "description": "Authentication required",
                         "schema": {
                             "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/coupons/apply": {
+            "post": {
+                "description": "Validates and applies a coupon code, returning discount details.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Coupons"
+                ],
+                "summary": "Apply coupon",
+                "parameters": [
+                    {
+                        "description": "Coupon Code",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ApplyCouponRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Coupon details",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/CouponValidationResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or expired coupon",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "500": {
@@ -1049,6 +1076,66 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "/orders/{id}/cancel": {
+            "post": {
+                "description": "Allows a customer to cancel their order if it is in pending or confirmed status.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Cancel order",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Order UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cancellation confirmation",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID or order cannot be cancelled",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Not authorized to cancel this order",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Order not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/products": {
             "get": {
                 "description": "Returns a paginated list of active, published products for customer browsing with optional brand, category, tag, search, and sort filters. Soft-deleted and draft products are hidden.",
@@ -1084,20 +1171,37 @@ const docTemplatepublic = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "example": "eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9",
+                        "description": "Cursor is an opaque keyset token. When present, repositories should use\nkeyset pagination instead of OFFSET.",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "example": true,
+                        "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
+                        "name": "keyset",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "example": 1,
+                        "description": "Page is the requested 1-based page number from query parameters.",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "example": 10,
+                        "description": "PageSize is the requested number of items per page.",
                         "name": "pageSize",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "example": "television",
+                        "description": "Search is an optional free-text search query string.",
                         "name": "search",
                         "in": "query"
                     },
@@ -1111,6 +1215,7 @@ const docTemplatepublic = `{
                             "name",
                             "-created_at"
                         ],
+                        "description": "RawSort contains the raw sort query strings (e.g. [\"name,-created_at\"]).",
                         "name": "sort",
                         "in": "query"
                     },
@@ -1182,20 +1287,37 @@ const docTemplatepublic = `{
                         "required": true
                     },
                     {
+                        "type": "string",
+                        "example": "eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9",
+                        "description": "Cursor is an opaque keyset token. When present, repositories should use\nkeyset pagination instead of OFFSET.",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "example": true,
+                        "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
+                        "name": "keyset",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "example": 1,
+                        "description": "Page is the requested 1-based page number from query parameters.",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "example": 10,
+                        "description": "PageSize is the requested number of items per page.",
                         "name": "pageSize",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "example": "television",
+                        "description": "Search is an optional free-text search query string.",
                         "name": "search",
                         "in": "query"
                     },
@@ -1209,6 +1331,7 @@ const docTemplatepublic = `{
                             "name",
                             "-created_at"
                         ],
+                        "description": "RawSort contains the raw sort query strings (e.g. [\"name,-created_at\"]).",
                         "name": "sort",
                         "in": "query"
                     }
@@ -1331,20 +1454,37 @@ const docTemplatepublic = `{
                         "required": true
                     },
                     {
+                        "type": "string",
+                        "example": "eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9",
+                        "description": "Cursor is an opaque keyset token. When present, repositories should use\nkeyset pagination instead of OFFSET.",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "example": true,
+                        "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
+                        "name": "keyset",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "example": 1,
+                        "description": "Page is the requested 1-based page number from query parameters.",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "example": 10,
+                        "description": "PageSize is the requested number of items per page.",
                         "name": "pageSize",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "example": "television",
+                        "description": "Search is an optional free-text search query string.",
                         "name": "search",
                         "in": "query"
                     },
@@ -1358,6 +1498,7 @@ const docTemplatepublic = `{
                             "name",
                             "-created_at"
                         ],
+                        "description": "RawSort contains the raw sort query strings (e.g. [\"name,-created_at\"]).",
                         "name": "sort",
                         "in": "query"
                     }
@@ -1462,6 +1603,111 @@ const docTemplatepublic = `{
             }
         },
         "/reviews": {
+            "get": {
+                "description": "Returns a paginated list of approved reviews for storefront display.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "List public approved reviews",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by Product UUID",
+                        "name": "productId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9",
+                        "description": "Cursor is an opaque keyset token. When present, repositories should use\nkeyset pagination instead of OFFSET.",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "example": true,
+                        "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
+                        "name": "keyset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Page is the requested 1-based page number from query parameters.",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "description": "PageSize is the requested number of items per page.",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "description": "Search is an optional free-text search query string.",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "description": "RawSort contains the raw sort query strings (e.g. [\"name,-created_at\"]).",
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of approved reviews",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/ReviewResponse"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/Page"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Allows a customer to review a product they purchased via a specific order item.",
                 "consumes": [
@@ -1537,6 +1783,65 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "/reviews/eligibility": {
+            "get": {
+                "description": "Checks whether the authenticated user has purchased and received the product and can review it.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Check review eligibility",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product UUID",
+                        "name": "productId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Eligibility status",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/ReviewEligibilityResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid product ID",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/reviews/me": {
             "get": {
                 "description": "Returns a paginated list of all reviews written by the authenticated user.",
@@ -1549,20 +1854,37 @@ const docTemplatepublic = `{
                 "summary": "List current user's reviews",
                 "parameters": [
                     {
+                        "type": "string",
+                        "example": "eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9",
+                        "description": "Cursor is an opaque keyset token. When present, repositories should use\nkeyset pagination instead of OFFSET.",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "example": true,
+                        "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
+                        "name": "keyset",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "example": 1,
+                        "description": "Page is the requested 1-based page number from query parameters.",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "example": 10,
+                        "description": "PageSize is the requested number of items per page.",
                         "name": "pageSize",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "example": "television",
+                        "description": "Search is an optional free-text search query string.",
                         "name": "search",
                         "in": "query"
                     },
@@ -1576,6 +1898,7 @@ const docTemplatepublic = `{
                             "name",
                             "-created_at"
                         ],
+                        "description": "RawSort contains the raw sort query strings (e.g. [\"name,-created_at\"]).",
                         "name": "sort",
                         "in": "query"
                     }
@@ -1622,7 +1945,7 @@ const docTemplatepublic = `{
         },
         "/reviews/{id}": {
             "get": {
-                "description": "Retrieves a review by its unique identifier.",
+                "description": "Retrieves a review by its unique identifier. Only approved reviews are publicly visible; pending or rejected reviews require the author's identity.",
                 "produces": [
                     "application/json"
                 ],
@@ -1817,6 +2140,47 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "/settings/public": {
+            "get": {
+                "description": "Returns the non-sensitive settings used by the storefront (identity, currency, announcement, shipping, maintenance state).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Get public storefront settings",
+                "responses": {
+                    "200": {
+                        "description": "Public settings",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/PublicConfig"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/tags": {
             "get": {
                 "description": "Returns a paginated list of active product tags for customer storefront filtering.",
@@ -1832,20 +2196,37 @@ const docTemplatepublic = `{
                 "summary": "List active product tags",
                 "parameters": [
                     {
+                        "type": "string",
+                        "example": "eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9",
+                        "description": "Cursor is an opaque keyset token. When present, repositories should use\nkeyset pagination instead of OFFSET.",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "example": true,
+                        "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
+                        "name": "keyset",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "example": 1,
+                        "description": "Page is the requested 1-based page number from query parameters.",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "example": 10,
+                        "description": "PageSize is the requested number of items per page.",
                         "name": "pageSize",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "example": "television",
+                        "description": "Search is an optional free-text search query string.",
                         "name": "search",
                         "in": "query"
                     },
@@ -1859,6 +2240,7 @@ const docTemplatepublic = `{
                             "name",
                             "-created_at"
                         ],
+                        "description": "RawSort contains the raw sort query strings (e.g. [\"name,-created_at\"]).",
                         "name": "sort",
                         "in": "query"
                     }
@@ -1898,6 +2280,553 @@ const docTemplatepublic = `{
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/addresses": {
+            "get": {
+                "description": "Returns all active saved shipping and billing addresses for the authenticated customer.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "List saved user addresses",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/AddressResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Create new address",
+                "parameters": [
+                    {
+                        "description": "Address details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CreateAddressInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/AddressResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/addresses/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Get address details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Address UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/AddressResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Update address",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Address UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Address details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateAddressInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/AddressResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Delete address",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Address UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/addresses/{id}/default": {
+            "patch": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Addresses"
+                ],
+                "summary": "Set address as default",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Address UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/AddressResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/notifications": {
+            "get": {
+                "description": "Returns a paginated list of in-app notifications localized to the active site language.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "List user notifications",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9",
+                        "description": "Cursor is an opaque keyset token. When present, repositories should use\nkeyset pagination instead of OFFSET.",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "example": true,
+                        "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
+                        "name": "keyset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Page is the requested 1-based page number from query parameters.",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 10,
+                        "description": "PageSize is the requested number of items per page.",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "television",
+                        "description": "Search is an optional free-text search query string.",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "example": [
+                            "name",
+                            "-created_at"
+                        ],
+                        "description": "RawSort contains the raw sort query strings (e.g. [\"name,-created_at\"]).",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by unread only",
+                        "name": "unreadOnly",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/NotificationItemResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/notifications/mark-all-read": {
+            "patch": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark all notifications as read",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/notifications/unread-count": {
+            "get": {
+                "description": "Returns total count of unread notifications for the user's navbar badge.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get unread notifications count",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/NotificationCountResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/notifications/{id}": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Delete notification",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Notification UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/notifications/{id}/read": {
+            "patch": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark notification as read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Notification UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     }
                 }
@@ -2145,20 +3074,37 @@ const docTemplatepublic = `{
                 "summary": "List wishlist items",
                 "parameters": [
                     {
+                        "type": "string",
+                        "example": "eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9",
+                        "description": "Cursor is an opaque keyset token. When present, repositories should use\nkeyset pagination instead of OFFSET.",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "example": true,
+                        "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
+                        "name": "keyset",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "example": 1,
+                        "description": "Page is the requested 1-based page number from query parameters.",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "example": 10,
+                        "description": "PageSize is the requested number of items per page.",
                         "name": "pageSize",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "example": "television",
+                        "description": "Search is an optional free-text search query string.",
                         "name": "search",
                         "in": "query"
                     },
@@ -2172,6 +3118,7 @@ const docTemplatepublic = `{
                             "name",
                             "-created_at"
                         ],
+                        "description": "RawSort contains the raw sort query strings (e.g. [\"name,-created_at\"]).",
                         "name": "sort",
                         "in": "query"
                     }
@@ -2307,6 +3254,12 @@ const docTemplatepublic = `{
                     },
                     {
                         "type": "string",
+                        "description": "Optional variant UUID to remove",
+                        "name": "variantId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
                         "description": "Optional item UUID to remove",
                         "name": "itemId",
                         "in": "query"
@@ -2348,7 +3301,7 @@ const docTemplatepublic = `{
         },
         "/wishlist/check/{productId}": {
             "get": {
-                "description": "Checks whether a specific product is saved in the authenticated user's wishlist.",
+                "description": "Checks whether a specific product (or variant) is saved in the authenticated user's wishlist.",
                 "produces": [
                     "application/json"
                 ],
@@ -2363,6 +3316,12 @@ const docTemplatepublic = `{
                         "name": "productId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional Variant UUID",
+                        "name": "variantId",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2504,7 +3463,7 @@ const docTemplatepublic = `{
         },
         "/wishlist/products/{productId}": {
             "delete": {
-                "description": "Deletes a product from the user's wishlist by the product UUID.",
+                "description": "Deletes a product from the user's wishlist by the product UUID (and optional variantId).",
                 "produces": [
                     "application/json"
                 ],
@@ -2519,6 +3478,12 @@ const docTemplatepublic = `{
                         "name": "productId",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional Variant UUID",
+                        "name": "variantId",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2565,8 +3530,9 @@ const docTemplatepublic = `{
             ],
             "properties": {
                 "quantity": {
-                    "description": "Quantity of units to add (must be at least 1)",
+                    "description": "Quantity of units to add (must be between 1 and 999)",
                     "type": "integer",
+                    "maximum": 999,
                     "example": 2
                 },
                 "variantId": {
@@ -2586,32 +3552,11 @@ const docTemplatepublic = `{
                     "description": "Product UUID to save to wishlist",
                     "type": "string",
                     "example": "60000000-0000-0000-0000-000000000001"
-                }
-            }
-        },
-        "AddressRequest": {
-            "type": "object",
-            "required": [
-                "city",
-                "country",
-                "postalCode",
-                "street"
-            ],
-            "properties": {
-                "city": {
-                    "type": "string"
                 },
-                "country": {
-                    "type": "string"
-                },
-                "postalCode": {
-                    "type": "string"
-                },
-                "state": {
-                    "type": "string"
-                },
-                "street": {
-                    "type": "string"
+                "variantId": {
+                    "description": "Optional specific product variant UUID to save",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
                 }
             }
         },
@@ -2624,13 +3569,51 @@ const docTemplatepublic = `{
                 "country": {
                     "type": "string"
                 },
+                "createdAt": {
+                    "type": "string"
+                },
+                "fullName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "line1": {
+                    "type": "string"
+                },
+                "line2": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
                 "postalCode": {
                     "type": "string"
                 },
                 "state": {
                     "type": "string"
                 },
-                "street": {
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "ApplyCouponRequest": {
+            "type": "object",
+            "required": [
+                "code"
+            ],
+            "properties": {
+                "code": {
                     "type": "string"
                 }
             }
@@ -2639,16 +3622,19 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "code": {
+                    "description": "Code is the machine-readable error token (\"VALIDATION_FAILED\").",
                     "type": "string",
                     "example": "VALIDATION_FAILED"
                 },
                 "details": {
+                    "description": "Details contains individual field-level validation errors.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/FieldError"
                     }
                 },
                 "message": {
+                    "description": "Message describes the validation failure summary.",
                     "type": "string",
                     "example": "Invalid request input or malformed payload"
                 }
@@ -2658,16 +3644,19 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "code": {
+                    "description": "Code is the machine-readable error token (\"VALIDATION_FAILED\").",
                     "type": "string",
                     "example": "VALIDATION_FAILED"
                 },
                 "details": {
+                    "description": "Details contains individual field-level validation errors.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/FieldError"
                     }
                 },
                 "message": {
+                    "description": "Message describes the validation failure summary.",
                     "type": "string",
                     "example": "Invalid request input or malformed payload"
                 }
@@ -2774,7 +3763,7 @@ const docTemplatepublic = `{
                 "currency": {
                     "description": "Active store currency code",
                     "type": "string",
-                    "example": "USD"
+                    "example": "EGP"
                 },
                 "id": {
                     "description": "Cart UUID",
@@ -2841,17 +3830,17 @@ const docTemplatepublic = `{
         "CheckoutRequest": {
             "type": "object",
             "required": [
-                "shippingAddress"
+                "shippingAddressId"
             ],
             "properties": {
                 "couponId": {
                     "type": "string"
                 },
-                "customerEmail": {
+                "paymentMethod": {
                     "type": "string"
                 },
-                "shippingAddress": {
-                    "$ref": "#/definitions/AddressRequest"
+                "shippingAddressId": {
+                    "type": "string"
                 }
             }
         },
@@ -2859,6 +3848,9 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "orderId": {
+                    "type": "string"
+                },
+                "paymentStatus": {
                     "type": "string"
                 },
                 "status": {
@@ -2876,6 +3868,82 @@ const docTemplatepublic = `{
                 "message": {
                     "type": "string",
                     "example": "A resource with this identifier or name already exists"
+                }
+            }
+        },
+        "CouponValidationResult": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "discountAmount": {
+                    "type": "integer"
+                },
+                "discountPercent": {
+                    "type": "integer"
+                },
+                "discountType": {
+                    "type": "string"
+                },
+                "discountValue": {
+                    "type": "integer"
+                },
+                "fixedDiscount": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "minCartAmount": {
+                    "type": "integer"
+                },
+                "shipping": {
+                    "type": "integer"
+                },
+                "subtotal": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "CreateAddressInput": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "fullName": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "line1": {
+                    "type": "string"
+                },
+                "line2": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "postalCode": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
                 }
             }
         },
@@ -2918,23 +3986,28 @@ const docTemplatepublic = `{
         "DataResponse": {
             "type": "object",
             "properties": {
-                "data": {}
+                "data": {
+                    "description": "Data holds the response payload."
+                }
             }
         },
         "ErrorResponse": {
             "type": "object",
             "properties": {
                 "code": {
+                    "description": "Code is the machine-readable error token (\"INTERNAL_ERROR\").",
                     "type": "string",
                     "example": "INTERNAL_ERROR"
                 },
                 "details": {
+                    "description": "Details contains optional validation details if applicable.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/FieldError"
                     }
                 },
                 "message": {
+                    "description": "Message describes the error condition.",
                     "type": "string",
                     "example": "An unexpected internal server error occurred"
                 }
@@ -2944,14 +4017,17 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "constraint": {
+                    "description": "Constraint is the validation tag or rule that was violated (e.g., \"min\", \"required\", \"email\").",
                     "type": "string",
                     "example": "min"
                 },
                 "field": {
+                    "description": "Field is the name of the request property that failed validation (e.g., \"quantity\", \"email\").",
                     "type": "string",
                     "example": "quantity"
                 },
                 "message": {
+                    "description": "Message is the user-friendly explanation of why the value is invalid.",
                     "type": "string",
                     "example": "quantity must be at least 1"
                 }
@@ -2992,6 +4068,9 @@ const docTemplatepublic = `{
                 "id": {
                     "type": "string"
                 },
+                "identifier": {
+                    "type": "string"
+                },
                 "role": {
                     "type": "string"
                 },
@@ -3004,6 +4083,7 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "message": {
+                    "description": "Message conveys the completion status or outcome of a mutation.",
                     "type": "string",
                     "example": "Operation completed successfully"
                 }
@@ -3022,22 +4102,67 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "NotificationCountResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "NotificationItemResponse": {
+            "type": "object",
+            "properties": {
+                "actionUrl": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isRead": {
+                    "type": "boolean"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object"
+                },
+                "readAt": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "OrderItemResponse": {
             "type": "object",
             "properties": {
                 "id": {
+                    "description": "ID is the unique UUID of the order line item.",
                     "type": "string"
                 },
                 "priceAtPurchase": {
+                    "description": "PriceAtPurchase is the unit price in minor units (e.g. cents) at checkout time.",
                     "type": "integer"
                 },
                 "productSnapshot": {
+                    "description": "ProductSnapshot contains immutable JSON metadata captured at checkout (e.g. title, SKU, media).",
                     "type": "string"
                 },
                 "quantity": {
+                    "description": "Quantity is the number of units purchased.",
                     "type": "integer"
                 },
                 "variantId": {
+                    "description": "VariantID is the product variant purchased in this line item.",
                     "type": "string"
                 }
             }
@@ -3045,43 +4170,87 @@ const docTemplatepublic = `{
         "OrderResponse": {
             "type": "object",
             "properties": {
+                "codFee": {
+                    "description": "CODFee is the cash-on-delivery surcharge applied to the order in minor currency units.",
+                    "type": "integer"
+                },
+                "couponCode": {
+                    "description": "CouponCode is the human-readable applied voucher or coupon code.",
+                    "type": "string"
+                },
                 "couponId": {
+                    "description": "CouponID is the optional applied promotional voucher or coupon UUID.",
                     "type": "string"
                 },
                 "createdAt": {
+                    "description": "CreatedAt is the RFC3339 creation timestamp.",
                     "type": "string"
                 },
                 "currency": {
+                    "description": "Currency is the 3-letter ISO currency code.",
                     "type": "string"
                 },
                 "customerEmail": {
+                    "description": "CustomerEmail is the contact email address for transactional notifications.",
                     "type": "string"
                 },
                 "customerId": {
+                    "description": "CustomerID is the optional authenticated user UUID who placed the order.",
                     "type": "string"
                 },
                 "discountAmount": {
+                    "description": "DiscountAmount is the deducted amount in minor currency units.",
                     "type": "integer"
                 },
                 "id": {
+                    "description": "ID is the unique order UUID.",
                     "type": "string"
                 },
                 "items": {
+                    "description": "Items lists the individual line items in this order.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/OrderItemResponse"
                     }
                 },
+                "paymentMethod": {
+                    "description": "PaymentMethod is the payment method used for the order.",
+                    "type": "string"
+                },
                 "shippingAddress": {
-                    "$ref": "#/definitions/AddressResponse"
+                    "description": "ShippingAddress is the destination address.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/AddressResponse"
+                        }
+                    ]
                 },
-                "status": {
-                    "$ref": "#/definitions/OrderStatus"
-                },
-                "totalAmount": {
+                "shippingAmount": {
+                    "description": "ShippingAmount is the shipping charge applied to the order in minor currency units.",
                     "type": "integer"
                 },
+                "status": {
+                    "description": "Status is the current state of the order lifecycle.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/OrderStatus"
+                        }
+                    ]
+                },
+                "taxAmount": {
+                    "description": "TaxAmount is the tax amount applied to the order in minor currency units.",
+                    "type": "integer"
+                },
+                "totalAmount": {
+                    "description": "TotalAmount is the final monetary charge in minor currency units after discounts.",
+                    "type": "integer"
+                },
+                "trackingNumber": {
+                    "description": "TrackingNumber is the carrier tracking number for shipped orders.",
+                    "type": "string"
+                },
                 "updatedAt": {
+                    "description": "UpdatedAt is the RFC3339 last update timestamp.",
                     "type": "string"
                 }
             }
@@ -3094,7 +4263,8 @@ const docTemplatepublic = `{
                 "processing",
                 "shipped",
                 "delivered",
-                "canceled",
+                "cancelled",
+                "cancelled",
                 "refunded"
             ],
             "x-enum-varnames": [
@@ -3103,6 +4273,7 @@ const docTemplatepublic = `{
                 "OrderStatusProcessing",
                 "OrderStatusShipped",
                 "OrderStatusDelivered",
+                "OrderStatusCancelled",
                 "OrderStatusCanceled",
                 "OrderStatusRefunded"
             ]
@@ -3111,26 +4282,32 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "hasNext": {
+                    "description": "HasNext is true if there is a page following the current page.",
                     "type": "boolean",
                     "example": true
                 },
                 "hasPrevious": {
+                    "description": "HasPrevious is true if there is a page preceding the current page.",
                     "type": "boolean",
                     "example": false
                 },
                 "page": {
+                    "description": "Page is the current 1-based page index.",
                     "type": "integer",
                     "example": 1
                 },
                 "pageSize": {
+                    "description": "PageSize is the maximum number of items per page.",
                     "type": "integer",
                     "example": 10
                 },
                 "totalItems": {
+                    "description": "TotalItems is the total count of matching items across all pages.",
                     "type": "integer",
                     "example": 20
                 },
                 "totalPages": {
+                    "description": "TotalPages is the total number of pages calculated from TotalItems and PageSize.",
                     "type": "integer",
                     "example": 2
                 }
@@ -3139,8 +4316,12 @@ const docTemplatepublic = `{
         "PaginatedResponse": {
             "type": "object",
             "properties": {
-                "data": {},
-                "meta": {}
+                "data": {
+                    "description": "Data contains the slice of paginated items."
+                },
+                "meta": {
+                    "description": "Meta contains the pagination metadata (page, pageSize, totalItems, totalPages)."
+                }
             }
         },
         "ProductBrandSummary": {
@@ -3177,7 +4358,7 @@ const docTemplatepublic = `{
                 "currency": {
                     "description": "Currency ISO code",
                     "type": "string",
-                    "example": "USD"
+                    "example": "EGP"
                 },
                 "description": {
                     "description": "Detailed product description",
@@ -3274,7 +4455,7 @@ const docTemplatepublic = `{
                 "currency": {
                     "description": "Currency ISO code",
                     "type": "string",
-                    "example": "USD"
+                    "example": "EGP"
                 },
                 "extractedOriginalPrice": {
                     "description": "Numeric original price",
@@ -3285,6 +4466,16 @@ const docTemplatepublic = `{
                     "description": "Numeric price value",
                     "type": "number",
                     "example": 2499
+                },
+                "id": {
+                    "description": "Product UUID",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "inStock": {
+                    "description": "In stock flag",
+                    "type": "boolean",
+                    "example": true
                 },
                 "originalPrice": {
                     "description": "Formatted crossed-out original price",
@@ -3304,10 +4495,20 @@ const docTemplatepublic = `{
                         }
                     ]
                 },
+                "sku": {
+                    "description": "Stock Keeping Unit",
+                    "type": "string",
+                    "example": "MAC-PRO-001"
+                },
                 "slug": {
                     "description": "URL-friendly unique slug",
                     "type": "string",
                     "example": "macbook-pro-16"
+                },
+                "stockQuantity": {
+                    "description": "Real-time on-hand available stock count",
+                    "type": "integer",
+                    "example": 50
                 },
                 "thumbnail": {
                     "description": "Product card thumbnail URL",
@@ -3318,6 +4519,11 @@ const docTemplatepublic = `{
                     "description": "Product display title",
                     "type": "string",
                     "example": "MacBook Pro 16\""
+                },
+                "variantId": {
+                    "description": "Default variant UUID",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
                 }
             }
         },
@@ -3376,11 +4582,6 @@ const docTemplatepublic = `{
                     "type": "integer",
                     "example": 5
                 },
-                "status": {
-                    "description": "Moderation state: pending, approved, rejected",
-                    "type": "string",
-                    "example": "approved"
-                },
                 "title": {
                     "description": "Optional review heading title",
                     "type": "string",
@@ -3424,7 +4625,7 @@ const docTemplatepublic = `{
                 "currency": {
                     "description": "Currency ISO code",
                     "type": "string",
-                    "example": "USD"
+                    "example": "EGP"
                 },
                 "extractedOriginalPrice": {
                     "description": "Numeric original MSRP price",
@@ -3503,6 +4704,68 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "PublicConfig": {
+            "type": "object",
+            "properties": {
+                "allowCards": {
+                    "type": "boolean"
+                },
+                "allowCod": {
+                    "type": "boolean"
+                },
+                "announcementEnabled": {
+                    "type": "boolean"
+                },
+                "announcementText": {
+                    "type": "string"
+                },
+                "codFee": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "defaultLocale": {
+                    "type": "string"
+                },
+                "estimatedDeliveryDays": {
+                    "type": "string"
+                },
+                "flatRateShipping": {
+                    "type": "number"
+                },
+                "freeShippingThreshold": {
+                    "type": "number"
+                },
+                "maintenanceMessage": {
+                    "type": "string"
+                },
+                "maintenanceMode": {
+                    "type": "boolean"
+                },
+                "pricesIncludeTax": {
+                    "type": "boolean"
+                },
+                "storeAddress": {
+                    "type": "string"
+                },
+                "storeEmail": {
+                    "type": "string"
+                },
+                "storeName": {
+                    "type": "string"
+                },
+                "storePhone": {
+                    "type": "string"
+                },
+                "taxRatePercent": {
+                    "type": "number"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
         "PublicStockResponse": {
             "type": "object",
             "properties": {
@@ -3533,14 +4796,6 @@ const docTemplatepublic = `{
                 }
             }
         },
-        "RefreshTokenRequest": {
-            "type": "object",
-            "properties": {
-                "refreshToken": {
-                    "type": "string"
-                }
-            }
-        },
         "ResendChallengeRequest": {
             "type": "object",
             "required": [
@@ -3549,6 +4804,14 @@ const docTemplatepublic = `{
             "properties": {
                 "email": {
                     "type": "string"
+                }
+            }
+        },
+        "ReviewEligibilityResponse": {
+            "type": "object",
+            "properties": {
+                "canReview": {
+                    "type": "boolean"
                 }
             }
         },
@@ -3622,10 +4885,12 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "field": {
+                    "description": "Field is the database column or property name to sort by.",
                     "type": "string",
                     "example": "name"
                 },
                 "order": {
+                    "description": "Order is the sort direction (SortAsc or SortDesc).",
                     "allOf": [
                         {
                             "$ref": "#/definitions/SortOrder"
@@ -3706,16 +4971,6 @@ const docTemplatepublic = `{
                 }
             }
         },
-        "SuccessResponse": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "message": {
-                    "type": "string"
-                },
-                "meta": {}
-            }
-        },
         "TagResponse": {
             "type": "object",
             "properties": {
@@ -3748,12 +5003,49 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "code": {
+                    "description": "Code is the machine-readable error token (\"UNAUTHORIZED\").",
                     "type": "string",
                     "example": "UNAUTHORIZED"
                 },
                 "message": {
+                    "description": "Message describes the authentication failure.",
                     "type": "string",
                     "example": "Authentication token is missing or invalid"
+                }
+            }
+        },
+        "UpdateAddressInput": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "fullName": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "line1": {
+                    "type": "string"
+                },
+                "line2": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "postalCode": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
                 }
             }
         },
@@ -3764,8 +5056,9 @@ const docTemplatepublic = `{
             ],
             "properties": {
                 "quantity": {
-                    "description": "New total quantity desired for this cart item (must be at least 1)",
+                    "description": "New total quantity desired for this cart item (must be between 1 and 999)",
                     "type": "integer",
+                    "maximum": 999,
                     "example": 3
                 }
             }
@@ -3792,32 +5085,65 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "UserRole": {
+            "type": "string",
+            "enum": [
+                "superadmin",
+                "admin",
+                "support",
+                "vendor",
+                "customer"
+            ],
+            "x-enum-varnames": [
+                "SuperRole",
+                "AdminRole",
+                "SupportRole",
+                "VendorRole",
+                "CustomerRole"
+            ]
+        },
         "UserSession": {
             "type": "object",
             "properties": {
                 "createdAt": {
-                    "type": "string"
-                },
-                "currentRefreshJti": {
+                    "description": "CreatedAt is the timestamp when the session was created.",
                     "type": "string"
                 },
                 "id": {
+                    "description": "ID is the unique random session token stored in client cookies.",
                     "type": "string"
                 },
                 "ipAddress": {
+                    "description": "IPAddress records the client network IP address at session creation.",
                     "type": "string"
                 },
                 "lastActive": {
+                    "description": "LastActive is the timestamp of the latest request made with this session.",
                     "type": "string"
                 },
                 "type": {
-                    "$ref": "#/definitions/SessionType"
+                    "description": "Type indicates guest or authenticated session lifecycle state.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/SessionType"
+                        }
+                    ]
                 },
                 "userAgent": {
+                    "description": "UserAgent records the client browser or device signature.",
                     "type": "string"
                 },
                 "userId": {
+                    "description": "UserID is the database UUID of the authenticated user (uuid.Nil for guest sessions).",
                     "type": "string"
+                },
+                "userRole": {
+                    "description": "UserRole specifies the authorization role (e.g., \"customer\", \"admin\").",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/UserRole"
+                        }
+                    ]
                 }
             }
         },
@@ -3895,7 +5221,7 @@ const docTemplatepublic = `{
                 "currency": {
                     "description": "Currency ISO code",
                     "type": "string",
-                    "example": "USD"
+                    "example": "EGP"
                 },
                 "extractedOriginalPrice": {
                     "description": "Numeric original price value",
@@ -3968,6 +5294,9 @@ const docTemplatepublic = `{
                 },
                 "email": {
                     "type": "string"
+                },
+                "merge_cart": {
+                    "type": "boolean"
                 }
             }
         },
@@ -4026,6 +5355,11 @@ const docTemplatepublic = `{
                     "description": "Customer UUID owning this wishlist item",
                     "type": "string",
                     "example": "10000000-0000-0000-0000-000000000002"
+                },
+                "variantId": {
+                    "description": "Saved Variant UUID if specific variant was selected",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
                 }
             }
         },
@@ -4045,7 +5379,7 @@ const docTemplatepublic = `{
                 "currency": {
                     "description": "Currency ISO code",
                     "type": "string",
-                    "example": "USD"
+                    "example": "EGP"
                 },
                 "description": {
                     "description": "Detailed product description",
@@ -4101,6 +5435,19 @@ const docTemplatepublic = `{
                     "description": "Product display title",
                     "type": "string",
                     "example": "MacBook Pro 16\""
+                },
+                "variantId": {
+                    "description": "Variant specific details",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
+                },
+                "variantSku": {
+                    "type": "string",
+                    "example": "SKU-MBP-16"
+                },
+                "variantTitle": {
+                    "type": "string",
+                    "example": "Space Black"
                 }
             }
         }
