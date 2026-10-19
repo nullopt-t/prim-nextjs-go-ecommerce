@@ -63,6 +63,10 @@ definitions:
         description: Brand/manufacturer name
         example: Apple
         type: string
+      productCount:
+        description: Number of active products associated with the brand
+        example: 28
+        type: integer
       updatedAt:
         description: Timestamp when brand was last updated (RFC3339)
         example: "2026-07-01T05:04:38Z"
@@ -1066,6 +1070,11 @@ definitions:
       name:
         description: Name is the unique brand name (e.g. "Apple", "Nike").
         type: string
+      productCount:
+        description: |-
+          ProductCount is the number of active products associated with the brand.
+          It is computed on read and is not persisted on the brand row.
+        type: integer
       updatedAt:
         description: UpdatedAt is the timestamp when brand details were last modified.
         type: string

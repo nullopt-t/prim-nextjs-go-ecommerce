@@ -4103,6 +4103,11 @@ const docTemplateadmin = `{
                     "type": "string",
                     "example": "Apple"
                 },
+                "productCount": {
+                    "description": "Number of active products associated with the brand",
+                    "type": "integer",
+                    "example": 28
+                },
                 "updatedAt": {
                     "description": "Timestamp when brand was last updated (RFC3339)",
                     "type": "string",
@@ -5456,6 +5461,10 @@ const docTemplateadmin = `{
                 "name": {
                     "description": "Name is the unique brand name (e.g. \"Apple\", \"Nike\").",
                     "type": "string"
+                },
+                "productCount": {
+                    "description": "ProductCount is the number of active products associated with the brand.\nIt is computed on read and is not persisted on the brand row.",
+                    "type": "integer"
                 },
                 "updatedAt": {
                     "description": "UpdatedAt is the timestamp when brand details were last modified.",

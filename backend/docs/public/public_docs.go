@@ -3684,6 +3684,11 @@ const docTemplatepublic = `{
                     "description": "Brand/manufacturer name",
                     "type": "string",
                     "example": "Apple"
+                },
+                "productCount": {
+                    "description": "Number of active products associated with the brand",
+                    "type": "integer",
+                    "example": 28
                 }
             }
         },

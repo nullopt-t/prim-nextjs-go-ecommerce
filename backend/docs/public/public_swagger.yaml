@@ -116,6 +116,10 @@ definitions:
         description: Brand/manufacturer name
         example: Apple
         type: string
+      productCount:
+        description: Number of active products associated with the brand
+        example: 28
+        type: integer
     type: object
   CartItemResponse:
     properties:
