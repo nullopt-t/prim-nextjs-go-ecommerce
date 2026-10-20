@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
@@ -54,9 +54,9 @@ type AdjustStockInput struct {
 	// VariantID is the unique identifier of the product variant being adjusted.
 	VariantID uuid.UUID
 	// Quantity is the signed integer delta (+ for additions, - for reductions). Cannot be zero.
-	Quantity  int
+	Quantity int
 	// Reason describes the business rationale (restock, sale, return, adjustment, reservation_release).
-	Reason    string
+	Reason string
 }
 
 // ReserveStockInput defines the parameters for reserving stock for an active cart or checkout session.
@@ -64,15 +64,15 @@ type ReserveStockInput struct {
 	// VariantID is the unique identifier of the product variant to reserve.
 	VariantID uuid.UUID
 	// CartID optionally associates this reservation with a customer cart.
-	CartID    *uuid.UUID
+	CartID *uuid.UUID
 	// OrderID optionally associates this reservation with the order that placed
 	// the hold. When set, the hold is keyed to the order (not upserted against
 	// an existing cart hold) so it can be committed or released deterministically.
-	OrderID   *uuid.UUID
+	OrderID *uuid.UUID
 	// Quantity is the positive number of units to reserve.
-	Quantity  int
+	Quantity int
 	// Duration specifies how long the reservation remains valid before auto-expiration (defaults to 15m).
-	Duration  time.Duration
+	Duration time.Duration
 }
 
 // AdjustStock records an inventory adjustment ledger entry within a database transaction.
@@ -179,7 +179,6 @@ func (s *InventoryService) adjustStockInTx(
 	}
 
 	ledger := &model.InventoryLedger{
-		ID:        uuid.New(),
 		VariantID: in.VariantID,
 		Quantity:  in.Quantity,
 		Reason:    reason,
@@ -626,7 +625,6 @@ func (s *InventoryService) CommitReservation(
 		}
 
 		ledger := &model.InventoryLedger{
-			ID:        uuid.New(),
 			VariantID: res.VariantID,
 			Quantity:  -res.Quantity,
 			Reason:    model.InventoryReasonSale,
@@ -692,7 +690,6 @@ func (s *InventoryService) CommitReservationsForOrderWithTx(
 		}
 
 		ledger := &model.InventoryLedger{
-			ID:        uuid.New(),
 			VariantID: res.VariantID,
 			Quantity:  -res.Quantity,
 			Reason:    model.InventoryReasonSale,
@@ -800,18 +797,11 @@ func (s *InventoryService) ListRecentLedgers(ctx context.Context, limit int, cur
 func (s *InventoryService) AdjustInventory(ctx context.Context, variantID uuid.UUID, delta int, reason string) error {
 	return s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		ledger := &model.InventoryLedger{
-			ID:        uuid.New(),
 			VariantID: variantID,
 			Quantity:  delta,
 			Reason:    model.InventoryReason(reason),
-			CreatedAt: time.Now(),
 		}
-		query := `
-			INSERT INTO inventory_ledgers (id, variant_id, quantity, reason, created_at)
-			VALUES ($1, $2, $3, $4::inventory_reason, NOW())
-		`
-		_, err := tx.Exec(ctx, query, ledger.ID, ledger.VariantID, ledger.Quantity, ledger.Reason)
-		return err
+		return s.repo.CreateLedger(ctx, tx, ledger)
 	})
 }
 
@@ -829,18 +819,10 @@ func (s *InventoryService) AdjustProductInventory(ctx context.Context, productID
 		}
 
 		ledger := &model.InventoryLedger{
-			ID:        uuid.New(),
 			VariantID: variantID,
 			Quantity:  delta,
 			Reason:    model.InventoryReason(reason),
-			CreatedAt: time.Now(),
 		}
-		query := `
-			INSERT INTO inventory_ledgers (id, variant_id, quantity, reason, created_at)
-			VALUES ($1, $2, $3, $4::inventory_reason, NOW())
-		`
-		_, err = tx.Exec(ctx, query, ledger.ID, ledger.VariantID, ledger.Quantity, ledger.Reason)
-		return err
+		return s.repo.CreateLedger(ctx, tx, ledger)
 	})
 }
-

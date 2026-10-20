@@ -7,7 +7,6 @@ package audit
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
@@ -24,13 +23,10 @@ func NewService(runner database.Runner, repo *Repository) *Service {
 	return &Service{runner: runner, repo: repo}
 }
 
-// Record persists a single audit entry, assigning an ID when absent. A failure
-// here must never break the originating request: callers are expected to log it
-// and continue.
+// Record persists a single audit entry. The database assigns the entry id. A
+// failure here must never break the originating request: callers are expected
+// to log it and continue.
 func (s *Service) Record(ctx context.Context, entry *model.AuditLog) error {
-	if entry.ID == uuid.Nil {
-		entry.ID = uuid.New()
-	}
 	return s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.repo.Insert(ctx, db, entry)
 	})

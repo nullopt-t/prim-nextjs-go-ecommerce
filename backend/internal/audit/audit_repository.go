@@ -25,15 +25,15 @@ func (r *Repository) Insert(
 	qe database.QueryExecutor,
 	entry *model.AuditLog,
 ) error {
-	_, err := qe.Exec(ctx, `
+	err := qe.QueryRow(ctx, `
 		INSERT INTO audit_log (
-			id, actor_id, actor_role, action, entity_type, entity_id,
+			actor_id, actor_role, action, entity_type, entity_id,
 			method, path, status_code, ip_address, user_agent,
 			before_state, after_state, metadata, created_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		RETURNING id
 	`,
-		entry.ID,
 		entry.ActorID,
 		entry.ActorRole,
 		entry.Action,
@@ -48,7 +48,7 @@ func (r *Repository) Insert(
 		entry.After,
 		entry.Metadata,
 		entry.CreatedAt,
-	)
+	).Scan(&entry.ID)
 	if err != nil {
 		return fmt.Errorf("insert audit log: %w", err)
 	}
@@ -146,7 +146,7 @@ func (r *Repository) List(
 	}
 
 	entries, page := pagination.NewCursorPageFrom(entries, limit, func(e *model.AuditLog) pagination.Keyset {
-		return pagination.Keyset{CreatedAt: e.CreatedAt, ID: e.ID}
+		return pagination.Keyset{CreatedAt: e.CreatedAt, IDInt: e.ID}
 	})
 	return entries, page, nil
 }

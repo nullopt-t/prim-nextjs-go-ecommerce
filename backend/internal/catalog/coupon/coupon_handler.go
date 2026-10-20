@@ -2,6 +2,7 @@ package coupon
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -267,7 +268,7 @@ type CouponRedemptionResponse struct {
 
 func toRedemptionResponse(e *RedemptionEntry) CouponRedemptionResponse {
 	resp := CouponRedemptionResponse{
-		ID:             e.ID.String(),
+		ID:             strconv.FormatInt(e.ID, 10),
 		OrderID:        e.OrderID.String(),
 		DiscountAmount: e.DiscountAmount,
 		CreatedAt:      e.CreatedAt.Format(time.RFC3339),

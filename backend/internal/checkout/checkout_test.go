@@ -149,6 +149,11 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	_, err = db.Exec(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
+	keysBytes, err := os.ReadFile("../../migrations/000003_bigint_identity_keys.up.sql")
+	require.NoError(s.T(), err)
+	_, err = db.Exec(ctx, string(keysBytes))
+	require.NoError(s.T(), err)
+
 	// ---- Redis (sessions) -------------------------------------------------
 	rContainer, err := redisContainer.Run(ctx, "redis:7-alpine")
 	require.NoError(s.T(), err)
@@ -168,7 +173,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	s.txRunner = database.NewTxRunner(s.db)
 
 	inventoryRepo := inventory.NewRepository()
-	s.inventoryService = inventory.NewService(logger, s.txRunner, inventoryRepo)
+	s.inventoryService = inventory.NewService(logger, s.txRunner, inventoryRepo, nil)
 
 	variantRepo := variant.NewRepository()
 	s.variantService = variant.NewService(logger, s.txRunner, nil, variantRepo, s.inventoryService)
@@ -410,9 +415,9 @@ func (s *CheckoutTestSuite) seedRedemption(couponID uuid.UUID, customerID *uuid.
 	}
 
 	_, err := s.db.Exec(context.Background(), `
-		INSERT INTO coupon_redemptions (id, coupon_id, user_id, order_id, discount_amount)
-		VALUES ($1, $2, $3, $4, 100)
-	`, uuid.New(), couponID, customer, orderID)
+		INSERT INTO coupon_redemptions (coupon_id, user_id, order_id, discount_amount)
+		VALUES ($1, $2, $3, 100)
+	`, couponID, customer, orderID)
 	s.Require().NoError(err)
 }
 
@@ -429,9 +434,9 @@ func (s *CheckoutTestSuite) seedRawCartItem(userID, variantID uuid.UUID, qty int
 	s.Require().NoError(err)
 
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO cart_items (id, cart_id, variant_id, quantity, price_at_purchase, currency)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, uuid.New(), cartID, variantID, qty, price, defaultCurrency)
+		INSERT INTO cart_items (cart_id, variant_id, quantity, price_at_purchase, currency)
+		VALUES ($1, $2, $3, $4, $5)
+	`, cartID, variantID, qty, price, defaultCurrency)
 	s.Require().NoError(err)
 
 	return cartID

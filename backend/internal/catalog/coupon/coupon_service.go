@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
@@ -380,7 +380,6 @@ func (s *CouponService) RecordRedemption(
 	discountAmount int64,
 ) error {
 	red := &model.CouponRedemption{
-		ID:             uuid.New(),
 		CouponID:       couponID,
 		UserID:         userID,
 		OrderID:        orderID,

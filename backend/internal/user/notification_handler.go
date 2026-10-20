@@ -3,6 +3,7 @@ package user
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -54,7 +55,7 @@ func mapNotificationResponse(n *model.UserNotification, locale string) Notificat
 	}
 
 	return NotificationItemResponse{
-		ID:        n.ID.String(),
+		ID:        strconv.FormatInt(n.ID, 10),
 		Title:     n.LocalizedTitle(locale),
 		Message:   n.LocalizedMessage(locale),
 		Category:  n.Category,
@@ -167,8 +168,8 @@ func (h *NotificationHandler) MarkAsRead(c *gin.Context) {
 		return
 	}
 
-	// Parse notification UUID
-	id, err := uuid.Parse(c.Param("id"))
+	// Parse notification id
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		_ = c.Error(apierr.BadRequestError("invalid notification id").WithCode(apierr.CodeInvalidInput))
 		return
@@ -226,8 +227,8 @@ func (h *NotificationHandler) DeleteNotification(c *gin.Context) {
 		return
 	}
 
-	// Parse target notification UUID
-	id, err := uuid.Parse(c.Param("id"))
+	// Parse target notification id
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		_ = c.Error(apierr.BadRequestError("invalid notification id").WithCode(apierr.CodeInvalidInput))
 		return

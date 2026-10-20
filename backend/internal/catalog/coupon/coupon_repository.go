@@ -26,7 +26,7 @@ type ListCouponFilter struct {
 // RedemptionEntry is a single coupon redemption joined with the redeeming
 // user's profile details, used by the admin promotion usage log.
 type RedemptionEntry struct {
-	ID             uuid.UUID
+	ID             int64
 	UserID         *uuid.UUID
 	UserName       *string
 	UserEmail      *string
@@ -283,16 +283,13 @@ func (r *CouponRepository) GetUserRedemptionCount(ctx context.Context, qe databa
 // RecordRedemption logs a coupon usage against an order.
 func (r *CouponRepository) RecordRedemption(ctx context.Context, qe database.QueryExecutor, red *model.CouponRedemption) error {
 	query := `
-		INSERT INTO coupon_redemptions (id, coupon_id, user_id, order_id, discount_amount, created_at)
-		VALUES ($1, $2, $3, $4, $5, NOW())
-		RETURNING created_at
+		INSERT INTO coupon_redemptions (coupon_id, user_id, order_id, discount_amount, created_at)
+		VALUES ($1, $2, $3, $4, NOW())
+		RETURNING id, created_at
 	`
-	if red.ID == uuid.Nil {
-		red.ID = uuid.New()
-	}
 	return qe.QueryRow(ctx, query,
-		red.ID, red.CouponID, red.UserID, red.OrderID, red.DiscountAmount,
-	).Scan(&red.CreatedAt)
+		red.CouponID, red.UserID, red.OrderID, red.DiscountAmount,
+	).Scan(&red.ID, &red.CreatedAt)
 }
 
 // ListRedemptions returns every redemption of a coupon, newest first, joined
@@ -353,7 +350,7 @@ func (r *CouponRepository) ListRedemptions(ctx context.Context, qe database.Quer
 	}
 
 	list, page := pagination.NewCursorPageFrom(list, limit, func(e *RedemptionEntry) pagination.Keyset {
-		return pagination.Keyset{CreatedAt: e.CreatedAt, ID: e.ID}
+		return pagination.Keyset{CreatedAt: e.CreatedAt, IDInt: e.ID}
 	})
 	return list, page, nil
 }

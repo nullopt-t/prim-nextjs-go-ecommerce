@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
@@ -52,21 +52,21 @@ func NewService(
 // CreateVariantInput represents the parameters required to create a new product variant.
 type CreateVariantInput struct {
 	// ProductID is the UUID of the parent product.
-	ProductID         uuid.UUID
+	ProductID uuid.UUID
 	// SKU is an optional custom SKU string; if omitted, a new UUID string is generated.
-	SKU               *string
+	SKU *string
 	// Title is the required display title of the variant.
-	Title             string
+	Title string
 	// Price is the sales price in minor currency units (cents).
-	Price             *int64
+	Price *int64
 	// CrossedOutPrice is the original MSRP price in minor currency units (cents).
-	CrossedOutPrice   *int64
+	CrossedOutPrice *int64
 	// Currency is the ISO-4217 currency code (e.g. USD).
-	Currency          *string
+	Currency *string
 	// Attributes contains multi-attribute key-value specifications (e.g. {"color":"black","size":"XL"}).
-	Attributes        map[string]any
+	Attributes map[string]any
 	// IsDefault indicates whether this variant is the initial storefront selection.
-	IsDefault         bool
+	IsDefault bool
 	// ThumbnailObjectID is an optional storage object UUID for the variant's thumbnail image.
 	ThumbnailObjectID *uuid.UUID
 }
@@ -641,13 +641,11 @@ func (vs *VariantService) AttachMedia(
 		in.MediaType = "image"
 	}
 
-	mediaID := uuid.New()
 	var createdMedia *model.VariantMedia
 
 	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		var repoErr error
 		createdMedia, repoErr = vs.vr.AddMedia(ctx, tx, CreateVariantMediaInput{
-			ID:        mediaID,
 			VariantID: in.VariantID,
 			ObjectID:  in.StorageObjectID,
 			MediaType: in.MediaType,
@@ -679,9 +677,9 @@ func (vs *VariantService) AttachMedia(
 func (vs *VariantService) RemoveMedia(
 	ctx context.Context,
 	variantID uuid.UUID,
-	mediaID uuid.UUID,
+	mediaID int64,
 ) error {
-	if variantID == uuid.Nil || mediaID == uuid.Nil {
+	if variantID == uuid.Nil || mediaID == 0 {
 		return apierr.BadRequestError("Variant ID and Media ID are required").
 			WithCode(apierr.CodeInvalidInput)
 	}
@@ -713,7 +711,7 @@ func (vs *VariantService) RemoveMedia(
 func (vs *VariantService) DetachMedia(
 	ctx context.Context,
 	variantID uuid.UUID,
-	mediaID uuid.UUID,
+	mediaID int64,
 ) error {
 	return vs.RemoveMedia(ctx, variantID, mediaID)
 }
@@ -722,7 +720,7 @@ func (vs *VariantService) DetachMedia(
 func (vs *VariantService) ReorderMedia(
 	ctx context.Context,
 	variantID uuid.UUID,
-	orderedMediaIDs []uuid.UUID,
+	orderedMediaIDs []int64,
 ) error {
 	if variantID == uuid.Nil {
 		return apierr.BadRequestError("Variant ID is required").
@@ -745,7 +743,7 @@ func (vs *VariantService) ReorderMedia(
 				WithCode(apierr.CodeInvalidInput)
 		}
 
-		existingMap := make(map[uuid.UUID]bool, len(existingMedia))
+		existingMap := make(map[int64]bool, len(existingMedia))
 		for _, m := range existingMedia {
 			existingMap[m.ID] = true
 		}
@@ -910,4 +908,3 @@ func (vs *VariantService) ListLedgers(
 	}
 	return vs.inventoryService.ListLedgers(ctx, variantID, q)
 }
-

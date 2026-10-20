@@ -51,8 +51,8 @@ func (r InventoryReason) String() string {
 
 // InventoryLedger represents an immutable append-only transaction event for stock changes.
 type InventoryLedger struct {
-	// ID is the unique UUID for the ledger transaction entry.
-	ID uuid.UUID
+	// ID is the database-owned identity for the ledger transaction entry.
+	ID int64
 	// VariantID is the specific ProductVariant UUID adjusted.
 	VariantID uuid.UUID
 	// Quantity is the signed unit delta (positive for additions, negative for deductions).

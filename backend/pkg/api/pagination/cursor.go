@@ -21,8 +21,19 @@ type Keyset struct {
 	// CreatedAt is the created_at timestamp of the boundary row.
 	CreatedAt time.Time `json:"t"`
 
-	// ID is the primary key of the boundary row, used as a stable tiebreaker.
+	// ID is the UUID primary key of the boundary row, used as a stable
+	// tiebreaker for tables keyed by UUID.
 	ID uuid.UUID `json:"i"`
+
+	// IDInt is the bigint primary key of the boundary row for tables whose
+	// primary key is a database-owned identity. Exactly one of ID and IDInt is
+	// set, depending on the table's key type.
+	IDInt int64 `json:"n,omitempty"`
+}
+
+// valid reports whether the keyset identifies a complete boundary row.
+func (k Keyset) valid() bool {
+	return !k.CreatedAt.IsZero() && (k.ID != uuid.Nil || k.IDInt != 0)
 }
 
 // EncodeCursor serializes a Keyset into an opaque, URL-safe cursor token.
@@ -48,7 +59,7 @@ func DecodeCursor(token string) (*Keyset, error) {
 	if err := json.Unmarshal(raw, &k); err != nil {
 		return nil, ErrInvalidCursor
 	}
-	if k.ID == uuid.Nil || k.CreatedAt.IsZero() {
+	if !k.valid() {
 		return nil, ErrInvalidCursor
 	}
 	return &k, nil
@@ -111,6 +122,9 @@ func KeysetClause(alias string, cursor *Keyset, nextArg int) (string, []any) {
 		prefix = alias + "."
 	}
 	sql := fmt.Sprintf(" AND (%screated_at, %sid) < ($%d, $%d)", prefix, prefix, nextArg, nextArg+1)
+	if cursor.IDInt != 0 {
+		return sql, []any{cursor.CreatedAt, cursor.IDInt}
+	}
 	return sql, []any{cursor.CreatedAt, cursor.ID}
 }
 

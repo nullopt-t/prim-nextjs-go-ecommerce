@@ -50,22 +50,22 @@ func (m *mockObjectService) GetObjectURL(ctx context.Context, bucket, key string
 
 type WishlistHTTPTestSuite struct {
 	suite.Suite
-	pgContainer *postgres.PostgresContainer
-	db          *database.DB
-	txRunner    database.Runner
-	repo        *wishlist.WishlistRepository
-	service     *wishlist.WishlistService
-	handler     *wishlist.WishlistHandler
+	pgContainer    *postgres.PostgresContainer
+	db             *database.DB
+	txRunner       database.Runner
+	repo           *wishlist.WishlistRepository
+	service        *wishlist.WishlistService
+	handler        *wishlist.WishlistHandler
 	router         *gin.Engine
 	redisContainer *redisContainer.RedisContainer
 	redisClient    *redis.Client
 
-	categoryID uuid.UUID
-	product1ID uuid.UUID
+	categoryID         uuid.UUID
+	product1ID         uuid.UUID
 	product1Variant2ID uuid.UUID
-	product2ID uuid.UUID
-	product3ID uuid.UUID
-	prodMock   *mockProductService
+	product2ID         uuid.UUID
+	product3ID         uuid.UUID
+	prodMock           *mockProductService
 }
 
 func (s *WishlistHTTPTestSuite) SetupSuite() {
@@ -101,6 +101,11 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 	schemaBytes, err := os.ReadFile("../../migrations/000001_init_sechema.up.sql")
 	require.NoError(s.T(), err)
 	_, err = db.Exec(ctx, string(schemaBytes))
+	require.NoError(s.T(), err)
+
+	keysBytes, err := os.ReadFile("../../migrations/000003_bigint_identity_keys.up.sql")
+	require.NoError(s.T(), err)
+	_, err = db.Exec(ctx, string(keysBytes))
 	require.NoError(s.T(), err)
 
 	s.txRunner = database.NewTxRunner(s.db)
@@ -170,9 +175,9 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 
 	// Add inventory ledger for product 1 variant 1
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO inventory_ledgers (id, variant_id, quantity, reason)
-		VALUES ($1, $2, 10, 'restock')
-	`, uuid.New(), v1ID)
+		INSERT INTO inventory_ledgers (variant_id, quantity, reason)
+		VALUES ($1, 10, 'restock')
+	`, v1ID)
 	require.NoError(s.T(), err)
 
 	// Product 1 Variant 2 (Silver)
@@ -185,9 +190,9 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 
 	// Add inventory ledger for product 1 variant 2
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO inventory_ledgers (id, variant_id, quantity, reason)
-		VALUES ($1, $2, 5, 'restock')
-	`, uuid.New(), s.product1Variant2ID)
+		INSERT INTO inventory_ledgers (variant_id, quantity, reason)
+		VALUES ($1, 5, 'restock')
+	`, s.product1Variant2ID)
 	require.NoError(s.T(), err)
 
 	s.prodMock.products[s.product1ID] = &model.Product{
@@ -663,4 +668,3 @@ func (s *WishlistHTTPTestSuite) TestAddToWishlist_WithSpecificVariant() {
 func TestWishlistHTTPTestSuite(t *testing.T) {
 	suite.Run(t, new(WishlistHTTPTestSuite))
 }
-

@@ -4,6 +4,7 @@ package variant
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -68,8 +69,8 @@ type UpdateVariantRequest struct {
 }
 
 type VariantMediaSummary struct {
-	// Media record UUID
-	ID string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
+	// Media record id
+	ID string `json:"id" example:"1"`
 	// Media MIME type or format (e.g. image/jpeg, video/mp4)
 	MediaType string `json:"mediaType" example:"image/jpeg"`
 	// Display sequence sort order
@@ -152,8 +153,8 @@ type AttachMediaRequest struct {
 }
 
 type ReorderMediaRequest struct {
-	// Array of media UUIDs in desired presentation sequence
-	OrderedMediaIDs []string `json:"orderedMediaIds" binding:"required,gt=0,dive,uuid" example:"['80000000-0000-0000-0000-000000000001']"`
+	// Array of media ids in desired presentation sequence
+	OrderedMediaIDs []string `json:"orderedMediaIds" binding:"required,gt=0" example:"['1']"`
 }
 
 type StorageObjectResponse struct {
@@ -172,8 +173,8 @@ type StorageObjectResponse struct {
 }
 
 type VariantMediaResponse struct {
-	// Media record UUID
-	ID string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
+	// Media record id
+	ID string `json:"id" example:"1"`
 	// Associated variant UUID
 	VariantID string `json:"variantId" example:"70000000-0000-0000-0000-000000000001"`
 	// Underlying storage object UUID
@@ -199,7 +200,7 @@ func mapVariantResponse(v *model.ProductVariant) VariantResponse {
 	for _, m := range v.Media {
 		if m != nil && m.Object != nil {
 			mediaSummaries = append(mediaSummaries, VariantMediaSummary{
-				ID:        m.ID.String(),
+				ID:        strconv.FormatInt(m.ID, 10),
 				MediaType: m.MediaType,
 				SortOrder: m.SortOrder,
 				URL:       m.Object.PublicURL,
@@ -264,7 +265,7 @@ func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
 	for _, m := range v.Media {
 		if m != nil && m.Object != nil {
 			mediaSummaries = append(mediaSummaries, VariantMediaSummary{
-				ID:        m.ID.String(),
+				ID:        strconv.FormatInt(m.ID, 10),
 				MediaType: m.MediaType,
 				SortOrder: m.SortOrder,
 				URL:       m.Object.PublicURL,
@@ -332,7 +333,7 @@ func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
 
 func mapVariantMediaResponse(m *model.VariantMedia) VariantMediaResponse {
 	res := VariantMediaResponse{
-		ID:        m.ID.String(),
+		ID:        strconv.FormatInt(m.ID, 10),
 		VariantID: m.VariantID.String(),
 		ObjectID:  m.ObjectID.String(),
 		MediaType: m.MediaType,
@@ -794,7 +795,7 @@ func (vh *VariantHandler) ListVariantMedia(c *gin.Context) {
 //	@Tags			Admin Variant Media
 //	@Produce		json
 //	@Param			id			path		string							true	"Variant UUID"			format(uuid)
-//	@Param			media_id	path		string							true	"Media Attachment UUID"	format(uuid)
+//	@Param			media_id	path		string							true	"Media Attachment id"
 //	@Failure		400			{object}	api.BadRequestErrorResponse		"Invalid UUID format"
 //	@Failure		404			{object}	api.NotFoundErrorResponse		"Media relationship not found"
 //	@Failure		500			{object}	api.InternalServerErrorResponse	"Internal server error"
@@ -810,12 +811,10 @@ func (vh *VariantHandler) DetachMedia(c *gin.Context) {
 		return
 	}
 
-	mediaID, err := uuid.Parse(c.Param("media_id"))
+	mediaID, err := strconv.ParseInt(c.Param("media_id"), 10, 64)
 	if err != nil {
-		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
-			Field:   "media_id",
-			Message: "invalid media UUID format",
-		}))
+		_ = c.Error(apierr.BadRequestError("invalid media id format").
+			WithCode(apierr.CodeInvalidInput))
 		return
 	}
 
@@ -835,7 +834,7 @@ func (vh *VariantHandler) DetachMedia(c *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string							true	"Variant UUID"	format(uuid)
-//	@Param			body	body		ReorderMediaRequest				true	"Ordered list of media UUIDs"
+//	@Param			body	body		ReorderMediaRequest				true	"Ordered list of media ids"
 //	@Failure		400		{object}	api.BadRequestErrorResponse		"Invalid UUID format or empty list"
 //	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
 //	@Success		200		{object}	api.MessageResponse				"Reorder confirmation message"
@@ -856,14 +855,12 @@ func (vh *VariantHandler) ReorderMedia(c *gin.Context) {
 		return
 	}
 
-	orderedIDs := make([]uuid.UUID, 0, len(body.OrderedMediaIDs))
+	orderedIDs := make([]int64, 0, len(body.OrderedMediaIDs))
 	for _, idStr := range body.OrderedMediaIDs {
-		parsed, err := uuid.Parse(idStr)
+		parsed, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
-			_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
-				Field:   "ordered_media_ids",
-				Message: "invalid UUID in ordered list",
-			}))
+			_ = c.Error(apierr.BadRequestError("invalid media id in ordered list").
+				WithCode(apierr.CodeInvalidInput))
 			return
 		}
 		orderedIDs = append(orderedIDs, parsed)
@@ -909,7 +906,7 @@ type InventoryStockResponse struct {
 }
 
 type InventoryLedgerResponse struct {
-	// Ledger entry record UUID
+	// Ledger entry record id
 	ID string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
 	// Associated variant UUID
 	VariantID string `json:"variantId" example:"70000000-0000-0000-0000-000000000001"`
@@ -933,7 +930,7 @@ func mapStockResponse(stock *model.InventoryStock) InventoryStockResponse {
 
 func mapLedgerResponse(l *model.InventoryLedger) InventoryLedgerResponse {
 	return InventoryLedgerResponse{
-		ID:        l.ID.String(),
+		ID:        strconv.FormatInt(l.ID, 10),
 		VariantID: l.VariantID.String(),
 		Quantity:  l.Quantity,
 		Reason:    l.Reason.String(),

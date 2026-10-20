@@ -49,27 +49,25 @@ func (r *InventoryRepository) CreateLedger(
 	qe database.QueryExecutor,
 	ledger *model.InventoryLedger,
 ) error {
-	// Insert ledger entry with server-generated created_at timestamp.
+	// Insert ledger entry with server-owned id and created_at timestamp.
 	query := `
 		INSERT INTO inventory_ledgers (
-			id,
 			variant_id,
 			quantity,
 			reason,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, now())
-		RETURNING created_at
+		VALUES ($1, $2, $3, now())
+		RETURNING id, created_at
 	`
 
 	err := qe.QueryRow(
 		ctx,
 		query,
-		ledger.ID,
 		ledger.VariantID,
 		ledger.Quantity,
 		ledger.Reason,
-	).Scan(&ledger.CreatedAt)
+	).Scan(&ledger.ID, &ledger.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("create inventory ledger: %w", err)
 	}
@@ -547,7 +545,7 @@ type InventoryStockItem struct {
 }
 
 type InventoryLedgerItem struct {
-	ID           uuid.UUID `json:"id"`
+	ID           int64     `json:"id"`
 	VariantID    uuid.UUID `json:"variantId"`
 	ProductName  string    `json:"productName"`
 	VariantTitle string    `json:"variantTitle"`
@@ -692,8 +690,7 @@ func (r *InventoryRepository) ListRecentLedgers(ctx context.Context, qe database
 	}
 
 	list, page := pagination.NewCursorPageFrom(list, limit, func(it InventoryLedgerItem) pagination.Keyset {
-		return pagination.Keyset{CreatedAt: it.CreatedAt, ID: it.ID}
+		return pagination.Keyset{CreatedAt: it.CreatedAt, IDInt: it.ID}
 	})
 	return list, page, nil
 }
-

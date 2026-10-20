@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/html"
 	"github.com/nullopt-t/prim-backend/internal/shared/job"
@@ -164,7 +163,6 @@ func (h *EventHandler) HandleInAppEvent(ctx context.Context, event *job.Notifica
 	}
 
 	notification := &model.UserNotification{
-		ID:        uuid.New(),
 		UserID:    in.UserID,
 		Title:     titleBytes,
 		Message:   messageBytes,

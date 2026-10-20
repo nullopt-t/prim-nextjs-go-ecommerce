@@ -10,8 +10,8 @@ import (
 // through the back-office API. It forms the accountability trail that a
 // superadmin reviews: who did what, to which entity, and when.
 type AuditLog struct {
-	// ID is the unique database UUID for the entry.
-	ID uuid.UUID
+	// ID is the database-owned identity for the entry.
+	ID int64
 
 	// ActorID is the staff account that performed the action (nil for system actions).
 	ActorID *uuid.UUID

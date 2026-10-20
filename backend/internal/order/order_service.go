@@ -263,10 +263,10 @@ func (s *OrderService) restockItems(
 		} else {
 			// Directly record inventory restoration ledger within the transaction
 			ledgerQuery := `
-				INSERT INTO inventory_ledgers (id, variant_id, quantity, reason, created_at)
-				VALUES ($1, $2, $3, 'return'::inventory_reason, now())
+				INSERT INTO inventory_ledgers (variant_id, quantity, reason, created_at)
+				VALUES ($1, $2, 'return'::inventory_reason, now())
 			`
-			if _, err := tx.Exec(ctx, ledgerQuery, uuid.New(), item.VariantID, item.Quantity); err != nil {
+			if _, err := tx.Exec(ctx, ledgerQuery, item.VariantID, item.Quantity); err != nil {
 				return fmt.Errorf("restore inventory ledger for order item %s: %w", item.ID, err)
 			}
 		}

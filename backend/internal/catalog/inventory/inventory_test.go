@@ -75,6 +75,11 @@ func (s *InventoryTestSuite) SetupSuite() {
 	_, err = db.Exec(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
+	keysBytes, err := os.ReadFile("../../../migrations/000003_bigint_identity_keys.up.sql")
+	require.NoError(s.T(), err)
+	_, err = db.Exec(ctx, string(keysBytes))
+	require.NoError(s.T(), err)
+
 	txRunner := database.NewTxRunner(s.db)
 	logger := log.NewConsoleLogger()
 	s.repo = inventory.NewRepository()
@@ -606,9 +611,9 @@ func (s *InventoryTestSuite) Test05_DatabaseConstraintViolations() {
 
 	// 1. quantity = 0 into inventory_ledgers -> CHECK (quantity <> 0) fails
 	_, err := s.db.Exec(ctx, `
-		INSERT INTO inventory_ledgers (id, variant_id, quantity, reason)
-		VALUES ($1, $2, 0, 'restock')
-	`, uuid.New(), variantID)
+		INSERT INTO inventory_ledgers (variant_id, quantity, reason)
+		VALUES ($1, 0, 'restock')
+	`, variantID)
 	s.Require().Error(err)
 	var pgErr *pgconn.PgError
 	s.True(s.ErrorAs(err, &pgErr))
@@ -626,9 +631,9 @@ func (s *InventoryTestSuite) Test05_DatabaseConstraintViolations() {
 	// 3. Invalid variant_id -> Foreign Key constraint failure
 	nonExistentVariantID := uuid.New()
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO inventory_ledgers (id, variant_id, quantity, reason)
-		VALUES ($1, $2, 10, 'restock')
-	`, uuid.New(), nonExistentVariantID)
+		INSERT INTO inventory_ledgers (variant_id, quantity, reason)
+		VALUES ($1, 10, 'restock')
+	`, nonExistentVariantID)
 	s.Require().Error(err)
 	s.True(s.ErrorAs(err, &pgErr))
 	s.Equal("23503", pgErr.Code) // foreign_key_violation

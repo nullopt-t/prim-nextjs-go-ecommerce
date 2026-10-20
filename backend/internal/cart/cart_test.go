@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -64,11 +65,11 @@ type CartHTTPTestSuite struct {
 	productService   *dummyProductService
 	cartService      *cart.CartService
 	handler          *cart.CartHandler
-	router         *gin.Engine
-	categoryID     uuid.UUID
-	productID      uuid.UUID
-	redisContainer *redisContainer.RedisContainer
-	redisClient    *redis.Client
+	router           *gin.Engine
+	categoryID       uuid.UUID
+	productID        uuid.UUID
+	redisContainer   *redisContainer.RedisContainer
+	redisClient      *redis.Client
 }
 
 func (s *CartHTTPTestSuite) SetupSuite() {
@@ -106,11 +107,16 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	_, err = db.Exec(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
+	keysBytes, err := os.ReadFile("../../migrations/000003_bigint_identity_keys.up.sql")
+	require.NoError(s.T(), err)
+	_, err = db.Exec(ctx, string(keysBytes))
+	require.NoError(s.T(), err)
+
 	s.txRunner = database.NewTxRunner(s.db)
 	logger := log.NewConsoleLogger()
 
 	s.inventoryRepo = inventory.NewRepository()
-	s.inventoryService = inventory.NewService(logger, s.txRunner, s.inventoryRepo)
+	s.inventoryService = inventory.NewService(logger, s.txRunner, s.inventoryRepo, nil)
 
 	s.variantRepo = variant.NewRepository()
 	s.variantService = variant.NewService(logger, s.txRunner, nil, s.variantRepo, s.inventoryService)
@@ -279,8 +285,9 @@ func (s *CartHTTPTestSuite) TestHTTP_AddItem_SuccessAndStrictItemSchema() {
 
 	// Strict CartItemResponse Validation
 	item := resp.Data.Items[0]
-	_, itemUUIDErr := uuid.Parse(item.ID)
-	s.Require().NoError(itemUUIDErr, "CartItem ID must be valid UUID")
+	itemID, itemIDErr := strconv.ParseInt(item.ID, 10, 64)
+	s.Require().NoError(itemIDErr, "CartItem ID must be a numeric database identity")
+	s.Greater(itemID, int64(0))
 	s.Equal(s.productID.String(), item.ProductID)
 	s.Equal(variantID.String(), item.VariantID)
 	s.Equal("ANC Headphones - Black / Matte", item.Title)
@@ -713,4 +720,3 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MergeEmptyGuestCartDoesNotError()
 func TestCartHTTPTestSuite(t *testing.T) {
 	suite.Run(t, new(CartHTTPTestSuite))
 }
-

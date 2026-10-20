@@ -3,6 +3,7 @@ package audit
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -135,7 +136,7 @@ func toResponses(entries []*model.AuditLog) []auditEntryResponse {
 			actorID = &s
 		}
 		out = append(out, auditEntryResponse{
-			ID:         e.ID.String(),
+			ID:         strconv.FormatInt(e.ID, 10),
 			ActorID:    actorID,
 			ActorRole:  e.ActorRole,
 			Action:     e.Action,

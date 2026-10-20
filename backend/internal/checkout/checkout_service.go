@@ -445,10 +445,10 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		// 8. Record the coupon redemption; surface errors so the transaction rolls back.
 		if in.CouponID != nil && totalDiscount > 0 {
 			redemptionQuery := `
-				INSERT INTO coupon_redemptions (id, coupon_id, user_id, order_id, discount_amount, created_at)
-				VALUES ($1, $2, $3, $4, $5, NOW())
+				INSERT INTO coupon_redemptions (coupon_id, user_id, order_id, discount_amount, created_at)
+				VALUES ($1, $2, $3, $4, NOW())
 			`
-			if _, execErr := tx.Exec(ctx, redemptionQuery, uuid.New(), *in.CouponID, in.CustomerID, createdOrder.ID, totalDiscount); execErr != nil {
+			if _, execErr := tx.Exec(ctx, redemptionQuery, *in.CouponID, in.CustomerID, createdOrder.ID, totalDiscount); execErr != nil {
 				return apierr.InternalServerError("Failed to record coupon redemption").Wrap(execErr)
 			}
 		}

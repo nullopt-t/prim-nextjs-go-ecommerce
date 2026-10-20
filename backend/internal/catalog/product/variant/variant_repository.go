@@ -54,7 +54,6 @@ type ListVariantOptions struct {
 
 // CreateVariantMediaInput defines parameters to insert a new media asset link for a variant.
 type CreateVariantMediaInput struct {
-	ID        uuid.UUID
 	VariantID uuid.UUID
 	ObjectID  uuid.UUID
 	MediaType string
@@ -639,7 +638,10 @@ func (vr *VariantRepository) AddMedia(
 	qe database.QueryExecutor,
 	in CreateVariantMediaInput,
 ) (*model.VariantMedia, error) {
-	var sortOrder int
+	var (
+		mediaID   int64
+		sortOrder int
+	)
 	if in.SortOrder >= 0 {
 		// Shift existing media at or above in.SortOrder to make room
 		shiftQuery := `
@@ -653,31 +655,28 @@ func (vr *VariantRepository) AddMedia(
 
 		insertQuery := `
 			INSERT INTO variant_media (
-				id,
 				variant_id,
 				object_id,
 				media_type,
 				sort_order
 			)
-			VALUES ($1, $2, $3, $4, $5)
-			RETURNING sort_order
+			VALUES ($1, $2, $3, $4)
+			RETURNING id, sort_order
 		`
 		err := qe.QueryRow(
 			ctx,
 			insertQuery,
-			in.ID,
 			in.VariantID,
 			in.ObjectID,
 			in.MediaType,
 			in.SortOrder,
-		).Scan(&sortOrder)
+		).Scan(&mediaID, &sortOrder)
 		if err != nil {
 			return nil, fmt.Errorf("add variant media: %w", err)
 		}
 	} else {
 		insertQuery := `
 			INSERT INTO variant_media (
-				id,
 				variant_id,
 				object_id,
 				media_type,
@@ -687,26 +686,24 @@ func (vr *VariantRepository) AddMedia(
 				$1,
 				$2,
 				$3,
-				$4,
-				COALESCE((SELECT MAX(sort_order) + 1 FROM variant_media WHERE variant_id = $2), 0)
+				COALESCE((SELECT MAX(sort_order) + 1 FROM variant_media WHERE variant_id = $1), 0)
 			)
-			RETURNING sort_order
+			RETURNING id, sort_order
 		`
 		err := qe.QueryRow(
 			ctx,
 			insertQuery,
-			in.ID,
 			in.VariantID,
 			in.ObjectID,
 			in.MediaType,
-		).Scan(&sortOrder)
+		).Scan(&mediaID, &sortOrder)
 		if err != nil {
 			return nil, fmt.Errorf("add variant media: %w", err)
 		}
 	}
 
 	return &model.VariantMedia{
-		ID:        in.ID,
+		ID:        mediaID,
 		VariantID: in.VariantID,
 		ObjectID:  in.ObjectID,
 		MediaType: in.MediaType,
@@ -849,9 +846,9 @@ func (vr *VariantRepository) RemoveMedia(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	variantID uuid.UUID,
-	mediaID uuid.UUID,
+	mediaID int64,
 ) error {
-	if variantID == uuid.Nil || mediaID == uuid.Nil {
+	if variantID == uuid.Nil || mediaID == 0 {
 		return errors.New("remove variant media: variantID and mediaID are required")
 	}
 
@@ -890,7 +887,7 @@ func (vr *VariantRepository) ReorderMedia(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	variantID uuid.UUID,
-	orderedMediaIDs []uuid.UUID,
+	orderedMediaIDs []int64,
 ) error {
 	if variantID == uuid.Nil || len(orderedMediaIDs) == 0 {
 		return nil
@@ -905,7 +902,7 @@ func (vr *VariantRepository) ReorderMedia(
 		UPDATE variant_media AS vm
 		SET sort_order = batch.sort_order
 		FROM (
-			SELECT unnest($1::uuid[]) AS id, unnest($2::int[]) AS sort_order
+			SELECT unnest($1::bigint[]) AS id, unnest($2::int[]) AS sort_order
 		) AS batch
 		WHERE vm.id = batch.id AND vm.variant_id = $3
 	`

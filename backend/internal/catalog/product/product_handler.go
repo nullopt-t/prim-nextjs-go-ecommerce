@@ -5,6 +5,7 @@ package product
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -102,8 +103,8 @@ type AdminStockSummary struct {
 }
 
 type VariantMediaSummary struct {
-	// Media record UUID
-	ID string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
+	// Media record id
+	ID string `json:"id" example:"1"`
 	// Media MIME type or format (e.g. image/jpeg, video/mp4)
 	MediaType string `json:"mediaType" example:"image/jpeg"`
 	// Display sequence sort order
@@ -274,7 +275,6 @@ type ProductReviewResponse struct {
 	UpdatedAt string `json:"updatedAt" example:"2026-08-13T07:56:17Z"`
 }
 
-
 // --- DTOs: Media ---
 
 type StorageObjectResponse struct {
@@ -287,8 +287,8 @@ type StorageObjectResponse struct {
 }
 
 type ReorderMediaRequest struct {
-	// Array of media UUIDs in desired presentation sequence
-	OrderedMediaIDs []string `json:"orderedMediaIds" binding:"required,gt=0,dive,uuid" example:"['80000000-0000-0000-0000-000000000001']"`
+	// Array of media ids in desired presentation sequence
+	OrderedMediaIDs []string `json:"orderedMediaIds" binding:"required,gt=0" example:"['1']"`
 }
 
 // --- DTOs: Variants ---
@@ -341,9 +341,6 @@ func mapProductResponse(p *model.Product) ProductResponse {
 		Highlights:  highlights,
 		ProductType: p.ProductType.String(),
 	}
-
-
-
 
 	return res
 }
@@ -404,7 +401,6 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 		}
 	}
 
-
 	if len(details.Variants) > 0 {
 		variantRes := make([]AdminProductVariantResponse, 0, len(details.Variants))
 		for _, v := range details.Variants {
@@ -416,7 +412,7 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 			for _, m := range v.Media {
 				if m != nil && m.Object != nil {
 					mediaSummaries = append(mediaSummaries, VariantMediaSummary{
-						ID:        m.ID.String(),
+						ID:        strconv.FormatInt(m.ID, 10),
 						MediaType: m.MediaType,
 						SortOrder: m.SortOrder,
 						URL:       m.Object.PublicURL,
@@ -495,7 +491,6 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 	return res
 }
 
-
 // --- Product Handlers ---
 
 // CreateProductAsDraft godoc
@@ -511,7 +506,6 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 //	@Failure		500		{object}	api.InternalServerErrorResponse						"Internal server error"
 //	@Success		201		{object}	api.DataResponse{data=AdminProductDetailsResponse}	"Created draft product details"
 //	@Router			/admin/products [post]
-//
 func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 	var body CreateProductRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -847,7 +841,6 @@ func (h *ProductHandler) ListProductReviews(c *gin.Context) {
 		})
 	}
 
-
 	c.JSON(http.StatusOK, api.PaginatedResponse{
 		Data: responses,
 		Meta: result.Page,
@@ -966,7 +959,6 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 		}
 	}
 
-
 	if len(details.Variants) > 0 {
 		variantRes := make([]ProductVariantResponse, 0, len(details.Variants))
 		var defaultPriceSet bool
@@ -979,7 +971,7 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 			for _, m := range v.Media {
 				if m != nil && m.Object != nil {
 					mediaSummaries = append(mediaSummaries, VariantMediaSummary{
-						ID:        m.ID.String(),
+						ID:        strconv.FormatInt(m.ID, 10),
 						MediaType: m.MediaType,
 						SortOrder: m.SortOrder,
 						URL:       m.Object.PublicURL,
@@ -1269,7 +1261,6 @@ func (h *ProductHandler) SoftDeleteProduct(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-
 // UploadProductThumbnail godoc
 //
 //	@Summary	upload thumbnail image for a product
@@ -1313,7 +1304,6 @@ func (h *ProductHandler) UploadProductThumbnail(c *gin.Context) {
 		},
 	})
 }
-
 
 // --- Cross-Domain Delegate Handlers ---
 

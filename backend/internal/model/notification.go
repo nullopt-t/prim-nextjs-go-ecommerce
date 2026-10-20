@@ -9,8 +9,8 @@ import (
 
 // UserNotification represents an in-app alert displayed in the user notification center.
 type UserNotification struct {
-	// ID is the unique database UUID for the notification.
-	ID uuid.UUID `db:"id" json:"id"`
+	// ID is the database-owned identity for the notification.
+	ID int64 `db:"id" json:"id"`
 	// UserID is the UUID of the user who will receive the notification.
 	UserID uuid.UUID `db:"user_id" json:"userId"`
 	// Title is the localized title of the notification.

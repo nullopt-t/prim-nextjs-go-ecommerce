@@ -31,8 +31,8 @@ type Cart struct {
 
 // CartItem represents a specific product variant line item inside a Cart.
 type CartItem struct {
-	// ID is the unique UUID for this cart line item record.
-	ID uuid.UUID
+	// ID is the database-owned identity for this cart line item record.
+	ID int64
 	// CartID is the parent Cart UUID.
 	CartID uuid.UUID
 	// VariantID is the specific ProductVariant UUID added to the cart.

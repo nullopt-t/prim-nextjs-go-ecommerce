@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -154,7 +155,7 @@ func (h *CartHandler) mapCartResponse(ctx context.Context, cart *model.Cart) Car
 		itemCount += item.Quantity
 
 		itemRes := CartItemResponse{
-			ID:             item.ID.String(),
+			ID:             strconv.FormatInt(item.ID, 10),
 			Quantity:       item.Quantity,
 			UnitPrice:      unitPrice,
 			Subtotal:       itemSubtotal,
@@ -213,6 +214,19 @@ func (h *CartHandler) mapCartResponse(ctx context.Context, cart *model.Cart) Car
 }
 
 const GuestSessionCookieMaxAge = 30 * 24 * 3600 // 30 days
+
+// parseCartItemID resolves a cart line reference. Current clients send the
+// database-owned numeric item id; the legacy variant UUID remains accepted.
+func parseCartItemID(raw string) (int64, *uuid.UUID, error) {
+	if id, err := strconv.ParseInt(raw, 10, 64); err == nil {
+		return id, nil, nil
+	}
+	variantID, err := uuid.Parse(raw)
+	if err != nil {
+		return 0, nil, err
+	}
+	return 0, &variantID, nil
+}
 
 // extractUserAndSession attempts to identify the current cart owner.
 // It checks the gin context for an authenticated user ID.
@@ -335,7 +349,7 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 //	@Tags			Cart
 //	@Accept			json
 //	@Produce		json
-//	@Param			id				path		string								true	"Cart Item UUID"
+//	@Param			id				path		string								true	"Cart item id"
 //	@Param			body			body		UpdateQuantityRequest				true	"New quantity"
 //	@Success		200				{object}	api.DataResponse{data=CartResponse}	"Updated cart"
 //	@Failure		400				{object}	api.BadRequestErrorResponse			"Validation error or invalid UUID"
@@ -343,7 +357,7 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 //	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
 //	@Router			/cart/items/{id} [patch]
 func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
-	itemID, err := uuid.Parse(c.Param("id"))
+	itemID, variantID, err := parseCartItemID(c.Param("id"))
 	if err != nil {
 		_ = c.Error(apierr.BadRequestError("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
 		return
@@ -357,7 +371,7 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 
 	userID, sessionID := h.extractUserAndSession(c)
 
-	cart, err := h.cartService.UpdateCartItemQuantity(c.Request.Context(), userID, sessionID, itemID, req.Quantity)
+	cart, err := h.cartService.UpdateCartItemQuantity(c.Request.Context(), userID, sessionID, itemID, variantID, req.Quantity)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -372,14 +386,14 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 //	@Description	Removes a single item from the cart by item ID.
 //	@Tags			Cart
 //	@Produce		json
-//	@Param			id				path		string								true	"Cart Item UUID"
+//	@Param			id				path		string								true	"Cart item id"
 //	@Success		200				{object}	api.DataResponse{data=CartResponse}	"Updated cart"
 //	@Failure		400				{object}	api.BadRequestErrorResponse			"Invalid item ID"
 //	@Failure		404				{object}	api.NotFoundErrorResponse			"Cart item not found"
 //	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
 //	@Router			/cart/items/{id} [delete]
 func (h *CartHandler) RemoveItem(c *gin.Context) {
-	itemID, err := uuid.Parse(c.Param("id"))
+	itemID, variantID, err := parseCartItemID(c.Param("id"))
 	if err != nil {
 		_ = c.Error(apierr.BadRequestError("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
 		return
@@ -387,7 +401,7 @@ func (h *CartHandler) RemoveItem(c *gin.Context) {
 
 	userID, sessionID := h.extractUserAndSession(c)
 
-	cart, err := h.cartService.RemoveCartItem(c.Request.Context(), userID, sessionID, itemID)
+	cart, err := h.cartService.RemoveCartItem(c.Request.Context(), userID, sessionID, itemID, variantID)
 	if err != nil {
 		_ = c.Error(err)
 		return

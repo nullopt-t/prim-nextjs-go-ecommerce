@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/auth"
@@ -82,6 +81,11 @@ func (s *ReviewHTTPTestSuite) SetupSuite() {
 	schemaBytes, err := os.ReadFile("../../../migrations/000001_init_sechema.up.sql")
 	require.NoError(s.T(), err)
 	_, err = db.Exec(ctx, string(schemaBytes))
+	require.NoError(s.T(), err)
+
+	keysBytes, err := os.ReadFile("../../../migrations/000003_bigint_identity_keys.up.sql")
+	require.NoError(s.T(), err)
+	_, err = db.Exec(ctx, string(keysBytes))
 	require.NoError(s.T(), err)
 
 	s.txRunner = database.NewTxRunner(s.db)
@@ -229,7 +233,6 @@ func (s *ReviewHTTPTestSuite) TestHTTP_01_CreateReview_SuccessAndValidation() {
 		Body:        &body,
 	})
 
-
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: token})
@@ -323,7 +326,6 @@ func (s *ReviewHTTPTestSuite) TestHTTP_01_CreateReview_SuccessAndValidation() {
 	s.Equal("REVIEW_NOT_ELIGIBLE", notEligibleErr.Code)
 }
 
-
 func (s *ReviewHTTPTestSuite) TestHTTP_02_CustomerGetAndUpdateMyReview() {
 	userID, token := s.createTestUser("customer")
 	orderItemID := s.createDeliveredOrder(userID)
@@ -339,7 +341,6 @@ func (s *ReviewHTTPTestSuite) TestHTTP_02_CustomerGetAndUpdateMyReview() {
 		Body:        &body,
 	})
 	s.Require().NoError(err)
-
 
 	// 1. GET /api/v1/reviews/me
 	reqMe := httptest.NewRequest(http.MethodGet, "/api/v1/reviews/me", nil)
@@ -413,7 +414,6 @@ func (s *ReviewHTTPTestSuite) TestHTTP_03_AdminModerationLifecycle() {
 		Title:       &title,
 	})
 	s.Require().NoError(err)
-
 
 	// 1. GET /api/v1/admin/reviews?status=pending
 	reqList := httptest.NewRequest(http.MethodGet, "/api/v1/admin/reviews?status=pending", nil)
@@ -492,5 +492,3 @@ func (s *ReviewHTTPTestSuite) TestHTTP_04_RatingSummaryComputation() {
 func TestReviewHTTPTestSuite(t *testing.T) {
 	suite.Run(t, new(ReviewHTTPTestSuite))
 }
-
-

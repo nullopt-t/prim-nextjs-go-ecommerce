@@ -202,19 +202,18 @@ func (r *CartRepository) GetCartItems(
 	return items, nil
 }
 
-// GetItemByID fetches an active cart item matching either the item record UUID or the variant UUID within the specified cart.
-// Supporting both ID types provides backward compatibility for client operations targeting items by variant SKU.
+// GetItemByID fetches an active cart item by its database identity within the specified cart.
 func (r *CartRepository) GetItemByID(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	cartID uuid.UUID,
-	itemID uuid.UUID,
+	itemID int64,
 ) (*model.CartItem, error) {
-	// Query item by item ID or variant ID within the scoped cart.
+	// Query item by database identity within the scoped cart.
 	query := `
 		SELECT id, cart_id, variant_id, quantity, price_at_purchase, currency, carted_at, deleted_at
 		FROM cart_items
-		WHERE cart_id = $1 AND (id = $2 OR variant_id = $2) AND deleted_at IS NULL
+		WHERE cart_id = $1 AND id = $2 AND deleted_at IS NULL
 		LIMIT 1
 	`
 	row := qe.QueryRow(ctx, query, cartID, itemID)
@@ -275,8 +274,8 @@ func (r *CartRepository) AddItem(
 	item *model.CartItem,
 ) error {
 	query := `
-		INSERT INTO cart_items (id, cart_id, variant_id, quantity, price_at_purchase, currency, carted_at, deleted_at)
-		VALUES ($1, $2, $3, $4, $5, $6, now(), NULL)
+		INSERT INTO cart_items (cart_id, variant_id, quantity, price_at_purchase, currency, carted_at, deleted_at)
+		VALUES ($1, $2, $3, $4, $5, now(), NULL)
 		ON CONFLICT (cart_id, variant_id) DO UPDATE
 		SET quantity = CASE
 				WHEN cart_items.deleted_at IS NOT NULL THEN EXCLUDED.quantity
@@ -290,7 +289,6 @@ func (r *CartRepository) AddItem(
 	err := qe.QueryRow(
 		ctx,
 		query,
-		item.ID,
 		item.CartID,
 		item.VariantID,
 		item.Quantity,
@@ -313,14 +311,14 @@ func (r *CartRepository) UpdateItemQuantity(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	cartID uuid.UUID,
-	itemID uuid.UUID,
+	itemID int64,
 	quantity int,
 ) error {
-	// Execute quantity update matching either item record ID or variant ID within the designated cart.
+	// Execute quantity update by database identity within the designated cart.
 	query := `
 		UPDATE cart_items
 		SET quantity = $1
-		WHERE (id = $2 OR variant_id = $2) AND cart_id = $3 AND deleted_at IS NULL
+		WHERE id = $2 AND cart_id = $3 AND deleted_at IS NULL
 	`
 	tag, err := qe.Exec(ctx, query, quantity, itemID, cartID)
 	if err != nil {
@@ -336,18 +334,18 @@ func (r *CartRepository) UpdateItemQuantity(
 	return nil
 }
 
-// RemoveItem removes a line item from the cart matching item UUID or variant UUID via soft-delete.
+// RemoveItem removes a line item from the cart by database identity via soft-delete.
 // Also updates parent cart's updated_at timestamp.
 func (r *CartRepository) RemoveItem(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	cartID uuid.UUID,
-	itemID uuid.UUID,
+	itemID int64,
 ) error {
 	query := `
 		UPDATE cart_items
 		SET deleted_at = now()
-		WHERE (id = $1 OR variant_id = $1) AND cart_id = $2 AND deleted_at IS NULL
+		WHERE id = $1 AND cart_id = $2 AND deleted_at IS NULL
 	`
 	tag, err := qe.Exec(ctx, query, itemID, cartID)
 	if err != nil {

@@ -29,7 +29,6 @@ func (r *NotificationRepository) Create(
 ) error {
 	query := `
 		INSERT INTO user_notifications (
-			id,
 			user_id,
 			title,
 			message,
@@ -38,13 +37,12 @@ func (r *NotificationRepository) Create(
 			metadata,
 			read_at,
 			created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
-		RETURNING created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+		RETURNING id, created_at
 	`
 	return qe.QueryRow(
 		ctx,
 		query,
-		n.ID,
 		n.UserID,
 		n.Title,
 		n.Message,
@@ -52,7 +50,7 @@ func (r *NotificationRepository) Create(
 		n.ActionURL,
 		n.Metadata,
 		n.ReadAt,
-	).Scan(&n.CreatedAt)
+	).Scan(&n.ID, &n.CreatedAt)
 }
 
 // ListByUser retrieves paginated user notifications, optionally filtered to unread items only.
@@ -147,7 +145,7 @@ func (r *NotificationRepository) CountUnreadByUser(
 func (r *NotificationRepository) MarkAsRead(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	id, userID uuid.UUID,
+	id int64, userID uuid.UUID,
 ) error {
 	query := `
 		UPDATE user_notifications
@@ -186,7 +184,7 @@ func (r *NotificationRepository) MarkAllAsRead(
 func (r *NotificationRepository) Delete(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	id, userID uuid.UUID,
+	id int64, userID uuid.UUID,
 ) error {
 	query := `DELETE FROM user_notifications WHERE id = $1 AND user_id = $2`
 	cmd, err := qe.Exec(ctx, query, id, userID)

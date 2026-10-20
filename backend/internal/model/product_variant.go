@@ -43,8 +43,8 @@ type ProductVariant struct {
 
 // VariantMedia links a stored binary Object to a specific ProductVariant.
 type VariantMedia struct {
-	// ID is the internal database UUID for the association.
-	ID uuid.UUID `db:"id"`
+	// ID is the database-owned identity for the association.
+	ID int64 `db:"id"`
 	// VariantID is the target ProductVariant UUID.
 	VariantID uuid.UUID `db:"variant_id"`
 	// ObjectID is the underlying binary storage Object UUID.

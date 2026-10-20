@@ -89,7 +89,7 @@ func (s *NotificationService) GetUnreadCount(
 // MarkAsRead marks a single notification as read.
 func (s *NotificationService) MarkAsRead(
 	ctx context.Context,
-	id, userID uuid.UUID,
+	id int64, userID uuid.UUID,
 ) error {
 	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		err := s.repo.MarkAsRead(ctx, db, id, userID)
@@ -131,7 +131,7 @@ func (s *NotificationService) MarkAllAsRead(
 // DeleteNotification removes a notification belonging to the specified user.
 func (s *NotificationService) DeleteNotification(
 	ctx context.Context,
-	id, userID uuid.UUID,
+	id int64, userID uuid.UUID,
 ) error {
 	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		err := s.repo.Delete(ctx, db, id, userID)

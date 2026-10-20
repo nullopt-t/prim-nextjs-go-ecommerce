@@ -52,7 +52,7 @@ type Coupon struct {
 
 // CouponRedemption tracks an individual application of a coupon by a user for an order.
 type CouponRedemption struct {
-	ID             uuid.UUID `json:"id"`
+	ID             int64     `json:"id"`
 	CouponID       uuid.UUID `json:"couponId"`
 	UserID         uuid.UUID `json:"userId"`
 	OrderID        uuid.UUID `json:"orderId"`

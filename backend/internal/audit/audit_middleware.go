@@ -71,7 +71,6 @@ func (s *Service) Middleware() gin.HandlerFunc {
 
 		action, entityType, entityID := resolveAction(c)
 		entry := &model.AuditLog{
-			ID:         uuid.New(),
 			ActorID:    actorID,
 			ActorRole:  role,
 			Action:     action,

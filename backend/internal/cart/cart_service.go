@@ -358,7 +358,6 @@ func (s *CartService) AddItem(
 		}
 
 		newItem := &model.CartItem{
-			ID:              uuid.New(),
 			CartID:          cart.ID,
 			VariantID:       v.ID,
 			Quantity:        quantity,
@@ -410,7 +409,8 @@ func (s *CartService) UpdateCartItemQuantity(
 	ctx context.Context,
 	userID *uuid.UUID,
 	sessionID *string,
-	itemID uuid.UUID,
+	itemID int64,
+	variantID *uuid.UUID,
 	quantity int,
 ) (*model.Cart, error) {
 	if quantity <= 0 || quantity > MaxCartItemQuantity {
@@ -424,7 +424,15 @@ func (s *CartService) UpdateCartItemQuantity(
 	}
 
 	err = s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		item, err := s.cartRepo.GetItemByID(ctx, tx, cart.ID, itemID)
+		var (
+			item *model.CartItem
+			err  error
+		)
+		if variantID != nil {
+			item, err = s.cartRepo.GetItemByVariantID(ctx, tx, cart.ID, *variantID)
+		} else {
+			item, err = s.cartRepo.GetItemByID(ctx, tx, cart.ID, itemID)
+		}
 		if err != nil {
 			return err
 		}
@@ -446,7 +454,7 @@ func (s *CartService) UpdateCartItemQuantity(
 			}
 		}
 
-		return s.cartRepo.UpdateItemQuantity(ctx, tx, cart.ID, itemID, quantity)
+		return s.cartRepo.UpdateItemQuantity(ctx, tx, cart.ID, item.ID, quantity)
 	})
 
 	if err != nil {
@@ -472,15 +480,28 @@ func (s *CartService) RemoveCartItem(
 	ctx context.Context,
 	userID *uuid.UUID,
 	sessionID *string,
-	itemID uuid.UUID,
+	itemID int64,
+	variantID *uuid.UUID,
 ) (*model.Cart, error) {
 	cart, err := s.GetOrCreateCart(ctx, userID, sessionID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return s.cartRepo.RemoveItem(ctx, db, cart.ID, itemID)
+	err = s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		var (
+			item *model.CartItem
+			err  error
+		)
+		if variantID != nil {
+			item, err = s.cartRepo.GetItemByVariantID(ctx, tx, cart.ID, *variantID)
+		} else {
+			item, err = s.cartRepo.GetItemByID(ctx, tx, cart.ID, itemID)
+		}
+		if err != nil {
+			return err
+		}
+		return s.cartRepo.RemoveItem(ctx, tx, cart.ID, item.ID)
 	})
 
 	if err != nil {
@@ -583,7 +604,6 @@ func (s *CartService) MergeGuestCart(
 				}
 			} else {
 				newItem := &model.CartItem{
-					ID:              uuid.New(),
 					CartID:          userCart.ID,
 					VariantID:       item.VariantID,
 					Quantity:        item.Quantity,

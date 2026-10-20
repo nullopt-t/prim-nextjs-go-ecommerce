@@ -105,10 +105,10 @@ func (r *Repository) AddStatusHistory(
 	notes *string,
 ) error {
 	query := `
-		INSERT INTO order_status_history (id, order_id, status, notes, created_at)
-		VALUES ($1, $2, $3, $4, now())
+		INSERT INTO order_status_history (order_id, status, notes, created_at)
+		VALUES ($1, $2, $3, now())
 	`
-	_, err := qe.Exec(ctx, query, uuid.New(), orderID, status, notes)
+	_, err := qe.Exec(ctx, query, orderID, status, notes)
 	if err != nil {
 		return fmt.Errorf("add status history: %w", err)
 	}
