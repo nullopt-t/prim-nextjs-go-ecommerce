@@ -21,6 +21,7 @@ import {
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { adminService } from "@/services/admin";
 import { PUBLIC_SETTINGS_UPDATED_EVENT } from "@/lib/settingsEvents";
+import { revalidatePublicSettings } from "@/app/actions/revalidatePublicSettings";
 import { useTranslations } from "next-intl";
 
 type SettingsTab = "general" | "shipping" | "payments" | "notifications" | "security";
@@ -103,6 +104,7 @@ export function AdminSettings() {
     setSaving(true);
     try {
       await adminService.updateSettings(settings);
+      await revalidatePublicSettings().catch(() => false);
       window.dispatchEvent(new Event(PUBLIC_SETTINGS_UPDATED_EVENT));
       notify.success(t("settings.toast.saved"));
     } catch (err: any) {

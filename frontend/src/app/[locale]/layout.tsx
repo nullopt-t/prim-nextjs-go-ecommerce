@@ -46,6 +46,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { PublicSettingsProvider } from "@/context/PublicSettingsContext";
+import { getPublicSettings } from "@/lib/server/publicSettings";
 
 import { CartSidebar } from "@/components/ui/cartSidebar";
 import { ResponsiveToaster } from "@/components/ui/responsiveToaster";
@@ -63,7 +64,10 @@ export default async function RootLayout({
     notFound();
   }
 
-  const messages = await getMessages();
+  const [messages, publicSettings] = await Promise.all([
+    getMessages(),
+    getPublicSettings(),
+  ]);
   const dir = locale === "ar" ? "rtl" : "ltr";
 
   return (
@@ -76,7 +80,7 @@ export default async function RootLayout({
       <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       <body className={`antialiased ${locale === "ar" ? "font-arabic" : "font-sans"}`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <PublicSettingsProvider>
+          <PublicSettingsProvider initialSettings={publicSettings}>
             <ThemeProvider>
               <AuthProvider>
                 <WishlistProvider>

@@ -18,9 +18,15 @@ const PublicSettingsContext = createContext<PublicSettingsContextValue>({
   loading: true,
 });
 
-export function PublicSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<PublicSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+export function PublicSettingsProvider({
+  children,
+  initialSettings = null,
+}: {
+  children: React.ReactNode;
+  initialSettings?: PublicSettings | null;
+}) {
+  const [settings, setSettings] = useState<PublicSettings | null>(initialSettings);
+  const [loading, setLoading] = useState(initialSettings === null);
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
@@ -38,8 +44,8 @@ export function PublicSettingsProvider({ children }: { children: React.ReactNode
   }, []);
 
   useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+    if (initialSettings === null) loadSettings();
+  }, [initialSettings, loadSettings]);
 
   // Keep storefront data fresh after an admin save and when returning to the tab.
   useEffect(() => {
