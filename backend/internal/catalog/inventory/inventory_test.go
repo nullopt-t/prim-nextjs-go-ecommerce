@@ -75,10 +75,6 @@ func (s *InventoryTestSuite) SetupSuite() {
 	_, err = db.Exec(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
-	keysBytes, err := os.ReadFile("../../../migrations/000003_bigint_identity_keys.up.sql")
-	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, string(keysBytes))
-	require.NoError(s.T(), err)
 
 	txRunner := database.NewTxRunner(s.db)
 	logger := log.NewConsoleLogger()

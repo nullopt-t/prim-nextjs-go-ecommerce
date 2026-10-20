@@ -762,8 +762,6 @@ def resolve_variant_gallery(cat, brand, title, slug, var_list, current_v_idx):
     return gallery
 
 var_counter = 1
-vmedia_counter = 1
-inv_counter = 1
 
 for cat_name, brand_name, title, slug, desc, highlights, var_list in catalog_defs:
     p_id = hex_id(0x60000000, prod_counter)
@@ -803,14 +801,10 @@ for cat_name, brand_name, title, slug, desc, highlights, var_list in catalog_def
         arranged_gallery = resolve_variant_gallery(cat_name, brand_name, title, slug, var_list, v_idx)
         for order_idx, g_img in enumerate(arranged_gallery):
             g_obj_id = image_to_obj_id[g_img]
-            vm_id = hex_id(0x71000000, vmedia_counter)
-            variant_media.append((vm_id, v_id, g_obj_id, 'image', order_idx))
-            vmedia_counter += 1
+            variant_media.append((v_id, g_obj_id, 'image', order_idx))
         
-        inv_id = hex_id(0x81000000, inv_counter)
         qty = random.randint(20, 200)
-        inventory_ledgers.append((inv_id, v_id, qty, 'restock'))
-        inv_counter += 1
+        inventory_ledgers.append((v_id, qty, 'restock'))
         
         var_counter += 1
     prod_counter += 1
@@ -907,17 +901,17 @@ lines.append(",\n".join(val_rows) + "\nON CONFLICT (product_id, tag_id) DO NOTHI
 lines.append("-- =====================================================================")
 lines.append("-- 11. VARIANT MEDIA")
 lines.append("-- =====================================================================")
-lines.append("INSERT INTO variant_media (id, variant_id, object_id, media_type, sort_order) VALUES")
-val_rows = [f"({esc(vm[0])}, {esc(vm[1])}, {esc(vm[2])}, {esc(vm[3])}, {vm[4]})" for vm in variant_media]
-lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
+lines.append("INSERT INTO variant_media (variant_id, object_id, media_type, sort_order) VALUES")
+val_rows = [f"({esc(vm[0])}, {esc(vm[1])}, {esc(vm[2])}, {vm[3]})" for vm in variant_media]
+lines.append(",\n".join(val_rows) + ";\n")
 
 # 12. inventory_ledgers
 lines.append("-- =====================================================================")
 lines.append("-- 12. INVENTORY LEDGERS")
 lines.append("-- =====================================================================")
-lines.append("INSERT INTO inventory_ledgers (id, variant_id, quantity, reason, created_at) VALUES")
-val_rows = [f"({esc(inv[0])}, {esc(inv[1])}, {inv[2]}, {esc(inv[3])}, now() - INTERVAL '35 days')" for inv in inventory_ledgers]
-lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
+lines.append("INSERT INTO inventory_ledgers (variant_id, quantity, reason, created_at) VALUES")
+val_rows = [f"({esc(inv[0])}, {inv[1]}, {esc(inv[2])}, now() - INTERVAL '35 days')" for inv in inventory_ledgers]
+lines.append(",\n".join(val_rows) + ";\n")
 
 # 13. coupons
 lines.append("-- =====================================================================")
@@ -951,13 +945,12 @@ ON CONFLICT (id) DO NOTHING;
 lines.append("-- =====================================================================")
 lines.append("-- 15. CART ITEMS")
 lines.append("-- =====================================================================")
-lines.append(f"""INSERT INTO cart_items (id, cart_id, variant_id, quantity, price_at_purchase, currency, carted_at) VALUES
-('a1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', '{variants[0][0]}', 1, {variants[0][5]}, 'EGP', now() - INTERVAL '2 days'),
-('a1000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', '{variants[1][0]}', 1, {variants[1][5]}, 'EGP', now() - INTERVAL '2 days'),
-('a1000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000002', '{variants[2][0]}', 1, {variants[2][5]}, 'EGP', now() - INTERVAL '2 days'),
-('a1000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000003', '{variants[3][0]}', 1, {variants[3][5]}, 'EGP', now() - INTERVAL '2 days'),
-('a1000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000004', '{variants[4][0]}', 2, {variants[4][5]}, 'EGP', now() - INTERVAL '2 days')
-ON CONFLICT (id) DO NOTHING;
+lines.append(f"""INSERT INTO cart_items (cart_id, variant_id, quantity, price_at_purchase, currency, carted_at) VALUES
+('a0000000-0000-0000-0000-000000000001', '{variants[0][0]}', 1, {variants[0][5]}, 'EGP', now() - INTERVAL '2 days'),
+('a0000000-0000-0000-0000-000000000001', '{variants[1][0]}', 1, {variants[1][5]}, 'EGP', now() - INTERVAL '2 days'),
+('a0000000-0000-0000-0000-000000000002', '{variants[2][0]}', 1, {variants[2][5]}, 'EGP', now() - INTERVAL '2 days'),
+('a0000000-0000-0000-0000-000000000003', '{variants[3][0]}', 1, {variants[3][5]}, 'EGP', now() - INTERVAL '2 days'),
+('a0000000-0000-0000-0000-000000000004', '{variants[4][0]}', 2, {variants[4][5]}, 'EGP', now() - INTERVAL '2 days');
 """)
 
 # 16. inventory_reservations
@@ -1086,20 +1079,18 @@ lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 lines.append("-- =====================================================================")
 lines.append("-- 19. ORDER STATUS HISTORY")
 lines.append("-- =====================================================================")
-lines.append("""INSERT INTO order_status_history (id, order_id, status, notes, created_at) VALUES
-('93000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001', 'pending', 'Order placed by customer', now() - INTERVAL '20 days'),
-('93000000-0000-0000-0000-000000000002', '90000000-0000-0000-0000-000000000001', 'paid', 'Payment authorized and captured via Stripe', now() - INTERVAL '20 days' + INTERVAL '5 minutes'),
-('93000000-0000-0000-0000-000000000003', '90000000-0000-0000-0000-000000000001', 'delivered', 'Package delivered to front door', now() - INTERVAL '15 days')
-ON CONFLICT (id) DO NOTHING;
+lines.append("""INSERT INTO order_status_history (order_id, status, notes, created_at) VALUES
+('90000000-0000-0000-0000-000000000001', 'pending', 'Order placed by customer', now() - INTERVAL '20 days'),
+('90000000-0000-0000-0000-000000000001', 'paid', 'Payment authorized and captured via Stripe', now() - INTERVAL '20 days' + INTERVAL '5 minutes'),
+('90000000-0000-0000-0000-000000000001', 'delivered', 'Package delivered to front door', now() - INTERVAL '15 days');
 """)
 
 # 20. coupon_redemptions
 lines.append("-- =====================================================================")
 lines.append("-- 20. COUPON REDEMPTIONS")
 lines.append("-- =====================================================================")
-lines.append("""INSERT INTO coupon_redemptions (id, coupon_id, user_id, order_id, discount_amount, created_at) VALUES
-('c1000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', '90000000-0000-0000-0000-000000000002', 13000, now() - INTERVAL '18 days')
-ON CONFLICT (id) DO NOTHING;
+lines.append("""INSERT INTO coupon_redemptions (coupon_id, user_id, order_id, discount_amount, created_at) VALUES
+('c0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', '90000000-0000-0000-0000-000000000002', 13000, now() - INTERVAL '18 days');
 """)
 
 # 21. payments

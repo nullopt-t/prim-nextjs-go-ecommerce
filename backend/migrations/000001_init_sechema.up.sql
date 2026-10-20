@@ -261,7 +261,7 @@ CREATE TABLE IF NOT EXISTS product_tag_assignments (
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS variant_media (
-    id                   uuid NOT NULL,
+    id                   bigint GENERATED ALWAYS AS IDENTITY,
     variant_id           uuid NOT NULL,
     object_id            uuid NOT NULL,
     media_type           text NOT NULL,
@@ -291,7 +291,7 @@ CREATE TABLE IF NOT EXISTS carts (
 );
 
 CREATE TABLE IF NOT EXISTS cart_items (
-    id                   uuid NOT NULL,
+    id                   bigint GENERATED ALWAYS AS IDENTITY,
     cart_id              uuid NOT NULL,
     variant_id           uuid NOT NULL,
     quantity             int NOT NULL,
@@ -319,7 +319,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_carts_active_user
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS inventory_ledgers (
-    id              uuid NOT NULL,
+    id              bigint GENERATED ALWAYS AS IDENTITY,
     variant_id      uuid NOT NULL,
     quantity        int NOT NULL,
     reason          inventory_reason NOT NULL,
@@ -448,7 +448,7 @@ CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items (order_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_variant_id ON order_items (variant_id);
 
 CREATE TABLE IF NOT EXISTS order_status_history (
-    id            uuid NOT NULL,
+    id            bigint GENERATED ALWAYS AS IDENTITY,
     order_id      uuid NOT NULL,
     status        order_status NOT NULL,
     notes         text NULL,
@@ -460,7 +460,7 @@ CREATE TABLE IF NOT EXISTS order_status_history (
 CREATE INDEX IF NOT EXISTS idx_order_status_history_order_id ON order_status_history (order_id);
 
 CREATE TABLE IF NOT EXISTS coupon_redemptions (
-    id                 uuid NOT NULL,
+    id                 bigint GENERATED ALWAYS AS IDENTITY,
     coupon_id          uuid NOT NULL,
     user_id            uuid NULL,
     order_id           uuid NOT NULL,
@@ -556,7 +556,7 @@ CREATE INDEX IF NOT EXISTS idx_wishlist_items_variant_id ON wishlist_items (vari
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS user_notifications (
-    id          uuid NOT NULL,
+    id          bigint GENERATED ALWAYS AS IDENTITY,
     user_id     uuid NOT NULL,
     title       jsonb NOT NULL,
     message     jsonb NOT NULL,
@@ -595,7 +595,7 @@ CREATE TABLE IF NOT EXISTS admin_settings (
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS audit_log (
-    id           uuid        NOT NULL DEFAULT gen_random_uuid(),
+    id           bigint GENERATED ALWAYS AS IDENTITY,
     actor_id     uuid        NULL,
     actor_role   text        NOT NULL DEFAULT '',
     action       text        NOT NULL,
