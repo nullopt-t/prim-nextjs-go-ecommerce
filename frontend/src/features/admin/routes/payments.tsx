@@ -1,6 +1,7 @@
 import { ResponsiveTable } from "@/components/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
-import { CheckCircle2, RefreshCcw, Search, Download } from "lucide-react";
+import { useRouter } from "@/i18n/navigation";
+import { CheckCircle2, Eye, RefreshCcw, Search, Download } from "lucide-react";
 import { adminService } from "@/services/admin";
 import { useTranslations } from "next-intl";
 import { useAuthContext } from "@/context/AuthContext";
@@ -10,6 +11,7 @@ import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
 
 export function AdminPayments() {
+  const navigate = useRouter();
   const t = useTranslations("admin");
   const { user } = useAuthContext();
   const isSuperadmin = user?.role === "superadmin";
@@ -170,7 +172,6 @@ export function AdminPayments() {
             <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
               <tr>
                 <th className="py-3.5 ps-4">{t("payments.colTxn")}</th>
-                <th className="py-3.5">{t("payments.colOrder")}</th>
                 <th className="py-3.5">{t("payments.colCustomer")}</th>
                 <th className="py-3.5">{t("payments.colMethod")}</th>
                 <th className="py-3.5">{t("payments.colGross")}</th>
@@ -183,7 +184,6 @@ export function AdminPayments() {
               {filtered.map((pay) => (
                 <tr key={pay.id} className="hover:bg-secondary/20 transition-colors">
                   <td className="py-3.5 ps-4 font-mono font-bold text-foreground">{pay.id}</td>
-                  <td className="py-3.5 font-mono text-muted-foreground">{pay.orderId}</td>
                   <td className="py-3.5 font-semibold text-foreground">{pay.customer}</td>
                   <td className="py-3.5 text-muted-foreground">{pay.gateway}</td>
                   <td className="py-3.5 font-bold text-foreground">{pay.amount}</td>
@@ -192,6 +192,16 @@ export function AdminPayments() {
                     {t(`status.${String(pay.status).toLowerCase()}`) || pay.status}
                   </td>
                   <td className="py-3.5 pe-4 text-end space-x-2">
+                    {pay.orderId && (
+                      <button
+                        onClick={() => navigate.push(`/admin/orders/${pay.orderId}`)}
+                        className="px-2.5 py-1 text-[11px] font-semibold text-foreground bg-secondary/60 hover:bg-secondary rounded-lg transition-colors inline-flex items-center gap-1"
+                        title={t("payments.viewOrder")}
+                      >
+                        <Eye className="size-3" />
+                        <span>{t("payments.viewOrder")}</span>
+                      </button>
+                    )}
                     {isSuperadmin && pay.status === "Pending" && (
                       <button
                         onClick={() => handleMarkPaid(pay)}

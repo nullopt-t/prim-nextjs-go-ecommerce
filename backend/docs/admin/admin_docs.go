@@ -3000,7 +3000,7 @@ const docTemplateadmin = `{
                 }
             },
             "put": {
-                "description": "Upserts the provided key/value settings within a single transaction. Superadmin only.",
+                "description": "Upserts the provided key/value settings within a single transaction. Admin only.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3010,7 +3010,7 @@ const docTemplateadmin = `{
                 "tags": [
                     "Admin Settings"
                 ],
-                "summary": "Update administrative settings (Superadmin)",
+                "summary": "Update administrative settings (Admin)",
                 "parameters": [
                     {
                         "description": "Settings key/value payload",
@@ -3042,7 +3042,7 @@ const docTemplateadmin = `{
                         }
                     },
                     "403": {
-                        "description": "Superadmin privileges required",
+                        "description": "Admin privileges required",
                         "schema": {
                             "$ref": "#/definitions/ForbiddenErrorResponse"
                         }
@@ -3887,7 +3887,7 @@ const docTemplateadmin = `{
                         "required": true
                     },
                     {
-                        "description": "Ordered list of media UUIDs",
+                        "description": "Ordered list of media ids",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -3939,8 +3939,7 @@ const docTemplateadmin = `{
                     },
                     {
                         "type": "string",
-                        "format": "uuid",
-                        "description": "Media Attachment UUID",
+                        "description": "Media Attachment id",
                         "name": "media_id",
                         "in": "path",
                         "required": true
@@ -4631,9 +4630,6 @@ const docTemplateadmin = `{
                 },
                 "taxRatePercent": {
                     "type": "number"
-                },
-                "timezone": {
-                    "type": "string"
                 }
             }
         },
@@ -4983,7 +4979,7 @@ const docTemplateadmin = `{
                     "example": "2026-08-15T12:00:00Z"
                 },
                 "id": {
-                    "description": "Ledger entry record UUID",
+                    "description": "Ledger entry record id",
                     "type": "string",
                     "example": "80000000-0000-0000-0000-000000000001"
                 },
@@ -5621,13 +5617,13 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "orderedMediaIds": {
-                    "description": "Array of media UUIDs in desired presentation sequence",
+                    "description": "Array of media ids in desired presentation sequence",
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
                     "example": [
-                        "['80000000-0000-0000-0000-000000000001']"
+                        "['1']"
                     ]
                 }
             }
@@ -6099,9 +6095,9 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "description": "Media record UUID",
+                    "description": "Media record id",
                     "type": "string",
-                    "example": "80000000-0000-0000-0000-000000000001"
+                    "example": "1"
                 },
                 "mediaType": {
                     "description": "Media classification (image or video)",
@@ -6137,9 +6133,9 @@ const docTemplateadmin = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "description": "Media record UUID",
+                    "description": "Media record id",
                     "type": "string",
-                    "example": "80000000-0000-0000-0000-000000000001"
+                    "example": "1"
                 },
                 "mediaType": {
                     "description": "Media MIME type or format (e.g. image/jpeg, video/mp4)",

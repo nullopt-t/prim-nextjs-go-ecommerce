@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/context/theme";
 import { useLocale, useTranslations } from "next-intl";
+import { rememberLocaleChoice } from "@/lib/localePreference";
 
 export function AdminLayout({ children }: { children?: React.ReactNode }) {
   const { user, logout } = useAuthContext();
@@ -44,6 +45,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
 
   const toggleLanguage = () => {
     const nextLocale = locale === "en" ? "ar" : "en";
+    rememberLocaleChoice(nextLocale);
     navigate.replace(pathname, { locale: nextLocale });
   };
 
@@ -77,16 +79,16 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
     superadminOnly?: boolean;
   }[] = [
     { nameKey: "layout.nav.dashboard", path: "/admin", icon: LayoutDashboard, exact: true },
+    { nameKey: "layout.nav.orders", path: "/admin/orders", icon: ShoppingBag, badge: "4 New", badgeKey: "layout.badges.newOrders" },
     { nameKey: "layout.nav.products", path: "/admin/products", icon: Package },
     { nameKey: "layout.nav.categories", path: "/admin/categories", icon: FolderTree },
     { nameKey: "layout.nav.brands", path: "/admin/brands", icon: Tag },
-    { nameKey: "layout.nav.mediaLibrary", path: "/admin/media", icon: Image },
     { nameKey: "layout.nav.inventory", path: "/admin/inventory", icon: Boxes, badge: "Low Stock", badgeKey: "layout.badges.lowStock" },
-    { nameKey: "layout.nav.orders", path: "/admin/orders", icon: ShoppingBag, badge: "4 New", badgeKey: "layout.badges.newOrders" },
+    { nameKey: "layout.nav.mediaLibrary", path: "/admin/media", icon: Image },
     { nameKey: "layout.nav.usersStaff", path: "/admin/customers", icon: Users },
     { nameKey: "layout.nav.payments", path: "/admin/payments", icon: CreditCard },
-    { nameKey: "layout.nav.reports", path: "/admin/reports", icon: BarChart3 },
     { nameKey: "layout.nav.promotions", path: "/admin/promotions", icon: Percent },
+    { nameKey: "layout.nav.reports", path: "/admin/reports", icon: BarChart3 },
     { nameKey: "layout.nav.settings", path: "/admin/settings", icon: Settings },
     { nameKey: "layout.nav.system", path: "/admin/system", icon: ShieldCheck },
     { nameKey: "layout.nav.audit", path: "/admin/audit", icon: ScrollText, superadminOnly: true },
@@ -238,11 +240,11 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
 
         {/* Sidebar */}
         <aside
-          className={`fixed lg:sticky start-0 top-16 z-30 h-[calc(100dvh-4rem)] w-64 bg-background border-e border-border flex flex-col justify-between transition-transform duration-200 ease-in-out ${
+          className={`fixed lg:sticky start-0 top-16 z-30 h-[calc(100dvh-4rem)] w-64 bg-background border-e border-border flex flex-col transition-transform duration-200 ease-in-out ${
             sidebarOpen ? "translate-x-0" : "max-lg:-translate-x-full max-lg:rtl:translate-x-full"
           }`}
         >
-          <div className="p-3 space-y-1 overflow-y-auto max-h-[calc(100dvh-8rem)]">
+          <div className="p-3 space-y-1 overflow-y-auto flex-1">
             <div className="px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               {t("layout.management")}
             </div>
@@ -279,18 +281,6 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                 </Link>
               );
             })}
-          </div>
-
-          <div className="p-3 border-t border-border bg-secondary/30">
-            <Link
-              href="/admin/system"
-              className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="size-4 text-emerald-500" />
-                <span>{t("layout.systemHealth")}</span>
-              </div>
-            </Link>
           </div>
         </aside>
 

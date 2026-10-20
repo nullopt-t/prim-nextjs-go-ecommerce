@@ -5,6 +5,7 @@ import { Toggle } from "@/components/ui/Toggle";
 import { useTheme } from "@/context/theme";
 import { useRouter, usePathname } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { rememberLocaleChoice } from "@/lib/localePreference";
 
 interface PreferenceRowProps {
   label: string;
@@ -36,6 +37,7 @@ export default function Preferences() {
 
   const toggleLang = () => {
     const nextLocale = locale === "en" ? "ar" : "en";
+    rememberLocaleChoice(nextLocale);
     router.replace(pathname, { locale: nextLocale });
   };
 

@@ -20,8 +20,8 @@ import {
 } from "lucide-react";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { adminService } from "@/services/admin";
+import { PUBLIC_SETTINGS_UPDATED_EVENT } from "@/lib/settingsEvents";
 import { useTranslations } from "next-intl";
-import { useAuthContext } from "@/context/AuthContext";
 
 type SettingsTab = "general" | "shipping" | "payments" | "notifications" | "security";
 
@@ -34,7 +34,6 @@ const DEFAULT_SETTINGS: Record<string, any> = {
   storePhone: "+20 100 000 0000",
   storeAddress: "Smart Village, Building B12, Giza, Egypt",
   currency: "EGP",
-  timezone: "Africa/Cairo",
   defaultLocale: "ar",
   announcementEnabled: true,
   announcementText: "Welcome to PRIM! Enjoy free delivery on qualifying orders.",
@@ -67,8 +66,6 @@ const DEFAULT_SETTINGS: Record<string, any> = {
 
 export function AdminSettings() {
   const t = useTranslations("admin");
-  const { user } = useAuthContext();
-  const isSuperadmin = user?.role === "superadmin";
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [settings, setSettings] = useState<Record<string, any>>({ ...DEFAULT_SETTINGS });
   const [loading, setLoading] = useState(true);
@@ -81,9 +78,11 @@ export function AdminSettings() {
     const loadSettings = async () => {
       try {
         const res = await adminService.getSettings();
-        const data = res?.data || {};
+        const data = { ...(res?.data || {}) };
+        // Currency is fixed to EGP for now, and timezone is a client concern.
+        delete data.timezone;
         if (isMounted) {
-          setSettings({ ...DEFAULT_SETTINGS, ...data });
+          setSettings({ ...DEFAULT_SETTINGS, ...data, currency: "EGP" });
         }
       } catch (err) {
         if (isMounted) {
@@ -104,6 +103,7 @@ export function AdminSettings() {
     setSaving(true);
     try {
       await adminService.updateSettings(settings);
+      window.dispatchEvent(new Event(PUBLIC_SETTINGS_UPDATED_EVENT));
       notify.success(t("settings.toast.saved"));
     } catch (err: any) {
       notify.error(apiErrorMessage(err, t("settings.toast.saveFailed")));
@@ -137,8 +137,7 @@ export function AdminSettings() {
 
         <button
           onClick={() => handleSave()}
-          disabled={saving || loading || !isSuperadmin}
-          title={!isSuperadmin ? t("settings.superadminOnly") : undefined}
+          disabled={saving || loading}
           className="flex items-center gap-2 px-5 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0 disabled:opacity-50"
         >
           <Save className="size-4" />
@@ -249,37 +248,14 @@ export function AdminSettings() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-foreground">
                     {t("settings.fields.currency")}
                   </label>
-                  <select
-                    value={settings.currency || "EGP"}
-                    onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
-                  >
-                    <option value="EGP">EGP - Egyptian Pound (ج.م)</option>
-                    <option value="USD">USD - US Dollar ($)</option>
-                    <option value="SAR">SAR - Saudi Riyal (ر.س)</option>
-                    <option value="AED">AED - UAE Dirham (د.إ)</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
-                    {t("settings.fields.timezone")}
-                  </label>
-                  <select
-                    value={settings.timezone || "Africa/Cairo"}
-                    onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
-                  >
-                    <option value="Africa/Cairo">Africa/Cairo (UTC+2)</option>
-                    <option value="Asia/Riyadh">Asia/Riyadh (UTC+3)</option>
-                    <option value="Asia/Dubai">Asia/Dubai (UTC+4)</option>
-                    <option value="UTC">Coordinated Universal Time (UTC)</option>
-                  </select>
+                  <div className="w-full px-3.5 py-2.5 bg-secondary/10 border border-border rounded-xl text-xs text-muted-foreground">
+                    EGP - Egyptian Pound (ج.م)
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">

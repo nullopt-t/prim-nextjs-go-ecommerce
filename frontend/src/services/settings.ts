@@ -6,7 +6,6 @@ export interface PublicSettings {
   storePhone: string;
   storeAddress: string;
   currency: string;
-  timezone: string;
   defaultLocale: string;
   announcementEnabled: boolean;
   announcementText: string;
@@ -28,6 +27,8 @@ export const settingsService = {
    * announcement, shipping rules, payment availability, maintenance state).
    */
   getPublicSettings: async (): Promise<{ data: PublicSettings }> => {
-    return api.get<{ data: PublicSettings }>("/api/v1/settings/public");
+    return api.get<{ data: PublicSettings }>("/api/v1/settings/public", {
+      cache: "no-store",
+    });
   },
 };

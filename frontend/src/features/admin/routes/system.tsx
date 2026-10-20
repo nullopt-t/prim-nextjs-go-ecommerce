@@ -2,10 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import {
-  Sliders,
-  Trash2,
   Activity,
-  Save,
   CheckCircle2,
   AlertTriangle,
   Database,
@@ -13,16 +10,8 @@ import {
   HardDrive,
   Radio
 } from "lucide-react";
-import { notify, apiErrorMessage } from "@/lib/notify";
 import { adminService, type SystemHealthReport, type SystemServiceHealth } from "@/services/admin";
 import { useTranslations } from "next-intl";
-import { useAuthContext } from "@/context/AuthContext";
-
-const DEFAULT_SYSTEM_SETTINGS: Record<string, any> = {
-  disableCache: false,
-  enableDevOtpBypass: true,
-  mockEmailNotifications: false
-};
 
 // Short-poll interval for the core services health endpoint. Kept short so the
 // panel feels live; a single in-flight guard prevents request pile-up when a
@@ -121,45 +110,11 @@ function Sparkline({ values, className }: { values: number[]; className?: string
 
 export function AdminSystem() {
   const t = useTranslations("admin");
-  const { user } = useAuthContext();
-  const isSuperadmin = user?.role === "superadmin";
-  const [settings, setSettings] = useState<Record<string, any>>({ ...DEFAULT_SYSTEM_SETTINGS });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [purgingCache, setPurgingCache] = useState(false);
   const [health, setHealth] = useState<SystemHealthReport | null>(null);
   const [healthLoaded, setHealthLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [history, setHistory] = useState<Record<string, number[]>>({});
   const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    let isMounted = true;
-    const loadSettings = async () => {
-      try {
-        const res = await adminService.getSettings();
-        const data = res?.data || {};
-        if (isMounted) {
-          setSettings({ ...DEFAULT_SYSTEM_SETTINGS, ...data });
-        }
-      } catch {
-        if (typeof window !== "undefined") {
-          const saved = localStorage.getItem("prim_admin_settings");
-          if (saved) {
-            try {
-              if (isMounted) setSettings({ ...DEFAULT_SYSTEM_SETTINGS, ...JSON.parse(saved) });
-            } catch {}
-          }
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-    loadSettings();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   // Short polling: fetch the health report on a fixed interval, skipping a tick
   // while the previous request is still in flight so a slow report cannot pile
@@ -246,37 +201,6 @@ export function AdminSystem() {
       ? "bg-amber-500"
       : "bg-emerald-500";
 
-  const handleSave = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setSaving(true);
-    try {
-      await adminService.updateSettings(settings);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("prim_admin_settings", JSON.stringify(settings));
-      }
-      notify.success(t("system.toast.saved"));
-    } catch (err: any) {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("prim_admin_settings", JSON.stringify(settings));
-      }
-      notify.error(apiErrorMessage(err, t("system.toast.saveFailed")));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handlePurgeCache = async () => {
-    setPurgingCache(true);
-    try {
-      await new Promise((r) => setTimeout(r, 600));
-      notify.success(t("system.actions.cachePurged"));
-    } catch {
-      notify.error(t("system.actions.purgeFailed"));
-    } finally {
-      setPurgingCache(false);
-    }
-  };
-
   return (
     <div className="space-y-6 w-full">
       {/* Top Header Card */}
@@ -296,66 +220,9 @@ export function AdminSystem() {
           </div>
           <p className="text-xs text-muted-foreground mt-1">{t("system.subtitle")}</p>
         </div>
-
-        <button
-          onClick={() => handleSave()}
-          disabled={saving || loading || !isSuperadmin}
-          title={!isSuperadmin ? t("system.superadminOnly") : undefined}
-          className="flex items-center gap-2 px-5 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0 disabled:opacity-50 cursor-pointer"
-        >
-          <Save className="size-4" />
-          <span>{saving ? t("system.saving") : t("system.saveChanges")}</span>
-        </button>
       </div>
 
       <div className="space-y-6">
-        {/* Cache & Response Performance */}
-        <div className="bg-background border border-border/80 rounded-2xl p-6 shadow-xs space-y-5">
-          <div className="border-b border-border/60 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <Sliders className="size-4 text-accent-brand" />
-                <span>{t("system.cache.title")}</span>
-              </h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {t("system.cache.subtitle")}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handlePurgeCache}
-              disabled={purgingCache}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-secondary/30 hover:bg-secondary text-foreground text-xs font-semibold transition-all disabled:opacity-50 self-start sm:self-center cursor-pointer shadow-xs"
-            >
-              <Trash2 className={`size-3.5 text-accent-brand ${purgingCache ? "animate-spin" : ""}`} />
-              <span>{purgingCache ? t("system.actions.purging") : t("system.actions.purgeCache")}</span>
-            </button>
-          </div>
-
-          {/* Disable Cache Switcher */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-border/70 bg-secondary/10">
-            <div>
-              <h4 className="text-xs font-bold text-foreground">
-                {t("system.cache.disableCache")}
-              </h4>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {t("system.cache.disableCacheDesc")}
-              </p>
-            </div>
-
-            <label className="relative inline-flex items-center cursor-pointer shrink-0">
-              <input
-                type="checkbox"
-                checked={Boolean(settings.disableCache)}
-                onChange={(e) => setSettings({ ...settings, disableCache: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-10 h-6 bg-secondary/60 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
-            </label>
-          </div>
-        </div>
-
         {/* Infrastructure & Services Health */}
         <div className="relative overflow-hidden bg-background border border-border/80 rounded-2xl p-6 shadow-xs space-y-4">
           {refreshing && (

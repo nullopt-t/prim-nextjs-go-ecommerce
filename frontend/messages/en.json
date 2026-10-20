@@ -164,7 +164,7 @@
       "categories": "Categories",
       "company": "Company",
       "contactUs": "Contact Us",
-      "copyright": "© {year} PRIM. All rights reserved.",
+      "copyright": "© {year} {store}. All rights reserved.",
       "faqs": "FAQs",
       "footerDescription": "Educational e-commerce platform showcasing modern web architecture, multi-vendor catalog, and seamless checkout experience.",
       "returns": "Returns & Refunds",
@@ -1066,6 +1066,7 @@
       "colFee": "Processor Fee",
       "colStatus": "Status",
       "colActions": "Actions",
+      "viewOrder": "View order",
       "markPaid": "Mark Paid",
       "issueRefund": "Issue Refund",
       "confirmRefund": "Issue full refund for transaction {id}?",
@@ -1219,7 +1220,7 @@
         "storeIdentity": "Store Identity",
         "storeIdentityDesc": "Basic branding, contact details, and customer support channels.",
         "regional": "Regional & Localization",
-        "regionalDesc": "Currency units, time zone rules, and language configurations.",
+        "regionalDesc": "Base currency and default storefront language.",
         "announcement": "Storefront Announcement Banner",
         "announcementDesc": "Display an alert or promotional ribbon across the top of the storefront.",
         "deliveryRates": "Delivery Fees & Thresholds",
@@ -1236,8 +1237,6 @@
         "apiKeysDesc": "Payment gateway publishable keys and external webhook verification tokens.",
         "maintenance": "Store Maintenance Mode",
         "maintenanceDesc": "Temporarily pause storefront ordering for maintenance or stock replenishment.",
-        "cacheManagement": "Cache & Performance",
-        "cacheManagementDesc": "Control HTTP response caching headers, edge CDN propagation, and memory caches.",
         "developerDiagnostics": "Diagnostics & Debugging",
         "developerDiagnosticsDesc": "Developer flags, test bypass toggles, and backend log verbosity levels.",
         "infrastructureHealth": "System Infrastructure Health",
@@ -1249,7 +1248,6 @@
         "storePhone": "Support Phone",
         "storeAddress": "Store Address / Headquarters",
         "currency": "Base Currency",
-        "timezone": "Timezone",
         "defaultLocale": "Default Language",
         "announcementEnabled": "Enable Top Announcement Banner",
         "announcementText": "Announcement Text",
@@ -1270,25 +1268,17 @@
         "webhookSecret": "Payment Webhook Secret",
         "maintenanceMode": "Enable Storefront Maintenance Mode",
         "maintenanceMessage": "Maintenance Notice Message",
-        "disableCache": "Disable Public HTTP & CDN Caching",
-        "disableCacheDesc": "Instructs browsers, CDNs, and proxies to always fetch fresh data without storing cache copies.",
         "logLevel": "Server Log Verbosity",
         "enableDevOtpBypass": "Allow Static Dev OTP (123456)",
         "enableDevOtpBypassDesc": "Permits 123456 as a valid verification code for testing auth without third-party email providers.",
         "mockEmailNotifications": "Mock Email Deliveries",
         "mockEmailNotificationsDesc": "Logs email payloads to console instead of attempting outbound SMTP network connections."
       },
-      "actions": {
-        "purgeCache": "Purge Server Cache",
-        "purging": "Purging…",
-        "cachePurged": "Cache purged successfully"
-      },
       "toast": {
         "saved": "Store configuration saved successfully!",
         "saveFailed": "Failed to save settings",
         "loadFailed": "Failed to load settings"
-      },
-      "superadminOnly": "Only superadmins can change store settings"
+      }
     },
     "layout": {
       "toggleNav": "Toggle Navigation",
@@ -1301,7 +1291,6 @@
       "userManagement": "User Management",
       "signOut": "Sign Out",
       "management": "Management",
-      "systemHealth": "System Health: 100%",
       "nav": {
         "dashboard": "Dashboard",
         "orders": "Orders",
@@ -1328,16 +1317,8 @@
     },
     "system": {
       "title": "System & Infrastructure",
-      "subtitle": "Cache invalidation controls, network performance rules, and live infrastructure operational metrics.",
+      "subtitle": "Live infrastructure operational metrics and service health.",
       "statusOnline": "All Systems Operational",
-      "saveChanges": "Save Changes",
-      "saving": "Saving…",
-      "cache": {
-        "title": "Cache & Performance",
-        "subtitle": "Manage HTTP response caching headers, edge CDN propagation, and memory caches.",
-        "disableCache": "Disable Public HTTP & CDN Caching",
-        "disableCacheDesc": "Instructs browsers, CDNs, and proxies to always fetch fresh data without storing cache copies."
-      },
       "infrastructure": {
         "title": "Core Services Health",
         "subtitle": "Real-time heartbeat and connection status for backend database, queues, cache, and object storage.",
@@ -1380,18 +1361,7 @@
             "name": "MinIO S3 Storage"
           }
         }
-      },
-      "actions": {
-        "purgeCache": "Purge Server Cache",
-        "purging": "Purging…",
-        "cachePurged": "Cache purged successfully",
-        "purgeFailed": "Failed to purge cache"
-      },
-      "toast": {
-        "saved": "System settings saved successfully!",
-        "saveFailed": "Failed to save system settings"
-      },
-      "superadminOnly": "Only superadmins can change system settings"
+      }
     },
     "roles": {
       "superadmin": "Superadmin",

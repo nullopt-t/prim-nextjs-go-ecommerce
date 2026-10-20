@@ -253,7 +253,6 @@ export const INITIAL_SETTINGS = {
   storeName: "PRIM Global Store",
   storeEmail: "support@prim.com",
   currency: "EGP (E£)",
-  timezone: "UTC-7 (Pacific Time)",
   taxRatePercent: 8.5,
   freeShippingThreshold: 150,
   flatRateShipping: 9.99,

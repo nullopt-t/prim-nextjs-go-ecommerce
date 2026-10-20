@@ -622,7 +622,7 @@ const docTemplatepublic = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Cart Item UUID",
+                        "description": "Cart item id",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -682,7 +682,7 @@ const docTemplatepublic = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Cart Item UUID",
+                        "description": "Cart item id",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -4765,9 +4765,6 @@ const docTemplatepublic = `{
                 },
                 "taxRatePercent": {
                     "type": "number"
-                },
-                "timezone": {
-                    "type": "string"
                 }
             }
         },
@@ -5156,9 +5153,9 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "description": "Media record UUID",
+                    "description": "Media record id",
                     "type": "string",
-                    "example": "80000000-0000-0000-0000-000000000001"
+                    "example": "1"
                 },
                 "mediaType": {
                     "description": "Media classification (image or video)",
@@ -5194,9 +5191,9 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "description": "Media record UUID",
+                    "description": "Media record id",
                     "type": "string",
-                    "example": "80000000-0000-0000-0000-000000000001"
+                    "example": "1"
                 },
                 "mediaType": {
                     "description": "Media MIME type or format (e.g. image/jpeg, video/mp4)",

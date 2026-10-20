@@ -16,7 +16,6 @@ type Config struct {
 	StorePhone          string `json:"storePhone"`
 	StoreAddress        string `json:"storeAddress"`
 	Currency            string `json:"currency"`
-	Timezone            string `json:"timezone"`
 	DefaultLocale       string `json:"defaultLocale"`
 	AnnouncementEnabled bool   `json:"announcementEnabled"`
 	AnnouncementText    string `json:"announcementText"`
@@ -65,7 +64,6 @@ func DefaultConfig() Config {
 		StorePhone:          "+20 100 000 0000",
 		StoreAddress:        "Smart Village, Building B12, Giza, Egypt",
 		Currency:            "EGP",
-		Timezone:            "Africa/Cairo",
 		DefaultLocale:       "ar",
 		AnnouncementEnabled: true,
 		AnnouncementText:    "Welcome to PRIM! Enjoy free delivery on qualifying orders.",
@@ -121,7 +119,6 @@ type PublicConfig struct {
 	StorePhone            string  `json:"storePhone"`
 	StoreAddress          string  `json:"storeAddress"`
 	Currency              string  `json:"currency"`
-	Timezone              string  `json:"timezone"`
 	DefaultLocale         string  `json:"defaultLocale"`
 	AnnouncementEnabled   bool    `json:"announcementEnabled"`
 	AnnouncementText      string  `json:"announcementText"`
@@ -145,7 +142,6 @@ func (c Config) Public() PublicConfig {
 		StorePhone:            c.StorePhone,
 		StoreAddress:          c.StoreAddress,
 		Currency:              c.Currency,
-		Timezone:              c.Timezone,
 		DefaultLocale:         c.DefaultLocale,
 		AnnouncementEnabled:   c.AnnouncementEnabled,
 		AnnouncementText:      c.AnnouncementText,
@@ -171,7 +167,6 @@ func configFromMap(m map[string]interface{}) Config {
 	c.StorePhone = getString(m, "storePhone", c.StorePhone)
 	c.StoreAddress = getString(m, "storeAddress", c.StoreAddress)
 	c.Currency = getString(m, "currency", c.Currency)
-	c.Timezone = getString(m, "timezone", c.Timezone)
 	c.DefaultLocale = getString(m, "defaultLocale", c.DefaultLocale)
 	c.AnnouncementEnabled = getBool(m, "announcementEnabled", c.AnnouncementEnabled)
 	c.AnnouncementText = getString(m, "announcementText", c.AnnouncementText)

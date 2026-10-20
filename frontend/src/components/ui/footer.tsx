@@ -1,5 +1,8 @@
+"use client";
+
 import { Brand } from "@/components/ui/Brand";
 import { StoreContactInfo } from "@/components/ui/storeContactInfo";
+import { usePublicSettings } from "@/context/PublicSettingsContext";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 
@@ -7,6 +10,8 @@ const currentDate = new Date().getFullYear();
 
 export function Footer() {
   const t = useTranslations("common");
+  const { settings } = usePublicSettings();
+  const storeName = settings?.storeName?.trim() || "PRIM";
 
   const sections = [
     {
@@ -111,7 +116,7 @@ export function Footer() {
         </div>
         <hr className="border-border/60 text-muted-foreground mb-6" />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-muted-foreground text-xs sm:text-sm">
-          <p>{t("footer.copyright", { year: currentDate })}</p>
+          <p>{t("footer.copyright", { year: currentDate, store: storeName })}</p>
         </div>
       </div>
     </footer>

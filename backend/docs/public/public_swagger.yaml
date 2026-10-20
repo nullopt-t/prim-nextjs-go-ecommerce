@@ -912,8 +912,6 @@ definitions:
         type: string
       taxRatePercent:
         type: number
-      timezone:
-        type: string
     type: object
   PublicStockResponse:
     properties:
@@ -1194,8 +1192,8 @@ definitions:
   VariantMediaResponse:
     properties:
       id:
-        description: Media record UUID
-        example: 80000000-0000-0000-0000-000000000001
+        description: Media record id
+        example: "1"
         type: string
       mediaType:
         description: Media classification (image or video)
@@ -1221,8 +1219,8 @@ definitions:
   VariantMediaSummary:
     properties:
       id:
-        description: Media record UUID
-        example: 80000000-0000-0000-0000-000000000001
+        description: Media record id
+        example: "1"
         type: string
       mediaType:
         description: Media MIME type or format (e.g. image/jpeg, video/mp4)
@@ -1819,7 +1817,7 @@ paths:
     delete:
       description: Removes a single item from the cart by item ID.
       parameters:
-      - description: Cart Item UUID
+      - description: Cart item id
         in: path
         name: id
         required: true
@@ -1856,7 +1854,7 @@ paths:
       - application/json
       description: Updates the quantity of a specific item in the cart.
       parameters:
-      - description: Cart Item UUID
+      - description: Cart item id
         in: path
         name: id
         required: true

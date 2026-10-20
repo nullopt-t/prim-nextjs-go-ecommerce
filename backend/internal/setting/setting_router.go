@@ -29,15 +29,17 @@ func (r *SettingRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	)
 	{
 		admin.GET("", r.handler.GetSettings)
-		// PUT /admin/settings mutates global storefront configuration: Superadmin only.
-		admin.PUT("", middleware.Authorize(model.SuperRole), r.handler.UpdateSettings)
+		// PUT /admin/settings mutates global storefront configuration.
+		admin.PUT("", r.handler.UpdateSettings)
 	}
 }
 
 // MapPublicRoutes binds the unauthenticated storefront settings endpoint.
 func (r *SettingRouter) MapPublicRoutes(vgroup *gin.RouterGroup) {
 	public := vgroup.Group("/settings")
-	public.Use(middleware.PublicCache(60))
+	// Storefront settings drive visible content and must reflect admin changes
+	// immediately, so browsers and proxies must not cache this response.
+	public.Use(middleware.NoCache())
 	{
 		public.GET("/public", r.handler.GetPublicSettings)
 	}

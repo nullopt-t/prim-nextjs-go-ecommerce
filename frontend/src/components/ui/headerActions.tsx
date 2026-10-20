@@ -23,6 +23,7 @@ import { useCart } from "@/hooks/useCart";
 import { useAuthContext } from "@/context/AuthContext";
 import { useWishlist } from "@/hooks/useWishlist";
 import { NotificationsDropdown } from "@/components/ui/notificationsDropdown";
+import { rememberLocaleChoice } from "@/lib/localePreference";
 
 interface HeaderActionsProps {
 	context?: "default" | "settings";
@@ -71,6 +72,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 
 	const toggleLanguage = () => {
 		const nextLocale = locale === "en" ? "ar" : "en";
+		rememberLocaleChoice(nextLocale);
 		router.replace(pathname, { locale: nextLocale });
 	};
 

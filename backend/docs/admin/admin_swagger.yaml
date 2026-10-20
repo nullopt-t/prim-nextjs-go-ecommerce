@@ -448,8 +448,6 @@ definitions:
         type: string
       taxRatePercent:
         type: number
-      timezone:
-        type: string
     type: object
   ConflictErrorResponse:
     properties:
@@ -711,7 +709,7 @@ definitions:
         example: "2026-08-15T12:00:00Z"
         type: string
       id:
-        description: Ledger entry record UUID
+        description: Ledger entry record id
         example: 80000000-0000-0000-0000-000000000001
         type: string
       quantity:
@@ -1191,9 +1189,9 @@ definitions:
   ReorderMediaRequest:
     properties:
       orderedMediaIds:
-        description: Array of media UUIDs in desired presentation sequence
+        description: Array of media ids in desired presentation sequence
         example:
-        - '[''80000000-0000-0000-0000-000000000001'']'
+        - '[''1'']'
         items:
           type: string
         type: array
@@ -1542,8 +1540,8 @@ definitions:
   VariantMediaResponse:
     properties:
       id:
-        description: Media record UUID
-        example: 80000000-0000-0000-0000-000000000001
+        description: Media record id
+        example: "1"
         type: string
       mediaType:
         description: Media classification (image or video)
@@ -1569,8 +1567,8 @@ definitions:
   VariantMediaSummary:
     properties:
       id:
-        description: Media record UUID
-        example: 80000000-0000-0000-0000-000000000001
+        description: Media record id
+        example: "1"
         type: string
       mediaType:
         description: Media MIME type or format (e.g. image/jpeg, video/mp4)
@@ -3667,7 +3665,7 @@ paths:
       consumes:
       - application/json
       description: Upserts the provided key/value settings within a single transaction.
-        Superadmin only.
+        Admin only.
       parameters:
       - description: Settings key/value payload
         in: body
@@ -3691,14 +3689,14 @@ paths:
           schema:
             $ref: '#/definitions/UnauthorizedErrorResponse'
         "403":
-          description: Superadmin privileges required
+          description: Admin privileges required
           schema:
             $ref: '#/definitions/ForbiddenErrorResponse'
         "500":
           description: Internal server error
           schema:
             $ref: '#/definitions/InternalServerErrorResponse'
-      summary: Update administrative settings (Superadmin)
+      summary: Update administrative settings (Admin)
       tags:
       - Admin Settings
   /admin/system/health:
@@ -4252,8 +4250,7 @@ paths:
         name: id
         required: true
         type: string
-      - description: Media Attachment UUID
-        format: uuid
+      - description: Media Attachment id
         in: path
         name: media_id
         required: true
@@ -4291,7 +4288,7 @@ paths:
         name: id
         required: true
         type: string
-      - description: Ordered list of media UUIDs
+      - description: Ordered list of media ids
         in: body
         name: body
         required: true

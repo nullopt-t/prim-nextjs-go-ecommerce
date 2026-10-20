@@ -2,6 +2,7 @@ package setting
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -57,7 +58,12 @@ func (r *Repository) Upsert(ctx context.Context, qe database.QueryExecutor, key 
 		SET value = EXCLUDED.value, updated_at = now()
 	`
 
-	if _, err := qe.Exec(ctx, query, key, value); err != nil {
+	payload, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("encode setting %s: %w", key, err)
+	}
+
+	if _, err := qe.Exec(ctx, query, key, payload); err != nil {
 		return fmt.Errorf("upsert setting %s: %w", key, err)
 	}
 	return nil
