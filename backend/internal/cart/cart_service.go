@@ -524,13 +524,12 @@ func (s *CartService) ClearCart(
 	userID *uuid.UUID,
 	sessionID *string,
 ) error {
-	cart, err := s.GetOrCreateCart(ctx, userID, sessionID)
-	if err != nil {
-		return err
-	}
-
-	err = s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return s.cartRepo.ClearCart(ctx, db, cart.ID)
+	// Clearing a cart touches the line items and the parent cart row. Run both
+	// inside a single transaction so a partial failure cannot leave a cart that
+	// still has items but a stale updated_at, and lock the cart so a concurrent
+	// AddItem cannot slip an item in between the clear and the commit.
+	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		return s.ClearCartWithTx(ctx, tx, userID, sessionID)
 	})
 
 	if err != nil {
