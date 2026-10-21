@@ -107,7 +107,6 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	_, err = db.Exec(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
-
 	s.txRunner = database.NewTxRunner(s.db)
 	logger := log.NewConsoleLogger()
 
@@ -127,7 +126,7 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	s.productID = uuid.New()
 	_, err = s.db.Exec(ctx, `
 		INSERT INTO products (id, category_id, slug, title, status, product_type)
-		VALUES ($1, $2, $3, $4, 'published', 'simple')
+		VALUES ($1, $2, $3, $4, 'published', 'variable')
 	`, s.productID, s.categoryID, "anc-headphones-"+uuid.NewString(), "ANC Headphones")
 	require.NoError(s.T(), err)
 

@@ -149,7 +149,6 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	_, err = db.Exec(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
-
 	// ---- Redis (sessions) -------------------------------------------------
 	rContainer, err := redisContainer.Run(ctx, "redis:7-alpine")
 	require.NoError(s.T(), err)
@@ -212,7 +211,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	s.productID = uuid.New()
 	_, err = s.db.Exec(ctx, `
 		INSERT INTO products (id, category_id, slug, title, status, product_type)
-		VALUES ($1, $2, $3, $4, 'published', 'simple')
+		VALUES ($1, $2, $3, $4, 'published', 'variable')
 	`, s.productID, s.categoryID, "it-product-"+uuid.NewString(), "Integration Product")
 	require.NoError(s.T(), err)
 
