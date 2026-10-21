@@ -12,4 +12,8 @@ const (
 	// CodeVariantProductMismatch indicates that a variant operation was requested against a product
 	// that does not own the specified variant.
 	CodeVariantProductMismatch = "VARIANT_PRODUCT_MISMATCH"
+
+	// CodeSimpleProductVariantLocked indicates that a variant lifecycle operation was rejected
+	// because the parent product is a simple product with a fixed default variant.
+	CodeSimpleProductVariantLocked = "SIMPLE_PRODUCT_VARIANT_LOCKED"
 )

@@ -63,8 +63,19 @@ export const catalogService = {
   checkReviewEligibility: (productId: string) =>
     api.get<{ canReview: boolean }>(`/api/v1/reviews/eligibility?productId=${productId}`),
   createProduct: (payload: any) => api.post("/api/v1/admin/products", payload),
+  getAdminProduct: (id: string) => api.get(`/api/v1/admin/products/${id}`),
   updateProduct: (id: string, payload: any) => api.patch(`/api/v1/admin/products/${id}`, payload),
   deleteProduct: (id: string) => api.delete(`/api/v1/admin/products/${id}`),
+
+  // Product Variants
+  createVariant: (productId: string, payload: any) =>
+    api.post(`/api/v1/admin/products/${productId}/variants`, payload),
+  updateVariant: (variantId: string, payload: any) =>
+    api.patch(`/api/v1/admin/variants/${variantId}`, payload),
+  deleteVariant: (variantId: string) =>
+    api.delete(`/api/v1/admin/variants/${variantId}`),
+  setDefaultVariant: (productId: string, variantId: string) =>
+    api.post(`/api/v1/admin/products/${productId}/variants/default`, { variantId }),
 
   // Category Admin
   createCategory: (payload: { name: string; parentId?: string }) =>

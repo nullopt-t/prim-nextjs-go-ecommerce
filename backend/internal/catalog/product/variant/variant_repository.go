@@ -532,6 +532,28 @@ func (vr *VariantRepository) CountByProductID(
 	return count, nil
 }
 
+// GetProductType returns the classification (simple or variable) of a product.
+func (vr *VariantRepository) GetProductType(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) (model.ProductType, error) {
+	if productID == uuid.Nil {
+		return "", errors.New("get product type: productID is required")
+	}
+
+	var productType model.ProductType
+	err := qe.QueryRow(ctx,
+		`SELECT product_type FROM products WHERE id = $1 AND deleted_at IS NULL`,
+		productID,
+	).Scan(&productType)
+	if err != nil {
+		return "", fmt.Errorf("get product type: %w", err)
+	}
+
+	return productType, nil
+}
+
 // Delete marks a variant as soft-deleted by setting deleted_at = now().
 func (vr *VariantRepository) Delete(
 	ctx context.Context,

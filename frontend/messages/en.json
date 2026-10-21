@@ -1107,6 +1107,41 @@
         "currentStock": "Current On-Hand Stock",
         "totalBalance": "Total Ledger Balance:"
       },
+      "variants": {
+        "title": "Variants & Attributes",
+        "add": "Add Variant",
+        "loading": "Loading variants...",
+        "empty": "No variants yet. Add one to set price, stock and attributes.",
+        "defaultBadge": "Default",
+        "simpleBadge": "Simple",
+        "variableBadge": "Variable",
+        "simpleLocked": "This simple product has a single locked default variant. Create the product as variable to manage multiple variants.",
+        "setDefault": "Set as default",
+        "edit": "Edit variant",
+        "delete": "Delete variant",
+        "newTitle": "New Variant",
+        "editTitle": "Edit Variant",
+        "save": "Save Variant",
+        "requiredFields": "Variant title and price are required.",
+        "noAttributes": "No attributes are defined for this category. Manage them under Categories → Attributes.",
+        "confirmDelete": "Delete variant \"{title}\"?",
+        "created": "Variant created successfully.",
+        "updated": "Variant updated successfully.",
+        "deleted": "Variant deleted.",
+        "defaultSet": "Default variant updated.",
+        "saveFailed": "Failed to save variant.",
+        "deleteFailed": "Failed to delete variant.",
+        "defaultFailed": "Failed to set default variant.",
+        "fields": {
+          "title": "Variant Title *",
+          "titlePlaceholder": "e.g. Black / 256GB",
+          "sku": "SKU",
+          "price": "Price (EGP) *",
+          "originalPrice": "Original Price (EGP)",
+          "currency": "Currency",
+          "initialStock": "Initial Stock"
+        }
+      },
       "form": {
         "title": "Product Title *",
         "titlePlaceholder": "e.g. Wireless Noise-Canceling Headphones",
@@ -1132,7 +1167,8 @@
         "deleted": "Product removed from catalog",
         "requiredFields": "Please fill in required fields",
         "updatePartialFailed": "Product update partially failed",
-        "auditFailed": "Failed to load audit history for product"
+        "auditFailed": "Failed to load audit history for product",
+        "variantLoadFailed": "Failed to load product variants"
       }
     },
     "promotions": {

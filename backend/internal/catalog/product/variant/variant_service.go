@@ -21,6 +21,16 @@ type ObjectService interface {
 	GetObjectURL(ctx context.Context, bucket, key string) string
 }
 
+// errSimpleProductLocked signals that a lifecycle change was rejected because the
+// parent product is a simple product whose default variant is fixed.
+var errSimpleProductLocked = errors.New("simple product variant is locked")
+
+// simpleProductLockedError translates errSimpleProductLocked into a structured API error.
+func simpleProductLockedError() error {
+	return apierr.ConflictError("Simple products have a fixed default variant. Change the product type to variable to manage variants.").
+		WithCode(errcode.CodeSimpleProductVariantLocked)
+}
+
 // VariantService coordinates business logic, transaction handling, and cross-domain inventory integration
 // for product variants (SKUs), media galleries, and stock availability.
 type VariantService struct {
@@ -150,8 +160,14 @@ func (vs *VariantService) CreateVariant(
 
 	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		// Acquire an exclusive row-level lock on the parent product to prevent concurrent creation races
-		var parentProductID uuid.UUID
-		err := tx.QueryRow(ctx, `SELECT id FROM products WHERE id = $1 FOR UPDATE`, variant.ProductID).Scan(&parentProductID)
+		var (
+			parentProductID uuid.UUID
+			productType     model.ProductType
+		)
+		err := tx.QueryRow(ctx,
+			`SELECT id, product_type FROM products WHERE id = $1 FOR UPDATE`,
+			variant.ProductID,
+		).Scan(&parentProductID, &productType)
 		if err != nil {
 			return err
 		}
@@ -161,6 +177,12 @@ func (vs *VariantService) CreateVariant(
 		if err != nil {
 			return err
 		}
+
+		// Simple products represent a single SKU, so their default variant is fixed.
+		if productType == model.ProductTypeSimple && count > 0 {
+			return errSimpleProductLocked
+		}
+
 		if count == 0 {
 			variant.IsDefault = true
 		}
@@ -174,6 +196,10 @@ func (vs *VariantService) CreateVariant(
 	})
 
 	if err != nil {
+		if errors.Is(err, errSimpleProductLocked) {
+			return nil, simpleProductLockedError()
+		}
+
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
@@ -373,6 +399,17 @@ func (vs *VariantService) UpdateVariant(
 			return err
 		}
 
+		if in.IsDefault != nil {
+			productType, err := vs.vr.GetProductType(ctx, tx, existing.ProductID)
+			if err != nil {
+				return err
+			}
+			// A simple product's default variant is fixed; only no-op writes are allowed.
+			if productType == model.ProductTypeSimple && *in.IsDefault != existing.IsDefault {
+				return errSimpleProductLocked
+			}
+		}
+
 		if in.IsDefault != nil && *in.IsDefault {
 			if err := vs.vr.ClearDefaultFlags(ctx, tx, existing.ProductID); err != nil {
 				return err
@@ -394,6 +431,10 @@ func (vs *VariantService) UpdateVariant(
 	})
 
 	if err != nil {
+		if errors.Is(err, errSimpleProductLocked) {
+			return simpleProductLockedError()
+		}
+
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
@@ -520,6 +561,15 @@ func (vs *VariantService) DeleteVariantByID(
 			return err
 		}
 
+		productType, err := vs.vr.GetProductType(ctx, tx, variant.ProductID)
+		if err != nil {
+			return err
+		}
+		// Simple products must keep their single default variant.
+		if productType == model.ProductTypeSimple && variant.IsDefault {
+			return errSimpleProductLocked
+		}
+
 		if err := vs.vr.Delete(ctx, tx, variantID); err != nil {
 			return err
 		}
@@ -534,6 +584,10 @@ func (vs *VariantService) DeleteVariantByID(
 	})
 
 	if err != nil {
+		if errors.Is(err, errSimpleProductLocked) {
+			return simpleProductLockedError()
+		}
+
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
@@ -584,6 +638,23 @@ func (vs *VariantService) RestoreVariantByID(
 			return err
 		}
 
+		productType, err := vs.vr.GetProductType(ctx, tx, productID)
+		if err != nil {
+			return err
+		}
+		if productType == model.ProductTypeSimple {
+			count, err := vs.vr.CountByProductID(ctx, tx, productID)
+			if err != nil {
+				return err
+			}
+			// Restoring into a simple product is only valid when it has no active variant,
+			// and the restored variant becomes its fixed default.
+			if count > 0 {
+				return errSimpleProductLocked
+			}
+			isDefault = true
+		}
+
 		if isDefault {
 			// Check if another active variant is currently designated as default
 			var defaultExists bool
@@ -608,6 +679,10 @@ func (vs *VariantService) RestoreVariantByID(
 	})
 
 	if err != nil {
+		if errors.Is(err, errSimpleProductLocked) {
+			return simpleProductLockedError()
+		}
+
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
@@ -853,6 +928,15 @@ func (vs *VariantService) SetDefaultVariant(
 				WithCode(errcode.CodeVariantProductMismatch)
 		}
 
+		productType, err := vs.vr.GetProductType(ctx, tx, productID)
+		if err != nil {
+			return err
+		}
+		// A simple product's default variant is fixed and cannot be swapped.
+		if productType == model.ProductTypeSimple && !v.IsDefault {
+			return errSimpleProductLocked
+		}
+
 		if err := vs.vr.ClearDefaultFlags(ctx, tx, productID); err != nil {
 			return err
 		}
@@ -861,6 +945,10 @@ func (vs *VariantService) SetDefaultVariant(
 	})
 
 	if err != nil {
+		if errors.Is(err, errSimpleProductLocked) {
+			return simpleProductLockedError()
+		}
+
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
