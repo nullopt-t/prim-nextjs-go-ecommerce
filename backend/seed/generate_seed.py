@@ -16,6 +16,12 @@ def json_esc(obj):
     s = json.dumps(obj)
     return "'" + s.replace("'", "''") + "'::jsonb"
 
+def array_esc(values):
+    values = list(values)
+    if not values:
+        return "'{}'::text[]"
+    return "ARRAY[" + ", ".join(esc(v) for v in values) + "]::text[]"
+
 # Extra catalogue products with real, product-specific product images.
 # Produced by fetch_extra_media.py into seed/data/extra_products.json and the
 # matching JPEGs under seed/media/catalog/products/.
@@ -374,8 +380,8 @@ catalog_defs = [
         ("Purple 256GB", 64900, 67900, {"color":"Purple","storage":"256GB"}, "products/ipad-mini-6.jpg")
     ]),
     ("Tablets & Wearables", "Apple", "Apple Watch Ultra 2", "apple-watch-ultra-2", "Rugged 49mm titanium smartwatch for extreme outdoor adventure.", ["3000 nits brightest display", "Precision dual-frequency GPS", "Up to 72 hours Low Power Mode"], [
-        ("Titanium Orange Ocean Band", 79900, 84900, {"color":"Titanium","size":"49mm"}, "products/apple-watch-ultra-2.jpg"),
-        ("Titanium Black Trail Loop", 79900, 84900, {"color":"Titanium","size":"49mm"}, "products/apple-watch-ultra-2.jpg")
+        ("Titanium Orange Ocean Band", 79900, 84900, {"color":"Titanium Orange","size":"49mm"}, "products/apple-watch-ultra-2.jpg"),
+        ("Titanium Black Trail Loop", 79900, 84900, {"color":"Titanium Black","size":"49mm"}, "products/apple-watch-ultra-2.jpg")
     ]),
     ("Tablets & Wearables", "Apple", "Apple Watch Series 9", "apple-watch-series-9", "Powerful S9 SiP with magical Double Tap gesture control.", ["Double tap pinch gesture control", "Edge-to-edge Always-On Retina display", "ECG, Blood Oxygen, and Temperature sensing"], [
         ("Midnight Aluminum 45mm", 42900, 45900, {"color":"Midnight","size":"45mm"}, "products/apple-watch-series-9.jpg"),
@@ -768,11 +774,17 @@ for cat_name, brand_name, title, slug, desc, highlights, var_list in catalog_def
     b_id = brand_id_by_name[brand_name]
     c_id = cat_id_by_name[cat_name]
     p_type = 'variable' if var_list and len(var_list) > 1 else 'simple'
+    variation_axes = []
+    if p_type == 'variable':
+        for _v_item in var_list:
+            for _axis in _v_item[3].keys():
+                if _axis not in variation_axes:
+                    variation_axes.append(_axis)
     
     prod_main_img = f"products/{slug}.jpg"
     thumb_id = image_to_obj_id[prod_main_img]
     
-    products.append((p_id, b_id, c_id, slug, title, desc, highlights, 'published', p_type, thumb_id))
+    products.append((p_id, b_id, c_id, slug, title, desc, highlights, 'published', p_type, variation_axes, thumb_id))
     
     t_picks = random.sample(list(tag_id_by_name.values()), k=random.randint(1, 3))
     for t_id in t_picks:
@@ -866,6 +878,48 @@ val_rows = [f"({esc(c[0])}, {esc(c[1])}, {esc(c[2])}, now() - INTERVAL '50 days'
 lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 
 # 7. category_attributes
+# Ensure every axis used by a variable product has a matching category
+# attribute definition. The static list above covers the curated cases; this
+# pass fills gaps such as `color` on laptops so the admin axis picker and value
+# validation always have a source of truth.
+_attr_keys = {(ca[1], ca[2]) for ca in category_attributes}
+_attr_index = {(ca[1], ca[2]): i for i, ca in enumerate(category_attributes)}
+_category_by_product = {p[0]: p[2] for p in products}
+_product_type_by_id = {p[0]: p[8] for p in products}
+_axis_values = {}
+for _v in variants:
+    _prod = _v[2]
+    if _product_type_by_id.get(_prod) != 'variable':
+        continue
+    _cat = _category_by_product[_prod]
+    for _key, _value in (_v[8] or {}).items():
+        if isinstance(_value, (dict, list)):
+            continue
+        _axis_values.setdefault((_cat, _key), set()).add(str(_value))
+_label_map = {
+    'color': 'Color', 'ram': 'RAM Capacity', 'storage': 'Storage Size',
+    'size': 'Size', 'band': 'Band', 'material': 'Material',
+    'connectivity': 'Connectivity', 'wireless': 'Wireless / Bluetooth',
+    'anc': 'Active Noise Cancelling',
+}
+_next_attr_id = 101
+for (_cat, _key), _values in sorted(_axis_values.items()):
+    if (_cat, _key) in _attr_keys:
+        # Existing seed attributes may cover only a subset of the colors or
+        # capacities actually used by variants. Merge observed values so admin
+        # edits can keep the existing matrix valid.
+        _idx = _attr_index[(_cat, _key)]
+        _existing = category_attributes[_idx]
+        _merged = sorted(set(_existing[5] or []) | _values)
+        category_attributes[_idx] = _existing[:5] + (_merged,) + _existing[6:]
+        continue
+    _id = hex_id(0x41000000, _next_attr_id)
+    _next_attr_id += 1
+    _label = _label_map.get(_key, _key.replace('_', ' ').title())
+    category_attributes.append((_id, _cat, _key, _label, 'enum', sorted(_values), True, 10))
+    _attr_keys.add((_cat, _key))
+    _attr_index[(_cat, _key)] = len(category_attributes) - 1
+
 lines.append("-- =====================================================================")
 lines.append("-- 7. CATEGORY ATTRIBUTES")
 lines.append("-- =====================================================================")
@@ -877,17 +931,21 @@ lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 lines.append("-- =====================================================================")
 lines.append(f"-- 8. PRODUCTS ({len(products)} Unique Products)")
 lines.append("-- =====================================================================")
-lines.append("INSERT INTO products (id, brand_id, category_id, slug, title, description, highlights, status, product_type, thumbnail_object_id, created_at, updated_at) VALUES")
-val_rows = [f"({esc(p[0])}, {esc(p[1])}, {esc(p[2])}, {esc(p[3])}, {esc(p[4])}, {esc(p[5])}, {json_esc(p[6])}, {esc(p[7])}, {esc(p[8])}, {esc(p[9])}, now() - INTERVAL '40 days', now() - INTERVAL '40 days')" for p in products]
+lines.append("INSERT INTO products (id, brand_id, category_id, slug, title, description, highlights, status, product_type, variation_axes, thumbnail_object_id, created_at, updated_at) VALUES")
+val_rows = [f"({esc(p[0])}, {esc(p[1])}, {esc(p[2])}, {esc(p[3])}, {esc(p[4])}, {esc(p[5])}, {json_esc(p[6])}, {esc(p[7])}, {esc(p[8])}, {array_esc(p[9])}, {esc(p[10])}, now() - INTERVAL '40 days', now() - INTERVAL '40 days')" for p in products]
 lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 
 # 9. product_variants
 lines.append("-- =====================================================================")
 lines.append("-- 9. PRODUCT VARIANTS (With Variant-Specific Images)")
 lines.append("-- =====================================================================")
-lines.append("INSERT INTO product_variants (id, sku, product_id, is_default, title, price, crossed_out_price, currency, attributes, thumbnail_object_id, created_at, updated_at) VALUES")
-val_rows = [f"({esc(v[0])}, {esc(v[1])}, {esc(v[2])}, {'true' if v[3] else 'false'}, {esc(v[4])}, {v[5]}, {v[6] if v[6] is not None else 'NULL'}, {esc(v[7])}, {json_esc(v[8])}, {esc(v[9])}, now() - INTERVAL '40 days', now() - INTERVAL '40 days')" for v in variants]
+lines.append("INSERT INTO product_variants (id, sku, product_id, title, price, crossed_out_price, currency, attributes, thumbnail_object_id, created_at, updated_at) VALUES")
+val_rows = [f"({esc(v[0])}, {esc(v[1])}, {esc(v[2])}, {esc(v[4])}, {v[5]}, {v[6] if v[6] is not None else 'NULL'}, {esc(v[7])}, {json_esc(v[8])}, {esc(v[9])}, now() - INTERVAL '40 days', now() - INTERVAL '40 days')" for v in variants]
 lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
+
+# Set products.default_variant_id
+default_variant_updates = [f"UPDATE products SET default_variant_id = {esc(v[0])} WHERE id = {esc(v[2])};" for v in variants if v[3]]
+lines.append("\n".join(default_variant_updates) + "\n")
 
 # 10. product_tag_assignments
 lines.append("-- =====================================================================")

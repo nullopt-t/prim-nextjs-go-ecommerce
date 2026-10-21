@@ -41,7 +41,6 @@ type UpdateVariantFields struct {
 	CrossedOutPrice   *int64
 	Currency          *string
 	Attributes        map[string]any
-	IsDefault         *bool
 	ThumbnailObjectID *uuid.UUID
 }
 
@@ -85,7 +84,6 @@ func (vr *VariantRepository) Create(
 			id,
 			sku,
 			product_id,
-			is_default,
 			title,
 			price,
 			crossed_out_price,
@@ -95,7 +93,7 @@ func (vr *VariantRepository) Create(
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
 		RETURNING created_at, updated_at
 	`
 
@@ -105,7 +103,6 @@ func (vr *VariantRepository) Create(
 		variant.ID,
 		variant.SKU,
 		variant.ProductID,
-		variant.IsDefault,
 		variant.Title,
 		variant.Price,
 		variant.CrossedOutPrice,
@@ -177,7 +174,7 @@ func (vr *VariantRepository) get(
 			pv.id,
 			pv.sku,
 			pv.product_id,
-			pv.is_default,
+			(CASE WHEN p.default_variant_id IS NOT NULL AND pv.id = p.default_variant_id THEN true ELSE false END) AS is_default,
 			pv.title,
 			pv.price,
 			pv.crossed_out_price,
@@ -193,6 +190,7 @@ func (vr *VariantRepository) get(
 			so.content_type as so_content_type,
 			so.file_size as so_file_size
 		FROM product_variants pv
+		JOIN products p ON pv.product_id = p.id
 		LEFT JOIN storage_objects so ON pv.thumbnail_object_id = so.id
 		WHERE %s
 		LIMIT 1
@@ -285,9 +283,13 @@ func (vr *VariantRepository) Update(
 	}
 
 	if fields.CrossedOutPrice != nil {
-		setClauses = append(setClauses, fmt.Sprintf("crossed_out_price = $%d", argIdx))
-		args = append(args, fields.CrossedOutPrice)
-		argIdx++
+		if *fields.CrossedOutPrice <= 0 {
+			setClauses = append(setClauses, "crossed_out_price = NULL")
+		} else {
+			setClauses = append(setClauses, fmt.Sprintf("crossed_out_price = $%d", argIdx))
+			args = append(args, fields.CrossedOutPrice)
+			argIdx++
+		}
 	}
 
 	if fields.Currency != nil {
@@ -299,12 +301,6 @@ func (vr *VariantRepository) Update(
 	if fields.Attributes != nil {
 		setClauses = append(setClauses, fmt.Sprintf("attributes = $%d", argIdx))
 		args = append(args, fields.Attributes)
-		argIdx++
-	}
-
-	if fields.IsDefault != nil {
-		setClauses = append(setClauses, fmt.Sprintf("is_default = $%d", argIdx))
-		args = append(args, *fields.IsDefault)
 		argIdx++
 	}
 
@@ -340,7 +336,7 @@ func (vr *VariantRepository) Update(
 	return nil
 }
 
-// ClearDefaultFlags sets is_default = false on all active variants of the specified product.
+// ClearDefaultFlags unsets default_variant_id on the specified product.
 func (vr *VariantRepository) ClearDefaultFlags(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -351,14 +347,39 @@ func (vr *VariantRepository) ClearDefaultFlags(
 	}
 
 	query := `
-		UPDATE product_variants
-		SET is_default = false, updated_at = now()
-		WHERE product_id = $1 AND is_default = true AND deleted_at IS NULL
+		UPDATE products
+		SET default_variant_id = NULL, updated_at = now()
+		WHERE id = $1 AND deleted_at IS NULL
 	`
 
 	_, err := qe.Exec(ctx, query, productID)
 	if err != nil {
 		return fmt.Errorf("clear default flags: %w", err)
+	}
+
+	return nil
+}
+
+// SetDefaultVariant sets default_variant_id on the specified product to the given variantID.
+func (vr *VariantRepository) SetDefaultVariant(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+	variantID uuid.UUID,
+) error {
+	if productID == uuid.Nil || variantID == uuid.Nil {
+		return errors.New("set default variant: productID and variantID are required")
+	}
+
+	query := `
+		UPDATE products
+		SET default_variant_id = $2, updated_at = now()
+		WHERE id = $1 AND deleted_at IS NULL
+	`
+
+	_, err := qe.Exec(ctx, query, productID, variantID)
+	if err != nil {
+		return fmt.Errorf("set default variant: %w", err)
 	}
 
 	return nil
@@ -408,7 +429,7 @@ func (vr *VariantRepository) ListByProductID(
 		return pagination.NewPagedResult([]*model.ProductVariant{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
 	}
 
-	orderBy := "ORDER BY pv.is_default DESC, pv.created_at ASC"
+	orderBy := "ORDER BY (CASE WHEN p.default_variant_id IS NOT NULL AND pv.id = p.default_variant_id THEN 0 ELSE 1 END) ASC, pv.created_at ASC"
 	if len(q.Sort) > 0 {
 		sortParts := make([]string, 0, len(q.Sort))
 		for _, sort := range q.Sort {
@@ -432,7 +453,7 @@ func (vr *VariantRepository) ListByProductID(
 			pv.id,
 			pv.sku,
 			pv.product_id,
-			pv.is_default,
+			(CASE WHEN p.default_variant_id IS NOT NULL AND pv.id = p.default_variant_id THEN true ELSE false END) AS is_default,
 			pv.title,
 			pv.price,
 			pv.crossed_out_price,
@@ -448,6 +469,7 @@ func (vr *VariantRepository) ListByProductID(
 			so.content_type as so_content_type,
 			so.file_size as so_file_size
 		FROM product_variants pv
+		JOIN products p ON pv.product_id = p.id
 		LEFT JOIN storage_objects so ON pv.thumbnail_object_id = so.id
 		WHERE %s
 		%s
@@ -510,6 +532,76 @@ func (vr *VariantRepository) ListByProductID(
 	}
 
 	return pagination.NewPagedResult(variants, pagination.NewPage(q.Page, q.PageSize, total)), nil
+}
+
+// ProductVariationContext is the parent-product state needed to validate a
+// variant against its chosen variation theme.
+type ProductVariationContext struct {
+	ProductID     uuid.UUID
+	Title         string
+	CategoryID    uuid.UUID
+	ProductType   model.ProductType
+	VariationAxes []string
+}
+
+// GetVariationContext loads the parent product's variation axes and category.
+// Pass forUpdate=true when the caller holds a transaction and needs to serialize
+// concurrent variant writes.
+func (vr *VariantRepository) GetVariationContext(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+	forUpdate bool,
+) (*ProductVariationContext, error) {
+	if productID == uuid.Nil {
+		return nil, errors.New("get variation context: productID is required")
+	}
+
+	query := `
+		SELECT id, title, category_id, product_type, variation_axes
+		FROM products
+		WHERE id = $1 AND deleted_at IS NULL
+	`
+	if forUpdate {
+		query += " FOR UPDATE"
+	}
+
+	var out ProductVariationContext
+	if err := qe.QueryRow(ctx, query, productID).Scan(
+		&out.ProductID,
+		&out.Title,
+		&out.CategoryID,
+		&out.ProductType,
+		&out.VariationAxes,
+	); err != nil {
+		return nil, fmt.Errorf("get variation context: %w", err)
+	}
+	return &out, nil
+}
+
+// CombinationExists reports whether another active variant already uses the
+// exact same attribute combination. attributes is compared as canonical jsonb.
+func (vr *VariantRepository) CombinationExists(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+	attributes map[string]any,
+	excludeVariantID *uuid.UUID,
+) (bool, error) {
+	query := `
+		SELECT EXISTS(
+			SELECT 1 FROM product_variants
+			WHERE product_id = $1
+			  AND attributes = $2::jsonb
+			  AND deleted_at IS NULL
+			  AND ($3::uuid IS NULL OR id <> $3)
+		)
+	`
+	var exists bool
+	if err := qe.QueryRow(ctx, query, productID, attributes, excludeVariantID).Scan(&exists); err != nil {
+		return false, fmt.Errorf("check variant combination: %w", err)
+	}
+	return exists, nil
 }
 
 // CountByProductID returns the count of active (non-deleted) variants for a given product.
@@ -603,15 +695,15 @@ func (vr *VariantRepository) SetFirstAvailableAsDefault(
 	}
 
 	query := `
-		UPDATE product_variants
-		SET is_default = true, updated_at = now()
-		WHERE id = (
+		UPDATE products
+		SET default_variant_id = (
 			SELECT id
 			FROM product_variants
 			WHERE product_id = $1 AND deleted_at IS NULL
 			ORDER BY created_at ASC
 			LIMIT 1
-		)
+		), updated_at = now()
+		WHERE id = $1 AND deleted_at IS NULL
 	`
 
 	_, err := qe.Exec(ctx, query, productID)
@@ -935,4 +1027,19 @@ func (vr *VariantRepository) ReorderMedia(
 	}
 
 	return nil
+}
+
+// ClearThumbnail unlinks the thumbnail storage object from a product variant.
+func (r *VariantRepository) ClearThumbnail(
+	ctx context.Context,
+	exec database.QueryExecutor,
+	variantID uuid.UUID,
+) error {
+	query := `
+		UPDATE product_variants
+		SET thumbnail_object_id = NULL, updated_at = now()
+		WHERE id = $1 AND deleted_at IS NULL
+	`
+	_, err := exec.Exec(ctx, query, variantID)
+	return err
 }

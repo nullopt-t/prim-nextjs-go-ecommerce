@@ -14,8 +14,8 @@ type ProductVariant struct {
 	SKU string `db:"sku"`
 	// ProductID is the master Product UUID.
 	ProductID uuid.UUID `db:"product_id"`
-	// IsDefault indicates whether this variant is the initial selection on product detail pages.
-	IsDefault bool `db:"is_default"`
+	// IsDefault indicates whether this variant matches the parent product's default_variant_id (computed on server).
+	IsDefault bool `db:"-" json:"isDefault"`
 	// Title is the variant option label (e.g. "Space Black, 18GB RAM, 512GB SSD").
 	Title string `db:"title"`
 	// Price is the active sales unit price in cents (e.g. 249900 = $2499.00).

@@ -229,7 +229,7 @@ func mapVariantResponse(v *model.ProductVariant) VariantResponse {
 
 	var origPriceStr *string
 	var extOrigPrice *float64
-	if v.CrossedOutPrice != nil {
+	if v.CrossedOutPrice != nil && *v.CrossedOutPrice > 0 {
 		ops := utils.FormatPrice(*v.CrossedOutPrice, curr)
 		eop := utils.ExtractPriceForCurrency(*v.CrossedOutPrice, curr)
 		origPriceStr = &ops
@@ -289,7 +289,7 @@ func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
 
 	var origPriceStr *string
 	var extOrigPrice *float64
-	if v.CrossedOutPrice != nil {
+	if v.CrossedOutPrice != nil && *v.CrossedOutPrice > 0 {
 		ops := utils.FormatPrice(*v.CrossedOutPrice, curr)
 		eop := utils.ExtractPriceForCurrency(*v.CrossedOutPrice, curr)
 		origPriceStr = &ops
@@ -824,6 +824,130 @@ func (vh *VariantHandler) DetachMedia(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+// UploadVariantThumbnail godoc
+//
+//	@Summary		Upload thumbnail image for a variant
+//	@Description	Uploads an image file and sets it as the variant's thumbnail, deleting previous thumbnail storage object.
+//	@Tags			Admin Product Variants
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Param			id		path		string						true	"Variant UUID"	format(uuid)
+//	@Param			file	formData	file						true	"Thumbnail image file"
+//	@Failure		400		{object}	api.BadRequestErrorResponse	"Invalid UUID or missing file"
+//	@Failure		500		{object}	api.InternalServerErrorResponse	"Upload failure"
+//	@Success		200		{object}	api.DataResponse{data=StorageObjectResponse}	"Uploaded storage object details"
+//	@Router			/admin/variants/{id}/thumbnail [post]
+func (vh *VariantHandler) UploadVariantThumbnail(c *gin.Context) {
+	variantID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid variant UUID format",
+		}))
+		return
+	}
+
+	mfile, err := c.FormFile("file")
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("file is required").
+			WithCode(apierr.CodeFileRequired))
+		return
+	}
+
+	obj, err := vh.vservice.UploadVariantThumbnail(c.Request.Context(), variantID, mfile)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{
+		Data: StorageObjectResponse{
+			PublicURL:   obj.PublicURL,
+			ContentType: obj.ContentType,
+			FileSize:    obj.FileSize,
+		},
+	})
+}
+
+// DeleteVariantThumbnail godoc
+//
+//	@Summary		Delete variant thumbnail image
+//	@Description	Removes the thumbnail from a variant and purges the storage object.
+//	@Tags			Admin Product Variants
+//	@Param			id	path	string	true	"Variant UUID"	format(uuid)
+//	@Failure		400	{object}	api.BadRequestErrorResponse	"Invalid UUID format"
+//	@Failure		500	{object}	api.InternalServerErrorResponse	"Internal error"
+//	@Success		204	"Deleted"
+//	@Router			/admin/variants/{id}/thumbnail [delete]
+func (vh *VariantHandler) DeleteVariantThumbnail(c *gin.Context) {
+	variantID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid variant UUID format",
+		}))
+		return
+	}
+
+	if err := vh.vservice.DeleteVariantThumbnail(c.Request.Context(), variantID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// UploadVariantMedia godoc
+//
+//	@Summary		Upload and attach media preview image to a variant
+//	@Description	Uploads an image file and creates a new variant media entry for gallery previews.
+//	@Tags			Admin Variant Media
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Param			id		path		string						true	"Variant UUID"	format(uuid)
+//	@Param			file	formData	file						true	"Preview image file"
+//	@Failure		400		{object}	api.BadRequestErrorResponse	"Invalid UUID or missing file"
+//	@Failure		500		{object}	api.InternalServerErrorResponse	"Upload failure"
+//	@Success		201		{object}	api.DataResponse{data=VariantMediaSummary}	"Created variant media entry"
+//	@Router			/admin/variants/{id}/media/upload [post]
+func (vh *VariantHandler) UploadVariantMedia(c *gin.Context) {
+	variantID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid variant UUID format",
+		}))
+		return
+	}
+
+	mfile, err := c.FormFile("file")
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("file is required").
+			WithCode(apierr.CodeFileRequired))
+		return
+	}
+
+	media, err := vh.vservice.UploadVariantMedia(c.Request.Context(), variantID, mfile)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	url := ""
+	if media.Object != nil {
+		url = media.Object.PublicURL
+	}
+
+	c.JSON(http.StatusCreated, api.DataResponse{
+		Data: VariantMediaSummary{
+			ID:        strconv.FormatInt(media.ID, 10),
+			MediaType: media.MediaType,
+			SortOrder: media.SortOrder,
+			URL:       url,
+		},
+	})
 }
 
 // ReorderMedia godoc

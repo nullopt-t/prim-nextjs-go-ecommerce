@@ -16,4 +16,20 @@ const (
 	// CodeSimpleProductVariantLocked indicates that a variant lifecycle operation was rejected
 	// because the parent product is a simple product with a fixed default variant.
 	CodeSimpleProductVariantLocked = "SIMPLE_PRODUCT_VARIANT_LOCKED"
+
+	// CodeVariationAxesRequired indicates that a product must define variation axes
+	// before it can have more than one child variant.
+	CodeVariationAxesRequired = "VARIATION_AXES_REQUIRED"
+
+	// CodeVariationAxisMismatch indicates that a variant's attributes do not match
+	// the product's chosen variation axes exactly.
+	CodeVariationAxisMismatch = "VARIATION_AXIS_MISMATCH"
+
+	// CodeVariationValueInvalid indicates that an axis value is empty or is not one
+	// of the allowed values for its category attribute.
+	CodeVariationValueInvalid = "VARIATION_VALUE_INVALID"
+
+	// CodeVariantCombinationExists indicates that another child already uses the
+	// same variation combination.
+	CodeVariantCombinationExists = "VARIANT_COMBINATION_EXISTS"
 )

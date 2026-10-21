@@ -200,7 +200,9 @@ CREATE TABLE IF NOT EXISTS products (
     highlights     jsonb NULL,
     status         product_status NOT NULL,
     product_type   product_type NOT NULL DEFAULT 'simple',
+    variation_axes text[] NOT NULL DEFAULT '{}'::text[],
     thumbnail_object_id uuid NULL,
+    default_variant_id uuid NULL,
     created_at     timestamptz NOT NULL DEFAULT now(),
     updated_at     timestamptz NOT NULL DEFAULT now(),
     deleted_at     timestamptz NULL,
@@ -215,7 +217,6 @@ CREATE TABLE IF NOT EXISTS product_variants (
     id                   uuid NOT NULL,
     sku                  text NOT NULL,
     product_id           uuid NOT NULL,
-    is_default           boolean NOT NULL DEFAULT false,
     title                text NOT NULL,
     price                bigint NULL,
     crossed_out_price    bigint NULL,
@@ -231,12 +232,17 @@ CREATE TABLE IF NOT EXISTS product_variants (
     FOREIGN KEY (thumbnail_object_id) REFERENCES storage_objects (id)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_product_variants_default
-    ON product_variants (product_id)
-    WHERE is_default = true AND deleted_at IS NULL;
+ALTER TABLE products
+    ADD CONSTRAINT products_default_variant_id_fkey
+    FOREIGN KEY (default_variant_id) REFERENCES product_variants (id) ON DELETE SET NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_product_variants_combination
+    ON product_variants (product_id, attributes)
+    WHERE deleted_at IS NULL AND attributes <> '{}'::jsonb;
 
 CREATE INDEX IF NOT EXISTS idx_product_variants_attributes ON product_variants USING GIN (attributes);
 CREATE INDEX IF NOT EXISTS idx_product_variants_product_id ON product_variants (product_id);
+CREATE INDEX IF NOT EXISTS idx_products_default_variant_id ON products (default_variant_id);
 CREATE INDEX IF NOT EXISTS idx_products_category_id ON products (category_id);
 CREATE INDEX IF NOT EXISTS idx_products_brand_id ON products (brand_id);
 CREATE INDEX IF NOT EXISTS idx_product_categories_parent_id ON product_categories (parent_id);

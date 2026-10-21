@@ -77,38 +77,44 @@ func (s PublicationStatus) String() string {
 // Product represents a master product catalog record.
 type Product struct {
 	// ID is the unique database UUID for the product.
-	ID uuid.UUID `db:"id"`
+	ID uuid.UUID `db:"id" json:"id"`
 	// BrandID is the optional UUID of the product's manufacturer/brand.
-	BrandID *uuid.UUID `db:"brand_id"`
+	BrandID *uuid.UUID `db:"brand_id" json:"brandId,omitempty"`
 	// CategoryID is the required taxonomy category UUID.
-	CategoryID uuid.UUID `db:"category_id"`
+	CategoryID uuid.UUID `db:"category_id" json:"categoryId"`
 
 	// Slug is the URL-friendly unique SEO identifier.
-	Slug string `db:"slug"`
+	Slug string `db:"slug" json:"slug"`
 	// Title is the primary product display name.
-	Title string `db:"title"`
+	Title string `db:"title" json:"title"`
 	// Description is the full product narrative copy.
-	Description *string `db:"description"`
+	Description *string `db:"description" json:"description,omitempty"`
 	// Highlights contains key bullet points displayed on product detail pages.
-	Highlights []string `db:"highlights"`
+	Highlights []string `db:"highlights" json:"highlights,omitempty"`
 	// Status is the draft/published/archived lifecycle state.
-	Status PublicationStatus `db:"status"`
+	Status PublicationStatus `db:"status" json:"status"`
 	// ProductType indicates simple or variable catalog classification.
-	ProductType ProductType `db:"product_type"`
+	ProductType ProductType `db:"product_type" json:"productType"`
+	// VariationAxes is the ordered list of attribute keys that define this
+	// product's variation matrix (e.g. ["color","storage"]). Empty for simple
+	// single-SKU products.
+	VariationAxes []string `db:"variation_axes" json:"variationAxes,omitempty"`
 	// ThumbnailObjectID is the optional storage object UUID for the primary cover image.
-	ThumbnailObjectID *uuid.UUID `db:"thumbnail_object_id"`
+	ThumbnailObjectID *uuid.UUID `db:"thumbnail_object_id" json:"thumbnailObjectId,omitempty"`
+	// DefaultVariantID points to the primary/default variant for this product.
+	DefaultVariantID *uuid.UUID `db:"default_variant_id" json:"defaultVariantId,omitempty"`
 
 	// CreatedAt is the timestamp when the product was added to the catalog.
-	CreatedAt time.Time `db:"created_at"`
+	CreatedAt time.Time `db:"created_at" json:"createdAt"`
 	// UpdatedAt is the timestamp when product metadata was last modified.
-	UpdatedAt time.Time `db:"updated_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
 	// DeletedAt is the optional soft-delete timestamp.
-	DeletedAt *time.Time `db:"deleted_at"`
+	DeletedAt *time.Time `db:"deleted_at" json:"deletedAt,omitempty"`
 
 	// Brand is the hydrated ProductBrand entity (not stored directly in the products table).
-	Brand *ProductBrand `db:"-"`
+	Brand *ProductBrand `db:"-" json:"brand,omitempty"`
 	// Category is the hydrated ProductCategory entity (not stored directly in the products table).
-	Category *ProductCategory `db:"-"`
+	Category *ProductCategory `db:"-" json:"category,omitempty"`
 	// Thumbnail is the hydrated Object entity for the cover image (not stored directly in the products table).
 	Thumbnail *Object `db:"-"`
 }

@@ -125,8 +125,8 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 
 	s.productID = uuid.New()
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO products (id, category_id, slug, title, status, product_type)
-		VALUES ($1, $2, $3, $4, 'published', 'variable')
+		INSERT INTO products (id, category_id, slug, title, status, product_type, variation_axes)
+		VALUES ($1, $2, $3, $4, 'published', 'variable', ARRAY['color']::text[])
 	`, s.productID, s.categoryID, "anc-headphones-"+uuid.NewString(), "ANC Headphones")
 	require.NoError(s.T(), err)
 
@@ -187,10 +187,11 @@ func (s *CartHTTPTestSuite) createVariant(sku string, price int64, stock int) uu
 	priceVal := price
 	skuVal := sku
 	v, err := s.variantService.CreateVariant(context.Background(), &variant.CreateVariantInput{
-		ProductID: s.productID,
-		SKU:       &skuVal,
-		Title:     "Black / Matte",
-		Price:     &priceVal,
+		ProductID:  s.productID,
+		SKU:        &skuVal,
+		Title:      "Black / Matte",
+		Price:      &priceVal,
+		Attributes: map[string]any{"color": sku},
 	})
 	s.Require().NoError(err)
 

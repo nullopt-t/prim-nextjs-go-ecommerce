@@ -210,8 +210,8 @@ func (s *CheckoutTestSuite) SetupSuite() {
 
 	s.productID = uuid.New()
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO products (id, category_id, slug, title, status, product_type)
-		VALUES ($1, $2, $3, $4, 'published', 'variable')
+		INSERT INTO products (id, category_id, slug, title, status, product_type, variation_axes)
+		VALUES ($1, $2, $3, $4, 'published', 'variable', ARRAY['color']::text[])
 	`, s.productID, s.categoryID, "it-product-"+uuid.NewString(), "Integration Product")
 	require.NoError(s.T(), err)
 
@@ -260,11 +260,12 @@ func (s *CheckoutTestSuite) seedVariant(price *int64, stock int) uuid.UUID {
 	sku := "SKU-" + uuid.NewString()
 	currency := defaultCurrency
 	v, err := s.variantService.CreateVariant(ctx, &variant.CreateVariantInput{
-		ProductID: s.productID,
-		SKU:       &sku,
-		Title:     "Default / Standard",
-		Price:     price,
-		Currency:  &currency,
+		ProductID:  s.productID,
+		SKU:        &sku,
+		Title:      "Default / Standard",
+		Price:      price,
+		Currency:   &currency,
+		Attributes: map[string]any{"color": sku},
 	})
 	s.Require().NoError(err)
 

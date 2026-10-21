@@ -4438,6 +4438,13 @@ const docTemplatepublic = `{
                     "items": {
                         "$ref": "#/definitions/ProductVariantResponse"
                     }
+                },
+                "variationAxes": {
+                    "description": "Ordered variation axis keys (e.g. [\"color\",\"storage\"]) used by the storefront selector",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

@@ -8,18 +8,21 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/catalog/brand"
 	"github.com/nullopt-t/prim-backend/internal/catalog/category"
-	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
+	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
+	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/catalog/review"
 	"github.com/nullopt-t/prim-backend/internal/catalog/tag"
-	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
+	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
@@ -99,22 +102,24 @@ func NewService(
 
 // CreateProductInput defines the creation parameters for a new draft product.
 type CreateProductInput struct {
-	BrandID     *uuid.UUID
-	CategoryID  uuid.UUID
-	Slug        *string
-	Title       string
-	Description *string
-	ProductType string
+	BrandID       *uuid.UUID
+	CategoryID    uuid.UUID
+	Slug          *string
+	Title         string
+	Description   *string
+	ProductType   string
+	VariationAxes []string
 }
 
 // UpdateProductInput defines mutable fields for updating an existing product.
 type UpdateProductInput struct {
-	BrandID     *uuid.UUID
-	CategoryID  *uuid.UUID
-	Title       *string
-	Description *string
-	Highlights  []string
-	ProductType *string
+	BrandID       *uuid.UUID
+	CategoryID    *uuid.UUID
+	Title         *string
+	Description   *string
+	Highlights    []string
+	ProductType   *string
+	VariationAxes *[]string
 }
 
 // CreateProductVariantInput defines parameters for creating a variant under an existing product.
@@ -138,6 +143,69 @@ type ProductDetails struct {
 	Tags     []*model.ProductTag                 `json:"tags,omitempty"`
 }
 
+// normalizeVariationAxes trims, removes empty entries, and preserves order while
+// rejecting duplicates. It returns a non-nil empty slice for empty input so the
+// database always receives a valid text[] value.
+func normalizeVariationAxes(axes []string) ([]string, error) {
+	normalized := make([]string, 0, len(axes))
+	seen := make(map[string]struct{}, len(axes))
+	for _, raw := range axes {
+		key := strings.TrimSpace(raw)
+		if key == "" {
+			return nil, apierr.BadRequestError("Variation axis keys cannot be empty").
+				WithCode(apierr.CodeValidationFailed).
+				WithFields(api.FieldError{Field: "variationAxes", Message: "axis keys cannot be empty"})
+		}
+		if _, ok := seen[key]; ok {
+			return nil, apierr.BadRequestError("Variation axes must be unique").
+				WithCode(apierr.CodeValidationFailed).
+				WithFields(api.FieldError{Field: "variationAxes", Message: "duplicate axis: " + key})
+		}
+		seen[key] = struct{}{}
+		normalized = append(normalized, key)
+	}
+	return normalized, nil
+}
+
+// validateVariationAxes ensures every axis is a defined attribute for the
+// product's category. Category attributes are the candidate pool from which an
+// administrator chooses variation themes.
+func (s *ProductService) validateVariationAxes(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	categoryID uuid.UUID,
+	axes []string,
+) ([]string, error) {
+	normalized, err := normalizeVariationAxes(axes)
+	if err != nil {
+		return nil, err
+	}
+	if len(normalized) == 0 {
+		return normalized, nil
+	}
+
+	defs, err := attribute.NewRepository().ListByCategory(ctx, qe, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	available := make(map[string]struct{}, len(defs))
+	for _, def := range defs {
+		available[def.Key] = struct{}{}
+	}
+
+	for _, axis := range normalized {
+		if _, ok := available[axis]; !ok {
+			return nil, apierr.BadRequestError("Variation axis is not defined for this category").
+				WithCode(apierr.CodeValidationFailed).
+				WithFields(api.FieldError{
+					Field:   "variationAxes",
+					Message: "axis " + axis + " is not a category attribute",
+				})
+		}
+	}
+	return normalized, nil
+}
+
 // CreateProductAsDraft validates category and brand references, computes an initial slug from title,
 // resolves any slug collisions across all products (including soft-deleted),
 // and inserts the product into the database with PublicationStatusDraft.
@@ -145,11 +213,15 @@ func (s *ProductService) CreateProductAsDraft(
 	ctx context.Context,
 	input CreateProductInput,
 ) (*model.Product, error) {
-	pt, err := model.ParseProductType(input.ProductType)
-	if err != nil {
-		return nil, apierr.BadRequestError("Invalid product type").
-			WithCode(apierr.CodeInvalidInput).
-			Wrap(err)
+	pt := model.ProductTypeSimple
+	if strings.TrimSpace(input.ProductType) != "" {
+		parsed, err := model.ParseProductType(strings.TrimSpace(input.ProductType))
+		if err != nil {
+			return nil, apierr.BadRequestError("Invalid product type").
+				WithCode(apierr.CodeInvalidInput).
+				Wrap(err)
+		}
+		pt = parsed
 	}
 
 	if input.CategoryID == uuid.Nil {
@@ -187,7 +259,22 @@ func (s *ProductService) CreateProductAsDraft(
 	}
 
 	var product *model.Product
-	err = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		axes, err := s.validateVariationAxes(ctx, db, input.CategoryID, input.VariationAxes)
+		if err != nil {
+			return err
+		}
+		if len(axes) > 0 {
+			pt = model.ProductTypeVariable
+		} else if pt == model.ProductTypeVariable {
+			return apierr.BadRequestError("Variable products must define at least one variation axis").
+				WithCode(errcode.CodeVariationAxesInvalid).
+				WithFields(api.FieldError{
+					Field:   "variationAxes",
+					Message: "variationAxes is required for variable products",
+				})
+		}
+
 		finalSlug := baseSlug
 		// Check for slug collisions across all products (including soft-deleted)
 		exists, err := s.productRepo.SlugExists(ctx, db, finalSlug)
@@ -209,19 +296,24 @@ func (s *ProductService) CreateProductAsDraft(
 		}
 
 		product = &model.Product{
-			ID:          uuid.New(),
-			Slug:        finalSlug,
-			BrandID:     input.BrandID,
-			CategoryID:  input.CategoryID,
-			Title:       input.Title,
-			Description: input.Description,
-			Status:      model.PublicationStatusDraft,
-			ProductType: pt,
+			ID:            uuid.New(),
+			Slug:          finalSlug,
+			BrandID:       input.BrandID,
+			CategoryID:    input.CategoryID,
+			Title:         input.Title,
+			Description:   input.Description,
+			Status:        model.PublicationStatusDraft,
+			ProductType:   pt,
+			VariationAxes: axes,
 		}
 
 		return s.productRepo.Create(ctx, db, product)
 	})
 	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return nil, apiErr
+		}
 		return nil, s.handleError(err, "create product")
 	}
 
@@ -251,6 +343,17 @@ func (s *ProductService) UpdateProduct(
 	}
 
 	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		// Serialize variation-theme changes against concurrent child creation.
+		if input.VariationAxes != nil {
+			var lockedID uuid.UUID
+			if err := tx.QueryRow(ctx,
+				`SELECT id FROM products WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`,
+				productID,
+			).Scan(&lockedID); err != nil {
+				return err
+			}
+		}
+
 		product, err := s.productRepo.GetByID(ctx, tx, productID)
 		if err != nil {
 			return err
@@ -272,16 +375,58 @@ func (s *ProductService) UpdateProduct(
 			product.CategoryID = *input.CategoryID
 		}
 
+		if input.VariationAxes != nil {
+			axes, err := s.validateVariationAxes(ctx, tx, product.CategoryID, *input.VariationAxes)
+			if err != nil {
+				return err
+			}
+
+			if !slices.Equal(axes, product.VariationAxes) {
+				var activeVariants int
+				if err := tx.QueryRow(ctx,
+					`SELECT count(*) FROM product_variants WHERE product_id = $1 AND deleted_at IS NULL`,
+					product.ID,
+				).Scan(&activeVariants); err != nil {
+					return err
+				}
+				if activeVariants > 0 {
+					return apierr.ConflictError("Variation axes cannot be changed while a product has child variants. Delete all children first.").
+						WithCode(errcode.CodeVariationAxesLocked)
+				}
+			}
+
+			product.VariationAxes = axes
+			if len(axes) > 0 {
+				product.ProductType = model.ProductTypeVariable
+			} else {
+				product.ProductType = model.ProductTypeSimple
+			}
+		} else if input.CategoryID != nil && len(product.VariationAxes) > 0 {
+			// A category change must not silently leave axes that the new
+			// category cannot describe.
+			if _, err := s.validateVariationAxes(ctx, tx, product.CategoryID, product.VariationAxes); err != nil {
+				return err
+			}
+		}
+
 		if input.Highlights != nil {
 			product.Highlights = input.Highlights
 		}
 
-		if input.ProductType != nil {
+		if input.ProductType != nil && input.VariationAxes == nil {
 			pt, err := model.ParseProductType(*input.ProductType)
 			if err != nil {
 				return apierr.BadRequestError("Invalid product type").
 					WithCode(apierr.CodeInvalidInput).
 					Wrap(err)
+			}
+			if pt == model.ProductTypeVariable && len(product.VariationAxes) == 0 {
+				return apierr.BadRequestError("Variable products must define at least one variation axis").
+					WithCode(errcode.CodeVariationAxesInvalid)
+			}
+			if pt == model.ProductTypeSimple && len(product.VariationAxes) > 0 {
+				return apierr.BadRequestError("Clear variation axes before making the product simple").
+					WithCode(errcode.CodeVariationAxesInvalid)
 			}
 			product.ProductType = pt
 		}
@@ -290,6 +435,11 @@ func (s *ProductService) UpdateProduct(
 	})
 
 	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return apiErr
+		}
+
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
@@ -311,6 +461,20 @@ func (s *ProductService) UpdateProduct(
 	}
 
 	return nil
+}
+
+// CreateProductVariantsBatch creates a matrix of child variants atomically.
+func (s *ProductService) CreateProductVariantsBatch(
+	ctx context.Context,
+	productID uuid.UUID,
+	inputs []variant.BatchCreateVariantInput,
+) error {
+	if s.variantService == nil {
+		return apierr.InternalServerError("Variant service unavailable").
+			WithCode(apierr.CodeInternalError)
+	}
+	_, err := s.variantService.CreateVariantsBatch(ctx, productID, inputs)
+	return err
 }
 
 // GetByID fetches a single product by its unique identifier.
@@ -867,4 +1031,34 @@ func (ps *ProductService) UploadProductThumbnail(
 
 	obj.PublicURL = ps.objectService.GetObjectURL(ctx, obj.Bucket, obj.Key)
 	return obj, nil
+}
+
+// DeleteProductThumbnail unlinks the product's thumbnail and removes the storage object.
+func (ps *ProductService) DeleteProductThumbnail(ctx context.Context, productID uuid.UUID) error {
+	if productID == uuid.Nil {
+		return apierr.BadRequestError("Product ID is required").WithCode(apierr.CodeInvalidInput)
+	}
+
+	product, err := ps.GetByID(ctx, productID)
+	if err != nil {
+		return err
+	}
+
+	if product.ThumbnailObjectID == nil {
+		return nil
+	}
+
+	oldID := *product.ThumbnailObjectID
+	product.ThumbnailObjectID = nil
+	err = ps.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		return ps.productRepo.Update(ctx, tx, product)
+	})
+	if err != nil {
+		return apierr.InternalServerError("Failed to remove product thumbnail").Wrap(err)
+	}
+
+	if ps.objectService != nil {
+		_ = ps.objectService.DeleteObjectByID(ctx, oldID)
+	}
+	return nil
 }

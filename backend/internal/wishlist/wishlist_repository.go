@@ -82,7 +82,7 @@ func (r *WishlistRepository) GetByID(
 		LEFT JOIN storage_objects so ON p.thumbnail_object_id = so.id
 		LEFT JOIN product_variants pv ON pv.id = COALESCE(
 			wi.variant_id,
-			(SELECT def.id FROM product_variants def WHERE def.product_id = p.id AND def.is_default = true AND def.deleted_at IS NULL LIMIT 1),
+			p.default_variant_id,
 			(SELECT first_v.id FROM product_variants first_v WHERE first_v.product_id = p.id AND first_v.deleted_at IS NULL ORDER BY first_v.created_at ASC LIMIT 1)
 		)
 		LEFT JOIN storage_objects vso ON pv.thumbnail_object_id = vso.id
@@ -145,7 +145,7 @@ func (r *WishlistRepository) GetByUserAndProduct(
 		LEFT JOIN storage_objects so ON p.thumbnail_object_id = so.id
 		LEFT JOIN product_variants pv ON pv.id = COALESCE(
 			wi.variant_id,
-			(SELECT def.id FROM product_variants def WHERE def.product_id = p.id AND def.is_default = true AND def.deleted_at IS NULL LIMIT 1),
+			p.default_variant_id,
 			(SELECT first_v.id FROM product_variants first_v WHERE first_v.product_id = p.id AND first_v.deleted_at IS NULL ORDER BY first_v.created_at ASC LIMIT 1)
 		)
 		LEFT JOIN storage_objects vso ON pv.thumbnail_object_id = vso.id
@@ -243,7 +243,7 @@ func (r *WishlistRepository) ListByUser(
 		LEFT JOIN storage_objects so ON p.thumbnail_object_id = so.id
 		LEFT JOIN product_variants pv ON pv.id = COALESCE(
 			wi.variant_id,
-			(SELECT def.id FROM product_variants def WHERE def.product_id = p.id AND def.is_default = true AND def.deleted_at IS NULL LIMIT 1),
+			p.default_variant_id,
 			(SELECT first_v.id FROM product_variants first_v WHERE first_v.product_id = p.id AND first_v.deleted_at IS NULL ORDER BY first_v.created_at ASC LIMIT 1)
 		)
 		LEFT JOIN storage_objects vso ON pv.thumbnail_object_id = vso.id

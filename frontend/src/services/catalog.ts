@@ -63,19 +63,64 @@ export const catalogService = {
   checkReviewEligibility: (productId: string) =>
     api.get<{ canReview: boolean }>(`/api/v1/reviews/eligibility?productId=${productId}`),
   createProduct: (payload: any) => api.post("/api/v1/admin/products", payload),
+  getAdminProducts: (params?: GetProductsParams | string) => {
+    if (typeof params === "string") {
+      return api.get(`/api/v1/admin/products${params ? `?${params}` : ""}`);
+    }
+
+    const query = new URLSearchParams();
+    if (params?.pageSize) query.append("pageSize", String(params.pageSize));
+    if (params?.page) query.append("page", String(params.page));
+    if (params?.cursor) query.append("cursor", params.cursor);
+    if (params?.category) query.append("category", params.category);
+    if (params?.brand) query.append("brand", params.brand);
+    if (params?.search) query.append("search", params.search);
+
+    const qs = query.toString();
+    return api.get(`/api/v1/admin/products${qs ? `?${qs}` : ""}`);
+  },
   getAdminProduct: (id: string) => api.get(`/api/v1/admin/products/${id}`),
   updateProduct: (id: string, payload: any) => api.patch(`/api/v1/admin/products/${id}`, payload),
+  publishProduct: (id: string) => api.post(`/api/v1/admin/products/${id}/publish`),
+  archiveProduct: (id: string) => api.post(`/api/v1/admin/products/${id}/archive`),
   deleteProduct: (id: string) => api.delete(`/api/v1/admin/products/${id}`),
+
+  // Product Media & Thumbnails
+  uploadProductThumbnail: (productId: string, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return api.upload<any>(`/api/v1/admin/products/${productId}/thumbnail`, fd);
+  },
+  deleteProductThumbnail: (productId: string) =>
+    api.delete(`/api/v1/admin/products/${productId}/thumbnail`),
 
   // Product Variants
   createVariant: (productId: string, payload: any) =>
     api.post(`/api/v1/admin/products/${productId}/variants`, payload),
+  createVariantsBatch: (productId: string, payload: any) =>
+    api.post(`/api/v1/admin/products/${productId}/variants/batch`, payload),
   updateVariant: (variantId: string, payload: any) =>
     api.patch(`/api/v1/admin/variants/${variantId}`, payload),
   deleteVariant: (variantId: string) =>
     api.delete(`/api/v1/admin/variants/${variantId}`),
   setDefaultVariant: (productId: string, variantId: string) =>
     api.post(`/api/v1/admin/products/${productId}/variants/default`, { variantId }),
+  uploadVariantThumbnail: (variantId: string, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return api.upload<any>(`/api/v1/admin/variants/${variantId}/thumbnail`, fd);
+  },
+  deleteVariantThumbnail: (variantId: string) =>
+    api.delete(`/api/v1/admin/variants/${variantId}/thumbnail`),
+  uploadVariantMedia: (variantId: string, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return api.upload<any>(`/api/v1/admin/variants/${variantId}/media/upload`, fd);
+  },
+  detachVariantMedia: (variantId: string, mediaId: string) =>
+    api.delete(`/api/v1/admin/variants/${variantId}/media/${mediaId}`),
+  getVariantMedia: (variantId: string) =>
+    api.get(`/api/v1/variants/${variantId}/media`),
 
   // Category Admin
   createCategory: (payload: { name: string; parentId?: string }) =>

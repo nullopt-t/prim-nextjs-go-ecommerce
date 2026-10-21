@@ -109,7 +109,11 @@ export default function CategoryShowcaseCards() {
       .map((cat: any) => {
         const catName = typeof cat.name === "object" ? (cat.name.en || cat.name.ar) : (cat.name || "Category");
         const catProducts = products.filter(
-          (p: any) => p.categoryId === cat.id || (p.category && p.category.toLowerCase() === catName.toLowerCase())
+          (p: any) =>
+            p.categoryId === cat.id ||
+            (typeof p.category === "string"
+              ? p.category.toLowerCase() === catName.toLowerCase()
+              : p.category?.name && String(p.category.name).toLowerCase() === catName.toLowerCase())
         );
         return {
           id: cat.id,

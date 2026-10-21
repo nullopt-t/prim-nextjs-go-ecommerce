@@ -43,26 +43,26 @@ type PublicProductCategoryReadModel struct {
 // ProductCardReadModel represents a flattened, performant denormalized view of a product for storefront listings,
 // including default variant pricing, aggregated inventory, and taxonomy tags.
 type ProductCardReadModel struct {
-	ID              uuid.UUID
-	Slug            string
-	Title           string
-	Description     *string
-	Status          model.PublicationStatus
-	Brand           *PublicProductBrandReadModel
-	Category        *PublicProductCategoryReadModel
-	ProductType     model.ProductType
-	Thumbnail       *model.Object
-	Price           *int64
-	CrossedOutPrice *int64
-	Currency        *string
-	SKU             *string
+	ID               uuid.UUID
+	Slug             string
+	Title            string
+	Description      *string
+	Status           model.PublicationStatus
+	Brand            *PublicProductBrandReadModel
+	Category         *PublicProductCategoryReadModel
+	ProductType      model.ProductType
+	Thumbnail        *model.Object
+	Price            *int64
+	CrossedOutPrice  *int64
+	Currency         *string
+	SKU              *string
 	DefaultVariantID *uuid.UUID
-	StockQuantity   int
-	Rating          *model.RatingSummary
-	TagsRaw         []byte
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	DeletedAt       *time.Time
+	StockQuantity    int
+	Rating           *model.RatingSummary
+	TagsRaw          []byte
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	DeletedAt        *time.Time
 }
 
 // CreateProductMediaInput defines parameters to link a media object to a product.
@@ -97,10 +97,11 @@ func (r *ProductRepository) Create(
 			title,
 			status,
 			product_type,
+			variation_axes,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
 		RETURNING created_at, updated_at
 	`
 
@@ -114,6 +115,7 @@ func (r *ProductRepository) Create(
 		p.Title,
 		p.Status,
 		p.ProductType,
+		p.VariationAxes,
 	).Scan(&p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create product: %w", err)
@@ -189,7 +191,9 @@ func (r *ProductRepository) get(
 			highlights,
 			status,
 			product_type,
+			variation_axes,
 			thumbnail_object_id,
+			default_variant_id,
 			created_at,
 			updated_at,
 			deleted_at
@@ -232,9 +236,11 @@ func (r *ProductRepository) Update(
 			highlights = $6,
 			status = $7,
 			product_type = $8,
-			thumbnail_object_id = $9,
+			variation_axes = $9,
+			thumbnail_object_id = $10,
+			default_variant_id = $11,
 			updated_at = now()
-		WHERE id = $10 AND deleted_at IS NULL
+		WHERE id = $12 AND deleted_at IS NULL
 	`
 
 	cmd, err := qe.Exec(
@@ -248,7 +254,9 @@ func (r *ProductRepository) Update(
 		p.Highlights,
 		p.Status,
 		p.ProductType,
+		p.VariationAxes,
 		p.ThumbnailObjectID,
+		p.DefaultVariantID,
 		p.ID,
 	)
 	if err != nil {
@@ -365,11 +373,11 @@ func (r *ProductRepository) List(
 	var total int
 	if !cursorMode {
 		// Count and select must use identical joins. In particular the brand and
-	// category joins carry the same `deleted_at IS NULL` predicate as the select:
-	// a soft-deleted brand/category must not satisfy a `b.name`/`c.name` search
-	// in the count while the select (which nulls those joins out) excludes the
-	// row, otherwise the reported total disagrees with the returned rows.
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL %s", whereStmt)
+		// category joins carry the same `deleted_at IS NULL` predicate as the select:
+		// a soft-deleted brand/category must not satisfy a `b.name`/`c.name` search
+		// in the count while the select (which nulls those joins out) excludes the
+		// row, otherwise the reported total disagrees with the returned rows.
+		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL %s", whereStmt)
 		if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 			return nil, fmt.Errorf("count products: %w", err)
 		}
@@ -444,7 +452,7 @@ func (r *ProductRepository) List(
 		LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL
 		LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL
 		LEFT JOIN storage_objects so ON p.thumbnail_object_id = so.id
-		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_default = true AND pv.deleted_at IS NULL
+		LEFT JOIN product_variants pv ON p.default_variant_id = pv.id AND pv.deleted_at IS NULL
 		%s
 		%s
 		%s
@@ -675,6 +683,7 @@ func (r *ProductRepository) AdminList(
 			p.status,
 			p.product_type,
 			p.thumbnail_object_id,
+			p.default_variant_id,
 			p.created_at,
 			p.updated_at,
 			p.deleted_at
@@ -765,3 +774,26 @@ func (r *ProductRepository) UpdateStatus(
 
 	return nil
 }
+
+// SetDefaultVariant updates the default_variant_id for a product.
+func (r *ProductRepository) SetDefaultVariant(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+	variantID *uuid.UUID,
+) error {
+	query := `
+		UPDATE products
+		SET default_variant_id = $2, updated_at = now()
+		WHERE id = $1 AND deleted_at IS NULL
+	`
+	cmd, err := qe.Exec(ctx, query, productID, variantID)
+	if err != nil {
+		return fmt.Errorf("set default variant: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}
+

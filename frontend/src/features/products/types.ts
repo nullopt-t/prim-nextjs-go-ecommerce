@@ -6,14 +6,21 @@ export interface ProductVariantStock {
 export interface ProductVariant {
   id: string;
   sku?: string;
+  title?: string;
   price?: number;
+  extractedPrice?: number;
+  originalPrice?: string;
+  extractedOriginalPrice?: number;
+  oldPrice?: number;
+  currency?: string;
+  isDefault?: boolean;
   stock?: ProductVariantStock;
   attributes?: {
     color?: string;
     size?: string;
     [key: string]: any;
   };
-  media?: Array<{ url: string }>;
+  media?: Array<{ url: string; id?: string; mediaType?: string; sortOrder?: number }>;
   thumbnail?: string;
   color?: string;
 }
@@ -22,6 +29,12 @@ export interface ProductColorOption {
   name: string;
   class: string;
   variantIndex: number;
+}
+
+export interface ProductVariationAxis {
+  key: string;
+  label: string;
+  values: string[];
 }
 
 export interface ProductDetailsEntity {
@@ -34,7 +47,11 @@ export interface ProductDetailsEntity {
   name?: string;
   title?: string;
   price: number;
+  extractedPrice?: number;
   oldPrice?: number;
+  originalPrice?: string;
+  extractedOriginalPrice?: number;
+  currency?: string;
   discountPercentage?: string;
   stars?: number;
   reviews?: number;
@@ -44,6 +61,7 @@ export interface ProductDetailsEntity {
   img?: string;
   images?: string[];
   colors?: ProductColorOption[];
+  variationAxes?: ProductVariationAxis[];
   variants?: ProductVariant[];
   inStock?: boolean;
   stockCount?: number;

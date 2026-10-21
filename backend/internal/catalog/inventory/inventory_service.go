@@ -809,9 +809,10 @@ func (s *InventoryService) AdjustProductInventory(ctx context.Context, productID
 	return s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		var variantID uuid.UUID
 		err := tx.QueryRow(ctx, `
-			SELECT id FROM product_variants
-			WHERE product_id = $1 AND deleted_at IS NULL
-			ORDER BY is_default DESC, created_at ASC
+			SELECT pv.id FROM product_variants pv
+			JOIN products p ON pv.product_id = p.id
+			WHERE pv.product_id = $1 AND pv.deleted_at IS NULL
+			ORDER BY (CASE WHEN p.default_variant_id IS NOT NULL AND pv.id = p.default_variant_id THEN 0 ELSE 1 END) ASC, pv.created_at ASC
 			LIMIT 1
 		`, productID).Scan(&variantID)
 		if err != nil {

@@ -164,9 +164,14 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 
 	v1ID := uuid.New()
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO product_variants (id, product_id, sku, title, price, crossed_out_price, currency, is_default)
-		VALUES ($1, $2, $3, $4, $5, $6, 'USD', true)
+		INSERT INTO product_variants (id, product_id, sku, title, price, crossed_out_price, currency)
+		VALUES ($1, $2, $3, $4, $5, $6, 'USD')
 	`, v1ID, s.product1ID, "SKU-MBP-16", "Space Black", int64(249900), int64(299900))
+	require.NoError(s.T(), err)
+
+	_, err = s.db.Exec(ctx, `
+		UPDATE products SET default_variant_id = $2 WHERE id = $1
+	`, s.product1ID, v1ID)
 	require.NoError(s.T(), err)
 
 	// Add inventory ledger for product 1 variant 1
@@ -179,8 +184,8 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 	// Product 1 Variant 2 (Silver)
 	s.product1Variant2ID = uuid.New()
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO product_variants (id, product_id, sku, title, price, crossed_out_price, currency, is_default)
-		VALUES ($1, $2, $3, $4, $5, $6, 'USD', false)
+		INSERT INTO product_variants (id, product_id, sku, title, price, crossed_out_price, currency)
+		VALUES ($1, $2, $3, $4, $5, $6, 'USD')
 	`, s.product1Variant2ID, s.product1ID, "SKU-MBP-16-SILVER", "Silver", int64(269900), int64(319900))
 	require.NoError(s.T(), err)
 
@@ -192,9 +197,10 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 
 	s.prodMock.products[s.product1ID] = &model.Product{
-		ID:     s.product1ID,
-		Status: model.PublicationStatusPublished,
-		Title:  "MacBook Pro 16",
+		ID:               s.product1ID,
+		DefaultVariantID: &v1ID,
+		Status:           model.PublicationStatusPublished,
+		Title:            "MacBook Pro 16",
 	}
 
 	// Product 2
@@ -207,15 +213,21 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 
 	v2ID := uuid.New()
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO product_variants (id, product_id, sku, title, price, currency, is_default)
-		VALUES ($1, $2, $3, $4, $5, 'USD', true)
+		INSERT INTO product_variants (id, product_id, sku, title, price, currency)
+		VALUES ($1, $2, $3, $4, $5, 'USD')
 	`, v2ID, s.product2ID, "SKU-IPH-16", "Desert Titanium", int64(99900))
 	require.NoError(s.T(), err)
 
+	_, err = s.db.Exec(ctx, `
+		UPDATE products SET default_variant_id = $2 WHERE id = $1
+	`, s.product2ID, v2ID)
+	require.NoError(s.T(), err)
+
 	s.prodMock.products[s.product2ID] = &model.Product{
-		ID:     s.product2ID,
-		Status: model.PublicationStatusPublished,
-		Title:  "iPhone 16 Pro",
+		ID:               s.product2ID,
+		DefaultVariantID: &v2ID,
+		Status:           model.PublicationStatusPublished,
+		Title:            "iPhone 16 Pro",
 	}
 
 	// Product 3 (Draft status)

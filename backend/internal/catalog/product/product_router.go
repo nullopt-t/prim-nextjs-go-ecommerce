@@ -49,10 +49,12 @@ func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 
 		// Variant default assignment and creation (product-scoped actions)
 		admin.POST("/:id/variants", r.ph.CreateProductVariant)
+		admin.POST("/:id/variants/batch", r.ph.CreateProductVariantsBatch)
 		admin.POST("/:id/variants/default", r.ph.SetDefaultVariant)
 
 		// Media Operations
 		admin.POST("/:id/thumbnail", r.ph.UploadProductThumbnail)
+		admin.DELETE("/:id/thumbnail", r.ph.DeleteProductThumbnail)
 
 		// Taxonomy: Categories & Tags assignments
 		admin.PUT("/:id/categories", r.ph.PutProductCategories)
@@ -79,4 +81,3 @@ func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		reviewsGroup.GET("/:slug/reviews/summary", r.ph.GetProductRatingSummary)
 	}
 }
-

@@ -1,6 +1,8 @@
 export { AdminLayout } from "./routes/adminLayout";
 export { AdminDashboard } from "./routes/dashboard";
 export { AdminProducts } from "./routes/products";
+export { AdminProductEditor } from "./routes/productEditor";
+export { AdminProductDrafts } from "./routes/productDrafts";
 export { AdminCategories } from "./routes/categories";
 export { AdminBrands } from "./routes/brands";
 export { AdminMedia } from "./routes/media";

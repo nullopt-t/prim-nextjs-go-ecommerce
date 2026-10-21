@@ -60,6 +60,37 @@ func (r *AttributeRepository) ListAttributes(ctx context.Context, qe database.Qu
 	return list, nil
 }
 
+// ListByCategory returns the attribute definitions that belong to a category.
+// It is used to validate product variation axes and their allowed values.
+func (r *AttributeRepository) ListByCategory(ctx context.Context, qe database.QueryExecutor, categoryID uuid.UUID) ([]AttributeItem, error) {
+	query := `
+		SELECT ca.id, ca.category_id, COALESCE(pc.name, 'Global'), ca.key, ca.label, ca.value_type,
+		       ca.allowed_values, ca.is_filterable, ca.sort_order, ca.created_at, ca.updated_at
+		FROM category_attributes ca
+		LEFT JOIN product_categories pc ON ca.category_id = pc.id
+		WHERE ca.category_id = $1
+		ORDER BY ca.sort_order ASC, ca.key ASC
+	`
+	rows, err := qe.Query(ctx, query, categoryID)
+	if err != nil {
+		return nil, fmt.Errorf("list category attributes: %w", err)
+	}
+	defer rows.Close()
+
+	var list []AttributeItem
+	for rows.Next() {
+		var ai AttributeItem
+		if err := rows.Scan(
+			&ai.ID, &ai.CategoryID, &ai.CategoryName, &ai.Key, &ai.Label, &ai.ValueType,
+			&ai.AllowedValues, &ai.IsFilterable, &ai.SortOrder, &ai.CreatedAt, &ai.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan category attribute: %w", err)
+		}
+		list = append(list, ai)
+	}
+	return list, rows.Err()
+}
+
 func (r *AttributeRepository) CreateAttribute(ctx context.Context, qe database.QueryExecutor, ai *AttributeItem) error {
 	query := `
 		INSERT INTO category_attributes (id, category_id, key, label, value_type, allowed_values, is_filterable, sort_order, created_at, updated_at)

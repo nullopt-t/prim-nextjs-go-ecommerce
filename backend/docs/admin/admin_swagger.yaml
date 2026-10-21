@@ -181,6 +181,11 @@ definitions:
         items:
           $ref: '#/definitions/AdminProductVariantResponse'
         type: array
+      variationAxes:
+        description: Ordered variation axis keys chosen from category attributes
+        items:
+          type: string
+        type: array
     type: object
   AdminProductVariantResponse:
     properties:
@@ -382,6 +387,53 @@ definitions:
         example: Invalid request input or malformed payload
         type: string
     type: object
+  BatchCreateVariantItem:
+    properties:
+      attributes:
+        additionalProperties: {}
+        description: Exactly one value for every variation axis
+        type: object
+      crossedOutPrice:
+        description: Crossed-out/original MSRP price in cents
+        example: 299900
+        type: integer
+      currency:
+        description: Currency ISO code
+        example: EGP
+        type: string
+      initialStock:
+        description: Initial warehouse stock to credit
+        example: 50
+        type: integer
+      isDefault:
+        description: Mark this child as the default selection
+        type: boolean
+      price:
+        description: Price in cents
+        example: 249900
+        type: integer
+      sku:
+        description: Optional custom SKU; generated when omitted
+        example: MAC-PRO-16-BLK-18
+        type: string
+      title:
+        description: Optional display title; generated from the parent title and axis
+          values when omitted
+        example: Space Black, 18GB, 512GB
+        type: string
+    required:
+    - attributes
+    type: object
+  BatchCreateVariantsRequest:
+    properties:
+      variants:
+        description: Matrix rows to create atomically
+        items:
+          $ref: '#/definitions/BatchCreateVariantItem'
+        type: array
+    required:
+    - variants
+    type: object
   Config:
     properties:
       adminNotificationEmail:
@@ -547,6 +599,15 @@ definitions:
         description: Product display title
         example: Wireless Noise-Canceling Headphones
         type: string
+      variationAxes:
+        description: Ordered attribute keys that define this product's variation theme
+          (e.g. ["color","storage"])
+        example:
+        - color
+        - storage
+        items:
+          type: string
+        type: array
     required:
     - categoryId
     - slug
@@ -1043,6 +1104,14 @@ definitions:
       updatedAt:
         description: UpdatedAt is the timestamp when product metadata was last modified.
         type: string
+      variationAxes:
+        description: |-
+          VariationAxes is the ordered list of attribute keys that define this
+          product's variation matrix (e.g. ["color","storage"]). Empty for simple
+          single-SKU products.
+        items:
+          type: string
+        type: array
     type: object
   ProductBrand:
     properties:
@@ -1471,6 +1540,16 @@ definitions:
         description: Updated product title
         example: Wireless Noise-Canceling Headphones Pro
         type: string
+      variationAxes:
+        description: |-
+          Ordered variation axis keys. Omit to leave unchanged; send [] to make the
+          product simple. Axes can only change while the product has no child variants.
+        example:
+        - color
+        - storage
+        items:
+          type: string
+        type: array
     type: object
   UpdateReviewStatusRequest:
     properties:
@@ -2982,6 +3061,53 @@ paths:
           schema:
             $ref: '#/definitions/InternalServerErrorResponse'
       summary: create a variant under a product
+      tags:
+      - Admin Product Variants
+  /admin/products/{id}/variants/batch:
+    post:
+      consumes:
+      - application/json
+      description: Atomically creates multiple child variants for a product. Every
+        row must provide exactly the product's variation axes, and duplicate combinations
+        are rejected.
+      parameters:
+      - description: Product ID (UUID)
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Matrix rows
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/BatchCreateVariantsRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Updated product with children
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/AdminProductDetailsResponse'
+              type: object
+        "400":
+          description: Invalid axes or attribute values
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "409":
+          description: Duplicate combination or SKU
+          schema:
+            $ref: '#/definitions/ConflictErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Create a variation matrix in bulk
       tags:
       - Admin Product Variants
   /admin/products/{id}/variants/default:

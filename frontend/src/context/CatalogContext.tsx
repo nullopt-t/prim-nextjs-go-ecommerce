@@ -54,21 +54,29 @@ export function normalizeProduct(raw: any) {
   const variantMedia: string[] = [];
   if (Array.isArray(raw.variants)) {
     raw.variants.forEach((v: any) => {
+      const vThumb = typeof v.thumbnail === "string" ? v.thumbnail : (v.thumbnail?.url || v.thumbnail?.publicUrl);
+      if (vThumb && !variantMedia.includes(vThumb)) {
+        variantMedia.push(vThumb);
+      }
       if (Array.isArray(v.media)) {
         v.media.forEach((m: any) => {
-          if (m.url && !variantMedia.includes(m.url)) variantMedia.push(m.url);
+          const mUrl = typeof m === "string" ? m : m?.url;
+          if (mUrl && !variantMedia.includes(mUrl)) variantMedia.push(mUrl);
         });
-      } else if (v.thumbnail && !variantMedia.includes(v.thumbnail)) {
-        variantMedia.push(v.thumbnail);
       }
     });
+  }
+
+  // Include master product thumbnail if available
+  if (img && img !== "/placeholder-product.png" && !variantMedia.includes(img)) {
+    variantMedia.push(img);
   }
 
   const images = variantMedia.length > 0 
     ? variantMedia 
     : (Array.isArray(raw.images) && raw.images.length > 0 ? raw.images : [img]);
 
-  // Extract unique colors from variants
+  // Extract unique colors from variants (kept for legacy consumers)
   const colors: { name: string; class: string; variantIndex: number }[] = [];
   const seenColors = new Set<string>();
   if (Array.isArray(raw.variants)) {
@@ -84,6 +92,48 @@ export function normalizeProduct(raw: any) {
       }
     });
   }
+
+  // Build generic variation axes. Products with declared axes use those keys;
+  // legacy rows fall back to keys shared by every child.
+  const axisLabels: Record<string, string> = {
+    color: "Color",
+    colour: "Color",
+    size: "Size",
+    storage: "Storage",
+    ram: "RAM",
+    memory: "Memory",
+    capacity: "Capacity",
+    material: "Material",
+    style: "Style",
+    band: "Band",
+    finish: "Finish",
+    model: "Model",
+  };
+  const axisLabel = (key: string) =>
+    axisLabels[key] || key.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const rawVariants = Array.isArray(raw.variants) ? raw.variants : [];
+  let axisKeys: string[] = [];
+  const declaredAxes = raw.variationAxes ?? p.variationAxes;
+  if (Array.isArray(declaredAxes) && declaredAxes.length > 0) {
+    axisKeys = declaredAxes.filter((k: any) => typeof k === "string" && k.trim() !== "");
+  } else if (rawVariants.length > 1) {
+    const keySets = rawVariants.map((v: any) =>
+      v.attributes && typeof v.attributes === "object" ? Object.keys(v.attributes) : []
+    );
+    axisKeys = keySets[0].filter((key: string) => keySets.every((keys: string[]) => keys.includes(key)));
+  }
+
+  const variationAxes = axisKeys.map((key) => {
+    const values: string[] = [];
+    for (const v of rawVariants) {
+      const value = v.attributes?.[key] ?? v[key];
+      if (value === undefined || value === null || value === "") continue;
+      const str = String(value);
+      if (!values.includes(str)) values.push(str);
+    }
+    return { key, label: axisLabel(key), values };
+  }).filter((axis) => axis.values.length > 0);
 
   // Extract stock info from first variant
   const firstVariant = Array.isArray(raw.variants) && raw.variants.length > 0 ? raw.variants[0] : null;
@@ -106,12 +156,15 @@ export function normalizeProduct(raw: any) {
         const vOldPrice = v.extractedOriginalPrice !== undefined
           ? Number(v.extractedOriginalPrice)
           : (v.originalPrice || v.oldPrice ? parseFloat(String(v.originalPrice || v.oldPrice).replace(/[^0-9.-]+/g, "")) : undefined);
+        const vThumb = typeof v.thumbnail === "string" ? v.thumbnail : (v.thumbnail?.url || v.thumbnail?.publicUrl || undefined);
         return {
           ...v,
+          thumbnail: vThumb,
           price: vPrice,
           extractedPrice: vPrice,
           oldPrice: vOldPrice,
           extractedOriginalPrice: vOldPrice,
+          originalPrice: v.originalPrice || (vOldPrice !== undefined ? `E£${vOldPrice.toFixed(2)}` : undefined),
         };
       })
     : [];
@@ -132,9 +185,13 @@ export function normalizeProduct(raw: any) {
     img,
     images,
     colors,
+    variationAxes,
     variants,
     price: priceNum,
+    extractedPrice: priceNum,
     oldPrice: oldPriceNum,
+    extractedOriginalPrice: oldPriceNum,
+    originalPrice: p.originalPrice || raw.originalPrice || (oldPriceNum !== undefined ? `E£${oldPriceNum.toFixed(2)}` : undefined),
     discountPercentage,
     stars,
     reviews,

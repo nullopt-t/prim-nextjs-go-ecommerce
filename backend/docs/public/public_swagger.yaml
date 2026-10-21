@@ -673,6 +673,12 @@ definitions:
         items:
           $ref: '#/definitions/ProductVariantResponse'
         type: array
+      variationAxes:
+        description: Ordered variation axis keys (e.g. ["color","storage"]) used by
+          the storefront selector
+        items:
+          type: string
+        type: array
     type: object
   ProductListItemResponse:
     properties:

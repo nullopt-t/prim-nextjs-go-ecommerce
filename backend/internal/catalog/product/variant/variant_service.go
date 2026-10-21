@@ -2,10 +2,16 @@ package variant
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
+	"mime/multipart"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
@@ -13,11 +19,16 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
+	fileUtil "github.com/nullopt-t/prim-backend/pkg/file"
 	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
-// ObjectService defines storage URL resolution methods for product and variant media.
+// ObjectService defines storage URL resolution and object management methods for product and variant media.
 type ObjectService interface {
+	UploadObject(ctx context.Context, contentType string, size int64, bucket string, file io.Reader) (*model.Object, error)
+	GetObjectByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
+	DeleteObject(ctx context.Context, bucket, key string) error
+	DeleteObjectByID(ctx context.Context, id uuid.UUID) error
 	GetObjectURL(ctx context.Context, bucket, key string) string
 }
 
@@ -25,10 +36,209 @@ type ObjectService interface {
 // parent product is a simple product whose default variant is fixed.
 var errSimpleProductLocked = errors.New("simple product variant is locked")
 
+// errVariationAxesRequired signals that a second child cannot be created until
+// the parent product declares which attributes vary.
+var errVariationAxesRequired = errors.New("variation axes are required for multiple variants")
+
+// variationAxesRequiredError translates errVariationAxesRequired into a structured API error.
+func variationAxesRequiredError() error {
+	return apierr.ConflictError("Set variation axes before adding another variant. Products without variation axes have a single child.").
+		WithCode(errcode.CodeVariationAxesRequired)
+}
+
 // simpleProductLockedError translates errSimpleProductLocked into a structured API error.
 func simpleProductLockedError() error {
-	return apierr.ConflictError("Simple products have a fixed default variant. Change the product type to variable to manage variants.").
+	return apierr.ConflictError("Products without variation axes have a single fixed child. Set variation axes to manage multiple variants.").
 		WithCode(errcode.CodeSimpleProductVariantLocked)
+}
+
+// variationValidationError builds a field-scoped 400 for invalid variation data.
+func variationValidationError(code, field, message string) error {
+	return apierr.BadRequestError(message).
+		WithCode(code).
+		WithFields(api.FieldError{Field: field, Message: message})
+}
+
+// variationValueString converts a JSON scalar into a trimmed string. Arrays,
+// objects, and empty values are rejected because variation axes must be scalar.
+func variationValueString(value any) (string, bool) {
+	switch v := value.(type) {
+	case string:
+		s := strings.TrimSpace(v)
+		return s, s != ""
+	case json.Number:
+		s := strings.TrimSpace(v.String())
+		return s, s != ""
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64), true
+	case float32:
+		return strconv.FormatFloat(float64(v), 'f', -1, 32), true
+	case int:
+		return strconv.Itoa(v), true
+	case int8:
+		return strconv.FormatInt(int64(v), 10), true
+	case int16:
+		return strconv.FormatInt(int64(v), 10), true
+	case int32:
+		return strconv.FormatInt(int64(v), 10), true
+	case int64:
+		return strconv.FormatInt(v, 10), true
+	case uint:
+		return strconv.FormatUint(uint64(v), 10), true
+	case uint8:
+		return strconv.FormatUint(uint64(v), 10), true
+	case uint16:
+		return strconv.FormatUint(uint64(v), 10), true
+	case uint32:
+		return strconv.FormatUint(uint64(v), 10), true
+	case uint64:
+		return strconv.FormatUint(v, 10), true
+	case bool:
+		return strconv.FormatBool(v), true
+	default:
+		return "", false
+	}
+}
+
+// canonicalAllowedValues decodes a category attribute's allowed_values JSON
+// array into comparable strings.
+func canonicalAllowedValues(raw json.RawMessage) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var values []any
+	if err := json.Unmarshal(raw, &values); err != nil {
+		return nil
+	}
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		if s, ok := variationValueString(v); ok {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// validateVariantAttributes enforces that a variant's attributes exactly match
+// the parent product's chosen variation axes, that each value is non-empty and
+// allowed by the category attribute definition (when one exists), and that the
+// resulting combination is unique among the product's active children.
+func (vs *VariantService) validateVariantAttributes(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+	attrs map[string]any,
+	forUpdate bool,
+	excludeVariantID *uuid.UUID,
+) (map[string]any, *ProductVariationContext, error) {
+	context, err := vs.vr.GetVariationContext(ctx, qe, productID, forUpdate)
+	if err != nil {
+		return nil, nil, err
+	}
+	if attrs == nil {
+		attrs = map[string]any{}
+	}
+	if len(context.VariationAxes) == 0 {
+		return attrs, context, nil
+	}
+
+	defs, err := attribute.NewRepository().ListByCategory(ctx, qe, context.CategoryID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defByKey := make(map[string]attribute.AttributeItem, len(defs))
+	for _, def := range defs {
+		defByKey[def.Key] = def
+	}
+
+	axisSet := make(map[string]struct{}, len(context.VariationAxes))
+	for _, axis := range context.VariationAxes {
+		axisSet[axis] = struct{}{}
+	}
+
+	normalized := make(map[string]any, len(context.VariationAxes))
+	for _, axis := range context.VariationAxes {
+		raw, ok := attrs[axis]
+		if !ok {
+			return nil, nil, variationValidationError(
+				errcode.CodeVariationAxisMismatch,
+				"attributes."+axis,
+				"Missing value for variation axis "+axis,
+			)
+		}
+		value, ok := variationValueString(raw)
+		if !ok {
+			return nil, nil, variationValidationError(
+				errcode.CodeVariationValueInvalid,
+				"attributes."+axis,
+				"Variation value for "+axis+" must be a non-empty scalar",
+			)
+		}
+
+		if def, exists := defByKey[axis]; exists {
+			allowed := canonicalAllowedValues(def.AllowedValues)
+			if len(allowed) > 0 {
+				canonical := ""
+				for _, candidate := range allowed {
+					if strings.EqualFold(candidate, value) {
+						canonical = candidate
+						break
+					}
+				}
+				if canonical == "" {
+					return nil, nil, variationValidationError(
+						errcode.CodeVariationValueInvalid,
+						"attributes."+axis,
+						"Value "+value+" is not allowed for "+axis,
+					)
+				}
+				value = canonical
+			}
+		}
+		normalized[axis] = value
+	}
+
+	for key := range attrs {
+		if _, ok := axisSet[key]; !ok {
+			return nil, nil, variationValidationError(
+				errcode.CodeVariationAxisMismatch,
+				"attributes."+key,
+				"Attribute "+key+" is not a variation axis for this product",
+			)
+		}
+	}
+
+	exists, err := vs.vr.CombinationExists(ctx, qe, productID, normalized, excludeVariantID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if exists {
+		return nil, nil, apierr.ConflictError("A variant with this variation combination already exists").
+			WithCode(errcode.CodeVariantCombinationExists).
+			WithFields(api.FieldError{
+				Field:   "attributes",
+				Message: "combination already exists",
+			})
+	}
+
+	return normalized, context, nil
+}
+
+// buildVariantTitle derives a readable child title from the parent title when
+// the caller does not supply one (for example, matrix bulk creation).
+func buildVariantTitle(productTitle string, axes []string, attrs map[string]any) string {
+	parts := make([]string, 0, len(axes))
+	for _, axis := range axes {
+		if v, ok := attrs[axis]; ok {
+			if s, ok := variationValueString(v); ok {
+				parts = append(parts, s)
+			}
+		}
+	}
+	if len(parts) == 0 {
+		return productTitle
+	}
+	return productTitle + " - " + strings.Join(parts, ", ")
 }
 
 // VariantService coordinates business logic, transaction handling, and cross-domain inventory integration
@@ -81,6 +291,19 @@ type CreateVariantInput struct {
 	ThumbnailObjectID *uuid.UUID
 }
 
+// BatchCreateVariantInput represents one child row in a variation-matrix bulk
+// creation request.
+type BatchCreateVariantInput struct {
+	SKU             *string
+	Title           *string
+	Price           *int64
+	CrossedOutPrice *int64
+	Currency        *string
+	Attributes      map[string]any
+	IsDefault       *bool
+	InitialStock    *int
+}
+
 // UpdateVariantInput represents the parameters for updating an existing product variant.
 type UpdateVariantInput struct {
 	SKU               *string
@@ -123,14 +346,6 @@ func (vs *VariantService) CreateVariant(
 	}
 
 	title := strings.TrimSpace(in.Title)
-	if title == "" {
-		return nil, apierr.BadRequestError("Validation error").
-			WithCode(apierr.CodeValidationFailed).
-			WithFields(api.FieldError{
-				Field:   "title",
-				Message: "title cannot be empty",
-			})
-	}
 
 	sku := uuid.NewString()
 	if in.SKU != nil {
@@ -159,17 +374,18 @@ func (vs *VariantService) CreateVariant(
 	}
 
 	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		// Acquire an exclusive row-level lock on the parent product to prevent concurrent creation races
-		var (
-			parentProductID uuid.UUID
-			productType     model.ProductType
+		// Validate against the parent's chosen variation axes while holding an
+		// exclusive row lock, so two concurrent requests cannot create the same
+		// combination.
+		normalizedAttrs, productCtx, err := vs.validateVariantAttributes(
+			ctx, tx, variant.ProductID, in.Attributes, true, nil,
 		)
-		err := tx.QueryRow(ctx,
-			`SELECT id, product_type FROM products WHERE id = $1 FOR UPDATE`,
-			variant.ProductID,
-		).Scan(&parentProductID, &productType)
 		if err != nil {
 			return err
+		}
+		variant.Attributes = normalizedAttrs
+		if strings.TrimSpace(variant.Title) == "" {
+			variant.Title = buildVariantTitle(productCtx.Title, productCtx.VariationAxes, normalizedAttrs)
 		}
 
 		// If this is the first variant of the product, make it default automatically
@@ -178,24 +394,37 @@ func (vs *VariantService) CreateVariant(
 			return err
 		}
 
-		// Simple products represent a single SKU, so their default variant is fixed.
-		if productType == model.ProductTypeSimple && count > 0 {
-			return errSimpleProductLocked
+		// A product can have multiple children only when it declares a
+		// variation theme. This replaces the old product_type lock.
+		if len(productCtx.VariationAxes) == 0 && count > 0 {
+			return errVariationAxesRequired
 		}
 
 		if count == 0 {
 			variant.IsDefault = true
 		}
 
-		if variant.IsDefault && count > 0 {
-			if err := vs.vr.ClearDefaultFlags(ctx, tx, variant.ProductID); err != nil {
+		if err := vs.vr.Create(ctx, tx, variant); err != nil {
+			return err
+		}
+
+		if variant.IsDefault {
+			if err := vs.vr.SetDefaultVariant(ctx, tx, variant.ProductID, variant.ID); err != nil {
 				return err
 			}
 		}
-		return vs.vr.Create(ctx, tx, variant)
+
+		return nil
 	})
 
 	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return nil, apiErr
+		}
+		if errors.Is(err, errVariationAxesRequired) {
+			return nil, variationAxesRequiredError()
+		}
 		if errors.Is(err, errSimpleProductLocked) {
 			return nil, simpleProductLockedError()
 		}
@@ -225,6 +454,145 @@ func (vs *VariantService) CreateVariant(
 	}
 
 	return variant, nil
+}
+
+// CreateVariantsBatch creates a full variation matrix in a single transaction.
+// Every row is validated against the product's axes, so a partially-created
+// matrix is never left behind.
+func (vs *VariantService) CreateVariantsBatch(
+	ctx context.Context,
+	productID uuid.UUID,
+	inputs []BatchCreateVariantInput,
+) ([]*model.ProductVariant, error) {
+	if productID == uuid.Nil {
+		return nil, apierr.BadRequestError("Product ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+	if len(inputs) == 0 {
+		return nil, apierr.BadRequestError("At least one variant is required").
+			WithCode(apierr.CodeValidationFailed).
+			WithFields(api.FieldError{Field: "variants", Message: "variants cannot be empty"})
+	}
+	if len(inputs) > 200 {
+		return nil, apierr.BadRequestError("Too many variants in one request").
+			WithCode(apierr.CodeValidationFailed).
+			WithFields(api.FieldError{Field: "variants", Message: "maximum 200 variants per request"})
+	}
+
+	created := make([]*model.ProductVariant, 0, len(inputs))
+
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		productCtx, err := vs.vr.GetVariationContext(ctx, tx, productID, true)
+		if err != nil {
+			return err
+		}
+
+		count, err := vs.vr.CountByProductID(ctx, tx, productID)
+		if err != nil {
+			return err
+		}
+
+		for i, in := range inputs {
+			normalized, _, err := vs.validateVariantAttributes(
+				ctx, tx, productID, in.Attributes, true, nil,
+			)
+			if err != nil {
+				return err
+			}
+
+			if len(productCtx.VariationAxes) == 0 && count > 0 {
+				return errVariationAxesRequired
+			}
+
+			title := ""
+			if in.Title != nil {
+				title = strings.TrimSpace(*in.Title)
+			}
+			if title == "" {
+				title = buildVariantTitle(productCtx.Title, productCtx.VariationAxes, normalized)
+			}
+
+			sku := uuid.NewString()
+			if in.SKU != nil && strings.TrimSpace(*in.SKU) != "" {
+				sku = strings.TrimSpace(*in.SKU)
+			}
+
+			currency := "EGP"
+			if in.Currency != nil && strings.TrimSpace(*in.Currency) != "" {
+				currency = strings.TrimSpace(*in.Currency)
+			}
+
+			isDefault := count == 0 && i == 0
+			if in.IsDefault != nil && *in.IsDefault {
+				isDefault = true
+			}
+
+			variant := &model.ProductVariant{
+				ID:              uuid.New(),
+				SKU:             sku,
+				ProductID:       productID,
+				Title:           title,
+				Price:           in.Price,
+				CrossedOutPrice: in.CrossedOutPrice,
+				Currency:        &currency,
+				Attributes:      normalized,
+				IsDefault:       isDefault,
+			}
+
+			if err := vs.vr.Create(ctx, tx, variant); err != nil {
+				return err
+			}
+
+			if isDefault {
+				if err := vs.vr.SetDefaultVariant(ctx, tx, productID, variant.ID); err != nil {
+					return err
+				}
+			}
+
+			if in.InitialStock != nil && *in.InitialStock > 0 && vs.inventoryService != nil {
+				if _, err := vs.inventoryService.AdjustStockWithTx(ctx, tx, inventory.AdjustStockInput{
+					VariantID: variant.ID,
+					Quantity:  *in.InitialStock,
+					Reason:    string(model.InventoryReasonRestock),
+				}); err != nil {
+					return err
+				}
+			}
+
+			created = append(created, variant)
+			count++
+		}
+		return nil
+	})
+
+	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return nil, apiErr
+		}
+		if errors.Is(err, errVariationAxesRequired) {
+			return nil, variationAxesRequiredError()
+		}
+
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+			return nil, apierr.BadRequestError("Referenced product does not exist").
+				WithCode(errcode.CodeProductNotFound).
+				Wrap(err)
+		case errors.Is(mappedErr, database.ErrConflict):
+			return nil, apierr.ConflictError("A variant SKU or combination already exists").
+				WithCode(errcode.CodeVariantCombinationExists).
+				Wrap(err)
+		default:
+			return nil, apierr.InternalServerError("Failed to create variants").
+				WithCode(apierr.CodeInternalError).
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	return created, nil
 }
 
 // GetVariantByID retrieves a single variant by its unique identifier.
@@ -363,7 +731,6 @@ func (vs *VariantService) UpdateVariant(
 		CrossedOutPrice:   in.CrossedOutPrice,
 		Currency:          in.Currency,
 		Attributes:        in.Attributes,
-		IsDefault:         in.IsDefault,
 		ThumbnailObjectID: in.ThumbnailObjectID,
 	}
 
@@ -399,20 +766,26 @@ func (vs *VariantService) UpdateVariant(
 			return err
 		}
 
-		if in.IsDefault != nil {
-			productType, err := vs.vr.GetProductType(ctx, tx, existing.ProductID)
+		productCtx, err := vs.vr.GetVariationContext(ctx, tx, existing.ProductID, true)
+		if err != nil {
+			return err
+		}
+
+		if in.Attributes != nil {
+			normalized, _, err := vs.validateVariantAttributes(
+				ctx, tx, existing.ProductID, in.Attributes, true, &variantID,
+			)
 			if err != nil {
 				return err
 			}
-			// A simple product's default variant is fixed; only no-op writes are allowed.
-			if productType == model.ProductTypeSimple && *in.IsDefault != existing.IsDefault {
-				return errSimpleProductLocked
-			}
+			fields.Attributes = normalized
 		}
 
-		if in.IsDefault != nil && *in.IsDefault {
-			if err := vs.vr.ClearDefaultFlags(ctx, tx, existing.ProductID); err != nil {
-				return err
+		if in.IsDefault != nil {
+			// A product without variation axes has a single child, so its
+			// default selection is fixed. Only no-op writes are allowed.
+			if len(productCtx.VariationAxes) == 0 && *in.IsDefault != existing.IsDefault {
+				return errSimpleProductLocked
 			}
 		}
 
@@ -420,10 +793,16 @@ func (vs *VariantService) UpdateVariant(
 			return err
 		}
 
-		// If this variant was default and is now unset, ensure another variant is designated as default
-		if in.IsDefault != nil && !*in.IsDefault && existing.IsDefault {
-			if err := vs.vr.SetFirstAvailableAsDefault(ctx, tx, existing.ProductID); err != nil {
-				return err
+		if in.IsDefault != nil {
+			if *in.IsDefault {
+				if err := vs.vr.SetDefaultVariant(ctx, tx, existing.ProductID, variantID); err != nil {
+					return err
+				}
+			} else if existing.IsDefault {
+				// If this variant was default and is now unset, ensure another variant is designated as default
+				if err := vs.vr.SetFirstAvailableAsDefault(ctx, tx, existing.ProductID); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -431,6 +810,10 @@ func (vs *VariantService) UpdateVariant(
 	})
 
 	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return apiErr
+		}
 		if errors.Is(err, errSimpleProductLocked) {
 			return simpleProductLockedError()
 		}
@@ -619,15 +1002,18 @@ func (vs *VariantService) RestoreVariantByID(
 	}
 
 	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		// Fetch the variant including deleted records to inspect its product and default flag
+		// Fetch the variant including deleted records to inspect its product and default variant pointer
 		var (
-			productID uuid.UUID
-			isDefault bool
+			productID        uuid.UUID
+			defaultVariantID *uuid.UUID
 		)
 		err := tx.QueryRow(ctx,
-			`SELECT product_id, is_default FROM product_variants WHERE id = $1 AND deleted_at IS NOT NULL`,
+			`SELECT pv.product_id, p.default_variant_id
+			 FROM product_variants pv
+			 JOIN products p ON pv.product_id = p.id
+			 WHERE pv.id = $1 AND pv.deleted_at IS NOT NULL`,
 			variantID,
-		).Scan(&productID, &isDefault)
+		).Scan(&productID, &defaultVariantID)
 		if err != nil {
 			return err
 		}
@@ -652,26 +1038,13 @@ func (vs *VariantService) RestoreVariantByID(
 			if count > 0 {
 				return errSimpleProductLocked
 			}
-			isDefault = true
-		}
-
-		if isDefault {
-			// Check if another active variant is currently designated as default
-			var defaultExists bool
-			err = tx.QueryRow(ctx,
-				`SELECT EXISTS(SELECT 1 FROM product_variants WHERE product_id = $1 AND is_default = true AND deleted_at IS NULL)`,
-				productID,
-			).Scan(&defaultExists)
-			if err != nil {
+			if err := vs.vr.SetDefaultVariant(ctx, tx, productID, variantID); err != nil {
 				return err
 			}
-
-			// If another default already exists, reset is_default to false on the variant being restored
-			if defaultExists {
-				_, err = tx.Exec(ctx, `UPDATE product_variants SET is_default = false WHERE id = $1`, variantID)
-				if err != nil {
-					return err
-				}
+		} else if defaultVariantID == nil {
+			// If no default variant is currently designated, make the restored variant default
+			if err := vs.vr.SetDefaultVariant(ctx, tx, productID, variantID); err != nil {
+				return err
 			}
 		}
 
@@ -937,11 +1310,7 @@ func (vs *VariantService) SetDefaultVariant(
 			return errSimpleProductLocked
 		}
 
-		if err := vs.vr.ClearDefaultFlags(ctx, tx, productID); err != nil {
-			return err
-		}
-		isDefault := true
-		return vs.vr.Update(ctx, tx, variantID, UpdateVariantFields{IsDefault: &isDefault})
+		return vs.vr.SetDefaultVariant(ctx, tx, productID, variantID)
 	})
 
 	if err != nil {
@@ -995,4 +1364,234 @@ func (vs *VariantService) ListLedgers(
 		return nil, apierr.InternalServerError("inventory service is not configured")
 	}
 	return vs.inventoryService.ListLedgers(ctx, variantID, q)
+}
+
+// UploadVariantThumbnail handles multipart thumbnail upload, size and MIME type validation,
+// S3/MinIO upload, and variant table attachment, safely deleting any previously uploaded thumbnail.
+func (vs *VariantService) UploadVariantThumbnail(
+	ctx context.Context,
+	variantID uuid.UUID,
+	fileHeader *multipart.FileHeader,
+) (*model.Object, error) {
+	if variantID == uuid.Nil {
+		return nil, apierr.BadRequestError("Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	if vs.objectService == nil {
+		return nil, apierr.InternalServerError("storage service is not configured")
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		return nil, apierr.BadRequestError("Failed to open uploaded file").
+			WithCode(apierr.CodeValidationFailed).
+			Wrap(err)
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	const maxFileSize = 10 * 1024 * 1024
+	if fileHeader.Size > maxFileSize {
+		return nil, apierr.BadRequestError("File size exceeds 10MB limit").
+			WithCode(apierr.CodeFileTooLarge)
+	}
+
+	detectedContentType, err := fileUtil.DetectContentType(file)
+	if err != nil {
+		return nil, apierr.BadRequestError("Failed to detect file content type").
+			WithCode(apierr.CodeValidationFailed).
+			Wrap(err)
+	}
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return nil, apierr.BadRequestError("Failed to reset file reader").
+			WithCode(apierr.CodeValidationFailed).
+			Wrap(err)
+	}
+
+	if !fileUtil.IsAllowedImageMime(detectedContentType) {
+		return nil, apierr.BadRequestError(
+			"Only JPEG, PNG, WebP, and AVIF images are allowed",
+		).WithCode(apierr.CodeUnsupportedMediaType)
+	}
+
+	variant, err := vs.GetVariantByID(ctx, variantID)
+	if err != nil {
+		return nil, err
+	}
+
+	bucket := "product-thumbnails"
+
+	cleanCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	obj, err := vs.objectService.UploadObject(
+		cleanCtx,
+		detectedContentType,
+		fileHeader.Size,
+		bucket,
+		file,
+	)
+	if err != nil {
+		return nil, apierr.InternalServerError("Failed to upload file to storage").
+			WithCode(apierr.CodeStorageError).
+			Wrap(err).
+			WithStack()
+	}
+
+	oldThumbnailObjectID := variant.ThumbnailObjectID
+	err = vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		return vs.vr.Update(ctx, tx, variantID, UpdateVariantFields{
+			ThumbnailObjectID: &obj.ID,
+		})
+	})
+
+	if err != nil {
+		_ = vs.objectService.DeleteObjectByID(ctx, obj.ID)
+		return nil, apierr.InternalServerError("Failed to attach thumbnail to variant").
+			WithCode(apierr.CodeInternalError).
+			Wrap(err).
+			WithStack()
+	}
+
+	if oldThumbnailObjectID != nil && *oldThumbnailObjectID != obj.ID {
+		_ = vs.objectService.DeleteObjectByID(ctx, *oldThumbnailObjectID)
+	}
+
+	obj.PublicURL = vs.objectService.GetObjectURL(ctx, obj.Bucket, obj.Key)
+	return obj, nil
+}
+
+// DeleteVariantThumbnail removes the thumbnail association and deletes the storage object.
+func (vs *VariantService) DeleteVariantThumbnail(
+	ctx context.Context,
+	variantID uuid.UUID,
+) error {
+	if variantID == uuid.Nil {
+		return apierr.BadRequestError("Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	variant, err := vs.GetVariantByID(ctx, variantID)
+	if err != nil {
+		return err
+	}
+
+	if variant.ThumbnailObjectID == nil {
+		return nil
+	}
+
+	oldID := *variant.ThumbnailObjectID
+	err = vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		return vs.vr.ClearThumbnail(ctx, tx, variantID)
+	})
+	if err != nil {
+		return apierr.InternalServerError("Failed to remove variant thumbnail").Wrap(err)
+	}
+
+	if vs.objectService != nil {
+		_ = vs.objectService.DeleteObjectByID(ctx, oldID)
+	}
+	return nil
+}
+
+// UploadVariantMedia handles multipart preview image upload and links it as variant media.
+func (vs *VariantService) UploadVariantMedia(
+	ctx context.Context,
+	variantID uuid.UUID,
+	fileHeader *multipart.FileHeader,
+) (*model.VariantMedia, error) {
+	if variantID == uuid.Nil {
+		return nil, apierr.BadRequestError("Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	if vs.objectService == nil {
+		return nil, apierr.InternalServerError("storage service is not configured")
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		return nil, apierr.BadRequestError("Failed to open uploaded file").
+			WithCode(apierr.CodeValidationFailed).
+			Wrap(err)
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	const maxFileSize = 10 * 1024 * 1024
+	if fileHeader.Size > maxFileSize {
+		return nil, apierr.BadRequestError("File size exceeds 10MB limit").
+			WithCode(apierr.CodeFileTooLarge)
+	}
+
+	detectedContentType, err := fileUtil.DetectContentType(file)
+	if err != nil {
+		return nil, apierr.BadRequestError("Failed to detect file content type").
+			WithCode(apierr.CodeValidationFailed).
+			Wrap(err)
+	}
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return nil, apierr.BadRequestError("Failed to reset file reader").
+			WithCode(apierr.CodeValidationFailed).
+			Wrap(err)
+	}
+
+	if !fileUtil.IsAllowedImageMime(detectedContentType) {
+		return nil, apierr.BadRequestError(
+			"Only JPEG, PNG, WebP, and AVIF images are allowed",
+		).WithCode(apierr.CodeUnsupportedMediaType)
+	}
+
+	_, err = vs.GetVariantByID(ctx, variantID)
+	if err != nil {
+		return nil, err
+	}
+
+	bucket := "catalog"
+
+	cleanCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	obj, err := vs.objectService.UploadObject(
+		cleanCtx,
+		detectedContentType,
+		fileHeader.Size,
+		bucket,
+		file,
+	)
+	if err != nil {
+		return nil, apierr.InternalServerError("Failed to upload file to storage").
+			WithCode(apierr.CodeStorageError).
+			Wrap(err).
+			WithStack()
+	}
+
+	var createdMedia *model.VariantMedia
+	err = vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		var repoErr error
+		createdMedia, repoErr = vs.vr.AddMedia(ctx, tx, CreateVariantMediaInput{
+			VariantID: variantID,
+			ObjectID:  obj.ID,
+			MediaType: detectedContentType,
+			SortOrder: -1,
+		})
+		return repoErr
+	})
+
+	if err != nil {
+		_ = vs.objectService.DeleteObjectByID(ctx, obj.ID)
+		return nil, apierr.InternalServerError("Failed to attach media to variant").
+			WithCode(apierr.CodeInternalError).
+			Wrap(err).
+			WithStack()
+	}
+
+	obj.PublicURL = vs.objectService.GetObjectURL(ctx, obj.Bucket, obj.Key)
+	createdMedia.Object = obj
+	return createdMedia, nil
 }

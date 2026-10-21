@@ -44,6 +44,8 @@ type CreateProductRequest struct {
 	Description *string `json:"description,omitempty" example:"Premium over-ear Bluetooth headphones with active noise cancellation."`
 	// Product classification: 'simple' or 'variable'
 	ProductType string `json:"productType" example:"simple"`
+	// Ordered attribute keys that define this product's variation theme (e.g. ["color","storage"])
+	VariationAxes []string `json:"variationAxes,omitempty" example:"color,storage"`
 }
 
 type UpdateProductRequest struct {
@@ -59,6 +61,9 @@ type UpdateProductRequest struct {
 	Highlights []string `json:"highlights,omitempty" example:"['Active Noise Cancellation','Up to 30h battery']"`
 	// Product type classification: 'simple' or 'variable'
 	ProductType *string `json:"productType,omitempty" example:"simple"`
+	// Ordered variation axis keys. Omit to leave unchanged; send [] to make the
+	// product simple. Axes can only change while the product has no child variants.
+	VariationAxes *[]string `json:"variationAxes,omitempty" example:"color,storage"`
 }
 
 type ProductBrandSummary struct {
@@ -184,6 +189,8 @@ type ProductResponse struct {
 	Highlights []string `json:"highlights"`
 	// Product type: simple or variable
 	ProductType string `json:"productType" example:"variable"`
+	// Ordered variation axis keys (e.g. ["color","storage"]) used by the storefront selector
+	VariationAxes []string `json:"variationAxes"`
 	// Formatted active price
 	Price *string `json:"price,omitempty" example:"$2499.00"`
 	// Numeric active price
@@ -194,6 +201,8 @@ type ProductResponse struct {
 	ExtractedOriginalPrice *float64 `json:"extractedOriginalPrice,omitempty" example:"2999.00"`
 	// Currency ISO code
 	Currency *string `json:"currency,omitempty" example:"EGP"`
+	// Master product card thumbnail URL
+	Thumbnail *string `json:"thumbnail,omitempty" example:"https://example.com/thumb.jpg"`
 }
 
 type ProductRatingSummaryResponse struct {
@@ -232,6 +241,8 @@ type AdminProductDetailsResponse struct {
 	Status model.PublicationStatus `json:"status" example:"published"`
 	// Product classification: simple or variable
 	ProductType string `json:"productType" example:"variable"`
+	// Ordered variation axis keys chosen from category attributes
+	VariationAxes []string `json:"variationAxes"`
 	// Primary thumbnail storage object
 	Thumbnail *StorageObjectResponse `json:"thumbnail,omitempty"`
 	// Associated brand ID
@@ -310,6 +321,30 @@ type CreateProductVariantRequest struct {
 	InitialStock *int `json:"initialStock,omitempty" example:"50"`
 }
 
+type BatchCreateVariantItem struct {
+	// Optional custom SKU; generated when omitted
+	SKU *string `json:"sku,omitempty" example:"MAC-PRO-16-BLK-18"`
+	// Optional display title; generated from the parent title and axis values when omitted
+	Title *string `json:"title,omitempty" example:"Space Black, 18GB, 512GB"`
+	// Price in cents
+	Price *int64 `json:"price,omitempty" example:"249900"`
+	// Crossed-out/original MSRP price in cents
+	CrossedOutPrice *int64 `json:"crossedOutPrice,omitempty" example:"299900"`
+	// Currency ISO code
+	Currency *string `json:"currency,omitempty" example:"EGP"`
+	// Exactly one value for every variation axis
+	Attributes map[string]any `json:"attributes" binding:"required"`
+	// Mark this child as the default selection
+	IsDefault *bool `json:"isDefault,omitempty"`
+	// Initial warehouse stock to credit
+	InitialStock *int `json:"initialStock,omitempty" example:"50"`
+}
+
+type BatchCreateVariantsRequest struct {
+	// Matrix rows to create atomically
+	Variants []BatchCreateVariantItem `json:"variants" binding:"required,dive"`
+}
+
 type SetDefaultVariantRequest struct {
 	// Variant UUID to set as default
 	VariantID string `json:"variantId" binding:"required,uuid" example:"70000000-0000-0000-0000-000000000001"`
@@ -334,12 +369,20 @@ func mapProductResponse(p *model.Product) ProductResponse {
 	}
 
 	res := ProductResponse{
-		ID:          p.ID.String(),
-		Slug:        p.Slug,
-		Title:       p.Title,
-		Description: p.Description,
-		Highlights:  highlights,
-		ProductType: p.ProductType.String(),
+		ID:            p.ID.String(),
+		Slug:          p.Slug,
+		Title:         p.Title,
+		Description:   p.Description,
+		Highlights:    highlights,
+		ProductType:   p.ProductType.String(),
+		VariationAxes: p.VariationAxes,
+	}
+	if res.VariationAxes == nil {
+		res.VariationAxes = make([]string, 0)
+	}
+
+	if p.Thumbnail != nil && p.Thumbnail.PublicURL != "" {
+		res.Thumbnail = &p.Thumbnail.PublicURL
 	}
 
 	return res
@@ -354,18 +397,22 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 	}
 
 	res := AdminProductDetailsResponse{
-		ID:          p.ID.String(),
-		Slug:        p.Slug,
-		Title:       p.Title,
-		Description: p.Description,
-		Highlights:  highlights,
-		Status:      p.Status,
-		ProductType: p.ProductType.String(),
-		CategoryID:  p.CategoryID.String(),
-		CreatedAt:   p.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:   p.UpdatedAt.Format(time.RFC3339),
-		Variants:    make([]AdminProductVariantResponse, 0),
-		Tags:        make([]ProductTagSummary, 0),
+		ID:            p.ID.String(),
+		Slug:          p.Slug,
+		Title:         p.Title,
+		Description:   p.Description,
+		Highlights:    highlights,
+		Status:        p.Status,
+		ProductType:   p.ProductType.String(),
+		VariationAxes: p.VariationAxes,
+		CategoryID:    p.CategoryID.String(),
+		CreatedAt:     p.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:     p.UpdatedAt.Format(time.RFC3339),
+		Variants:      make([]AdminProductVariantResponse, 0),
+		Tags:          make([]ProductTagSummary, 0),
+	}
+	if res.VariationAxes == nil {
+		res.VariationAxes = make([]string, 0)
 	}
 
 	if p.Thumbnail != nil {
@@ -435,7 +482,7 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 
 			var origPriceStr *string
 			var extOrigPrice *float64
-			if v.CrossedOutPrice != nil {
+			if v.CrossedOutPrice != nil && *v.CrossedOutPrice > 0 {
 				ops := utils.FormatPrice(*v.CrossedOutPrice, curr)
 				eop := utils.ExtractPrice(*v.CrossedOutPrice)
 				origPriceStr = &ops
@@ -529,11 +576,12 @@ func (h *ProductHandler) CreateProductAsDraft(c *gin.Context) {
 	}
 
 	in := CreateProductInput{
-		Slug:        customSlug,
-		Title:       strings.TrimSpace(body.Title),
-		Description: body.Description,
-		CategoryID:  categoryID,
-		ProductType: body.ProductType,
+		Slug:          customSlug,
+		Title:         strings.TrimSpace(body.Title),
+		Description:   body.Description,
+		CategoryID:    categoryID,
+		ProductType:   body.ProductType,
+		VariationAxes: body.VariationAxes,
 	}
 
 	if body.BrandID != nil {
@@ -637,7 +685,7 @@ func mapProductListItemResponse(item *ProductCardReadModel) ProductListItemRespo
 		res.ExtractedPrice = &extPrice
 	}
 
-	if item.CrossedOutPrice != nil {
+	if item.CrossedOutPrice != nil && *item.CrossedOutPrice > 0 {
 		origPriceStr := utils.FormatPrice(*item.CrossedOutPrice, curr)
 		extOrigPrice := utils.ExtractPrice(*item.CrossedOutPrice)
 		res.OriginalPrice = &origPriceStr
@@ -998,7 +1046,7 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 
 			var origPriceStr *string
 			var extOrigPrice *float64
-			if v.CrossedOutPrice != nil {
+			if v.CrossedOutPrice != nil && *v.CrossedOutPrice > 0 {
 				ops := utils.FormatPrice(*v.CrossedOutPrice, curr)
 				eop := utils.ExtractPrice(*v.CrossedOutPrice)
 				origPriceStr = &ops
@@ -1109,8 +1157,9 @@ func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	}
 
 	input := UpdateProductInput{
-		Highlights:  body.Highlights,
-		ProductType: body.ProductType,
+		Highlights:    body.Highlights,
+		ProductType:   body.ProductType,
+		VariationAxes: body.VariationAxes,
 	}
 
 	if body.Title != nil {
@@ -1305,6 +1354,33 @@ func (h *ProductHandler) UploadProductThumbnail(c *gin.Context) {
 	})
 }
 
+// DeleteProductThumbnail godoc
+//
+//	@Summary	delete thumbnail image for a product
+//	@Tags		Admin Products
+//	@Param		id	path	string	true	"Product ID"	format(uuid)
+//	@Failure	400	{object}	api.BadRequestErrorResponse	"Invalid UUID format"
+//	@Failure	500	{object}	api.InternalServerErrorResponse	"Internal error"
+//	@Success	204	"Deleted"
+//	@Router		/admin/products/{id}/thumbnail [delete]
+func (h *ProductHandler) DeleteProductThumbnail(c *gin.Context) {
+	productID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid product UUID format",
+		}))
+		return
+	}
+
+	if err := h.service.DeleteProductThumbnail(c.Request.Context(), productID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 // --- Cross-Domain Delegate Handlers ---
 
 // CreateProductVariant godoc
@@ -1357,7 +1433,7 @@ func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 
 	var origPriceStr *string
 	var extOrigPrice *float64
-	if v.CrossedOutPrice != nil {
+	if v.CrossedOutPrice != nil && *v.CrossedOutPrice > 0 {
 		ops := utils.FormatPrice(*v.CrossedOutPrice, curr)
 		eop := utils.ExtractPrice(*v.CrossedOutPrice)
 		origPriceStr = &ops
@@ -1380,6 +1456,66 @@ func (h *ProductHandler) CreateProductVariant(c *gin.Context) {
 			CreatedAt:              v.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:              v.UpdatedAt.Format(time.RFC3339),
 		},
+	})
+}
+
+// CreateProductVariantsBatch godoc
+//
+//	@Summary		Create a variation matrix in bulk
+//	@Description	Atomically creates multiple child variants for a product. Every row must provide exactly the product's variation axes, and duplicate combinations are rejected.
+//	@Tags			Admin Product Variants
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string							true	"Product ID (UUID)"	format(uuid)
+//	@Param			body	body		BatchCreateVariantsRequest		true	"Matrix rows"
+//	@Failure		400		{object}	api.BadRequestErrorResponse		"Invalid axes or attribute values"
+//	@Failure		409		{object}	api.ConflictErrorResponse		"Duplicate combination or SKU"
+//	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		201		{object}	api.DataResponse{data=AdminProductDetailsResponse}	"Updated product with children"
+//	@Router			/admin/products/{id}/variants/batch [post]
+func (h *ProductHandler) CreateProductVariantsBatch(c *gin.Context) {
+	productID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid product UUID format",
+		}))
+		return
+	}
+
+	var body BatchCreateVariantsRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	inputs := make([]variant.BatchCreateVariantInput, 0, len(body.Variants))
+	for _, item := range body.Variants {
+		inputs = append(inputs, variant.BatchCreateVariantInput{
+			SKU:             item.SKU,
+			Title:           item.Title,
+			Price:           item.Price,
+			CrossedOutPrice: item.CrossedOutPrice,
+			Currency:        item.Currency,
+			Attributes:      item.Attributes,
+			IsDefault:       item.IsDefault,
+			InitialStock:    item.InitialStock,
+		})
+	}
+
+	if err := h.service.CreateProductVariantsBatch(c.Request.Context(), productID, inputs); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	details, err := h.service.GetAdminDetailsByID(c.Request.Context(), productID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, api.DataResponse{
+		Data: mapAdminProductDetailsResponse(details),
 	})
 }
 

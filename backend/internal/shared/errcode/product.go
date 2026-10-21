@@ -12,4 +12,12 @@ const (
 
 	// CodePublishFailed indicates that a product cannot be published (e.g. missing variants or required attributes).
 	CodePublishFailed = "PUBLISH_FAILED"
+
+	// CodeVariationAxesInvalid indicates that one or more requested variation axes
+	// are not defined attributes for the product's category.
+	CodeVariationAxesInvalid = "VARIATION_AXES_INVALID"
+
+	// CodeVariationAxesLocked indicates that variation axes cannot be changed while
+	// a product already has multiple child variants.
+	CodeVariationAxesLocked = "VARIATION_AXES_LOCKED"
 )

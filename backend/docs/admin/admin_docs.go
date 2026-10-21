@@ -1985,6 +1985,78 @@ const docTemplateadmin = `{
                 }
             }
         },
+        "/admin/products/{id}/variants/batch": {
+            "post": {
+                "description": "Atomically creates multiple child variants for a product. Every row must provide exactly the product's variation axes, and duplicate combinations are rejected.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Product Variants"
+                ],
+                "summary": "Create a variation matrix in bulk",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Matrix rows",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/BatchCreateVariantsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Updated product with children",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/AdminProductDetailsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid axes or attribute values",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Duplicate combination or SKU",
+                        "schema": {
+                            "$ref": "#/definitions/ConflictErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/products/{id}/variants/default": {
             "post": {
                 "consumes": [
@@ -4265,6 +4337,13 @@ const docTemplateadmin = `{
                     "items": {
                         "$ref": "#/definitions/AdminProductVariantResponse"
                     }
+                },
+                "variationAxes": {
+                    "description": "Ordered variation axis keys chosen from category attributes",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -4537,6 +4616,68 @@ const docTemplateadmin = `{
                 }
             }
         },
+        "BatchCreateVariantItem": {
+            "type": "object",
+            "required": [
+                "attributes"
+            ],
+            "properties": {
+                "attributes": {
+                    "description": "Exactly one value for every variation axis",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossedOutPrice": {
+                    "description": "Crossed-out/original MSRP price in cents",
+                    "type": "integer",
+                    "example": 299900
+                },
+                "currency": {
+                    "description": "Currency ISO code",
+                    "type": "string",
+                    "example": "EGP"
+                },
+                "initialStock": {
+                    "description": "Initial warehouse stock to credit",
+                    "type": "integer",
+                    "example": 50
+                },
+                "isDefault": {
+                    "description": "Mark this child as the default selection",
+                    "type": "boolean"
+                },
+                "price": {
+                    "description": "Price in cents",
+                    "type": "integer",
+                    "example": 249900
+                },
+                "sku": {
+                    "description": "Optional custom SKU; generated when omitted",
+                    "type": "string",
+                    "example": "MAC-PRO-16-BLK-18"
+                },
+                "title": {
+                    "description": "Optional display title; generated from the parent title and axis values when omitted",
+                    "type": "string",
+                    "example": "Space Black, 18GB, 512GB"
+                }
+            }
+        },
+        "BatchCreateVariantsRequest": {
+            "type": "object",
+            "required": [
+                "variants"
+            ],
+            "properties": {
+                "variants": {
+                    "description": "Matrix rows to create atomically",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/BatchCreateVariantItem"
+                    }
+                }
+            }
+        },
         "Config": {
             "type": "object",
             "properties": {
@@ -4769,6 +4910,17 @@ const docTemplateadmin = `{
                     "description": "Product display title",
                     "type": "string",
                     "example": "Wireless Noise-Canceling Headphones"
+                },
+                "variationAxes": {
+                    "description": "Ordered attribute keys that define this product's variation theme (e.g. [\"color\",\"storage\"])",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "color",
+                        "storage"
+                    ]
                 }
             }
         },
@@ -5424,6 +5576,13 @@ const docTemplateadmin = `{
                 "updatedAt": {
                     "description": "UpdatedAt is the timestamp when product metadata was last modified.",
                     "type": "string"
+                },
+                "variationAxes": {
+                    "description": "VariationAxes is the ordered list of attribute keys that define this\nproduct's variation matrix (e.g. [\"color\",\"storage\"]). Empty for simple\nsingle-SKU products.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -6000,6 +6159,17 @@ const docTemplateadmin = `{
                     "description": "Updated product title",
                     "type": "string",
                     "example": "Wireless Noise-Canceling Headphones Pro"
+                },
+                "variationAxes": {
+                    "description": "Ordered variation axis keys. Omit to leave unchanged; send [] to make the\nproduct simple. Axes can only change while the product has no child variants.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "color",
+                        "storage"
+                    ]
                 }
             }
         },

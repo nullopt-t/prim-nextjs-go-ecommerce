@@ -16,7 +16,8 @@ import { copyTextToClipboard } from "@/lib/clipboard";
 import { ProductReview } from "../types";
 import {
   getProductDisplayName,
-  resolveProductStock,
+  resolveVariantByAttributes,
+  resolveVariantStock,
   resolveProductImages,
 } from "../utils/productHelpers";
 import { ProductGallery } from "./ui/ProductGallery";
@@ -43,44 +44,41 @@ export function ProductDetails() {
   const { isWishlisted: checkIsWishlisted, toggleWishlist } = useWishlist();
 
   const [activeImage, setActiveImage] = useState(0);
-  const [selectedColor, setSelectedColor] = useState(0);
+  const [selectedValues, setSelectedValues] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [canReview, setCanReview] = useState(false);
 
-  // Synchronize variant/color from URL search params (e.g. ?variant=... or ?color=...)
+  // Initialize the matrix selection from a URL-pinned variant (or the default
+  // child) whenever the product changes.
   useEffect(() => {
     if (!product) return;
 
+    const axes = product.variationAxes || [];
+    const variants = product.variants || [];
     const variantParam = searchParams.get("variant");
     const colorParam = searchParams.get("color");
 
-    if (variantParam && Array.isArray(product.variants)) {
-      const vIndex = product.variants.findIndex(
-        (v: any) => v.id === variantParam || v.sku === variantParam
-      );
-      if (vIndex !== -1) {
-        // Find if this variant corresponds to a color option
-        const matchingColorIdx = (product.colors || []).findIndex(
-          (c: any) => c.variantIndex === vIndex
-        );
-        if (matchingColorIdx !== -1) {
-          setSelectedColor(matchingColorIdx);
-        }
-        return;
-      }
+    let initialVariant = variants.find((v: any) => v.isDefault) || variants[0];
+    if (variantParam) {
+      const match = variants.find((v: any) => v.id === variantParam || v.sku === variantParam);
+      if (match) initialVariant = match;
     }
 
-    if (colorParam && Array.isArray(product.colors)) {
-      const cIndex = product.colors.findIndex(
-        (c: any) => c.name.toLowerCase() === colorParam.toLowerCase()
-      );
-      if (cIndex !== -1) {
-        setSelectedColor(cIndex);
+    const next: Record<string, string> = {};
+    for (const axis of axes) {
+      const fromVariant = initialVariant?.attributes?.[axis.key];
+      let value = fromVariant !== undefined && fromVariant !== null ? String(fromVariant) : "";
+      if (!value && axis.key === "color" && colorParam) {
+        value = axis.values.find((v) => v.toLowerCase() === colorParam.toLowerCase()) || "";
       }
+      if (!value) value = axis.values[0] || "";
+      next[axis.key] = value;
     }
-  }, [product, searchParams]);
+    setSelectedValues(next);
+    setActiveImage(0);
+  }, [product?.id, product?.slug, searchParams]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -185,7 +183,8 @@ export function ProductDetails() {
   }
 
   const productName = getProductDisplayName(product, locale);
-  const { activeVariant, availableStock, isVariantInStock } = resolveProductStock(product, selectedColor);
+  const activeVariant = resolveVariantByAttributes(product, selectedValues);
+  const { availableStock, isVariantInStock } = resolveVariantStock(product, activeVariant);
   const images = resolveProductImages(product, activeVariant);
 
   const isWishlisted = Boolean(
@@ -194,9 +193,9 @@ export function ProductDetails() {
       : (product?.id && checkIsWishlisted(String(product.id))) || (product?.slug && checkIsWishlisted(String(product.slug)))
   );
 
-  // When selected color changes, reset active image to 0 to show the new variant's main photo
-  const handleSelectColor = (idx: number) => {
-    setSelectedColor(idx);
+  // Selecting any axis value may change the child variant's image.
+  const handleSelectAxis = (key: string, value: string) => {
+    setSelectedValues((prev) => ({ ...prev, [key]: value }));
     setActiveImage(0);
   };
 
@@ -212,16 +211,42 @@ export function ProductDetails() {
   const numProductPrice = resolvePrice((product as any)?.extractedPrice ?? product.price);
   const currentPrice = numVariantPrice > 0 ? numVariantPrice : numProductPrice;
 
-  const activeVariantOldPrice = (activeVariant as any)?.extractedOriginalPrice ?? (activeVariant as any)?.oldPrice ?? (activeVariant as any)?.originalPrice;
-  const numVariantOldPrice = resolvePrice(activeVariantOldPrice);
-  const numProductOldPrice = resolvePrice((product as any)?.extractedOriginalPrice ?? product.oldPrice ?? (product as any)?.originalPrice);
-  const rawOldPrice = numVariantOldPrice > 0 ? numVariantOldPrice : numProductOldPrice;
-  const currentOldPrice = rawOldPrice > currentPrice ? rawOldPrice : undefined;
+  const hasVariantOldPrice = activeVariant && (
+    (activeVariant as any)?.extractedOriginalPrice !== undefined ||
+    (activeVariant as any)?.oldPrice !== undefined ||
+    (activeVariant as any)?.originalPrice !== undefined
+  );
+  const numVariantOldPrice = hasVariantOldPrice
+    ? resolvePrice(
+        (activeVariant as any)?.extractedOriginalPrice ??
+        (activeVariant as any)?.oldPrice ??
+        (activeVariant as any)?.originalPrice
+      )
+    : 0;
+  const numProductOldPrice = resolvePrice(
+    (product as any)?.extractedOriginalPrice ??
+    product.oldPrice ??
+    (product as any)?.originalPrice
+  );
+
+  // If an active variant is selected, use its old price (do not bleed another variant's price onto it).
+  // Only fall back to product-level old price if no active variant is selected.
+  const rawOldPrice = activeVariant
+    ? (numVariantOldPrice > 0 ? numVariantOldPrice : undefined)
+    : (numProductOldPrice > 0 ? numProductOldPrice : undefined);
+
+  // Render old price whenever a valid positive old price is configured and differs from current price
+  const currentOldPrice = rawOldPrice && rawOldPrice > 0 && rawOldPrice !== currentPrice ? rawOldPrice : undefined;
 
   const calculatedDiscount = currentOldPrice && currentOldPrice > currentPrice
     ? `${Math.round(((currentOldPrice - currentPrice) / currentOldPrice) * 100)}%`
     : undefined;
-  const discountPercentage = product.discountPercentage || calculatedDiscount;
+  const discountPercentage = activeVariant ? calculatedDiscount : (product.discountPercentage || calculatedDiscount);
+  const selectedColorLabel =
+    (activeVariant?.attributes as any)?.color ??
+    selectedValues.color ??
+    Object.values(selectedValues)[0] ??
+    "Default";
 
   const handleAddToCart = async () => {
     if (!isVariantInStock) return;
@@ -240,7 +265,7 @@ export function ProductDetails() {
       productPrice: `EGP ${currentPrice}`,
       img: images[0],
       quantity,
-      color: (product.colors || [])[selectedColor]?.name || "Default",
+      color: String(selectedColorLabel),
     };
     const res = await addToCart(payload);
     setIsAdding(false);
@@ -268,7 +293,7 @@ export function ProductDetails() {
       productPrice: `EGP ${currentPrice}`,
       img: images[0],
       quantity,
-      color: (product.colors || [])[selectedColor]?.name || "Default",
+      color: String(selectedColorLabel),
     };
     const res = await addToCart(payload);
     setIsAdding(false);
@@ -405,9 +430,9 @@ export function ProductDetails() {
           price={currentPrice}
           oldPrice={currentOldPrice}
           currency={t("currency")}
-          colors={product.colors}
-          selectedColor={selectedColor}
-          onSelectColor={handleSelectColor}
+          variationAxes={product.variationAxes}
+          selectedValues={selectedValues}
+          onSelectAxis={handleSelectAxis}
           availableStock={availableStock}
           isVariantInStock={isVariantInStock}
           quantity={quantity}

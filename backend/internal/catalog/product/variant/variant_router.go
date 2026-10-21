@@ -59,7 +59,12 @@ func (vr *VariantRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.DELETE("/variants/:id", vr.vh.DeleteVariantByID)
 		admin.POST("/variants/:id/restore", vr.vh.RestoreVariantByID)
 
+		// Thumbnail upload and deletion
+		admin.POST("/variants/:id/thumbnail", vr.vh.UploadVariantThumbnail)
+		admin.DELETE("/variants/:id/thumbnail", vr.vh.DeleteVariantThumbnail)
+
 		// Media attachment management
+		admin.POST("/variants/:id/media/upload", vr.vh.UploadVariantMedia)
 		admin.POST("/variants/:id/media", vr.vh.AttachMedia)
 		admin.DELETE("/variants/:id/media/:media_id", vr.vh.DetachMedia)
 		admin.PATCH("/variants/:id/media/reorder", vr.vh.ReorderMedia)

@@ -3,7 +3,7 @@ import { useTranslations } from "next-intl";
 import { Stars } from "@/components/ui/stars";
 import { CustomButton } from "@/components/ui";
 import QuantitySelector from "@/components/ui/quantitySelector";
-import { ProductColorOption } from "../../types";
+import { ProductVariationAxis } from "../../types";
 
 interface ProductActionsProps {
   productCategory: string;
@@ -13,9 +13,9 @@ interface ProductActionsProps {
   price: number;
   oldPrice?: number;
   currency: string;
-  colors?: ProductColorOption[];
-  selectedColor: number;
-  onSelectColor: (idx: number) => void;
+  variationAxes?: ProductVariationAxis[];
+  selectedValues: Record<string, string>;
+  onSelectAxis: (key: string, value: string) => void;
   availableStock: number;
   isVariantInStock: boolean;
   quantity: number;
@@ -36,9 +36,9 @@ export function ProductActions({
   price,
   oldPrice,
   currency,
-  colors = [],
-  selectedColor,
-  onSelectColor,
+  variationAxes = [],
+  selectedValues,
+  onSelectAxis,
   availableStock,
   isVariantInStock,
   quantity,
@@ -82,7 +82,7 @@ export function ProductActions({
         <span className="text-4xl font-bold text-foreground">
           {currencyPrefix}{formatPrice(price)}
         </span>
-        {oldPrice !== undefined && oldPrice > price && (
+        {oldPrice !== undefined && oldPrice > 0 && oldPrice !== price && (
           <span className="text-xl text-muted-foreground line-through mb-1">
             {currencyPrefix}{formatPrice(oldPrice)}
           </span>
@@ -93,35 +93,39 @@ export function ProductActions({
         {t("actions.description", { productName })}
       </p>
 
-      {/* Colors (Radio Group) */}
-      {colors.length > 0 && (
-        <fieldset className="flex flex-col gap-3 mb-8">
-          <legend className="text-sm font-medium text-foreground">
-            {t("actions.color")} <span className="text-muted-foreground ms-1">{colors[selectedColor]?.name || ""}</span>
-          </legend>
-          <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label={t("actions.selectColor")}>
-            {colors.map((color, idx) => {
-              const isSelected = selectedColor === idx;
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  onClick={() => onSelectColor(idx)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all cursor-pointer ${
-                    isSelected
-                      ? "border-foreground bg-foreground text-background shadow-xs font-semibold"
-                      : "border-border bg-card text-foreground hover:bg-secondary/70 hover:border-border"
-                  }`}
-                >
-                  <span>{color.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
-      )}
+      {/* Variation axes (one selector per theme attribute) */}
+      {variationAxes.map((axis) => {
+        const selectedValue = selectedValues[axis.key] || "";
+        const label = axis.key === "color" ? t("actions.color") : axis.label;
+        return (
+          <fieldset key={axis.key} className="flex flex-col gap-3 mb-6">
+            <legend className="text-sm font-medium text-foreground">
+              {label} <span className="text-muted-foreground ms-1">{selectedValue}</span>
+            </legend>
+            <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label={label}>
+              {axis.values.map((value) => {
+                const isSelected = selectedValue === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    onClick={() => onSelectAxis(axis.key, value)}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all cursor-pointer ${
+                      isSelected
+                        ? "border-foreground bg-foreground text-background shadow-xs font-semibold"
+                        : "border-border bg-card text-foreground hover:bg-secondary/70 hover:border-border"
+                    }`}
+                  >
+                    <span>{value}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+        );
+      })}
 
       {/* Stock status */}
       <div className="flex items-center gap-2 mb-6">

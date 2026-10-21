@@ -131,9 +131,14 @@ func (s *ReviewHTTPTestSuite) SetupSuite() {
 
 	s.variantID = uuid.New()
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO product_variants (id, product_id, sku, title, price, is_default)
-		VALUES ($1, $2, $3, $4, 29999, true)
+		INSERT INTO product_variants (id, product_id, sku, title, price)
+		VALUES ($1, $2, $3, $4, 29999)
 	`, s.variantID, s.productID, "SKU-ANC-PRO-BLK", "Black Edition")
+	require.NoError(s.T(), err)
+
+	_, err = s.db.Exec(ctx, `
+		UPDATE products SET default_variant_id = $2 WHERE id = $1
+	`, s.productID, s.variantID)
 	require.NoError(s.T(), err)
 }
 
