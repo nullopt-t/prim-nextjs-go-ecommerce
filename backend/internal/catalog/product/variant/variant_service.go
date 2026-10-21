@@ -759,8 +759,8 @@ func (vs *VariantService) RemoveMedia(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return vs.vr.RemoveMedia(ctx, db, variantID, mediaID)
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		return vs.vr.RemoveMedia(ctx, tx, variantID, mediaID)
 	})
 
 	if err != nil {
