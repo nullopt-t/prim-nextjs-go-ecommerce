@@ -165,7 +165,8 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	brandService := brand.NewService(
 		txRunner,
 		brandRepo,
-		objectService,
+		objectRepository,
+		app.storageProvider,
 	)
 	brandHandler := brand.NewHandler(
 		brandService,

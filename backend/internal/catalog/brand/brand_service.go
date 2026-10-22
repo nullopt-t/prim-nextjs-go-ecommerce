@@ -3,44 +3,46 @@ package brand
 import (
 	"context"
 	"errors"
-	"io"
 	"mime/multipart"
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	fileUtil "github.com/nullopt-t/prim-backend/pkg/file"
+	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
-type ObjectService interface {
-	UploadObject(ctx context.Context, contentType string, size int64, bucket string, file io.Reader) (*model.Object, error)
-	DeleteObject(ctx context.Context, bucket, key string) error
-	DeleteObjectByID(ctx context.Context, id uuid.UUID) error
-	GetObjectByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
-	GetObjectsByIDs(ctx context.Context, ids []uuid.UUID) ([]*model.Object, error)
-	GetObjectURL(ctx context.Context, bucket, key string) string
+type ObjectRepository interface {
+	Create(ctx context.Context, qe database.QueryExecutor, object *model.Object) error
+	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error)
+	GetByIDs(ctx context.Context, qe database.QueryExecutor, ids []uuid.UUID) ([]*model.Object, error)
+	MarkDeletingByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error
+	MarkDeletedByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error
 }
 
 type BrandService struct {
-	brandRepo     *BrandRepository
-	runner        database.Runner
-	objectService ObjectService
+	runner          database.Runner
+	brandRepo       *BrandRepository
+	objectRepo      ObjectRepository
+	storageProvider storage.StorageProvider
 }
 
 func NewService(
 	runner database.Runner,
 	brandRepo *BrandRepository,
-	objectService ObjectService,
+	objectRepo ObjectRepository,
+	storageProvider storage.StorageProvider,
 ) *BrandService {
 	return &BrandService{
-		runner:        runner,
-		brandRepo:     brandRepo,
-		objectService: objectService,
+		runner:          runner,
+		brandRepo:       brandRepo,
+		objectRepo:      objectRepo,
+		storageProvider: storageProvider,
 	}
 }
 
@@ -120,13 +122,28 @@ func (bs *BrandService) GetBrandByID(
 		if repoErr != nil {
 			return repoErr
 		}
-		return bs.populateLogoURLs(ctx, []*model.ProductBrand{brand})
+		return bs.populateLogoURLs(ctx, db, []*model.ProductBrand{brand})
 	})
 
 	if err != nil {
 		return nil, bs.handleError(err, "Failed to fetch brand")
 	}
 
+	return brand, nil
+}
+
+func (bs *BrandService) GetBrandByIDWithTx(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	id uuid.UUID,
+) (*model.ProductBrand, error) {
+	brand, repoErr := bs.brandRepo.GetByID(ctx, qe, id)
+	if repoErr != nil {
+		return nil, bs.handleError(repoErr, "Failed to fetch brand")
+	}
+	if err := bs.populateLogoURLs(ctx, qe, []*model.ProductBrand{brand}); err != nil {
+		return nil, bs.handleError(err, "Failed to populate brand logo")
+	}
 	return brand, nil
 }
 
@@ -197,7 +214,7 @@ func (bs *BrandService) listBrands(
 			return repoErr
 		}
 		if opts.populateURL {
-			return bs.populateLogoURLs(ctx, result.Items)
+			return bs.populateLogoURLs(ctx, db, result.Items)
 		}
 		return nil
 	})
@@ -291,62 +308,93 @@ func (bs *BrandService) UploadBrandLogo(
 		).WithCode(apierr.CodeUnsupportedMediaType)
 	}
 
-	// Fetch existing brand to check for old logo
-	var oldLogoID *uuid.UUID
-	err = bs.runner.WithDB(ctx, func(db database.QueryExecutor) error {
-		brand, err := bs.brandRepo.GetByID(ctx, db, brandID)
-		if err != nil {
-			return err
-		}
-		oldLogoID = brand.LogoObjectID
-		return nil
-	})
-	if err != nil {
-		return nil, bs.handleError(err, "Failed to get brand")
+	if bs.storageProvider == nil || bs.objectRepo == nil {
+		return nil, apierr.InternalServerError("Storage provider or repository unavailable")
 	}
 
-	obj, err := bs.objectService.UploadObject(ctx, contentType, file.Size, "catalog", src)
-	if err != nil {
+	key := uuid.New().String()
+	const bucket = "catalog"
+
+	if err := bs.storageProvider.Upload(ctx, bucket, key, src, file.Size, contentType); err != nil {
 		return nil, apierr.InternalServerError("Failed to upload logo").Wrap(err)
 	}
 
-	// Update the brand
-	err = bs.runner.WithDB(ctx, func(db database.QueryExecutor) error {
-		return bs.brandRepo.Update(ctx, db, brandID, UpdateBrandFields{
-			LogoObjectID: &obj.ID,
-		})
+	newObj := &model.Object{
+		ID:          uuid.New(),
+		Bucket:      bucket,
+		Key:         key,
+		ContentType: contentType,
+		FileSize:    file.Size,
+		Status:      model.ObjectStatusUploaded,
+	}
+
+	var oldLogoObj *model.Object
+
+	txErr := bs.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		brand, bErr := bs.brandRepo.GetByID(ctx, tx, brandID)
+		if bErr != nil {
+			return bErr
+		}
+
+		if brand.LogoObjectID != nil {
+			oldLogoObj, _ = bs.objectRepo.GetByID(ctx, tx, *brand.LogoObjectID)
+		}
+
+		if err := bs.objectRepo.Create(ctx, tx, newObj); err != nil {
+			return err
+		}
+
+		if err := bs.brandRepo.Update(ctx, tx, brandID, UpdateBrandFields{
+			LogoObjectID: &newObj.ID,
+		}); err != nil {
+			return err
+		}
+
+		if oldLogoObj != nil {
+			_ = bs.objectRepo.MarkDeletingByKey(ctx, tx, oldLogoObj.Bucket, oldLogoObj.Key)
+		}
+
+		return nil
 	})
-	if err != nil {
-		_ = bs.objectService.DeleteObjectByID(ctx, obj.ID) // cleanup
-		return nil, bs.handleError(err, "Failed to update brand logo")
+
+	if txErr != nil {
+		_ = bs.storageProvider.Delete(ctx, bucket, key)
+		return nil, bs.handleError(txErr, "Failed to update brand logo")
 	}
 
-	// Delete old logo if existed
-	if oldLogoID != nil {
-		_ = bs.objectService.DeleteObjectByID(ctx, *oldLogoID)
+	if oldLogoObj != nil {
+		if delErr := bs.storageProvider.Delete(ctx, oldLogoObj.Bucket, oldLogoObj.Key); delErr == nil {
+			_ = bs.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+				return bs.objectRepo.MarkDeletedByKey(ctx, db, oldLogoObj.Bucket, oldLogoObj.Key)
+			})
+		}
 	}
 
-	url := bs.objectService.GetObjectURL(ctx, obj.Bucket, obj.Key)
+	url := bs.storageProvider.GetPublicURL(bucket, key)
 	return &url, nil
 }
 
-func (bs *BrandService) populateLogoURLs(ctx context.Context, brands []*model.ProductBrand) error {
+func (bs *BrandService) populateLogoURLs(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	brands []*model.ProductBrand,
+) error {
 	var objectIDs []uuid.UUID
 	for _, brand := range brands {
 		if brand.LogoObjectID != nil {
 			objectIDs = append(objectIDs, *brand.LogoObjectID)
 		}
 	}
-	if len(objectIDs) == 0 {
+	if len(objectIDs) == 0 || bs.objectRepo == nil {
 		return nil
 	}
 
-	objects, err := bs.objectService.GetObjectsByIDs(ctx, objectIDs)
+	objects, err := bs.objectRepo.GetByIDs(ctx, qe, objectIDs)
 	if err != nil {
 		return err
 	}
 
-	objMap := make(map[uuid.UUID]*model.Object)
+	objMap := make(map[uuid.UUID]*model.Object, len(objects))
 	for _, obj := range objects {
 		objMap[obj.ID] = obj
 	}
@@ -354,10 +402,13 @@ func (bs *BrandService) populateLogoURLs(ctx context.Context, brands []*model.Pr
 	for _, brand := range brands {
 		if brand.LogoObjectID != nil {
 			if obj, ok := objMap[*brand.LogoObjectID]; ok {
-				url := bs.objectService.GetObjectURL(ctx, obj.Bucket, obj.Key)
-				brand.LogoURL = &url
+				if bs.storageProvider != nil {
+					url := bs.storageProvider.GetPublicURL(obj.Bucket, obj.Key)
+					brand.LogoURL = &url
+				}
 			}
 		}
 	}
 	return nil
 }
+
