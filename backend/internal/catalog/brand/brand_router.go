@@ -54,7 +54,7 @@ func (r *Router) MapRoutes(
 	admin := vgroup.Group("/admin/brands")
 	admin.Use(
 		middleware.Authenticate(r.sessionStore),
-		middleware.Authorize(model.AdminRole),
+		middleware.Authorize(model.AdminRole, model.SuperRole),
 	)
 	{
 		admin.POST("", r.bh.CreateBrand)

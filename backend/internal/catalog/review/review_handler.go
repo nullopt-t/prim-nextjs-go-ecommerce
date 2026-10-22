@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
@@ -32,7 +33,6 @@ type CreateReviewRequest struct {
 	// Review detailed feedback narrative
 	Body *string `json:"body,omitempty" example:"The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."`
 }
-
 
 type UpdateReviewRequest struct {
 	// Updated star score between 1 and 5
@@ -95,7 +95,6 @@ func mapReviewToResponse(r *model.Review) ReviewResponse {
 	}
 }
 
-
 func mapRatingSummaryResponse(s *model.RatingSummary) RatingSummaryResponse {
 	if s == nil {
 		return RatingSummaryResponse{
@@ -110,20 +109,11 @@ func mapRatingSummaryResponse(s *model.RatingSummary) RatingSummaryResponse {
 }
 
 func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
-	userIDVal, exists := c.Get("userID")
-	if !exists {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
 		return uuid.Nil, apierr.UnauthorizedError("unauthorized")
 	}
-	if id, ok := userIDVal.(uuid.UUID); ok {
-		return id, nil
-	}
-	if idStr, ok := userIDVal.(string); ok {
-		id, err := uuid.Parse(idStr)
-		if err == nil {
-			return id, nil
-		}
-	}
-	return uuid.Nil, apierr.UnauthorizedError("invalid user identifier in context")
+	return userID, nil
 }
 
 // CreateReview godoc
@@ -185,7 +175,6 @@ func (h *ReviewHandler) CreateReview(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, api.DataResponse{Data: mapReviewToResponse(rv)})
 }
-
 
 // GetMyReviews godoc
 //
@@ -352,12 +341,7 @@ func (h *ReviewHandler) GetReviewByID(c *gin.Context) {
 		return
 	}
 
-	var callingUserID uuid.UUID
-	if uidVal, exists := c.Get("userID"); exists {
-		if uid, ok := uidVal.(uuid.UUID); ok {
-			callingUserID = uid
-		}
-	}
+	callingUserID, _ := middleware.GetUserID(c)
 
 	// IDOR protection: only return approved reviews, or allow author to view their own review
 	if rv.Status != model.ReviewStatusApproved && (callingUserID == uuid.Nil || rv.UserID != callingUserID) {
@@ -638,5 +622,3 @@ func (h *ReviewHandler) AdminDeleteReview(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "review deleted successfully"})
 }
-
-

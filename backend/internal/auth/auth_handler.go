@@ -298,8 +298,12 @@ func (h *Handler) ResendChallenge(c *gin.Context) {
 //	@Failure		500	{object}	api.InternalServerErrorResponse
 //	@Router			/auth/me [get]
 func (h *Handler) GetMe(c *gin.Context) {
-	// Retrieve authenticated user UUID established in Gin context by authentication middleware
-	userID := c.MustGet("userID").(uuid.UUID)
+	// Retrieve authenticated user UUID established by the authentication middleware.
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError())
+		return
+	}
 
 	// Fetch fresh user record from the database to reflect up-to-date role and status
 	user, err := h.authService.GetUserByID(c.Request.Context(), userID)
@@ -338,7 +342,11 @@ func (h *Handler) GetMe(c *gin.Context) {
 //	@Router			/auth/sessions [get]
 func (h *Handler) GetSessions(c *gin.Context) {
 	// Extract authenticated user ID from context
-	userID := c.MustGet("userID").(uuid.UUID)
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError())
+		return
+	}
 
 	// Query Redis for all active sessions registered under the user's session set
 	sessions, err := h.sessionService.GetUserSessions(c.Request.Context(), userID)
@@ -364,7 +372,11 @@ func (h *Handler) GetSessions(c *gin.Context) {
 //	@Router			/auth/sessions/{id} [delete]
 func (h *Handler) DeleteSessionByID(c *gin.Context) {
 	// Extract authenticated user ID from context
-	userID := c.MustGet("userID").(uuid.UUID)
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError())
+		return
+	}
 	sessionID := c.Param("id")
 
 	// Revoke the specified session record from Redis
@@ -375,7 +387,7 @@ func (h *Handler) DeleteSessionByID(c *gin.Context) {
 	}
 
 	// If the revoked sessionID matches the caller's current active session, clear the session cookies from the client browser
-	if activeSessionID, exists := c.Get("sessionID"); exists && activeSessionID == sessionID {
+	if session, ok := middleware.GetSession(c); ok && session.ID == sessionID {
 		h.clearAuthCookies(c)
 	}
 
@@ -395,7 +407,11 @@ func (h *Handler) DeleteSessionByID(c *gin.Context) {
 //	@Router			/auth/sessions [delete]
 func (h *Handler) DeleteAllSessions(c *gin.Context) {
 	// Extract caller's user UUID from context
-	userID := c.MustGet("userID").(uuid.UUID)
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError())
+		return
+	}
 
 	// Delete all session keys and the user's tracking set from Redis
 	err := h.sessionService.DeleteAllSessions(c.Request.Context(), userID)
@@ -420,20 +436,19 @@ func (h *Handler) DeleteAllSessions(c *gin.Context) {
 //	@Failure		500	{object}	api.InternalServerErrorResponse
 //	@Router			/auth/logout [post]
 func (h *Handler) Logout(c *gin.Context) {
-	// Extract authenticated user ID from context
-	userID := c.MustGet("userID").(uuid.UUID)
-
-	// Extract active session ID injected by authentication middleware
-	sessionID := ""
-	if sid, exists := c.Get("sessionID"); exists && sid != "" {
-		sessionID = sid.(string)
+	// Extract authenticated user and current session from context.
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError())
+		return
 	}
+	session, _ := middleware.GetSession(c)
 
 	// Delete current session from Redis store. Revocation failure is surfaced
 	// instead of swallowed: cookies are only cleared once the server-side
 	// session is confirmed revoked, otherwise the session stays valid.
-	if sessionID != "" {
-		if err := h.sessionService.DeleteSessionByID(c.Request.Context(), userID, sessionID); err != nil {
+	if session != nil {
+		if err := h.sessionService.DeleteSessionByID(c.Request.Context(), userID, session.ID); err != nil {
 			_ = c.Error(err)
 			return
 		}

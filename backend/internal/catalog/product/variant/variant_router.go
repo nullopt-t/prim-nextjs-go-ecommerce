@@ -51,7 +51,7 @@ func (vr *VariantRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	admin := vgroup.Group("/admin")
 	admin.Use(
 		middleware.Authenticate(vr.sessionStore),
-		middleware.Authorize(model.AdminRole),
+		middleware.Authorize(model.AdminRole, model.SuperRole),
 	)
 	{
 		// Variant CRUD lifecycle
@@ -75,4 +75,3 @@ func (vr *VariantRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.GET("/variants/:id/inventory/ledgers", vr.vh.ListVariantLedgers)
 	}
 }
-

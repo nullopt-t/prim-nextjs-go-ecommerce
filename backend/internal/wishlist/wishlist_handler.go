@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
@@ -58,9 +59,9 @@ type WishlistProductResponse struct {
 	// Salable inventory availability
 	InStock bool `json:"inStock" example:"true"`
 	// Variant specific details
-	VariantID *string `json:"variantId,omitempty" example:"70000000-0000-0000-0000-000000000001"`
+	VariantID    *string `json:"variantId,omitempty" example:"70000000-0000-0000-0000-000000000001"`
 	VariantTitle *string `json:"variantTitle,omitempty" example:"Space Black"`
-	VariantSKU *string `json:"variantSku,omitempty" example:"SKU-MBP-16"`
+	VariantSKU   *string `json:"variantSku,omitempty" example:"SKU-MBP-16"`
 }
 
 type WishlistItemResponse struct {
@@ -91,20 +92,11 @@ type WishlistCountResponse struct {
 }
 
 func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
-	userIDVal, exists := c.Get("userID")
-	if !exists {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
 		return uuid.Nil, apierr.UnauthorizedError("unauthorized")
 	}
-	if id, ok := userIDVal.(uuid.UUID); ok {
-		return id, nil
-	}
-	if idStr, ok := userIDVal.(string); ok {
-		id, err := uuid.Parse(idStr)
-		if err == nil {
-			return id, nil
-		}
-	}
-	return uuid.Nil, apierr.UnauthorizedError("invalid user identifier in context")
+	return userID, nil
 }
 
 func mapWishlistItemResponse(item *model.WishlistItem) WishlistItemResponse {
@@ -440,7 +432,6 @@ func (h *WishlistHandler) RemoveByProductID(c *gin.Context) {
 //	@Failure		404			{object}	api.NotFoundErrorResponse	"Item not found"
 //	@Failure		500			{object}	api.InternalServerErrorResponse	"Internal server error"
 //	@Router			/wishlist [delete]
-//
 func (h *WishlistHandler) ClearWishlist(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {

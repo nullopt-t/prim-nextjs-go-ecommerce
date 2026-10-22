@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 )
 
 const (
@@ -119,34 +120,16 @@ func capturePayload(c *gin.Context) []byte {
 	return redactJSON(raw)
 }
 
-// actor extracts the authenticated user id and role from the gin context. The
-// auth middleware stores the id as a uuid.UUID (or, defensively, a string).
+// actor extracts the authenticated user id and role from the session stored in
+// the gin context by the auth middleware.
 func actor(c *gin.Context) (*uuid.UUID, string) {
-	idVal, ok := c.Get("userID")
+	id, ok := middleware.GetUserID(c)
 	if !ok {
 		return nil, ""
 	}
 
-	var id uuid.UUID
-	switch v := idVal.(type) {
-	case uuid.UUID:
-		id = v
-	case string:
-		parsed, err := uuid.Parse(v)
-		if err != nil {
-			return nil, ""
-		}
-		id = parsed
-	default:
-		return nil, ""
-	}
-	if id == uuid.Nil {
-		return nil, ""
-	}
-
-	role, _ := c.Get("userRole")
-	roleStr, _ := role.(string)
-	return &id, roleStr
+	role, _ := middleware.GetUserRole(c)
+	return &id, string(role)
 }
 
 // resolveAction derives a normalized action name, entity type, and entity id

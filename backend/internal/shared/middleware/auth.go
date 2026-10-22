@@ -23,69 +23,11 @@ var (
 	// ErrInvalidUserSubject indicates that the user subject extracted from context or token is malformed.
 	ErrInvalidUserSubject = errors.New("invalid subject")
 
-	// ErrStaleSession indicates that a session is structurally valid but points
-	// at a user account that no longer exists (deleted, or removed out-of-band
-	// by a database reseed). It is treated as an authentication failure so the
-	// client re-authenticates instead of surfacing a downstream 500.
-	ErrStaleSession = errors.New("session references a non-existent user")
-
 	// ErrMissingSessionCookie indicates that the request did not carry the
 	// canonical session cookie. Callers decide whether that is fatal (authenticated
 	// routes) or simply means the request is anonymous (optional routes).
 	ErrMissingSessionCookie = errors.New("session cookie is missing")
 )
-
-// UserValidator reports whether a session's principal still exists. It is used
-// to reject a stale session (for example after a database reseed) before any
-// handler tries to write a row that references the missing user.
-type UserValidator interface {
-	// UserExists reports whether the user still exists and is not soft-deleted.
-	UserExists(ctx context.Context, userID uuid.UUID) (bool, error)
-}
-
-// validatingSessionStore wraps a SessionStore and rejects authenticated sessions
-// whose user no longer exists. Guest sessions and sessions with a nil user are
-// passed through untouched. Infrastructure failures while checking existence are
-// surfaced as errors (mapped to 5xx), never silently accepted.
-type validatingSessionStore struct {
-	store     SessionStore
-	validator UserValidator
-}
-
-// NewValidatingSessionStore decorates store with user-existence validation. If
-// either argument is nil the original store is returned unchanged, so callers
-// that have no user validator (tests, minimal deployments) are unaffected.
-func NewValidatingSessionStore(store SessionStore, validator UserValidator) SessionStore {
-	if store == nil || validator == nil {
-		return store
-	}
-	return &validatingSessionStore{store: store, validator: validator}
-}
-
-// GetSessionByID loads the session and, for authenticated sessions, verifies the
-// referenced user still exists. A missing user yields ErrStaleSession; a lookup
-// failure yields a 5xx API error so it is not mistaken for a bad credential.
-func (v *validatingSessionStore) GetSessionByID(ctx context.Context, sessionID string) (*model.UserSession, error) {
-	session, err := v.store.GetSessionByID(ctx, sessionID)
-	if err != nil || session == nil {
-		return session, err
-	}
-
-	// Anonymous sessions carry no principal to validate.
-	if session.Type == model.SessionTypeGuest || session.UserID == uuid.Nil {
-		return session, nil
-	}
-
-	exists, err := v.validator.UserExists(ctx, session.UserID)
-	if err != nil {
-		return nil, apierr.InternalServerError("Failed to validate session").Wrap(err)
-	}
-	if !exists {
-		return nil, fmt.Errorf("%w: user %s", ErrStaleSession, session.UserID)
-	}
-
-	return session, nil
-}
 
 const (
 	// SessionCookieName is the canonical single session cookie name for pure server sessions.
@@ -144,10 +86,11 @@ func GetUserRole(c *gin.Context) (model.UserRole, bool) {
 	return session.UserRole, true
 }
 
-// Authorize verifies that the authenticated user possesses one of the allowed roles.
-// Users with SuperRole ("superadmin") automatically pass any staff-level check.
-// If the session or role is missing, or does not match the allowlist, the request
-// is aborted with a 401 Unauthorized or 403 Forbidden error response respectively.
+// Authorize verifies that the authenticated user possesses one of the allowed
+// roles. Role grants are explicit at the route layer: no role receives an
+// implicit bypass here. If the session or role is missing, or does not match
+// the allowlist, the request is aborted with a 401 Unauthorized or 403 Forbidden
+// error response respectively.
 func Authorize(allowedRoles ...model.UserRole) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userRole, ok := GetUserRole(c)
@@ -155,12 +98,6 @@ func Authorize(allowedRoles ...model.UserRole) gin.HandlerFunc {
 			// No authenticated session in context -> user has not been authenticated
 			_ = c.Error(apierr.UnauthorizedError())
 			c.Abort()
-			return
-		}
-
-		// Superadmin has universal clearance across administrative checkpoints
-		if userRole == model.SuperRole {
-			c.Next()
 			return
 		}
 
@@ -200,9 +137,6 @@ func extractSessionID(c *gin.Context) (string, error) {
 func clearSessionCookie(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(SessionCookieName, "", -1, "/", "", false, true)
-	c.SetCookie("session_id", "", -1, "/", "", false, true)
-	c.SetCookie("access_token", "", -1, "/", "", false, true)
-	c.SetCookie("refresh_token", "", -1, "/", "", false, true)
 }
 
 // isAuthenticatedSession reports whether the session represents a real user.
@@ -236,22 +170,13 @@ func loadAuthenticatedSession(c *gin.Context, sessionStore SessionStore) (*model
 }
 
 // abortAuthentication normalizes session lookup failures into an HTTP error.
-// Stale sessions are distinct: their cookie is cleared so the client does not
-// keep retrying a session whose user has been removed.
 func abortAuthentication(c *gin.Context, err error) {
-	if errors.Is(err, ErrStaleSession) {
-		clearSessionCookie(c)
-		_ = c.Error(apierr.UnauthorizedError("Session is no longer valid").
-			WithCode(apierr.CodeUnauthorized))
+	var ae *apierr.APIError
+	if errors.As(err, &ae) {
+		_ = c.Error(err)
 	} else {
-		var ae *apierr.APIError
-		if errors.As(err, &ae) {
-			_ = c.Error(err)
-		} else {
-			_ = c.Error(apierr.UnauthorizedError())
-		}
+		_ = c.Error(apierr.UnauthorizedError())
 	}
-
 	c.Abort()
 }
 
@@ -280,19 +205,13 @@ func Authenticate(sessionStore SessionStore) gin.HandlerFunc {
 
 // OptionalAuthenticate attempts to authenticate via the session cookie if present,
 // setting the session context without aborting or returning 401 when the request
-// is anonymous. Stale sessions are cleared and treated as guests so public routes
+// is anonymous. Authentication failures are treated as guests so public routes
 // remain usable. This is used on public routes that can provide enriched
 // responses when logged in.
 func OptionalAuthenticate(sessionStore SessionStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session, err := loadAuthenticatedSession(c, sessionStore)
 		if err != nil {
-			// A stale cookie should not be sent back on every subsequent request.
-			// Other lookup failures (including infrastructure errors and missing
-			// cookies) must not break public routes.
-			if errors.Is(err, ErrStaleSession) {
-				clearSessionCookie(c)
-			}
 			c.Next()
 			return
 		}

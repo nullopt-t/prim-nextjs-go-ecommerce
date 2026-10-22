@@ -36,7 +36,7 @@ func SetUpDocs(rg *gin.RouterGroup, sessionStore ...middleware.SessionStore) {
 	if len(sessionStore) > 0 && sessionStore[0] != nil {
 		adminDocs.Use(
 			middleware.Authenticate(sessionStore[0]),
-			middleware.Authorize(model.AdminRole),
+			middleware.Authorize(model.AdminRole, model.SuperRole),
 		)
 	}
 

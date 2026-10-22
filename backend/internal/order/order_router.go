@@ -33,7 +33,7 @@ func (r *OrderRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	admin := vgroup.Group("/admin/orders")
 	admin.Use(
 		middleware.Authenticate(r.sessionStore),
-		middleware.Authorize(model.AdminRole),
+		middleware.Authorize(model.AdminRole, model.SuperRole),
 	)
 	{
 		// GET /admin/orders - paginated order listing with optional customerId and status filters.
@@ -50,7 +50,7 @@ func (r *OrderRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	adminRoot := vgroup.Group("/admin")
 	adminRoot.Use(
 		middleware.Authenticate(r.sessionStore),
-		middleware.Authorize(model.AdminRole),
+		middleware.Authorize(model.AdminRole, model.SuperRole),
 	)
 	{
 		adminRoot.GET("/dashboard", r.handler.GetDashboard)

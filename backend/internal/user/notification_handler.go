@@ -128,8 +128,7 @@ func (h *NotificationHandler) GetMyNotifications(c *gin.Context) {
 //	@Router			/user/notifications/unread-count [get]
 func (h *NotificationHandler) GetUnreadCount(c *gin.Context) {
 	// Soft authorization fallback: if unauthenticated or anonymous guest, return count 0
-	_, exists := c.Get("userID")
-	if !exists {
+	if _, ok := middleware.GetUserID(c); !ok {
 		c.JSON(http.StatusOK, api.DataResponse{Data: NotificationCountResponse{Count: 0}})
 		return
 	}
@@ -243,21 +242,12 @@ func (h *NotificationHandler) DeleteNotification(c *gin.Context) {
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Notification deleted successfully"})
 }
 
-// getUserIDFromContext retrieves and parses the user UUID stored in Gin context by authentication middleware.
-// Supports both uuid.UUID and string representations.
+// getUserIDFromContext retrieves the authenticated user UUID from the session
+// stored in Gin context by the authentication middleware.
 func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
-	val, exists := c.Get("userID")
-	if !exists {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
 		return uuid.Nil, apierr.UnauthorizedError("unauthorized")
 	}
-	if id, ok := val.(uuid.UUID); ok {
-		return id, nil
-	}
-	if idStr, ok := val.(string); ok {
-		id, err := uuid.Parse(idStr)
-		if err == nil {
-			return id, nil
-		}
-	}
-	return uuid.Nil, apierr.UnauthorizedError("invalid user identifier in context")
+	return userID, nil
 }

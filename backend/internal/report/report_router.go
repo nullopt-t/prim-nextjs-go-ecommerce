@@ -22,7 +22,7 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	admin := vgroup.Group("/admin/reports")
 	admin.Use(
 		middleware.Authenticate(r.sessionStore),
-		middleware.Authorize(model.AdminRole),
+		middleware.Authorize(model.AdminRole, model.SuperRole),
 	)
 	{
 		admin.GET("/sales", r.handler.GetSalesReport)

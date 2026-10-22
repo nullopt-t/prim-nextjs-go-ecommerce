@@ -139,11 +139,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	)
 	userService.SetSessionManager(sessionService)
 
-	// Wrap the session store so a session whose user was deleted — or removed
-	// out-of-band by a database reseed — is rejected with 401 instead of
-	// surfacing a foreign-key failure in the first handler that writes a
-	// user-referencing row (cart, address, wishlist, ...).
-	sessionStore := middleware.NewValidatingSessionStore(sessionService, userService)
+	sessionStore := middleware.SessionStore(sessionService)
 
 	swagger.SetUpDocs(v1, sessionStore)
 

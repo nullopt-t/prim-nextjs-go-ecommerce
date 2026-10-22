@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/shared/validation"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
@@ -348,8 +349,10 @@ func (h *Handler) ListStaffSessions(c *gin.Context) {
 		roleFilter = &raw
 	}
 
-	currentSessionID, _ := c.Get("sessionID")
-	sessionID, _ := currentSessionID.(string)
+	sessionID := ""
+	if session, ok := middleware.GetSession(c); ok {
+		sessionID = session.ID
+	}
 
 	sessions, err := h.userService.ListStaffSessions(c.Request.Context(), roleFilter, sessionID)
 	if err != nil {

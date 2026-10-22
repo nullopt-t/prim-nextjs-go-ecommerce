@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"strconv"
 	"time"
@@ -44,14 +43,10 @@ func RateLimit(
 			return
 		}
 
-		// Partition key by authenticated userID if present, otherwise by client IP
+		// Partition key by authenticated user ID if present, otherwise by client IP.
 		identifier := c.ClientIP()
-		if uidVal, exists := c.Get("userID"); exists && uidVal != nil {
-			if uidStr, ok := uidVal.(string); ok && uidStr != "" {
-				identifier = "usr:" + uidStr
-			} else if stringer, ok := uidVal.(fmt.Stringer); ok && stringer.String() != "" {
-				identifier = "usr:" + stringer.String()
-			}
+		if userID, ok := GetUserID(c); ok {
+			identifier = "usr:" + userID.String()
 		}
 
 		key := RateLimitPrefix + ":" + keyPrefix + ":" + identifier

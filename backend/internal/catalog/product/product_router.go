@@ -33,7 +33,7 @@ func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	admin := vgroup.Group("/admin/products")
 	admin.Use(
 		middleware.Authenticate(r.sessionStore),
-		middleware.Authorize(model.AdminRole),
+		middleware.Authorize(model.AdminRole, model.SuperRole),
 	)
 	{
 		// Product CRUD

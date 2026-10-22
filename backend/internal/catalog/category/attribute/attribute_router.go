@@ -22,7 +22,7 @@ func (r *AttributeRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	adminAttrs := vgroup.Group("/admin/attributes")
 	adminAttrs.Use(
 		middleware.Authenticate(r.sessionStore),
-		middleware.Authorize(model.AdminRole),
+		middleware.Authorize(model.AdminRole, model.SuperRole),
 	)
 	{
 		adminAttrs.GET("", r.handler.ListAttributes)

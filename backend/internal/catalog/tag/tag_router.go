@@ -22,7 +22,7 @@ func (tr *TagRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	admin := vgroup.Group("/admin/tags")
 	admin.Use(
 		middleware.Authenticate(tr.sessionStore),
-		middleware.Authorize(model.AdminRole),
+		middleware.Authorize(model.AdminRole, model.SuperRole),
 	)
 	{
 		admin.GET("", tr.th.AdminListTags)

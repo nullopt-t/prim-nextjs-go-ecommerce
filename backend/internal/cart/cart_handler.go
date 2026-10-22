@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/setting"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/shared/validation"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
@@ -237,10 +238,8 @@ func (h *CartHandler) extractUserAndSession(c *gin.Context) (*uuid.UUID, *string
 	var sessionID *string
 
 	// Check if user is authenticated (set by auth middleware)
-	if uVal, exists := c.Get("userID"); exists {
-		if uid, ok := uVal.(uuid.UUID); ok {
-			userID = &uid
-		}
+	if uid, ok := middleware.GetUserID(c); ok {
+		userID = &uid
 	}
 
 	// Look for existing session ID in cookie and validate format
@@ -280,7 +279,9 @@ func (h *CartHandler) extractUserAndSession(c *gin.Context) (*uuid.UUID, *string
 func (h *CartHandler) GetCart(c *gin.Context) {
 	// For unauthenticated visitors without an existing session cookie, return an empty cart response
 	// without creating an empty abandoned cart record in the database.
-	if _, exists := c.Get("userID"); !exists {
+	// TODO(Cart): that's unclear create a utility function call it IsAuthenticated that checks the userID in the context,
+	//
+	if _, ok := middleware.GetUserID(c); !ok {
 		cookieSess, err := c.Cookie("session_id")
 		if err != nil || cookieSess == "" {
 			_, _ = h.extractUserAndSession(c)

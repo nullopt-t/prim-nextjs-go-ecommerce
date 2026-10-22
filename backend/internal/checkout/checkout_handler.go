@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/shared/validation"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
@@ -52,15 +53,9 @@ func NewHandler(checkoutService *CheckoutService) *CheckoutHandler {
 //	@Success		200		{object}	api.DataResponse{data=CheckoutResponse}	"Checkout result"
 //	@Router			/checkout [post]
 func (h *CheckoutHandler) Checkout(c *gin.Context) {
-	userIDVal, exists := c.Get("userID")
-	if !exists {
-		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
-		return
-	}
-
-	customerID, ok := userIDVal.(uuid.UUID)
+	customerID, ok := middleware.GetUserID(c)
 	if !ok {
-		_ = c.Error(apierr.UnauthorizedError("Invalid user identity"))
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
 		return
 	}
 
@@ -115,10 +110,8 @@ func (h *CheckoutHandler) ApplyCoupon(c *gin.Context) {
 	}
 
 	var userID *uuid.UUID
-	if userIDVal, exists := c.Get("userID"); exists {
-		if uid, ok := userIDVal.(uuid.UUID); ok {
-			userID = &uid
-		}
+	if uid, ok := middleware.GetUserID(c); ok {
+		userID = &uid
 	}
 
 	var sessionID *string

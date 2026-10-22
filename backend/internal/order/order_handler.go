@@ -3,12 +3,12 @@ package order
 
 import (
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/shared/validation"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
@@ -173,15 +173,9 @@ func NewHandler(orderService *OrderService) *OrderHandler {
 //	@Router			/orders [get]
 func (h *OrderHandler) GetOrders(c *gin.Context) {
 	// Extract authenticated user ID from context established by middleware.Authenticate.
-	userIDVal, exists := c.Get("userID")
-	if !exists {
-		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
-		return
-	}
-
-	customerID, ok := userIDVal.(uuid.UUID)
+	customerID, ok := middleware.GetUserID(c)
 	if !ok {
-		_ = c.Error(apierr.UnauthorizedError("Invalid user identity"))
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
 		return
 	}
 
@@ -234,16 +228,14 @@ func (h *OrderHandler) GetOrderByID(c *gin.Context) {
 	}
 
 	// Enforce customer ownership check for non-admin requests to prevent IDOR vulnerabilities.
-	roleVal, _ := c.Get("userRole")
-	roleStr, _ := roleVal.(string)
-	if strings.ToLower(roleStr) != string(model.AdminRole) && strings.ToLower(roleStr) != string(model.SuperRole) {
-		userIDVal, exists := c.Get("userID")
-		if !exists {
+	role, _ := middleware.GetUserRole(c)
+	if role != model.AdminRole && role != model.SuperRole {
+		customerID, ok := middleware.GetUserID(c)
+		if !ok {
 			_ = c.Error(apierr.UnauthorizedError("Authentication required"))
 			return
 		}
-		customerID, ok := userIDVal.(uuid.UUID)
-		if !ok || order.CustomerID == nil || *order.CustomerID != customerID {
+		if order.CustomerID == nil || *order.CustomerID != customerID {
 			_ = c.Error(apierr.ForbiddenError("You are not authorized to view this order"))
 			return
 		}
@@ -309,15 +301,9 @@ func (h *OrderHandler) UpdateOrderStatus(c *gin.Context) {
 //	@Success		200	{object}	api.MessageResponse				"Cancellation confirmation"
 //	@Router			/orders/{id}/cancel [post]
 func (h *OrderHandler) CancelOrder(c *gin.Context) {
-	userIDVal, exists := c.Get("userID")
-	if !exists {
-		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
-		return
-	}
-
-	customerID, ok := userIDVal.(uuid.UUID)
+	customerID, ok := middleware.GetUserID(c)
 	if !ok {
-		_ = c.Error(apierr.UnauthorizedError("Invalid user identity"))
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
 		return
 	}
 

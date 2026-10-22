@@ -33,7 +33,7 @@ func (cr *CategoryRouter) MapRoutes(
 	admin := vgroup.Group("/admin/categories")
 	admin.Use(
 		middleware.Authenticate(cr.sessionStore),
-		middleware.Authorize(model.AdminRole),
+		middleware.Authorize(model.AdminRole, model.SuperRole),
 	)
 	{
 		admin.GET("", cr.chandler.ListAdminCategories)
@@ -43,4 +43,3 @@ func (cr *CategoryRouter) MapRoutes(
 		admin.DELETE("/:id", cr.chandler.DeleteCategory)
 	}
 }
-

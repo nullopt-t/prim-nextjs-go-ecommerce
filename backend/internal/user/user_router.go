@@ -39,7 +39,7 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	adminUsers := vgroup.Group("/admin/users")
 	adminUsers.Use(
 		middleware.Authenticate(r.sessionStore),
-		middleware.Authorize(model.AdminRole),
+		middleware.Authorize(model.AdminRole, model.SuperRole),
 	)
 	{
 		// GET /api/v1/admin/users - List paginated users with role/status filters (Admin or Superadmin)
@@ -53,9 +53,9 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		// PATCH /api/v1/admin/users/:id/role - Alter user administrative role tier
 		adminUsers.PATCH("/:id/role", middleware.Authorize(model.SuperRole), r.handler.UpdateUserRole)
 		// PATCH /api/v1/admin/users/:id/status - Alter account standing (suspend, activate)
-		adminUsers.PATCH("/:id/status", middleware.Authorize(model.AdminRole), r.handler.UpdateAccountStatus)
+		adminUsers.PATCH("/:id/status", middleware.Authorize(model.AdminRole, model.SuperRole), r.handler.UpdateAccountStatus)
 		// POST /api/v1/admin/users/:id/revoke-sessions - Invalidate all active user login sessions
-		adminUsers.POST("/:id/revoke-sessions", middleware.Authorize(model.AdminRole), r.handler.RevokeUserSessions)
+		adminUsers.POST("/:id/revoke-sessions", middleware.Authorize(model.AdminRole, model.SuperRole), r.handler.RevokeUserSessions)
 	}
 
 	// Staff session oversight: view and revoke any active staff device. Both

@@ -47,7 +47,7 @@ func (r *ReviewRouter) MapRoutes(vgroup *gin.RouterGroup) {
 
 	// Admin endpoints (Moderation) - protected with Administrator role check
 	admin := vgroup.Group("/admin/reviews")
-	admin.Use(middleware.Authenticate(r.sessionStore), middleware.Authorize(model.AdminRole))
+	admin.Use(middleware.Authenticate(r.sessionStore), middleware.Authorize(model.AdminRole, model.SuperRole))
 	{
 		admin.GET("", r.rh.AdminListReviews)
 		admin.GET("/:id", r.rh.AdminGetReviewByID)
@@ -55,5 +55,3 @@ func (r *ReviewRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.DELETE("/:id", r.rh.AdminDeleteReview)
 	}
 }
-
-
