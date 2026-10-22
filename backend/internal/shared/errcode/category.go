@@ -20,4 +20,10 @@ const (
 
 	// CodeCategoryInUse indicates that a category cannot be deleted due to assigned products or subcategories.
 	CodeCategoryInUse = "CATEGORY_IN_USE"
+
+	// CodeAttributeNotFound indicates that the requested attribute UUID was not found.
+	CodeAttributeNotFound = "ATTRIBUTE_NOT_FOUND"
+
+	// CodeAttributeAlreadyExists indicates that an attribute with the same key already exists.
+	CodeAttributeAlreadyExists = "ATTRIBUTE_ALREADY_EXISTS"
 )

@@ -60,6 +60,25 @@ func (r *AttributeRepository) ListAttributes(ctx context.Context, qe database.Qu
 	return list, nil
 }
 
+func (r *AttributeRepository) GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*AttributeItem, error) {
+	query := `
+		SELECT ca.id, ca.category_id, COALESCE(pc.name, 'Global'), ca.key, ca.label, ca.value_type,
+		       ca.allowed_values, ca.is_filterable, ca.sort_order, ca.created_at, ca.updated_at
+		FROM category_attributes ca
+		LEFT JOIN product_categories pc ON ca.category_id = pc.id
+		WHERE ca.id = $1
+	`
+	var ai AttributeItem
+	err := qe.QueryRow(ctx, query, id).Scan(
+		&ai.ID, &ai.CategoryID, &ai.CategoryName, &ai.Key, &ai.Label, &ai.ValueType,
+		&ai.AllowedValues, &ai.IsFilterable, &ai.SortOrder, &ai.CreatedAt, &ai.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get attribute by id: %w", err)
+	}
+	return &ai, nil
+}
+
 // ListByCategory returns the attribute definitions that belong to a category.
 // It is used to validate product variation axes and their allowed values.
 func (r *AttributeRepository) ListByCategory(ctx context.Context, qe database.QueryExecutor, categoryID uuid.UUID) ([]AttributeItem, error) {

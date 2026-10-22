@@ -2,14 +2,12 @@ package attribute
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
-	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
 type AttributeHandler struct {
@@ -128,11 +126,7 @@ func (h *AttributeHandler) UpdateAttribute(c *gin.Context) {
 		SortOrder:     req.SortOrder,
 	})
 	if err != nil {
-		if errors.Is(database.MapError(err), database.ErrNotFound) {
-			_ = c.Error(apierr.NotFoundError("Attribute not found"))
-			return
-		}
-		_ = c.Error(apierr.InternalServerError("Failed to update attribute").Wrap(err))
+		_ = c.Error(err)
 		return
 	}
 
@@ -147,11 +141,7 @@ func (h *AttributeHandler) DeleteAttribute(c *gin.Context) {
 	}
 
 	if err := h.attributeService.DeleteAttribute(c.Request.Context(), id); err != nil {
-		if errors.Is(database.MapError(err), database.ErrNotFound) {
-			_ = c.Error(apierr.NotFoundError("Attribute not found"))
-			return
-		}
-		_ = c.Error(apierr.InternalServerError("Failed to delete attribute").Wrap(err))
+		_ = c.Error(err)
 		return
 	}
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Attribute deleted"})
