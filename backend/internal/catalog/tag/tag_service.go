@@ -51,8 +51,8 @@ func (ts *TagService) CreateTag(
 		Name: name,
 	}
 
-	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return ts.repo.Create(ctx, db, tag)
+	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		return ts.repo.Create(ctx, tx, tag)
 	})
 
 	if err != nil {
@@ -74,19 +74,7 @@ func (ts *TagService) GetTagByID(
 	})
 
 	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(mappedErr, database.ErrNotFound):
-			return nil, apierr.NotFoundError("Product tag not found").
-				WithCode(errcode.CodeTagNotFound).
-				Wrap(err)
-
-		default:
-			return nil, apierr.InternalServerError("Failed to fetch product tag").
-				WithCode(apierr.CodeInternalError).
-				Wrap(err).
-				WithStack()
-		}
+		return nil, ts.handleError(err, "Failed to fetch product tag")
 	}
 
 	return tag, nil
@@ -116,8 +104,8 @@ func (ts *TagService) UpdateTag(
 		fields.Name = &name
 	}
 
-	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return ts.repo.Update(ctx, db, tagID, fields)
+	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		return ts.repo.Update(ctx, tx, tagID, fields)
 	})
 
 	if err != nil {
@@ -178,8 +166,8 @@ func (ts *TagService) DeleteTagByID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return ts.repo.Delete(ctx, db, tagID)
+	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		return ts.repo.Delete(ctx, tx, tagID)
 	})
 
 	if err != nil {
