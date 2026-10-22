@@ -259,7 +259,15 @@ func (app *App) setupRoutes(router *gin.Engine) {
 
 	// cart
 	cartRepo := cart.NewRepository()
-	cartService := cart.NewService(txRunner, cartRepo, variantService, productService, inventoryService)
+	cartService := cart.NewService(
+		txRunner,
+		cartRepo,
+		variantRepository,
+		productRepo,
+		inventoryRepo,
+		objectRepository,
+		app.storageProvider,
+	)
 	cartHandler := cart.NewHandler(cartService, settingService)
 	cartRouter := cart.NewRouter(cartHandler, sessionStore)
 	cartRouter.MapRoutes(v1)

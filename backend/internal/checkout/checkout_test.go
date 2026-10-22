@@ -61,22 +61,16 @@ const (
 	defaultCurrency             = "EGP"
 )
 
-// dummyProductService satisfies the cart.ProductService dependency so the cart
+// dummyProductService satisfies the cart.ProductRepository dependency so the cart
 // can resolve product metadata without pulling in the full catalog graph.
 type dummyProductService struct{}
 
-func (d *dummyProductService) GetByID(_ context.Context, id uuid.UUID) (*model.Product, error) {
+func (d *dummyProductService) GetByID(_ context.Context, _ database.QueryExecutor, id uuid.UUID) (*model.Product, error) {
 	return &model.Product{
 		ID:    id,
 		Title: "Integration Test Product",
 		Slug:  "integration-test-product",
 	}, nil
-}
-
-// GetByIDWithTx satisfies cart.ProductService; the dummy reads no database, so
-// the executor is ignored.
-func (d *dummyProductService) GetByIDWithTx(ctx context.Context, _ database.QueryExecutor, id uuid.UUID) (*model.Product, error) {
-	return d.GetByID(ctx, id)
 }
 
 // dataEnvelope is the strict success envelope: {"data": <T>}.
@@ -177,9 +171,11 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	s.cartService = cart.NewService(
 		s.txRunner,
 		cartRepo,
-		s.variantService,
+		variantRepo,
 		&dummyProductService{},
-		s.inventoryService,
+		inventoryRepo,
+		nil,
+		nil,
 	)
 
 	s.orderRepo = order.NewRepository()

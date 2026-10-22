@@ -36,7 +36,7 @@ type dummyProductService struct {
 	products map[uuid.UUID]*model.Product
 }
 
-func (d *dummyProductService) GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error) {
+func (d *dummyProductService) GetByID(ctx context.Context, _ database.QueryExecutor, id uuid.UUID) (*model.Product, error) {
 	if p, ok := d.products[id]; ok {
 		return p, nil
 	}
@@ -44,12 +44,6 @@ func (d *dummyProductService) GetByID(ctx context.Context, id uuid.UUID) (*model
 		ID:    id,
 		Title: "Test Headphones",
 	}, nil
-}
-
-// GetByIDWithTx satisfies cart.ProductService; the dummy reads no database, so
-// the executor is ignored.
-func (d *dummyProductService) GetByIDWithTx(ctx context.Context, _ database.QueryExecutor, id uuid.UUID) (*model.Product, error) {
-	return d.GetByID(ctx, id)
 }
 
 type CartHTTPTestSuite struct {
@@ -141,7 +135,7 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	}
 
 	s.cartRepo = cart.NewRepository()
-	s.cartService = cart.NewService(s.txRunner, s.cartRepo, s.variantService, s.productService, s.inventoryService)
+	s.cartService = cart.NewService(s.txRunner, s.cartRepo, s.variantRepo, s.productService, s.inventoryRepo, nil, nil)
 	s.handler = cart.NewHandler(s.cartService)
 
 	// Start Redis Container

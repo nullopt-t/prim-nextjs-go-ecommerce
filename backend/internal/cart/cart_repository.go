@@ -191,7 +191,7 @@ func (r *CartRepository) GetCartBySessionID(
 
 func (r *CartRepository) AddItem(
 	ctx context.Context,
-	qe *database.Tx,
+	qe database.QueryExecutor,
 	item *model.CartItem,
 ) error {
 	query := `
@@ -225,7 +225,7 @@ func (r *CartRepository) AddItem(
 
 func (r *CartRepository) UpdateItemQuantity(
 	ctx context.Context,
-	tx *database.Tx,
+	qe database.QueryExecutor,
 	cartID uuid.UUID,
 	itemID int64,
 	quantity int,
@@ -235,7 +235,7 @@ func (r *CartRepository) UpdateItemQuantity(
 		SET quantity = $1
 		WHERE id = $2 AND cart_id = $3
 	`
-	tag, err := tx.Exec(ctx, query, quantity, itemID, cartID)
+	tag, err := qe.Exec(ctx, query, quantity, itemID, cartID)
 	if err != nil {
 		return err
 	}
@@ -245,13 +245,13 @@ func (r *CartRepository) UpdateItemQuantity(
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = tx.Exec(ctx, updateCartQuery, cartID)
+	_, _ = qe.Exec(ctx, updateCartQuery, cartID)
 	return nil
 }
 
 func (r *CartRepository) RemoveItem(
 	ctx context.Context,
-	tx *database.Tx,
+	qe database.QueryExecutor,
 	cartID uuid.UUID,
 	itemID int64,
 ) error {
@@ -259,7 +259,7 @@ func (r *CartRepository) RemoveItem(
 		DELETE FROM cart_items
 		WHERE id = $1 AND cart_id = $2
 	`
-	tag, err := tx.Exec(ctx, query, itemID, cartID)
+	tag, err := qe.Exec(ctx, query, itemID, cartID)
 	if err != nil {
 		return err
 	}
@@ -268,7 +268,7 @@ func (r *CartRepository) RemoveItem(
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = tx.Exec(ctx, updateCartQuery, cartID)
+	_, _ = qe.Exec(ctx, updateCartQuery, cartID)
 	return nil
 }
 
