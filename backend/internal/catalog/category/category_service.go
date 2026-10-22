@@ -54,8 +54,8 @@ func (cs *CategoryService) CreateCategory(
 		Name:     name,
 	}
 
-	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return cs.repo.Create(ctx, db, category)
+	err := cs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		return cs.repo.Create(ctx, tx, category)
 	})
 
 	if err != nil {
@@ -85,37 +85,33 @@ func (cs *CategoryService) GetCategoryByID(
 
 func (cs *CategoryService) isDescendant(
 	ctx context.Context,
+	qe database.QueryExecutor,
 	categoryID uuid.UUID,
 	newParentID uuid.UUID,
 ) (bool, error) {
-	var isChild bool
-	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		visited := make(map[uuid.UUID]struct{})
-		currentParent := &newParentID
-		for currentParent != nil && *currentParent != uuid.Nil {
-			if *currentParent == categoryID {
-				isChild = true
-				return nil
-			}
-			if _, seen := visited[*currentParent]; seen {
-				// Cycle detected in existing hierarchy
-				return errors.New("cyclic category hierarchy detected")
-			}
-			visited[*currentParent] = struct{}{}
-
-			parentCategory, err := cs.repo.GetByID(ctx, db, *currentParent)
-			if err != nil {
-				mappedErr := database.MapError(err)
-				if errors.Is(mappedErr, database.ErrNotFound) {
-					return nil
-				}
-				return err
-			}
-			currentParent = parentCategory.ParentID
+	visited := make(map[uuid.UUID]struct{})
+	currentParent := &newParentID
+	for currentParent != nil && *currentParent != uuid.Nil {
+		if *currentParent == categoryID {
+			return true, nil
 		}
-		return nil
-	})
-	return isChild, err
+		if _, seen := visited[*currentParent]; seen {
+			// Cycle detected in existing hierarchy
+			return false, errors.New("cyclic category hierarchy detected")
+		}
+		visited[*currentParent] = struct{}{}
+
+		parentCategory, err := cs.repo.GetByID(ctx, qe, *currentParent)
+		if err != nil {
+			mappedErr := database.MapError(err)
+			if errors.Is(mappedErr, database.ErrNotFound) {
+				return false, nil
+			}
+			return false, err
+		}
+		currentParent = parentCategory.ParentID
+	}
+	return false, nil
 }
 
 type UpdateCategoryInput struct {
@@ -161,11 +157,21 @@ func (cs *CategoryService) UpdateCategory(
 		}
 
 		if parentID != uuid.Nil {
-			isDescendant, err := cs.isDescendant(ctx, categoryID, parentID)
-			if err != nil {
+			fields.ParentID = input.ParentID
+		} else {
+			// uuid.Nil signifies clearing/unsetting the parent category to make it a top-level category (NULL in DB)
+			nilParent := uuid.Nil
+			fields.ParentID = &nilParent
+		}
+	}
+
+	err := cs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		if input.ParentID != nil && *input.ParentID != uuid.Nil {
+			isDescendant, descErr := cs.isDescendant(ctx, tx, categoryID, *input.ParentID)
+			if descErr != nil {
 				return apierr.InternalServerError("Failed to validate category hierarchy").
 					WithCode(apierr.CodeInternalError).
-					Wrap(err).
+					Wrap(descErr).
 					WithStack()
 			}
 			if isDescendant {
@@ -176,19 +182,16 @@ func (cs *CategoryService) UpdateCategory(
 						Message: "causes a circular reference in the category tree",
 					})
 			}
-			fields.ParentID = input.ParentID
-		} else {
-			// uuid.Nil signifies clearing/unsetting the parent category to make it a top-level category (NULL in DB)
-			nilParent := uuid.Nil
-			fields.ParentID = &nilParent
 		}
-	}
 
-	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
-		return cs.repo.Update(ctx, db, categoryID, fields)
+		return cs.repo.Update(ctx, tx, categoryID, fields)
 	})
 
 	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return apiErr
+		}
 		return cs.handleError(err, "Failed to update category")
 	}
 
@@ -310,3 +313,4 @@ func (cs *CategoryService) handleError(err error, defaultMsg string) error {
 			WithStack()
 	}
 }
+

@@ -132,21 +132,6 @@ func (bs *BrandService) GetBrandByID(
 	return brand, nil
 }
 
-func (bs *BrandService) GetBrandByIDWithTx(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	id uuid.UUID,
-) (*model.ProductBrand, error) {
-	brand, repoErr := bs.brandRepo.GetByID(ctx, qe, id)
-	if repoErr != nil {
-		return nil, bs.handleError(repoErr, "Failed to fetch brand")
-	}
-	if err := bs.populateLogoURLs(ctx, qe, []*model.ProductBrand{brand}); err != nil {
-		return nil, bs.handleError(err, "Failed to populate brand logo")
-	}
-	return brand, nil
-}
-
 func (bs *BrandService) UpdateBrand(
 	ctx context.Context,
 	brandID uuid.UUID,
