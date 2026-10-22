@@ -35,7 +35,7 @@ export function AdminProductDrafts() {
       setLoadError(false);
 
       const [prodsRes, catsRes, brandsRes]: [any, any, any] = await Promise.all([
-        catalogService.getAdminProducts("pageSize=100"),
+        catalogService.getAdminProducts({ pageSize: 100, status: "draft" }),
         catalogService.getAdminCategories(100),
         catalogService.getBrands(100),
       ]);
@@ -73,7 +73,7 @@ export function AdminProductDrafts() {
       setDrafts((prev) => prev.filter((d) => (d.id || d.ID) !== id));
       notify.success(t("products.toast.deleted"));
     } catch (err: any) {
-      notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
+      notify.error(apiErrorMessage(err, t("products.toast.deleteFailed")));
     }
   };
 
@@ -145,12 +145,18 @@ export function AdminProductDrafts() {
           {drafts.map((draft, idx) => {
             const draftId = draft.id || draft.ID;
             const draftTitle = draft.title || draft.Title;
-            const catId = draft.categoryId || draft.CategoryID;
-            const brandId = draft.brandId || draft.BrandID;
+            const catId = draft.categoryId || draft.category?.id || draft.CategoryID;
+            const brandId = draft.brandId || draft.brand?.id || draft.BrandID;
             const cat = categories.find((c) => c.id === catId);
-            const categoryName = cat?.name || t("products.colCategory");
+            const categoryName =
+              (typeof draft.category === "object" ? draft.category?.name : draft.category) ||
+              cat?.name ||
+              t("products.colCategory");
             const brand = brands.find((b) => b.id === brandId);
-            const brandName = brand?.name || "";
+            const brandName =
+              (typeof draft.brand === "object" ? draft.brand?.name : draft.brand) ||
+              brand?.name ||
+              "";
             const rawDate = draft.updatedAt || draft.UpdatedAt || draft.createdAt || draft.CreatedAt;
             const updatedAtFormatted = rawDate ? formatDateTime(rawDate, locale) : "";
 
@@ -165,7 +171,7 @@ export function AdminProductDrafts() {
                       {draftTitle || t("products.createProduct")}
                     </h3>
                     <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 border border-amber-500/30 shrink-0">
-                      Draft
+                      {t("status.draft")}
                     </span>
                   </div>
 

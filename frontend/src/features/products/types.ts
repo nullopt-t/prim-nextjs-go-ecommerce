@@ -66,6 +66,7 @@ export interface ProductDetailsEntity {
   inStock?: boolean;
   stockCount?: number;
   description?: string;
+  highlights?: string[];
 }
 
 export interface ProductReview {

@@ -1,4 +1,3 @@
-import { Check, Clock, Heart, Share2, ShoppingCart, Zap } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Stars } from "@/components/ui/stars";
 import { CustomButton } from "@/components/ui";
@@ -31,7 +30,7 @@ interface ProductActionsProps {
 export function ProductActions({
   productCategory,
   productName,
-  stars = 5,
+  stars = 0,
   reviewsCount = 0,
   price,
   oldPrice,
@@ -53,56 +52,87 @@ export function ProductActions({
   const t = useTranslations("products");
   const formatPrice = (val?: number) => {
     if (val === undefined || isNaN(val)) return "0";
-    return val.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    return val.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
   };
 
   const currencyPrefix = currency && currency.length > 1 ? `${currency} ` : currency;
+  const roundedStars = Number(stars) || 0;
 
   return (
     <div className="flex flex-col">
-      <div className="flex flex-col gap-2 mb-4">
-        <span className="text-sm font-medium text-accent-brand capitalize">
+      <div className="mb-4 flex flex-col gap-2">
+        <span className="w-fit text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-brand">
           {productCategory.replace("-", " ")}
         </span>
-        <h1 className="text-3xl lg:text-4xl font-bold text-foreground">{productName}</h1>
+        <h1 className="text-start text-2xl font-bold leading-tight text-foreground sm:text-3xl lg:text-4xl">
+          {productName}
+        </h1>
       </div>
 
-      <div className="flex items-center gap-4 mb-6">
+      <div className="mb-5 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5">
-          <Stars starsNum={stars} />
-          <span className="text-sm font-medium text-foreground ms-1">{stars}</span>
+          <Stars starsNum={roundedStars} />
+          {roundedStars > 0 && (
+            <span className="ms-1 text-sm font-semibold text-foreground">
+              {roundedStars.toFixed(1)}
+            </span>
+          )}
         </div>
-        <div className="w-1 h-1 rounded-full bg-border" />
-        <span className="text-sm text-muted-foreground underline decoration-dashed cursor-pointer hover:text-foreground transition-colors">
+        <span className="size-1 rounded-full bg-border" />
+        <a
+          href="#reviews"
+          className="text-sm text-muted-foreground underline decoration-dashed underline-offset-4 transition-colors hover:text-accent-brand"
+        >
           {t("actions.reviewsCount", { count: reviewsCount })}
-        </span>
+        </a>
       </div>
 
-      <div className="flex items-end gap-3 mb-6">
-        <span className="text-4xl font-bold text-foreground">
-          {currencyPrefix}{formatPrice(price)}
+      <div className="mb-6 flex flex-wrap items-end gap-x-3 gap-y-1 border-y border-border/70 py-4">
+        <span className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          {currencyPrefix}
+          {formatPrice(price)}
         </span>
         {oldPrice !== undefined && oldPrice > 0 && oldPrice !== price && (
-          <span className="text-xl text-muted-foreground line-through mb-1">
-            {currencyPrefix}{formatPrice(oldPrice)}
+          <span className="mb-1 text-lg text-muted-foreground line-through">
+            {currencyPrefix}
+            {formatPrice(oldPrice)}
           </span>
         )}
+        <span
+          className={`mb-1 ms-auto inline-flex items-center gap-2 text-xs font-semibold ${
+            isVariantInStock
+              ? "text-emerald-700 dark:text-emerald-400"
+              : "text-destructive"
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className={`size-1.5 rounded-full ${
+              isVariantInStock ? "bg-emerald-600" : "bg-destructive"
+            }`}
+          />
+          {isVariantInStock
+            ? t("actions.inStock", { count: availableStock })
+            : t("actions.outOfStock")}
+        </span>
       </div>
-
-      <p className="text-muted-foreground text-base leading-relaxed mb-6">
-        {t("actions.description", { productName })}
-      </p>
 
       {/* Variation axes (one selector per theme attribute) */}
       {variationAxes.map((axis) => {
         const selectedValue = selectedValues[axis.key] || "";
         const label = axis.key === "color" ? t("actions.color") : axis.label;
         return (
-          <fieldset key={axis.key} className="flex flex-col gap-3 mb-6">
-            <legend className="text-sm font-medium text-foreground">
-              {label} <span className="text-muted-foreground ms-1">{selectedValue}</span>
+          <fieldset key={axis.key} className="mb-5 flex flex-col gap-2.5">
+            <legend className="text-sm font-semibold text-foreground">
+              {label}{" "}
+              <span className="ms-1 font-normal text-muted-foreground">
+                {selectedValue}
+              </span>
             </legend>
-            <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label={label}>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={label}>
               {axis.values.map((value) => {
                 const isSelected = selectedValue === value;
                 return (
@@ -112,13 +142,13 @@ export function ProductActions({
                     role="radio"
                     aria-checked={isSelected}
                     onClick={() => onSelectAxis(axis.key, value)}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all cursor-pointer ${
+                    className={`min-w-11 cursor-pointer rounded-lg border px-3.5 py-2 text-sm transition-colors ${
                       isSelected
-                        ? "border-foreground bg-foreground text-background shadow-xs font-semibold"
-                        : "border-border bg-card text-foreground hover:bg-secondary/70 hover:border-border"
+                        ? "border-foreground bg-foreground font-semibold text-background"
+                        : "border-border bg-background text-foreground hover:border-foreground/50"
                     }`}
                   >
-                    <span>{value}</span>
+                    {value}
                   </button>
                 );
               })}
@@ -127,32 +157,9 @@ export function ProductActions({
         );
       })}
 
-      {/* Stock status */}
-      <div className="flex items-center gap-2 mb-6">
-        {isVariantInStock ? (
-          <>
-            <div className="flex items-center justify-center size-5 rounded-full bg-emerald-500/10 text-emerald-500">
-              <Check className="size-3.5" />
-            </div>
-            <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-              {t("actions.inStock", { count: availableStock })}
-            </span>
-          </>
-        ) : (
-          <>
-            <div className="flex items-center justify-center size-5 rounded-full bg-destructive/10 text-destructive">
-              <Clock className="size-3.5" />
-            </div>
-            <span className="text-sm font-medium text-destructive">
-              {t("actions.outOfStock")}
-            </span>
-          </>
-        )}
-      </div>
-
       {/* Purchase actions */}
-      <div className="flex flex-col gap-3.5 mb-8">
-        <div className="w-full h-12">
+      <div className="flex flex-col gap-3">
+        <div className="h-12 w-full">
           <QuantitySelector
             value={Math.min(quantity, Math.max(1, availableStock))}
             max={Math.max(1, availableStock)}
@@ -161,12 +168,19 @@ export function ProductActions({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <CustomButton
-            text={isAdding ? t("actions.adding") : isVariantInStock ? t("actions.addToCart") : t("actions.outOfStock")}
-            icon={<ShoppingCart className="size-4" />}
+            text={
+              isAdding
+                ? t("actions.adding")
+                : isVariantInStock
+                  ? t("actions.addToCart")
+                  : t("actions.outOfStock")
+            }
             onClick={onAddToCart}
-            className={`py-3.5 text-sm shadow-sm ${!isVariantInStock ? "opacity-50 cursor-not-allowed" : ""}`}
+            className={`py-3.5 text-sm ${
+              !isVariantInStock ? "cursor-not-allowed opacity-50" : ""
+            }`}
             disabled={isAdding || !isVariantInStock}
           />
 
@@ -174,10 +188,9 @@ export function ProductActions({
             type="button"
             onClick={onBuyNow}
             disabled={isAdding || !isVariantInStock}
-            className="py-3.5 px-4 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-semibold text-sm transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="cursor-pointer rounded-lg bg-accent-brand px-4 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-accent-brand/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Zap className="size-4 fill-current" />
-            <span>{t("actions.buyNow")}</span>
+            {t("actions.buyNow")}
           </button>
         </div>
 
@@ -185,24 +198,37 @@ export function ProductActions({
           <button
             type="button"
             onClick={onToggleWishlist}
-            className={`flex-1 py-2.5 px-4 flex items-center justify-center gap-2 rounded-xl border transition-all text-xs font-medium shadow-sm cursor-pointer ${
+            className={`flex-1 cursor-pointer rounded-lg border px-4 py-2.5 text-xs font-medium transition-colors ${
               isWishlisted
-                ? "border-red-500/40 bg-red-500/10 text-red-600"
-                : "border-border bg-card hover:bg-secondary hover:text-foreground text-muted-foreground"
+                ? "border-foreground/30 bg-secondary text-foreground"
+                : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground"
             }`}
           >
-            <Heart className={`size-4 ${isWishlisted ? "fill-current text-red-600" : ""}`} />
-            <span>{isWishlisted ? t("actions.savedToWishlist") : t("actions.addToWishlist")}</span>
+            {isWishlisted ? t("actions.savedToWishlist") : t("actions.addToWishlist")}
           </button>
 
           <button
             type="button"
             onClick={onShare}
-            className="py-2.5 px-4 flex items-center justify-center gap-2 rounded-xl border border-border bg-card hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors shadow-sm text-xs font-medium cursor-pointer"
+            className="cursor-pointer rounded-lg border border-border bg-background px-4 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
           >
-            <Share2 className="size-4" />
-            <span>{t("actions.share")}</span>
+            {t("actions.share")}
           </button>
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border/70 pt-5">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            {t("actions.freeDelivery")}
+          </p>
+          <p className="mt-1 text-sm text-foreground">{t("actions.freeDeliveryHint")}</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            {t("actions.easyReturns")}
+          </p>
+          <p className="mt-1 text-sm text-foreground">{t("actions.easyReturnsHint")}</p>
         </div>
       </div>
     </div>

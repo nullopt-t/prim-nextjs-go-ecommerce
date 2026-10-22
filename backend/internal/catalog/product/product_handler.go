@@ -620,6 +620,8 @@ type ProductListItemResponse struct {
 	Slug string `json:"slug" example:"macbook-pro-16"`
 	// Product display title
 	Title string `json:"title" example:"MacBook Pro 16\""`
+	// Publication lifecycle state (admin listings)
+	Status model.PublicationStatus `json:"status" example:"published"`
 	// Brand name
 	Brand *string `json:"brand,omitempty" example:"Apple"`
 	// Product card thumbnail URL
@@ -659,6 +661,7 @@ func mapProductListItemResponse(item *ProductCardReadModel) ProductListItemRespo
 		ID:            item.ID.String(),
 		Slug:          item.Slug,
 		Title:         item.Title,
+		Status:        item.Status,
 		Currency:      item.Currency,
 		VariantID:     variantIDStr,
 		SKU:           item.SKU,
@@ -719,6 +722,8 @@ type ListProductsQuery struct {
 	Category *string `form:"category" example:"laptops,audio"`
 	// Optional tag name(s) or UUID(s) (comma-separated, e.g. "featured,sale")
 	Tag *string `form:"tag" example:"featured,sale"`
+	// Optional publication status filter for admin listings: draft, published, or archived
+	Status *string `form:"status" swaggerignore:"true" example:"draft"`
 
 	BrandUUIDs    []uuid.UUID `form:"-"`
 	BrandNames    []string    `form:"-"`
@@ -726,6 +731,10 @@ type ListProductsQuery struct {
 	CategoryNames []string    `form:"-"`
 	TagUUIDs      []uuid.UUID `form:"-"`
 	TagNames      []string    `form:"-"`
+
+	// IncludeUnpublished disables the storefront's published-only filter. It is
+	// set by admin handlers and is never bound from the query string.
+	IncludeUnpublished bool `form:"-" swaggerignore:"true"`
 }
 
 func parseCommaSeparatedValues(input *string) ([]uuid.UUID, []string) {
@@ -800,13 +809,13 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 // AdminGetAllProducts godoc
 //
 //	@Summary		List all products for management (Admin)
-//	@Description	Returns a paginated list of all products including draft, published, archived, and soft-deleted records for administrator catalog management.
+//	@Description	Returns a paginated list of draft, published, and archived products for administrator catalog management, with optional status filtering. Soft-deleted records are excluded.
 //	@Tags			Admin Products
 //	@Produce		json
-//	@Param			q	query		ListProductsQuery													true	"Pagination, search query, brand, category, tag, and sorting parameters"
-//	@Failure		400	{object}	api.BadRequestErrorResponse											"Invalid query parameters"
-//	@Failure		500	{object}	api.InternalServerErrorResponse										"Internal server error"
-//	@Success		200	{object}	api.PaginatedResponse{data=[]model.Product,meta=pagination.Page}	"Paginated list of all products including deleted"
+//	@Param			q	query		ListProductsQuery														true	"Pagination, search query, brand, category, tag, status, and sorting parameters"
+//	@Failure		400	{object}	api.BadRequestErrorResponse												"Invalid query parameters"
+//	@Failure		500	{object}	api.InternalServerErrorResponse											"Internal server error"
+//	@Success		200	{object}	api.PaginatedResponse{data=[]ProductListItemResponse,meta=pagination.Page}	"Paginated list of catalog products"
 //	@Router			/admin/products [get]
 func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
 	var q ListProductsQuery
@@ -821,14 +830,30 @@ func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.AdminList(c.Request.Context(), &q, true)
+	if q.Status != nil && *q.Status != "" {
+		if _, err := model.ParsePublicationStatus(*q.Status); err != nil {
+			_ = c.Error(apierr.BadRequestError("Invalid product status filter").WithFields(api.FieldError{
+				Field:   "status",
+				Message: "status must be one of draft, published, archived",
+			}))
+			return
+		}
+	}
+
+	q.IncludeUnpublished = true
+	result, err := h.service.List(c.Request.Context(), &q, false)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
+	itemsRes := make([]ProductListItemResponse, 0, len(result.Items))
+	for _, item := range result.Items {
+		itemsRes = append(itemsRes, mapProductListItemResponse(item))
+	}
+
 	c.JSON(http.StatusOK, api.PaginatedResponse{
-		Data: result.Items,
+		Data: itemsRes,
 		Meta: result.Meta(),
 	})
 }

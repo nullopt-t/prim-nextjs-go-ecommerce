@@ -685,36 +685,6 @@ func (s *ProductService) GetBySlug(
 	return productDetails, nil
 }
 
-// AdminList retrieves paginated products for administrative management, resolving thumbnail URLs.
-func (s *ProductService) AdminList(
-	ctx context.Context,
-	q *ListProductsQuery,
-	includeDeleted bool,
-) (*pagination.PagedResult[model.Product], error) {
-	var res *pagination.PagedResult[model.Product]
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
-		var err error
-		res, err = s.productRepo.AdminList(ctx, db, q, includeDeleted)
-		return err
-	})
-
-	if err != nil {
-		return nil, apierr.InternalServerError("Failed to list products").
-			WithCode(apierr.CodeInternalError).
-			Wrap(err).
-			WithStack()
-	}
-
-	for i := range res.Items {
-		item := res.Items[i]
-		if item != nil && item.Thumbnail != nil {
-			item.Thumbnail.PublicURL = s.objectService.GetObjectURL(ctx, item.Thumbnail.Bucket, item.Thumbnail.Key)
-		}
-	}
-
-	return res, nil
-}
-
 // List executes a storefront product card query and hydrates review ratings asynchronously.
 func (s *ProductService) List(
 	ctx context.Context,

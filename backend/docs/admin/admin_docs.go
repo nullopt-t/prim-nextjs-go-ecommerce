@@ -1285,7 +1285,7 @@ const docTemplateadmin = `{
         },
         "/admin/products": {
             "get": {
-                "description": "Returns a paginated list of all products including draft, published, archived, and soft-deleted records for administrator catalog management.",
+                "description": "Returns a paginated list of draft, published, and archived products for administrator catalog management, with optional status filtering. Soft-deleted records are excluded.",
                 "produces": [
                     "application/json"
                 ],
@@ -1376,7 +1376,7 @@ const docTemplateadmin = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Paginated list of all products including deleted",
+                        "description": "Paginated list of catalog products",
                         "schema": {
                             "allOf": [
                                 {
@@ -1388,7 +1388,7 @@ const docTemplateadmin = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/Product"
+                                                "$ref": "#/definitions/ProductListItemResponse"
                                             }
                                         },
                                         "meta": {
@@ -1913,6 +1913,39 @@ const docTemplateadmin = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Admin Products"
+                ],
+                "summary": "delete thumbnail image for a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "400": {
+                        "description": "Invalid UUID format",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
                         "schema": {
                             "$ref": "#/definitions/InternalServerErrorResponse"
                         }
@@ -3990,6 +4023,70 @@ const docTemplateadmin = `{
                 }
             }
         },
+        "/admin/variants/{id}/media/upload": {
+            "post": {
+                "description": "Uploads an image file and creates a new variant media entry for gallery previews.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Variant Media"
+                ],
+                "summary": "Upload and attach media preview image to a variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Preview image file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created variant media entry",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/VariantMediaSummary"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID or missing file",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Upload failure",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/variants/{id}/media/{media_id}": {
             "delete": {
                 "description": "Removes a media attachment relationship from a variant.",
@@ -4083,6 +4180,104 @@ const docTemplateadmin = `{
                     },
                     "500": {
                         "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/variants/{id}/thumbnail": {
+            "post": {
+                "description": "Uploads an image file and sets it as the variant's thumbnail, deleting previous thumbnail storage object.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Product Variants"
+                ],
+                "summary": "Upload thumbnail image for a variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Thumbnail image file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Uploaded storage object details",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/StorageObjectResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid UUID or missing file",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Upload failure",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Removes the thumbnail from a variant and purges the storage object.",
+                "tags": [
+                    "Admin Product Variants"
+                ],
+                "summary": "Delete variant thumbnail image",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "400": {
+                        "description": "Invalid UUID format",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
                         "schema": {
                             "$ref": "#/definitions/InternalServerErrorResponse"
                         }
@@ -5205,71 +5400,6 @@ const docTemplateadmin = `{
                 }
             }
         },
-        "Object": {
-            "type": "object",
-            "properties": {
-                "bucket": {
-                    "description": "Bucket is the target S3/MinIO bucket name.",
-                    "type": "string"
-                },
-                "contentType": {
-                    "description": "ContentType is the MIME type (e.g. \"image/webp\", \"application/pdf\").",
-                    "type": "string"
-                },
-                "createdAt": {
-                    "description": "CreatedAt is the timestamp when the object record was created.",
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "description": "DeletedAt is the optional soft-delete timestamp.",
-                    "type": "string"
-                },
-                "fileSize": {
-                    "description": "FileSize is the file length in bytes.",
-                    "type": "integer",
-                    "format": "int64"
-                },
-                "id": {
-                    "description": "ID is the unique database UUID for the storage object.",
-                    "type": "string"
-                },
-                "key": {
-                    "description": "Key is the object path key inside the bucket (e.g. \"products/uuid/image.webp\").",
-                    "type": "string"
-                },
-                "publicURL": {
-                    "description": "PublicURL is the publicly accessible CDN or presigned HTTP endpoint for the file.",
-                    "type": "string"
-                },
-                "status": {
-                    "description": "Status is the current storage lifecycle state.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/ObjectStatus"
-                        }
-                    ]
-                },
-                "updatedAt": {
-                    "description": "UpdatedAt is the timestamp when metadata was last modified.",
-                    "type": "string"
-                }
-            }
-        },
-        "ObjectStatus": {
-            "type": "string",
-            "enum": [
-                "uploading",
-                "uploaded",
-                "deleting",
-                "deleted"
-            ],
-            "x-enum-varnames": [
-                "ObjectStatusUploading",
-                "ObjectStatusUploaded",
-                "ObjectStatusDeleting",
-                "ObjectStatusDeleted"
-            ]
-        },
         "OrderItemResponse": {
             "type": "object",
             "properties": {
@@ -5487,146 +5617,6 @@ const docTemplateadmin = `{
                 }
             }
         },
-        "Product": {
-            "type": "object",
-            "properties": {
-                "brand": {
-                    "description": "Brand is the hydrated ProductBrand entity (not stored directly in the products table).",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/ProductBrand"
-                        }
-                    ]
-                },
-                "brandID": {
-                    "description": "BrandID is the optional UUID of the product's manufacturer/brand.",
-                    "type": "string"
-                },
-                "category": {
-                    "description": "Category is the hydrated ProductCategory entity (not stored directly in the products table).",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/ProductCategory"
-                        }
-                    ]
-                },
-                "categoryID": {
-                    "description": "CategoryID is the required taxonomy category UUID.",
-                    "type": "string"
-                },
-                "createdAt": {
-                    "description": "CreatedAt is the timestamp when the product was added to the catalog.",
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "description": "DeletedAt is the optional soft-delete timestamp.",
-                    "type": "string"
-                },
-                "description": {
-                    "description": "Description is the full product narrative copy.",
-                    "type": "string"
-                },
-                "highlights": {
-                    "description": "Highlights contains key bullet points displayed on product detail pages.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "description": "ID is the unique database UUID for the product.",
-                    "type": "string"
-                },
-                "productType": {
-                    "description": "ProductType indicates simple or variable catalog classification.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/ProductType"
-                        }
-                    ]
-                },
-                "slug": {
-                    "description": "Slug is the URL-friendly unique SEO identifier.",
-                    "type": "string"
-                },
-                "status": {
-                    "description": "Status is the draft/published/archived lifecycle state.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/PublicationStatus"
-                        }
-                    ]
-                },
-                "thumbnail": {
-                    "description": "Thumbnail is the hydrated Object entity for the cover image (not stored directly in the products table).",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/Object"
-                        }
-                    ]
-                },
-                "thumbnailObjectID": {
-                    "description": "ThumbnailObjectID is the optional storage object UUID for the primary cover image.",
-                    "type": "string"
-                },
-                "title": {
-                    "description": "Title is the primary product display name.",
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "description": "UpdatedAt is the timestamp when product metadata was last modified.",
-                    "type": "string"
-                },
-                "variationAxes": {
-                    "description": "VariationAxes is the ordered list of attribute keys that define this\nproduct's variation matrix (e.g. [\"color\",\"storage\"]). Empty for simple\nsingle-SKU products.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "ProductBrand": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "description": "CreatedAt is the timestamp when the brand record was created.",
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "description": "DeletedAt is the optional soft-delete timestamp.",
-                    "type": "string"
-                },
-                "id": {
-                    "description": "ID is the internal database UUID.",
-                    "type": "string"
-                },
-                "link": {
-                    "description": "Link is the optional official website URL.",
-                    "type": "string"
-                },
-                "logoObjectID": {
-                    "description": "LogoObjectID is the optional storage object UUID for the brand logo.",
-                    "type": "string"
-                },
-                "logoURL": {
-                    "description": "LogoURL is the resolved public CDN URL for the brand logo image.",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "Name is the unique brand name (e.g. \"Apple\", \"Nike\").",
-                    "type": "string"
-                },
-                "productCount": {
-                    "description": "ProductCount is the number of active products associated with the brand.\nIt is computed on read and is not persisted on the brand row.",
-                    "type": "integer"
-                },
-                "updatedAt": {
-                    "description": "UpdatedAt is the timestamp when brand details were last modified.",
-                    "type": "string"
-                }
-            }
-        },
         "ProductBrandSummary": {
             "type": "object",
             "properties": {
@@ -5647,43 +5637,6 @@ const docTemplateadmin = `{
                 }
             }
         },
-        "ProductCategory": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "description": "CreatedAt is the timestamp when the category was created.",
-                    "type": "string"
-                },
-                "deletedAt": {
-                    "description": "DeletedAt is the optional soft-delete timestamp.",
-                    "type": "string"
-                },
-                "id": {
-                    "description": "ID is the unique internal database UUID.",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "Name is the category display name (e.g. \"Electronics\", \"Laptops\").",
-                    "type": "string"
-                },
-                "parentID": {
-                    "description": "ParentID is the optional UUID of the parent category (nil for root categories).",
-                    "type": "string"
-                },
-                "parentName": {
-                    "description": "ParentName is the display name of the parent category, resolved on demand\nfor admin listings. It is empty for root categories or when the caller did\nnot request it.",
-                    "type": "string"
-                },
-                "productCount": {
-                    "description": "ProductCount is the number of non-deleted products assigned directly to\nthis category, resolved on demand for admin listings.",
-                    "type": "integer"
-                },
-                "updatedAt": {
-                    "description": "UpdatedAt is the timestamp when category details were last modified.",
-                    "type": "string"
-                }
-            }
-        },
         "ProductCategorySummary": {
             "type": "object",
             "properties": {
@@ -5696,6 +5649,128 @@ const docTemplateadmin = `{
                     "description": "Category name",
                     "type": "string",
                     "example": "Electronics"
+                }
+            }
+        },
+        "ProductListItemResponse": {
+            "type": "object",
+            "properties": {
+                "brand": {
+                    "description": "Brand name",
+                    "type": "string",
+                    "example": "Apple"
+                },
+                "category": {
+                    "description": "Category information",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/PublicCategoryResponse"
+                        }
+                    ]
+                },
+                "currency": {
+                    "description": "Currency ISO code",
+                    "type": "string",
+                    "example": "EGP"
+                },
+                "extractedOriginalPrice": {
+                    "description": "Numeric original price",
+                    "type": "number",
+                    "example": 2999
+                },
+                "extractedPrice": {
+                    "description": "Numeric price value",
+                    "type": "number",
+                    "example": 2499
+                },
+                "id": {
+                    "description": "Product UUID",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "inStock": {
+                    "description": "In stock flag",
+                    "type": "boolean",
+                    "example": true
+                },
+                "originalPrice": {
+                    "description": "Formatted crossed-out original price",
+                    "type": "string",
+                    "example": "$2999.00"
+                },
+                "price": {
+                    "description": "Formatted display price",
+                    "type": "string",
+                    "example": "$2499.00"
+                },
+                "rating": {
+                    "description": "Rating summary and score breakdown",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductRatingSummaryResponse"
+                        }
+                    ]
+                },
+                "sku": {
+                    "description": "Stock Keeping Unit",
+                    "type": "string",
+                    "example": "MAC-PRO-001"
+                },
+                "slug": {
+                    "description": "URL-friendly unique slug",
+                    "type": "string",
+                    "example": "macbook-pro-16"
+                },
+                "status": {
+                    "description": "Publication lifecycle state (admin listings)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/PublicationStatus"
+                        }
+                    ],
+                    "example": "published"
+                },
+                "stockQuantity": {
+                    "description": "Real-time on-hand available stock count",
+                    "type": "integer",
+                    "example": 50
+                },
+                "thumbnail": {
+                    "description": "Product card thumbnail URL",
+                    "type": "string",
+                    "example": "https://example.com/thumb.jpg"
+                },
+                "title": {
+                    "description": "Product display title",
+                    "type": "string",
+                    "example": "MacBook Pro 16\""
+                },
+                "variantId": {
+                    "description": "Default variant UUID",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "ProductRatingSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "averageRating": {
+                    "description": "Average review score (1.0 to 5.0)",
+                    "type": "number",
+                    "example": 4.5
+                },
+                "distribution": {
+                    "description": "Star rating distribution mapping score (1-5) to frequency",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "reviewCount": {
+                    "description": "Total count of approved reviews",
+                    "type": "integer",
+                    "example": 24
                 }
             }
         },
@@ -5714,16 +5789,20 @@ const docTemplateadmin = `{
                 }
             }
         },
-        "ProductType": {
-            "type": "string",
-            "enum": [
-                "simple",
-                "variable"
-            ],
-            "x-enum-varnames": [
-                "ProductTypeSimple",
-                "ProductTypeVariable"
-            ]
+        "PublicCategoryResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Public category identifier",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
+                },
+                "name": {
+                    "description": "Category display name",
+                    "type": "string",
+                    "example": "Electronics"
+                }
+            }
         },
         "PublicationStatus": {
             "type": "string",

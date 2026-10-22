@@ -4427,6 +4427,11 @@ const docTemplatepublic = `{
                         "$ref": "#/definitions/ProductTagSummary"
                     }
                 },
+                "thumbnail": {
+                    "description": "Master product card thumbnail URL",
+                    "type": "string",
+                    "example": "https://example.com/thumb.jpg"
+                },
                 "title": {
                     "description": "Product display title",
                     "type": "string",
@@ -4516,6 +4521,15 @@ const docTemplatepublic = `{
                     "description": "URL-friendly unique slug",
                     "type": "string",
                     "example": "macbook-pro-16"
+                },
+                "status": {
+                    "description": "Publication lifecycle state (admin listings)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/PublicationStatus"
+                        }
+                    ],
+                    "example": "published"
                 },
                 "stockQuantity": {
                     "description": "Real-time on-hand available stock count",
@@ -4804,6 +4818,19 @@ const docTemplatepublic = `{
                     "example": true
                 }
             }
+        },
+        "PublicationStatus": {
+            "type": "string",
+            "enum": [
+                "draft",
+                "published",
+                "archived"
+            ],
+            "x-enum-varnames": [
+                "PublicationStatusDraft",
+                "PublicationStatusPublished",
+                "PublicationStatusArchived"
+            ]
         },
         "ResendChallengeRequest": {
             "type": "object",

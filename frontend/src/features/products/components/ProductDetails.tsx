@@ -23,6 +23,7 @@ import {
 import { ProductGallery } from "./ui/ProductGallery";
 import { ProductActions } from "./ui/ProductActions";
 import { ProductSpecs } from "./ui/ProductSpecs";
+import { ProductHighlights } from "./ui/ProductHighlights";
 import { ProductReviews } from "./ui/ProductReviews";
 
 import { useAuthContext } from "@/context/AuthContext";
@@ -186,6 +187,15 @@ export function ProductDetails() {
   const activeVariant = resolveVariantByAttributes(product, selectedValues);
   const { availableStock, isVariantInStock } = resolveVariantStock(product, activeVariant);
   const images = resolveProductImages(product, activeVariant);
+  const highlights = Array.isArray((product as any).highlights)
+    ? (product as any).highlights
+    : [];
+  const reviewCount = reviews.length || product.reviews || 0;
+  const averageRating =
+    reviews.length > 0
+      ? reviews.reduce((total, review) => total + (Number(review.rating) || 0), 0) /
+        reviews.length
+      : Number(product.stars) || 0;
 
   const isWishlisted = Boolean(
     activeVariant?.id
@@ -391,9 +401,9 @@ export function ProductDetails() {
   };
 
   return (
-    <AnimatedSection className="w-full">
+    <AnimatedSection className="mx-auto w-full max-w-7xl">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 overflow-x-auto whitespace-nowrap pb-1 scrollbar-none">
+      <nav className="mb-4 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1 text-xs text-muted-foreground scrollbar-none sm:mb-6 sm:text-sm">
         <Link href="/" className="hover:text-foreground transition-colors">
           {t("header.home")}
         </Link>
@@ -413,37 +423,45 @@ export function ProductDetails() {
       </nav>
 
       {/* Main Product Layout */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16">
-        <ProductGallery
-          images={images}
-          productName={productName}
-          activeImage={activeImage}
-          onSelectImage={setActiveImage}
-          discountPercentage={discountPercentage}
-        />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8 xl:gap-10">
+        <div className="self-start lg:col-span-7 lg:sticky lg:top-24">
+          <ProductGallery
+            images={images}
+            productName={productName}
+            activeImage={activeImage}
+            onSelectImage={setActiveImage}
+            discountPercentage={discountPercentage}
+          />
+        </div>
 
-        <ProductActions
-          productCategory={product.category}
-          productName={productName}
-          stars={product.stars}
-          reviewsCount={reviews.length || product.reviews || 0}
-          price={currentPrice}
-          oldPrice={currentOldPrice}
-          currency={t("currency")}
-          variationAxes={product.variationAxes}
-          selectedValues={selectedValues}
-          onSelectAxis={handleSelectAxis}
-          availableStock={availableStock}
-          isVariantInStock={isVariantInStock}
-          quantity={quantity}
-          onQuantityChange={setQuantity}
-          isAdding={isAdding}
-          isWishlisted={isWishlisted}
-          onAddToCart={handleAddToCart}
-          onBuyNow={handleBuyNow}
-          onToggleWishlist={handleToggleWishlist}
-          onShare={handleShare}
-        />
+        <div className="flex flex-col gap-5 lg:col-span-5">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
+            <ProductActions
+              productCategory={product.category}
+              productName={productName}
+              stars={averageRating}
+              reviewsCount={reviewCount}
+              price={currentPrice}
+              oldPrice={currentOldPrice}
+              currency={t("currency")}
+              variationAxes={product.variationAxes}
+              selectedValues={selectedValues}
+              onSelectAxis={handleSelectAxis}
+              availableStock={availableStock}
+              isVariantInStock={isVariantInStock}
+              quantity={quantity}
+              onQuantityChange={setQuantity}
+              isAdding={isAdding}
+              isWishlisted={isWishlisted}
+              onAddToCart={handleAddToCart}
+              onBuyNow={handleBuyNow}
+              onToggleWishlist={handleToggleWishlist}
+              onShare={handleShare}
+            />
+          </div>
+
+          <ProductHighlights highlights={highlights} />
+        </div>
       </div>
 
       {/* Specifications & Shipping Sections */}
@@ -456,10 +474,10 @@ export function ProductDetails() {
       />
 
       {/* Reviews Section */}
-      <div className="mt-16">
+      <div className="mt-10 sm:mt-14">
         <ProductReviews
-          stars={product.stars}
-          reviewsCount={reviews.length || product.reviews || 0}
+          stars={averageRating}
+          reviewsCount={reviewCount}
           reviews={reviews}
           canReview={canReview}
           onAddReview={handleAddReview}
@@ -469,7 +487,7 @@ export function ProductDetails() {
 
       {/* Similar Products */}
       {similarProducts.length > 0 && (
-        <div className="mt-8 sm:mt-12 mb-6 sm:mb-8">
+        <div className="mt-10 mb-6 sm:mt-14 sm:mb-8">
           <SectionTitle
             title={tProducts("details.similarProducts")}
             link={`/products?category=${product.categoryId || product.category}`}

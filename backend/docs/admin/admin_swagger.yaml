@@ -825,54 +825,6 @@ definitions:
         example: The requested resource was not found
         type: string
     type: object
-  Object:
-    properties:
-      bucket:
-        description: Bucket is the target S3/MinIO bucket name.
-        type: string
-      contentType:
-        description: ContentType is the MIME type (e.g. "image/webp", "application/pdf").
-        type: string
-      createdAt:
-        description: CreatedAt is the timestamp when the object record was created.
-        type: string
-      deletedAt:
-        description: DeletedAt is the optional soft-delete timestamp.
-        type: string
-      fileSize:
-        description: FileSize is the file length in bytes.
-        format: int64
-        type: integer
-      id:
-        description: ID is the unique database UUID for the storage object.
-        type: string
-      key:
-        description: Key is the object path key inside the bucket (e.g. "products/uuid/image.webp").
-        type: string
-      publicURL:
-        description: PublicURL is the publicly accessible CDN or presigned HTTP endpoint
-          for the file.
-        type: string
-      status:
-        allOf:
-        - $ref: '#/definitions/ObjectStatus'
-        description: Status is the current storage lifecycle state.
-      updatedAt:
-        description: UpdatedAt is the timestamp when metadata was last modified.
-        type: string
-    type: object
-  ObjectStatus:
-    enum:
-    - uploading
-    - uploaded
-    - deleting
-    - deleted
-    type: string
-    x-enum-varnames:
-    - ObjectStatusUploading
-    - ObjectStatusUploaded
-    - ObjectStatusDeleting
-    - ObjectStatusDeleted
   OrderItemResponse:
     properties:
       id:
@@ -1041,111 +993,6 @@ definitions:
       updatedAt:
         type: string
     type: object
-  Product:
-    properties:
-      brand:
-        allOf:
-        - $ref: '#/definitions/ProductBrand'
-        description: Brand is the hydrated ProductBrand entity (not stored directly
-          in the products table).
-      brandID:
-        description: BrandID is the optional UUID of the product's manufacturer/brand.
-        type: string
-      category:
-        allOf:
-        - $ref: '#/definitions/ProductCategory'
-        description: Category is the hydrated ProductCategory entity (not stored directly
-          in the products table).
-      categoryID:
-        description: CategoryID is the required taxonomy category UUID.
-        type: string
-      createdAt:
-        description: CreatedAt is the timestamp when the product was added to the
-          catalog.
-        type: string
-      deletedAt:
-        description: DeletedAt is the optional soft-delete timestamp.
-        type: string
-      description:
-        description: Description is the full product narrative copy.
-        type: string
-      highlights:
-        description: Highlights contains key bullet points displayed on product detail
-          pages.
-        items:
-          type: string
-        type: array
-      id:
-        description: ID is the unique database UUID for the product.
-        type: string
-      productType:
-        allOf:
-        - $ref: '#/definitions/ProductType'
-        description: ProductType indicates simple or variable catalog classification.
-      slug:
-        description: Slug is the URL-friendly unique SEO identifier.
-        type: string
-      status:
-        allOf:
-        - $ref: '#/definitions/PublicationStatus'
-        description: Status is the draft/published/archived lifecycle state.
-      thumbnail:
-        allOf:
-        - $ref: '#/definitions/Object'
-        description: Thumbnail is the hydrated Object entity for the cover image (not
-          stored directly in the products table).
-      thumbnailObjectID:
-        description: ThumbnailObjectID is the optional storage object UUID for the
-          primary cover image.
-        type: string
-      title:
-        description: Title is the primary product display name.
-        type: string
-      updatedAt:
-        description: UpdatedAt is the timestamp when product metadata was last modified.
-        type: string
-      variationAxes:
-        description: |-
-          VariationAxes is the ordered list of attribute keys that define this
-          product's variation matrix (e.g. ["color","storage"]). Empty for simple
-          single-SKU products.
-        items:
-          type: string
-        type: array
-    type: object
-  ProductBrand:
-    properties:
-      createdAt:
-        description: CreatedAt is the timestamp when the brand record was created.
-        type: string
-      deletedAt:
-        description: DeletedAt is the optional soft-delete timestamp.
-        type: string
-      id:
-        description: ID is the internal database UUID.
-        type: string
-      link:
-        description: Link is the optional official website URL.
-        type: string
-      logoObjectID:
-        description: LogoObjectID is the optional storage object UUID for the brand
-          logo.
-        type: string
-      logoURL:
-        description: LogoURL is the resolved public CDN URL for the brand logo image.
-        type: string
-      name:
-        description: Name is the unique brand name (e.g. "Apple", "Nike").
-        type: string
-      productCount:
-        description: |-
-          ProductCount is the number of active products associated with the brand.
-          It is computed on read and is not persisted on the brand row.
-        type: integer
-      updatedAt:
-        description: UpdatedAt is the timestamp when brand details were last modified.
-        type: string
-    type: object
   ProductBrandSummary:
     properties:
       link:
@@ -1161,39 +1008,6 @@ definitions:
         example: Apple
         type: string
     type: object
-  ProductCategory:
-    properties:
-      createdAt:
-        description: CreatedAt is the timestamp when the category was created.
-        type: string
-      deletedAt:
-        description: DeletedAt is the optional soft-delete timestamp.
-        type: string
-      id:
-        description: ID is the unique internal database UUID.
-        type: string
-      name:
-        description: Name is the category display name (e.g. "Electronics", "Laptops").
-        type: string
-      parentID:
-        description: ParentID is the optional UUID of the parent category (nil for
-          root categories).
-        type: string
-      parentName:
-        description: |-
-          ParentName is the display name of the parent category, resolved on demand
-          for admin listings. It is empty for root categories or when the caller did
-          not request it.
-        type: string
-      productCount:
-        description: |-
-          ProductCount is the number of non-deleted products assigned directly to
-          this category, resolved on demand for admin listings.
-        type: integer
-      updatedAt:
-        description: UpdatedAt is the timestamp when category details were last modified.
-        type: string
-    type: object
   ProductCategorySummary:
     properties:
       id:
@@ -1204,6 +1018,94 @@ definitions:
         description: Category name
         example: Electronics
         type: string
+    type: object
+  ProductListItemResponse:
+    properties:
+      brand:
+        description: Brand name
+        example: Apple
+        type: string
+      category:
+        allOf:
+        - $ref: '#/definitions/PublicCategoryResponse'
+        description: Category information
+      currency:
+        description: Currency ISO code
+        example: EGP
+        type: string
+      extractedOriginalPrice:
+        description: Numeric original price
+        example: 2999
+        type: number
+      extractedPrice:
+        description: Numeric price value
+        example: 2499
+        type: number
+      id:
+        description: Product UUID
+        example: 60000000-0000-0000-0000-000000000001
+        type: string
+      inStock:
+        description: In stock flag
+        example: true
+        type: boolean
+      originalPrice:
+        description: Formatted crossed-out original price
+        example: $2999.00
+        type: string
+      price:
+        description: Formatted display price
+        example: $2499.00
+        type: string
+      rating:
+        allOf:
+        - $ref: '#/definitions/ProductRatingSummaryResponse'
+        description: Rating summary and score breakdown
+      sku:
+        description: Stock Keeping Unit
+        example: MAC-PRO-001
+        type: string
+      slug:
+        description: URL-friendly unique slug
+        example: macbook-pro-16
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/PublicationStatus'
+        description: Publication lifecycle state (admin listings)
+        example: published
+      stockQuantity:
+        description: Real-time on-hand available stock count
+        example: 50
+        type: integer
+      thumbnail:
+        description: Product card thumbnail URL
+        example: https://example.com/thumb.jpg
+        type: string
+      title:
+        description: Product display title
+        example: MacBook Pro 16"
+        type: string
+      variantId:
+        description: Default variant UUID
+        example: 70000000-0000-0000-0000-000000000001
+        type: string
+    type: object
+  ProductRatingSummaryResponse:
+    properties:
+      averageRating:
+        description: Average review score (1.0 to 5.0)
+        example: 4.5
+        type: number
+      distribution:
+        additionalProperties:
+          type: integer
+        description: Star rating distribution mapping score (1-5) to frequency
+        type: object
+      reviewCount:
+        description: Total count of approved reviews
+        example: 24
+        type: integer
     type: object
   ProductTagSummary:
     properties:
@@ -1216,14 +1118,17 @@ definitions:
         example: Featured
         type: string
     type: object
-  ProductType:
-    enum:
-    - simple
-    - variable
-    type: string
-    x-enum-varnames:
-    - ProductTypeSimple
-    - ProductTypeVariable
+  PublicCategoryResponse:
+    properties:
+      id:
+        description: Public category identifier
+        example: 40000000-0000-0000-0000-000000000002
+        type: string
+      name:
+        description: Category display name
+        example: Electronics
+        type: string
+    type: object
   PublicationStatus:
     enum:
     - draft
@@ -2599,8 +2504,9 @@ paths:
       - Admin Payments
   /admin/products:
     get:
-      description: Returns a paginated list of all products including draft, published,
-        archived, and soft-deleted records for administrator catalog management.
+      description: Returns a paginated list of draft, published, and archived products
+        for administrator catalog management, with optional status filtering. Soft-deleted
+        records are excluded.
       parameters:
       - collectionFormat: csv
         in: query
@@ -2667,14 +2573,14 @@ paths:
       - application/json
       responses:
         "200":
-          description: Paginated list of all products including deleted
+          description: Paginated list of catalog products
           schema:
             allOf:
             - $ref: '#/definitions/PaginatedResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/Product'
+                    $ref: '#/definitions/ProductListItemResponse'
                   type: array
                 meta:
                   $ref: '#/definitions/Page'
@@ -2985,6 +2891,28 @@ paths:
       tags:
       - Admin Products
   /admin/products/{id}/thumbnail:
+    delete:
+      parameters:
+      - description: Product ID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: delete thumbnail image for a product
+      tags:
+      - Admin Products
     post:
       consumes:
       - multipart/form-data
@@ -4438,6 +4366,47 @@ paths:
       summary: Batch reorder media items for a variant
       tags:
       - Admin Variant Media
+  /admin/variants/{id}/media/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads an image file and creates a new variant media entry for
+        gallery previews.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Preview image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created variant media entry
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/VariantMediaSummary'
+              type: object
+        "400":
+          description: Invalid UUID or missing file
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Upload failure
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Upload and attach media preview image to a variant
+      tags:
+      - Admin Variant Media
   /admin/variants/{id}/restore:
     post:
       description: Restores a soft-deleted product variant back to active status (`deleted_at
@@ -4469,6 +4438,70 @@ paths:
           schema:
             $ref: '#/definitions/InternalServerErrorResponse'
       summary: Restore a soft-deleted product variant
+      tags:
+      - Admin Product Variants
+  /admin/variants/{id}/thumbnail:
+    delete:
+      description: Removes the thumbnail from a variant and purges the storage object.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Invalid UUID format
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Delete variant thumbnail image
+      tags:
+      - Admin Product Variants
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads an image file and sets it as the variant's thumbnail, deleting
+        previous thumbnail storage object.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Thumbnail image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Uploaded storage object details
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/StorageObjectResponse'
+              type: object
+        "400":
+          description: Invalid UUID or missing file
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Upload failure
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Upload thumbnail image for a variant
       tags:
       - Admin Product Variants
 swagger: "2.0"

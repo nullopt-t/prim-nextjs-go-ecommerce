@@ -292,6 +292,18 @@ func (r *ProductRepository) List(
 
 	if !includeDeleted {
 		whereClauses = append(whereClauses, "p.deleted_at IS NULL")
+	}
+
+	if q.IncludeUnpublished {
+		// Admin listings may filter by lifecycle status.
+		if q.Status != nil && strings.TrimSpace(*q.Status) != "" {
+			whereClauses = append(whereClauses, fmt.Sprintf("p.status = $%d", argIdx))
+			args = append(args, strings.TrimSpace(*q.Status))
+			argIdx++
+		}
+	} else {
+		// Storefront listings are always published-only, regardless of any
+		// status query parameter supplied by the caller.
 		whereClauses = append(whereClauses, "p.status = 'published'")
 	}
 
@@ -547,168 +559,6 @@ func (r *ProductRepository) List(
 	return pagination.NewPagedResult(items, pagination.NewPage(q.Page, q.PageSize, total)), nil
 }
 
-// AdminList executes an administrative catalog query including drafts, archived, and optionally soft-deleted products.
-func (r *ProductRepository) AdminList(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	q *ListProductsQuery,
-	includeDeleted bool,
-) (*pagination.PagedResult[model.Product], error) {
-	if q == nil {
-		q = &ListProductsQuery{}
-	}
-	q.Process(pagination.QueryOptions{})
-
-	whereClauses := make([]string, 0, 5)
-	args := make([]any, 0, 5)
-	argIdx := 1
-
-	if !includeDeleted {
-		whereClauses = append(whereClauses, "p.deleted_at IS NULL")
-	}
-
-	if len(q.BrandUUIDs) > 0 || len(q.BrandNames) > 0 {
-		var brandParts []string
-		if len(q.BrandUUIDs) > 0 {
-			brandParts = append(brandParts, fmt.Sprintf("p.brand_id = ANY($%d)", argIdx))
-			args = append(args, q.BrandUUIDs)
-			argIdx++
-		}
-		for _, name := range q.BrandNames {
-			brandParts = append(brandParts, fmt.Sprintf("b.name ILIKE $%d", argIdx))
-			args = append(args, name)
-			argIdx++
-		}
-		if len(brandParts) > 0 {
-			whereClauses = append(whereClauses, "("+strings.Join(brandParts, " OR ")+")")
-		}
-	}
-
-	if len(q.CategoryUUIDs) > 0 || len(q.CategoryNames) > 0 {
-		var catParts []string
-		if len(q.CategoryUUIDs) > 0 {
-			catParts = append(catParts, fmt.Sprintf("p.category_id = ANY($%d)", argIdx))
-			args = append(args, q.CategoryUUIDs)
-			argIdx++
-		}
-		for _, name := range q.CategoryNames {
-			catParts = append(catParts, fmt.Sprintf("c.name ILIKE $%d", argIdx))
-			args = append(args, name)
-			argIdx++
-		}
-		if len(catParts) > 0 {
-			whereClauses = append(whereClauses, "("+strings.Join(catParts, " OR ")+")")
-		}
-	}
-
-	if len(q.TagUUIDs) > 0 || len(q.TagNames) > 0 {
-		var tagParts []string
-		if len(q.TagUUIDs) > 0 {
-			tagParts = append(tagParts, fmt.Sprintf("EXISTS (SELECT 1 FROM product_tag_assignments pta WHERE pta.product_id = p.id AND pta.tag_id = ANY($%d))", argIdx))
-			args = append(args, q.TagUUIDs)
-			argIdx++
-		}
-		for _, name := range q.TagNames {
-			tagParts = append(tagParts, fmt.Sprintf("EXISTS (SELECT 1 FROM product_tag_assignments pta JOIN product_tags pt ON pta.tag_id = pt.id WHERE pta.product_id = p.id AND pt.name ILIKE $%d)", argIdx))
-			args = append(args, name)
-			argIdx++
-		}
-		if len(tagParts) > 0 {
-			whereClauses = append(whereClauses, "("+strings.Join(tagParts, " OR ")+")")
-		}
-	}
-
-	search := strings.TrimSpace(q.Search)
-	if search != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("(p.title ILIKE $%d OR p.slug ILIKE $%d)", argIdx, argIdx))
-		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	// Brand/category name filters require joining the taxonomy tables; the join
-	// must apply to both the count and the select, otherwise the query fails at
-	// runtime (b.name/c.name reference unbound tables).
-	joinStmt := ""
-	if len(q.BrandNames) > 0 || len(q.CategoryNames) > 0 {
-		joinStmt = `LEFT JOIN product_brands b ON b.id = p.brand_id AND b.deleted_at IS NULL
-			LEFT JOIN product_categories c ON c.id = p.category_id AND c.deleted_at IS NULL`
-	}
-
-	whereStmt := ""
-	if len(whereClauses) > 0 {
-		whereStmt = "WHERE " + strings.Join(whereClauses, " AND ")
-	}
-
-	// 1. Total Count
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p %s %s", joinStmt, whereStmt)
-	var total int
-	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, fmt.Errorf("count admin products: %w", err)
-	}
-
-	if total == 0 {
-		return pagination.NewPagedResult([]*model.Product{}, pagination.NewPage(q.Page, q.PageSize, 0)), nil
-	}
-
-	// 2. Sorting
-	orderBy := "ORDER BY p.created_at DESC"
-	if len(q.Sort) > 0 {
-		sortParts := make([]string, 0, len(q.Sort))
-		for _, sort := range q.Sort {
-			dbField, ok := allowedProductSortFields[strings.ToLower(sort.Field)]
-			if !ok {
-				continue
-			}
-			direction := "ASC"
-			if sort.Order == pagination.SortDesc {
-				direction = "DESC"
-			}
-			sortParts = append(sortParts, fmt.Sprintf("%s %s", dbField, direction))
-		}
-		if len(sortParts) > 0 {
-			orderBy = "ORDER BY " + strings.Join(sortParts, ", ")
-		}
-	}
-
-	// 3. Paginated Select
-	selectQuery := fmt.Sprintf(`
-		SELECT
-			p.id,
-			p.brand_id,
-			p.category_id,
-			p.slug,
-			p.title,
-			p.description,
-			p.highlights,
-			p.status,
-			p.product_type,
-			p.thumbnail_object_id,
-			p.default_variant_id,
-			p.created_at,
-			p.updated_at,
-			p.deleted_at
-		FROM products p
-		%s
-		%s
-		%s
-		LIMIT $%d OFFSET $%d
-	`, joinStmt, whereStmt, orderBy, argIdx, argIdx+1)
-
-	queryArgs := append(slices.Clone(args), q.PageSize, q.Offset)
-
-	rows, err := qe.Query(ctx, selectQuery, queryArgs...)
-	if err != nil {
-		return nil, fmt.Errorf("list admin products select: %w", err)
-	}
-
-	items, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[model.Product])
-	if err != nil {
-		return nil, fmt.Errorf("collect admin products: %w", err)
-	}
-
-	return pagination.NewPagedResult(items, pagination.NewPage(q.Page, q.PageSize, total)), nil
-}
-
 // SoftDeleteByID soft-deletes a product by its UUID (setting deleted_at = now()).
 func (r *ProductRepository) SoftDeleteByID(
 	ctx context.Context,
@@ -796,4 +646,3 @@ func (r *ProductRepository) SetDefaultVariant(
 	}
 	return nil
 }
-

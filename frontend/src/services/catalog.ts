@@ -8,6 +8,7 @@ export interface GetProductsParams {
   brand?: string;
   search?: string;
   inStock?: boolean;
+  status?: string;
 }
 
 type CatalogListParams = number | { pageSize?: number; cursor?: string; search?: string; keyset?: boolean };
@@ -75,6 +76,7 @@ export const catalogService = {
     if (params?.category) query.append("category", params.category);
     if (params?.brand) query.append("brand", params.brand);
     if (params?.search) query.append("search", params.search);
+    if (params?.status) query.append("status", params.status);
 
     const qs = query.toString();
     return api.get(`/api/v1/admin/products${qs ? `?${qs}` : ""}`);

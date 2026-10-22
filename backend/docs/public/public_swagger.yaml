@@ -664,6 +664,10 @@ definitions:
         items:
           $ref: '#/definitions/ProductTagSummary'
         type: array
+      thumbnail:
+        description: Master product card thumbnail URL
+        example: https://example.com/thumb.jpg
+        type: string
       title:
         description: Product display title
         example: MacBook Pro 16"
@@ -730,6 +734,11 @@ definitions:
         description: URL-friendly unique slug
         example: macbook-pro-16
         type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/PublicationStatus'
+        description: Publication lifecycle state (admin listings)
+        example: published
       stockQuantity:
         description: Real-time on-hand available stock count
         example: 50
@@ -941,6 +950,16 @@ definitions:
         example: true
         type: boolean
     type: object
+  PublicationStatus:
+    enum:
+    - draft
+    - published
+    - archived
+    type: string
+    x-enum-varnames:
+    - PublicationStatusDraft
+    - PublicationStatusPublished
+    - PublicationStatusArchived
   ResendChallengeRequest:
     properties:
       email:

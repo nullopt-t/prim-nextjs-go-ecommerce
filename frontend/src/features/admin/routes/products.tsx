@@ -17,7 +17,7 @@ import { catalogService } from "@/services/catalog";
 import { adminService } from "@/services/admin";
 import { useCatalogContext } from "@/context/CatalogContext";
 import { useTranslations } from "next-intl";
-import { notify } from "@/lib/notify";
+import { notify, apiErrorMessage } from "@/lib/notify";
 import { ErrorState } from "@/components/ui/errorState";
 import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
@@ -34,6 +34,7 @@ export function AdminProducts() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedStatus, setSelectedStatus] = useState("All");
 
   const [auditProduct, setAuditProduct] = useState<any>(null);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -51,9 +52,10 @@ export function AdminProducts() {
       if (cursor) productQuery.set("cursor", cursor);
       if (debouncedSearch) productQuery.set("search", debouncedSearch);
       if (selectedCategory !== "All") productQuery.set("category", selectedCategory);
+      if (selectedStatus !== "All") productQuery.set("status", selectedStatus);
 
       const [prodsRes, catsRes]: [any, any] = await Promise.all([
-        catalogService.getProducts(productQuery.toString()),
+        catalogService.getAdminProducts(productQuery.toString()),
         catalogService.getAdminCategories(100),
       ]);
 
@@ -91,7 +93,7 @@ export function AdminProducts() {
           cost: 0,
           stock: typeof p.stockQuantity === "number" ? p.stockQuantity : (p.stockCount || (p.stock !== undefined ? p.stock : 0)),
           lowStockThreshold: 10,
-          status: p.status || (p.inStock || p.stockQuantity > 0 ? "Active" : "Out of Stock"),
+          status: p.status || "draft",
           image: p.thumbnail || p.img || p.image || "/placeholder.png",
           variants: p.variants || [],
           salesCount: 0,
@@ -104,7 +106,7 @@ export function AdminProducts() {
     } finally {
       setLoading(false);
     }
-  }, [cursor, debouncedSearch, selectedCategory]);
+  }, [cursor, debouncedSearch, selectedCategory, selectedStatus]);
 
   useEffect(() => {
     loadAll();
@@ -148,15 +150,15 @@ export function AdminProducts() {
   };
 
   const handleDeleteProduct = async (id: string) => {
-    if (confirm(t("products.confirmDelete"))) {
+    if (!confirm(t("products.confirmDelete"))) return;
+
+    try {
+      await catalogService.deleteProduct(id);
       setProducts((prev) => prev.filter((p) => p.id !== id));
-      try {
-        await catalogService.deleteProduct(id);
-        refreshCatalog?.();
-      } catch {
-        // Ignored in mock
-      }
+      refreshCatalog?.();
       notify.success(t("products.toast.deleted"));
+    } catch (err: any) {
+      notify.error(apiErrorMessage(err, t("products.toast.deleteFailed")));
     }
   };
 
@@ -222,6 +224,19 @@ export function AdminProducts() {
                 {c.name}
               </option>
             ))}
+          </select>
+          <select
+            value={selectedStatus}
+            onChange={(e) => {
+              setSelectedStatus(e.target.value);
+              reset();
+            }}
+            className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
+          >
+            <option value="All">{t("status.all")}</option>
+            <option value="draft">{t("status.draft")}</option>
+            <option value="published">{t("status.published")}</option>
+            <option value="archived">{t("status.archived")}</option>
           </select>
         </div>
       </div>

@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "@/i18n/navigation";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   ArrowLeft,
+  Archive,
   Check,
   ChevronRight,
   ChevronLeft,
@@ -64,15 +65,28 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
   const t = useTranslations("admin");
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const rawId = params?.id ? String(params.id) : null;
-  const initialProductId = rawId && rawId !== "new" ? rawId : null;
+  const draftParam = searchParams?.get("draft") ?? null;
+  const initialProductId = rawId && rawId !== "new" ? rawId : draftParam;
+  const stepParam = Number(searchParams?.get("step") ?? 1);
+  const initialWizardStep = (stepParam >= 1 && stepParam <= 5 ? stepParam : 1) as
+    | 1
+    | 2
+    | 3
+    | 4
+    | 5;
 
   const [productId, setProductId] = useState<string | null>(initialProductId);
   const isCreate = !productId;
+  // Creation keeps the staged wizard even after the draft row is persisted.
+  // Editing an existing product uses a section/tab layout instead.
+  const isEditMode = initialMode === "edit" && Boolean(initialProductId);
 
   const { refreshCatalog } = useCatalogContext() || {};
 
-  const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5>(initialWizardStep);
+  const [editTab, setEditTab] = useState<"details" | "variants" | "publishing">("details");
   const [categories, setCategories] = useState<any[]>([]);
   const [brands, setBrands] = useState<any[]>([]);
   const [attributes, setAttributes] = useState<any[]>([]);
@@ -86,6 +100,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
   const [savingVariant, setSavingVariant] = useState(false);
   const [matrixSaving, setMatrixSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [creatingAxis, setCreatingAxis] = useState(false);
 
   // Variant editing & media management state
@@ -151,6 +166,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       description: detail.description ?? "",
       productType: (detail.productType === "variable" || (detail.variationAxes?.length ?? 0) > 0) ? "variable" : "simple",
       variationAxes: Array.isArray(detail.variationAxes) ? detail.variationAxes : [],
+      sku: activeVariant?.sku ?? prev.sku,
       price: variants.length > 0 && Number.isFinite(price) ? String(price) : prev.price,
       compareAtPrice: activeVariant?.extractedOriginalPrice != null
         ? String(activeVariant.extractedOriginalPrice)
@@ -229,6 +245,28 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
   useEffect(() => {
     initData();
   }, [initData]);
+
+  // Keep the creation draft and current stage in the URL so a refresh (or a
+  // server round-trip) resumes the same staged draft instead of starting over.
+  const persistCreationLocation = useCallback((id: string, step: number) => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("draft", id);
+    url.searchParams.set("step", String(step));
+    window.history.replaceState(null, "", url.toString());
+  }, []);
+
+  useEffect(() => {
+    if (isEditMode || !productId) return;
+    persistCreationLocation(productId, wizardStep);
+  }, [isEditMode, productId, wizardStep, persistCreationLocation]);
+
+  // Simple products have no options stage: if the saved product format is
+  // simple, the system moves the user directly to the versions stage.
+  useEffect(() => {
+    if (isEditMode || wizardStep !== 3 || !productDetail) return;
+    if (productDetail.productType !== "variable") setWizardStep(4);
+  }, [isEditMode, productDetail, wizardStep]);
 
   // Category attributes & axes computation
   const hasChildren = (productDetail?.variants?.length ?? 0) > 0;
@@ -312,6 +350,23 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     [productDetail, formData.variationAxes]
   );
 
+  const axisValuesReady = useMemo(
+    () => activeAxes.length > 0 && activeAxes.every((key) => (axisDraftValues[key]?.length ?? 0) > 0),
+    [activeAxes, axisDraftValues]
+  );
+
+  const matrixCombinationCount = useMemo(
+    () =>
+      activeAxes.length === 0 ||
+      activeAxes.some((key) => (axisDraftValues[key]?.length ?? 0) === 0)
+        ? 0
+        : activeAxes.reduce(
+            (total, key) => total * Math.max(1, axisDraftValues[key]?.length ?? 0),
+            1
+          ),
+    [activeAxes, axisDraftValues]
+  );
+
   const attributeByKey = useMemo(() => {
     const map: Record<string, any> = {};
     for (const attribute of attributes) map[attribute.key] = attribute;
@@ -326,6 +381,11 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     [productDetail]
   );
   const axisDraftProductRef = useRef<string | null>(null);
+  const axisDraftReadyRef = useRef(false);
+
+  useEffect(() => {
+    axisDraftReadyRef.current = false;
+  }, [productDetail?.id]);
 
   useEffect(() => {
     if (!productDetail) {
@@ -348,7 +408,32 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     const sameProduct = axisDraftProductRef.current === productDetail.id;
     axisDraftProductRef.current = productDetail.id;
     setAxisDraftValues((prev) => {
-      if (!sameProduct) return next;
+      if (!sameProduct) {
+        // Restore choices the admin entered before creating versions. Choices
+        // already saved as versions remain the source of truth.
+        let stored: Record<string, string[]> = {};
+        try {
+          if (!isEditMode) {
+            const raw = window.localStorage.getItem(`prim:axis-draft:${productDetail.id}`);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                stored = parsed;
+              }
+            }
+          }
+        } catch {
+          stored = {};
+        }
+        const restored: Record<string, string[]> = {};
+        for (const key of Object.keys(next)) {
+          restored[key] = [...next[key]];
+          for (const value of stored[key] || []) {
+            if (!restored[key].includes(value)) restored[key].push(value);
+          }
+        }
+        return restored;
+      }
       const merged: Record<string, string[]> = {};
       for (const key of Object.keys(next)) {
         const combined = [...next[key]];
@@ -360,7 +445,22 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       return merged;
     });
     setAxisInputs({});
-  }, [productDetail?.id, productDetail?.updatedAt, variantFingerprint]);
+  }, [productDetail?.id, productDetail?.updatedAt, variantFingerprint, isEditMode]);
+
+  // Keep unsaved option choices across refreshes while the admin is still in
+  // the versions stage. Once versions exist, the server is authoritative.
+  useEffect(() => {
+    if (isEditMode || !productId || !productDetail) return;
+    if (!axisDraftReadyRef.current) {
+      axisDraftReadyRef.current = true;
+      return;
+    }
+    try {
+      window.localStorage.setItem(`prim:axis-draft:${productId}`, JSON.stringify(axisDraftValues));
+    } catch {
+      // Storage may be unavailable; the editor still works.
+    }
+  }, [axisDraftValues, isEditMode, productDetail, productId]);
 
   // Stage 1 -> Stage 2: Create draft on server if new, or update existing
   const handleStep1Next = async () => {
@@ -387,8 +487,8 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
         setProductId(created.id);
         await loadProductDetail(created.id);
         refreshCatalog?.();
-        // Transition URL smoothly to the persistent product ID
-        router.replace(`/admin/products/${created.id}`);
+        // Keep the creation flow mounted on /new. Navigating to the edit route
+        // here would remount the editor in edit mode and reset the wizard.
         notify.success(t("products.saveDraftSuccess"));
         setWizardStep(2);
       } catch (err: any) {
@@ -415,15 +515,10 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     }
   };
 
-  // Stage 2 -> Stage 3: Save brand, product type, variation axes
+  // Stage 2 -> Stage 3 (variable) or Stage 4 (simple): save brand & format
   const handleStep2Next = async () => {
-    if (formData.productType === "variable" && formData.variationAxes.length === 0) {
-      notify.error(t("products.form.axesRequired"));
-      return;
-    }
-
     if (!productId) {
-      setWizardStep(3);
+      setWizardStep(formData.productType === "variable" ? 3 : 4);
       return;
     }
 
@@ -437,12 +532,15 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       if (formData.brandId) payload.brandId = formData.brandId;
       if (!formAxesLocked) {
         payload.productType = formData.productType;
-        payload.variationAxes = formData.productType === "variable" ? formData.variationAxes : [];
+        // A simple product has no option dimensions. Switching back to simple
+        // must clear any previously selected dimensions before the next stage.
+        if (formData.productType === "simple") payload.variationAxes = [];
       }
       await catalogService.updateProduct(productId, payload);
       await loadProductDetail(productId);
       refreshCatalog?.();
-      setWizardStep(3);
+      // The system chooses the next stage from the saved product format.
+      setWizardStep(formData.productType === "variable" ? 3 : 4);
     } catch (err: any) {
       notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
     } finally {
@@ -450,62 +548,124 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     }
   };
 
-  // Stage 3 -> Stage 4: Save pricing & single/variable variant details
-  const handleStep3Next = async () => {
-    if (formData.productType === "simple") {
-      const parsedPrice = parseFloat(formData.price);
-      if (Number.isNaN(parsedPrice) || formData.stock === "") {
-        notify.error(t("products.toast.requiredFields"));
-        return;
+  // Stage 3 -> Stage 4: save option dimensions only. Their choices/versions
+  // belong in the next stage, because they depend on this selection.
+  const handleOptionsNext = async () => {
+    if (formData.productType !== "variable") {
+      setWizardStep(4);
+      return;
+    }
+    if (formData.variationAxes.length === 0) {
+      notify.error(t("products.form.axesRequired"));
+      return;
+    }
+    if (!productId) {
+      setWizardStep(4);
+      return;
+    }
+
+    setIsSavingStep(true);
+    try {
+      const payload: any = {
+        title: formData.name.trim(),
+        categoryId: formData.categoryId,
+        description: formData.description.trim(),
+        productType: "variable",
+        variationAxes: formData.variationAxes,
+      };
+      if (formData.brandId) payload.brandId = formData.brandId;
+      await catalogService.updateProduct(productId, payload);
+      await loadProductDetail(productId);
+      refreshCatalog?.();
+      setWizardStep(4);
+    } catch (err: any) {
+      notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
+    } finally {
+      setIsSavingStep(false);
+    }
+  };
+
+  // Persist the single-variant fields used by simple products. This is shared
+  // by "Next", "Save", and "Publish" so changing price/original price/stock in
+  // any of those actions is not lost when the detail is reloaded.
+  const saveSimpleVariantPricing = async (): Promise<boolean> => {
+    if (!productId) return false;
+
+    const parsedPrice = parseFloat(formData.price);
+    if (Number.isNaN(parsedPrice) || parsedPrice < 0 || formData.stock.trim() === "") {
+      notify.error(t("products.toast.requiredFields"));
+      return false;
+    }
+
+    const compareRaw = formData.compareAtPrice.trim();
+    const parsedCompare = compareRaw ? parseFloat(compareRaw) : null;
+    if (parsedCompare != null && (Number.isNaN(parsedCompare) || parsedCompare < 0)) {
+      notify.error(t("products.toast.invalidOriginalPrice"));
+      return false;
+    }
+
+    // The API treats <= 0 as "clear the original price", so an empty field
+    // must send 0 rather than being omitted.
+    const crossedOutPrice = parsedCompare != null ? Math.round(parsedCompare * 100) : 0;
+    const simpleVariant = (productDetail?.variants || [])[0];
+
+    if (simpleVariant?.id) {
+      await catalogService.updateVariant(simpleVariant.id, {
+        title: formData.name.trim() || undefined,
+        sku: formData.sku.trim() || undefined,
+        price: Math.round(parsedPrice * 100),
+        crossedOutPrice,
+      });
+
+      const newStock = parseInt(formData.stock, 10);
+      if (!Number.isNaN(newStock)) {
+        const oldStock = Number(simpleVariant.stock?.availableQuantity ?? 0);
+        const stockDiff = newStock - oldStock;
+        if (stockDiff !== 0) {
+          const reason = formData.adjustmentReason || (stockDiff > 0 ? "restock" : "adjustment");
+          await adminService.adjustInventory(simpleVariant.id, stockDiff, reason);
+        }
       }
+    } else {
+      await catalogService.createVariant(productId, {
+        title: formData.name.trim(),
+        sku: formData.sku.trim() || undefined,
+        price: Math.round(parsedPrice * 100),
+        crossedOutPrice: crossedOutPrice > 0 ? crossedOutPrice : undefined,
+        currency: "EGP",
+        initialStock: parseInt(formData.stock, 10) || 0,
+        isDefault: true,
+      });
+    }
+
+    return true;
+  };
+
+  // Stage 4 -> Stage 5: Save pricing & single/variable version details
+  const handleVersionsNext = async () => {
+    if (formData.productType === "simple") {
       if (!productId) {
-        setWizardStep(4);
+        setWizardStep(5);
         return;
       }
 
       setIsSavingStep(true);
       try {
-        const currentVariants = productDetail?.variants || [];
-        const simpleVariant = currentVariants[0];
-
-        if (simpleVariant?.id) {
-          await catalogService.updateVariant(simpleVariant.id, {
-            sku: formData.sku || undefined,
-            price: Math.round(parsedPrice * 100),
-            crossedOutPrice: formData.compareAtPrice
-              ? Math.round(parseFloat(formData.compareAtPrice) * 100)
-              : undefined,
-          });
-          const newStock = parseInt(formData.stock, 10) || 0;
-          const oldStock = Number(simpleVariant.stock?.availableQuantity ?? 0);
-          const stockDiff = newStock - oldStock;
-          if (stockDiff !== 0) {
-            const reason = formData.adjustmentReason || (stockDiff > 0 ? "restock" : "adjustment");
-            await adminService.adjustInventory(simpleVariant.id, stockDiff, reason);
-          }
-        } else {
-          await catalogService.createVariant(productId, {
-            title: formData.name.trim(),
-            sku: formData.sku || undefined,
-            price: Math.round(parsedPrice * 100),
-            crossedOutPrice: formData.compareAtPrice
-              ? Math.round(parseFloat(formData.compareAtPrice) * 100)
-              : undefined,
-            currency: "EGP",
-            initialStock: parseInt(formData.stock, 10) || 0,
-            isDefault: true,
-          });
-        }
+        if (!(await saveSimpleVariantPricing())) return;
         await loadProductDetail(productId);
         refreshCatalog?.();
-        setWizardStep(4);
+        setWizardStep(5);
       } catch (err: any) {
         notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
       } finally {
         setIsSavingStep(false);
       }
     } else {
-      setWizardStep(4);
+      if ((productDetail?.variants?.length ?? 0) === 0) {
+        notify.error(t("products.wizard.noVariantsWarning"));
+        return;
+      }
+      setWizardStep(5);
     }
   };
 
@@ -533,6 +693,9 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
         payload.variationAxes = formData.productType === "variable" ? formData.variationAxes : [];
       }
       await catalogService.updateProduct(productId, payload);
+      if (formData.productType === "simple" && (isEditMode || wizardStep >= 4)) {
+        if (!(await saveSimpleVariantPricing())) return;
+      }
       await loadProductDetail(productId);
       refreshCatalog?.();
       notify.success(t("products.saveDraftSuccess"));
@@ -553,21 +716,49 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
 
     setPublishing(true);
     try {
-      await catalogService.updateProduct(productId, {
+      const payload: any = {
         title: formData.name.trim(),
         description: formData.description.trim(),
         categoryId: formData.categoryId,
         ...(formData.brandId ? { brandId: formData.brandId } : {}),
-      });
+      };
+      if (!formAxesLocked) {
+        payload.productType = formData.productType;
+        payload.variationAxes = formData.productType === "variable" ? formData.variationAxes : [];
+      }
+      await catalogService.updateProduct(productId, payload);
+      if (formData.productType === "simple" && !(await saveSimpleVariantPricing())) return;
 
       await catalogService.publishProduct(productId);
       notify.success(t("products.toast.published"));
       refreshCatalog?.();
-      router.push("/admin/products");
+      if (isEditMode) {
+        await loadProductDetail(productId);
+      } else {
+        router.push("/admin/products");
+      }
     } catch (err: any) {
       notify.error(apiErrorMessage(err, t("products.toast.publishFailed")));
     } finally {
       setPublishing(false);
+    }
+  };
+
+  // Archive an existing product without leaving the editor.
+  const handleArchiveProduct = async () => {
+    if (!productId) return;
+    if (!window.confirm(t("products.editMode.archiveConfirm"))) return;
+
+    setArchiving(true);
+    try {
+      await catalogService.archiveProduct(productId);
+      notify.success(t("products.editMode.archiveSuccess"));
+      await loadProductDetail(productId);
+      refreshCatalog?.();
+    } catch (err: any) {
+      notify.error(apiErrorMessage(err, t("products.editMode.archiveFailed")));
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -663,6 +854,25 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     const existingValues = axisDraftValues[key] || [];
     if (existingValues.includes(value)) {
       notify.error(t("products.variants.axisValueExists", { value }));
+      return;
+    }
+
+    const definition =
+      formCategoryAttributes.find((attribute: any) => attribute.key === key) ||
+      attributeByKey[key];
+    const allowedValues: string[] = Array.isArray(definition?.allowedValues)
+      ? definition.allowedValues.map((allowed: any) => String(allowed))
+      : [];
+    if (
+      allowedValues.length > 0 &&
+      !allowedValues.some((allowed) => allowed.toLowerCase() === value.toLowerCase())
+    ) {
+      notify.error(
+        t("products.variants.axisValueNotAllowed", {
+          value,
+          allowed: allowedValues.join(", "),
+        })
+      );
       return;
     }
     setAxisDraftValues((prev) => ({ ...prev, [key]: [...(prev[key] || []), value] }));
@@ -1027,7 +1237,55 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     );
   }
 
-  const isPublished = productDetail?.status === "active";
+  const productStatus = productDetail?.status || "draft";
+  const isPublished = productStatus === "published";
+  const statusLabel = t(`status.${productStatus}`);
+
+  // Creation-stage completeness is used both for progress affordances and for
+  // guarding the stepper against skipping required configuration.
+  const basicsComplete = Boolean(formData.name.trim() && formData.categoryId);
+  const effectiveProductType = productDetail
+    ? productDetail.productType === "variable"
+      ? "variable"
+      : "simple"
+    : formData.productType;
+  const variantsComplete = (productDetail?.variants?.length ?? 0) > 0;
+
+  // Simple products do not have an options stage. The order is fixed by the
+  // dependency chain: category -> brand/format -> options -> versions -> publish.
+  const applicableStages: number[] =
+    effectiveProductType === "simple" ? [1, 2, 4, 5] : [1, 2, 3, 4, 5];
+  const currentStageIndex = Math.max(0, applicableStages.indexOf(wizardStep));
+  const totalStages = applicableStages.length;
+
+  const stepComplete = (step: number): boolean => {
+    if (step === 1) return basicsComplete;
+    if (step === 2) return basicsComplete && Boolean(productId);
+    if (step === 3) return effectiveProductType === "variable" && formData.variationAxes.length > 0;
+    if (step === 4) return variantsComplete;
+    return isPublished;
+  };
+
+  // The editor drives the flow: the user can review previous stages, but cannot
+  // jump ahead of the stage the system has brought them to.
+  const canOpenStep = (step: number): boolean => {
+    if (!applicableStages.includes(step)) return false;
+    return step <= wizardStep;
+  };
+
+  const showStep = (step: 1 | 2 | 3 | 4 | 5): boolean => {
+    if (!isEditMode) return wizardStep === step;
+    if (editTab === "details") return step === 1 || step === 2 || step === 3;
+    if (editTab === "variants") return step === 4;
+    return step === 5;
+  };
+
+  const goBackStage = () => {
+    const index = applicableStages.indexOf(wizardStep);
+    if (index > 0) {
+      setWizardStep(applicableStages[index - 1] as 1 | 2 | 3 | 4 | 5);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16">
@@ -1051,10 +1309,12 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                 className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
                   isPublished
                     ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30"
+                    : productStatus === "archived"
+                    ? "bg-slate-500/10 text-slate-600 border border-slate-500/30"
                     : "bg-amber-500/10 text-amber-600 border border-amber-500/30"
                 }`}
               >
-                {isPublished ? "Active" : "Draft"}
+                {statusLabel}
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -1071,80 +1331,165 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-border bg-background hover:bg-secondary text-foreground transition-all disabled:opacity-50"
           >
             {isSavingStep ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
-            <span>{t("products.wizard.saveDraft")}</span>
+            <span>{isEditMode ? t("products.editMode.saveChanges") : t("products.wizard.saveDraft")}</span>
           </button>
 
-          <button
-            type="button"
-            onClick={handlePublishProduct}
-            disabled={publishing || isSavingStep || !productId || (productDetail?.variants?.length ?? 0) === 0}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50 transition-all"
-            title={(productDetail?.variants?.length ?? 0) === 0 ? t("products.wizard.noVariantsWarning") : ""}
-          >
-            {publishing ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-            <span>{t("products.publish")}</span>
-          </button>
+          {(isEditMode || wizardStep === 5) && (
+            <button
+              type="button"
+              onClick={handlePublishProduct}
+              disabled={publishing || isSavingStep || !productId || (productDetail?.variants?.length ?? 0) === 0}
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50 transition-all"
+              title={(productDetail?.variants?.length ?? 0) === 0 ? t("products.wizard.noVariantsWarning") : ""}
+            >
+              {publishing ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+              <span>{isPublished ? t("products.editMode.republish") : t("products.publish")}</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Stepper Navigation Progress Bar */}
-      <div className="bg-background border border-border rounded-2xl p-3 shadow-xs">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {[
-            { step: 1, title: t("products.wizard.step1"), desc: t("products.wizard.step1Desc") },
-            { step: 2, title: t("products.wizard.step2"), desc: t("products.wizard.step2Desc") },
-            { step: 3, title: t("products.wizard.step3"), desc: t("products.wizard.step3Desc") },
-            { step: 4, title: t("products.wizard.step4"), desc: t("products.wizard.step4Desc") },
-          ].map((s) => {
-            const isCurrent = wizardStep === s.step;
-            const isPast = wizardStep > s.step;
-            const canClick = Boolean(productId) || s.step <= wizardStep;
-            return (
-              <button
-                key={s.step}
-                type="button"
-                disabled={!canClick}
-                onClick={() => {
-                  if (canClick) setWizardStep(s.step as any);
-                }}
-                className={`flex items-center gap-3 p-3 rounded-xl text-start transition-all ${
-                  isCurrent
-                    ? "bg-accent-brand/10 border border-accent-brand/40 text-accent-brand shadow-2xs"
-                    : isPast
-                    ? "bg-secondary/30 text-foreground border border-border hover:bg-secondary/60"
-                    : "text-muted-foreground opacity-50 border border-transparent cursor-not-allowed"
-                }`}
-              >
-                <span
-                  className={`size-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                    isCurrent
-                      ? "bg-accent-brand text-white"
-                      : isPast
-                      ? "bg-emerald-600 text-white"
-                      : "bg-secondary text-muted-foreground"
+      {isEditMode ? (
+        <div className="bg-background border border-border rounded-2xl p-2 shadow-xs">
+          <div role="tablist" aria-label={t("products.editMode.tabsLabel")} className="grid grid-cols-3 gap-1">
+            {[
+              {
+                id: "details" as const,
+                label: t("products.editMode.tabDetails"),
+                desc: t("products.editMode.tabDetailsDesc"),
+                icon: Layers,
+              },
+              {
+                id: "variants" as const,
+                label: t("products.editMode.tabVariants"),
+                desc: t("products.editMode.tabVariantsDesc"),
+                icon: Boxes,
+              },
+              {
+                id: "publishing" as const,
+                label: t("products.editMode.tabPublishing"),
+                desc: t("products.editMode.tabPublishingDesc"),
+                icon: Sparkles,
+              },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = editTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setEditTab(tab.id)}
+                  className={`flex items-center justify-center sm:justify-start gap-2.5 rounded-xl px-3 py-2.5 text-start transition-all ${
+                    isActive
+                      ? "bg-accent-brand/10 text-accent-brand shadow-2xs"
+                      : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
                   }`}
                 >
-                  {isPast ? <Check className="size-3.5 stroke-[3]" /> : s.step}
-                </span>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold truncate">{s.title}</div>
-                  <div className="text-[11px] text-muted-foreground truncate">{s.desc}</div>
-                </div>
-              </button>
-            );
-          })}
+                  <Icon className="size-4 shrink-0" />
+                  <span className="min-w-0">
+                    <span className="block text-xs font-bold truncate">{tab.label}</span>
+                    <span className="hidden sm:block text-[11px] text-muted-foreground truncate">
+                      {tab.desc}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-background border border-border rounded-2xl p-3 shadow-xs">
+          <div className="flex items-center justify-between px-1 pb-2">
+            <span className="text-[11px] font-semibold text-muted-foreground">
+              {t("products.wizard.stepOf", { current: currentStageIndex + 1, total: totalStages })}
+            </span>
+            <span className="text-[11px] font-bold text-accent-brand">
+              {currentStageIndex + 1}/{totalStages}
+            </span>
+          </div>
+          <div className="mx-1 mb-3 h-1 overflow-hidden rounded-full bg-secondary">
+            <div
+              className="h-full rounded-full bg-accent-brand transition-all duration-300"
+              style={{ width: `${((currentStageIndex + 1) / totalStages) * 100}%` }}
+            />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            {[
+              { step: 1, title: t("products.wizard.step1"), desc: t("products.wizard.step1Desc") },
+              { step: 2, title: t("products.wizard.step2"), desc: t("products.wizard.step2Desc") },
+              { step: 3, title: t("products.wizard.step3"), desc: t("products.wizard.step3Desc") },
+              { step: 4, title: t("products.wizard.step4"), desc: t("products.wizard.step4Desc") },
+              { step: 5, title: t("products.wizard.step5"), desc: t("products.wizard.step5Desc") },
+            ]
+              .filter((s) => applicableStages.includes(s.step))
+              .map((s) => {
+              const isCurrent = wizardStep === s.step;
+              const complete = stepComplete(s.step);
+              const canClick = canOpenStep(s.step);
+              const stageNumber = applicableStages.indexOf(s.step) + 1;
+              return (
+                <button
+                  key={s.step}
+                  type="button"
+                  disabled={!canClick}
+                  aria-current={isCurrent ? "step" : undefined}
+                  onClick={() => {
+                    if (canClick) setWizardStep(s.step as 1 | 2 | 3 | 4 | 5);
+                  }}
+                  className={`flex items-center gap-3 p-3 rounded-xl text-start transition-all ${
+                    isCurrent
+                      ? "bg-accent-brand/10 border border-accent-brand/40 text-accent-brand shadow-2xs"
+                      : complete
+                      ? "bg-secondary/30 text-foreground border border-border hover:bg-secondary/60"
+                      : "text-muted-foreground border border-transparent"
+                  } ${!canClick ? "opacity-45 cursor-not-allowed" : "cursor-pointer"}`}
+                >
+                  <span
+                    className={`size-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                      isCurrent
+                        ? "bg-accent-brand text-white"
+                        : complete
+                        ? "bg-emerald-600 text-white"
+                        : "bg-secondary text-muted-foreground"
+                    }`}
+                  >
+                    {complete && !isCurrent ? <Check className="size-3.5 stroke-[3]" /> : stageNumber}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold truncate">{s.title}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">{s.desc}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {isEditMode && productStatus === "published" && (
+        <div className="flex items-start gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4">
+          <Eye className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            {t("products.editMode.liveNotice")}
+          </p>
+        </div>
+      )}
 
       {/* Step Content Card */}
       <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-6">
         {/* Step 1: Core Details (Title, Description, Category) */}
-        {wizardStep === 1 && (
+        {showStep(1) && (
           <div className="space-y-6 max-w-2xl">
             <div>
-              <h2 className="text-base font-bold text-foreground">{t("products.wizard.step1")}</h2>
+              <h2 className="text-base font-bold text-foreground">
+                {isEditMode ? t("products.editMode.detailsHeading") : t("products.wizard.step1")}
+              </h2>
               <p className="text-xs text-muted-foreground mt-1">
-                {t("products.wizard.categoryRequiredFirst")}
+                {isEditMode
+                  ? t("products.editMode.detailsHint")
+                  : t("products.wizard.categoryRequiredFirst")}
               </p>
             </div>
 
@@ -1197,16 +1542,24 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
           </div>
         )}
 
-        {/* Step 2: Brand, Product Type & Options (Strictly Dependent on Category from Step 1) */}
-        {wizardStep === 2 && (
+        {/* Step 2: Brand & format, then Step 3: Options (dependent on the chosen format) */}
+        {(showStep(2) || showStep(3)) && (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-base font-bold text-foreground">{t("products.wizard.step2")}</h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t("products.wizard.step2DependencyHint")}
-              </p>
-            </div>
+            {!isEditMode && (
+              <div>
+                <h2 className="text-base font-bold text-foreground">
+                  {wizardStep === 3 ? t("products.wizard.step3") : t("products.wizard.step2")}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {wizardStep === 3
+                    ? t("products.wizard.step3OptionsHint")
+                    : t("products.wizard.step2DependencyHint")}
+                </p>
+              </div>
+            )}
 
+            {showStep(2) && (
+              <>
             {/* Stage 1 Category Context Banner */}
             <div className="rounded-xl border border-accent-brand/20 bg-accent-brand/5 p-4 flex items-start gap-3">
               <div className="p-2 rounded-lg bg-accent-brand/10 text-accent-brand shrink-0">
@@ -1219,7 +1572,9 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                   })}
                 </div>
                 <div className="text-muted-foreground text-[11px]">
-                  {t("products.wizard.step2DependencyHint")}
+                  {isEditMode
+                    ? t("products.editMode.optionsDependencyHint")
+                    : t("products.wizard.step2DependencyHint")}
                 </div>
               </div>
             </div>
@@ -1315,9 +1670,11 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                 </p>
               )}
             </div>
+              </>
+            )}
 
-            {/* Multi-Option Configuration (Variable Product) */}
-            {formData.productType === "variable" && (
+            {/* Step 3: Option dimensions (dependent on the product format chosen in Step 2) */}
+            {showStep(3) && formData.productType === "variable" && (
               <div className="space-y-4 rounded-xl border border-border bg-secondary/20 p-5 max-w-2xl">
                 <div>
                   <label className="text-xs font-bold text-foreground">{t("products.form.variationAxes")} *</label>
@@ -1451,15 +1808,19 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
           </div>
         )}
 
-        {/* Step 3: Variants, Pricing & Inventory */}
-        {wizardStep === 3 && (
+        {/* Step 4: Versions, Pricing & Inventory */}
+        {showStep(4) && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-base font-bold text-foreground">{t("products.wizard.step3")}</h2>
+              <h2 className="text-base font-bold text-foreground">
+                {isEditMode ? t("products.editMode.variantsHeading") : t("products.wizard.step4")}
+              </h2>
               <p className="text-xs text-muted-foreground mt-1">
-                {formData.productType === "simple"
-                  ? t("products.wizard.step3SimpleHint")
-                  : t("products.wizard.step3VariableHint")}
+                {isEditMode
+                  ? t("products.editMode.variantsHint")
+                  : formData.productType === "simple"
+                  ? t("products.wizard.step4SimpleHint")
+                  : t("products.wizard.step4VariableHint")}
               </p>
             </div>
 
@@ -1474,9 +1835,10 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                       onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                       className="w-full px-3.5 py-2.5 bg-secondary/30 border border-border rounded-xl text-xs text-foreground font-mono focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
                     />
+                    <p className="text-[10px] text-muted-foreground">{t("products.form.skuHint")}</p>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-foreground">{t("products.form.price")} (EGP) *</label>
+                    <label className="text-xs font-bold text-foreground">{t("products.form.price")} *</label>
                     <input
                       type="number"
                       step="0.01"
@@ -1487,7 +1849,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-foreground">{t("products.form.comparePrice")} (EGP)</label>
+                    <label className="text-xs font-bold text-foreground">{t("products.form.comparePrice")}</label>
                     <input
                       type="number"
                       step="0.01"
@@ -1495,6 +1857,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                       onChange={(e) => setFormData({ ...formData, compareAtPrice: e.target.value })}
                       className="w-full px-3.5 py-2.5 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
                     />
+                    <p className="text-[10px] text-muted-foreground">{t("products.form.comparePriceHint")}</p>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-foreground">{t("products.form.stockQty")} *</label>
@@ -1505,6 +1868,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                       onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
                       className="w-full px-3.5 py-2.5 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
                     />
+                    <p className="text-[10px] text-muted-foreground">{t("products.form.stockHint")}</p>
                   </div>
                 </div>
 
@@ -1528,6 +1892,17 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
             ) : (
               /* Variable Product Options Values Builder & Matrix Generator */
               <div className="space-y-6">
+                {(productDetail?.variants?.length ?? 0) === 0 && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+                    <p className="text-xs font-bold text-foreground">
+                      {t("products.wizard.noVersionsYet")}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {t("products.wizard.noVersionsYetHint")}
+                    </p>
+                  </div>
+                )}
+
                 <div className="rounded-2xl border border-border bg-secondary/15 p-5 space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -1535,11 +1910,11 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                         {t("products.variants.variationAxes")}
                       </h3>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {t("products.wizard.step3VariableHint")}
+                        {t("products.wizard.step3OptionsHint")}
                       </p>
                     </div>
                     <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-accent-brand/10 text-accent-brand">
-                      {activeAxes.length} {t("products.variants.title")}
+                      {t("products.variants.optionsCount", { count: activeAxes.length })}
                     </span>
                   </div>
 
@@ -1629,10 +2004,21 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                       />
                     </div>
 
+                    <div className="space-y-1">
+                      <div className="text-[11px] font-semibold text-foreground">
+                        {t("products.variants.combinations", { count: matrixCombinationCount })}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {axisValuesReady
+                          ? t("products.variants.combinationsReady")
+                          : t("products.variants.combinationsMissing")}
+                      </div>
+                    </div>
+
                     <button
                       type="button"
                       onClick={handleCreateMissingCombinations}
-                      disabled={matrixSaving}
+                      disabled={matrixSaving || !axisValuesReady}
                       className="flex items-center justify-center gap-2 rounded-xl bg-accent-brand px-5 py-2.5 text-xs font-semibold text-white hover:bg-accent-brand/90 disabled:opacity-60 shadow-xs"
                     >
                       {matrixSaving && <Loader2 className="size-3.5 animate-spin" />}
@@ -1646,7 +2032,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
-                      {t("products.variants.title")} ({productDetail?.variants?.length ?? 0})
+                      {t("products.variants.listTitle")} ({productDetail?.variants?.length ?? 0})
                     </h3>
                     <button
                       type="button"
@@ -1714,8 +2100,12 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                                   )}
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground mt-1 font-mono">
-                                  <span>SKU: {variant.sku || "—"}</span>
-                                  <span>·</span>
+                                  {variant.sku && (
+                                    <>
+                                      <span>SKU: {variant.sku}</span>
+                                      <span>·</span>
+                                    </>
+                                  )}
                                   <span className="font-semibold text-foreground">EGP {variant.extractedPrice ?? 0}</span>
                                   {variant.extractedOriginalPrice != null && variant.extractedOriginalPrice > 0 && (
                                     <span className="text-muted-foreground line-through text-[10px]">
@@ -1740,7 +2130,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                                     <>
                                       <span>·</span>
                                       <span className="text-accent-brand font-medium">
-                                        {mediaCount} {t("products.variants.previews")}
+                                        {t("products.variants.imagesCount", { count: mediaCount })}
                                       </span>
                                     </>
                                   )}
@@ -1834,9 +2224,10 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                           onChange={(e) => setVariantForm({ ...variantForm, sku: e.target.value })}
                           className="w-full rounded-xl border border-border bg-background px-3 py-2 font-mono text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
                         />
+                        <p className="text-[10px] text-muted-foreground">{t("products.form.skuHint")}</p>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-foreground">{t("products.variants.fields.price")} (EGP)</label>
+                        <label className="text-[11px] font-semibold text-foreground">{t("products.variants.fields.price")}</label>
                         <input
                           type="number"
                           step="0.01"
@@ -1846,7 +2237,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-foreground">{t("products.variants.fields.originalPrice")} (EGP)</label>
+                        <label className="text-[11px] font-semibold text-foreground">{t("products.variants.fields.originalPrice")}</label>
                         <input
                           type="number"
                           step="0.01"
@@ -1893,7 +2284,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                             {t("products.variants.variationAxes")} *
                           </label>
                           <span className="text-[11px] text-muted-foreground">
-                            {t("products.wizard.step3VariableHint")}
+                            {t("products.wizard.step4VariableHint")}
                           </span>
                         </div>
 
@@ -1995,13 +2386,17 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
           </div>
         )}
 
-        {/* Step 4: Media, Summary Review & Publishing */}
-        {wizardStep === 4 && (
+        {/* Step 5: Media, Summary Review & Publishing */}
+        {showStep(5) && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-base font-bold text-foreground">{t("products.wizard.step4")}</h2>
+              <h2 className="text-base font-bold text-foreground">
+                {isEditMode ? t("products.editMode.publishingHeading") : t("products.wizard.step5")}
+              </h2>
               <p className="text-xs text-muted-foreground mt-1">
-                {t("products.wizard.step4Desc")}
+                {isEditMode
+                  ? t("products.editMode.publishingHint")
+                  : t("products.wizard.step5Hint")}
               </p>
             </div>
 
@@ -2099,10 +2494,12 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                   className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                     isPublished
                       ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30"
+                      : productStatus === "archived"
+                      ? "bg-slate-500/10 text-slate-600 border border-slate-500/30"
                       : "bg-amber-500/10 text-amber-600 border border-amber-500/30"
                   }`}
                 >
-                  {isPublished ? "Active" : "Draft"}
+                  {statusLabel}
                 </span>
               </div>
 
@@ -2159,13 +2556,14 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
           </div>
         )}
 
-        {/* Stepper Footer Controls */}
+        {/* Creation Wizard Footer Controls */}
+        {!isEditMode && (
         <div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-border">
           <div>
             {wizardStep > 1 && (
               <button
                 type="button"
-                onClick={() => setWizardStep((prev) => (prev - 1) as any)}
+                onClick={goBackStage}
                 className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold rounded-xl border border-border hover:bg-secondary text-foreground transition-all"
               >
                 <ChevronLeft className="size-4 rtl:rotate-180" />
@@ -2179,7 +2577,8 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
               <button
                 type="button"
                 onClick={handleStep1Next}
-                disabled={isSavingStep}
+                disabled={isSavingStep || !basicsComplete}
+                title={!basicsComplete ? t("products.toast.requiredFields") : undefined}
                 className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-xl bg-accent-brand text-white shadow-xs hover:bg-accent-brand/90 disabled:opacity-60 transition-all"
               >
                 {isSavingStep && <Loader2 className="size-3.5 animate-spin" />}
@@ -2192,7 +2591,8 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
               <button
                 type="button"
                 onClick={handleStep2Next}
-                disabled={isSavingStep}
+                disabled={isSavingStep || !basicsComplete || !productId}
+                title={!basicsComplete ? t("products.toast.requiredFields") : undefined}
                 className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-xl bg-accent-brand text-white shadow-xs hover:bg-accent-brand/90 disabled:opacity-60 transition-all"
               >
                 {isSavingStep && <Loader2 className="size-3.5 animate-spin" />}
@@ -2204,8 +2604,9 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
             {wizardStep === 3 && (
               <button
                 type="button"
-                onClick={handleStep3Next}
-                disabled={isSavingStep}
+                onClick={handleOptionsNext}
+                disabled={isSavingStep || formData.variationAxes.length === 0}
+                title={formData.variationAxes.length === 0 ? t("products.form.axesRequired") : undefined}
                 className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-xl bg-accent-brand text-white shadow-xs hover:bg-accent-brand/90 disabled:opacity-60 transition-all"
               >
                 {isSavingStep && <Loader2 className="size-3.5 animate-spin" />}
@@ -2215,6 +2616,20 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
             )}
 
             {wizardStep === 4 && (
+              <button
+                type="button"
+                onClick={handleVersionsNext}
+                disabled={isSavingStep || (formData.productType === "variable" && (productDetail?.variants?.length ?? 0) === 0)}
+                title={formData.productType === "variable" && (productDetail?.variants?.length ?? 0) === 0 ? t("products.wizard.noVariantsWarning") : undefined}
+                className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-xl bg-accent-brand text-white shadow-xs hover:bg-accent-brand/90 disabled:opacity-60 transition-all"
+              >
+                {isSavingStep && <Loader2 className="size-3.5 animate-spin" />}
+                <span>{t("products.wizard.next")}</span>
+                <ChevronRight className="size-4 rtl:rotate-180" />
+              </button>
+            )}
+
+            {wizardStep === 5 && (
               <>
                 <button
                   type="button"
@@ -2241,9 +2656,50 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
             )}
           </div>
         </div>
-      </div>
+        )}
 
-      {/* Dedicated Variant Images & Previews Modal */}
+        {isEditMode && (
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-border">
+            <p className="text-[11px] text-muted-foreground">
+              {t("products.editMode.footerHint")}
+            </p>
+            <div className="flex items-center gap-2">
+              {productStatus === "published" ? (
+                <button
+                  type="button"
+                  onClick={handleArchiveProduct}
+                  disabled={archiving || isSavingStep}
+                  className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold rounded-xl border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-60 transition-all"
+                >
+                  {archiving && <Loader2 className="size-3.5 animate-spin" />}
+                  <Archive className="size-3.5" />
+                  <span>{t("products.editMode.archive")}</span>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                disabled={isSavingStep}
+                className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold rounded-xl border border-border hover:bg-secondary text-foreground transition-all"
+              >
+                {isSavingStep && <Loader2 className="size-3.5 animate-spin" />}
+                <Save className="size-3.5" />
+                <span>{t("products.editMode.saveChanges")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handlePublishProduct}
+                disabled={publishing || isSavingStep || !productId || (productDetail?.variants?.length ?? 0) === 0}
+                className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-xl bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 disabled:opacity-60 transition-all"
+              >
+                {publishing && <Loader2 className="size-3.5 animate-spin" />}
+                <Sparkles className="size-3.5" />
+                <span>{isPublished ? t("products.editMode.republish") : t("products.publish")}</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
       {selectedVariantForMedia && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
           <div className="bg-background border border-border rounded-3xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto space-y-6">

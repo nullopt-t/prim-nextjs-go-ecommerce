@@ -1,4 +1,4 @@
-import { Truck, ShieldCheck } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 interface ProductSpecsProps {
@@ -9,86 +9,124 @@ interface ProductSpecsProps {
   attributes?: Record<string, any>;
 }
 
-export function ProductSpecs({ productName, category, brand, description, attributes }: ProductSpecsProps) {
+function SectionHeading({ children }: { children: ReactNode }) {
+  return (
+    <div className="mb-4 border-b border-border pb-2.5">
+      <h2 className="text-base font-semibold text-foreground sm:text-lg">
+        {children}
+      </h2>
+    </div>
+  );
+}
+
+export function ProductSpecs({
+  productName,
+  category,
+  brand,
+  description,
+  attributes,
+}: ProductSpecsProps) {
   const t = useTranslations("products");
   const displayBrand = brand || productName.split(" ")[0] || "PRIM";
 
-  return (
-    <div className="mt-20 flex flex-col gap-16">
-      {/* Description Section */}
-      <section>
-        <h2 className="text-2xl font-bold text-foreground mb-6">{t("specs.description")}</h2>
-        <div className="prose prose-sm max-w-none text-muted-foreground bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm">
-          {description ? (
-            <p className="whitespace-pre-line leading-relaxed text-foreground/90">{description}</p>
-          ) : (
-            <>
-              <p>
-                {t("specs.fallbackIntro", { productName })}
-              </p>
-              <ul className="mt-4 space-y-2">
-                <li>{t("specs.fallbackFeature1")}</li>
-                <li>{t("specs.fallbackFeature2")}</li>
-                <li>{t("specs.fallbackFeature3")}</li>
-                <li>{t("specs.fallbackFeature4")}</li>
-              </ul>
-            </>
-          )}
-        </div>
-      </section>
+  const attributeLabel = (key: string) => {
+    const normalized = key.toLowerCase().replace(/[_-]/g, " ");
+    if (normalized === "color") return t("actions.color").replace(/[:：]/g, "").trim();
+    if (normalized === "storage") return t("wizard.presetStorage");
+    return normalized;
+  };
 
-      {/* Specifications Section */}
-      <section>
-        <h2 className="text-2xl font-bold text-foreground mb-6">{t("specs.specifications")}</h2>
-        <div className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-sm">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-4 text-sm">
-            <div className="flex justify-between py-3 border-b border-border/50">
-              <span className="text-muted-foreground">{t("specs.brand")}</span>
-              <span className="font-medium text-foreground">{displayBrand}</span>
-            </div>
-            <div className="flex justify-between py-3 border-b border-border/50">
-              <span className="text-muted-foreground">{t("specs.category")}</span>
-              <span className="font-medium text-foreground capitalize">{category.replace("-", " ")}</span>
-            </div>
-            {attributes &&
-              Object.entries(attributes).map(([key, val]) => (
-                <div key={key} className="flex justify-between py-3 border-b border-border/50">
-                  <span className="text-muted-foreground capitalize">{key}</span>
-                  <span className="font-medium text-foreground">{String(val)}</span>
+  const attributeRows = attributes ? Object.entries(attributes) : [];
+
+  return (
+    <div className="mt-10 flex flex-col gap-8 sm:mt-14 sm:gap-10">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* Description Section */}
+        <section className="lg:col-span-7">
+          <SectionHeading>{t("specs.description")}</SectionHeading>
+          <div className="h-full rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+            {description ? (
+              <p
+                dir="auto"
+                className="whitespace-pre-line text-start text-sm leading-7 text-foreground/90 sm:text-base"
+              >
+                {description}
+              </p>
+            ) : (
+              <div className="space-y-4 text-sm leading-7 text-muted-foreground sm:text-base">
+                <p>{t("specs.fallbackIntro", { productName })}</p>
+                <ul className="grid gap-2.5 sm:grid-cols-2">
+                  {[
+                    t("specs.fallbackFeature1"),
+                    t("specs.fallbackFeature2"),
+                    t("specs.fallbackFeature3"),
+                    t("specs.fallbackFeature4"),
+                  ].map((feature) => (
+                    <li key={feature} className="flex items-start gap-2">
+                      <span className="mt-2.5 size-1 shrink-0 rounded-full bg-muted-foreground/50" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Specifications Section */}
+        <section className="lg:col-span-5">
+          <SectionHeading>{t("specs.specifications")}</SectionHeading>
+          <div className="h-full rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+            <div className="divide-y divide-border/70 text-sm">
+              <div className="flex items-center justify-between gap-4 py-3 first:pt-0">
+                <span className="text-muted-foreground">{t("specs.brand")}</span>
+                <span className="text-end font-semibold text-foreground">{displayBrand}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4 py-3">
+                <span className="text-muted-foreground">{t("specs.category")}</span>
+                <span className="text-end font-semibold capitalize text-foreground">
+                  {category.replace("-", " ")}
+                </span>
+              </div>
+              {attributeRows.map(([key, val]) => (
+                <div key={key} className="flex items-center justify-between gap-4 py-3">
+                  <span className="capitalize text-muted-foreground">{attributeLabel(key)}</span>
+                  <span className="max-w-[60%] text-end font-semibold text-foreground">
+                    {String(val)}
+                  </span>
                 </div>
               ))}
-            <div className="flex justify-between py-3 border-b border-border/50">
-              <span className="text-muted-foreground">{t("specs.condition")}</span>
-              <span className="font-medium text-foreground">{t("specs.brandNew")}</span>
-            </div>
-            <div className="flex justify-between py-3 border-b border-border/50">
-              <span className="text-muted-foreground">{t("specs.warranty")}</span>
-              <span className="font-medium text-foreground">{t("specs.warrantyValue")}</span>
+              <div className="flex items-center justify-between gap-4 py-3">
+                <span className="text-muted-foreground">{t("specs.condition")}</span>
+                <span className="text-end font-semibold text-foreground">{t("specs.brandNew")}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4 py-3 last:pb-0">
+                <span className="text-muted-foreground">{t("specs.warranty")}</span>
+                <span className="text-end font-semibold text-foreground">{t("specs.warrantyValue")}</span>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       {/* Shipping & Returns Section */}
       <section>
-        <h2 className="text-2xl font-bold text-foreground mb-6">{t("specs.shippingReturns")}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-3 shadow-sm hover:border-accent-brand/50 transition-colors">
-            <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center text-foreground">
-              <Truck className="size-5" />
-            </div>
-            <h4 className="text-foreground font-bold text-base">{t("specs.shippingInfo")}</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+        <SectionHeading>{t("specs.shippingReturns")}</SectionHeading>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-10">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">
+              {t("specs.shippingInfo")}
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {t("specs.shippingInfoText")}
             </p>
           </div>
 
-          <div className="bg-card border border-border rounded-2xl p-6 flex flex-col gap-3 shadow-sm hover:border-accent-brand/50 transition-colors">
-            <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center text-foreground">
-              <ShieldCheck className="size-5" />
-            </div>
-            <h4 className="text-foreground font-bold text-base">{t("specs.returnPolicy")}</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+          <div className="border-t border-border pt-6 md:border-s md:border-t-0 md:ps-10 md:pt-0">
+            <h3 className="text-sm font-semibold text-foreground">
+              {t("specs.returnPolicy")}
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {t("specs.returnPolicyText")}
             </p>
           </div>
