@@ -139,27 +139,18 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 	})
 }
 
-const (
-	// SessionCookieMaxAge specifies the browser cookie lifetime in seconds (30 days).
-	SessionCookieMaxAge = 30 * 24 * 3600 // 30 days
-)
-
 // setAuthCookies issues the HTTP-only server-side session cookie to the client browser.
 // Uses SameSite=Lax and restricts transmission to HTTPS in production environments.
 func (h *Handler) setAuthCookies(c *gin.Context, sessionID string) {
-	c.SetSameSite(http.SameSiteLaxMode)
 	if sessionID != "" {
-		c.SetCookie(middleware.SessionCookieName, sessionID, SessionCookieMaxAge, "/", "", h.isProduction, true)
+		middleware.SetSessionCookie(c, sessionID, h.isProduction)
 	}
 }
 
-// clearAuthCookies removes active and legacy authentication cookies from the client browser
-// by setting their MaxAge to -1 and overwriting values with empty strings.
+// clearAuthCookies removes the canonical session cookie and any legacy token
+// cookies that may still linger in a browser.
 func (h *Handler) clearAuthCookies(c *gin.Context) {
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie(middleware.SessionCookieName, "", -1, "/", "", h.isProduction, true)
-	// Clear legacy cookies if they linger in the browser
-	c.SetCookie("session_id", "", -1, "/", "", h.isProduction, true)
+	middleware.ClearSessionCookie(c)
 	c.SetCookie("access_token", "", -1, "/", "", h.isProduction, true)
 	c.SetCookie("refresh_token", "", -1, "/", "", h.isProduction, true)
 }
@@ -217,20 +208,33 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 		return
 	}
 
-	// Merge guest cart if a guest session cookie is present and merging is enabled (defaults to true)
+	// The request still carries the pre-login canonical session cookie. If it
+	// belongs to a guest, merge that guest cart into the authenticated user.
 	shouldMerge := req.MergeCart == nil || *req.MergeCart
-	guestSessionID, err := c.Cookie("session_id")
-	if err == nil && guestSessionID != "" {
+	guestSessionID := ""
+	if cookieSessionID, cookieErr := c.Cookie(middleware.SessionCookieName); cookieErr == nil && cookieSessionID != "" {
+		if guestSession, sessionErr := h.sessionService.GetSessionByID(ctx, cookieSessionID); sessionErr == nil &&
+			guestSession != nil && guestSession.Type == SessionTypeGuest {
+			guestSessionID = guestSession.ID
+		}
+	}
+
+	if guestSessionID != "" {
 		if shouldMerge && h.cartMerger != nil {
 			// Transfer items from guest session cart into user account cart
-			if mergeErr := h.cartMerger.MergeGuestCart(c.Request.Context(), guestSessionID, authResult.UserID); mergeErr != nil {
+			if mergeErr := h.cartMerger.MergeGuestCart(ctx, guestSessionID, authResult.UserID); mergeErr != nil {
 				h.logger.Error("Failed to merge guest cart", log.Meta{"error": mergeErr, "session_id": guestSessionID, "user_id": authResult.UserID})
+			} else {
+				// The guest cart no longer exists; revoke its session as well.
+				if deleteErr := h.sessionService.deleteSessionKey(ctx, guestSessionID); deleteErr != nil {
+					h.logger.Error("Failed to revoke guest session", log.Meta{"error": deleteErr, "session_id": guestSessionID})
+				}
 			}
-			// Always clear guest session cookie after merge attempt so the guest cookie is not orphaned
-			c.SetCookie("session_id", "", -1, "/", "", h.isProduction, true)
 		} else if !shouldMerge {
-			// User opted out of merging: clear guest session cookie to keep account cart pristine
-			c.SetCookie("session_id", "", -1, "/", "", h.isProduction, true)
+			// User opted out of merging: discard the guest session to keep the account cart pristine.
+			if deleteErr := h.sessionService.deleteSessionKey(ctx, guestSessionID); deleteErr != nil {
+				h.logger.Error("Failed to revoke guest session", log.Meta{"error": deleteErr, "session_id": guestSessionID})
+			}
 		}
 	}
 

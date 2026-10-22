@@ -173,9 +173,10 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	variantRepo := variant.NewRepository()
 	s.variantService = variant.NewService(logger, s.txRunner, nil, variantRepo, s.inventoryService)
 
+	cartRepo := cart.NewRepository()
 	s.cartService = cart.NewService(
 		s.txRunner,
-		cart.NewRepository(),
+		cartRepo,
 		s.variantService,
 		&dummyProductService{},
 		s.inventoryService,
@@ -191,7 +192,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	s.addressService = user.NewAddressService(s.txRunner, addressRepo, logger)
 
 	s.checkoutService = checkout.NewService(
-		s.cartService,
+		cartRepo,
 		orderService,
 		s.userService,
 		s.addressService,
@@ -323,7 +324,9 @@ func (s *CheckoutTestSuite) seedAddress(userID uuid.UUID) uuid.UUID {
 
 // addToCart adds stock-validated items through the cart domain service.
 func (s *CheckoutTestSuite) addToCart(userID, variantID uuid.UUID, qty int) {
-	_, err := s.cartService.AddItem(context.Background(), &userID, nil, variantID, qty)
+	c, err := s.cartService.GetOrCreateCart(context.Background(), &userID, nil)
+	s.Require().NoError(err)
+	_, err = s.cartService.AddItem(context.Background(), c.ID, variantID, qty)
 	s.Require().NoError(err)
 }
 

@@ -7,6 +7,16 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 )
 
+// SessionStore defines the contract for retrieving server-side session models
+// by their unique session identifier string (e.g. backed by Redis or PostgreSQL).
+// SessionStore defines the session capabilities required by the cart subsystem:
+// resolving active sessions for middleware and creating guest sessions when an
+// unauthenticated visitor adds an item.
+type SessionStore interface {
+	middleware.SessionStore
+	sessionCreator
+}
+
 // CartRouter defines the HTTP route mappings and middleware bindings for all shopping cart operations.
 // It bridges incoming Gin HTTP requests to the CartHandler endpoints.
 type CartRouter struct {
@@ -18,7 +28,12 @@ type CartRouter struct {
 
 // NewRouter instantiates and returns a configured CartRouter.
 // It accepts a CartHandler pointer and a session store interface implementation.
+// If the provided sessionStore also implements sessionCreator, the handler is
+// wired automatically to mint guest sessions.
 func NewRouter(handler *CartHandler, sessionStore middleware.SessionStore) *CartRouter {
+	if creator, ok := sessionStore.(sessionCreator); ok {
+		handler.SetSessionCreator(creator)
+	}
 	return &CartRouter{
 		handler:      handler,
 		sessionStore: sessionStore,
@@ -27,14 +42,14 @@ func NewRouter(handler *CartHandler, sessionStore middleware.SessionStore) *Cart
 
 // MapRoutes registers the shopping cart REST API endpoints onto the provided Gin RouterGroup.
 // All cart endpoints reside under the "/cart" prefix and utilize OptionalAuthenticate middleware.
-// OptionalAuthenticate permits both unauthenticated guest visitors (identified by session cookies)
-// and authenticated customers (identified by session cookies) to interact with their carts.
+// OptionalAuthenticate exposes both guest and authenticated server-side sessions so the
+// handler can derive cart ownership from one canonical session object.
 func (r *CartRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	// Initialize the /cart route sub-group from the base API router group.
 	cartGroup := vgroup.Group("/cart")
 
-	// Apply OptionalAuthenticate middleware: extracts userID into context if valid session credentials
-	// exist, or allows execution to continue anonymously for guest users with session ID cookies.
+	// Resolve the canonical "ps" session once per request. Authenticated
+	// sessions own carts through user_id; guest sessions through session_id.
 	cartGroup.Use(middleware.OptionalAuthenticate(r.sessionStore))
 	{
 		// GET /cart: Retrieve current shopping cart contents, aggregated totals, and line item inventory statuses.

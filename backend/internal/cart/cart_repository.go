@@ -3,6 +3,7 @@ package cart
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -38,136 +39,16 @@ func (r *CartRepository) CreateCart(
 	return err
 }
 
-// GetCartByID retrieves a non-deleted cart record by its primary key UUID.
-// Returns pgx.ErrNoRows if no active cart matches the given identifier.
-func (r *CartRepository) GetCartByID(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	id uuid.UUID,
-) (*model.Cart, error) {
-	// Select columns for an active, non-soft-deleted cart record.
-	query := `
-		SELECT id, user_id, session_id, created_at, updated_at, deleted_at
-		FROM carts
-		WHERE id = $1 AND deleted_at IS NULL
-	`
-	// Execute query using provided QueryExecutor.
-	row := qe.QueryRow(ctx, query, id)
-	cart := &model.Cart{}
-	// Scan database fields into the model.Cart struct fields.
-	err := row.Scan(&cart.ID, &cart.UserID, &cart.SessionID, &cart.CreatedAt, &cart.UpdatedAt, &cart.DeletedAt)
-	if err != nil {
-		return nil, err
-	}
-	return cart, nil
-}
-
-// GetCartByUserID retrieves the most recently created active cart for a registered customer.
-func (r *CartRepository) GetCartByUserID(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	userID uuid.UUID,
-) (*model.Cart, error) {
-	// Query the newest active cart belonging to the customer.
-	query := `
-		SELECT id, user_id, session_id, created_at, updated_at, deleted_at
-		FROM carts
-		WHERE user_id = $1 AND deleted_at IS NULL
-		ORDER BY created_at DESC
-		LIMIT 1
-	`
-	row := qe.QueryRow(ctx, query, userID)
-	cart := &model.Cart{}
-	// Unmarshal row data into cart model.
-	err := row.Scan(&cart.ID, &cart.UserID, &cart.SessionID, &cart.CreatedAt, &cart.UpdatedAt, &cart.DeletedAt)
-	if err != nil {
-		return nil, err
-	}
-	return cart, nil
-}
-
-// GetCartByUserIDForUpdate retrieves the most recently created active cart for a registered customer with row-level locking.
-func (r *CartRepository) GetCartByUserIDForUpdate(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	userID uuid.UUID,
-) (*model.Cart, error) {
-	query := `
-		SELECT id, user_id, session_id, created_at, updated_at, deleted_at
-		FROM carts
-		WHERE user_id = $1 AND deleted_at IS NULL
-		ORDER BY created_at DESC
-		LIMIT 1
-		FOR UPDATE
-	`
-	row := qe.QueryRow(ctx, query, userID)
-	cart := &model.Cart{}
-	err := row.Scan(&cart.ID, &cart.UserID, &cart.SessionID, &cart.CreatedAt, &cart.UpdatedAt, &cart.DeletedAt)
-	if err != nil {
-		return nil, err
-	}
-	return cart, nil
-}
-
-// GetCartBySessionID retrieves the most recently created active anonymous guest cart for a session ID.
-// Filters exclusively for user_id IS NULL to prevent leaking authenticated carts associated with obsolete cookies.
-func (r *CartRepository) GetCartBySessionID(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	sessionID string,
-) (*model.Cart, error) {
-	// Query active guest cart where user_id is null.
-	query := `
-		SELECT id, user_id, session_id, created_at, updated_at, deleted_at
-		FROM carts
-		WHERE session_id = $1 AND user_id IS NULL AND deleted_at IS NULL
-		ORDER BY created_at DESC
-		LIMIT 1
-	`
-	row := qe.QueryRow(ctx, query, sessionID)
-	cart := &model.Cart{}
-	// Scan the database row into the cart model.
-	err := row.Scan(&cart.ID, &cart.UserID, &cart.SessionID, &cart.CreatedAt, &cart.UpdatedAt, &cart.DeletedAt)
-	if err != nil {
-		return nil, err
-	}
-	return cart, nil
-}
-
-// GetCartBySessionIDForUpdate retrieves the active anonymous guest cart with row-level locking.
-func (r *CartRepository) GetCartBySessionIDForUpdate(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	sessionID string,
-) (*model.Cart, error) {
-	query := `
-		SELECT id, user_id, session_id, created_at, updated_at, deleted_at
-		FROM carts
-		WHERE session_id = $1 AND user_id IS NULL AND deleted_at IS NULL
-		ORDER BY created_at DESC
-		LIMIT 1
-		FOR UPDATE
-	`
-	row := qe.QueryRow(ctx, query, sessionID)
-	cart := &model.Cart{}
-	err := row.Scan(&cart.ID, &cart.UserID, &cart.SessionID, &cart.CreatedAt, &cart.UpdatedAt, &cart.DeletedAt)
-	if err != nil {
-		return nil, err
-	}
-	return cart, nil
-}
-
-// GetCartItems retrieves all active (non-soft-deleted) items in chronological order of addition for a cart.
-func (r *CartRepository) GetCartItems(
+// getCartItems retrieves all items belonging to a cart ordered by carted_at ascending.
+func (r *CartRepository) getCartItems(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	cartID uuid.UUID,
 ) ([]model.CartItem, error) {
-	// Query all active cart items linked to the cart.
 	query := `
-		SELECT id, cart_id, variant_id, quantity, price_at_purchase, currency, carted_at, deleted_at
+		SELECT id, variant_id, quantity, price_at_purchase, currency, carted_at
 		FROM cart_items
-		WHERE cart_id = $1 AND deleted_at IS NULL
+		WHERE cart_id = $1
 		ORDER BY carted_at ASC
 	`
 	rows, err := qe.Query(ctx, query, cartID)
@@ -176,114 +57,152 @@ func (r *CartRepository) GetCartItems(
 	}
 	defer rows.Close()
 
-	// Initialize empty slice to prevent returning nil in JSON responses when cart is empty.
 	items := make([]model.CartItem, 0)
 	for rows.Next() {
 		var item model.CartItem
-		// Scan each column into the model.CartItem struct.
-		if err := rows.Scan(
+		item.CartID = cartID
+		err := rows.Scan(
 			&item.ID,
-			&item.CartID,
 			&item.VariantID,
 			&item.Quantity,
 			&item.PriceAtPurchase,
 			&item.Currency,
 			&item.CartedAt,
-			&item.DeletedAt,
-		); err != nil {
+		)
+		if err != nil {
 			return nil, err
 		}
 		items = append(items, item)
 	}
-	// Verify that iteration encountered no I/O or protocol errors.
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return items, nil
 }
 
-// GetItemByID fetches an active cart item by its database identity within the specified cart.
-func (r *CartRepository) GetItemByID(
+// GetCartByID retrieves a cart record by its primary key UUID along with its items.
+func (r *CartRepository) GetCartByID(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	cartID uuid.UUID,
-	itemID int64,
-) (*model.CartItem, error) {
-	// Query item by database identity within the scoped cart.
+	id uuid.UUID,
+) (*model.Cart, error) {
 	query := `
-		SELECT id, cart_id, variant_id, quantity, price_at_purchase, currency, carted_at, deleted_at
-		FROM cart_items
-		WHERE cart_id = $1 AND id = $2 AND deleted_at IS NULL
+		SELECT id, user_id, session_id, created_at, updated_at
+		FROM carts
+		WHERE id = $1
+	`
+	cart := &model.Cart{Items: make([]model.CartItem, 0)}
+	err := qe.QueryRow(ctx, query, id).Scan(
+		&cart.ID,
+		&cart.UserID,
+		&cart.SessionID,
+		&cart.CreatedAt,
+		&cart.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, database.ErrNotFound
+		}
+		return nil, err
+	}
+
+	items, err := r.getCartItems(ctx, qe, cart.ID)
+	if err != nil {
+		return nil, err
+	}
+	cart.Items = items
+
+	return cart, nil
+}
+
+// GetCartByUserID retrieves the most recently created cart for a registered customer along with all items.
+func (r *CartRepository) GetCartByUserID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	userID uuid.UUID,
+) (*model.Cart, error) {
+	query := `
+		SELECT id, user_id, session_id, created_at, updated_at
+		FROM carts
+		WHERE user_id = $1
+		ORDER BY created_at DESC
 		LIMIT 1
 	`
-	row := qe.QueryRow(ctx, query, cartID, itemID)
-	item := &model.CartItem{}
-	err := row.Scan(
-		&item.ID,
-		&item.CartID,
-		&item.VariantID,
-		&item.Quantity,
-		&item.PriceAtPurchase,
-		&item.Currency,
-		&item.CartedAt,
-		&item.DeletedAt,
+	cart := &model.Cart{Items: make([]model.CartItem, 0)}
+	err := qe.QueryRow(ctx, query, userID).Scan(
+		&cart.ID,
+		&cart.UserID,
+		&cart.SessionID,
+		&cart.CreatedAt,
+		&cart.UpdatedAt,
 	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, database.ErrNotFound
+		}
+		return nil, err
+	}
+
+	items, err := r.getCartItems(ctx, qe, cart.ID)
 	if err != nil {
 		return nil, err
 	}
-	return item, nil
+	cart.Items = items
+
+	return cart, nil
 }
 
-// GetItemByVariantID fetches an active cart item for a specific product variant in the specified cart.
-func (r *CartRepository) GetItemByVariantID(
+// GetCartBySessionID retrieves the most recently created anonymous guest cart for a session ID.
+func (r *CartRepository) GetCartBySessionID(
 	ctx context.Context,
 	qe database.QueryExecutor,
-	cartID uuid.UUID,
-	variantID uuid.UUID,
-) (*model.CartItem, error) {
-	// Locate line item strictly by cart_id and variant_id.
+	sessionID string,
+) (*model.Cart, error) {
 	query := `
-		SELECT id, cart_id, variant_id, quantity, price_at_purchase, currency, carted_at, deleted_at
-		FROM cart_items
-		WHERE cart_id = $1 AND variant_id = $2 AND deleted_at IS NULL
+		SELECT id, user_id, session_id, created_at, updated_at
+		FROM carts
+		WHERE session_id = $1 AND user_id IS NULL
+		ORDER BY created_at DESC
+		LIMIT 1
 	`
-	row := qe.QueryRow(ctx, query, cartID, variantID)
-	item := &model.CartItem{}
-	err := row.Scan(
-		&item.ID,
-		&item.CartID,
-		&item.VariantID,
-		&item.Quantity,
-		&item.PriceAtPurchase,
-		&item.Currency,
-		&item.CartedAt,
-		&item.DeletedAt,
+	cart := &model.Cart{Items: make([]model.CartItem, 0)}
+	err := qe.QueryRow(ctx, query, sessionID).Scan(
+		&cart.ID,
+		&cart.UserID,
+		&cart.SessionID,
+		&cart.CreatedAt,
+		&cart.UpdatedAt,
 	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, database.ErrNotFound
+		}
+		return nil, err
+	}
+
+	items, err := r.getCartItems(ctx, qe, cart.ID)
 	if err != nil {
 		return nil, err
 	}
-	return item, nil
+	cart.Items = items
+
+	return cart, nil
 }
 
-// AddItem inserts or updates a line item in the 'cart_items' table.
-// If the variant already exists in the cart, its quantity is incremented atomically.
-// Also updates the parent cart's updated_at timestamp.
 func (r *CartRepository) AddItem(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	qe *database.Tx,
 	item *model.CartItem,
 ) error {
 	query := `
-		INSERT INTO cart_items (cart_id, variant_id, quantity, price_at_purchase, currency, carted_at, deleted_at)
-		VALUES ($1, $2, $3, $4, $5, now(), NULL)
+		INSERT INTO cart_items (cart_id, variant_id, quantity, price_at_purchase, currency, carted_at)
+		VALUES ($1, $2, $3, $4, $5, now())
 		ON CONFLICT (cart_id, variant_id) DO UPDATE
-		SET quantity = CASE
-				WHEN cart_items.deleted_at IS NOT NULL THEN EXCLUDED.quantity
-				ELSE cart_items.quantity + EXCLUDED.quantity
-			END,
+		SET 
+			quantity = cart_items.quantity + EXCLUDED.quantity,
 			price_at_purchase = EXCLUDED.price_at_purchase,
 			currency = EXCLUDED.currency,
-			deleted_at = NULL
+			carted_at = now()
 		RETURNING id, quantity, carted_at
 	`
 	err := qe.QueryRow(
@@ -304,50 +223,43 @@ func (r *CartRepository) AddItem(
 	return nil
 }
 
-// UpdateItemQuantity updates the quantity of an existing line item in the cart.
-// If no rows are affected (e.g. item does not exist or has been deleted), returns pgx.ErrNoRows.
-// Also refreshes the parent cart's updated_at timestamp.
 func (r *CartRepository) UpdateItemQuantity(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	cartID uuid.UUID,
 	itemID int64,
 	quantity int,
 ) error {
-	// Execute quantity update by database identity within the designated cart.
 	query := `
 		UPDATE cart_items
 		SET quantity = $1
-		WHERE id = $2 AND cart_id = $3 AND deleted_at IS NULL
+		WHERE id = $2 AND cart_id = $3
 	`
-	tag, err := qe.Exec(ctx, query, quantity, itemID, cartID)
+	tag, err := tx.Exec(ctx, query, quantity, itemID, cartID)
 	if err != nil {
 		return err
 	}
-	// If 0 rows affected, report ErrNoRows so service can map to a 404 CartItemNotFound error.
+
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = qe.Exec(ctx, updateCartQuery, cartID)
+	_, _ = tx.Exec(ctx, updateCartQuery, cartID)
 	return nil
 }
 
-// RemoveItem removes a line item from the cart by database identity via soft-delete.
-// Also updates parent cart's updated_at timestamp.
 func (r *CartRepository) RemoveItem(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	cartID uuid.UUID,
 	itemID int64,
 ) error {
 	query := `
-		UPDATE cart_items
-		SET deleted_at = now()
-		WHERE id = $1 AND cart_id = $2 AND deleted_at IS NULL
+		DELETE FROM cart_items
+		WHERE id = $1 AND cart_id = $2
 	`
-	tag, err := qe.Exec(ctx, query, itemID, cartID)
+	tag, err := tx.Exec(ctx, query, itemID, cartID)
 	if err != nil {
 		return err
 	}
@@ -356,21 +268,16 @@ func (r *CartRepository) RemoveItem(
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = qe.Exec(ctx, updateCartQuery, cartID)
+	_, _ = tx.Exec(ctx, updateCartQuery, cartID)
 	return nil
 }
 
-// ClearCart soft-deletes all items belonging to the given cart ID and refreshes updated_at.
 func (r *CartRepository) ClearCart(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	cartID uuid.UUID,
 ) error {
-	query := `
-		UPDATE cart_items
-		SET deleted_at = now()
-		WHERE cart_id = $1 AND deleted_at IS NULL
-	`
+	query := `DELETE FROM cart_items WHERE cart_id = $1`
 	_, err := qe.Exec(ctx, query, cartID)
 	if err != nil {
 		return err
@@ -381,13 +288,12 @@ func (r *CartRepository) ClearCart(
 	return nil
 }
 
-// DeleteCart soft-deletes the cart record from the database.
 func (r *CartRepository) DeleteCart(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx database.QueryExecutor,
 	cartID uuid.UUID,
 ) error {
-	query := `UPDATE carts SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`
-	_, err := qe.Exec(ctx, query, cartID)
+	query := `DELETE FROM carts WHERE id = $1`
+	_, err := tx.Exec(ctx, query, cartID)
 	return err
 }

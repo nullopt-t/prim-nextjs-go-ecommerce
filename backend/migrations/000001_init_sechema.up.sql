@@ -290,11 +290,20 @@ CREATE TABLE IF NOT EXISTS carts (
     session_id    text NULL,
     created_at    timestamptz NOT NULL DEFAULT now(),
     updated_at    timestamptz NOT NULL DEFAULT now(),
-    deleted_at    timestamptz NULL,
     PRIMARY KEY (id),
     FOREIGN KEY (user_id) REFERENCES users (id),
     CHECK (user_id IS NOT NULL OR session_id IS NOT NULL)
 );
+
+-- One active cart per user at most
+CREATE UNIQUE INDEX IF NOT EXISTS idx_carts_active_user
+    ON carts (user_id)
+    WHERE user_id IS NOT NULL;
+
+-- One active cart per session_id at most
+CREATE UNIQUE INDEX IF NOT EXISTS idx_carts_active_session_id
+    ON carts (session_id)
+    WHERE session_id IS NOT NULL AND user_id IS NULL;
 
 CREATE TABLE IF NOT EXISTS cart_items (
     id                   bigint GENERATED ALWAYS AS IDENTITY,
@@ -304,7 +313,6 @@ CREATE TABLE IF NOT EXISTS cart_items (
     price_at_purchase    bigint NOT NULL,
     currency             text NOT NULL DEFAULT 'EGP',
     carted_at            timestamptz NOT NULL DEFAULT now(),
-    deleted_at           timestamptz NULL,
     PRIMARY KEY (id),
     UNIQUE (cart_id, variant_id),
     FOREIGN KEY (cart_id) REFERENCES carts (id) ON DELETE CASCADE,
@@ -313,11 +321,6 @@ CREATE TABLE IF NOT EXISTS cart_items (
 );
 
 CREATE INDEX IF NOT EXISTS idx_cart_items_cart_id ON cart_items (cart_id);
-
--- One active cart per user at most
-CREATE UNIQUE INDEX IF NOT EXISTS idx_carts_active_user
-    ON carts (user_id)
-    WHERE user_id IS NOT NULL AND deleted_at IS NULL;
 
 
 -- =====================================================================

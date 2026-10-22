@@ -122,6 +122,61 @@ func TestAuthenticate(t *testing.T) {
 		assert.Equal(t, uuid.Nil, capturedUserID)
 	})
 
+	t.Run("Authenticate rejects guest session", func(t *testing.T) {
+		store := &mockSessionStore{
+			getSessionByIDFunc: func(ctx context.Context, sessionID string) (*model.UserSession, error) {
+				return &model.UserSession{
+					ID:   sessionID,
+					Type: model.SessionTypeGuest,
+				}, nil
+			},
+		}
+		r := setupRouter(store)
+		r.GET("/test", func(c *gin.Context) {
+			c.Status(http.StatusOK)
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		req.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: "guest-session"})
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("OptionalAuthenticate exposes guest session without granting a user", func(t *testing.T) {
+		store := &mockSessionStore{
+			getSessionByIDFunc: func(ctx context.Context, sessionID string) (*model.UserSession, error) {
+				return &model.UserSession{
+					ID:   sessionID,
+					Type: model.SessionTypeGuest,
+				}, nil
+			},
+		}
+		r := gin.New()
+		r.Use(middleware.OptionalAuthenticate(store))
+		var capturedSession *model.UserSession
+		var hasUser bool
+		var hasRole bool
+		r.GET("/test-optional", func(c *gin.Context) {
+			capturedSession, _ = middleware.GetSession(c)
+			_, hasUser = middleware.GetUserID(c)
+			_, hasRole = middleware.GetUserRole(c)
+			c.Status(http.StatusOK)
+		})
+
+		req := httptest.NewRequest(http.MethodGet, "/test-optional", nil)
+		req.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: "guest-session"})
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.NotNil(t, capturedSession)
+		assert.Equal(t, model.SessionTypeGuest, capturedSession.Type)
+		assert.False(t, hasUser)
+		assert.False(t, hasRole)
+	})
+
 	t.Run("OptionalAuthenticate sets user context when valid cookie is present", func(t *testing.T) {
 		expectedUserID := uuid.New()
 		expectedSessionID := "sess-opt-123"

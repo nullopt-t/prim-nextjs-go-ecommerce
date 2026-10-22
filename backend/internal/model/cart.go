@@ -22,9 +22,6 @@ type Cart struct {
 	CreatedAt time.Time
 	// UpdatedAt is the timestamp when the cart or its items were last modified.
 	UpdatedAt time.Time
-	// DeletedAt is the optional soft-delete timestamp when the cart was emptied or discarded.
-	// Cart queries filter `deleted_at IS NULL` and DeleteCart sets this timestamp.
-	DeletedAt *time.Time
 	// Items contains all line items currently present in the cart.
 	Items []CartItem
 }
@@ -47,9 +44,6 @@ type CartItem struct {
 	Currency string
 	// CartedAt is the timestamp when this variant was added to the cart.
 	CartedAt time.Time
-	// DeletedAt is the optional timestamp when this item was soft-deleted from the cart.
-	// Active items filter `deleted_at IS NULL`; re-adding an item reactivates it and clears deleted_at.
-	DeletedAt *time.Time
 	// Variant is the eagerly loaded or hydrated ProductVariant entity.
 	Variant *ProductVariant
 	// Product is the parent Product entity associated with the variant.

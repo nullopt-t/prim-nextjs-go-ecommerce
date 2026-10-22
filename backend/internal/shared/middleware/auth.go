@@ -34,6 +34,9 @@ const (
 	// In the browser, this cookie is expected to be marked HttpOnly, Secure, and SameSite.
 	SessionCookieName = "ps"
 
+	// SessionCookieMaxAge is the browser cookie lifetime in seconds (30 days).
+	SessionCookieMaxAge = 30 * 24 * 3600
+
 	// sessionContextKey is the single Gin context key populated by the auth
 	// middleware. Handlers read the session through GetSession (or the small
 	// accessors below) instead of depending on duplicated primitive values.
@@ -48,8 +51,9 @@ type SessionStore interface {
 	GetSessionByID(ctx context.Context, sessionID string) (*model.UserSession, error)
 }
 
-// GetSession returns the authenticated session stored by Authenticate or
-// OptionalAuthenticate. The boolean is false when the request is anonymous.
+// GetSession returns the server-side session stored by Authenticate or
+// OptionalAuthenticate. OptionalAuthenticate exposes both authenticated and
+// guest sessions; use GetUserID when only a real user is relevant.
 func GetSession(c *gin.Context) (*model.UserSession, bool) {
 	value, exists := c.Get(sessionContextKey)
 	if !exists {
@@ -77,7 +81,7 @@ func GetUserID(c *gin.Context) (uuid.UUID, bool) {
 // customer default.
 func GetUserRole(c *gin.Context) (model.UserRole, bool) {
 	session, ok := GetSession(c)
-	if !ok {
+	if !ok || session.Type == model.SessionTypeGuest {
 		return "", false
 	}
 	if session.UserRole == "" {
@@ -130,11 +134,18 @@ func extractSessionID(c *gin.Context) (string, error) {
 	return cookie, nil
 }
 
-// clearSessionCookie expires the canonical session cookie (and any legacy auth
-// cookies) so a client holding a revoked or stale session stops presenting it.
-// Attributes are omitted because a browser matches a deletion cookie by name,
-// domain and path, not by its Secure/HttpOnly flags.
-func clearSessionCookie(c *gin.Context) {
+// SetSessionCookie writes the canonical session cookie with the standard
+// lifetime and HttpOnly/SameSite protections.
+func SetSessionCookie(c *gin.Context, sessionID string, secure bool) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(SessionCookieName, sessionID, SessionCookieMaxAge, "/", "", secure, true)
+}
+
+// ClearSessionCookie expires the canonical session cookie so a client holding a
+// revoked or stale session stops presenting it. Attributes are omitted because
+// a browser matches a deletion cookie by name, domain and path, not by its
+// Secure/HttpOnly flags.
+func ClearSessionCookie(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(SessionCookieName, "", -1, "/", "", false, true)
 }
@@ -148,17 +159,22 @@ func isAuthenticatedSession(session *model.UserSession) bool {
 		session.UserID != uuid.Nil
 }
 
-// loadAuthenticatedSession extracts the cookie, fetches the session, and applies
-// all authentication validation in one place. It returns (nil, nil) when the
-// cookie points at a valid but anonymous session; callers decide whether that
-// is acceptable.
-func loadAuthenticatedSession(c *gin.Context, sessionStore SessionStore) (*model.UserSession, error) {
+// loadSession extracts the cookie and resolves any valid server-side session,
+// including guest sessions.
+func loadSession(c *gin.Context, sessionStore SessionStore) (*model.UserSession, error) {
 	sessionID, err := extractSessionID(c)
 	if err != nil {
 		return nil, err
 	}
 
-	session, err := sessionStore.GetSessionByID(c.Request.Context(), sessionID)
+	return sessionStore.GetSessionByID(c.Request.Context(), sessionID)
+}
+
+// loadAuthenticatedSession resolves a session and filters out guests. It
+// returns (nil, nil) when the cookie points at a valid but anonymous session;
+// callers decide whether that is acceptable.
+func loadAuthenticatedSession(c *gin.Context, sessionStore SessionStore) (*model.UserSession, error) {
+	session, err := loadSession(c, sessionStore)
 	if err != nil {
 		return nil, err
 	}
@@ -203,14 +219,14 @@ func Authenticate(sessionStore SessionStore) gin.HandlerFunc {
 	}
 }
 
-// OptionalAuthenticate attempts to authenticate via the session cookie if present,
-// setting the session context without aborting or returning 401 when the request
-// is anonymous. Authentication failures are treated as guests so public routes
-// remain usable. This is used on public routes that can provide enriched
-// responses when logged in.
+// OptionalAuthenticate resolves the session cookie when present and stores the
+// session context without aborting or returning 401 when the request is
+// anonymous. Both authenticated and guest sessions are exposed so public
+// routes (for example the cart) can work with either identity. Invalid or
+// missing cookies are treated as anonymous.
 func OptionalAuthenticate(sessionStore SessionStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		session, err := loadAuthenticatedSession(c, sessionStore)
+		session, err := loadSession(c, sessionStore)
 		if err != nil {
 			c.Next()
 			return

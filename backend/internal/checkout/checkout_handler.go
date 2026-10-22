@@ -110,13 +110,15 @@ func (h *CheckoutHandler) ApplyCoupon(c *gin.Context) {
 	}
 
 	var userID *uuid.UUID
-	if uid, ok := middleware.GetUserID(c); ok {
-		userID = &uid
-	}
-
 	var sessionID *string
-	if cookieSess, err := c.Cookie("session_id"); err == nil && cookieSess != "" {
-		sessionID = &cookieSess
+	if session, ok := middleware.GetSession(c); ok {
+		if session.UserID != uuid.Nil {
+			uid := session.UserID
+			userID = &uid
+		} else {
+			sid := session.ID
+			sessionID = &sid
+		}
 	}
 
 	res, err := h.checkoutService.ValidateCoupon(c.Request.Context(), req.Code, userID, sessionID)

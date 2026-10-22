@@ -2,10 +2,8 @@ package cart
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -24,9 +22,21 @@ type StoreConfigProvider interface {
 	GetConfig(ctx context.Context) (setting.Config, error)
 }
 
+type sessionCreator interface {
+	CreateSession(
+		ctx context.Context,
+		userID uuid.UUID,
+		userRole string,
+		sessionType model.SessionType,
+		userAgent string,
+		ipAddress string,
+	) (*model.UserSession, error)
+}
+
 type CartHandler struct {
-	cartService *CartService
-	settings    StoreConfigProvider
+	cartService    *CartService
+	settings       StoreConfigProvider
+	sessionCreator sessionCreator
 }
 
 func NewHandler(cartService *CartService, settings ...StoreConfigProvider) *CartHandler {
@@ -37,6 +47,11 @@ func NewHandler(cartService *CartService, settings ...StoreConfigProvider) *Cart
 		h.settings = settings[0]
 	}
 	return h
+}
+
+// SetSessionCreator wires the session service used to mint guest sessions.
+func (h *CartHandler) SetSessionCreator(creator sessionCreator) {
+	h.sessionCreator = creator
 }
 
 // resolveStoreConfig returns the effective store configuration, falling back to
@@ -214,56 +229,67 @@ func (h *CartHandler) mapCartResponse(ctx context.Context, cart *model.Cart) Car
 	return res
 }
 
-const GuestSessionCookieMaxAge = 30 * 24 * 3600 // 30 days
-
-// parseCartItemID resolves a cart line reference. Current clients send the
-// database-owned numeric item id; the legacy variant UUID remains accepted.
-func parseCartItemID(raw string) (int64, *uuid.UUID, error) {
-	if id, err := strconv.ParseInt(raw, 10, 64); err == nil {
-		return id, nil, nil
-	}
-	variantID, err := uuid.Parse(raw)
-	if err != nil {
-		return 0, nil, err
-	}
-	return 0, &variantID, nil
+// parseCartItemID resolves the database-owned numeric cart item id.
+func parseCartItemID(raw string) (int64, error) {
+	return strconv.ParseInt(raw, 10, 64)
 }
 
-// extractUserAndSession attempts to identify the current cart owner.
-// It checks the gin context for an authenticated user ID.
-// If the user is unauthenticated, it checks for an existing session ID in the cookie.
-// If none exists, it generates a new anonymous session ID and sets it as a cookie for future requests.
-func (h *CartHandler) extractUserAndSession(c *gin.Context) (*uuid.UUID, *string) {
-	var userID *uuid.UUID
-	var sessionID *string
-
-	// Check if user is authenticated (set by auth middleware)
-	if uid, ok := middleware.GetUserID(c); ok {
-		userID = &uid
+// resolveSession returns the active server-side session. When create is true
+// and no session exists yet, it mints a guest session and writes the canonical
+// session cookie so the next request reuses the same cart owner.
+func (h *CartHandler) resolveSession(c *gin.Context, create bool) (*model.UserSession, error) {
+	if session, ok := middleware.GetSession(c); ok {
+		return session, nil
+	}
+	if !create {
+		return nil, nil
+	}
+	if h.sessionCreator == nil {
+		return nil, apierr.InternalServerError("Session service is unavailable")
 	}
 
-	// Look for existing session ID in cookie and validate format
-	var sess string
-	if cookieSess, err := c.Cookie("session_id"); err == nil && cookieSess != "" {
-		if strings.HasPrefix(cookieSess, "sess_") {
-			if _, parseErr := uuid.Parse(strings.TrimPrefix(cookieSess, "sess_")); parseErr == nil {
-				sess = cookieSess
-			}
-		}
+	session, err := h.sessionCreator.CreateSession(
+		c.Request.Context(),
+		uuid.Nil,
+		"",
+		model.SessionTypeGuest,
+		c.GetHeader("User-Agent"),
+		c.ClientIP(),
+	)
+	if err != nil {
+		return nil, apierr.InternalServerError("Failed to create guest session").
+			Wrap(err)
 	}
 
-	// Use existing session if found, otherwise create a new guest session if not authenticated
-	if sess != "" {
-		sessionID = &sess
-	} else if userID == nil {
-		guestID := fmt.Sprintf("sess_%s", uuid.New().String())
-		secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
-		c.SetSameSite(http.SameSiteLaxMode)
-		c.SetCookie("session_id", guestID, GuestSessionCookieMaxAge, "/", "", secure, true)
-		sessionID = &guestID
-	}
+	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
+	middleware.SetSessionCookie(c, session.ID, secure)
+	return session, nil
+}
 
-	return userID, sessionID
+// cartOwner maps a session to the cart ownership columns: user_id for signed-in
+// customers, session_id for guests.
+func cartOwner(session *model.UserSession) (*uuid.UUID, *string) {
+	if session.UserID != uuid.Nil {
+		userID := session.UserID
+		return &userID, nil
+	}
+	sessionID := session.ID
+	return nil, &sessionID
+}
+
+func emptyCartResponse() CartResponse {
+	return CartResponse{
+		Currency: "EGP",
+		Items:    []CartItemResponse{},
+		Summary: CartSummaryResponse{
+			Subtotal: 0,
+			Discount: 0,
+			Shipping: 0,
+			Tax:      0,
+			Total:    0,
+		},
+		ItemCount: 0,
+	}
 }
 
 // GetCart godoc
@@ -277,31 +303,19 @@ func (h *CartHandler) extractUserAndSession(c *gin.Context) (*uuid.UUID, *string
 //	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
 //	@Router			/cart [get]
 func (h *CartHandler) GetCart(c *gin.Context) {
-	// For unauthenticated visitors without an existing session cookie, return an empty cart response
-	// without creating an empty abandoned cart record in the database.
-	// TODO(Cart): that's unclear create a utility function call it IsAuthenticated that checks the userID in the context,
-	//
-	if _, ok := middleware.GetUserID(c); !ok {
-		cookieSess, err := c.Cookie("session_id")
-		if err != nil || cookieSess == "" {
-			_, _ = h.extractUserAndSession(c)
-			c.JSON(http.StatusOK, api.DataResponse{Data: CartResponse{
-				Currency: "EGP",
-				Items:    []CartItemResponse{},
-				Summary: CartSummaryResponse{
-					Subtotal: 0,
-					Discount: 0,
-					Shipping: 0,
-					Tax:      0,
-					Total:    0,
-				},
-				ItemCount: 0,
-			}})
-			return
-		}
+	session, err := h.resolveSession(c, false)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	// Visitors without a session have no cart to hydrate. Avoid creating an
+	// empty cart or a session just to return an empty response.
+	if session == nil {
+		c.JSON(http.StatusOK, api.DataResponse{Data: emptyCartResponse()})
+		return
 	}
 
-	userID, sessionID := h.extractUserAndSession(c)
+	userID, sessionID := cartOwner(session)
 
 	cart, err := h.cartService.GetOrCreateCart(c.Request.Context(), userID, sessionID)
 	if err != nil {
@@ -332,9 +346,20 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 		return
 	}
 
-	userID, sessionID := h.extractUserAndSession(c)
+	session, err := h.resolveSession(c, true)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	userID, sessionID := cartOwner(session)
 
-	cart, err := h.cartService.AddItem(c.Request.Context(), userID, sessionID, req.VariantID, req.Quantity)
+	cart, err := h.cartService.GetOrCreateCart(c.Request.Context(), userID, sessionID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	cart, err = h.cartService.AddItem(c.Request.Context(), cart.ID, req.VariantID, req.Quantity)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -353,12 +378,12 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 //	@Param			id				path		string								true	"Cart item id"
 //	@Param			body			body		UpdateQuantityRequest				true	"New quantity"
 //	@Success		200				{object}	api.DataResponse{data=CartResponse}	"Updated cart"
-//	@Failure		400				{object}	api.BadRequestErrorResponse			"Validation error or invalid UUID"
+//	@Failure		400				{object}	api.BadRequestErrorResponse			"Validation error or invalid item ID"
 //	@Failure		404				{object}	api.NotFoundErrorResponse			"Cart item not found"
 //	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
 //	@Router			/cart/items/{id} [patch]
 func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
-	itemID, variantID, err := parseCartItemID(c.Param("id"))
+	itemID, err := parseCartItemID(c.Param("id"))
 	if err != nil {
 		_ = c.Error(apierr.BadRequestError("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
 		return
@@ -370,9 +395,20 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 		return
 	}
 
-	userID, sessionID := h.extractUserAndSession(c)
+	session, err := h.resolveSession(c, true)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	userID, sessionID := cartOwner(session)
 
-	cart, err := h.cartService.UpdateCartItemQuantity(c.Request.Context(), userID, sessionID, itemID, variantID, req.Quantity)
+	cart, err := h.cartService.GetOrCreateCart(c.Request.Context(), userID, sessionID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	cart, err = h.cartService.UpdateCartItemQuantity(c.Request.Context(), cart.ID, itemID, req.Quantity)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -394,15 +430,26 @@ func (h *CartHandler) UpdateItemQuantity(c *gin.Context) {
 //	@Failure		500				{object}	api.InternalServerErrorResponse		"Internal server error"
 //	@Router			/cart/items/{id} [delete]
 func (h *CartHandler) RemoveItem(c *gin.Context) {
-	itemID, variantID, err := parseCartItemID(c.Param("id"))
+	itemID, err := parseCartItemID(c.Param("id"))
 	if err != nil {
 		_ = c.Error(apierr.BadRequestError("Invalid item ID format").WithCode(apierr.CodeInvalidInput).Wrap(err))
 		return
 	}
 
-	userID, sessionID := h.extractUserAndSession(c)
+	session, err := h.resolveSession(c, true)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	userID, sessionID := cartOwner(session)
 
-	cart, err := h.cartService.RemoveCartItem(c.Request.Context(), userID, sessionID, itemID, variantID)
+	cart, err := h.cartService.GetOrCreateCart(c.Request.Context(), userID, sessionID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	cart, err = h.cartService.RemoveCartItem(c.Request.Context(), cart.ID, itemID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -421,9 +468,20 @@ func (h *CartHandler) RemoveItem(c *gin.Context) {
 //	@Failure		500				{object}	api.InternalServerErrorResponse	"Internal server error"
 //	@Router			/cart [delete]
 func (h *CartHandler) ClearCart(c *gin.Context) {
-	userID, sessionID := h.extractUserAndSession(c)
+	session, err := h.resolveSession(c, true)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	userID, sessionID := cartOwner(session)
 
-	err := h.cartService.ClearCart(c.Request.Context(), userID, sessionID)
+	cart, err := h.cartService.GetOrCreateCart(c.Request.Context(), userID, sessionID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	err = h.cartService.ClearCart(c.Request.Context(), cart.ID)
 	if err != nil {
 		_ = c.Error(err)
 		return

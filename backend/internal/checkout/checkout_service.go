@@ -19,25 +19,10 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
-type CartService interface {
-	GetOrCreateCart(ctx context.Context, userID *uuid.UUID, sessionID *string) (*model.Cart, error)
-	ClearCart(ctx context.Context, userID *uuid.UUID, sessionID *string) error
-	// GetOrCreateCartWithTx resolves (or creates) the cart inside the caller's
-	// transaction with a FOR UPDATE row lock, serializing concurrent checkouts.
-	GetOrCreateCartWithTx(
-		ctx context.Context,
-		tx database.QueryExecutor,
-		userID *uuid.UUID,
-		sessionID *string,
-	) (*model.Cart, error)
-	// ClearCartWithTx clears the cart inside the caller's transaction so checkout
-	// and cart clearance commit atomically.
-	ClearCartWithTx(
-		ctx context.Context,
-		tx database.QueryExecutor,
-		userID *uuid.UUID,
-		sessionID *string,
-	) error
+type CartRepository interface {
+	GetCartByUserID(ctx context.Context, qe database.QueryExecutor, userID uuid.UUID) (*model.Cart, error)
+	GetCartBySessionID(ctx context.Context, qe database.QueryExecutor, sessionID string) (*model.Cart, error)
+	ClearCart(ctx context.Context, qe database.QueryExecutor, cartID uuid.UUID) error
 }
 
 type OrderService interface {
@@ -83,7 +68,7 @@ type SettingsProvider interface {
 }
 
 type CheckoutService struct {
-	cartService      CartService
+	cartRepo         CartRepository
 	orderService     OrderService
 	inventoryService InventoryService
 	userService      UserService
@@ -93,7 +78,7 @@ type CheckoutService struct {
 }
 
 func NewService(
-	cartService CartService,
+	cartRepo CartRepository,
 	orderService OrderService,
 	userService UserService,
 	addressService AddressService,
@@ -102,7 +87,7 @@ func NewService(
 	runner ...database.Runner,
 ) *CheckoutService {
 	s := &CheckoutService{
-		cartService:      cartService,
+		cartRepo:         cartRepo,
 		orderService:     orderService,
 		userService:      userService,
 		addressService:   addressService,
@@ -152,12 +137,15 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 	// so there is no deducted-but-no-order or order-without-payment outcome.
 	err := s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		// 1. Lock the customer's cart FOR UPDATE so concurrent checkouts serialize.
-		cart, err := s.cartService.GetOrCreateCartWithTx(ctx, tx, &in.CustomerID, nil)
+		cart, err := s.cartRepo.GetCartByUserID(ctx, tx, in.CustomerID)
 		if err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
+			}
 			return err
 		}
 
-		if len(cart.Items) == 0 {
+		if cart == nil || cart.ID == uuid.Nil || len(cart.Items) == 0 {
 			return apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
 		}
 
@@ -178,14 +166,38 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		var grossTotal int64
 		currency := "EGP"
 		for _, item := range cart.Items {
-			if item.Variant == nil || item.Variant.Price == nil {
+			var (
+				vSKU         string
+				vTitle       string
+				vPrice       sql.NullInt64
+				vCurrency    string
+				pID          uuid.UUID
+				pTitle       string
+				pSlug        string
+				thumbnailURL sql.NullString
+			)
+			query := `
+				SELECT pv.sku, pv.title, pv.price, pv.currency,
+				       p.id, p.title, p.slug,
+				       so.public_url
+				FROM product_variants pv
+				JOIN products p ON p.id = pv.product_id
+				LEFT JOIN storage_objects so ON so.id = COALESCE(pv.thumbnail_object_id, p.thumbnail_object_id)
+				WHERE pv.id = $1 AND pv.deleted_at IS NULL
+			`
+			scanErr := tx.QueryRow(ctx, query, item.VariantID).Scan(
+				&vSKU, &vTitle, &vPrice, &vCurrency,
+				&pID, &pTitle, &pSlug,
+				&thumbnailURL,
+			)
+			if scanErr != nil || !vPrice.Valid {
 				return apierr.BadRequestError(
 					fmt.Sprintf("Variant %s has no defined price", item.VariantID),
 				).WithCode(apierr.CodeInvalidInput)
 			}
-			unitPrice := *item.Variant.Price
-			if item.Variant.Currency != nil && *item.Variant.Currency != "" {
-				currency = *item.Variant.Currency
+			unitPrice := vPrice.Int64
+			if vCurrency != "" {
+				currency = vCurrency
 			}
 
 			qty := int64(item.Quantity)
@@ -198,44 +210,21 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			}
 			grossTotal += itemTotal
 
-			// Build a complete, immutable snapshot of the product & variant at checkout.
 			snapshotMap := make(map[string]any)
-			if item.Variant != nil {
-				snapshotMap["variantId"] = item.Variant.ID.String()
-				snapshotMap["sku"] = item.Variant.SKU
-				snapshotMap["title"] = item.Variant.Title
-				snapshotMap["price"] = unitPrice
-				if item.Variant.Thumbnail != nil && item.Variant.Thumbnail.PublicURL != "" {
-					snapshotMap["thumbnailUrl"] = item.Variant.Thumbnail.PublicURL
-					snapshotMap["image"] = item.Variant.Thumbnail.PublicURL
-				}
-				if len(item.Variant.Media) > 0 && item.Variant.Media[0].Object != nil && item.Variant.Media[0].Object.PublicURL != "" {
-					snapshotMap["image"] = item.Variant.Media[0].Object.PublicURL
-					if _, ok := snapshotMap["thumbnailUrl"]; !ok {
-						snapshotMap["thumbnailUrl"] = item.Variant.Media[0].Object.PublicURL
-					}
-				}
+			snapshotMap["variantId"] = item.VariantID.String()
+			snapshotMap["sku"] = vSKU
+			snapshotMap["title"] = vTitle
+			if pTitle != "" {
+				snapshotMap["title"] = pTitle + " - " + vTitle
 			}
-
-			if item.ThumbnailURL != "" {
-				snapshotMap["thumbnailUrl"] = item.ThumbnailURL
-				snapshotMap["image"] = item.ThumbnailURL
+			snapshotMap["price"] = unitPrice
+			if thumbnailURL.Valid && thumbnailURL.String != "" {
+				snapshotMap["thumbnailUrl"] = thumbnailURL.String
+				snapshotMap["image"] = thumbnailURL.String
 			}
-
-			if item.Product != nil {
-				snapshotMap["productId"] = item.Product.ID.String()
-				snapshotMap["productTitle"] = item.Product.Title
-				snapshotMap["slug"] = item.Product.Slug
-				if item.Product.Thumbnail != nil && item.Product.Thumbnail.PublicURL != "" {
-					if _, ok := snapshotMap["thumbnailUrl"]; !ok {
-						snapshotMap["thumbnailUrl"] = item.Product.Thumbnail.PublicURL
-						snapshotMap["image"] = item.Product.Thumbnail.PublicURL
-					}
-				}
-				if title, ok := snapshotMap["title"].(string); !ok || title == "" {
-					snapshotMap["title"] = item.Product.Title
-				}
-			}
+			snapshotMap["productId"] = pID.String()
+			snapshotMap["productTitle"] = pTitle
+			snapshotMap["slug"] = pSlug
 
 			snapshotBytes, _ := json.Marshal(snapshotMap)
 
@@ -470,7 +459,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 
 		// 10. Clear the cart inside the same transaction so checkout and cart
 		//     clearance commit atomically (no duplicate orders from a failed clear).
-		if err := s.cartService.ClearCartWithTx(ctx, tx, &in.CustomerID, nil); err != nil {
+		if err := s.cartRepo.ClearCart(ctx, tx, cart.ID); err != nil {
 			return apierr.InternalServerError("Failed to clear cart").Wrap(err)
 		}
 
@@ -508,15 +497,27 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 
 	var grossTotal int64 = 0
 	if userID != nil || sessionID != nil {
-		if cartData, err := s.cartService.GetOrCreateCart(ctx, userID, sessionID); err == nil && cartData != nil {
-			for _, item := range cartData.Items {
-				unitPrice := item.PriceAtPurchase
-				if item.Variant != nil && item.Variant.Price != nil {
-					unitPrice = *item.Variant.Price
-				}
-				grossTotal += int64(item.Quantity) * unitPrice
+		_ = s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+			var cartData *model.Cart
+			var err error
+			if userID != nil {
+				cartData, err = s.cartRepo.GetCartByUserID(ctx, db, *userID)
+			} else if sessionID != nil {
+				cartData, err = s.cartRepo.GetCartBySessionID(ctx, db, *sessionID)
 			}
-		}
+			if err == nil && cartData != nil && cartData.ID != uuid.Nil {
+				for _, item := range cartData.Items {
+					var vPrice sql.NullInt64
+					q := `SELECT price FROM product_variants WHERE id = $1 AND deleted_at IS NULL`
+					if qErr := db.QueryRow(ctx, q, item.VariantID).Scan(&vPrice); qErr == nil && vPrice.Valid {
+						grossTotal += int64(item.Quantity) * vPrice.Int64
+					} else {
+						grossTotal += int64(item.Quantity) * item.PriceAtPurchase
+					}
+				}
+			}
+			return nil
+		})
 	}
 
 	// grossTotal is computed exclusively from the server-side cart and the

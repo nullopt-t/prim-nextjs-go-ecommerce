@@ -717,7 +717,7 @@ const docTemplatepublic = `{
                         }
                     },
                     "400": {
-                        "description": "Validation error or invalid UUID",
+                        "description": "Validation error or invalid item ID",
                         "schema": {
                             "$ref": "#/definitions/BadRequestErrorResponse"
                         }

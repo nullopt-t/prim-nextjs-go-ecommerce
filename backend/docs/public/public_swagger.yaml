@@ -1903,7 +1903,7 @@ paths:
                   $ref: '#/definitions/CartResponse'
               type: object
         "400":
-          description: Validation error or invalid UUID
+          description: Validation error or invalid item ID
           schema:
             $ref: '#/definitions/BadRequestErrorResponse'
         "404":

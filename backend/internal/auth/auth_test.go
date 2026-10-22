@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/auth"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 )
 
 func (s *AuthTestSuite) TestStartChallenge_HappyPath() {
@@ -86,8 +87,8 @@ func (s *AuthTestSuite) TestStartChallenge_MaxResends() {
 	}
 	body, _ := json.Marshal(payload)
 
-	// 1 initial + 2 resends = 3 total allowed.
-	for i := 1; i <= 3; i++ {
+	// 1 initial + 3 resends = 4 total allowed.
+	for i := 1; i <= 4; i++ {
 		req, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/start", bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
 		// Use a different IP to avoid HTTP rate limits
@@ -98,10 +99,10 @@ func (s *AuthTestSuite) TestStartChallenge_MaxResends() {
 		s.Require().Equal(http.StatusOK, w.Code, fmt.Sprintf("Request %d should succeed", i))
 	}
 
-	// 4th request should hit business logic limit
+	// 5th request should hit business logic limit
 	req, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/start", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.RemoteAddr = "192.168.1.105:12345" // unique IP
+	req.RemoteAddr = "192.168.1.106:12345" // unique IP
 	w := httptest.NewRecorder()
 
 	s.router.ServeHTTP(w, req)
@@ -143,7 +144,7 @@ func (s *AuthTestSuite) TestFullAuthFlow_HappyPath() {
 	// Assert single session cookie is set
 	cookies := wVerify.Header().Values("Set-Cookie")
 	s.Require().Equal(1, len(cookies), "Should set exactly one session cookie")
-	s.Require().True(strings.HasPrefix(cookies[0], "_prim_session="), "_prim_session cookie should be present")
+	s.Require().True(strings.HasPrefix(cookies[0], middleware.SessionCookieName+"="), "canonical ps session cookie should be present")
 }
 
 func (s *AuthTestSuite) TestVerifyChallenge_InvalidOTP() {
@@ -306,11 +307,11 @@ func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Inactive() {
 
 func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Locked() {
 	email := "locked@example.com"
-	
+
 	userID := uuid.New()
 	_, err := s.db.Exec(context.Background(), `
 		INSERT INTO users (id, email, status, locked_until, created_at, updated_at) 
-		VALUES ($1, $2, 'active', now() + interval '1 hour', now(), now())`, 
+		VALUES ($1, $2, 'active', now() + interval '1 hour', now(), now())`,
 		userID, email)
 	s.Require().NoError(err)
 
@@ -329,7 +330,7 @@ func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Locked() {
 	reqVerify.Header.Set("Content-Type", "application/json")
 	wVerify := httptest.NewRecorder()
 	s.router.ServeHTTP(wVerify, reqVerify)
-	
+
 	s.Require().Equal(http.StatusForbidden, wVerify.Code)
 	var resp map[string]interface{}
 	json.Unmarshal(wVerify.Body.Bytes(), &resp)

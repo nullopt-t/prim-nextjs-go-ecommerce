@@ -319,7 +319,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	orderRouter.MapRoutes(v1)
 
 	// checkout
-	checkoutService := checkout.NewService(cartService, orderService, userService, addressService, inventoryService, settingService, txRunner)
+	checkoutService := checkout.NewService(cartRepo, orderService, userService, addressService, inventoryService, settingService, txRunner)
 	checkoutHandler := checkout.NewHandler(checkoutService)
 	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionStore)
 	checkoutRouter.MapRoutes(v1)
