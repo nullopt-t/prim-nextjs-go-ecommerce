@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
 	"path"
 	"strings"
 	"sync"
@@ -68,10 +69,41 @@ func NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL string) (
 	if strings.TrimSpace(accessKey) != "" && strings.TrimSpace(secretKey) != "" {
 		creds = credentials.NewStaticV4(accessKey, secretKey, "")
 	} else {
-		creds = credentials.NewChainCredentials([]credentials.Provider{
+		providers := []credentials.Provider{
 			&credentials.EnvAWS{},
-			&credentials.IAM{Endpoint: "http://169.254.169.254"},
-		})
+		}
+
+		// Support Vercel OIDC role assumption without long-lived static AWS keys
+		roleARN := os.Getenv("MINIO_PUBLIC_AWS_ROLE_ARN")
+		if roleARN == "" {
+			roleARN = os.Getenv("AWS_ROLE_ARN")
+		}
+		if roleARN != "" {
+			providers = append(providers, &credentials.STSWebIdentity{
+				STSEndpoint: "https://sts.amazonaws.com",
+				RoleARN:     roleARN,
+				GetWebIDTokenExpiry: func() (*credentials.WebIdentityToken, error) {
+					token := os.Getenv("VERCEL_OIDC_TOKEN")
+					if token == "" {
+						if tokenFile := os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE"); tokenFile != "" {
+							if b, err := os.ReadFile(tokenFile); err == nil {
+								token = strings.TrimSpace(string(b))
+							}
+						}
+					}
+					if token == "" {
+						return nil, fmt.Errorf("no OIDC token found in environment (VERCEL_OIDC_TOKEN or AWS_WEB_IDENTITY_TOKEN_FILE)")
+					}
+					return &credentials.WebIdentityToken{
+						Token:  token,
+						Expiry: 3600,
+					}, nil
+				},
+			})
+		}
+
+		providers = append(providers, &credentials.IAM{Endpoint: "http://169.254.169.254"})
+		creds = credentials.NewChainCredentials(providers)
 	}
 
 	minioClient, err := minio.New(trimmedEndpoint, &minio.Options{
