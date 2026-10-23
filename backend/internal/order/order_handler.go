@@ -585,7 +585,7 @@ func (h *OrderHandler) UpdateOrderTracking(c *gin.Context) {
 	}
 
 	if err := h.orderService.UpdateOrderTracking(c.Request.Context(), orderID, req.TrackingNumber); err != nil {
-		_ = c.Error(apierr.InternalServerError("Failed to update tracking number").Wrap(err))
+		_ = c.Error(err)
 		return
 	}
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Tracking number updated successfully"})

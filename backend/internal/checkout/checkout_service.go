@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 
 // CartRepository is the subset of cart persistence checkout needs.
 type CartRepository interface {
+	LockCartByUserID(ctx context.Context, qe database.QueryExecutor, userID uuid.UUID) error
 	GetCartByUserID(ctx context.Context, qe database.QueryExecutor, userID uuid.UUID) (*model.Cart, error)
 	GetCartBySessionID(ctx context.Context, qe database.QueryExecutor, sessionID string) (*model.Cart, error)
 	ClearCart(ctx context.Context, qe database.QueryExecutor, cartID uuid.UUID) error
@@ -224,6 +226,16 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		}
 
 		// 1. Lock the customer's cart FOR UPDATE so concurrent checkouts serialize.
+		//    Without the lock two requests can both read the same items, acquire
+		//    variant locks in different orders, and deadlock (or create duplicate
+		//    orders) before either clears the cart.
+		if err := s.cartRepo.LockCartByUserID(ctx, tx, in.CustomerID); err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
+			}
+			return s.handleError(err, "Failed to lock cart")
+		}
+
 		cart, err := s.cartRepo.GetCartByUserID(ctx, tx, in.CustomerID)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
@@ -489,8 +501,18 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		//    committed into a sale when payment is captured and released if the
 		//    order is cancelled or the hold expires. All reservations live in
 		//    this transaction and roll back with it on any failure.
+		//
+		//    Reserve variants in a deterministic order so two concurrent
+		//    checkouts that share variants cannot deadlock by acquiring the same
+		//    row locks in opposite orders (mirrors CommitReservationsForOrder).
 		if s.stockWriter != nil {
-			for _, item := range orderItems {
+			sortedItems := make([]order.CreateOrderItemInput, len(orderItems))
+			copy(sortedItems, orderItems)
+			sort.Slice(sortedItems, func(i, j int) bool {
+				return sortedItems[i].VariantID.String() < sortedItems[j].VariantID.String()
+			})
+
+			for _, item := range sortedItems {
 				if _, err := s.stockWriter.ReserveStockWithTx(ctx, dbTx, inventory.ReserveStockInput{
 					VariantID: item.VariantID,
 					CartID:    &cart.ID,

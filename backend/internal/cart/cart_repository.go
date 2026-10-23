@@ -115,6 +115,54 @@ func (r *CartRepository) GetCartByID(
 	return cart, nil
 }
 
+// LockCartByUserID acquires a row-level write lock (SELECT ... FOR UPDATE) on
+// the customer's active cart so concurrent checkouts serialize instead of both
+// reading the same items and racing to create duplicate orders. It returns
+// database.ErrNotFound when the customer has no cart.
+func (r *CartRepository) LockCartByUserID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	userID uuid.UUID,
+) error {
+	query := `
+		SELECT id
+		FROM carts
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+		LIMIT 1
+		FOR UPDATE
+	`
+	var id uuid.UUID
+	err := qe.QueryRow(ctx, query, userID).Scan(&id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return database.ErrNotFound
+		}
+		return err
+	}
+	return nil
+}
+
+// LockCartByID acquires a row-level write lock on a single cart so a mutation
+// that inserts cart_items takes the cart -> items lock order that checkout also
+// follows. This prevents a deadlock where checkout holds the cart row while
+// waiting for a cart_items row that the mutation already locked.
+func (r *CartRepository) LockCartByID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	cartID uuid.UUID,
+) error {
+	var id uuid.UUID
+	err := qe.QueryRow(ctx, `SELECT id FROM carts WHERE id = $1 FOR UPDATE`, cartID).Scan(&id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return database.ErrNotFound
+		}
+		return err
+	}
+	return nil
+}
+
 // GetCartByUserID retrieves the most recently created cart for a registered customer along with all items.
 func (r *CartRepository) GetCartByUserID(
 	ctx context.Context,
@@ -194,6 +242,12 @@ func (r *CartRepository) AddItem(
 	qe database.QueryExecutor,
 	item *model.CartItem,
 ) error {
+	// Take the cart -> items lock order shared with checkout before touching
+	// cart_items; otherwise the child-first upsert can deadlock with checkout.
+	if err := r.LockCartByID(ctx, qe, item.CartID); err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO cart_items (cart_id, variant_id, quantity, price_at_purchase, currency, carted_at)
 		VALUES ($1, $2, $3, $4, $5, now())
@@ -230,6 +284,10 @@ func (r *CartRepository) UpdateItemQuantity(
 	itemID int64,
 	quantity int,
 ) error {
+	if err := r.LockCartByID(ctx, qe, cartID); err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE cart_items
 		SET quantity = $1
@@ -255,6 +313,10 @@ func (r *CartRepository) RemoveItem(
 	cartID uuid.UUID,
 	itemID int64,
 ) error {
+	if err := r.LockCartByID(ctx, qe, cartID); err != nil {
+		return err
+	}
+
 	query := `
 		DELETE FROM cart_items
 		WHERE id = $1 AND cart_id = $2
@@ -277,6 +339,10 @@ func (r *CartRepository) ClearCart(
 	qe database.QueryExecutor,
 	cartID uuid.UUID,
 ) error {
+	if err := r.LockCartByID(ctx, qe, cartID); err != nil {
+		return err
+	}
+
 	query := `DELETE FROM cart_items WHERE cart_id = $1`
 	_, err := qe.Exec(ctx, query, cartID)
 	if err != nil {
