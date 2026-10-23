@@ -43,12 +43,21 @@ func NewRepository() *CouponRepository {
 
 // GetByID finds a coupon by its UUID identifier.
 func (r *CouponRepository) GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Coupon, error) {
+	return r.getByID(ctx, qe, `WHERE id = $1`, id)
+}
+
+// GetByIDForUpdate finds a coupon by UUID and takes an exclusive row lock, so
+// callers can validate usage limits and redeem atomically within their tx.
+func (r *CouponRepository) GetByIDForUpdate(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Coupon, error) {
+	return r.getByID(ctx, qe, `WHERE id = $1 FOR UPDATE`, id)
+}
+
+func (r *CouponRepository) getByID(ctx context.Context, qe database.QueryExecutor, where string, id uuid.UUID) (*model.Coupon, error) {
 	query := `
 		SELECT id, code, discount_type, discount_value, currency, min_cart_amount,
 		       usage_limit, per_user_limit, starts_at, expires_at, status, created_at, updated_at
 		FROM coupons
-		WHERE id = $1
-	`
+		` + where
 	var (
 		c             model.Coupon
 		minCartAmount sql.NullInt64

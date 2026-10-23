@@ -359,11 +359,44 @@ func (s *CartService) UpdateCartItemQuantity(
 
 	var cart *model.Cart
 	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		// Validate the target item and the requested quantity against stock on
+		// the same transaction before mutating, so an over-limit update is
+		// rejected (INSUFFICIENT_INVENTORY) instead of silently persisted.
+		current, err := s.cartRepo.GetCartByID(ctx, tx, cartID)
+		if err != nil {
+			return err
+		}
+
+		var variantID uuid.UUID
+		for i := range current.Items {
+			if current.Items[i].ID == itemID {
+				variantID = current.Items[i].VariantID
+				break
+			}
+		}
+		if variantID == uuid.Nil {
+			return database.ErrNotFound
+		}
+
+		if s.inventoryRepo != nil {
+			stock, stockErr := s.inventoryRepo.GetStock(ctx, tx, variantID)
+			if stockErr != nil {
+				var apiErr *apierr.APIError
+				if errors.As(stockErr, &apiErr) {
+					return apiErr
+				}
+				return apierr.InternalServerError("Failed to check inventory").Wrap(stockErr)
+			}
+			if stock == nil || stock.AvailableQuantity < quantity {
+				return apierr.BadRequestError("Insufficient inventory available").
+					WithCode(errcode.CodeInsufficientInventory)
+			}
+		}
+
 		if err := s.cartRepo.UpdateItemQuantity(ctx, tx, cartID, itemID, quantity); err != nil {
 			return err
 		}
 
-		var err error
 		cart, err = s.cartRepo.GetCartByID(ctx, tx, cartID)
 		if err != nil {
 			return err
@@ -496,4 +529,3 @@ func (s *CartService) MergeGuestCart(
 
 	return nil
 }
-

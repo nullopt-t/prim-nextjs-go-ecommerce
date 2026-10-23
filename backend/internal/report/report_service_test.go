@@ -281,8 +281,8 @@ func TestReportService_BuildCSV_Runner(t *testing.T) {
 
 		var apiErr *apierr.APIError
 		require.True(t, errors.As(err, &apiErr))
-		assert.Equal(t, http.StatusInternalServerError, apiErr.Status)
-		assert.Equal(t, apierr.CodeInternalError, apiErr.Code)
+		assert.Equal(t, http.StatusGatewayTimeout, apiErr.Status)
+		assert.Equal(t, apierr.CodeGatewayTimeout, apiErr.Code)
 		assert.True(t, runner.withDBCalled)
 	})
 }

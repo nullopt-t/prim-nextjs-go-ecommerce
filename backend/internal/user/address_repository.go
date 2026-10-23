@@ -128,7 +128,10 @@ func (r *AddressRepository) GetByIDAndUser(
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrAddressNotFound
+			// Return the shared not-found sentinel so consumers (checkout,
+			// address service) can map it through their own handleError without
+			// importing this package's domain sentinel.
+			return nil, database.ErrNotFound
 		}
 		return nil, fmt.Errorf("get address by id and user: %w", err)
 	}

@@ -115,12 +115,6 @@ func (s *AddressService) GetAddress(ctx context.Context, id, userID uuid.UUID) (
 	return address, nil
 }
 
-// GetAddressWithTx resolves an address on the caller's transaction executor, so
-// a caller that already holds a transaction never checks out a second connection.
-func (s *AddressService) GetAddressWithTx(ctx context.Context, tx *database.Tx, id, userID uuid.UUID) (*model.UserAddress, error) {
-	return s.getAddress(ctx, tx, id, userID)
-}
-
 func (s *AddressService) getAddress(ctx context.Context, exec database.QueryExecutor, id, userID uuid.UUID) (*model.UserAddress, error) {
 	address, err := s.repo.GetByIDAndUser(ctx, exec, id, userID)
 	if err != nil {

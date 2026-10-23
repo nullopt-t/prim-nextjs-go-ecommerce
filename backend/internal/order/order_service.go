@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -59,46 +60,43 @@ type CreateOrderInput struct {
 	Items []CreateOrderItemInput
 }
 
-// InventoryService defines the subset of inventory functionality needed by OrderService for restoring stock upon cancellation.
-type InventoryService interface {
-	AdjustStock(ctx context.Context, in inventory.AdjustStockInput) (*model.InventoryStock, error)
-	// AdjustStockWithTx restores/adjusts stock within the caller's transaction so
-	// cancellation and restock remain atomic with the order status transition.
-	AdjustStockWithTx(ctx context.Context, tx *database.Tx, in inventory.AdjustStockInput) (*model.InventoryStock, error)
-	// CommitReservationsForOrderWithTx turns the order's live stock holds into
-	// finalized sale deductions when payment is captured.
-	CommitReservationsForOrderWithTx(ctx context.Context, tx *database.Tx, orderID uuid.UUID) error
-	// ReleaseReservationsForOrderWithTx releases the order's live stock holds and
-	// reports how many were released (0 means stock was already committed).
-	ReleaseReservationsForOrderWithTx(ctx context.Context, tx *database.Tx, orderID uuid.UUID) (int64, error)
-	// ExpiredReservationOrderIDs lists orders whose checkout hold has expired,
-	// for the reservation reaper.
-	ExpiredReservationOrderIDs(ctx context.Context) ([]uuid.UUID, error)
+// InventoryRepository defines the subset of inventory persistence the order domain
+// needs for restocking cancelled orders, releasing reservations, and committing
+// payment captures — all on the caller's transaction.
+type InventoryRepository interface {
+	// CreateLedger writes an inventory ledger entry (e.g. 'return' on cancel) within the caller's tx.
+	CreateLedger(ctx context.Context, qe database.QueryExecutor, ledger *model.InventoryLedger) error
+	// ReleaseReservationsForOrder releases active stock holds for the given order within the caller's tx.
+	ReleaseReservationsForOrder(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID) (int64, error)
+	// CommitReservationsForOrder turns holds into deductions for the given order within the caller's tx.
+	CommitReservationsForOrder(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID) error
+	// ExpiredReservationOrderIDs lists orders whose reservation TTL has elapsed.
+	ExpiredReservationOrderIDs(ctx context.Context, qe database.QueryExecutor) ([]uuid.UUID, error)
 }
 
 // OrderService orchestrates database transactions, order status state machine validation,
 // and audit log tracking for order lifecycle events.
 type OrderService struct {
-	qexecuter        database.Runner
-	orderRepo        *Repository
-	logger           log.Logger
-	inventoryService InventoryService
+	qexecuter     database.Runner
+	orderRepo     *Repository
+	logger        log.Logger
+	inventoryRepo InventoryRepository
 }
 
-// NewService instantiates an OrderService with database runner, order repository, logger, and optional inventory service dependencies.
+// NewService instantiates an OrderService with database runner, order repository, logger, and optional inventory repository dependencies.
 func NewService(
 	r database.Runner,
 	orderRepo *Repository,
 	logger log.Logger,
-	inventoryService ...InventoryService,
+	inventoryRepo ...InventoryRepository,
 ) *OrderService {
 	s := &OrderService{
 		qexecuter: r,
 		orderRepo: orderRepo,
 		logger:    logger,
 	}
-	if len(inventoryService) > 0 {
-		s.inventoryService = inventoryService[0]
+	if len(inventoryRepo) > 0 {
+		s.inventoryRepo = inventoryRepo[0]
 	}
 	return s
 }
@@ -108,7 +106,7 @@ func NewService(
 // reservation, coupon redemption, and payment recording with order creation.
 func (s *OrderService) CreateOrderWithTx(
 	ctx context.Context,
-	tx database.QueryExecutor,
+	tx *database.Tx,
 	in *CreateOrderInput,
 ) (*model.Order, error) {
 	// Validate that at least one line item is provided.
@@ -203,8 +201,13 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 
 	// Execute within an atomic transaction.
 	err := s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		dbTx, ok := tx.(*database.Tx)
+		if !ok {
+			return apierr.InternalServerError("Order creation requires a database transaction").
+				WithCode(apierr.CodeInternalError)
+		}
 		var err error
-		createdOrder, err = s.CreateOrderWithTx(ctx, tx, in)
+		createdOrder, err = s.CreateOrderWithTx(ctx, dbTx, in)
 		return err
 	})
 
@@ -241,41 +244,27 @@ func (s *OrderService) restockOrderItems(
 }
 
 // restockItems writes a compensating 'return' ledger entry for each line item,
-// returning previously deducted units to salable stock.
-func toTx(qe database.QueryExecutor) *database.Tx {
-	if tx, ok := qe.(*database.Tx); ok {
-		return tx
-	}
-	return nil
-}
-
+// restoring previously deducted units to salable stock. On-hand stock is
+// derived from the ledger sum, so the ledger entry is the restock. It runs
+// entirely on the caller's transaction; the inventory repository owns the SQL.
 func (s *OrderService) restockItems(
 	ctx context.Context,
 	tx database.QueryExecutor,
 	items []model.OrderItem,
 ) error {
+	if s.inventoryRepo == nil {
+		return apierr.InternalServerError("Inventory repository is not configured").
+			WithCode(apierr.CodeInternalError)
+	}
+
 	for _, item := range items {
-		if s.inventoryService != nil {
-			if _, err := s.inventoryService.AdjustStockWithTx(
-				ctx,
-				toTx(tx),
-				inventory.AdjustStockInput{
-					VariantID: item.VariantID,
-					Quantity:  item.Quantity,
-					Reason:    string(model.InventoryReasonReturn),
-				},
-			); err != nil {
-				return fmt.Errorf("restore inventory for order item %s: %w", item.ID, err)
-			}
-		} else {
-			// Directly record inventory restoration ledger within the transaction
-			ledgerQuery := `
-				INSERT INTO inventory_ledgers (variant_id, quantity, reason, created_at)
-				VALUES ($1, $2, 'return'::inventory_reason, now())
-			`
-			if _, err := tx.Exec(ctx, ledgerQuery, item.VariantID, item.Quantity); err != nil {
-				return fmt.Errorf("restore inventory ledger for order item %s: %w", item.ID, err)
-			}
+		ledger := &model.InventoryLedger{
+			VariantID: item.VariantID,
+			Quantity:  item.Quantity,
+			Reason:    model.InventoryReasonReturn,
+		}
+		if err := s.inventoryRepo.CreateLedger(ctx, tx, ledger); err != nil {
+			return fmt.Errorf("restore inventory for order item %s: %w", item.ID, err)
 		}
 	}
 
@@ -314,8 +303,8 @@ func (s *OrderService) releaseOrRestockCancelItems(
 	orderID uuid.UUID,
 	items []model.OrderItem,
 ) error {
-	if s.inventoryService != nil {
-		released, err := s.inventoryService.ReleaseReservationsForOrderWithTx(ctx, toTx(tx), orderID)
+	if s.inventoryRepo != nil {
+		released, err := s.inventoryRepo.ReleaseReservationsForOrder(ctx, tx, orderID)
 		if err != nil {
 			return fmt.Errorf("release reservations for cancelled order %s: %w", orderID, err)
 		}
@@ -324,6 +313,51 @@ func (s *OrderService) releaseOrRestockCancelItems(
 		}
 	}
 	return s.restockItems(ctx, tx, items)
+}
+
+// handleError translates repository and driver errors into typed APIErrors so
+// that only apierr.APIError values leave the order service. Already-mapped
+// APIErrors are returned unchanged to avoid double wrapping.
+func (s *OrderService) handleError(err error, fallbackMsg string) error {
+	if err == nil {
+		return nil
+	}
+
+	var apiErr *apierr.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr
+	}
+
+	mappedErr := database.MapError(err)
+	switch {
+	case errors.Is(mappedErr, database.ErrNotFound):
+		return apierr.NotFoundError(fallbackMsg + ": not found").
+			WithCode(apierr.CodeNotFound).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrConflict):
+		return apierr.ConflictError(fallbackMsg + ": conflict").
+			WithCode(apierr.CodeResourceConflict).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+		return apierr.BadRequestError(fallbackMsg + ": referenced entity does not exist").
+			WithCode(apierr.CodeInvalidReference).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrCheckViolation),
+		errors.Is(mappedErr, database.ErrNotNullViolation),
+		errors.Is(mappedErr, database.ErrInvalidInput):
+		return apierr.BadRequestError(fallbackMsg + ": invalid input").
+			WithCode(apierr.CodeInvalidInput).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrTimeout), errors.Is(mappedErr, database.ErrCanceled):
+		return apierr.New(http.StatusGatewayTimeout, "database operation timed out or canceled").
+			WithCode(apierr.CodeGatewayTimeout).
+			Wrap(err)
+	default:
+		return apierr.InternalServerError(fallbackMsg).
+			WithCode(apierr.CodeInternalError).
+			Wrap(err).
+			WithStack()
+	}
 }
 
 // GetOrderByID loads an order by its UUID within a read-only database query execution block.
@@ -527,14 +561,13 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 // CancelOrder handles customer-initiated cancellation for pending or confirmed orders.
 // Verifies customer authorization and valid transition before setting status to cancelled.
 func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID uuid.UUID) error {
-	return s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
 		if err != nil {
-			mappedErr := database.MapError(err)
-			if errors.Is(mappedErr, database.ErrNotFound) {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Order not found").WithCode(errcode.CodeOrderNotFound)
 			}
-			return apierr.InternalServerError("Failed to fetch order").Wrap(err)
+			return s.handleError(err, "Failed to fetch order")
 		}
 
 		if ord.CustomerID == nil || *ord.CustomerID != customerID {
@@ -547,41 +580,36 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 
 		note := "Cancelled by customer"
 		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, id, model.OrderStatusCancelled); err != nil {
-			return err
+			return s.handleError(err, "Failed to cancel order")
 		}
 
 		if err := s.orderRepo.AddStatusHistory(ctx, tx, id, model.OrderStatusCancelled, &note); err != nil {
-			return err
+			return s.handleError(err, "Failed to cancel order")
 		}
 
 		// Fetch order items to restore stock
 		items, err := s.orderRepo.GetOrderItems(ctx, tx, id)
 		if err != nil {
-			return fmt.Errorf("fetch order items for cancellation: %w", err)
+			return s.handleError(err, "Failed to fetch order items")
 		}
 
 		// Resolve inventory: release the still-held reservation (unpaid order) or
 		// restock the committed sale (paid order) within the same transaction.
 		if err := s.releaseOrRestockCancelItems(ctx, tx, id, items); err != nil {
-			return err
+			return s.handleError(err, "Failed to restore inventory")
 		}
 
-		// Update any associated captured or pending payment records to refunded / failed
-		paymentRefundQuery := `
-			UPDATE payments
-			SET status = CASE
-				WHEN status = 'captured'::payment_status THEN 'refunded'::payment_status
-				ELSE 'failed'::payment_status
-			END,
-			updated_at = now()
-			WHERE order_id = $1 AND status NOT IN ('refunded'::payment_status, 'failed'::payment_status)
-		`
-		if _, err := tx.Exec(ctx, paymentRefundQuery, id); err != nil {
-			return fmt.Errorf("refund payment for cancelled order %s: %w", id, err)
+		// Update any associated captured or pending payment records to refunded / failed.
+		if err := s.orderRepo.RefundOrFailPaymentsForOrder(ctx, tx, id); err != nil {
+			return s.handleError(err, "Failed to refund payment")
 		}
 
 		return nil
 	})
+	if err != nil {
+		return s.handleError(err, "Failed to cancel order")
+	}
+	return nil
 }
 
 // ReapExpiredReservations cancels pending orders whose checkout hold has expired
@@ -590,13 +618,17 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 // UPDATE and only transitions while still pending, so concurrent runs are
 // idempotent (the loser observes a non-pending status and does nothing).
 func (s *OrderService) ReapExpiredReservations(ctx context.Context) (int, error) {
-	if s.inventoryService == nil {
+	if s.inventoryRepo == nil {
 		return 0, nil
 	}
 
-	orderIDs, err := s.inventoryService.ExpiredReservationOrderIDs(ctx)
-	if err != nil {
-		return 0, err
+	var orderIDs []uuid.UUID
+	if err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		orderIDs, err = s.inventoryRepo.ExpiredReservationOrderIDs(ctx, db)
+		return err
+	}); err != nil {
+		return 0, s.handleError(err, "Failed to list expired reservation orders")
 	}
 
 	cancelled := 0
@@ -649,18 +681,13 @@ func (s *OrderService) expirePendingOrder(ctx context.Context, orderID uuid.UUID
 
 		// The hold lapsed without ever being committed, so there is no stock to
 		// restock — releasing the reservation is the complete reversal.
-		if _, err := s.inventoryService.ReleaseReservationsForOrderWithTx(ctx, toTx(tx), orderID); err != nil {
+		if _, err := s.inventoryRepo.ReleaseReservationsForOrder(ctx, tx, orderID); err != nil {
 			return err
 		}
 
 		// Fail the never-captured payment so it no longer looks receivable.
-		paymentQuery := `
-			UPDATE payments
-			SET status = 'failed'::payment_status, updated_at = now()
-			WHERE order_id = $1 AND status IN ('pending'::payment_status, 'authorized'::payment_status)
-		`
-		if _, err := tx.Exec(ctx, paymentQuery, orderID); err != nil {
-			return fmt.Errorf("fail stale payment for order %s: %w", orderID, err)
+		if err := s.orderRepo.FailPendingPaymentsForOrder(ctx, tx, orderID); err != nil {
+			return s.handleError(err, "Failed to fail stale payment")
 		}
 
 		didCancel = true
@@ -677,7 +704,10 @@ func (s *OrderService) GetDashboardStats(ctx context.Context) (*DashboardStats, 
 		stats, err = s.orderRepo.GetDashboardStats(ctx, db)
 		return err
 	})
-	return stats, err
+	if err != nil {
+		return nil, s.handleError(err, "Failed to load dashboard stats")
+	}
+	return stats, nil
 }
 
 // ListPayments returns a keyset-paginated list of payment transactions.
@@ -689,7 +719,10 @@ func (s *OrderService) ListPayments(ctx context.Context, filter PaymentListFilte
 		payments, page, err = s.orderRepo.ListPayments(ctx, db, filter)
 		return err
 	})
-	return payments, page, err
+	if err != nil {
+		return nil, nil, s.handleError(err, "Failed to list payments")
+	}
+	return payments, page, nil
 }
 
 // UpdatePaymentStatus changes the status of a payment record. Transitioning a
@@ -706,21 +739,26 @@ func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, st
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Payment not found").WithCode(apierr.CodeNotFound)
 			}
-			return err
+			return s.handleError(err, "Failed to update payment status")
 		}
 
 		if err := s.orderRepo.UpdatePaymentStatus(ctx, tx, id, status); err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Payment not found").WithCode(apierr.CodeNotFound)
 			}
-			return err
+			return s.handleError(err, "Failed to update payment status")
 		}
 
 		// Capture = sale. Commit the order's holds (deduct on-hand stock). The
 		// operation is idempotent, so re-capturing cannot double-deduct.
-		if status == string(model.StatusCaptured) && s.inventoryService != nil {
-			if err := s.inventoryService.CommitReservationsForOrderWithTx(ctx, toTx(tx), orderID); err != nil {
-				return err
+		if status == string(model.StatusCaptured) && s.inventoryRepo != nil {
+			if err := s.inventoryRepo.CommitReservationsForOrder(ctx, tx, orderID); err != nil {
+				if errors.Is(err, inventory.ErrInsufficientStock) {
+					return apierr.BadRequestError(
+						fmt.Sprintf("Insufficient physical on-hand stock to capture payment for order %s", orderID),
+					).WithCode(errcode.CodeInsufficientInventory)
+				}
+				return s.handleError(err, "Failed to update payment status")
 			}
 		}
 		return nil
@@ -735,7 +773,7 @@ func (s *OrderService) RefundPayment(ctx context.Context, id uuid.UUID) error {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Payment not found").WithCode(apierr.CodeNotFound)
 			}
-			return err
+			return s.handleError(err, "Failed to refund payment")
 		}
 
 		// Only a captured payment holds funds that can be returned. Refunding a
@@ -754,7 +792,11 @@ func (s *OrderService) RefundPayment(ctx context.Context, id uuid.UUID) error {
 
 // UpdateOrderTracking updates the carrier tracking number for an order.
 func (s *OrderService) UpdateOrderTracking(ctx context.Context, id uuid.UUID, trackingNumber string) error {
-	return s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return s.orderRepo.UpdateOrderTracking(ctx, tx, id, trackingNumber)
 	})
+	if err != nil {
+		return s.handleError(err, "Failed to update order tracking")
+	}
+	return nil
 }

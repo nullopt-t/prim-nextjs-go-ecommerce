@@ -824,6 +824,64 @@ func (r *Repository) UpdateOrderTracking(ctx context.Context, qe database.QueryE
 	return nil
 }
 
+// CreatePayment records a payment transaction for an order on the caller's
+// query executor. The order domain owns the payments table, so other domains
+// persist payment records through this method rather than raw SQL.
+func (r *Repository) CreatePayment(ctx context.Context, qe database.QueryExecutor, p *model.Payment) error {
+	query := `
+		INSERT INTO payments (id, order_id, amount, currency, status, provider, provider_transaction_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+	`
+	if _, err := qe.Exec(
+		ctx,
+		query,
+		p.ID,
+		p.OrderID,
+		p.Amount,
+		p.Currency,
+		p.Status,
+		p.Provider,
+		p.ProviderTransactionID,
+	); err != nil {
+		return fmt.Errorf("create payment: %w", err)
+	}
+	return nil
+}
+
+// RefundOrFailPaymentsForOrder closes every still-open payment of a cancelled
+// order: captured funds become refunded, anything else becomes failed. The
+// order domain owns the payments table, so this lives with the repository.
+func (r *Repository) RefundOrFailPaymentsForOrder(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID) error {
+	query := `
+		UPDATE payments
+		SET status = CASE
+			WHEN status = 'captured'::payment_status THEN 'refunded'::payment_status
+			ELSE 'failed'::payment_status
+		END,
+		updated_at = now()
+		WHERE order_id = $1 AND status NOT IN ('refunded'::payment_status, 'failed'::payment_status)
+	`
+	if _, err := qe.Exec(ctx, query, orderID); err != nil {
+		return fmt.Errorf("refund or fail payments for order: %w", err)
+	}
+	return nil
+}
+
+// FailPendingPaymentsForOrder marks never-captured payments as failed. It is
+// used when an unpaid order's stock hold lapses, so stale payments no longer
+// look receivable.
+func (r *Repository) FailPendingPaymentsForOrder(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID) error {
+	query := `
+		UPDATE payments
+		SET status = 'failed'::payment_status, updated_at = now()
+		WHERE order_id = $1 AND status IN ('pending'::payment_status, 'authorized'::payment_status)
+	`
+	if _, err := qe.Exec(ctx, query, orderID); err != nil {
+		return fmt.Errorf("fail pending payments for order: %w", err)
+	}
+	return nil
+}
+
 // derefString returns the string value of a *string, or "" if nil.
 func derefString(s *string) string {
 	if s == nil {

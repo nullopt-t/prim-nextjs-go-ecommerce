@@ -4,7 +4,9 @@ package inventory
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +23,76 @@ type InventoryRepository struct{}
 // NewRepository creates and returns an initialized InventoryRepository instance.
 func NewRepository() *InventoryRepository {
 	return &InventoryRepository{}
+}
+
+// ErrInsufficientStock is returned when a reservation cannot be committed as a
+// sale because the physical on-hand stock (ledger sum) is lower than the held
+// quantity. Consumers map it to their own API error type; the repository only
+// deals in sentinel/driver errors.
+var ErrInsufficientStock = errors.New("insufficient physical on-hand stock to commit reservation")
+
+// CommitReservationsForOrder converts every unreleased reservation for an order
+// into a finalized sale deduction on the caller's query executor. Each held
+// unit becomes a negative 'sale' ledger entry and the hold is marked released.
+// Holds whose TTL just lapsed but which the reaper has not yet released are
+// still honoured (physical on-hand is re-checked beneath the variant row lock,
+// so truly unavailable units fail closed with ErrInsufficientStock, which
+// rolls the whole operation back). The operation is idempotent — a second call
+// finds no unreleased holds and does nothing.
+func (r *InventoryRepository) CommitReservationsForOrder(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	orderID uuid.UUID,
+) error {
+	reservations, err := r.GetUnreleasedReservationsForOrder(ctx, qe, orderID)
+	if err != nil {
+		return fmt.Errorf("fetch reservations for order %s: %w", orderID, err)
+	}
+
+	// Lock variants in a deterministic order so two concurrent commits that
+	// share variants cannot deadlock (consistent lock ordering).
+	sort.Slice(reservations, func(i, j int) bool {
+		if reservations[i].VariantID != reservations[j].VariantID {
+			return reservations[i].VariantID.String() < reservations[j].VariantID.String()
+		}
+		return reservations[i].ID.String() < reservations[j].ID.String()
+	})
+
+	for _, res := range reservations {
+		// Serialize stock deductions per variant across concurrent commits.
+		if err := r.LockVariantForUpdate(ctx, qe, res.VariantID); err != nil {
+			return fmt.Errorf("lock variant %s for commit: %w", res.VariantID, err)
+		}
+
+		stock, err := r.GetStock(ctx, qe, res.VariantID)
+		if err != nil {
+			return fmt.Errorf("get stock for variant %s: %w", res.VariantID, err)
+		}
+		if stock.OnHandQuantity < res.Quantity {
+			return fmt.Errorf("commit reservation %s (variant %s): %w", res.ID, res.VariantID, ErrInsufficientStock)
+		}
+
+		if err := r.ReleaseReservation(ctx, qe, res.ID); err != nil {
+			return fmt.Errorf("release reservation %s: %w", res.ID, err)
+		}
+
+		ledger := &model.InventoryLedger{
+			VariantID: res.VariantID,
+			Quantity:  -res.Quantity,
+			Reason:    model.InventoryReasonSale,
+		}
+		if err := r.CreateLedger(ctx, qe, ledger); err != nil {
+			return fmt.Errorf("create sale ledger for variant %s: %w", res.VariantID, err)
+		}
+	}
+
+	// Defensive: release anything still unreleased for this order (e.g. a hold
+	// inserted concurrently) so it cannot linger and be committed twice.
+	if _, err := r.ReleaseReservationsForOrder(ctx, qe, orderID); err != nil {
+		return fmt.Errorf("release lingering reservations for order %s: %w", orderID, err)
+	}
+
+	return nil
 }
 
 // LockVariantForUpdate acquires an exclusive row-level write lock (SELECT ... FOR UPDATE) on the specified variant.
@@ -716,4 +788,3 @@ func (r *InventoryRepository) GetPrimaryVariantIDByProductID(
 	}
 	return variantID, nil
 }
-

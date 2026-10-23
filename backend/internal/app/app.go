@@ -324,16 +324,10 @@ func (app *App) setupRoutes(router *gin.Engine) {
 
 	// order
 	orderRepo := order.NewRepository()
-	orderService := order.NewService(txRunner, orderRepo, app.logger, inventoryService)
+	orderService := order.NewService(txRunner, orderRepo, app.logger, inventoryRepo)
 	orderHandler := order.NewHandler(orderService)
 	orderRouter := order.NewRouter(orderHandler, sessionStore)
 	orderRouter.MapRoutes(v1)
-
-	// checkout
-	checkoutService := checkout.NewService(cartRepo, orderService, userService, addressService, inventoryService, settingService, txRunner)
-	checkoutHandler := checkout.NewHandler(checkoutService)
-	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionStore)
-	checkoutRouter.MapRoutes(v1)
 
 	// coupon & promotions
 	couponRepo := coupon.NewRepository()
@@ -341,6 +335,26 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	couponHandler := coupon.NewHandler(couponService)
 	couponRouter := coupon.NewRouter(couponHandler, sessionStore)
 	couponRouter.MapRoutes(v1)
+
+	// checkout
+	checkoutService := checkout.NewService(
+		cartRepo,
+		orderService,
+		inventoryService,
+		userRepo,
+		addressRepo,
+		couponRepo,
+		variantRepository,
+		productRepo,
+		objectRepository,
+		orderRepo,
+		app.storageProvider,
+		settingService,
+		txRunner,
+	)
+	checkoutHandler := checkout.NewHandler(checkoutService)
+	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionStore)
+	checkoutRouter.MapRoutes(v1)
 
 	// settings
 	settingHandler := setting.NewHandler(settingService)

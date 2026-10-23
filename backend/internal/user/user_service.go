@@ -145,16 +145,6 @@ func (s *UserService) GetUserByID(
 	return user, nil
 }
 
-// GetUserByIDWithTx resolves a user on the caller's transaction executor, so a
-// caller that already holds a transaction never checks out a second connection.
-func (s *UserService) GetUserByIDWithTx(
-	ctx context.Context,
-	tx *database.Tx,
-	userID uuid.UUID,
-) (*model.User, error) {
-	return s.getUserByID(ctx, tx, userID)
-}
-
 // UserExists reports whether a non-deleted user with the given id exists. It is
 // used by the authentication layer to detect sessions whose principal was
 // removed out-of-band (for example a database reseed), so those requests fail

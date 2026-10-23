@@ -18,8 +18,6 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
-
-
 // InventoryService provides domain logic and transaction orchestration for inventory ledgers,
 // stock reservations, and inventory balance calculations.
 type InventoryService struct {
@@ -139,20 +137,6 @@ func (s *InventoryService) AdjustStock(
 	}
 
 	return updatedStock, nil
-}
-
-// AdjustStockWithTx adjusts variant stock within the caller's database transaction,
-// so stock movements can participate in wider atomic units of work (e.g. checkout
-// or order cancellation) instead of opening their own separate transaction.
-func (s *InventoryService) AdjustStockWithTx(
-	ctx context.Context,
-	tx *database.Tx,
-	in AdjustStockInput,
-) (*model.InventoryStock, error) {
-	if _, err := validateAdjustStockInput(in); err != nil {
-		return nil, err
-	}
-	return s.adjustStockInTx(ctx, tx, in)
 }
 
 // validateAdjustStockInput checks shared preconditions for stock adjustments and
@@ -613,45 +597,13 @@ func (s *InventoryService) CommitReservationsForOrderWithTx(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	reservations, err := s.repo.GetUnreleasedReservationsForOrder(ctx, tx, orderID)
-	if err != nil {
-		return s.handleError(err, "Failed to fetch reservations for order")
-	}
-
-	for _, res := range reservations {
-		// Serialize stock deductions per variant across concurrent commits.
-		if err := s.repo.LockVariantForUpdate(ctx, tx, res.VariantID); err != nil {
-			return s.handleError(err, "Failed to lock variant for update")
-		}
-
-		stock, err := s.repo.GetStock(ctx, tx, res.VariantID)
-		if err != nil {
-			return s.handleError(err, "Failed to get stock for variant")
-		}
-		if stock.OnHandQuantity < res.Quantity {
+	if err := s.repo.CommitReservationsForOrder(ctx, tx, orderID); err != nil {
+		if errors.Is(err, ErrInsufficientStock) {
 			return apierr.BadRequestError(
-				fmt.Sprintf("Insufficient physical on-hand stock (%d) to commit reservation (%d)", stock.OnHandQuantity, res.Quantity),
+				fmt.Sprintf("Insufficient physical on-hand stock to commit reservation (%s)", orderID),
 			).WithCode(errcode.CodeInsufficientInventory)
 		}
-
-		if err := s.repo.ReleaseReservation(ctx, tx, res.ID); err != nil {
-			return s.handleError(err, "Failed to release reservation")
-		}
-
-		ledger := &model.InventoryLedger{
-			VariantID: res.VariantID,
-			Quantity:  -res.Quantity,
-			Reason:    model.InventoryReasonSale,
-		}
-		if err := s.repo.CreateLedger(ctx, tx, ledger); err != nil {
-			return s.handleError(err, "Failed to create inventory ledger")
-		}
-	}
-
-	// Defensive: release anything still unreleased for this order (e.g. a hold
-	// inserted concurrently) so it cannot linger and be committed twice.
-	if _, err := s.repo.ReleaseReservationsForOrder(ctx, tx, orderID); err != nil {
-		return s.handleError(err, "Failed to release lingering reservations for order")
+		return s.handleError(err, "Failed to commit reservation")
 	}
 
 	return nil

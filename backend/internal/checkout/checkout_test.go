@@ -40,10 +40,13 @@ import (
 
 	"github.com/nullopt-t/prim-backend/internal/auth"
 	"github.com/nullopt-t/prim-backend/internal/cart"
+	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
+	"github.com/nullopt-t/prim-backend/internal/catalog/product"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/checkout"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
@@ -99,6 +102,7 @@ type CheckoutTestSuite struct {
 	cartService      *cart.CartService
 	variantService   *variant.VariantService
 	inventoryService *inventory.InventoryService
+	inventoryRepo    *inventory.InventoryRepository
 	orderRepo        *order.Repository
 	addressService   *user.AddressService
 	userService      *user.UserService
@@ -163,6 +167,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 
 	inventoryRepo := inventory.NewRepository()
 	s.inventoryService = inventory.NewService(logger, s.txRunner, inventoryRepo, nil)
+	s.inventoryRepo = inventoryRepo
 
 	variantRepo := variant.NewRepository()
 	s.variantService = variant.NewService(logger, s.txRunner, nil, nil, variantRepo, inventoryRepo)
@@ -179,7 +184,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	)
 
 	s.orderRepo = order.NewRepository()
-	orderService := order.NewService(s.txRunner, s.orderRepo, logger, s.inventoryService)
+	orderService := order.NewService(s.txRunner, s.orderRepo, logger, s.inventoryRepo)
 
 	userRepo := user.NewPostgresRepository()
 	s.userService = user.NewService(s.txRunner, userRepo, logger)
@@ -190,9 +195,15 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	s.checkoutService = checkout.NewService(
 		cartRepo,
 		orderService,
-		s.userService,
-		s.addressService,
 		s.inventoryService,
+		userRepo,
+		addressRepo,
+		coupon.NewRepository(),
+		variantRepo,
+		product.NewProductRepository(),
+		object.NewRepository(),
+		s.orderRepo,
+		nil,
 		setting.NewService(s.txRunner, setting.NewRepository()),
 		s.txRunner,
 	)
@@ -560,7 +571,7 @@ func (s *CheckoutTestSuite) countActiveCartItems(userID uuid.UUID) int {
 		SELECT COUNT(*)
 		FROM cart_items ci
 		JOIN carts c ON c.id = ci.cart_id
-		WHERE c.user_id = $1 AND ci.deleted_at IS NULL
+		WHERE c.user_id = $1
 	`, userID).Scan(&n)
 	s.Require().NoError(err)
 	return n

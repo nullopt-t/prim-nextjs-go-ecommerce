@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 )
 
 var (
@@ -103,6 +104,17 @@ func wrapPgError(sentinel error, pgErr *pgconn.PgError) error {
 func MapError(err error) error {
 	if err == nil {
 		return nil
+	}
+
+	// Already-classified client-facing application errors must not be re-mapped:
+	// an APIError may legitimately wrap a driver error (e.g. NotFound wrapping
+	// pgx.ErrNoRows) as its cause for logging. Re-mapping it here would discard
+	// the typed status/code and turn a 404 into a generic not-found/500 at the
+	// call site. Generic 500s are still inspected so a raw driver failure wrapped
+	// in an internal error can be reclassified (timeout -> 504, pool -> 503).
+	var apiErr *apierr.APIError
+	if errors.As(err, &apiErr) && apiErr.Status < 500 {
+		return err
 	}
 
 	// 1. Standard Go Context & Driver Errors
