@@ -1,7 +1,8 @@
 COMPOSE = docker compose -f docker-compose.dev.yml
 PROD_COMPOSE = docker compose --env-file backend/.env -f backend/docker/docker-compose.prod.yml
 
-.PHONY: up up-build up-d down clean logs logs-api logs-worker logs-frontend \
+.PHONY: up up-build up-d down clean clean-dev clean-prod clean-volumes-dev clean-volumes-prod \
+	logs logs-api logs-worker logs-frontend \
 	migrate-up migrate-down migrate-drop migrate-reset \
 	prod-up prod-down prod-logs prod-ps prod-migrate
 
@@ -19,8 +20,25 @@ up-d:
 down:
 	$(COMPOSE) down
 
-clean:
-	$(COMPOSE) down -v
+## ─── Cleanup ─────────────────────────────────────────────
+
+# Safe cleanup: removes containers and networks, keeps all named volumes.
+clean: clean-dev
+
+clean-dev:
+	$(COMPOSE) down --remove-orphans
+
+clean-prod:
+	$(PROD_COMPOSE) down --remove-orphans
+
+# Explicitly destructive. Only use when you intend to delete persisted data.
+clean-volumes-dev:
+	@echo "WARNING: removing dev volumes (Postgres, Redis, MinIO, Kafka)"
+	$(COMPOSE) down -v --remove-orphans
+
+clean-volumes-prod:
+	@echo "WARNING: removing the production MinIO volume"
+	$(PROD_COMPOSE) down -v --remove-orphans
 
 ## ─── Logs ────────────────────────────────────────────────
 
