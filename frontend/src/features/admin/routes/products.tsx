@@ -21,6 +21,7 @@ import { notify, apiErrorMessage } from "@/lib/notify";
 import { ErrorState } from "@/components/ui/errorState";
 import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
+import { normalizeMediaUrl } from "@/utils/media";
 
 export function AdminProducts() {
   const t = useTranslations("admin");
@@ -94,7 +95,7 @@ export function AdminProducts() {
           stock: typeof p.stockQuantity === "number" ? p.stockQuantity : (p.stockCount || (p.stock !== undefined ? p.stock : 0)),
           lowStockThreshold: 10,
           status: p.status || "draft",
-          image: p.thumbnail || p.img || p.image || "/placeholder.png",
+          image: normalizeMediaUrl(p.thumbnail || p.img || p.image),
           variants: p.variants || [],
           salesCount: 0,
         };
@@ -263,7 +264,7 @@ export function AdminProducts() {
                     <td className="py-3.5 ps-4">
                       <div className="flex items-center gap-3">
                         <img
-                          src={prod.image}
+                          src={normalizeMediaUrl(prod.image)}
                           alt={prod.name}
                           className="size-11 rounded-xl object-cover border border-border"
                         />

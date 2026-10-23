@@ -34,6 +34,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useAuthContext } from "@/context/AuthContext";
 import { usePublicSettings } from "@/context/PublicSettingsContext";
 import { useTranslations } from "next-intl";
+import { normalizeMediaUrl } from "@/utils/media";
 
 function generateOrderCode() {
 	return Math.floor(10000 + Math.random() * 90000).toString();
@@ -1168,7 +1169,7 @@ export function Checkout() {
 										<div className="flex items-center gap-3">
 											<div className="w-12 h-12 rounded-lg bg-secondary overflow-hidden shrink-0 border border-border/50">
 												<img
-													src={item.img || "/placeholder-product.png"}
+													src={normalizeMediaUrl(item.img)}
 													alt={(typeof item.productName === "object" ? item.productName?.en : item.productName) || t("summary.product")}
 													className="w-full h-full object-cover"
 												/>

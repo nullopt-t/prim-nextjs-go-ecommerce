@@ -1,6 +1,7 @@
 import React from "react";
 import Image from "next/image";
 import { Link } from "@/i18n/navigation";
+import { normalizeMediaUrl } from "@/utils/media";
 
 interface RecentlyCardProps {
   title: string;
@@ -14,7 +15,7 @@ export default function RecentlyCard({ title, img, slug }: RecentlyCardProps) {
       <div className="w-28 h-28 sm:w-32 sm:h-32 bg-secondary/30 rounded-xl overflow-hidden border border-border group-hover:border-accent-brand group-hover:shadow-md transition-all relative flex items-center justify-center">
         {img ? (
           <img
-            src={img}
+            src={normalizeMediaUrl(img)}
             alt={title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />

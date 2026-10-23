@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { cartService } from "@/services/cart";
 import { useAuthContext } from "@/context/AuthContext";
+import { normalizeMediaUrl } from "@/utils/media";
 
 export interface CartContextItem {
   id: string;
@@ -116,7 +117,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const price = item.unitPrice !== undefined
         ? `EGP ${(item.unitPrice / 100).toFixed(2)}`
         : (item.productPrice || item.price || "EGP 0.00");
-      const img = item.thumbnailUrl || item.img || item.image || "/placeholder-product.png";
+      const rawThumbnail = item.thumbnailUrl 
+        || (typeof item.thumbnail === "string" ? item.thumbnail : (item.thumbnail?.publicUrl || item.thumbnail?.url))
+        || item.img 
+        || item.image;
+      const img = normalizeMediaUrl(rawThumbnail);
 
       return {
         id: String(item.id),

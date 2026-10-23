@@ -5,6 +5,7 @@ import { FolderTree, Loader2, Package, Pencil, RefreshCw, X } from "lucide-react
 import { useTranslations } from "next-intl";
 import { catalogService } from "@/services/catalog";
 import { notify } from "@/lib/notify";
+import { normalizeMediaUrl } from "@/utils/media";
 
 export interface PanelCategory {
   id: string;
@@ -225,7 +226,7 @@ export default function CategoryProductsPanel({
               <li key={product.variantId || product.id} className="flex items-center gap-3 px-3 py-2.5">
                 {product.thumbnail ? (
                   <img
-                    src={product.thumbnail}
+                    src={normalizeMediaUrl(product.thumbnail)}
                     alt=""
                     loading="lazy"
                     className="size-11 shrink-0 rounded-lg border border-border object-cover"

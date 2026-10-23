@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { catalogService } from "@/services/catalog";
+import { normalizeMediaUrl } from "@/utils/media";
 
 export function normalizeProduct(raw: any) {
   if (!raw) return null;
@@ -22,7 +23,14 @@ export function normalizeProduct(raw: any) {
     ar: typeof p.product?.ar === "string" ? p.product.ar : titleStr,
   };
 
-  const img = p.thumbnailUrl || p.thumbnail || p.img || p.image || (p.images && p.images[0]) || raw.thumbnail || raw.img || "/placeholder-product.png";
+  const rawImg = p.thumbnailUrl 
+    || (typeof p.thumbnail === "string" ? p.thumbnail : (p.thumbnail?.publicUrl || p.thumbnail?.url))
+    || p.img 
+    || p.image 
+    || (p.images && p.images[0]) 
+    || (typeof raw.thumbnail === "string" ? raw.thumbnail : (raw.thumbnail?.publicUrl || raw.thumbnail?.url))
+    || raw.img;
+  const img = normalizeMediaUrl(rawImg);
   
   // Price formatting - check p (inner product if wishlistItem, or raw) then fallback to raw
   const rawPrice = p.extractedPrice !== undefined ? p.extractedPrice : raw.extractedPrice;
@@ -54,14 +62,18 @@ export function normalizeProduct(raw: any) {
   const variantMedia: string[] = [];
   if (Array.isArray(raw.variants)) {
     raw.variants.forEach((v: any) => {
-      const vThumb = typeof v.thumbnail === "string" ? v.thumbnail : (v.thumbnail?.url || v.thumbnail?.publicUrl);
-      if (vThumb && !variantMedia.includes(vThumb)) {
+      const vThumbRaw = typeof v.thumbnail === "string" ? v.thumbnail : (v.thumbnail?.url || v.thumbnail?.publicUrl);
+      const vThumb = normalizeMediaUrl(vThumbRaw);
+      if (vThumb && vThumb !== "/placeholder-product.png" && !variantMedia.includes(vThumb)) {
         variantMedia.push(vThumb);
       }
       if (Array.isArray(v.media)) {
         v.media.forEach((m: any) => {
-          const mUrl = typeof m === "string" ? m : m?.url;
-          if (mUrl && !variantMedia.includes(mUrl)) variantMedia.push(mUrl);
+          const mUrlRaw = typeof m === "string" ? m : (m?.url || m?.publicUrl || m?.object?.publicUrl);
+          const mUrl = normalizeMediaUrl(mUrlRaw);
+          if (mUrl && mUrl !== "/placeholder-product.png" && !variantMedia.includes(mUrl)) {
+            variantMedia.push(mUrl);
+          }
         });
       }
     });
@@ -72,9 +84,13 @@ export function normalizeProduct(raw: any) {
     variantMedia.push(img);
   }
 
+  const rawImagesList = Array.isArray(raw.images) && raw.images.length > 0
+    ? raw.images.map((im: any) => normalizeMediaUrl(typeof im === "string" ? im : (im?.url || im?.publicUrl)))
+    : [];
+
   const images = variantMedia.length > 0 
     ? variantMedia 
-    : (Array.isArray(raw.images) && raw.images.length > 0 ? raw.images : [img]);
+    : (rawImagesList.length > 0 ? rawImagesList : [img]);
 
   // Extract unique colors from variants (kept for legacy consumers)
   const colors: { name: string; class: string; variantIndex: number }[] = [];
@@ -156,10 +172,18 @@ export function normalizeProduct(raw: any) {
         const vOldPrice = v.extractedOriginalPrice !== undefined
           ? Number(v.extractedOriginalPrice)
           : (v.originalPrice || v.oldPrice ? parseFloat(String(v.originalPrice || v.oldPrice).replace(/[^0-9.-]+/g, "")) : undefined);
-        const vThumb = typeof v.thumbnail === "string" ? v.thumbnail : (v.thumbnail?.url || v.thumbnail?.publicUrl || undefined);
+        const vThumbRaw = typeof v.thumbnail === "string" ? v.thumbnail : (v.thumbnail?.url || v.thumbnail?.publicUrl || undefined);
+        const vThumb = vThumbRaw ? normalizeMediaUrl(vThumbRaw) : undefined;
+        const vMedia = Array.isArray(v.media)
+          ? v.media.map((m: any) => {
+              const url = normalizeMediaUrl(typeof m === "string" ? m : (m?.url || m?.publicUrl || m?.object?.publicUrl));
+              return typeof m === "object" ? { ...m, url } : { url };
+            })
+          : [];
         return {
           ...v,
           thumbnail: vThumb,
+          media: vMedia,
           price: vPrice,
           extractedPrice: vPrice,
           oldPrice: vOldPrice,
@@ -171,6 +195,16 @@ export function normalizeProduct(raw: any) {
 
   const variantId = raw.variantId || p.variantId || undefined;
   const defaultVariantId = raw.defaultVariantId || raw.variantId || p.variantId || undefined;
+
+  const rawBrand = p.brand ?? raw.brand;
+  const brandName = typeof rawBrand === "string" 
+    ? rawBrand 
+    : (p.brandName || p.brand?.name || raw.brand?.name || "PRIM");
+  const brandObj = typeof rawBrand === "object" && rawBrand !== null ? {
+    ...rawBrand,
+    logoUrl: rawBrand.logoUrl || rawBrand.logo ? normalizeMediaUrl(rawBrand.logoUrl || rawBrand.logo) : undefined,
+    logo: rawBrand.logoUrl || rawBrand.logo ? normalizeMediaUrl(rawBrand.logoUrl || rawBrand.logo) : undefined,
+  } : null;
 
   return {
     ...raw,
@@ -197,9 +231,8 @@ export function normalizeProduct(raw: any) {
     reviews,
     inStock,
     stockCount,
-    brand: typeof (p.brand ?? raw.brand) === "string" 
-      ? (p.brand ?? raw.brand) 
-      : (p.brandName || p.brand?.name || raw.brand?.name || "PRIM"),
+    brand: brandName,
+    brandObj,
     category: categoryName || p.categoryName || "General",
     categoryId,
   };
@@ -282,7 +315,13 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
         const rawBrands = Array.isArray(brandRes.value) 
           ? brandRes.value 
           : (Array.isArray(brandRes.value.data) ? brandRes.value.data : []);
-        setBrands(rawBrands);
+        setBrands(
+          rawBrands.map((b: any) => ({
+            ...b,
+            logoUrl: b.logoUrl || b.logo ? normalizeMediaUrl(b.logoUrl || b.logo) : undefined,
+            logo: b.logoUrl || b.logo ? normalizeMediaUrl(b.logoUrl || b.logo) : undefined,
+          }))
+        );
       }
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to load catalog");

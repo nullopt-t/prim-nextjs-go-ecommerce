@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { ArrowRight } from "lucide-react";
 import { useCatalogContext } from "@/context/CatalogContext";
 import { useTranslations, useLocale } from "next-intl";
+import { normalizeMediaUrl } from "@/utils/media";
 
 interface CategoryShowcaseCardProps {
   category: {
@@ -46,7 +47,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
                 >
                   <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-secondary/50 border border-border/40 group-hover:border-accent-brand/60 transition-colors">
                     <img
-                      src={p.img || p.thumbnail || "/placeholder-product.png"}
+                      src={normalizeMediaUrl(p.img || p.thumbnail)}
                       alt={productTitle}
                       className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
                     />
@@ -70,7 +71,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
               >
                 <div className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-secondary/50 border border-border/40 group-hover:border-accent-brand/60 transition-colors">
                   <img
-                    src={top4[0].img || top4[0].thumbnail || "/placeholder-product.png"}
+                    src={normalizeMediaUrl(top4[0].img || top4[0].thumbnail)}
                     alt={productTitle}
                     className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
                   />

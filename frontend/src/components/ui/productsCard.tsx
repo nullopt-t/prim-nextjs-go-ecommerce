@@ -9,6 +9,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useCartContext } from "@/context/CartContext";
 import { useWishlist } from "@/hooks/useWishlist";
 import { notify, apiErrorMessage } from "@/lib/notify";
+import { normalizeMediaUrl } from "@/utils/media";
 
 export interface CardDetails {
   id: string | number;
@@ -88,7 +89,7 @@ export function ProductsCard({
         variantId: defaultVariant?.id || cardDetails.defaultVariantId,
         productName: cardDetails.product,
         productPrice: typeof cardDetails.price === "number" ? `EGP ${cardDetails.price.toFixed(2)}` : String(cardDetails.price),
-        img: typeof cardDetails.img === "string" ? cardDetails.img : "/placeholder-product.png",
+        img: typeof cardDetails.img === "string" ? normalizeMediaUrl(cardDetails.img) : "/placeholder-product.png",
         quantity: 1,
       };
 
@@ -130,7 +131,7 @@ export function ProductsCard({
           >
             {typeof cardDetails.img === "string" ? (
               <img
-                src={cardDetails.img}
+                src={normalizeMediaUrl(cardDetails.img)}
                 alt={productName}
                 className="object-cover object-center w-full h-full group-hover:scale-105 transition-transform duration-300"
               />

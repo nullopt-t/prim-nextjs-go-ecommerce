@@ -9,6 +9,7 @@ import { useCart } from "@/hooks/useCart";
 import { Link } from "@/i18n/navigation";
 import { notify, apiErrorMessage } from "@/lib/notify";
 import { useState } from "react";
+import { normalizeMediaUrl } from "@/utils/media";
 
 export default function OrderBox({ orderDetails }: { orderDetails: CartItemData }) {
   const t = useTranslations("cart");
@@ -19,7 +20,7 @@ export default function OrderBox({ orderDetails }: { orderDetails: CartItemData 
     ? (orderDetails.productName?.en || orderDetails.productName?.ar || "Product")
     : (orderDetails.productName || "Product");
 
-  const imgSrc = orderDetails.img || "/placeholder-product.png";
+  const imgSrc = normalizeMediaUrl(orderDetails.img);
 
   const [isUpdating, setIsUpdating] = useState(false);
 

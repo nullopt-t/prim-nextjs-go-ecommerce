@@ -6,6 +6,7 @@ import { notify, apiErrorMessage } from "@/lib/notify";
 import { ErrorState } from "@/components/ui/errorState";
 import { CursorPager, useCursorPagination } from "@/components/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/lib/pagination";
+import { normalizeMediaUrl } from "@/utils/media";
 
 // Distinct per-brand placeholder used only when a brand has no uploaded logo,
 // so the list never falls back to one shared stock image.
@@ -48,7 +49,7 @@ export function AdminBrands() {
         website: b.link || b.website || "https://prim.com",
         productsCount: b.productCount || 0,
         status: "Active",
-        logo: b.logoUrl || brandPlaceholder(b.name)
+        logo: b.logoUrl ? normalizeMediaUrl(b.logoUrl) : brandPlaceholder(b.name)
       })));
       if (res?.meta) setMeta(res.meta);
     } catch {
@@ -159,7 +160,7 @@ export function AdminBrands() {
           <div key={b.id} className="bg-background border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <img src={b.logo} alt={b.name} className="size-12 rounded-xl object-cover border border-border" />
+                <img src={normalizeMediaUrl(b.logo)} alt={b.name} className="size-12 rounded-xl object-cover border border-border" />
                 <div>
                   <h3 className="font-bold text-sm text-foreground">{b.name}</h3>
                   <a
