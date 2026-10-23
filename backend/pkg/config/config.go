@@ -139,8 +139,8 @@ type RateLimitConfig struct {
 
 // ServerConfig configures HTTP listener and environment options.
 type ServerConfig struct {
-	// Port is the HTTP listener port.
-	Port string `yaml:"port" env:"HTTP_PORT" env-default:"8080"`
+	// Port is the HTTP listener port (standard: PORT, legacy fallback: HTTP_PORT).
+	Port string `yaml:"port" env:"PORT" env-default:"8080"`
 
 	// Env is the runtime environment ("development", "staging", "production").
 	Env string `yaml:"env" env:"APP_ENV" env-default:"development"`
@@ -285,9 +285,11 @@ func Load(configPath ...string) (Config, error) {
 		}
 	}
 
-	// Honor standard cloud platform PORT variable (Vercel, Cloud Run, Render, Heroku)
-	if p := os.Getenv("PORT"); p != "" {
-		cfg.ServerCfg.Port = strings.TrimSpace(p)
+	// Fallback to legacy HTTP_PORT if PORT is unset
+	if os.Getenv("PORT") == "" {
+		if hp := os.Getenv("HTTP_PORT"); hp != "" {
+			cfg.ServerCfg.Port = strings.TrimSpace(hp)
+		}
 	}
 
 	// Synchronize backward-compatible top-level fields from canonical ServerCfg
