@@ -152,7 +152,7 @@ make migrate-force   # force a version (when a migration is stuck)
 
 ## Configuration
 
-Configuration is **environment-only**; there is no committed `configs/config.yaml`. Copy `.env.example` to `.env` for local development, or inject the variables at deploy time (see `docs/deployment/environment.md`). The main variables:
+Configuration is **environment-only**; there is no committed `configs/config.yaml` and the Compose files contain no env values. Copy `dev.env.example` to `.env` for local Docker Compose, or `.env.example` to `.env` for production (see `docs/deployment/environment.md`). The main variables:
 
 | Variable | Default | Notes |
 | --- | --- | --- |

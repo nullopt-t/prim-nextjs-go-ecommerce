@@ -2,8 +2,6 @@ FROM golang:1.26-alpine
 
 WORKDIR /app
 
-ENV GOTOOLCHAIN=auto
-
 RUN apk add --no-cache git make curl
 
 RUN --mount=type=cache,target=/go/pkg/mod \

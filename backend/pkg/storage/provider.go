@@ -53,6 +53,9 @@ func NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL string) (
 		trimmedEndpoint = u.Host
 	} else {
 		trimmedEndpoint = strings.TrimRight(trimmedEndpoint, "/")
+		if strings.Contains(trimmedEndpoint, "amazonaws.com") {
+			useSSL = true
+		}
 	}
 
 	cleanPublicURL := strings.TrimSpace(publicURL)

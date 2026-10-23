@@ -8,7 +8,7 @@ An explicit YAML path is still honored for tooling/tests (a path argument or `CO
 
 > Build once, inject config at runtime. Never bake `.env` or secrets into the image.
 
-All required variables are listed in `backend/.env.example`.
+Production variables are listed in `backend/.env.example`; local Docker Compose values are in `backend/dev.env.example`.
 
 ---
 
@@ -16,7 +16,7 @@ All required variables are listed in `backend/.env.example`.
 
 ### 1. `APP_ENV`, not `ENV`
 
-`pkg/config` reads `APP_ENV` (`ServerConfig.Env`). The dev compose now sets `APP_ENV: development`; older revisions used `ENV: development`, which the config loader ignored. `pkg/log` falls back to `ENV`, which used to mask the problem in dev.
+`pkg/config` reads `APP_ENV` (`ServerConfig.Env`). The runtime `.env` sets `APP_ENV=development`; older revisions used `ENV=development`, which the config loader ignored. `pkg/log` falls back to `ENV`, which used to mask the problem in dev.
 
 **Consequence if you use `ENV`:** the app runs as `development` even in production:
 - dev-only OTP behavior remains enabled,
@@ -25,23 +25,18 @@ All required variables are listed in `backend/.env.example`.
 
 **Fix:** set `APP_ENV` appropriately for the target environment.
 
-### 2. Compose interpolation vs. container env
+### 2. Compose files contain no environment values
 
-`env_file:` injects variables **into the container**. It does not automatically feed `${VAR}` interpolation in the compose file. Compose loads interpolation values from the shell and from `.env` in the **project directory** (the directory of the compose file, i.e. `docker/`), not from `env_file:`.
+The Compose files (dev and prod) only reference `env_file`. They do **not** define inline `environment:` values and do **not** use `${VAR}` interpolation. All values live in `backend/.env`.
 
-`docker/docker-compose.prod.yml` uses both:
-- `env_file: ../.env` for the API/worker containers,
-- `${DB_NAME}`, `${DB_PASSWORD}`, etc. for the Postgres/MinIO containers.
+`env_file:` injects variables **into the container**. Docker Compose interpolation is not involved, so there is no second source of truth to keep in sync.
 
-If you run `docker compose -f docker/docker-compose.prod.yml up` without `--env-file`, the API may get one password from `../.env` while Postgres falls back to `prim`. Always pass the same file:
+The Compose files hardcode service ports. `HTTP_PORT` in `backend/.env` must match the app's host/container port:
 
-```bash
-docker compose --env-file .env -f docker/docker-compose.prod.yml up -d
-```
+- dev: `HTTP_PORT=8081`
+- prod: `HTTP_PORT=8080`
 
-(Best run from the repo root so `.env` is unambiguous.)
-
-Also note the port mapping: `ports: "${HTTP_PORT:-8080}:8080"`. The app listens on `HTTP_PORT` from `env_file`. Keep `HTTP_PORT=8080` in production, or the host mapping and the app listener will disagree.
+If you change the port, change it in both `.env` and the Compose port mapping.
 
 ---
 
@@ -49,48 +44,35 @@ Also note the port mapping: `ports: "${HTTP_PORT:-8080}:8080"`. The app listens 
 
 ### A. Docker Compose on a single VM (matches this repo)
 
-Keep a `.env` **on the server only**, next to the repo (it is already in `.gitignore`):
+Keep `backend/.env` **on the server only** (it is already in `.gitignore`). The prod Compose file reads `../.env` relative to `backend/docker/`, i.e. `backend/.env`.
 
 ```bash
 # On the server, as the deploy user
-install -m 600 /dev/null /srv/prim/.env
-$EDITOR /srv/prim/.env          # fill from .env.example
-chown deploy:deploy /srv/prim/.env
+install -m 600 /dev/null /srv/prim/backend/.env
+$EDITOR /srv/prim/backend/.env   # fill from .env.example
+chown deploy:deploy /srv/prim/backend/.env
 
 cd /srv/prim/backend
-docker compose --env-file /srv/prim/.env -f docker/docker-compose.prod.yml up -d
+docker compose -f docker/docker-compose.prod.yml up -d
 ```
 
-Harden the compose file:
+If your secrets live elsewhere, symlink them:
 
-```yaml
-services:
-  api:
-    env_file: ${PRIM_ENV_FILE:-../.env}
-    environment:
-      APP_ENV: ${APP_ENV:-production}
-  worker:
-    env_file: ${PRIM_ENV_FILE:-../.env}
-    environment:
-      APP_ENV: ${APP_ENV:-production}
-  postgres:
-    environment:
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+```bash
+ln -s /etc/prim/api.env /srv/prim/backend/.env
 ```
 
-Then run with `--env-file /srv/prim/.env -e PRIM_ENV_FILE=/srv/prim/.env` or a symlink.
+No `--env-file` or `PRIM_ENV_FILE` is needed; Compose only passes the env file to the containers.
 
 ### B. systemd + Docker
 
 ```ini
 [Service]
-EnvironmentFile=/etc/prim/api.env
-ExecStart=/usr/bin/docker compose --env-file /etc/prim/api.env -f /srv/prim/docker/docker-compose.prod.yml up
+WorkingDirectory=/srv/prim/backend
+ExecStart=/usr/bin/docker compose -f docker/docker-compose.prod.yml up
 ```
 
-```bash
-install -m 600 /dev/null /etc/prim/api.env
-```
+Put the values in `/srv/prim/backend/.env` (or symlink it to `/etc/prim/api.env`) and restrict permissions with `chmod 600`.
 
 ### C. Kubernetes
 
@@ -175,17 +157,17 @@ openssl rand -base64 32   # DB / Redis / MinIO passwords
 
 ## Startup validation
 
-Current code validates only `OTP_HASH_PEPPER` when `APP_ENV=production`. Other secrets silently fall back to dev defaults (`prim`, `supersecret`). Add fail-fast checks in `pkg/config` when `IsProduction`:
+When `APP_ENV=production`, `pkg/config` fails fast if:
 
-- `DB_PASSWORD` non-empty and not `prim`;
-- `MINIO_SECRET_KEY` non-empty and not `supersecret`;
-- `CORS_ALLOWED_ORIGINS` non-empty and does not contain `*`;
-- `DB_SSL_MODE != "disable"` (unless explicitly overridden);
-- `CLIENT_BASE_URL` not `localhost`;
-- SMTP credentials present if email is required;
-- `APP_ENV` explicitly set (reject the implicit default in prod).
+- `OTP_HASH_PEPPER` is empty or still the development default;
+- `DB_PASSWORD` is empty or still `prim`;
+- `MINIO_SECRET_KEY` is empty or still `supersecret`;
+- `CORS_ALLOWED_ORIGINS` contains `*` or a localhost origin;
+- `CLIENT_BASE_URL` is empty or points at localhost.
 
-This turns a silent misconfiguration into a failed deploy.
+Not validated automatically: SMTP credentials, `DB_SSL_MODE`, and `REDIS_PASSWORD`. Set those explicitly for your environment.
+
+This turns the most dangerous silent misconfigurations into a failed deploy.
 
 ---
 
@@ -194,8 +176,8 @@ This turns a silent misconfiguration into a failed deploy.
 - [ ] `.env` is gitignored and `chmod 600` on servers.
 - [ ] `.env.example` is committed and contains no real secrets.
 - [ ] `APP_ENV` is set appropriately.
-- [ ] `HTTP_PORT` matches the compose port mapping.
-- [ ] `--env-file` is passed to Compose so interpolation and containers agree.
+- [ ] `HTTP_PORT` matches the hardcoded Compose port (`8080` in prod).
+- [ ] `backend/.env` is the only runtime env source; Compose defines no values.
 - [ ] Secrets are generated fresh, not the dev defaults.
 - [ ] `CORS_ALLOWED_ORIGINS` has no `*`.
 - [ ] `DB_SSL_MODE=require`/`verify-full` for remote DBs.
