@@ -42,24 +42,34 @@ type DB struct {
 // ConnectDB parses configuration and initializes a pgxpool.Pool connection pool.
 // It verifies connectivity to the PostgreSQL cluster using the supplied context.
 func ConnectDB(ctx context.Context, cfg config.DatabaseConfig) (*DB, error) {
-	sslMode := cfg.SSLMode
-	if sslMode == "" {
-		sslMode = "disable"
-	}
+	var poolConfig *pgxpool.Config
+	var err error
 
-	u := url.URL{
-		Scheme: "postgres",
-		User:   url.UserPassword(cfg.DBUser, cfg.DBPassword),
-		Host:   net.JoinHostPort(cfg.DBHost, cfg.DBPort),
-		Path:   cfg.DBName,
-	}
-	q := u.Query()
-	q.Set("sslmode", sslMode)
-	u.RawQuery = q.Encode()
+	if cfg.URL != "" {
+		poolConfig, err = pgxpool.ParseConfig(cfg.URL)
+		if err != nil {
+			return nil, fmt.Errorf("parse database url : %w", err)
+		}
+	} else {
+		sslMode := cfg.SSLMode
+		if sslMode == "" {
+			sslMode = "disable"
+		}
 
-	poolConfig, err := pgxpool.ParseConfig(u.String())
-	if err != nil {
-		return nil, fmt.Errorf("parse database config : %w", err)
+		u := url.URL{
+			Scheme: "postgres",
+			User:   url.UserPassword(cfg.DBUser, cfg.DBPassword),
+			Host:   net.JoinHostPort(cfg.DBHost, cfg.DBPort),
+			Path:   cfg.DBName,
+		}
+		q := u.Query()
+		q.Set("sslmode", sslMode)
+		u.RawQuery = q.Encode()
+
+		poolConfig, err = pgxpool.ParseConfig(u.String())
+		if err != nil {
+			return nil, fmt.Errorf("parse database config : %w", err)
+		}
 	}
 
 	// Configure connection pool sizing and lifecycle tunings to avoid exhaustion and stale connections

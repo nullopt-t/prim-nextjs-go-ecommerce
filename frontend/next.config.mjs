@@ -7,6 +7,8 @@ const nextConfig = {
   allowedDevOrigins: ["192.168.1.16"],
   devIndicators: false,
   reactStrictMode: true,
+  output: "standalone",
+  poweredByHeader: false,
   images: {
     remotePatterns: [
       {

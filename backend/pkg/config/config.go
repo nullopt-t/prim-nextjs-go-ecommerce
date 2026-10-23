@@ -13,6 +13,10 @@ import (
 
 // DatabaseConfig holds connection settings for PostgreSQL database instances.
 type DatabaseConfig struct {
+	// URL optionally specifies the full PostgreSQL connection URL (e.g. DATABASE_URL).
+	// When provided, it takes precedence over individual host/port/user/password fields.
+	URL string `yaml:"url" env:"DATABASE_URL" env-default:""`
+
 	// DBHost is the network hostname or IP address of the PostgreSQL server.
 	DBHost string `yaml:"host" env:"DB_HOST" env-default:"localhost"`
 
