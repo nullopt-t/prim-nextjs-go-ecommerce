@@ -514,12 +514,29 @@ func (app *App) Run() error {
 		)
 	}
 
-	app.redisClient = redis.NewClient(&redis.Options{
-		Addr: fmt.Sprintf("%s:%d",
-			app.config.RedisCfg.Host,
-			app.config.RedisCfg.Port,
-		),
-	})
+	var redisOpts *redis.Options
+	if app.config.RedisCfg.URL != "" {
+		parsedOpts, err := redis.ParseURL(app.config.RedisCfg.URL)
+		if err != nil {
+			app.logger.Error(
+				"failed to parse redis url",
+				log.Meta{"Error": err},
+			)
+			return err
+		}
+		redisOpts = parsedOpts
+	} else {
+		redisOpts = &redis.Options{
+			Addr: fmt.Sprintf("%s:%d",
+				app.config.RedisCfg.Host,
+				app.config.RedisCfg.Port,
+			),
+			Password: app.config.RedisCfg.Password,
+			DB:       app.config.RedisCfg.DB,
+		}
+	}
+
+	app.redisClient = redis.NewClient(redisOpts)
 
 	if err := app.redisClient.Ping(context.Background()); err != nil {
 		app.logger.Warn(

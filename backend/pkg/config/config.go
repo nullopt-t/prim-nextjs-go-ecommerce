@@ -37,6 +37,10 @@ type DatabaseConfig struct {
 
 // RedisConfig holds connection and database index configuration for Redis cache/rate-limiter.
 type RedisConfig struct {
+	// URL optionally specifies the full Redis connection URL (e.g. REDIS_URL).
+	// When provided, it takes precedence over individual host/port/password fields.
+	URL string `yaml:"url" env:"REDIS_URL" env-default:""`
+
 	// Host is the Redis server hostname or IP address.
 	Host string `yaml:"host" env:"REDIS_HOST" env-default:"localhost"`
 

@@ -40,6 +40,32 @@ If you change the port, change it in both `.env` and the Compose port mapping.
 
 ---
 
+## Frontend production image
+
+`frontend/Dockerfile.prod` builds a Next.js standalone image. `NEXT_PUBLIC_API_URL` is compiled into the browser bundle, so pass it at build time:
+
+```bash
+docker build -f frontend/Dockerfile.prod \
+  --build-arg NEXT_PUBLIC_API_URL=https://api.example.com \
+  -t prim-frontend frontend
+```
+
+`API_URL` is read at runtime for server-side calls. When using Compose, set it in `backend/.env`:
+
+```env
+API_URL=http://api:8080
+```
+
+Build through Compose with the same build arg:
+
+```bash
+docker compose -f backend/docker/docker-compose.prod.yml build \
+  --build-arg NEXT_PUBLIC_API_URL=https://api.example.com frontend
+docker compose -f backend/docker/docker-compose.prod.yml up -d
+```
+
+---
+
 ## Recommended deployment patterns
 
 ### A. Docker Compose on a single VM (matches this repo)
