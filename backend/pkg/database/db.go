@@ -73,11 +73,11 @@ func ConnectDB(ctx context.Context, cfg config.DatabaseConfig) (*DB, error) {
 		return nil, fmt.Errorf("parse database url : %w", err)
 	}
 
-	// Configure connection pool sizing and lifecycle tunings to avoid exhaustion and stale connections
-	poolConfig.MaxConns = 25
-	poolConfig.MinConns = 5
-	poolConfig.MaxConnLifetime = 1 * time.Hour
-	poolConfig.MaxConnIdleTime = 30 * time.Minute
+	// Configure connection pool sizing and lifecycle tunings for fast serverless startup and pooler compatibility
+	poolConfig.MaxConns = 15
+	poolConfig.MinConns = 0
+	poolConfig.MaxConnLifetime = 30 * time.Minute
+	poolConfig.MaxConnIdleTime = 5 * time.Minute
 	poolConfig.HealthCheckPeriod = 1 * time.Minute
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
