@@ -453,14 +453,16 @@ func (app *App) Run() error {
 		return err
 	}
 
-	if err := app.db.Ping(context.Background()); err != nil {
+	pingCtx, pingCancel := context.WithTimeout(context.Background(), 3*time.Second)
+	if err := app.db.Ping(pingCtx); err != nil {
 		app.logger.Warn(
-			"database is not live",
+			"database ping warning (queries will retry on demand)",
 			log.Meta{
 				"Error": err.Error(),
 			},
 		)
 	}
+	pingCancel()
 
 	storageProv, err := storage.NewMinioStorageProvider(
 		app.config.MinioCfg.Endpoint,
@@ -485,10 +487,9 @@ func (app *App) Run() error {
 		bucketName = "product-media"
 	}
 
-	exists, err := app.minioClient.BucketExists(
-		context.Background(),
-		bucketName,
-	)
+	s3Ctx, s3Cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	exists, err := app.minioClient.BucketExists(s3Ctx, bucketName)
+	s3Cancel()
 	if err != nil {
 		app.logger.Warn(
 			"minio bucket check failed; continuing startup (storage operations will fail until storage is available)",
@@ -531,7 +532,8 @@ func (app *App) Run() error {
 	}
 	app.redisClient = redisClient
 
-	if err := app.redisClient.Ping(context.Background()); err != nil {
+	redisPingCtx, redisPingCancel := context.WithTimeout(context.Background(), 3*time.Second)
+	if err := app.redisClient.Ping(redisPingCtx); err != nil {
 		app.logger.Warn(
 			"redis connection issue",
 			log.Meta{
@@ -539,6 +541,7 @@ func (app *App) Run() error {
 			},
 		)
 	}
+	redisPingCancel()
 
 	router := gin.New()
 	router.Use(gin.Recovery())
