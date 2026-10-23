@@ -91,79 +91,135 @@ export function resolveProductStock(
   };
 }
 
+export interface ProductImageEntry {
+  url: string;
+  variantId?: string;
+  attributes?: Record<string, unknown>;
+}
+
 /**
- * Resolves clean image array for product gallery:
+ * Resolves clean image entries for the product gallery:
  * - Prioritizes the active variant's thumbnail and preview media gallery at the beginning.
  * - Followed by the master product thumbnail and any product images.
  * - Followed by media from other variants of the product, fully deduplicated and normalized.
+ *
+ * Each entry keeps the variant it belongs to so the gallery can drive option
+ * selection in both directions.
  */
-export function resolveProductImages(
+export function resolveProductImageEntries(
   product: ProductDetailsEntity,
   activeVariant?: ProductVariant | null
-): string[] {
-  const imageList: string[] = [];
+): ProductImageEntry[] {
+  const imageList: ProductImageEntry[] = [];
   const seen = new Set<string>();
+  const variantUrlOwners = new Map<string, ProductVariant>();
+  const sharedVariantUrls = new Set<string>();
 
-  const addImage = (rawUrl?: string | null) => {
-    if (!rawUrl || typeof rawUrl !== "string") return;
-    const trimmed = rawUrl.trim();
-    if (!trimmed || trimmed === "/placeholder-product.png") return;
-    const normalized = normalizeMediaUrl(trimmed);
-    if (normalized && !seen.has(normalized)) {
-      seen.add(normalized);
-      imageList.push(normalized);
+  const normalizeImageUrl = (rawUrl?: any): string | null => {
+    if (!rawUrl) return null;
+    let urlStr = rawUrl;
+    if (typeof rawUrl === "object") {
+      urlStr = rawUrl.publicUrl || rawUrl.url || rawUrl.src;
     }
+    if (typeof urlStr !== "string") return null;
+    const trimmed = urlStr.trim();
+    if (!trimmed || trimmed === "/placeholder-product.png") return null;
+    const normalized = normalizeMediaUrl(trimmed);
+    if (!normalized || normalized === "/placeholder-product.png") return null;
+    return normalized;
   };
 
-  // 1. Active variant's specific thumbnail first
-  if (activeVariant) {
-    const vThumb = typeof activeVariant.thumbnail === "string" 
-      ? activeVariant.thumbnail 
-      : (activeVariant.thumbnail as any)?.url || (activeVariant.thumbnail as any)?.publicUrl;
-    addImage(vThumb);
+  const getVariantImageUrls = (variant: ProductVariant): any[] => {
+    const urls: any[] = [];
+    const vThumb = typeof variant.thumbnail === "string"
+      ? variant.thumbnail
+      : (variant.thumbnail as any)?.url || (variant.thumbnail as any)?.publicUrl;
+    if (vThumb) urls.push(vThumb);
 
-    // 2. Active variant's preview media gallery
-    if (Array.isArray(activeVariant.media)) {
-      for (const m of activeVariant.media) {
-        const mUrl = typeof m === "string" ? m : m?.url;
-        addImage(mUrl);
+    if (Array.isArray(variant.media)) {
+      for (const m of variant.media) {
+        const mUrl = typeof m === "string" ? m : (m?.url || (m as any)?.publicUrl || (m as any)?.object?.publicUrl);
+        if (mUrl) urls.push(mUrl);
+      }
+    }
+    return urls;
+  };
+
+  // Index variant-owned URLs first. Some normalized catalog responses expose the
+  // same URLs in the master `images` array as well; without this lookup those
+  // generic entries would lose their variant association.
+  for (const variant of product.variants || []) {
+    for (const rawUrl of getVariantImageUrls(variant)) {
+      const normalized = normalizeImageUrl(rawUrl);
+      if (!normalized) continue;
+      const existing = variantUrlOwners.get(normalized);
+      if (existing && existing.id !== variant.id) {
+        sharedVariantUrls.add(normalized);
+      } else {
+        variantUrlOwners.set(normalized, variant);
       }
     }
   }
 
-  // 3. Product master thumbnail & img
+  const addImage = (rawUrl?: any, variant?: ProductVariant | null) => {
+    const normalized = normalizeImageUrl(rawUrl);
+    if (!normalized || seen.has(normalized)) return;
+
+    const owner = variant
+      || (sharedVariantUrls.has(normalized) ? null : variantUrlOwners.get(normalized))
+      || null;
+    seen.add(normalized);
+    imageList.push({
+      url: normalized,
+      variantId: owner?.id,
+      attributes: owner?.attributes as Record<string, unknown> | undefined,
+    });
+  };
+
+  const addVariantMedia = (variant: ProductVariant) => {
+    for (const url of getVariantImageUrls(variant)) {
+      addImage(url, variant);
+    }
+  };
+
+  // 1. Active variant's own media first
+  if (activeVariant) {
+    addVariantMedia(activeVariant);
+  }
+
+  // 2. Product master thumbnail & img
   addImage((product as any)?.thumbnail);
   addImage((product as any)?.thumbnailUrl);
   addImage(product.img);
 
-  // 4. Product images list
+  // 3. Product images list
   if (Array.isArray(product.images)) {
     for (const img of product.images) {
       addImage(img);
     }
   }
 
-  // 5. Media from other variants of this product so the customer can browse all product pictures
+  // 4. Media from other variants so the customer can browse every product picture
   if (Array.isArray(product.variants)) {
     for (const v of product.variants) {
       if (activeVariant && v.id === activeVariant.id) continue;
-      const otherThumb = typeof v.thumbnail === "string" 
-        ? v.thumbnail 
-        : (v.thumbnail as any)?.url || (v.thumbnail as any)?.publicUrl;
-      addImage(otherThumb);
-
-      if (Array.isArray(v.media)) {
-        for (const m of v.media) {
-          const mUrl = typeof m === "string" ? m : m?.url;
-          addImage(mUrl);
-        }
-      }
+      addVariantMedia(v);
     }
   }
 
   if (imageList.length === 0) {
-    return ["/placeholder-product.png"];
+    return [{ url: "/placeholder-product.png" }];
   }
 
   return imageList;
+}
+
+/**
+ * Backwards-compatible URL-only view of the product gallery entries.
+ */
+export function resolveProductImages(
+  product: ProductDetailsEntity,
+  activeVariant?: ProductVariant | null
+): string[] {
+  return resolveProductImageEntries(product, activeVariant).map((image) => image.url);
 }

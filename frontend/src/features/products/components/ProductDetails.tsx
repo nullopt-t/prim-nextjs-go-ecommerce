@@ -18,7 +18,7 @@ import {
   getProductDisplayName,
   resolveVariantByAttributes,
   resolveVariantStock,
-  resolveProductImages,
+  resolveProductImageEntries,
 } from "../utils/productHelpers";
 import { ProductGallery } from "./ui/ProductGallery";
 import { ProductActions } from "./ui/ProductActions";
@@ -186,7 +186,8 @@ export function ProductDetails() {
   const productName = getProductDisplayName(product, locale);
   const activeVariant = resolveVariantByAttributes(product, selectedValues);
   const { availableStock, isVariantInStock } = resolveVariantStock(product, activeVariant);
-  const images = resolveProductImages(product, activeVariant);
+  const imageEntries = resolveProductImageEntries(product, activeVariant);
+  const images = imageEntries.map((image) => image.url);
   const highlights = Array.isArray((product as any).highlights)
     ? (product as any).highlights
     : [];
@@ -207,6 +208,31 @@ export function ProductDetails() {
   const handleSelectAxis = (key: string, value: string) => {
     setSelectedValues((prev) => ({ ...prev, [key]: value }));
     setActiveImage(0);
+  };
+
+  // Selecting a gallery image also selects the variant that owns it, when the
+  // image is variant-specific. Master/generic product images leave options alone.
+  const handleSelectImage = (index: number) => {
+    const entry = imageEntries[index];
+    if (!entry?.attributes || !entry.variantId) {
+      setActiveImage(index);
+      return;
+    }
+
+    const nextValues = { ...selectedValues };
+    for (const axis of product.variationAxes || []) {
+      const value = entry.attributes[axis.key];
+      if (value !== undefined && value !== null && value !== "") {
+        nextValues[axis.key] = String(value);
+      }
+    }
+
+    const nextVariant = resolveVariantByAttributes(product, nextValues);
+    const nextImages = resolveProductImageEntries(product, nextVariant);
+    const nextIndex = nextImages.findIndex((image) => image.url === entry.url);
+
+    setSelectedValues(nextValues);
+    setActiveImage(nextIndex >= 0 ? nextIndex : 0);
   };
 
   const resolvePrice = (val: any): number => {
@@ -429,7 +455,7 @@ export function ProductDetails() {
             images={images}
             productName={productName}
             activeImage={activeImage}
-            onSelectImage={setActiveImage}
+            onSelectImage={handleSelectImage}
             discountPercentage={discountPercentage}
           />
         </div>
