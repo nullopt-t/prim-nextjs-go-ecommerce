@@ -72,6 +72,7 @@ type VariantRepository interface {
 	CountByProductID(ctx context.Context, qe database.QueryExecutor, productID uuid.UUID) (int, error)
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductVariant, error)
 	ListByProductID(ctx context.Context, qe database.QueryExecutor, opts variant.ListVariantOptions) (*pagination.PagedResult[model.ProductVariant], error)
+	ListMediaByVariantIDs(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID][]*model.VariantMedia, error)
 }
 
 // handleError maps database and driver errors to standard domain APIErrors.
@@ -585,13 +586,38 @@ func (s *ProductService) populateProductDetails(
 		})
 		if err == nil && variantRes != nil {
 			details.Variants = variantRes.Items
-			if len(details.Variants) > 0 && s.inventoryRepo != nil {
+			if len(details.Variants) > 0 {
 				vIDs := make([]uuid.UUID, 0, len(details.Variants))
 				for _, v := range details.Variants {
 					vIDs = append(vIDs, v.ID)
 				}
-				if stocks, err := s.inventoryRepo.GetStockForVariants(ctx, qe, vIDs); err == nil {
-					details.Stock = stocks
+
+				// Hydrate variant thumbnails and gallery media with public URLs.
+				// ListByProductID only loads the raw thumbnail object; media rows
+				// live in variant_media and are fetched separately in one batch.
+				if s.storageProvider != nil {
+					for _, v := range details.Variants {
+						if v.Thumbnail != nil {
+							v.Thumbnail.PublicURL = s.storageProvider.GetPublicURL(v.Thumbnail.Bucket, v.Thumbnail.Key)
+						}
+					}
+					if mediaByVariant, mediaErr := s.variantRepo.ListMediaByVariantIDs(ctx, qe, vIDs); mediaErr == nil {
+						for _, v := range details.Variants {
+							media := mediaByVariant[v.ID]
+							for _, m := range media {
+								if m != nil && m.Object != nil {
+									m.Object.PublicURL = s.storageProvider.GetPublicURL(m.Object.Bucket, m.Object.Key)
+								}
+							}
+							v.Media = media
+						}
+					}
+				}
+
+				if s.inventoryRepo != nil {
+					if stocks, err := s.inventoryRepo.GetStockForVariants(ctx, qe, vIDs); err == nil {
+						details.Stock = stocks
+					}
 				}
 			}
 		}

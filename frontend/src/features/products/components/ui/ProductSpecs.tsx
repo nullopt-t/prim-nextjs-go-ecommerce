@@ -32,7 +32,7 @@ export function ProductSpecs({
   const attributeLabel = (key: string) => {
     const normalized = key.toLowerCase().replace(/[_-]/g, " ");
     if (normalized === "color") return t("actions.color").replace(/[:：]/g, "").trim();
-    if (normalized === "storage") return t("wizard.presetStorage");
+    if (normalized === "storage") return t("specs.storage");
     return normalized;
   };
 

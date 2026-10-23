@@ -73,6 +73,10 @@ func (f *fakeVariantRepoForInvariants) ListByProductID(ctx context.Context, qe d
 	return nil, nil
 }
 
+func (f *fakeVariantRepoForInvariants) ListMediaByVariantIDs(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID][]*model.VariantMedia, error) {
+	return nil, nil
+}
+
 func TestAdversarial_PublishProduct_SingleWithDB(t *testing.T) {
 	qe := &mockQE{}
 	runner := &mockConnectionTrackingRunner{qe: qe}
