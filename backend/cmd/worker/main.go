@@ -23,7 +23,7 @@ import (
 )
 
 func main() {
-	_ = godotenv.Load()
+	_ = godotenv.Load(".env", "backend/.env", "../.env")
 	logger := log.NewConsoleLogger()
 	cfg, err := config.Load()
 	if err != nil {

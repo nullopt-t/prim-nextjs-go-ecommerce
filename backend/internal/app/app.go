@@ -420,16 +420,17 @@ func (app *App) Shutdown() {
 
 func (app *App) Run() error {
 	app.logger = log.NewConsoleLogger()
-	err := godotenv.Load()
-	if err != nil {
-		app.logger.Warn(
-			"failed to load .env file",
+	// Try loading .env from current directory, backend/.env, or parent directory
+	if err := godotenv.Load(".env", "backend/.env", "../.env"); err != nil {
+		app.logger.Debug(
+			"no .env file found; falling back to system environment variables",
 			log.Meta{
 				"Error": err.Error(),
 			},
 		)
 	}
 
+	var err error
 	app.config, err = config.Load()
 	if err != nil {
 		app.logger.Error(
@@ -483,35 +484,33 @@ func (app *App) Run() error {
 		"product-media",
 	)
 	if err != nil {
-		app.logger.Error(
-			"minio bucket issue",
+		app.logger.Warn(
+			"minio bucket check failed; continuing startup (storage operations will fail until storage is available)",
 			log.Meta{
 				"Error": err,
 			},
 		)
-		return err
-	}
-	if !exists {
+	} else if !exists {
 		err := app.minioClient.MakeBucket(
 			context.Background(),
 			"product-media",
 			minio.MakeBucketOptions{},
 		)
 		if err != nil {
-			app.logger.Error(
-				"minio bucket issue",
+			app.logger.Warn(
+				"failed to create minio bucket",
 				log.Meta{
 					"Error": err,
 				},
 			)
-			return err
+		} else {
+			app.logger.Info(
+				"minio bucket created",
+				log.Meta{
+					"Bucket": "product-media",
+				},
+			)
 		}
-		app.logger.Info(
-			"minio bucket created",
-			log.Meta{
-				"Bucket": "product-media",
-			},
-		)
 	}
 
 	var redisOpts *redis.Options
