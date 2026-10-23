@@ -84,7 +84,12 @@ That runs `docker compose --env-file backend/.env -f backend/docker/docker-compo
 
 Keep `backend/.env` **on the server only** (it is already in `.gitignore`). The prod Compose file reads `../.env` relative to `backend/docker/`, i.e. `backend/.env`.
 
-The production stack uses external PostgreSQL and Redis through `DATABASE_URL` and `REDIS_URL`. Set those to managed services (or to hosts reachable from the Compose network) before starting it.
+The production Compose file includes bundled PostgreSQL and Redis for a single-VM deployment, plus MinIO for object storage. Point `DATABASE_URL` and `REDIS_URL` at those services (or at managed services reachable from the Compose network) before starting it:
+
+```env
+DATABASE_URL=postgres://prim:prim@postgres:5432/prim?sslmode=disable
+REDIS_URL=redis://redis:6379/0
+```
 
 ```bash
 # On the server, as the deploy user
