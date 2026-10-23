@@ -37,6 +37,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/redisclient"
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 
 	"github.com/gin-gonic/gin"
@@ -110,7 +111,8 @@ func (app *App) setupRoutes(router *gin.Engine) {
 
 	kafkaCfg := brokerkafka.DefaultConfig(app.config.KafkaCfg.Brokers, app.config.KafkaCfg.GroupID)
 	app.kafkaProducer = brokerkafka.NewProducer(kafkaCfg)
-	notifier := notifier.NewKafkaNotifier(app.kafkaProducer, app.logger)
+	emailFallback := job.NewRedisEmailFallbackQueue(app.redisClient)
+	notifier := notifier.NewKafkaNotifier(app.kafkaProducer, app.logger, emailFallback)
 
 	rateLimiter := security.NewRateLimiter(
 		app.redisClient,
@@ -479,63 +481,56 @@ func (app *App) Run() error {
 	app.storageProvider = storageProv
 	app.minioClient = storageProv.Client
 
+	bucketName := app.config.MinioCfg.Bucket
+	if bucketName == "" {
+		bucketName = "product-media"
+	}
+
 	exists, err := app.minioClient.BucketExists(
 		context.Background(),
-		"product-media",
+		bucketName,
 	)
 	if err != nil {
 		app.logger.Warn(
 			"minio bucket check failed; continuing startup (storage operations will fail until storage is available)",
 			log.Meta{
-				"Error": err,
+				"Error":  err,
+				"Bucket": bucketName,
 			},
 		)
 	} else if !exists {
 		err := app.minioClient.MakeBucket(
 			context.Background(),
-			"product-media",
+			bucketName,
 			minio.MakeBucketOptions{},
 		)
 		if err != nil {
 			app.logger.Warn(
 				"failed to create minio bucket",
 				log.Meta{
-					"Error": err,
+					"Error":  err,
+					"Bucket": bucketName,
 				},
 			)
 		} else {
 			app.logger.Info(
 				"minio bucket created",
 				log.Meta{
-					"Bucket": "product-media",
+					"Bucket": bucketName,
 				},
 			)
 		}
 	}
 
-	var redisOpts *redis.Options
-	if app.config.RedisCfg.URL != "" {
-		parsedOpts, err := redis.ParseURL(app.config.RedisCfg.URL)
-		if err != nil {
-			app.logger.Error(
-				"failed to parse redis url",
-				log.Meta{"Error": err},
-			)
-			return err
-		}
-		redisOpts = parsedOpts
-	} else {
-		redisOpts = &redis.Options{
-			Addr: fmt.Sprintf("%s:%d",
-				app.config.RedisCfg.Host,
-				app.config.RedisCfg.Port,
-			),
-			Password: app.config.RedisCfg.Password,
-			DB:       app.config.RedisCfg.DB,
-		}
+	redisClient, err := redisclient.New(app.config.RedisCfg)
+	if err != nil {
+		app.logger.Error(
+			"failed to configure redis client",
+			log.Meta{"Error": err},
+		)
+		return err
 	}
-
-	app.redisClient = redis.NewClient(redisOpts)
+	app.redisClient = redisClient
 
 	if err := app.redisClient.Ping(context.Background()); err != nil {
 		app.logger.Warn(

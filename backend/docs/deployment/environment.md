@@ -40,6 +40,20 @@ If you change the port, change it in both `.env` and the Compose port mapping.
 
 ---
 
+## Notification delivery fallback
+
+Email notifications are published to Kafka first. If Kafka is unavailable or rejects a write within the publish timeout, the API writes the same `NotificationEvent` to the Redis stream `notifications.email.fallback`. The worker consumes that stream and delivers through SMTP, so OTP, welcome, and password-reset emails continue during a Kafka outage.
+
+Operational notes:
+
+- The worker always runs the Redis fallback consumer alongside the Kafka consumers.
+- Failed SMTP deliveries are retried and then written to `notifications.email.fallback.dlq`.
+- The fallback uses a Redis consumer group; unacknowledged events can be claimed after a worker restart.
+- In-app notifications remain Kafka-only. This fallback covers SMTP email delivery.
+- Redis is already required for auth and rate limiting, so no additional service is needed.
+
+---
+
 ## Frontend production image
 
 `frontend/Dockerfile.prod` builds a Next.js standalone image. `NEXT_PUBLIC_API_URL` is compiled into the browser bundle, so pass it at build time:

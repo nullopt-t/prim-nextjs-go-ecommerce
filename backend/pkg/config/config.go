@@ -13,45 +13,28 @@ import (
 
 // DatabaseConfig holds connection settings for PostgreSQL database instances.
 type DatabaseConfig struct {
-	// URL optionally specifies the full PostgreSQL connection URL (e.g. DATABASE_URL).
-	// When provided, it takes precedence over individual host/port/user/password fields.
+	// URL specifies the PostgreSQL connection URL (DATABASE_URL or DATABASE).
 	URL string `yaml:"url" env:"DATABASE_URL" env-default:""`
 
-	// DBHost is the network hostname or IP address of the PostgreSQL server.
-	DBHost string `yaml:"host" env:"DB_HOST" env-default:"localhost"`
-
-	// DBPort is the network port for PostgreSQL connections (standard default: 5432).
-	DBPort string `yaml:"port" env:"DB_PORT" env-default:"5432"`
-
-	// DBUser is the authentication username for the database connection.
-	DBUser string `yaml:"user" env:"DB_USER" env-default:"prim"`
-
-	// DBPassword is the authentication password for the database connection.
-	DBPassword string `yaml:"password" env:"DB_PASSWORD" env-default:"prim"`
-
-	// DBName specifies the target PostgreSQL database name.
-	DBName string `yaml:"name" env:"DB_NAME" env-default:"prim"`
-	// SSLMode defines the SSL connection mode ("disable", "require", "verify-ca", "verify-full").
-	SSLMode string `yaml:"ssl_mode" env:"DB_SSL_MODE" env-default:"disable"`
+	// Legacy discrete fields for test fixtures (no defaults)
+	DBHost     string `yaml:"host" env:"DB_HOST" env-default:""`
+	DBPort     string `yaml:"port" env:"DB_PORT" env-default:""`
+	DBUser     string `yaml:"user" env:"DB_USER" env-default:""`
+	DBPassword string `yaml:"password" env:"DB_PASSWORD" env-default:""`
+	DBName     string `yaml:"name" env:"DB_NAME" env-default:""`
+	SSLMode    string `yaml:"ssl_mode" env:"DB_SSL_MODE" env-default:""`
 }
 
 // RedisConfig holds connection and database index configuration for Redis cache/rate-limiter.
 type RedisConfig struct {
-	// URL optionally specifies the full Redis connection URL (e.g. REDIS_URL).
-	// When provided, it takes precedence over individual host/port/password fields.
+	// URL specifies the Redis connection URL (REDIS_URL or REDIS).
 	URL string `yaml:"url" env:"REDIS_URL" env-default:""`
 
-	// Host is the Redis server hostname or IP address.
-	Host string `yaml:"host" env:"REDIS_HOST" env-default:"localhost"`
-
-	// Port is the Redis server network port (standard default: 6379).
-	Port int `yaml:"port" env:"REDIS_PORT" env-default:"6379"`
-
-	// Password is the optional authentication password for Redis AUTH.
+	// Legacy discrete fields for test fixtures (no defaults)
+	Host     string `yaml:"host" env:"REDIS_HOST" env-default:""`
+	Port     int    `yaml:"port" env:"REDIS_PORT" env-default:"0"`
 	Password string `yaml:"password" env:"REDIS_PASSWORD" env-default:""`
-
-	// DB specifies the logical Redis database index to select (default: 0).
-	DB int `yaml:"db" env:"REDIS_DB" env-default:"0"`
+	DB       int    `yaml:"db" env:"REDIS_DB" env-default:"0"`
 }
 
 // KafkaConfig holds bootstrap broker addresses and consumer group configuration.
@@ -102,16 +85,28 @@ type ClientConfig struct {
 // MinioConfig holds object storage connection credentials for S3/MinIO compatible stores.
 type MinioConfig struct {
 	// Endpoint is the internal network endpoint for MinIO operations.
-	Endpoint string `yaml:"endpoint" env:"MINIO_ENDPOINT" env-default:"minio:9000"`
+	Endpoint string `yaml:"endpoint" env:"MINIO_ENDPOINT" env-default:""`
 
 	// AccessKey is the S3 access key ID.
-	AccessKey string `yaml:"access_key" env:"MINIO_ACCESS_KEY" env-default:"admin"`
+	AccessKey string `yaml:"access_key" env:"MINIO_ACCESS_KEY" env-default:""`
 
 	// SecretKey is the S3 secret access key.
-	SecretKey string `yaml:"secret_key" env:"MINIO_SECRET_KEY" env-default:"supersecret"`
+	SecretKey string `yaml:"secret_key" env:"MINIO_SECRET_KEY" env-default:""`
 
 	// PublicURL is the publicly routable asset download URL prefix.
-	PublicURL string `yaml:"public_url" env:"MINIO_PUBLIC_URL" env-default:"http://localhost:9000"`
+	PublicURL string `yaml:"public_url" env:"MINIO_PUBLIC_URL" env-default:""`
+
+	// Bucket is the default S3 bucket name.
+	Bucket string `yaml:"bucket" env:"MINIO_BUCKET" env-default:""`
+
+	// Region is the AWS region (e.g. eu-west-1).
+	Region string `yaml:"region" env:"AWS_REGION" env-default:""`
+
+	// RoleARN is the optional AWS IAM Role ARN for OIDC / AssumeRole.
+	RoleARN string `yaml:"role_arn" env:"AWS_ROLE_ARN" env-default:""`
+
+	// AccountID is the optional AWS Account ID.
+	AccountID string `yaml:"account_id" env:"AWS_ACCOUNT_ID" env-default:""`
 }
 
 // AuthConfig defines token lifespans and session retention durations.
@@ -225,6 +220,68 @@ func Load(configPath ...string) (Config, error) {
 	} else {
 		if err := cleanenv.ReadEnv(&cfg); err != nil {
 			return cfg, fmt.Errorf("read config environment: %w", err)
+		}
+	}
+
+	// Fallback to DATABASE or REDIS environment aliases if URL is unset
+	if cfg.DBCfg.URL == "" {
+		if u := os.Getenv("DATABASE"); u != "" {
+			cfg.DBCfg.URL = u
+		}
+	}
+	if cfg.RedisCfg.URL == "" {
+		if u := os.Getenv("REDIS"); u != "" {
+			cfg.RedisCfg.URL = u
+		}
+	}
+
+	// Support Vercel / AWS S3 environment variable conventions
+	if cfg.MinioCfg.Region == "" {
+		if r := os.Getenv("MINIO_PUBLIC_AWS_REGION"); r != "" {
+			cfg.MinioCfg.Region = r
+		}
+	}
+	if cfg.MinioCfg.Bucket == "" {
+		if b := os.Getenv("MINIO_PUBLIC_S3_BUCKET_NAME"); b != "" {
+			cfg.MinioCfg.Bucket = b
+		} else if b := os.Getenv("S3_BUCKET_NAME"); b != "" {
+			cfg.MinioCfg.Bucket = b
+		} else {
+			cfg.MinioCfg.Bucket = "product-media"
+		}
+	}
+	if cfg.MinioCfg.RoleARN == "" {
+		if r := os.Getenv("MINIO_PUBLIC_AWS_ROLE_ARN"); r != "" {
+			cfg.MinioCfg.RoleARN = r
+		}
+	}
+	if cfg.MinioCfg.AccountID == "" {
+		if a := os.Getenv("MINIO_PUBLIC_AWS_ACCOUNT_ID"); a != "" {
+			cfg.MinioCfg.AccountID = a
+		}
+	}
+	if cfg.MinioCfg.AccessKey == "" {
+		if k := os.Getenv("AWS_ACCESS_KEY_ID"); k != "" {
+			cfg.MinioCfg.AccessKey = k
+		}
+	}
+	if cfg.MinioCfg.SecretKey == "" {
+		if k := os.Getenv("AWS_SECRET_ACCESS_KEY"); k != "" {
+			cfg.MinioCfg.SecretKey = k
+		}
+	}
+	// If Endpoint is empty and Region is present, synthesize AWS S3 endpoint
+	if cfg.MinioCfg.Endpoint == "" {
+		if cfg.MinioCfg.Region != "" {
+			cfg.MinioCfg.Endpoint = fmt.Sprintf("s3.%s.amazonaws.com", cfg.MinioCfg.Region)
+		} else {
+			cfg.MinioCfg.Endpoint = "minio:9000"
+		}
+	}
+	// If PublicURL is empty, synthesize S3 public URL
+	if cfg.MinioCfg.PublicURL == "" {
+		if cfg.MinioCfg.Region != "" && cfg.MinioCfg.Bucket != "" {
+			cfg.MinioCfg.PublicURL = fmt.Sprintf("https://%s.s3.%s.amazonaws.com", cfg.MinioCfg.Bucket, cfg.MinioCfg.Region)
 		}
 	}
 

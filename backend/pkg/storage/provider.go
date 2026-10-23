@@ -64,8 +64,18 @@ func NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL string) (
 		cleanPublicURL = "http://" + cleanPublicURL
 	}
 
+	var creds *credentials.Credentials
+	if strings.TrimSpace(accessKey) != "" && strings.TrimSpace(secretKey) != "" {
+		creds = credentials.NewStaticV4(accessKey, secretKey, "")
+	} else {
+		creds = credentials.NewChainCredentials([]credentials.Provider{
+			&credentials.EnvAWS{},
+			&credentials.IAM{Endpoint: "http://169.254.169.254"},
+		})
+	}
+
 	minioClient, err := minio.New(trimmedEndpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
+		Creds:  creds,
 		Secure: useSSL,
 	})
 	if err != nil {

@@ -3,13 +3,13 @@ package notifier
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/shared/job"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
-	"github.com/nullopt-t/prim-backend/pkg/broker/kafka"
 	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
@@ -23,18 +23,80 @@ type SendInAppInput struct {
 	Metadata  map[string]any    `json:"metadata,omitempty"`
 }
 
-// KafkaNotifier acts as a domain event producer publishing to Kafka topics.
-type KafkaNotifier struct {
-	producer *kafka.Producer
-	logger   log.Logger
+const (
+	kafkaEmailPublishTimeout = 3 * time.Second
+	redisFallbackTimeout     = 5 * time.Second
+)
+
+// EventPublisher publishes a serialized notification event to a topic.
+type EventPublisher interface {
+	Publish(ctx context.Context, topic, key string, payload []byte) error
 }
 
-// NewKafkaNotifier returns a ready-to-use KafkaNotifier.
-func NewKafkaNotifier(producer *kafka.Producer, logger log.Logger) *KafkaNotifier {
-	return &KafkaNotifier{
+// EmailFallbackQueue stores email events when Kafka is unavailable.
+type EmailFallbackQueue interface {
+	Enqueue(ctx context.Context, event *job.NotificationEvent) error
+}
+
+// KafkaNotifier acts as a domain event producer publishing to Kafka topics.
+// Email events fall back to Redis when Kafka cannot accept them, so SMTP
+// delivery continues during a Kafka outage.
+type KafkaNotifier struct {
+	producer      EventPublisher
+	emailFallback EmailFallbackQueue
+	logger        log.Logger
+}
+
+// NewKafkaNotifier returns a ready-to-use KafkaNotifier. The optional
+// emailFallback is used only when publishing an email event to Kafka fails.
+func NewKafkaNotifier(producer EventPublisher, logger log.Logger, emailFallback ...EmailFallbackQueue) *KafkaNotifier {
+	n := &KafkaNotifier{
 		producer: producer,
 		logger:   logger,
 	}
+	if len(emailFallback) > 0 {
+		n.emailFallback = emailFallback[0]
+	}
+	return n
+}
+
+// publishEmail publishes an email event to Kafka and falls back to Redis if
+// Kafka is unavailable or rejects the write. The fallback uses a detached
+// context so an already-cancelled HTTP request cannot drop the notification.
+func (n *KafkaNotifier) publishEmail(ctx context.Context, key string, event *job.NotificationEvent, payload []byte) error {
+	kafkaErr := fmt.Errorf("kafka producer is not configured")
+	if n.producer != nil {
+		pubCtx, cancel := context.WithTimeout(ctx, kafkaEmailPublishTimeout)
+		kafkaErr = n.producer.Publish(pubCtx, job.TopicNotificationsEmail, key, payload)
+		cancel()
+		if kafkaErr == nil {
+			return nil
+		}
+	}
+
+	if n.emailFallback == nil {
+		return kafkaErr
+	}
+
+	n.logger.Warn("Kafka email publish failed; falling back to Redis", log.Meta{
+		"recipient": event.Recipient,
+		"eventId":   event.EventID.String(),
+		"error":     kafkaErr.Error(),
+	})
+
+	fallbackCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), redisFallbackTimeout)
+	defer cancel()
+
+	if err := n.emailFallback.Enqueue(fallbackCtx, event); err != nil {
+		return fmt.Errorf("kafka email publish failed (%v) and redis fallback failed: %w", kafkaErr, err)
+	}
+
+	n.logger.Info("queued email notification in Redis fallback", log.Meta{
+		"recipient": event.Recipient,
+		"eventId":   event.EventID.String(),
+	})
+
+	return nil
 }
 
 // NotifyOTP publishes an OTP authentication event to Kafka with the active request locale.
@@ -84,7 +146,7 @@ func (n *KafkaNotifier) NotifyOTP(
 		"eventId":   event.EventID.String(),
 	})
 
-	return n.producer.Publish(ctx, job.TopicNotificationsEmail, identifier, bytes)
+	return n.publishEmail(ctx, identifier, event, bytes)
 }
 
 // NotifyWelcome publishes a welcome email event to Kafka.
@@ -118,7 +180,7 @@ func (n *KafkaNotifier) NotifyWelcome(
 		return err
 	}
 
-	return n.producer.Publish(ctx, job.TopicNotificationsEmail, email, bytes)
+	return n.publishEmail(ctx, email, event, bytes)
 }
 
 // NotifyResetPassword publishes a password recovery email event to Kafka.
@@ -153,7 +215,7 @@ func (n *KafkaNotifier) NotifyResetPassword(
 		return err
 	}
 
-	return n.producer.Publish(ctx, job.TopicNotificationsEmail, email, bytes)
+	return n.publishEmail(ctx, email, event, bytes)
 }
 
 // SendInApp publishes an in-app notification event to Kafka.

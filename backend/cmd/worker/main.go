@@ -20,6 +20,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
 	"github.com/nullopt-t/prim-backend/pkg/mail"
+	"github.com/nullopt-t/prim-backend/pkg/redisclient"
 )
 
 func main() {
@@ -43,6 +44,19 @@ func main() {
 		return
 	}
 	defer db.Close()
+
+	// Redis is also the fallback transport for email notifications when Kafka
+	// is unavailable. The client is lazy, so a temporary Redis outage does not
+	// prevent the worker from starting; the fallback consumer will retry.
+	redisClient, err := redisclient.New(cfg.RedisCfg)
+	if err != nil {
+		logger.Error("failed to configure redis client", log.Meta{"error": err})
+		return
+	}
+	defer redisClient.Close()
+	if err := redisClient.Ping(ctx); err != nil {
+		logger.Warn("redis connection issue", log.Meta{"error": err})
+	}
 
 	txRunner := database.NewTxRunner(db)
 	notificationRepo := user.NewNotificationRepository()
@@ -115,12 +129,21 @@ func main() {
 		3,
 	)
 
-	wg.Add(3)
+	// Email events that the API could not publish to Kafka are consumed here.
+	redisEmailWorker := job.NewRedisEmailFallbackWorker(
+		redisClient,
+		eventHandler.HandleEmailEvent,
+		logger,
+		2,
+	)
+
+	wg.Add(4)
 	go emailWorker.Start(ctx, &wg)
 	go inappWorker.Start(ctx, &wg)
+	go redisEmailWorker.Start(ctx, &wg)
 	go reservationReaper.Start(ctx, &wg)
 
-	logger.Info("Kafka notification worker pools active and consuming messages...")
+	logger.Info("notification worker pools active (Kafka + Redis email fallback)...")
 
 	<-ctx.Done()
 
