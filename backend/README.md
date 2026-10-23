@@ -152,7 +152,7 @@ make migrate-force   # force a version (when a migration is stuck)
 
 ## Configuration
 
-Configuration comes from `configs/config.yaml`, overridden by environment variables (via `.env` and the compose file). The main variables:
+Configuration is **environment-only**; there is no committed `configs/config.yaml`. Copy `.env.example` to `.env` for local development, or inject the variables at deploy time (see `docs/deployment/environment.md`). The main variables:
 
 | Variable | Default | Notes |
 | --- | --- | --- |
@@ -166,8 +166,9 @@ Configuration comes from `configs/config.yaml`, overridden by environment variab
 | `CLIENT_BASE_URL` | `http://localhost:3000` | Used to build links in emails |
 | `CORS_ALLOWED_ORIGINS` | — | Comma-separated allow list |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` / `SMTP_FROM_EMAIL` / `SMTP_FROM_NAME` | empty / `0` / … | Outbound email |
-| `AUTH_CHALLENGE_TTL_MINUTES` / `AUTH_SESSION_TTL_DAYS` | `5` / `30` | Auth lifetimes |
-| `RL_AUTH_START_REQ` / `RL_AUTH_RESEND_REQ` / `RL_AUTH_VERIFY_REQ` | `5` / `3` / `10` | Rate limits per window |
+| `AUTH_CHALLENGE_TTL` / `AUTH_SESSION_TTL` | `5m` / `720h` | Go durations; `720h` = 30 days |
+| `RL_AUTH_START_REQUESTS` / `RL_AUTH_RESEND_REQUESTS` / `RL_AUTH_VERIFY_REQUESTS` | `5` / `3` / `10` | Requests per sliding window |
+| `RL_AUTH_START_WINDOW` / `RL_AUTH_RESEND_WINDOW` / `RL_AUTH_VERIFY_WINDOW` | `1m` / `1m` / `1m` | Sliding window as a Go duration |
 
 ## Testing
 
@@ -216,7 +217,7 @@ backend/
 │   ├── shared/               # middleware, error codes, jobs, OTP, crypto, email templates
 │   └── model/                # database models
 ├── pkg/                      # config, database, log, storage, mail, broker, api helpers
-├── configs/                  # config.yaml and Air configs
+├── configs/                  # Air configs
 ├── migrations/               # schema and seed SQL
 ├── docs/                     # generated Swagger specs (public + admin)
 ├── seed/                     # seed media for the catalog

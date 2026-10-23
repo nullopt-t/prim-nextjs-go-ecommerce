@@ -5,7 +5,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -109,41 +108,30 @@ type MinioConfig struct {
 
 // AuthConfig defines token lifespans and session retention durations.
 type AuthConfig struct {
-	// ChallengeTTL is the derived time.Duration computed from ChallengeTTLMinutes.
-	ChallengeTTL time.Duration
+	// ChallengeTTL defines auth challenge expiration as a Go duration (e.g. 5m). Must be > 0.
+	ChallengeTTL time.Duration `yaml:"challenge_ttl" env:"AUTH_CHALLENGE_TTL" env-default:"5m"`
 
-	// SessionTTL is the derived time.Duration computed from SessionTTLDays.
-	SessionTTL time.Duration
-
-	// ChallengeTTLMinutes defines auth challenge expiration in minutes. Must be > 0.
-	ChallengeTTLMinutes int `yaml:"challenge_ttl_minutes" env:"AUTH_CHALLENGE_TTL_MINUTES" env-default:"5"`
-
-	// SessionTTLDays defines user refresh session lifetime in days. Must be > 0.
-	SessionTTLDays int `yaml:"session_ttl_days" env:"AUTH_SESSION_TTL_DAYS" env-default:"30"`
+	// SessionTTL defines user refresh session lifetime as a Go duration (e.g. 720h for 30 days). Must be > 0.
+	SessionTTL time.Duration `yaml:"session_ttl" env:"AUTH_SESSION_TTL" env-default:"720h"`
 }
 
 // RateLimitConfig configures request quotas and sliding window durations for sensitive endpoints.
+// Quotas are request counts; windows are Go durations with an explicit unit (e.g. 1m).
 type RateLimitConfig struct {
-	// AuthStartRequests is maximum allowed auth-start attempts within AuthStartWindow.
-	AuthStartRequests int64 `yaml:"auth_start_requests" env:"RL_AUTH_START_REQ" env-default:"5"`
-	// AuthStartWindow is the derived window duration.
-	AuthStartWindow time.Duration
-	// AuthStartWindowMin defines duration in minutes (must be > 0).
-	AuthStartWindowMin int `yaml:"auth_start_window_minutes" env:"RL_AUTH_START_MIN" env-default:"1"`
+	// AuthStartRequests is maximum allowed auth-start requests within AuthStartWindow.
+	AuthStartRequests int64 `yaml:"auth_start_requests" env:"RL_AUTH_START_REQUESTS" env-default:"5"`
+	// AuthStartWindow is the sliding window duration (e.g. 1m). Must be > 0.
+	AuthStartWindow time.Duration `yaml:"auth_start_window" env:"RL_AUTH_START_WINDOW" env-default:"1m"`
 
-	// AuthResendRequests is maximum allowed auth code resend attempts within AuthResendWindow.
-	AuthResendRequests int64 `yaml:"auth_resend_requests" env:"RL_AUTH_RESEND_REQ" env-default:"3"`
-	// AuthResendWindow is the derived window duration.
-	AuthResendWindow time.Duration
-	// AuthResendWindowMin defines duration in minutes (must be > 0).
-	AuthResendWindowMin int `yaml:"auth_resend_window_minutes" env:"RL_AUTH_RESEND_MIN" env-default:"1"`
+	// AuthResendRequests is maximum allowed auth code resend requests within AuthResendWindow.
+	AuthResendRequests int64 `yaml:"auth_resend_requests" env:"RL_AUTH_RESEND_REQUESTS" env-default:"3"`
+	// AuthResendWindow is the sliding window duration (e.g. 1m). Must be > 0.
+	AuthResendWindow time.Duration `yaml:"auth_resend_window" env:"RL_AUTH_RESEND_WINDOW" env-default:"1m"`
 
-	// AuthVerifyRequests is maximum allowed verification attempts within AuthVerifyWindow.
-	AuthVerifyRequests int64 `yaml:"auth_verify_requests" env:"RL_AUTH_VERIFY_REQ" env-default:"10"`
-	// AuthVerifyWindow is the derived window duration.
-	AuthVerifyWindow time.Duration
-	// AuthVerifyWindowMin defines duration in minutes (must be > 0).
-	AuthVerifyWindowMin int `yaml:"auth_verify_window_minutes" env:"RL_AUTH_VERIFY_MIN" env-default:"1"`
+	// AuthVerifyRequests is maximum allowed verification requests within AuthVerifyWindow.
+	AuthVerifyRequests int64 `yaml:"auth_verify_requests" env:"RL_AUTH_VERIFY_REQUESTS" env-default:"10"`
+	// AuthVerifyWindow is the sliding window duration (e.g. 1m). Must be > 0.
+	AuthVerifyWindow time.Duration `yaml:"auth_verify_window" env:"RL_AUTH_VERIFY_WINDOW" env-default:"1m"`
 }
 
 // ServerConfig configures HTTP listener and environment options.
@@ -203,12 +191,25 @@ type Config struct {
 	IsProduction bool
 }
 
-// Load reads configuration from a YAML file (if provided or found at default paths)
-// and overrides values from environment variables.
+// Load reads configuration from environment variables. Explicit YAML paths
+// (an argument or CONFIG_PATH) are still honored for tooling/tests, but there
+// is no implicit config.yaml discovery: services run env-only.
 func Load(configPath ...string) (Config, error) {
 	var cfg Config
 
-	targetPath := findConfigPath(configPath...)
+	targetPath := ""
+	for _, p := range configPath {
+		if p != "" && fileExists(p) {
+			targetPath = p
+			break
+		}
+	}
+	if targetPath == "" {
+		if envPath := os.Getenv("CONFIG_PATH"); envPath != "" && fileExists(envPath) {
+			targetPath = envPath
+		}
+	}
+
 	if targetPath != "" {
 		if err := cleanenv.ReadConfig(targetPath, &cfg); err != nil {
 			return cfg, fmt.Errorf("read config file (%s): %w", targetPath, err)
@@ -233,39 +234,24 @@ func Load(configPath ...string) (Config, error) {
 	// Post-processing durations & environment flags
 	cfg.IsProduction = strings.EqualFold(cfg.Env, "production")
 
-	// Validate production secrets
-	if cfg.IsProduction {
-		if cfg.KeysCfg.OTPHashPepper == "" || cfg.KeysCfg.OTPHashPepper == "dev-otp-pepper-change-me-in-production" {
-			return cfg, fmt.Errorf("insecure default OTP hash pepper must not be used in production")
-		}
-	}
-
 	// Validate AuthConfig durations
-	if cfg.AuthCfg.ChallengeTTLMinutes <= 0 {
-		return cfg, fmt.Errorf("auth challenge_ttl_minutes must be greater than 0")
+	if cfg.AuthCfg.ChallengeTTL <= 0 {
+		return cfg, fmt.Errorf("auth challenge_ttl must be greater than 0")
 	}
-	if cfg.AuthCfg.SessionTTLDays <= 0 {
-		return cfg, fmt.Errorf("auth session_ttl_days must be greater than 0")
+	if cfg.AuthCfg.SessionTTL <= 0 {
+		return cfg, fmt.Errorf("auth session_ttl must be greater than 0")
 	}
 
 	// Validate RateLimitConfig windows
-	if cfg.RateLimitCfg.AuthStartWindowMin <= 0 {
-		return cfg, fmt.Errorf("rate_limit auth_start_window_minutes must be greater than 0")
+	if cfg.RateLimitCfg.AuthStartWindow <= 0 {
+		return cfg, fmt.Errorf("rate_limit auth_start_window must be greater than 0")
 	}
-	if cfg.RateLimitCfg.AuthResendWindowMin <= 0 {
-		return cfg, fmt.Errorf("rate_limit auth_resend_window_minutes must be greater than 0")
+	if cfg.RateLimitCfg.AuthResendWindow <= 0 {
+		return cfg, fmt.Errorf("rate_limit auth_resend_window must be greater than 0")
 	}
-	if cfg.RateLimitCfg.AuthVerifyWindowMin <= 0 {
-		return cfg, fmt.Errorf("rate_limit auth_verify_window_minutes must be greater than 0")
+	if cfg.RateLimitCfg.AuthVerifyWindow <= 0 {
+		return cfg, fmt.Errorf("rate_limit auth_verify_window must be greater than 0")
 	}
-
-	// Derive time.Duration from minutes/days integer fields
-	cfg.AuthCfg.ChallengeTTL = time.Duration(cfg.AuthCfg.ChallengeTTLMinutes) * time.Minute
-	cfg.AuthCfg.SessionTTL = time.Duration(cfg.AuthCfg.SessionTTLDays) * 24 * time.Hour
-
-	cfg.RateLimitCfg.AuthStartWindow = time.Duration(cfg.RateLimitCfg.AuthStartWindowMin) * time.Minute
-	cfg.RateLimitCfg.AuthResendWindow = time.Duration(cfg.RateLimitCfg.AuthResendWindowMin) * time.Minute
-	cfg.RateLimitCfg.AuthVerifyWindow = time.Duration(cfg.RateLimitCfg.AuthVerifyWindowMin) * time.Minute
 
 	return cfg, nil
 }
@@ -277,76 +263,6 @@ func MustLoad(configPath ...string) Config {
 		panic(fmt.Sprintf("failed to load configuration: %v", err))
 	}
 	return cfg
-}
-
-// findConfigPath resolves the configuration file path from explicit parameters,
-// the CONFIG_PATH environment variable, or fallback relative directory paths.
-func findConfigPath(explicitPaths ...string) string {
-	// 1. Check explicitly passed file paths first
-	for _, p := range explicitPaths {
-		if p != "" && fileExists(p) {
-			return p
-		}
-	}
-
-	// 2. Check CONFIG_PATH environment variable override
-	if envPath := os.Getenv("CONFIG_PATH"); envPath != "" && fileExists(envPath) {
-		return envPath
-	}
-
-	// 3. Search relative to current working directory and walk up parents
-	var searchDirs []string
-	if wd, err := os.Getwd(); err == nil {
-		searchDirs = append(searchDirs, wd)
-		dir := wd
-		for i := 0; i < 4; i++ {
-			parent := filepath.Dir(dir)
-			if parent == dir {
-				break
-			}
-			searchDirs = append(searchDirs, parent)
-			dir = parent
-		}
-	}
-
-	if exePath, err := os.Executable(); err == nil {
-		searchDirs = append(searchDirs, filepath.Dir(exePath))
-		searchDirs = append(searchDirs, filepath.Dir(filepath.Dir(exePath)))
-	}
-
-	candidates := []string{
-		"configs/config.yaml",
-		"configs/config.yml",
-		"config.yaml",
-		"config.yml",
-	}
-
-	for _, dir := range searchDirs {
-		for _, c := range candidates {
-			p := filepath.Join(dir, c)
-			if fileExists(p) {
-				return p
-			}
-		}
-	}
-
-	// 4. Fallback search paths relative to execution directory
-	defaults := []string{
-		"configs/config.yaml",
-		"configs/config.yml",
-		"config.yaml",
-		"config.yml",
-		"../configs/config.yaml",
-		"../../configs/config.yaml",
-	}
-
-	for _, p := range defaults {
-		if fileExists(p) {
-			return p
-		}
-	}
-
-	return ""
 }
 
 // fileExists checks whether the specified path exists and is a regular file (not a directory).

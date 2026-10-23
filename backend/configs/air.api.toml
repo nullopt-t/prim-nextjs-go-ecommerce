@@ -9,7 +9,8 @@ tmp_dir = "tmp"
   args_bin = []
   bin = "./bin/server"
   cmd = "go build -o ./bin/server ./cmd/api/main.go"
-  delay = 1000
+  # Air uses milliseconds for delay, poll_interval, rerun_delay and app_start_timeout.
+  delay = 1000 # 1s
   entrypoint = ["./bin/server"]
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_file = []
@@ -24,11 +25,11 @@ tmp_dir = "tmp"
   kill_delay = "0s"
   log = "build-errors.log"
   poll = false
-  poll_interval = 0
+  poll_interval = 0 # 0ms = disabled
   post_cmd = []
   pre_cmd = []
   rerun = false
-  rerun_delay = 500
+  rerun_delay = 500 # 500ms
   send_interrupt = true
   stop_on_error = true
 
@@ -49,7 +50,7 @@ tmp_dir = "tmp"
 
 [proxy]
   app_port = 0
-  app_start_timeout = 0
+  app_start_timeout = 0 # 0ms = Air default (5s)
   enabled = false
   proxy_port = 0
 
