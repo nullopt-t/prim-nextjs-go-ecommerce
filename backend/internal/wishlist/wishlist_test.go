@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -31,20 +32,32 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-type mockProductService struct {
+type mockProductRepository struct {
 	products map[uuid.UUID]*model.Product
 }
 
-func (m *mockProductService) GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error) {
+func (m *mockProductRepository) GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Product, error) {
 	if p, ok := m.products[id]; ok {
 		return p, nil
 	}
 	return nil, nil
 }
 
-type mockObjectService struct{}
+type mockStorageProvider struct{}
 
-func (m *mockObjectService) GetObjectURL(ctx context.Context, bucket, key string) string {
+func (m *mockStorageProvider) Upload(ctx context.Context, bucket, key string, file io.Reader, size int64, contentType string) error {
+	return nil
+}
+
+func (m *mockStorageProvider) Delete(ctx context.Context, bucket, key string) error {
+	return nil
+}
+
+func (m *mockStorageProvider) GetPresignedURL(ctx context.Context, bucket, key string, expires time.Duration) (string, error) {
+	return fmt.Sprintf("http://localhost:9000/%s/%s", bucket, key), nil
+}
+
+func (m *mockStorageProvider) GetPublicURL(bucket, key string) string {
 	return fmt.Sprintf("http://localhost:9000/%s/%s", bucket, key)
 }
 
@@ -65,7 +78,7 @@ type WishlistHTTPTestSuite struct {
 	product1Variant2ID uuid.UUID
 	product2ID         uuid.UUID
 	product3ID         uuid.UUID
-	prodMock           *mockProductService
+	prodMock           *mockProductRepository
 }
 
 func (s *WishlistHTTPTestSuite) SetupSuite() {
@@ -107,12 +120,12 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 	s.txRunner = database.NewTxRunner(s.db)
 	s.repo = wishlist.NewWishlistRepository()
 
-	s.prodMock = &mockProductService{
+	s.prodMock = &mockProductRepository{
 		products: make(map[uuid.UUID]*model.Product),
 	}
 
 	logger := log.NewConsoleLogger()
-	s.service = wishlist.NewService(s.txRunner, s.repo, s.prodMock, &mockObjectService{}, logger)
+	s.service = wishlist.NewService(s.txRunner, s.repo, s.prodMock, &mockStorageProvider{}, logger)
 	s.handler = wishlist.NewHandler(s.service)
 
 	// Start Redis Container

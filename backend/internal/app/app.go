@@ -278,7 +278,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 
 	// wishlist
 	wishlistRepo := wishlist.NewWishlistRepository()
-	wishlistService := wishlist.NewService(txRunner, wishlistRepo, productService, objectService, app.logger)
+	wishlistService := wishlist.NewService(txRunner, wishlistRepo, productRepo, app.storageProvider, app.logger)
 	wishlistHandler := wishlist.NewHandler(wishlistService)
 	wishlistRouter := wishlist.NewRouter(wishlistHandler, sessionStore)
 	wishlistRouter.MapRoutes(v1)
