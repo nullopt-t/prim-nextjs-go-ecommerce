@@ -64,13 +64,13 @@ type InventoryService interface {
 	AdjustStock(ctx context.Context, in inventory.AdjustStockInput) (*model.InventoryStock, error)
 	// AdjustStockWithTx restores/adjusts stock within the caller's transaction so
 	// cancellation and restock remain atomic with the order status transition.
-	AdjustStockWithTx(ctx context.Context, tx database.QueryExecutor, in inventory.AdjustStockInput) (*model.InventoryStock, error)
+	AdjustStockWithTx(ctx context.Context, tx *database.Tx, in inventory.AdjustStockInput) (*model.InventoryStock, error)
 	// CommitReservationsForOrderWithTx turns the order's live stock holds into
 	// finalized sale deductions when payment is captured.
-	CommitReservationsForOrderWithTx(ctx context.Context, tx database.QueryExecutor, orderID uuid.UUID) error
+	CommitReservationsForOrderWithTx(ctx context.Context, tx *database.Tx, orderID uuid.UUID) error
 	// ReleaseReservationsForOrderWithTx releases the order's live stock holds and
 	// reports how many were released (0 means stock was already committed).
-	ReleaseReservationsForOrderWithTx(ctx context.Context, tx database.QueryExecutor, orderID uuid.UUID) (int64, error)
+	ReleaseReservationsForOrderWithTx(ctx context.Context, tx *database.Tx, orderID uuid.UUID) (int64, error)
 	// ExpiredReservationOrderIDs lists orders whose checkout hold has expired,
 	// for the reservation reaper.
 	ExpiredReservationOrderIDs(ctx context.Context) ([]uuid.UUID, error)
@@ -242,6 +242,13 @@ func (s *OrderService) restockOrderItems(
 
 // restockItems writes a compensating 'return' ledger entry for each line item,
 // returning previously deducted units to salable stock.
+func toTx(qe database.QueryExecutor) *database.Tx {
+	if tx, ok := qe.(*database.Tx); ok {
+		return tx
+	}
+	return nil
+}
+
 func (s *OrderService) restockItems(
 	ctx context.Context,
 	tx database.QueryExecutor,
@@ -251,7 +258,7 @@ func (s *OrderService) restockItems(
 		if s.inventoryService != nil {
 			if _, err := s.inventoryService.AdjustStockWithTx(
 				ctx,
-				tx,
+				toTx(tx),
 				inventory.AdjustStockInput{
 					VariantID: item.VariantID,
 					Quantity:  item.Quantity,
@@ -308,7 +315,7 @@ func (s *OrderService) releaseOrRestockCancelItems(
 	items []model.OrderItem,
 ) error {
 	if s.inventoryService != nil {
-		released, err := s.inventoryService.ReleaseReservationsForOrderWithTx(ctx, tx, orderID)
+		released, err := s.inventoryService.ReleaseReservationsForOrderWithTx(ctx, toTx(tx), orderID)
 		if err != nil {
 			return fmt.Errorf("release reservations for cancelled order %s: %w", orderID, err)
 		}
@@ -642,7 +649,7 @@ func (s *OrderService) expirePendingOrder(ctx context.Context, orderID uuid.UUID
 
 		// The hold lapsed without ever being committed, so there is no stock to
 		// restock — releasing the reservation is the complete reversal.
-		if _, err := s.inventoryService.ReleaseReservationsForOrderWithTx(ctx, tx, orderID); err != nil {
+		if _, err := s.inventoryService.ReleaseReservationsForOrderWithTx(ctx, toTx(tx), orderID); err != nil {
 			return err
 		}
 
@@ -712,7 +719,7 @@ func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, st
 		// Capture = sale. Commit the order's holds (deduct on-hand stock). The
 		// operation is idempotent, so re-capturing cannot double-deduct.
 		if status == string(model.StatusCaptured) && s.inventoryService != nil {
-			if err := s.inventoryService.CommitReservationsForOrderWithTx(ctx, tx, orderID); err != nil {
+			if err := s.inventoryService.CommitReservationsForOrderWithTx(ctx, toTx(tx), orderID); err != nil {
 				return err
 			}
 		}

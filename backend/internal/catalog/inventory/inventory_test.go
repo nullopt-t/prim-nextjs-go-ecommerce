@@ -22,14 +22,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-// noopObjectResolver satisfies inventory.ObjectURLResolver for tests that do
-// not exercise thumbnail URL resolution.
-type noopObjectResolver struct{}
-
-func (noopObjectResolver) GetObjectURL(_ context.Context, bucket, key string) string {
-	return "https://cdn.test/" + bucket + "/" + key
-}
-
 type InventoryTestSuite struct {
 	suite.Suite
 	pgContainer *postgres.PostgresContainer
@@ -79,7 +71,7 @@ func (s *InventoryTestSuite) SetupSuite() {
 	txRunner := database.NewTxRunner(s.db)
 	logger := log.NewConsoleLogger()
 	s.repo = inventory.NewRepository()
-	s.service = inventory.NewService(logger, txRunner, s.repo, noopObjectResolver{})
+	s.service = inventory.NewService(logger, txRunner, s.repo, nil)
 
 	// Create base Category and Product for Foreign Key relations
 	s.categoryID = uuid.New()
@@ -674,7 +666,12 @@ func (s *InventoryTestSuite) Test08_OrderReservationCommitAndRelease() {
 	s.Equal(3, stock.ReservedQuantity)
 	s.Equal(7, stock.AvailableQuantity)
 
-	s.Require().NoError(s.service.CommitReservationsForOrderWithTx(ctx, s.db, orderID))
+	txRunner := database.NewTxRunner(s.db)
+	err = txRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		return s.service.CommitReservationsForOrderWithTx(ctx, tx.(*database.Tx), orderID)
+	})
+	s.Require().NoError(err)
+
 	stock, err = s.service.GetStockByVariantID(ctx, variantID)
 	s.Require().NoError(err)
 	s.Equal(7, stock.OnHandQuantity)
@@ -682,7 +679,11 @@ func (s *InventoryTestSuite) Test08_OrderReservationCommitAndRelease() {
 	s.Equal(7, stock.AvailableQuantity)
 
 	// Idempotent: committing an order with no live hold is a no-op.
-	s.Require().NoError(s.service.CommitReservationsForOrderWithTx(ctx, s.db, orderID))
+	err = txRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		return s.service.CommitReservationsForOrderWithTx(ctx, tx.(*database.Tx), orderID)
+	})
+	s.Require().NoError(err)
+
 	stock, err = s.service.GetStockByVariantID(ctx, variantID)
 	s.Require().NoError(err)
 	s.Equal(7, stock.OnHandQuantity)
@@ -694,7 +695,12 @@ func (s *InventoryTestSuite) Test08_OrderReservationCommitAndRelease() {
 	})
 	s.Require().NoError(err)
 
-	released, err := s.service.ReleaseReservationsForOrderWithTx(ctx, s.db, orderID2)
+	var released int64
+	err = txRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		var relErr error
+		released, relErr = s.service.ReleaseReservationsForOrderWithTx(ctx, tx.(*database.Tx), orderID2)
+		return relErr
+	})
 	s.Require().NoError(err)
 	s.Equal(int64(1), released)
 
@@ -706,7 +712,11 @@ func (s *InventoryTestSuite) Test08_OrderReservationCommitAndRelease() {
 
 	// A second release finds no live hold and reports zero (the signal callers
 	// use to decide whether a committed sale needs restocking).
-	released, err = s.service.ReleaseReservationsForOrderWithTx(ctx, s.db, orderID2)
+	err = txRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		var relErr error
+		released, relErr = s.service.ReleaseReservationsForOrderWithTx(ctx, tx.(*database.Tx), orderID2)
+		return relErr
+	})
 	s.Require().NoError(err)
 	s.Equal(int64(0), released)
 }

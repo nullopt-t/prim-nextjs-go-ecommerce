@@ -694,3 +694,26 @@ func (r *InventoryRepository) ListRecentLedgers(ctx context.Context, qe database
 	})
 	return list, page, nil
 }
+
+// GetPrimaryVariantIDByProductID returns the default variant UUID for a product,
+// or the oldest created variant UUID if no default is designated.
+func (r *InventoryRepository) GetPrimaryVariantIDByProductID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	productID uuid.UUID,
+) (uuid.UUID, error) {
+	var variantID uuid.UUID
+	query := `
+		SELECT pv.id FROM product_variants pv
+		JOIN products p ON pv.product_id = p.id
+		WHERE pv.product_id = $1 AND pv.deleted_at IS NULL
+		ORDER BY (CASE WHEN p.default_variant_id IS NOT NULL AND pv.id = p.default_variant_id THEN 0 ELSE 1 END) ASC, pv.created_at ASC
+		LIMIT 1
+	`
+	err := qe.QueryRow(ctx, query, productID).Scan(&variantID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("get primary variant for product: %w", err)
+	}
+	return variantID, nil
+}
+

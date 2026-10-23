@@ -35,7 +35,7 @@ func (h *InventoryHandler) ListInventoryOverview(c *gin.Context) {
 
 	items, page, err := h.service.ListInventoryOverview(c.Request.Context(), q.PageSize, cursor)
 	if err != nil {
-		_ = c.Error(apierr.InternalServerError("Failed to fetch inventory overview").Wrap(err))
+		_ = c.Error(err)
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *InventoryHandler) ListRecentLedgers(c *gin.Context) {
 
 	ledgers, page, err := h.service.ListRecentLedgers(c.Request.Context(), q.PageSize, cursor, variantUUID, productUUID)
 	if err != nil {
-		_ = c.Error(apierr.InternalServerError("Failed to fetch ledgers").Wrap(err))
+		_ = c.Error(err)
 		return
 	}
 	c.JSON(http.StatusOK, api.SuccessResponse{Data: ledgers, Meta: page})
@@ -100,7 +100,7 @@ func (h *InventoryHandler) AdjustInventory(c *gin.Context) {
 	}
 
 	if err := h.service.AdjustInventory(c.Request.Context(), id, req.Quantity, req.Reason); err != nil {
-		_ = c.Error(apierr.InternalServerError("Failed to adjust inventory").Wrap(err))
+		_ = c.Error(err)
 		return
 	}
 
@@ -121,7 +121,7 @@ func (h *InventoryHandler) AdjustProductInventory(c *gin.Context) {
 	}
 
 	if err := h.service.AdjustProductInventory(c.Request.Context(), id, req.Quantity, req.Reason); err != nil {
-		_ = c.Error(apierr.InternalServerError("Failed to adjust product inventory").Wrap(err))
+		_ = c.Error(err)
 		return
 	}
 

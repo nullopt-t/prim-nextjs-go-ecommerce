@@ -19,6 +19,13 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
+func toTx(qe database.QueryExecutor) *database.Tx {
+	if tx, ok := qe.(*database.Tx); ok {
+		return tx
+	}
+	return nil
+}
+
 type CartRepository interface {
 	GetCartByUserID(ctx context.Context, qe database.QueryExecutor, userID uuid.UUID) (*model.Cart, error)
 	GetCartBySessionID(ctx context.Context, qe database.QueryExecutor, sessionID string) (*model.Cart, error)
@@ -40,11 +47,11 @@ type InventoryService interface {
 	AdjustStock(ctx context.Context, in inventory.AdjustStockInput) (*model.InventoryStock, error)
 	// ReserveStockWithTx places a temporary stock hold inside the caller's
 	// transaction so checkout stays atomic.
-	ReserveStockWithTx(ctx context.Context, tx database.QueryExecutor, in inventory.ReserveStockInput) (*model.InventoryReservation, error)
+	ReserveStockWithTx(ctx context.Context, tx *database.Tx, in inventory.ReserveStockInput) (*model.InventoryReservation, error)
 	// CommitReservationsForOrderWithTx finalizes the order's holds into sale
 	// deductions. Checkout uses it for cash-on-delivery orders, which are
 	// confirmed immediately and therefore need no payment window.
-	CommitReservationsForOrderWithTx(ctx context.Context, tx database.QueryExecutor, orderID uuid.UUID) error
+	CommitReservationsForOrderWithTx(ctx context.Context, tx *database.Tx, orderID uuid.UUID) error
 }
 
 type UserService interface {
@@ -407,7 +414,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		//    this transaction and roll back with it on any failure.
 		if s.inventoryService != nil {
 			for _, item := range orderItems {
-				if _, err := s.inventoryService.ReserveStockWithTx(ctx, tx, inventory.ReserveStockInput{
+				if _, err := s.inventoryService.ReserveStockWithTx(ctx, toTx(tx), inventory.ReserveStockInput{
 					VariantID: item.VariantID,
 					CartID:    &cart.ID,
 					OrderID:   &createdOrder.ID,
@@ -425,7 +432,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			// legitimate COD order. Card orders keep their hold until the
 			// payment is captured.
 			if isCOD {
-				if err := s.inventoryService.CommitReservationsForOrderWithTx(ctx, tx, createdOrder.ID); err != nil {
+				if err := s.inventoryService.CommitReservationsForOrderWithTx(ctx, toTx(tx), createdOrder.ID); err != nil {
 					return err
 				}
 			}
