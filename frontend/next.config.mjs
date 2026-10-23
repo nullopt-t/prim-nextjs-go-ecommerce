@@ -31,6 +31,16 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "s3-bole-compass-b09e5061c4f2.s3.eu-west-1.amazonaws.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.amazonaws.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
         hostname: "images.unsplash.com",
         pathname: "/**",
       },
