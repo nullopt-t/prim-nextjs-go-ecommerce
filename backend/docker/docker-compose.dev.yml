@@ -37,8 +37,10 @@ services:
   #
   postgres:
     image: postgres:18-alpine
-    env_file:
-      - ../.env
+    environment:
+      POSTGRES_DB: prim
+      POSTGRES_USER: prim
+      POSTGRES_PASSWORD: prim
     ports:
       - "5432:5432"
     volumes:
@@ -74,7 +76,7 @@ services:
     command:
       - >
         migrate -path /migrations
-        -database "postgres://$${DB_USER}:$${DB_PASSWORD}@postgres:5432/$${DB_NAME}?sslmode=disable"
+        -database "postgres://prim:prim@postgres:5432/prim?sslmode=disable"
         up
     depends_on:
       postgres:
