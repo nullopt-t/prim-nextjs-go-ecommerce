@@ -643,9 +643,6 @@ func (vs *VariantService) CreateVariantsBatch(
 }
 
 // GetVariantByID retrieves a single variant by its unique identifier.
-//
-// The lookups check a connection out of the pool, so callers that already
-// hold a transaction must use GetVariantByIDWithTx instead.
 func (vs *VariantService) GetVariantByID(
 	ctx context.Context,
 	variantID uuid.UUID,
@@ -661,17 +658,6 @@ func (vs *VariantService) GetVariantByID(
 	}
 
 	return variant, nil
-}
-
-// GetVariantByIDWithTx retrieves a variant and its media on the caller's
-// transaction executor, so a caller that already holds a transaction never
-// checks out a second pooled connection.
-func (vs *VariantService) GetVariantByIDWithTx(
-	ctx context.Context,
-	tx database.QueryExecutor,
-	variantID uuid.UUID,
-) (*model.ProductVariant, error) {
-	return vs.getVariantByID(ctx, tx, variantID)
 }
 
 func (vs *VariantService) getVariantByID(

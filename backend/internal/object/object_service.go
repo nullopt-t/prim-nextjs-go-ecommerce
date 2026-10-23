@@ -3,9 +3,8 @@ package object
 import (
 	"context"
 	"errors"
-	"net/http"
-
 	"io"
+	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
@@ -33,6 +32,49 @@ func NewService(
 	}
 }
 
+// handleError maps persistence, driver, and context errors to domain APIErrors.
+func (os *ObjectService) handleError(err error, fallbackMsg string) error {
+	if err == nil {
+		return nil
+	}
+
+	var apiErr *apierr.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr
+	}
+
+	mappedErr := database.MapError(err)
+	switch {
+	case errors.Is(mappedErr, database.ErrNotFound):
+		return apierr.NotFoundError("Object not found").
+			WithCode(apierr.CodeNotFound).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrConflict):
+		return apierr.ConflictError("Object already exists").
+			WithCode(apierr.CodeAlreadyExists).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+		return apierr.BadRequestError("Referenced record does not exist").
+			WithCode(apierr.CodeInvalidInput).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrCheckViolation),
+		errors.Is(mappedErr, database.ErrNotNullViolation),
+		errors.Is(mappedErr, database.ErrInvalidInput):
+		return apierr.BadRequestError("Invalid input").
+			WithCode(apierr.CodeInvalidInput).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrTimeout), errors.Is(mappedErr, database.ErrCanceled):
+		return apierr.New(http.StatusGatewayTimeout, "database operation timed out or canceled").
+			WithCode(apierr.CodeGatewayTimeout).
+			Wrap(err)
+	default:
+		return apierr.InternalServerError(fallbackMsg).
+			WithCode(apierr.CodeInternalError).
+			Wrap(err).
+			WithStack()
+	}
+}
+
 type CreateObjectInput struct {
 }
 
@@ -53,52 +95,18 @@ func (os *ObjectService) CreateObject(
 		Key:         key,
 	}
 
-	err := os.dbRunner.WithDB(
+	err := os.dbRunner.WithTx(
 		ctx,
-		func(db database.QueryExecutor) error {
+		func(ctx context.Context, tx database.QueryExecutor) error {
 			return os.objectRepo.Create(
 				ctx,
-				db,
+				tx,
 				object,
 			)
 		},
 	)
 	if err != nil {
-		return nil, apierr.New(
-			http.StatusInternalServerError,
-			"internal server error",
-		).WithCode("INTERNAL_ERROR").
-			Wrap(err).
-			WithStack()
-	}
-
-	return object, nil
-}
-
-func (os *ObjectService) CreateObjectWithTx(
-	ctx context.Context,
-	tx database.QueryExecutor,
-	bucket, key string,
-	size int64,
-	contentType string,
-	status model.ObjectStatus,
-) (*model.Object, error) {
-	object := &model.Object{
-		ID:          uuid.New(),
-		FileSize:    size,
-		Status:      status,
-		ContentType: contentType,
-		Bucket:      bucket,
-		Key:         key,
-	}
-
-	err := os.objectRepo.Create(
-		ctx,
-		tx,
-		object,
-	)
-	if err != nil {
-		return nil, err
+		return nil, os.handleError(err, "Failed to create storage object")
 	}
 
 	return object, nil
@@ -115,37 +123,45 @@ func (os *ObjectService) UploadObject(
 
 	err := os.storageProvider.Upload(ctx, bucket, key, file, size, contentType)
 	if err != nil {
-		return nil, apierr.New(
-			http.StatusInternalServerError,
-			"failed to upload file to storage",
-		).WithCode("STORAGE_UPLOAD_ERROR").Wrap(err)
+		return nil, apierr.StorageError("failed to upload file to storage").Wrap(err)
 	}
 
-	return os.CreateObject(ctx, contentType, size, bucket, key, model.ObjectStatusUploaded)
+	obj, err := os.CreateObject(ctx, contentType, size, bucket, key, model.ObjectStatusUploaded)
+	if err != nil {
+		_ = os.storageProvider.Delete(ctx, bucket, key)
+		return nil, err
+	}
+
+	return obj, nil
 }
 
 func (os *ObjectService) DeleteObject(
 	ctx context.Context,
 	bucket, key string,
 ) error {
-	// First mark as deleting in DB
-	err := os.dbRunner.WithDB(ctx, func(tx database.QueryExecutor) error {
+	// First mark as deleting in DB within a transaction
+	err := os.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return os.objectRepo.MarkDeletingByKey(ctx, tx, bucket, key)
 	})
 	if err != nil {
-		return apierr.New(http.StatusInternalServerError, "failed to mark object as deleting").Wrap(err)
+		return os.handleError(err, "Failed to mark object as deleting")
 	}
 
 	// Delete from storage
 	err = os.storageProvider.Delete(ctx, bucket, key)
 	if err != nil {
-		return apierr.New(http.StatusInternalServerError, "failed to delete object from storage").Wrap(err)
+		return apierr.StorageError("failed to delete object from storage").Wrap(err)
 	}
 
-	// Finally mark as deleted in DB
-	return os.dbRunner.WithDB(ctx, func(tx database.QueryExecutor) error {
+	// Finally mark as deleted in DB within a transaction
+	err = os.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return os.objectRepo.MarkDeletedByKey(ctx, tx, bucket, key)
 	})
+	if err != nil {
+		return os.handleError(err, "Failed to mark object as deleted")
+	}
+
+	return nil
 }
 
 func (os *ObjectService) DeleteObjectByID(ctx context.Context, id uuid.UUID) error {
@@ -156,12 +172,7 @@ func (os *ObjectService) DeleteObjectByID(ctx context.Context, id uuid.UUID) err
 		return err
 	})
 	if err != nil {
-		if errors.Is(database.MapError(err), database.ErrNotFound) {
-			return apierr.NotFoundError("Media not found").
-				WithCode(apierr.CodeNotFound).
-				Wrap(err)
-		}
-		return apierr.InternalServerError("Failed to load media").Wrap(err)
+		return os.handleError(err, "Failed to load media")
 	}
 	// Already soft-deleted objects are gone from the listing, so surface them as not found.
 	if obj.DeletedAt != nil || obj.Status == model.ObjectStatusDeleted {
@@ -177,27 +188,26 @@ func (os *ObjectService) GetObjectByID(ctx context.Context, id uuid.UUID) (*mode
 		obj, err = os.objectRepo.GetByID(ctx, db, id)
 		return err
 	})
-	return obj, err
+	if err != nil {
+		return nil, os.handleError(err, "Failed to load object")
+	}
+	return obj, nil
 }
 
 func (os *ObjectService) GetObjectsByIDs(ctx context.Context, ids []uuid.UUID) ([]*model.Object, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
 	var objects []*model.Object
 	err := os.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		var err error
 		objects, err = os.objectRepo.GetByIDs(ctx, db, ids)
 		return err
 	})
-	return objects, err
-}
-
-// MarkDeletingByKey marks a storage object as 'deleting' by its bucket and key.
-// Safe to call inside a transaction.
-func (os *ObjectService) MarkDeletingByKey(
-	ctx context.Context,
-	tx database.QueryExecutor,
-	bucket, key string,
-) error {
-	return os.objectRepo.MarkDeletingByKey(ctx, tx, bucket, key)
+	if err != nil {
+		return nil, os.handleError(err, "Failed to load objects")
+	}
+	return objects, nil
 }
 
 func (os *ObjectService) GetObjectURL(
@@ -242,5 +252,8 @@ func (os *ObjectService) ListMedia(ctx context.Context, limit int, cursor *pagin
 		}
 		return nil
 	})
-	return list, page, err
+	if err != nil {
+		return nil, nil, os.handleError(err, "Failed to list media")
+	}
+	return list, page, nil
 }

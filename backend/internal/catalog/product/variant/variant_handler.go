@@ -369,10 +369,14 @@ func mapVariantMediaResponse(m *model.VariantMedia) VariantMediaResponse {
 //	@Success		201			{object}	api.DataResponse{data=VariantResponse}	"Created variant details"
 //	@Router			/admin/products/{product_id}/variants [post]
 func (vh *VariantHandler) CreateVariant(c *gin.Context) {
-	productID, err := uuid.Parse(c.Param("product_id"))
+	paramID := c.Param("product_id")
+	if paramID == "" {
+		paramID = c.Param("id")
+	}
+	productID, err := uuid.Parse(paramID)
 	if err != nil {
 		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
-			Field:   "product_id",
+			Field:   "id",
 			Message: "invalid product UUID format",
 		}))
 		return
@@ -417,6 +421,76 @@ func (vh *VariantHandler) CreateVariant(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, api.DataResponse{
 		Data: mapVariantResponse(variant),
+	})
+}
+
+type BatchCreateVariantsRequest struct {
+	Variants []struct {
+		SKU             *string                `json:"sku,omitempty"`
+		Title           *string                `json:"title,omitempty"`
+		Price           *int64                 `json:"price,omitempty"`
+		CrossedOutPrice *int64                 `json:"crossedOutPrice,omitempty"`
+		Currency        *string                `json:"currency,omitempty"`
+		Attributes      map[string]interface{} `json:"attributes"`
+		IsDefault       *bool                  `json:"isDefault,omitempty"`
+		InitialStock    *int                   `json:"initialStock,omitempty"`
+	} `json:"variants" binding:"required,dive"`
+}
+
+// CreateVariantsBatch godoc
+//	@Summary		Create a variation matrix in bulk
+//	@Description	Atomically creates multiple child variants for a product.
+//	@Tags			Product Variants
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string						true	"Product ID (UUID)"	format(uuid)
+//	@Param			body	body		BatchCreateVariantsRequest	true	"Matrix rows"
+//	@Failure		400		{object}	api.BadRequestErrorResponse
+//	@Failure		500		{object}	api.InternalServerErrorResponse
+//	@Success		201		{object}	api.DataResponse
+//	@Router			/admin/products/{id}/variants/batch [post]
+func (vh *VariantHandler) CreateVariantsBatch(c *gin.Context) {
+	paramID := c.Param("product_id")
+	if paramID == "" {
+		paramID = c.Param("id")
+	}
+	productID, err := uuid.Parse(paramID)
+	if err != nil {
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid product UUID format",
+		}))
+		return
+	}
+
+	var body BatchCreateVariantsRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	inputs := make([]BatchCreateVariantInput, 0, len(body.Variants))
+	for _, item := range body.Variants {
+		inputs = append(inputs, BatchCreateVariantInput{
+			SKU:             item.SKU,
+			Title:           item.Title,
+			Price:           item.Price,
+			CrossedOutPrice: item.CrossedOutPrice,
+			Currency:        item.Currency,
+			Attributes:      item.Attributes,
+			IsDefault:       item.IsDefault,
+			InitialStock:    item.InitialStock,
+		})
+	}
+
+	created, err := vh.vservice.CreateVariantsBatch(c.Request.Context(), productID, inputs)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, api.DataResponse{
+		Data: created,
 	})
 }
 

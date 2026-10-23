@@ -41,7 +41,7 @@ func (h *ObjectHandler) ListMedia(c *gin.Context) {
 
 	media, page, err := h.service.ListMedia(c.Request.Context(), q.PageSize, cursor)
 	if err != nil {
-		_ = c.Error(apierr.InternalServerError("Failed to fetch media").Wrap(err))
+		_ = c.Error(err)
 		return
 	}
 
@@ -98,7 +98,7 @@ func (h *ObjectHandler) UploadMedia(c *gin.Context) {
 	bucket := "catalog"
 	obj, err := h.service.UploadObject(c.Request.Context(), contentType, file.Size, bucket, src)
 	if err != nil {
-		_ = c.Error(apierr.InternalServerError("Failed to upload media").Wrap(err))
+		_ = c.Error(err)
 		return
 	}
 

@@ -67,6 +67,13 @@ type ObjectRepository interface {
 	MarkDeletedByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error
 }
 
+// VariantRepository defines read methods for product variant queries.
+type VariantRepository interface {
+	CountByProductID(ctx context.Context, qe database.QueryExecutor, productID uuid.UUID) (int, error)
+	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductVariant, error)
+	ListByProductID(ctx context.Context, qe database.QueryExecutor, opts variant.ListVariantOptions) (*pagination.PagedResult[model.ProductVariant], error)
+}
+
 // handleError maps database and driver errors to standard domain APIErrors.
 func (s *ProductService) handleError(err error, defaultMsg string) error {
 	if err == nil {
@@ -98,8 +105,7 @@ type ProductService struct {
 	reviewRepo      ReviewRepository
 	objectRepo      ObjectRepository
 	storageProvider storage.StorageProvider
-	variantService  *variant.VariantService
-	variantRepo     *variant.VariantRepository
+	variantRepo     VariantRepository
 }
 
 // NewService constructs a new ProductService with decoupled repository interfaces and storage provider injected.
@@ -114,8 +120,7 @@ func NewService(
 	reviewRepo ReviewRepository,
 	objectRepo ObjectRepository,
 	storageProvider storage.StorageProvider,
-	variantService *variant.VariantService,
-	variantRepo *variant.VariantRepository,
+	variantRepo VariantRepository,
 ) *ProductService {
 	return &ProductService{
 		dbRunner:        r,
@@ -128,7 +133,6 @@ func NewService(
 		reviewRepo:      reviewRepo,
 		objectRepo:      objectRepo,
 		storageProvider: storageProvider,
-		variantService:  variantService,
 		variantRepo:     variantRepo,
 	}
 }
@@ -155,16 +159,6 @@ type UpdateProductInput struct {
 	VariationAxes *[]string
 }
 
-// CreateProductVariantInput defines parameters for creating a variant under an existing product.
-type CreateProductVariantInput struct {
-	Title           string
-	Price           *int64
-	CrossedOutPrice *int64
-	Currency        *string
-	Attributes      map[string]any
-	IsDefault       bool
-	InitialStock    *int
-}
 
 // ProductDetails aggregates full details of a product, its brand, category, variants, inventory stock, and tags.
 type ProductDetails struct {
@@ -504,24 +498,7 @@ func (s *ProductService) UpdateProduct(
 	return nil
 }
 
-// CreateProductVariantsBatch creates a matrix of child variants atomically.
-func (s *ProductService) CreateProductVariantsBatch(
-	ctx context.Context,
-	productID uuid.UUID,
-	inputs []variant.BatchCreateVariantInput,
-) error {
-	if s.variantService == nil {
-		return apierr.InternalServerError("Variant service unavailable").
-			WithCode(apierr.CodeInternalError)
-	}
-	_, err := s.variantService.CreateVariantsBatch(ctx, productID, inputs)
-	return err
-}
-
 // GetByID fetches a single product by its unique identifier.
-//
-// The lookup checks a connection out of the pool, so callers that already
-// hold a transaction must use GetByIDWithTx instead.
 func (s *ProductService) GetByID(
 	ctx context.Context,
 	productID uuid.UUID,
@@ -537,17 +514,6 @@ func (s *ProductService) GetByID(
 	}
 
 	return product, nil
-}
-
-// GetByIDWithTx fetches a product on the caller's transaction executor, so
-// a caller that already holds a transaction never checks out a second
-// pooled connection.
-func (s *ProductService) GetByIDWithTx(
-	ctx context.Context,
-	tx database.QueryExecutor,
-	productID uuid.UUID,
-) (*model.Product, error) {
-	return s.getByID(ctx, tx, productID)
 }
 
 func (s *ProductService) getByID(
@@ -771,20 +737,23 @@ func (s *ProductService) PublishProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	variants, err := s.variantService.ListVariantsByProductID(ctx, productID, nil, false)
-	if err != nil {
-		return err
-	}
-	if len(variants.Items) == 0 {
-		return apierr.BadRequestError("Product must have at least one variant before publishing").
-			WithCode(errcode.CodePublishFailed)
-	}
-
-	err = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		count, err := s.variantRepo.CountByProductID(ctx, db, productID)
+		if err != nil {
+			return err
+		}
+		if count == 0 {
+			return apierr.BadRequestError("Product must have at least one variant before publishing").
+				WithCode(errcode.CodePublishFailed)
+		}
 		return s.productRepo.UpdateStatus(ctx, db, productID, model.PublicationStatusPublished)
 	})
 
 	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return apiErr
+		}
 		mappedErr := database.MapError(err)
 		switch {
 		case errors.Is(mappedErr, database.ErrNotFound):
@@ -873,65 +842,59 @@ func (s *ProductService) SoftDeleteProduct(
 	return nil
 }
 
-// CreateProductVariant creates a variant under the given product and records initial stock if specified.
-func (s *ProductService) CreateProductVariant(
-	ctx context.Context,
-	productID uuid.UUID,
-	input CreateProductVariantInput,
-) (*model.ProductVariant, error) {
-	product, err := s.GetByID(ctx, productID)
-	if err != nil {
-		return nil, err
-	}
-
-	createdVariant, err := s.variantService.CreateVariant(ctx, &variant.CreateVariantInput{
-		ProductID:       product.ID,
-		Title:           input.Title,
-		Price:           input.Price,
-		CrossedOutPrice: input.CrossedOutPrice,
-		Currency:        input.Currency,
-		Attributes:      input.Attributes,
-		IsDefault:       input.IsDefault,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if input.InitialStock != nil && *input.InitialStock > 0 && s.inventoryRepo != nil {
-		err = s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-			ledger := &model.InventoryLedger{
-				VariantID: createdVariant.ID,
-				Quantity:  *input.InitialStock,
-				Reason:    model.InventoryReasonRestock,
-			}
-			return s.inventoryRepo.CreateLedger(ctx, tx, ledger)
-		})
-		if err != nil {
-			// Roll back created variant on failure to maintain consistency
-			_ = s.variantService.DeleteVariantByID(ctx, createdVariant.ID)
-			return nil, err
-		}
-	}
-
-	return createdVariant, nil
-}
-
-// GetProductVariants retrieves active variants for a product.
-func (s *ProductService) GetProductVariants(
-	ctx context.Context,
-	productID uuid.UUID,
-	q *pagination.ListQuery,
-) (*pagination.PagedResult[model.ProductVariant], error) {
-	return s.variantService.ListVariantsByProductID(ctx, productID, q, false)
-}
-
 // SetDefaultVariant designates a variant as default for the given product.
 func (s *ProductService) SetDefaultVariant(
 	ctx context.Context,
 	productID uuid.UUID,
 	variantID uuid.UUID,
 ) error {
-	return s.variantService.SetDefaultVariant(ctx, productID, variantID)
+	if productID == uuid.Nil || variantID == uuid.Nil {
+		return apierr.BadRequestError("Product ID and Variant ID are required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		v, err := s.variantRepo.GetByID(ctx, tx, variantID)
+		if err != nil {
+			return err
+		}
+		if v.ProductID != productID {
+			return apierr.BadRequestError("Variant does not belong to this product").
+				WithCode(errcode.CodeVariantProductMismatch)
+		}
+
+		prod, err := s.productRepo.GetByID(ctx, tx, productID)
+		if err != nil {
+			return err
+		}
+		if prod.ProductType == model.ProductTypeSimple && prod.DefaultVariantID != nil && *prod.DefaultVariantID != variantID {
+			return apierr.BadRequestError("Default variant for a simple product cannot be changed").
+				WithCode(errcode.CodeSimpleProductVariantLocked)
+		}
+
+		return s.productRepo.SetDefaultVariant(ctx, tx, productID, &variantID)
+	})
+
+	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return apiErr
+		}
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return apierr.NotFoundError("Product or variant not found").
+				WithCode(errcode.CodeProductNotFound).
+				Wrap(err)
+		default:
+			return apierr.InternalServerError("Failed to set default variant").
+				WithCode(apierr.CodeInternalError).
+				Wrap(err).
+				WithStack()
+		}
+	}
+
+	return nil
 }
 
 // ReplaceProductTags replaces tag associations for a product atomically.

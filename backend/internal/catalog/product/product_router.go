@@ -4,6 +4,7 @@ package product
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 )
@@ -12,16 +13,19 @@ import (
 // and administrative product lifecycle operations.
 type ProductRouter struct {
 	ph           *ProductHandler
+	vh           *variant.VariantHandler
 	sessionStore middleware.SessionStore
 }
 
-// NewRouter constructs a new ProductRouter with the provided ProductHandler and session store.
+// NewRouter constructs a new ProductRouter with the provided ProductHandler, VariantHandler and session store.
 func NewRouter(
 	ph *ProductHandler,
+	vh *variant.VariantHandler,
 	sessionStore middleware.SessionStore,
 ) *ProductRouter {
 	return &ProductRouter{
 		ph:           ph,
+		vh:           vh,
 		sessionStore: sessionStore,
 	}
 }
@@ -48,8 +52,8 @@ func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.POST("/:id/archive", r.ph.ArchiveProduct)
 
 		// Variant default assignment and creation (product-scoped actions)
-		admin.POST("/:id/variants", r.ph.CreateProductVariant)
-		admin.POST("/:id/variants/batch", r.ph.CreateProductVariantsBatch)
+		admin.POST("/:id/variants", r.vh.CreateVariant)
+		admin.POST("/:id/variants/batch", r.vh.CreateVariantsBatch)
 		admin.POST("/:id/variants/default", r.ph.SetDefaultVariant)
 
 		// Media Operations

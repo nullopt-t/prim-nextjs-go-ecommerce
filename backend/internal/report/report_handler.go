@@ -79,7 +79,7 @@ func (h *Handler) ExportReport(c *gin.Context) {
 
 	data, err := h.service.BuildCSV(c.Request.Context(), exportType, filter)
 	if err != nil {
-		_ = c.Error(apierr.InternalServerError("Failed to build export").Wrap(err))
+		_ = c.Error(err)
 		return
 	}
 

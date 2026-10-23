@@ -327,3 +327,12 @@ func StorageError(message ...string) *APIError {
 	return New(http.StatusInternalServerError, msg).WithCode(CodeStorageError)
 }
 
+// GatewayTimeoutError creates a 504 Gateway Timeout error when an upstream dependency (e.g. the database) fails to respond in time or an operation is cancelled.
+func GatewayTimeoutError(message ...string) *APIError {
+	msg := "Request timed out"
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+	return New(http.StatusGatewayTimeout, msg).WithCode(CodeGatewayTimeout)
+}
+

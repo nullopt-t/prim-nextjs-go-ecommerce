@@ -2,6 +2,8 @@ package setting
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"sync"
 	"time"
 
@@ -32,6 +34,49 @@ func NewService(dr database.Runner, repo *Repository) *Service {
 	}
 }
 
+// handleError maps persistence, driver, and context errors to domain APIErrors.
+func (s *Service) handleError(err error, fallbackMsg string) error {
+	if err == nil {
+		return nil
+	}
+
+	var apiErr *apierr.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr
+	}
+
+	mappedErr := database.MapError(err)
+	switch {
+	case errors.Is(mappedErr, database.ErrNotFound):
+		return apierr.NotFoundError("Setting not found").
+			WithCode(apierr.CodeNotFound).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrConflict):
+		return apierr.ConflictError("Setting already exists").
+			WithCode(apierr.CodeAlreadyExists).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+		return apierr.BadRequestError("Referenced record does not exist").
+			WithCode(apierr.CodeInvalidInput).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrCheckViolation),
+		errors.Is(mappedErr, database.ErrNotNullViolation),
+		errors.Is(mappedErr, database.ErrInvalidInput):
+		return apierr.BadRequestError("Invalid input").
+			WithCode(apierr.CodeInvalidInput).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrTimeout), errors.Is(mappedErr, database.ErrCanceled):
+		return apierr.New(http.StatusGatewayTimeout, "database operation timed out or canceled").
+			WithCode(apierr.CodeGatewayTimeout).
+			Wrap(err)
+	default:
+		return apierr.InternalServerError(fallbackMsg).
+			WithCode(apierr.CodeInternalError).
+			Wrap(err).
+			WithStack()
+	}
+}
+
 // GetSettings returns all persisted settings as a key/value map.
 func (s *Service) GetSettings(ctx context.Context) (map[string]interface{}, error) {
 	settings := make(map[string]interface{})
@@ -47,10 +92,7 @@ func (s *Service) GetSettings(ctx context.Context) (map[string]interface{}, erro
 		return nil
 	})
 	if err != nil {
-		return nil, apierr.InternalServerError("Failed to fetch settings").
-			WithCode(apierr.CodeInternalError).
-			Wrap(err).
-			WithStack()
+		return nil, s.handleError(err, "Failed to fetch settings")
 	}
 
 	return settings, nil
@@ -93,10 +135,7 @@ func (s *Service) UpdateSettings(ctx context.Context, items map[string]interface
 		return nil
 	})
 	if err != nil {
-		return apierr.InternalServerError("Failed to update settings").
-			WithCode(apierr.CodeInternalError).
-			Wrap(err).
-			WithStack()
+		return s.handleError(err, "Failed to update settings")
 	}
 
 	// Force the next read to observe the freshly written values immediately.

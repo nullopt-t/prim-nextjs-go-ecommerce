@@ -84,7 +84,7 @@ func (h *Handler) ListAuditLogs(c *gin.Context) {
 
 	entries, page, err := h.service.List(c.Request.Context(), filter, q.PageSize, cursor)
 	if err != nil {
-		_ = c.Error(apierr.InternalServerError("Failed to fetch audit log").Wrap(err))
+		_ = c.Error(err)
 		return
 	}
 
