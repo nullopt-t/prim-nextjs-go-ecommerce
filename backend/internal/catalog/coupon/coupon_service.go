@@ -61,14 +61,20 @@ func (s *CouponService) handleError(err error, fallbackMsg string) error {
 	if err == nil {
 		return nil
 	}
+	var apiErr *apierr.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr
+	}
 	mapped := database.MapError(err)
 	switch {
 	case errors.Is(mapped, database.ErrNotFound):
 		return apierr.NotFoundError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
 	case errors.Is(mapped, database.ErrConflict):
 		return apierr.ConflictError("A coupon with this code already exists").WithCode(errcode.CodeCouponAlreadyExists)
+	case errors.Is(mapped, database.ErrForeignKeyViolation):
+		return apierr.BadRequestError("Referenced record does not exist").WithCode(apierr.CodeInvalidInput)
 	default:
-		return apierr.InternalServerError(fallbackMsg).Wrap(err)
+		return apierr.InternalServerError(fallbackMsg).WithCode(apierr.CodeInternalError).Wrap(err).WithStack()
 	}
 }
 
@@ -208,15 +214,18 @@ func (s *CouponService) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 // ListRedemptions returns the usage log for a coupon, newest first. The coupon
-// is verified first so an unknown ID yields a 404 rather than an empty log.
+// is verified first on the same connection so an unknown ID yields a 404 rather than an empty log.
 func (s *CouponService) ListRedemptions(ctx context.Context, couponID uuid.UUID, limit int, cursor *pagination.Keyset) ([]*RedemptionEntry, *pagination.CursorPage, error) {
-	if _, err := s.GetByID(ctx, couponID); err != nil {
-		return nil, nil, err
+	if couponID == uuid.Nil {
+		return nil, nil, apierr.BadRequestError("Coupon ID is required").WithCode(apierr.CodeInvalidInput)
 	}
 
 	var list []*RedemptionEntry
 	var page *pagination.CursorPage
 	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+		if _, err := s.repo.GetByID(ctx, db, couponID); err != nil {
+			return err
+		}
 		var err error
 		list, page, err = s.repo.ListRedemptions(ctx, db, couponID, limit, cursor)
 		return err
@@ -227,8 +236,112 @@ func (s *CouponService) ListRedemptions(ctx context.Context, couponID uuid.UUID,
 	return list, page, nil
 }
 
+// calculateDiscount evaluates coupon constraints and calculates discount and totals on the provided connection.
+func (s *CouponService) calculateDiscount(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	c *model.Coupon,
+	grossTotal int64,
+	userID *uuid.UUID,
+) (*ValidationResult, error) {
+	if c.Status != model.CouponStatusActive {
+		return nil, apierr.BadRequestError(fmt.Sprintf("Coupon '%s' is not active", c.Code)).
+			WithCode(errcode.CodeCouponInactive)
+	}
+
+	now := time.Now()
+	if c.StartsAt != nil && now.Before(*c.StartsAt) {
+		return nil, apierr.BadRequestError(fmt.Sprintf("Coupon '%s' has not started yet", c.Code)).
+			WithCode(errcode.CodeCouponNotStarted)
+	}
+	if c.ExpiresAt != nil && now.After(*c.ExpiresAt) {
+		return nil, apierr.BadRequestError(fmt.Sprintf("Coupon '%s' has expired", c.Code)).
+			WithCode(errcode.CodeCouponExpired)
+	}
+
+	// Minimum cart amount check
+	if c.MinCartAmount != nil && *c.MinCartAmount > 0 && grossTotal < *c.MinCartAmount {
+		minFormatted := float64(*c.MinCartAmount) / 100.0
+		return nil, apierr.BadRequestError(
+			fmt.Sprintf("Coupon '%s' requires a minimum order amount of %.2f %s", c.Code, minFormatted, c.Currency),
+		).WithCode(errcode.CodeCouponMinCartNotMet)
+	}
+
+	// Check global usage limit
+	if c.UsageLimit != nil && *c.UsageLimit > 0 {
+		usedCount, err := s.repo.GetRedemptionCount(ctx, qe, c.ID)
+		if err != nil {
+			return nil, err
+		}
+		if usedCount >= *c.UsageLimit {
+			return nil, apierr.BadRequestError(fmt.Sprintf("Coupon '%s' usage limit has been reached", c.Code)).
+				WithCode(errcode.CodeCouponUsageLimitExceeded)
+		}
+	}
+
+	// Check per-user limit
+	if userID != nil {
+		userLimit := 1
+		if c.PerUserLimit != nil && *c.PerUserLimit > 0 {
+			userLimit = *c.PerUserLimit
+		}
+		userUsedCount, err := s.repo.GetUserRedemptionCount(ctx, qe, c.ID, *userID)
+		if err != nil {
+			return nil, err
+		}
+		if userUsedCount >= userLimit {
+			return nil, apierr.BadRequestError(fmt.Sprintf("You have already used coupon '%s' the maximum allowable times", c.Code)).
+				WithCode(errcode.CodeCouponUserLimitExceeded)
+		}
+	}
+
+	res := &ValidationResult{
+		ID:            c.ID,
+		Code:          c.Code,
+		DiscountType:  string(c.DiscountType),
+		DiscountValue: c.DiscountValue,
+		MinCartAmount: c.MinCartAmount,
+		Message:       fmt.Sprintf("Coupon %s applied successfully!", c.Code),
+	}
+
+	var calculatedDiscount int64
+	if c.DiscountType == model.CouponDiscountTypePercentage {
+		pct := int(c.DiscountValue)
+		res.DiscountPercent = &pct
+		if grossTotal > 0 {
+			calculatedDiscount = (grossTotal * c.DiscountValue) / 100
+		}
+	} else if c.DiscountType == model.CouponDiscountTypeFixedAmount {
+		fixed := float64(c.DiscountValue) / 100.0
+		res.FixedDiscount = &fixed
+		calculatedDiscount = c.DiscountValue
+	}
+
+	if calculatedDiscount > grossTotal && grossTotal > 0 {
+		calculatedDiscount = grossTotal
+	}
+
+	// Standard shipping: free at >= 15000 cents (150 EGP), 999 cents (9.99 EGP) otherwise
+	var shippingCost int64 = 0
+	if grossTotal > 0 && grossTotal < 15000 {
+		shippingCost = 999
+	}
+
+	finalTotal := grossTotal - calculatedDiscount + shippingCost
+	if finalTotal < 0 {
+		finalTotal = 0
+	}
+
+	res.Subtotal = grossTotal
+	res.DiscountAmount = calculatedDiscount
+	res.Shipping = shippingCost
+	res.Total = finalTotal
+
+	return res, nil
+}
+
 // ValidateAndCalculate validates a coupon code against a gross cart subtotal and optional customer ID,
-// and computes the authoritative discount and final totals.
+// and computes the authoritative discount and final totals over a single database connection.
 func (s *CouponService) ValidateAndCalculate(
 	ctx context.Context,
 	code string,
@@ -242,133 +355,49 @@ func (s *CouponService) ValidateAndCalculate(
 	}
 
 	var result *ValidationResult
-
-	err := s.runner.WithTx(ctx, func(ctx context.Context, db database.QueryExecutor) error {
+	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
 		c, err := s.repo.GetByCode(ctx, db, trimmedCode)
 		if err != nil {
-			if errors.Is(err, database.ErrNotFound) {
-				return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' not found", trimmedCode)).
-					WithCode(errcode.CodeCouponNotFound)
-			}
-			return apierr.InternalServerError("Failed to validate coupon").Wrap(err)
+			return err
 		}
-
-		if c.Status != model.CouponStatusActive {
-			return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' is not active", c.Code)).
-				WithCode(errcode.CodeCouponInactive)
-		}
-
-		now := time.Now()
-		if c.StartsAt != nil && now.Before(*c.StartsAt) {
-			return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' has not started yet", c.Code)).
-				WithCode(errcode.CodeCouponNotStarted)
-		}
-		if c.ExpiresAt != nil && now.After(*c.ExpiresAt) {
-			return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' has expired", c.Code)).
-				WithCode(errcode.CodeCouponExpired)
-		}
-
-		// Minimum cart amount check
-		if c.MinCartAmount != nil && *c.MinCartAmount > 0 && grossTotal < *c.MinCartAmount {
-			minFormatted := float64(*c.MinCartAmount) / 100.0
-			return apierr.BadRequestError(
-				fmt.Sprintf("Coupon '%s' requires a minimum order amount of %.2f %s", c.Code, minFormatted, c.Currency),
-			).WithCode(errcode.CodeCouponMinCartNotMet)
-		}
-
-		// Check global usage limit
-		if c.UsageLimit != nil && *c.UsageLimit > 0 {
-			usedCount, err := s.repo.GetRedemptionCount(ctx, db, c.ID)
-			if err != nil {
-				return apierr.InternalServerError("Failed to check coupon usage limit").Wrap(err)
-			}
-			if usedCount >= *c.UsageLimit {
-				return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' usage limit has been reached", c.Code)).
-					WithCode(errcode.CodeCouponUsageLimitExceeded)
-			}
-		}
-
-		// Check per-user limit
-		if userID != nil {
-			userLimit := 1
-			if c.PerUserLimit != nil && *c.PerUserLimit > 0 {
-				userLimit = *c.PerUserLimit
-			}
-			userUsedCount, err := s.repo.GetUserRedemptionCount(ctx, db, c.ID, *userID)
-			if err != nil {
-				return apierr.InternalServerError("Failed to check user coupon usage").Wrap(err)
-			}
-			if userUsedCount >= userLimit {
-				return apierr.BadRequestError(fmt.Sprintf("You have already used coupon '%s' the maximum allowable times", c.Code)).
-					WithCode(errcode.CodeCouponUserLimitExceeded)
-			}
-		}
-
-		res := &ValidationResult{
-			ID:            c.ID,
-			Code:          c.Code,
-			DiscountType:  string(c.DiscountType),
-			DiscountValue: c.DiscountValue,
-			MinCartAmount: c.MinCartAmount,
-			Message:       fmt.Sprintf("Coupon %s applied successfully!", c.Code),
-		}
-
-		var calculatedDiscount int64
-		if c.DiscountType == model.CouponDiscountTypePercentage {
-			pct := int(c.DiscountValue)
-			res.DiscountPercent = &pct
-			if grossTotal > 0 {
-				calculatedDiscount = (grossTotal * c.DiscountValue) / 100
-			}
-		} else if c.DiscountType == model.CouponDiscountTypeFixedAmount {
-			fixed := float64(c.DiscountValue) / 100.0
-			res.FixedDiscount = &fixed
-			calculatedDiscount = c.DiscountValue
-		}
-
-		if calculatedDiscount > grossTotal && grossTotal > 0 {
-			calculatedDiscount = grossTotal
-		}
-
-		// Standard shipping: free at >= 15000 cents (150 EGP), 999 cents (9.99 EGP) otherwise
-		var shippingCost int64 = 0
-		if grossTotal > 0 && grossTotal < 15000 {
-			shippingCost = 999
-		}
-
-		finalTotal := grossTotal - calculatedDiscount + shippingCost
-		if finalTotal < 0 {
-			finalTotal = 0
-		}
-
-		res.Subtotal = grossTotal
-		res.DiscountAmount = calculatedDiscount
-		res.Shipping = shippingCost
-		res.Total = finalTotal
-
-		result = res
-		return nil
+		var calcErr error
+		result, calcErr = s.calculateDiscount(ctx, db, c, grossTotal, userID)
+		return calcErr
 	})
-
 	if err != nil {
-		return nil, err
+		return nil, s.handleError(err, "Failed to validate coupon")
 	}
 
 	return result, nil
 }
 
-// ValidateAndCalculateByID validates a coupon by its UUID identifier against a gross cart subtotal and customer ID.
+// ValidateAndCalculateByID validates a coupon by its UUID identifier over a single database connection.
 func (s *CouponService) ValidateAndCalculateByID(
 	ctx context.Context,
 	couponID uuid.UUID,
 	grossTotal int64,
 	userID *uuid.UUID,
 ) (*ValidationResult, error) {
-	c, err := s.GetByID(ctx, couponID)
-	if err != nil {
-		return nil, err
+	if couponID == uuid.Nil {
+		return nil, apierr.BadRequestError("Coupon ID is required").
+			WithCode(apierr.CodeInvalidInput)
 	}
-	return s.ValidateAndCalculate(ctx, c.Code, grossTotal, userID)
+
+	var result *ValidationResult
+	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+		c, err := s.repo.GetByID(ctx, db, couponID)
+		if err != nil {
+			return err
+		}
+		var calcErr error
+		result, calcErr = s.calculateDiscount(ctx, db, c, grossTotal, userID)
+		return calcErr
+	})
+	if err != nil {
+		return nil, s.handleError(err, "Failed to validate coupon")
+	}
+
+	return result, nil
 }
 
 // RecordRedemption records a coupon redemption during checkout.
@@ -379,13 +408,21 @@ func (s *CouponService) RecordRedemption(
 	orderID uuid.UUID,
 	discountAmount int64,
 ) error {
+	if couponID == uuid.Nil || userID == uuid.Nil || orderID == uuid.Nil {
+		return apierr.BadRequestError("Coupon ID, User ID, and Order ID are required").
+			WithCode(apierr.CodeInvalidInput)
+	}
 	red := &model.CouponRedemption{
 		CouponID:       couponID,
 		UserID:         userID,
 		OrderID:        orderID,
 		DiscountAmount: discountAmount,
 	}
-	return s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return s.repo.RecordRedemption(ctx, tx, red)
 	})
+	if err != nil {
+		return s.handleError(err, "Failed to record coupon redemption")
+	}
+	return nil
 }

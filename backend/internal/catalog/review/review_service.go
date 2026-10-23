@@ -27,6 +27,39 @@ func NewService(
 	}
 }
 
+// handleError maps repository and database driver errors to typed APIErrors.
+func (s *ReviewService) handleError(err error, fallbackMsg string) error {
+	if err == nil {
+		return nil
+	}
+
+	var apiErr *apierr.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr
+	}
+
+	mapped := database.MapError(err)
+	switch {
+	case errors.Is(mapped, database.ErrNotFound):
+		return apierr.NotFoundError("Review not found").
+			WithCode(errcode.CodeReviewNotFound).
+			Wrap(err)
+	case errors.Is(mapped, database.ErrConflict):
+		return apierr.ConflictError("A review has already been submitted for this order item").
+			WithCode(errcode.CodeReviewAlreadyExists).
+			Wrap(err)
+	case errors.Is(mapped, database.ErrForeignKeyViolation):
+		return apierr.BadRequestError("Referenced record does not exist").
+			WithCode(apierr.CodeInvalidInput).
+			Wrap(err)
+	default:
+		return apierr.InternalServerError(fallbackMsg).
+			WithCode(apierr.CodeInternalError).
+			Wrap(err).
+			WithStack()
+	}
+}
+
 type CreateReviewInput struct {
 	ProductID   uuid.UUID
 	UserID      uuid.UUID
@@ -46,13 +79,16 @@ func (s *ReviewService) CreateReview(
 	ctx context.Context,
 	in CreateReviewInput,
 ) (*model.Review, error) {
+	if in.ProductID == uuid.Nil || in.UserID == uuid.Nil {
+		return nil, apierr.BadRequestError("Product ID and User ID are required").
+			WithCode(apierr.CodeInvalidInput)
+	}
 	if in.Rating < 1 || in.Rating > 5 {
 		return nil, apierr.ValidationFailedError("rating must be between 1 and 5")
 	}
 
 	var targetOrderItemID uuid.UUID
 	var createdReview *model.Review
-	var apiErr *apierr.APIError
 
 	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		if in.OrderItemID != nil && *in.OrderItemID != uuid.Nil {
@@ -60,7 +96,7 @@ func (s *ReviewService) CreateReview(
 			// 1. Verify specific purchase
 			pv, err := s.repo.VerifyPurchase(ctx, tx, targetOrderItemID)
 			if err != nil {
-				return apierr.InternalServerError("failed to verify purchase").Wrap(err)
+				return err
 			}
 			if pv == nil {
 				return apierr.NotFoundError("order item not found")
@@ -81,7 +117,7 @@ func (s *ReviewService) CreateReview(
 			// Auto-resolve eligible delivered purchase for this user and product
 			eligibleID, err := s.repo.FindEligibleOrderItem(ctx, tx, in.UserID, in.ProductID)
 			if err != nil {
-				return apierr.InternalServerError("failed to verify purchase eligibility").Wrap(err)
+				return err
 			}
 			if eligibleID == uuid.Nil {
 				return apierr.ForbiddenError("you can only review products you have purchased and received (delivered)").
@@ -93,7 +129,7 @@ func (s *ReviewService) CreateReview(
 		// 2. Check if already reviewed
 		existing, err := s.repo.GetByOrderItemID(ctx, tx, targetOrderItemID)
 		if err != nil {
-			return apierr.InternalServerError("failed to check existing review").Wrap(err)
+			return err
 		}
 		if existing != nil {
 			return apierr.ConflictError("a review has already been submitted for this order item").
@@ -114,11 +150,7 @@ func (s *ReviewService) CreateReview(
 		}
 
 		if err := s.repo.Create(ctx, tx, rv); err != nil {
-			if errors.Is(database.MapError(err), database.ErrConflict) {
-				return apierr.ConflictError("a review has already been submitted for this order item").
-					WithCode(errcode.CodeReviewAlreadyExists)
-			}
-			return apierr.InternalServerError("failed to create review").Wrap(err)
+			return err
 		}
 
 		createdReview = rv
@@ -126,42 +158,49 @@ func (s *ReviewService) CreateReview(
 	})
 
 	if err != nil {
-		if errors.As(err, &apiErr) {
-			return nil, apiErr
-		}
-		return nil, apierr.InternalServerError("failed to create review").Wrap(err)
+		return nil, s.handleError(err, "Failed to create review")
 	}
 
 	return createdReview, nil
 }
 
 func (s *ReviewService) GetReviewByID(ctx context.Context, id uuid.UUID) (*model.Review, error) {
-	var rv *model.Review
-	var err error
+	if id == uuid.Nil {
+		return nil, apierr.BadRequestError("Review ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
 
-	err = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	var rv *model.Review
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
 		rv, err = s.repo.GetByID(ctx, db, id)
 		return err
 	})
 	if err != nil {
-		return nil, apierr.InternalServerError("failed to get review by id").Wrap(err)
+		return nil, s.handleError(err, "Failed to get review by id")
 	}
 	if rv == nil {
-		return nil, apierr.NotFoundError("review not found")
+		return nil, apierr.NotFoundError("Review not found").
+			WithCode(errcode.CodeReviewNotFound)
 	}
 
 	return rv, nil
 }
 
 func (s *ReviewService) GetRatingSummary(ctx context.Context, productID uuid.UUID) (*model.RatingSummary, error) {
+	if productID == uuid.Nil {
+		return nil, apierr.BadRequestError("Product ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
 	var summary *model.RatingSummary
-	var err error
-	err = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
 		summary, err = s.repo.GetRatingSummaryByProductID(ctx, db, productID)
 		return err
 	})
 	if err != nil {
-		return nil, apierr.InternalServerError("failed to get rating summary").Wrap(err)
+		return nil, s.handleError(err, "Failed to get rating summary")
 	}
 	return summary, nil
 }
@@ -170,14 +209,18 @@ func (s *ReviewService) GetRatingSummariesByProductIDs(
 	ctx context.Context,
 	productIDs []uuid.UUID,
 ) (map[uuid.UUID]*model.RatingSummary, error) {
+	if len(productIDs) == 0 {
+		return map[uuid.UUID]*model.RatingSummary{}, nil
+	}
+
 	var summaries map[uuid.UUID]*model.RatingSummary
-	var err error
-	err = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
 		summaries, err = s.repo.GetRatingSummariesByProductIDs(ctx, db, productIDs)
 		return err
 	})
 	if err != nil {
-		return nil, apierr.InternalServerError("failed to get rating summaries").Wrap(err)
+		return nil, s.handleError(err, "Failed to get rating summaries")
 	}
 	return summaries, nil
 }
@@ -190,23 +233,27 @@ func (s *ReviewService) UpdateUserReview(
 	userID uuid.UUID,
 	in UpdateReviewInput,
 ) (*model.Review, error) {
+	if id == uuid.Nil || userID == uuid.Nil {
+		return nil, apierr.BadRequestError("Review ID and User ID are required").
+			WithCode(apierr.CodeInvalidInput)
+	}
 	if in.Rating != nil && (*in.Rating < 1 || *in.Rating > 5) {
 		return nil, apierr.ValidationFailedError("rating must be between 1 and 5")
 	}
 
 	var updatedReview *model.Review
-	var apiErr *apierr.APIError
-
 	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		rv, err := s.repo.GetByID(ctx, tx, id)
 		if err != nil {
-			return apierr.InternalServerError("failed to get review by id").Wrap(err)
+			return err
 		}
 		if rv == nil {
-			return apierr.NotFoundError("review not found")
+			return apierr.NotFoundError("Review not found").
+				WithCode(errcode.CodeReviewNotFound)
 		}
 		if rv.UserID != userID {
-			return apierr.ForbiddenError("you can only update your own review")
+			return apierr.ForbiddenError("You can only update your own review").
+				WithCode(apierr.CodeForbidden)
 		}
 
 		changed := false
@@ -229,9 +276,8 @@ func (s *ReviewService) UpdateUserReview(
 		}
 
 		rv.Status = model.ReviewStatusPending
-
 		if err := s.repo.Update(ctx, tx, rv); err != nil {
-			return apierr.InternalServerError("failed to update review").Wrap(err)
+			return err
 		}
 
 		updatedReview = rv
@@ -239,42 +285,37 @@ func (s *ReviewService) UpdateUserReview(
 	})
 
 	if err != nil {
-		if errors.As(err, &apiErr) {
-			return nil, apiErr
-		}
-		return nil, apierr.InternalServerError("failed to update review").Wrap(err)
+		return nil, s.handleError(err, "Failed to update review")
 	}
 
 	return updatedReview, nil
 }
 
 func (s *ReviewService) DeleteReview(ctx context.Context, id uuid.UUID, userID uuid.UUID, isAdmin bool) error {
-	var apiErr *apierr.APIError
+	if id == uuid.Nil {
+		return apierr.BadRequestError("Review ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
 
 	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		rv, err := s.repo.GetByID(ctx, tx, id)
 		if err != nil {
-			return apierr.InternalServerError("failed to get review by id").Wrap(err)
+			return err
 		}
 		if rv == nil {
-			return apierr.NotFoundError("review not found")
+			return apierr.NotFoundError("Review not found").
+				WithCode(errcode.CodeReviewNotFound)
 		}
 		if !isAdmin && rv.UserID != userID {
-			return apierr.ForbiddenError("you can only delete your own review")
+			return apierr.ForbiddenError("You can only delete your own review").
+				WithCode(apierr.CodeForbidden)
 		}
 
-		err = s.repo.Delete(ctx, tx, id)
-		if err != nil {
-			return apierr.InternalServerError("failed to delete review").Wrap(err)
-		}
-		return nil
+		return s.repo.Delete(ctx, tx, id)
 	})
 
 	if err != nil {
-		if errors.As(err, &apiErr) {
-			return apiErr
-		}
-		return apierr.InternalServerError("failed to delete review").Wrap(err)
+		return s.handleError(err, "Failed to delete review")
 	}
 
 	return nil
@@ -285,29 +326,26 @@ func (s *ReviewService) UpdateReviewStatus(
 	id uuid.UUID,
 	status model.ReviewStatus,
 ) error {
-	var apiErr *apierr.APIError
+	if id == uuid.Nil {
+		return apierr.BadRequestError("Review ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
 
 	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		rv, err := s.repo.GetByID(ctx, tx, id)
 		if err != nil {
-			return apierr.InternalServerError("failed to get review by id").Wrap(err)
+			return err
 		}
 		if rv == nil {
-			return apierr.NotFoundError("review not found")
+			return apierr.NotFoundError("Review not found").
+				WithCode(errcode.CodeReviewNotFound)
 		}
 
-		err = s.repo.UpdateStatus(ctx, tx, id, status)
-		if err != nil {
-			return apierr.InternalServerError("failed to update review status").Wrap(err)
-		}
-		return nil
+		return s.repo.UpdateStatus(ctx, tx, id, status)
 	})
 
 	if err != nil {
-		if errors.As(err, &apiErr) {
-			return apiErr
-		}
-		return apierr.InternalServerError("failed to update review status").Wrap(err)
+		return s.handleError(err, "Failed to update review status")
 	}
 
 	return nil
@@ -322,15 +360,14 @@ func (s *ReviewService) ListReviews(
 ) (*pagination.PagedResult[model.Review], error) {
 	var reviews []model.Review
 	var total int
-	var err error
-
-	err = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
 		reviews, total, err = s.repo.List(ctx, db, q, productID, userID, status)
 		return err
 	})
 
 	if err != nil {
-		return nil, apierr.InternalServerError("failed to list reviews").Wrap(err)
+		return nil, s.handleError(err, "Failed to list reviews")
 	}
 
 	reviewPtrs := make([]*model.Review, len(reviews))
@@ -348,16 +385,20 @@ func (s *ReviewService) CheckReviewEligibility(
 	userID uuid.UUID,
 	productID uuid.UUID,
 ) (bool, error) {
-	var eligibleID uuid.UUID
-	var err error
+	if userID == uuid.Nil || productID == uuid.Nil {
+		return false, apierr.BadRequestError("User ID and Product ID are required").
+			WithCode(apierr.CodeInvalidInput)
+	}
 
-	err = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	var eligibleID uuid.UUID
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
 		eligibleID, err = s.repo.FindEligibleOrderItem(ctx, db, userID, productID)
 		return err
 	})
 
 	if err != nil {
-		return false, apierr.InternalServerError("failed to verify review eligibility").Wrap(err)
+		return false, s.handleError(err, "Failed to verify review eligibility")
 	}
 
 	return eligibleID != uuid.Nil, nil
