@@ -112,8 +112,10 @@ export function resolveProductImageEntries(
 ): ProductImageEntry[] {
   const imageList: ProductImageEntry[] = [];
   const seen = new Set<string>();
-  const variantUrlOwners = new Map<string, ProductVariant>();
-  const sharedVariantUrls = new Set<string>();
+  // The same image URL can be reused by several variants. Pick the variant
+  // where it appears earliest (thumbnail, then media order) as its owner so a
+  // gallery click can still resolve to a concrete option.
+  const variantUrlPriority = new Map<string, { variant: ProductVariant; priority: number }>();
 
   const normalizeImageUrl = (rawUrl?: any): string | null => {
     if (!rawUrl) return null;
@@ -149,25 +151,22 @@ export function resolveProductImageEntries(
   // same URLs in the master `images` array as well; without this lookup those
   // generic entries would lose their variant association.
   for (const variant of product.variants || []) {
-    for (const rawUrl of getVariantImageUrls(variant)) {
+    const urls = getVariantImageUrls(variant);
+    urls.forEach((rawUrl, priority) => {
       const normalized = normalizeImageUrl(rawUrl);
-      if (!normalized) continue;
-      const existing = variantUrlOwners.get(normalized);
-      if (existing && existing.id !== variant.id) {
-        sharedVariantUrls.add(normalized);
-      } else {
-        variantUrlOwners.set(normalized, variant);
+      if (!normalized) return;
+      const existing = variantUrlPriority.get(normalized);
+      if (!existing || priority < existing.priority) {
+        variantUrlPriority.set(normalized, { variant, priority });
       }
-    }
+    });
   }
 
-  const addImage = (rawUrl?: any, variant?: ProductVariant | null) => {
+  const addImage = (rawUrl?: any) => {
     const normalized = normalizeImageUrl(rawUrl);
     if (!normalized || seen.has(normalized)) return;
 
-    const owner = variant
-      || (sharedVariantUrls.has(normalized) ? null : variantUrlOwners.get(normalized))
-      || null;
+    const owner = variantUrlPriority.get(normalized)?.variant ?? null;
     seen.add(normalized);
     imageList.push({
       url: normalized,
@@ -178,7 +177,7 @@ export function resolveProductImageEntries(
 
   const addVariantMedia = (variant: ProductVariant) => {
     for (const url of getVariantImageUrls(variant)) {
-      addImage(url, variant);
+      addImage(url);
     }
   };
 

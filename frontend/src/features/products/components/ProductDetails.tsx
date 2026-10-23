@@ -210,8 +210,8 @@ export function ProductDetails() {
     setActiveImage(0);
   };
 
-  // Selecting a gallery image also selects the variant that owns it, when the
-  // image is variant-specific. Master/generic product images leave options alone.
+  // Selecting a gallery image also selects the variant associated with it.
+  // Generic product images (not used by any variant) leave options alone.
   const handleSelectImage = (index: number) => {
     const entry = imageEntries[index];
     if (!entry?.attributes || !entry.variantId) {
