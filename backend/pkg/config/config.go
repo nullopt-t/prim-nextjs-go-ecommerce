@@ -98,15 +98,6 @@ type MinioConfig struct {
 
 	// Bucket is the default S3 bucket name.
 	Bucket string `yaml:"bucket" env:"MINIO_BUCKET" env-default:""`
-
-	// Region is the AWS region (e.g. eu-west-1).
-	Region string `yaml:"region" env:"AWS_REGION" env-default:""`
-
-	// RoleARN is the optional AWS IAM Role ARN for OIDC / AssumeRole.
-	RoleARN string `yaml:"role_arn" env:"AWS_ROLE_ARN" env-default:""`
-
-	// AccountID is the optional AWS Account ID.
-	AccountID string `yaml:"account_id" env:"AWS_ACCOUNT_ID" env-default:""`
 }
 
 // AuthConfig defines token lifespans and session retention durations.
@@ -232,56 +223,6 @@ func Load(configPath ...string) (Config, error) {
 	if cfg.RedisCfg.URL == "" {
 		if u := os.Getenv("REDIS"); u != "" {
 			cfg.RedisCfg.URL = u
-		}
-	}
-
-	// Support Vercel / AWS S3 environment variable conventions
-	if cfg.MinioCfg.Region == "" {
-		if r := os.Getenv("MINIO_PUBLIC_AWS_REGION"); r != "" {
-			cfg.MinioCfg.Region = r
-		}
-	}
-	if cfg.MinioCfg.Bucket == "" {
-		if b := os.Getenv("MINIO_PUBLIC_S3_BUCKET_NAME"); b != "" {
-			cfg.MinioCfg.Bucket = b
-		} else if b := os.Getenv("S3_BUCKET_NAME"); b != "" {
-			cfg.MinioCfg.Bucket = b
-		} else {
-			cfg.MinioCfg.Bucket = "product-media"
-		}
-	}
-	if cfg.MinioCfg.RoleARN == "" {
-		if r := os.Getenv("MINIO_PUBLIC_AWS_ROLE_ARN"); r != "" {
-			cfg.MinioCfg.RoleARN = r
-		}
-	}
-	if cfg.MinioCfg.AccountID == "" {
-		if a := os.Getenv("MINIO_PUBLIC_AWS_ACCOUNT_ID"); a != "" {
-			cfg.MinioCfg.AccountID = a
-		}
-	}
-	if cfg.MinioCfg.AccessKey == "" {
-		if k := os.Getenv("AWS_ACCESS_KEY_ID"); k != "" {
-			cfg.MinioCfg.AccessKey = k
-		}
-	}
-	if cfg.MinioCfg.SecretKey == "" {
-		if k := os.Getenv("AWS_SECRET_ACCESS_KEY"); k != "" {
-			cfg.MinioCfg.SecretKey = k
-		}
-	}
-	// If Endpoint is empty and Region is present, synthesize AWS S3 endpoint
-	if cfg.MinioCfg.Endpoint == "" {
-		if cfg.MinioCfg.Region != "" {
-			cfg.MinioCfg.Endpoint = fmt.Sprintf("s3.%s.amazonaws.com", cfg.MinioCfg.Region)
-		} else {
-			cfg.MinioCfg.Endpoint = "minio:9000"
-		}
-	}
-	// If PublicURL is empty, synthesize S3 public URL
-	if cfg.MinioCfg.PublicURL == "" {
-		if cfg.MinioCfg.Region != "" && cfg.MinioCfg.Bucket != "" {
-			cfg.MinioCfg.PublicURL = fmt.Sprintf("https://%s.s3.%s.amazonaws.com", cfg.MinioCfg.Bucket, cfg.MinioCfg.Region)
 		}
 	}
 

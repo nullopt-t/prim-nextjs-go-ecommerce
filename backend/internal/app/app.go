@@ -425,8 +425,8 @@ func (app *App) Shutdown() {
 func (app *App) Run() error {
 	app.logger = log.NewConsoleLogger()
 	// Try loading .env from current directory, backend/.env, or parent
-	// directory. Missing files are skipped so platform-injected environment
-	// variables (for example on Vercel) work without a .env file.
+	// directory. Missing files are skipped so externally injected environment
+	// variables work without a .env file.
 	if err := config.LoadDotEnv(".env", "backend/.env", "../.env"); err != nil {
 		app.logger.Warn("failed to load .env file", log.Meta{"Error": err.Error()})
 	}
@@ -453,16 +453,14 @@ func (app *App) Run() error {
 		return err
 	}
 
-	pingCtx, pingCancel := context.WithTimeout(context.Background(), 2*time.Second)
-	if err := app.db.Ping(pingCtx); err != nil {
+	if err := app.db.Ping(context.Background()); err != nil {
 		app.logger.Warn(
-			"database ping warning (queries will retry on-demand)",
+			"database is not live",
 			log.Meta{
 				"Error": err.Error(),
 			},
 		)
 	}
-	pingCancel()
 
 	storageProv, err := storage.NewMinioStorageProvider(
 		app.config.MinioCfg.Endpoint,
@@ -487,12 +485,10 @@ func (app *App) Run() error {
 		bucketName = "product-media"
 	}
 
-	s3Ctx, s3Cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	exists, err := app.minioClient.BucketExists(
-		s3Ctx,
+		context.Background(),
 		bucketName,
 	)
-	s3Cancel()
 	if err != nil {
 		app.logger.Warn(
 			"minio bucket check failed; continuing startup (storage operations will fail until storage is available)",
@@ -535,8 +531,7 @@ func (app *App) Run() error {
 	}
 	app.redisClient = redisClient
 
-	redisPingCtx, redisPingCancel := context.WithTimeout(context.Background(), 2*time.Second)
-	if err := app.redisClient.Ping(redisPingCtx); err != nil {
+	if err := app.redisClient.Ping(context.Background()); err != nil {
 		app.logger.Warn(
 			"redis connection issue",
 			log.Meta{
@@ -544,7 +539,6 @@ func (app *App) Run() error {
 			},
 		)
 	}
-	redisPingCancel()
 
 	router := gin.New()
 	router.Use(gin.Recovery())

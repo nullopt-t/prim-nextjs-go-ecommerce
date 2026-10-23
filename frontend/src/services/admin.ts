@@ -269,24 +269,6 @@ export const adminService = {
   uploadMedia: async (file: File): Promise<any> => {
     const formData = new FormData();
     formData.append("file", file);
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return {
-          data: {
-            url: data.url,
-            publicUrl: data.publicUrl,
-            key: data.key,
-          },
-        };
-      }
-    } catch {
-      // fallback to backend upload
-    }
     return api.upload(`/api/v1/admin/media`, formData);
   },
 

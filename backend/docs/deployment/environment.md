@@ -80,35 +80,6 @@ docker compose -f backend/docker/docker-compose.prod.yml up -d
 
 ---
 
-## Vercel deployment notes
-
-Vercel does not read `backend/.env`; configuration must be added under **Project Settings → Environment Variables**. Missing variables fall back to the defaults in `pkg/config`, which include Docker-only hostnames such as `minio:9000`.
-
-Do not deploy the Go API/worker as a Vercel serverless function without an adapter: `cmd/api` runs a long-lived HTTP server and `cmd/worker` is a separate long-lived consumer. Keep those on a container host or VM. The Next.js frontend can be deployed to Vercel normally.
-
-If the API is hosted elsewhere and only the frontend is on Vercel, set:
-
-```env
-NEXT_PUBLIC_API_URL=https://api.example.com
-API_URL=https://api.example.com
-```
-
-When the API itself runs outside Docker, replace every Docker service hostname:
-
-```env
-DATABASE_URL=postgres://user:pass@public-db-host:5432/prim?sslmode=require
-REDIS_URL=redis://default:pass@public-redis-host:6379
-MINIO_ENDPOINT=s3.eu-west-1.amazonaws.com
-MINIO_ACCESS_KEY=...
-MINIO_SECRET_KEY=...
-MINIO_BUCKET=...
-MINIO_PUBLIC_URL=https://....s3.eu-west-1.amazonaws.com
-```
-
-`minio:9000`, `postgres:5432`, and `redis:6379` only resolve inside the Compose network. Vercel also has no instance IAM role, so an S3/MinIO client needs explicit access and secret keys.
-
----
-
 ## Recommended deployment patterns
 
 ### A. Docker Compose on a single VM (matches this repo)
