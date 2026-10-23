@@ -40,3 +40,4 @@ bin/
 # Skills
 .skills/
 skills/
+.agents/

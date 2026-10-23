@@ -58,14 +58,14 @@ type UserService interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 	// GetUserByIDWithTx resolves the user inside the caller's transaction so
 	// checkout never needs a second pooled connection while holding one.
-	GetUserByIDWithTx(ctx context.Context, tx database.QueryExecutor, id uuid.UUID) (*model.User, error)
+	GetUserByIDWithTx(ctx context.Context, tx *database.Tx, id uuid.UUID) (*model.User, error)
 }
 
 type AddressService interface {
 	GetAddress(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*model.UserAddress, error)
 	// GetAddressWithTx resolves the address inside the caller's transaction so
 	// checkout never needs a second pooled connection while holding one.
-	GetAddressWithTx(ctx context.Context, tx database.QueryExecutor, id uuid.UUID, userID uuid.UUID) (*model.UserAddress, error)
+	GetAddressWithTx(ctx context.Context, tx *database.Tx, id uuid.UUID, userID uuid.UUID) (*model.UserAddress, error)
 }
 
 // SettingsProvider exposes the effective store configuration used to price
@@ -157,12 +157,12 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		}
 
 		// 2. Resolve the user and shipping address (read-only lookups).
-		user, err := s.userService.GetUserByIDWithTx(ctx, tx, in.CustomerID)
+		user, err := s.userService.GetUserByIDWithTx(ctx, toTx(tx), in.CustomerID)
 		if err != nil {
 			return err
 		}
 
-		shippingAddr, err := s.addressService.GetAddressWithTx(ctx, tx, in.ShippingAddressID, in.CustomerID)
+		shippingAddr, err := s.addressService.GetAddressWithTx(ctx, toTx(tx), in.ShippingAddressID, in.CustomerID)
 		if err != nil {
 			return err
 		}

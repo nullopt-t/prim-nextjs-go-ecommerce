@@ -62,6 +62,30 @@ func NewAddressService(
 	}
 }
 
+// handleError maps persistence and database errors to domain APIErrors.
+func (s *AddressService) handleError(err error, fallbackMsg string) error {
+	if err == nil {
+		return nil
+	}
+
+	var apiErr *apierr.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr
+	}
+
+	mappedErr := database.MapError(err)
+	switch {
+	case errors.Is(err, ErrAddressNotFound), errors.Is(mappedErr, database.ErrNotFound):
+		return apierr.NotFoundError("Address not found").Wrap(err)
+	case errors.Is(mappedErr, database.ErrConflict):
+		return apierr.ConflictError("Address conflict detected").Wrap(err)
+	case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+		return apierr.BadRequestError("Referenced entity does not exist").Wrap(err)
+	default:
+		return apierr.InternalServerError(fallbackMsg).Wrap(err).WithStack()
+	}
+}
+
 // ListAddresses returns all non-deleted saved addresses for the authenticated user, ordered default-first.
 func (s *AddressService) ListAddresses(ctx context.Context, userID uuid.UUID) ([]model.UserAddress, error) {
 	var addresses []model.UserAddress
@@ -72,7 +96,7 @@ func (s *AddressService) ListAddresses(ctx context.Context, userID uuid.UUID) ([
 	})
 	if err != nil {
 		s.logger.Error("failed to list user addresses", log.Meta{"userId": userID, "error": err.Error()})
-		return nil, apierr.InternalServerError("Failed to list addresses").Wrap(err)
+		return nil, s.handleError(err, "Failed to list addresses")
 	}
 	return addresses, nil
 }
@@ -93,18 +117,15 @@ func (s *AddressService) GetAddress(ctx context.Context, id, userID uuid.UUID) (
 
 // GetAddressWithTx resolves an address on the caller's transaction executor, so
 // a caller that already holds a transaction never checks out a second connection.
-func (s *AddressService) GetAddressWithTx(ctx context.Context, tx database.QueryExecutor, id, userID uuid.UUID) (*model.UserAddress, error) {
+func (s *AddressService) GetAddressWithTx(ctx context.Context, tx *database.Tx, id, userID uuid.UUID) (*model.UserAddress, error) {
 	return s.getAddress(ctx, tx, id, userID)
 }
 
 func (s *AddressService) getAddress(ctx context.Context, exec database.QueryExecutor, id, userID uuid.UUID) (*model.UserAddress, error) {
 	address, err := s.repo.GetByIDAndUser(ctx, exec, id, userID)
 	if err != nil {
-		if errors.Is(err, ErrAddressNotFound) {
-			return nil, apierr.NotFoundError("Address not found")
-		}
 		s.logger.Error("failed to get user address", log.Meta{"id": id, "userId": userID, "error": err.Error()})
-		return nil, apierr.InternalServerError("Failed to retrieve address").Wrap(err)
+		return nil, s.handleError(err, "Failed to retrieve address")
 	}
 	return address, nil
 }
@@ -172,7 +193,7 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 
 	if err != nil {
 		s.logger.Error("failed to create user address", log.Meta{"userId": userID, "error": err.Error()})
-		return nil, apierr.InternalServerError("Failed to create address").Wrap(err)
+		return nil, s.handleError(err, "Failed to create address")
 	}
 
 	return address, nil
@@ -253,11 +274,8 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 	})
 
 	if err != nil {
-		if errors.Is(err, ErrAddressNotFound) {
-			return nil, apierr.NotFoundError("Address not found")
-		}
 		s.logger.Error("failed to update user address", log.Meta{"id": id, "userId": userID, "error": err.Error()})
-		return nil, apierr.InternalServerError("Failed to update address").Wrap(err)
+		return nil, s.handleError(err, "Failed to update address")
 	}
 
 	return updated, nil
@@ -290,11 +308,8 @@ func (s *AddressService) SetDefaultAddress(ctx context.Context, id, userID uuid.
 	})
 
 	if err != nil {
-		if errors.Is(err, ErrAddressNotFound) {
-			return nil, apierr.NotFoundError("Address not found")
-		}
 		s.logger.Error("failed to set default address", log.Meta{"id": id, "userId": userID, "error": err.Error()})
-		return nil, apierr.InternalServerError("Failed to set default address").Wrap(err)
+		return nil, s.handleError(err, "Failed to set default address")
 	}
 
 	return address, nil
@@ -332,11 +347,8 @@ func (s *AddressService) DeleteAddress(ctx context.Context, id, userID uuid.UUID
 	})
 
 	if err != nil {
-		if errors.Is(err, ErrAddressNotFound) {
-			return apierr.NotFoundError("Address not found")
-		}
 		s.logger.Error("failed to delete user address", log.Meta{"id": id, "userId": userID, "error": err.Error()})
-		return apierr.InternalServerError("Failed to delete address").Wrap(err)
+		return s.handleError(err, "Failed to delete address")
 	}
 
 	return nil

@@ -35,14 +35,38 @@ func NewNotificationService(
 	}
 }
 
+// handleError maps persistence and database errors to domain APIErrors.
+func (s *NotificationService) handleError(err error, fallbackMsg string) error {
+	if err == nil {
+		return nil
+	}
+
+	var apiErr *apierr.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr
+	}
+
+	mappedErr := database.MapError(err)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows), errors.Is(mappedErr, database.ErrNotFound):
+		return apierr.NotFoundError("Notification not found").Wrap(err)
+	default:
+		return apierr.InternalServerError(fallbackMsg).Wrap(err).WithStack()
+	}
+}
+
 // CreateNotification saves a notification to PostgreSQL.
 func (s *NotificationService) CreateNotification(
 	ctx context.Context,
 	n *model.UserNotification,
 ) error {
-	return s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		return s.repo.Create(ctx, db, n)
 	})
+	if err != nil {
+		return s.handleError(err, "Failed to create notification")
+	}
+	return nil
 }
 
 // GetMyNotifications returns a paginated list of notifications for the user,
@@ -62,7 +86,7 @@ func (s *NotificationService) GetMyNotifications(
 		return err
 	})
 	if err != nil {
-		return nil, apierr.InternalServerError("Failed to fetch notifications").Wrap(err)
+		return nil, s.handleError(err, "Failed to fetch notifications")
 	}
 
 	page := pagination.NewPage(q.Page, q.PageSize, total)
@@ -81,7 +105,7 @@ func (s *NotificationService) GetUnreadCount(
 		return err
 	})
 	if err != nil {
-		return 0, apierr.InternalServerError("Failed to fetch unread notification count").Wrap(err)
+		return 0, s.handleError(err, "Failed to fetch unread notification count")
 	}
 	return count, nil
 }
@@ -92,21 +116,10 @@ func (s *NotificationService) MarkAsRead(
 	id int64, userID uuid.UUID,
 ) error {
 	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
-		err := s.repo.MarkAsRead(ctx, db, id, userID)
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return apierr.NotFoundError("Notification not found")
-			}
-			return err
-		}
-		return nil
+		return s.repo.MarkAsRead(ctx, db, id, userID)
 	})
 	if err != nil {
-		var apiErr *apierr.APIError
-		if errors.As(err, &apiErr) {
-			return apiErr
-		}
-		return apierr.InternalServerError("Failed to mark notification as read").Wrap(err)
+		return s.handleError(err, "Failed to mark notification as read")
 	}
 	return nil
 }
@@ -123,7 +136,7 @@ func (s *NotificationService) MarkAllAsRead(
 		return err
 	})
 	if err != nil {
-		return 0, apierr.InternalServerError("Failed to mark notifications as read").Wrap(err)
+		return 0, s.handleError(err, "Failed to mark notifications as read")
 	}
 	return count, nil
 }
@@ -134,21 +147,10 @@ func (s *NotificationService) DeleteNotification(
 	id int64, userID uuid.UUID,
 ) error {
 	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
-		err := s.repo.Delete(ctx, db, id, userID)
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return apierr.NotFoundError("Notification not found")
-			}
-			return err
-		}
-		return nil
+		return s.repo.Delete(ctx, db, id, userID)
 	})
 	if err != nil {
-		var apiErr *apierr.APIError
-		if errors.As(err, &apiErr) {
-			return apiErr
-		}
-		return apierr.InternalServerError("Failed to delete notification").Wrap(err)
+		return s.handleError(err, "Failed to delete notification")
 	}
 	return nil
 }

@@ -72,6 +72,30 @@ func (s *UserService) SetSessionManager(sm SessionManager) {
 	s.sessions = sm
 }
 
+// handleError maps persistence and database errors to domain APIErrors.
+func (s *UserService) handleError(err error, fallbackMsg string) error {
+	if err == nil {
+		return nil
+	}
+
+	var apiErr *apierr.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr
+	}
+
+	mappedErr := database.MapError(err)
+	switch {
+	case errors.Is(mappedErr, database.ErrNotFound):
+		return apierr.NotFoundError("User not found").Wrap(err)
+	case errors.Is(mappedErr, database.ErrConflict):
+		return apierr.ConflictError("User already exists").Wrap(err)
+	case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+		return apierr.BadRequestError("Referenced entity does not exist").Wrap(err)
+	default:
+		return apierr.InternalServerError(fallbackMsg).Wrap(err).WithStack()
+	}
+}
+
 // CreateUser provisions a new user record in PostgreSQL for the specified email identifier.
 // Enforces unique constraint handling by mapping database conflict errors to HTTP 409 Conflict.
 func (s *UserService) CreateUser(
@@ -87,12 +111,10 @@ func (s *UserService) CreateUser(
 		id, err := s.repo.Create(ctx, db, u)
 		if err != nil {
 			mappedErr := database.MapError(err)
-			switch {
-			case errors.Is(mappedErr, database.ErrConflict):
+			if errors.Is(mappedErr, database.ErrConflict) {
 				return apierr.New(http.StatusConflict, "user already exists")
-			default:
-				return apierr.New(http.StatusInternalServerError, "failed to create a new user").Wrap(err)
 			}
+			return s.handleError(err, "failed to create a new user")
 		}
 		u.ID = id
 		return nil
@@ -127,7 +149,7 @@ func (s *UserService) GetUserByID(
 // caller that already holds a transaction never checks out a second connection.
 func (s *UserService) GetUserByIDWithTx(
 	ctx context.Context,
-	tx database.QueryExecutor,
+	tx *database.Tx,
 	userID uuid.UUID,
 ) (*model.User, error) {
 	return s.getUserByID(ctx, tx, userID)
@@ -161,11 +183,7 @@ func (s *UserService) getUserByID(
 ) (*model.User, error) {
 	u, err := s.repo.GetByID(ctx, exec, userID)
 	if err != nil {
-		mappedErr := database.MapError(err)
-		if errors.Is(mappedErr, database.ErrNotFound) {
-			return nil, apierr.NotFoundError("User not found")
-		}
-		return nil, apierr.InternalServerError("Failed to fetch user").Wrap(err)
+		return nil, s.handleError(err, "Failed to fetch user")
 	}
 	return u, nil
 }
@@ -178,19 +196,12 @@ func (s *UserService) GetUserByIdentifier(
 ) (*model.User, error) {
 	var user *model.User
 	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
-		u, err := s.repo.GetByIdentifier(ctx, db, identifier)
-		if err != nil {
-			mappedErr := database.MapError(err)
-			if errors.Is(mappedErr, database.ErrNotFound) {
-				return apierr.NotFoundError("User not found")
-			}
-			return apierr.InternalServerError("Failed to fetch user").Wrap(err)
-		}
-		user = u
-		return nil
+		var repoErr error
+		user, repoErr = s.repo.GetByIdentifier(ctx, db, identifier)
+		return repoErr
 	})
 	if err != nil {
-		return nil, err
+		return nil, s.handleError(err, "Failed to fetch user")
 	}
 	return user, nil
 }
@@ -240,7 +251,7 @@ func (s *UserService) GetAllUsers(
 
 	if err != nil {
 		s.logger.Error("failed to list users", log.Meta{"error": err.Error()})
-		return nil, nil, apierr.InternalServerError("Failed to list users").Wrap(err)
+		return nil, nil, s.handleError(err, "Failed to list users")
 	}
 
 	return users, page, nil
@@ -287,12 +298,8 @@ func (s *UserService) DeleteUserByID(
 		return s.repo.SoftDelete(ctx, db, userID)
 	})
 	if err != nil {
-		mappedErr := database.MapError(err)
-		if errors.Is(mappedErr, database.ErrNotFound) {
-			return apierr.NotFoundError("User not found")
-		}
 		s.logger.Error("failed to delete user", log.Meta{"userId": userID, "error": err.Error()})
-		return apierr.InternalServerError("Failed to delete user").Wrap(err)
+		return s.handleError(err, "Failed to delete user")
 	}
 
 	s.logger.Info("user successfully deleted", log.Meta{"userId": userID})
@@ -386,15 +393,12 @@ func (s *UserService) UpdateUserRole(
 
 	if err != nil {
 		mappedErr := database.MapError(err)
-		if errors.Is(mappedErr, database.ErrNotFound) {
-			return apierr.NotFoundError("User not found")
-		}
 		if errors.Is(mappedErr, database.ErrConflict) {
 			return apierr.ConflictError("Only one Superadministrator is permitted in the system").
 				WithCode("MULTIPLE_SUPERADMINS_FORBIDDEN")
 		}
 		s.logger.Error("failed to update user role", log.Meta{"userId": targetUserID, "role": newRole, "error": err.Error()})
-		return apierr.InternalServerError("Failed to update user role").Wrap(err)
+		return s.handleError(err, "Failed to update user role")
 	}
 
 	s.logger.Info("user role updated", log.Meta{"userId": targetUserID, "newRole": newRole, "updatedBy": callerID})
@@ -471,12 +475,8 @@ func (s *UserService) UpdateAccountStatus(
 	})
 
 	if err != nil {
-		mappedErr := database.MapError(err)
-		if errors.Is(mappedErr, database.ErrNotFound) {
-			return apierr.NotFoundError("User not found")
-		}
 		s.logger.Error("failed to update user status", log.Meta{"userId": targetUserID, "status": newStatus, "error": err.Error()})
-		return apierr.InternalServerError("Failed to update user status").Wrap(err)
+		return s.handleError(err, "Failed to update user status")
 	}
 
 	s.logger.Info("user status updated", log.Meta{"userId": targetUserID, "newStatus": newStatus, "updatedBy": callerID})
@@ -573,7 +573,7 @@ func (s *UserService) ListStaffSessions(
 		users, repoErr = s.repo.ListByRoles(ctx, db, roles)
 		return repoErr
 	}); err != nil {
-		return nil, apierr.InternalServerError("Failed to list staff accounts").Wrap(err)
+		return nil, s.handleError(err, "Failed to list staff accounts")
 	}
 
 	sessions := make([]StaffSession, 0)
