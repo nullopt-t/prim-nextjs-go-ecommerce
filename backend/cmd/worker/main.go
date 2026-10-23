@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/notifier"
 	"github.com/nullopt-t/prim-backend/internal/order"
@@ -24,7 +23,7 @@ import (
 )
 
 func main() {
-	_ = godotenv.Load(".env", "backend/.env", "../.env")
+	_ = config.LoadDotEnv(".env", "backend/.env", "../.env")
 	logger := log.NewConsoleLogger()
 	cfg, err := config.Load()
 	if err != nil {

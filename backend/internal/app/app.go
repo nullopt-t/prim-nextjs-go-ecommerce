@@ -41,7 +41,6 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -422,14 +421,11 @@ func (app *App) Shutdown() {
 
 func (app *App) Run() error {
 	app.logger = log.NewConsoleLogger()
-	// Try loading .env from current directory, backend/.env, or parent directory
-	if err := godotenv.Load(".env", "backend/.env", "../.env"); err != nil {
-		app.logger.Debug(
-			"no .env file found; falling back to system environment variables",
-			log.Meta{
-				"Error": err.Error(),
-			},
-		)
+	// Try loading .env from current directory, backend/.env, or parent
+	// directory. Missing files are skipped so platform-injected environment
+	// variables (for example on Vercel) work without a .env file.
+	if err := config.LoadDotEnv(".env", "backend/.env", "../.env"); err != nil {
+		app.logger.Warn("failed to load .env file", log.Meta{"Error": err.Error()})
 	}
 
 	var err error

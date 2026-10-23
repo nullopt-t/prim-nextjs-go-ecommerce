@@ -52,3 +52,16 @@ func TestLoadEnvOnlyProduction(t *testing.T) {
 		t.Fatalf("auth start window = %v, want 1m", cfg.RateLimitCfg.AuthStartWindow)
 	}
 }
+
+func TestLoadCloudPort(t *testing.T) {
+	setProductionEnv(t)
+	t.Setenv("PORT", "80")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("failed to load config: %v", err)
+	}
+	if cfg.ServerCfg.Port != "80" || cfg.SvPort != "80" {
+		t.Fatalf("expected port to be 80 from PORT env, got ServerCfg.Port=%q, SvPort=%q", cfg.ServerCfg.Port, cfg.SvPort)
+	}
+}

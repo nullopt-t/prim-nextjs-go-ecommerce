@@ -285,6 +285,11 @@ func Load(configPath ...string) (Config, error) {
 		}
 	}
 
+	// Honor standard cloud platform PORT variable (Vercel, Cloud Run, Render, Heroku)
+	if p := os.Getenv("PORT"); p != "" {
+		cfg.ServerCfg.Port = strings.TrimSpace(p)
+	}
+
 	// Synchronize backward-compatible top-level fields from canonical ServerCfg
 	cfg.SvPort = cfg.ServerCfg.Port
 	cfg.Env = cfg.ServerCfg.Env
