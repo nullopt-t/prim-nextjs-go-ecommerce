@@ -13,13 +13,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/catalog/brand"
-	"github.com/nullopt-t/prim-backend/internal/catalog/category"
 	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
-	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
-	"github.com/nullopt-t/prim-backend/internal/catalog/review"
-	"github.com/nullopt-t/prim-backend/internal/catalog/tag"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api"
@@ -28,16 +23,48 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	fileUtil "github.com/nullopt-t/prim-backend/pkg/file"
 	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/storage"
 	"github.com/nullopt-t/prim-backend/pkg/utils"
 )
 
-// ObjectService defines storage operations for uploading, retrieving, and generating presigned URLs for media.
-type ObjectService interface {
-	UploadObject(ctx context.Context, contentType string, size int64, bucket string, file io.Reader) (*model.Object, error)
-	GetObjectByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
-	DeleteObject(ctx context.Context, bucket, key string) error
-	DeleteObjectByID(ctx context.Context, id uuid.UUID) error
-	GetObjectURL(ctx context.Context, bucket, key string) string
+// BrandRepository defines read methods for product brand associations.
+type BrandRepository interface {
+	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductBrand, error)
+}
+
+// CategoryRepository defines read methods for product category associations.
+type CategoryRepository interface {
+	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductCategory, error)
+}
+
+// TagRepository defines product tag query and association replacement methods.
+type TagRepository interface {
+	GetTagsByProductID(ctx context.Context, qe database.QueryExecutor, productID uuid.UUID) ([]*model.ProductTag, error)
+	ReplaceTagsForProduct(ctx context.Context, qe database.QueryExecutor, productID uuid.UUID, tagIDs []uuid.UUID) error
+}
+
+// InventoryRepository defines stock lookup and adjustments for variants.
+type InventoryRepository interface {
+	GetStockForVariants(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
+	CreateLedger(ctx context.Context, qe database.QueryExecutor, ledger *model.InventoryLedger) error
+	LockVariantForUpdate(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) error
+	GetStock(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) (*model.InventoryStock, error)
+}
+
+// ReviewRepository defines review aggregation methods for products.
+type ReviewRepository interface {
+	GetRatingSummaryByProductID(ctx context.Context, qe database.QueryExecutor, productID uuid.UUID) (*model.RatingSummary, error)
+	GetRatingSummariesByProductIDs(ctx context.Context, qe database.QueryExecutor, productIDs []uuid.UUID) (map[uuid.UUID]*model.RatingSummary, error)
+	List(ctx context.Context, qe database.QueryExecutor, q *pagination.ListQuery, productID *uuid.UUID, userID *uuid.UUID, status *model.ReviewStatus) ([]model.Review, int, error)
+}
+
+// ObjectRepository defines persistence methods for storage media records.
+type ObjectRepository interface {
+	Create(ctx context.Context, qe database.QueryExecutor, object *model.Object) error
+	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error)
+	GetByIDs(ctx context.Context, qe database.QueryExecutor, ids []uuid.UUID) ([]*model.Object, error)
+	MarkDeletingByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error
+	MarkDeletedByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error
 }
 
 // handleError maps database and driver errors to standard domain APIErrors.
@@ -61,42 +88,48 @@ func (s *ProductService) handleError(err error, defaultMsg string) error {
 
 // ProductService manages product catalog lifecycles, cross-domain dependencies, and administration.
 type ProductService struct {
-	dbRunner         database.Runner
-	logger           log.Logger
-	objectService    ObjectService
-	productRepo      *ProductRepository
-	brandService     *brand.BrandService
-	categoryService  *category.CategoryService
-	tagService       *tag.TagService
-	variantService   *variant.VariantService
-	inventoryService *inventory.InventoryService
-	reviewService    *review.ReviewService
+	dbRunner        database.Runner
+	logger          log.Logger
+	productRepo     *ProductRepository
+	brandRepo       BrandRepository
+	categoryRepo    CategoryRepository
+	tagRepo         TagRepository
+	inventoryRepo   InventoryRepository
+	reviewRepo      ReviewRepository
+	objectRepo      ObjectRepository
+	storageProvider storage.StorageProvider
+	variantService  *variant.VariantService
+	variantRepo     *variant.VariantRepository
 }
 
-// NewService constructs a new ProductService with all required sub-domain services injected.
+// NewService constructs a new ProductService with decoupled repository interfaces and storage provider injected.
 func NewService(
 	r database.Runner,
 	logger log.Logger,
 	productRepo *ProductRepository,
-	objectService ObjectService,
-	brandService *brand.BrandService,
-	categoryService *category.CategoryService,
-	tagService *tag.TagService,
+	brandRepo BrandRepository,
+	categoryRepo CategoryRepository,
+	tagRepo TagRepository,
+	inventoryRepo InventoryRepository,
+	reviewRepo ReviewRepository,
+	objectRepo ObjectRepository,
+	storageProvider storage.StorageProvider,
 	variantService *variant.VariantService,
-	inventoryService *inventory.InventoryService,
-	reviewService *review.ReviewService,
+	variantRepo *variant.VariantRepository,
 ) *ProductService {
 	return &ProductService{
-		dbRunner:         r,
-		logger:           logger,
-		objectService:    objectService,
-		productRepo:      productRepo,
-		brandService:     brandService,
-		categoryService:  categoryService,
-		tagService:       tagService,
-		variantService:   variantService,
-		inventoryService: inventoryService,
-		reviewService:    reviewService,
+		dbRunner:        r,
+		logger:          logger,
+		productRepo:     productRepo,
+		brandRepo:       brandRepo,
+		categoryRepo:    categoryRepo,
+		tagRepo:         tagRepo,
+		inventoryRepo:   inventoryRepo,
+		reviewRepo:      reviewRepo,
+		objectRepo:      objectRepo,
+		storageProvider: storageProvider,
+		variantService:  variantService,
+		variantRepo:     variantRepo,
 	}
 }
 
@@ -230,8 +263,12 @@ func (s *ProductService) CreateProductAsDraft(
 	}
 
 	// Validate category existence and active status
-	if s.categoryService != nil {
-		if _, err := s.categoryService.GetCategoryByID(ctx, input.CategoryID); err != nil {
+	if s.categoryRepo != nil {
+		err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+			_, err := s.categoryRepo.GetByID(ctx, db, input.CategoryID)
+			return err
+		})
+		if err != nil {
 			return nil, apierr.BadRequestError("Referenced category does not exist").
 				WithCode(apierr.CodeInvalidReference).
 				Wrap(err)
@@ -239,8 +276,12 @@ func (s *ProductService) CreateProductAsDraft(
 	}
 
 	// Validate brand existence and active status if specified
-	if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandService != nil {
-		if _, err := s.brandService.GetBrandByID(ctx, *input.BrandID); err != nil {
+	if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandRepo != nil {
+		err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+			_, err := s.brandRepo.GetByID(ctx, db, *input.BrandID)
+			return err
+		})
+		if err != nil {
 			return nil, apierr.BadRequestError("Referenced brand does not exist").
 				WithCode(apierr.CodeInvalidReference).
 				Wrap(err)
@@ -326,23 +367,23 @@ func (s *ProductService) UpdateProduct(
 	productID uuid.UUID,
 	input UpdateProductInput,
 ) error {
-	if input.CategoryID != nil && *input.CategoryID != uuid.Nil && s.categoryService != nil {
-		if _, err := s.categoryService.GetCategoryByID(ctx, *input.CategoryID); err != nil {
-			return apierr.BadRequestError("Referenced category does not exist").
-				WithCode(apierr.CodeInvalidReference).
-				Wrap(err)
-		}
-	}
-
-	if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandService != nil {
-		if _, err := s.brandService.GetBrandByID(ctx, *input.BrandID); err != nil {
-			return apierr.BadRequestError("Referenced brand does not exist").
-				WithCode(apierr.CodeInvalidReference).
-				Wrap(err)
-		}
-	}
-
 	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		if input.CategoryID != nil && *input.CategoryID != uuid.Nil && s.categoryRepo != nil {
+			if _, err := s.categoryRepo.GetByID(ctx, tx, *input.CategoryID); err != nil {
+				return apierr.BadRequestError("Referenced category does not exist").
+					WithCode(apierr.CodeInvalidReference).
+					Wrap(err)
+			}
+		}
+
+		if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandRepo != nil {
+			if _, err := s.brandRepo.GetByID(ctx, tx, *input.BrandID); err != nil {
+				return apierr.BadRequestError("Referenced brand does not exist").
+					WithCode(apierr.CodeInvalidReference).
+					Wrap(err)
+			}
+		}
+
 		// Serialize variation-theme changes against concurrent child creation.
 		if input.VariationAxes != nil {
 			var lockedID uuid.UUID
@@ -533,20 +574,87 @@ func (s *ProductService) getByID(
 	return product, nil
 }
 
+// populateProductDetails hydrates brand, category, thumbnail, variants, inventory stock, and tags
+// using the provided QueryExecutor so all lookups execute over a single database connection.
+func (s *ProductService) populateProductDetails(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	prod *model.Product,
+	includeDeletedVariants bool,
+) (*ProductDetails, error) {
+	details := &ProductDetails{
+		Product: prod,
+	}
+
+	if prod.BrandID != nil && s.brandRepo != nil {
+		if brandObj, err := s.brandRepo.GetByID(ctx, qe, *prod.BrandID); err == nil && brandObj != nil {
+			if brandObj.LogoObjectID != nil && s.objectRepo != nil && s.storageProvider != nil {
+				if logoObj, err := s.objectRepo.GetByID(ctx, qe, *brandObj.LogoObjectID); err == nil && logoObj != nil {
+					logoURL := s.storageProvider.GetPublicURL(logoObj.Bucket, logoObj.Key)
+					brandObj.LogoURL = &logoURL
+				}
+			}
+			details.Brand = brandObj
+		}
+	}
+
+	if prod.ThumbnailObjectID != nil && s.objectRepo != nil && s.storageProvider != nil {
+		if thumbObj, err := s.objectRepo.GetByID(ctx, qe, *prod.ThumbnailObjectID); err == nil && thumbObj != nil {
+			thumbObj.PublicURL = s.storageProvider.GetPublicURL(thumbObj.Bucket, thumbObj.Key)
+			details.Product.Thumbnail = thumbObj
+		}
+	}
+
+	if prod.CategoryID != uuid.Nil && s.categoryRepo != nil {
+		if catObj, err := s.categoryRepo.GetByID(ctx, qe, prod.CategoryID); err == nil {
+			details.Category = catObj
+		}
+	}
+
+	if s.variantRepo != nil {
+		variantRes, err := s.variantRepo.ListByProductID(ctx, qe, variant.ListVariantOptions{
+			ProductID:      prod.ID,
+			Query:          &pagination.ListQuery{PageSize: 100},
+			IncludeDeleted: includeDeletedVariants,
+		})
+		if err == nil && variantRes != nil {
+			details.Variants = variantRes.Items
+			if len(details.Variants) > 0 && s.inventoryRepo != nil {
+				vIDs := make([]uuid.UUID, 0, len(details.Variants))
+				for _, v := range details.Variants {
+					vIDs = append(vIDs, v.ID)
+				}
+				if stocks, err := s.inventoryRepo.GetStockForVariants(ctx, qe, vIDs); err == nil {
+					details.Stock = stocks
+				}
+			}
+		}
+	}
+
+	if s.tagRepo != nil {
+		if tagsList, err := s.tagRepo.GetTagsByProductID(ctx, qe, prod.ID); err == nil {
+			details.Tags = tagsList
+		}
+	}
+
+	return details, nil
+}
+
 // GetAdminDetailsByID retrieves full administrative product details (including soft-deleted),
-// hydrating brand, category, thumbnail, variants, and warehouse inventory stock breakdown.
+// hydrating brand, category, thumbnail, variants, and warehouse inventory stock breakdown over a single database connection.
 func (s *ProductService) GetAdminDetailsByID(
 	ctx context.Context,
 	productID uuid.UUID,
 ) (*ProductDetails, error) {
-	productDetails := &ProductDetails{}
+	var details *ProductDetails
 	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		prod, err := s.productRepo.GetByIDWithDeleted(ctx, db, productID)
 		if err != nil {
 			return err
 		}
-		productDetails.Product = prod
-		return nil
+		var popErr error
+		details, popErr = s.populateProductDetails(ctx, db, prod, true)
+		return popErr
 	})
 
 	if err != nil {
@@ -564,65 +672,24 @@ func (s *ProductService) GetAdminDetailsByID(
 		}
 	}
 
-	if productDetails.Product.BrandID != nil {
-		brandObj, err := s.brandService.GetBrandByID(ctx, *productDetails.Product.BrandID)
-		if err == nil {
-			productDetails.Brand = brandObj
-		}
-	}
-
-	if productDetails.Product.ThumbnailObjectID != nil {
-		thumbObj, err := s.objectService.GetObjectByID(ctx, *productDetails.Product.ThumbnailObjectID)
-		if err == nil {
-			thumbObj.PublicURL = s.objectService.GetObjectURL(ctx, thumbObj.Bucket, thumbObj.Key)
-			productDetails.Product.Thumbnail = thumbObj
-		}
-	}
-
-	if productDetails.Product.CategoryID != uuid.Nil {
-		catObj, err := s.categoryService.GetCategoryByID(ctx, productDetails.Product.CategoryID)
-		if err == nil {
-			productDetails.Category = catObj
-		}
-	}
-
-	variantRes, err := s.variantService.ListVariantsByProductID(ctx, productDetails.Product.ID, &pagination.ListQuery{PageSize: 100}, true)
-	if err == nil && variantRes != nil {
-		productDetails.Variants = variantRes.Items
-		if len(productDetails.Variants) > 0 && s.inventoryService != nil {
-			vIDs := make([]uuid.UUID, 0, len(productDetails.Variants))
-			for _, v := range productDetails.Variants {
-				vIDs = append(vIDs, v.ID)
-			}
-			stocks, err := s.inventoryService.GetStockForVariants(ctx, vIDs)
-			if err == nil {
-				productDetails.Stock = stocks
-			}
-		}
-	}
-
-	tagsList, err := s.tagService.GetTagsByProductID(ctx, productDetails.Product.ID)
-	if err == nil {
-		productDetails.Tags = tagsList
-	}
-
-	return productDetails, nil
+	return details, nil
 }
 
-// GetBySlug retrieves public storefront details by product SEO slug.
+// GetBySlug retrieves public storefront details by product SEO slug over a single database connection.
 func (s *ProductService) GetBySlug(
 	ctx context.Context,
 	slug string,
 ) (*ProductDetails, error) {
 	cleanSlug := strings.TrimSpace(slug)
-	productDetails := &ProductDetails{}
+	var details *ProductDetails
 	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
 		prod, err := s.productRepo.GetBySlug(ctx, db, cleanSlug)
 		if err != nil {
 			return err
 		}
-		productDetails.Product = prod
-		return nil
+		var popErr error
+		details, popErr = s.populateProductDetails(ctx, db, prod, false)
+		return popErr
 	})
 
 	if err != nil {
@@ -640,49 +707,7 @@ func (s *ProductService) GetBySlug(
 		}
 	}
 
-	if productDetails.Product.BrandID != nil {
-		brandObj, err := s.brandService.GetBrandByID(ctx, *productDetails.Product.BrandID)
-		if err == nil {
-			productDetails.Brand = brandObj
-		}
-	}
-
-	if productDetails.Product.ThumbnailObjectID != nil {
-		thumbObj, err := s.objectService.GetObjectByID(ctx, *productDetails.Product.ThumbnailObjectID)
-		if err == nil {
-			thumbObj.PublicURL = s.objectService.GetObjectURL(ctx, thumbObj.Bucket, thumbObj.Key)
-			productDetails.Product.Thumbnail = thumbObj
-		}
-	}
-
-	if productDetails.Product.CategoryID != uuid.Nil {
-		catObj, err := s.categoryService.GetCategoryByID(ctx, productDetails.Product.CategoryID)
-		if err == nil {
-			productDetails.Category = catObj
-		}
-	}
-
-	variantRes, err := s.variantService.ListVariantsByProductID(ctx, productDetails.Product.ID, &pagination.ListQuery{PageSize: 100}, false)
-	if err == nil && variantRes != nil {
-		productDetails.Variants = variantRes.Items
-		if len(productDetails.Variants) > 0 && s.inventoryService != nil {
-			vIDs := make([]uuid.UUID, 0, len(productDetails.Variants))
-			for _, v := range productDetails.Variants {
-				vIDs = append(vIDs, v.ID)
-			}
-			stocks, err := s.inventoryService.GetStockForVariants(ctx, vIDs)
-			if err == nil {
-				productDetails.Stock = stocks
-			}
-		}
-	}
-
-	tagsList, err := s.tagService.GetTagsByProductID(ctx, productDetails.Product.ID)
-	if err == nil {
-		productDetails.Tags = tagsList
-	}
-
-	return productDetails, nil
+	return details, nil
 }
 
 // List executes a storefront product card query and hydrates review ratings asynchronously.
@@ -707,12 +732,12 @@ func (s *ProductService) List(
 
 	for i := range res.Items {
 		item := res.Items[i]
-		if item != nil && item.Thumbnail != nil {
-			item.Thumbnail.PublicURL = s.objectService.GetObjectURL(ctx, item.Thumbnail.Bucket, item.Thumbnail.Key)
+		if item != nil && item.Thumbnail != nil && s.storageProvider != nil {
+			item.Thumbnail.PublicURL = s.storageProvider.GetPublicURL(item.Thumbnail.Bucket, item.Thumbnail.Key)
 		}
 	}
 
-	if len(res.Items) > 0 {
+	if len(res.Items) > 0 && s.reviewRepo != nil {
 		productIDs := make([]uuid.UUID, 0, len(res.Items))
 		for _, item := range res.Items {
 			if item != nil {
@@ -720,8 +745,13 @@ func (s *ProductService) List(
 			}
 		}
 
-		ratingsMap, err := s.reviewService.GetRatingSummariesByProductIDs(ctx, productIDs)
-		if err == nil && ratingsMap != nil {
+		var ratingsMap map[uuid.UUID]*model.RatingSummary
+		_ = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+			var err error
+			ratingsMap, err = s.reviewRepo.GetRatingSummariesByProductIDs(ctx, db, productIDs)
+			return err
+		})
+		if ratingsMap != nil {
 			for _, item := range res.Items {
 				if item != nil {
 					if rating, ok := ratingsMap[item.ID]; ok {
@@ -867,11 +897,14 @@ func (s *ProductService) CreateProductVariant(
 		return nil, err
 	}
 
-	if input.InitialStock != nil && *input.InitialStock > 0 && s.inventoryService != nil {
-		_, err = s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
-			VariantID: createdVariant.ID,
-			Quantity:  *input.InitialStock,
-			Reason:    string(model.InventoryReasonRestock),
+	if input.InitialStock != nil && *input.InitialStock > 0 && s.inventoryRepo != nil {
+		err = s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+			ledger := &model.InventoryLedger{
+				VariantID: createdVariant.ID,
+				Quantity:  *input.InitialStock,
+				Reason:    model.InventoryReasonRestock,
+			}
+			return s.inventoryRepo.CreateLedger(ctx, tx, ledger)
 		})
 		if err != nil {
 			// Roll back created variant on failure to maintain consistency
@@ -901,13 +934,18 @@ func (s *ProductService) SetDefaultVariant(
 	return s.variantService.SetDefaultVariant(ctx, productID, variantID)
 }
 
-// ReplaceProductTags delegates tag association replacement to tagService.
+// ReplaceProductTags replaces tag associations for a product atomically.
 func (s *ProductService) ReplaceProductTags(
 	ctx context.Context,
 	productID uuid.UUID,
 	tagIDs []uuid.UUID,
 ) error {
-	return s.tagService.ReplaceProductTags(ctx, productID, tagIDs)
+	if s.tagRepo == nil {
+		return nil
+	}
+	return s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		return s.tagRepo.ReplaceTagsForProduct(ctx, tx, productID, tagIDs)
+	})
 }
 
 // UploadProductThumbnail handles multipart thumbnail upload, size and MIME type validation,
@@ -920,6 +958,10 @@ func (ps *ProductService) UploadProductThumbnail(
 	if productID == uuid.Nil {
 		return nil, apierr.BadRequestError("Product ID is required").
 			WithCode(apierr.CodeInvalidInput)
+	}
+
+	if ps.storageProvider == nil || ps.objectRepo == nil {
+		return nil, apierr.InternalServerError("storage service is not configured")
 	}
 
 	file, err := fileHeader.Open()
@@ -963,43 +1005,57 @@ func (ps *ProductService) UploadProductThumbnail(
 	}
 
 	bucket := "product-thumbnails"
+	key := uuid.New().String()
 
 	cleanCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	obj, err := ps.objectService.UploadObject(
-		cleanCtx,
-		detectedContentType,
-		fileHeader.Size,
-		bucket,
-		file,
-	)
-	if err != nil {
+	if err := ps.storageProvider.Upload(cleanCtx, bucket, key, file, fileHeader.Size, detectedContentType); err != nil {
 		return nil, apierr.InternalServerError("Failed to upload file to storage").
 			WithCode(apierr.CodeStorageError).
 			Wrap(err).
 			WithStack()
 	}
 
+	obj := &model.Object{
+		ID:          uuid.New(),
+		Bucket:      bucket,
+		Key:         key,
+		ContentType: detectedContentType,
+		FileSize:    fileHeader.Size,
+		Status:      model.ObjectStatusUploaded,
+	}
+
 	oldThumbnailObjectID := product.ThumbnailObjectID
 	product.ThumbnailObjectID = &obj.ID
-	err = ps.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	var oldObj *model.Object
+	txErr := ps.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		if err := ps.objectRepo.Create(ctx, tx, obj); err != nil {
+			return err
+		}
+		if oldThumbnailObjectID != nil && *oldThumbnailObjectID != obj.ID {
+			oldObj, _ = ps.objectRepo.GetByID(ctx, tx, *oldThumbnailObjectID)
+			if oldObj != nil {
+				_ = ps.objectRepo.MarkDeletingByKey(ctx, tx, oldObj.Bucket, oldObj.Key)
+			}
+		}
 		return ps.productRepo.Update(ctx, tx, product)
 	})
 
-	if err != nil {
-		_ = ps.objectService.DeleteObjectByID(ctx, obj.ID)
-		return nil, apierr.InternalServerError("Failed to attach thumbnail to product").
-			WithCode(apierr.CodeInternalError).
-			Wrap(err).
-			WithStack()
+	if txErr != nil {
+		_ = ps.storageProvider.Delete(ctx, bucket, key)
+		return nil, ps.handleError(txErr, "attach thumbnail to product")
 	}
 
-	if oldThumbnailObjectID != nil && *oldThumbnailObjectID != obj.ID {
-		_ = ps.objectService.DeleteObjectByID(ctx, *oldThumbnailObjectID)
+	if oldObj != nil && ps.storageProvider != nil {
+		if delErr := ps.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
+			_ = ps.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+				return ps.objectRepo.MarkDeletedByKey(ctx, db, oldObj.Bucket, oldObj.Key)
+			})
+		}
 	}
 
-	obj.PublicURL = ps.objectService.GetObjectURL(ctx, obj.Bucket, obj.Key)
+	obj.PublicURL = ps.storageProvider.GetPublicURL(obj.Bucket, obj.Key)
 	return obj, nil
 }
 
@@ -1018,17 +1074,77 @@ func (ps *ProductService) DeleteProductThumbnail(ctx context.Context, productID 
 		return nil
 	}
 
+	var oldObj *model.Object
 	oldID := *product.ThumbnailObjectID
 	product.ThumbnailObjectID = nil
 	err = ps.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		if ps.objectRepo != nil {
+			oldObj, _ = ps.objectRepo.GetByID(ctx, tx, oldID)
+			if oldObj != nil {
+				_ = ps.objectRepo.MarkDeletingByKey(ctx, tx, oldObj.Bucket, oldObj.Key)
+			}
+		}
 		return ps.productRepo.Update(ctx, tx, product)
 	})
 	if err != nil {
 		return apierr.InternalServerError("Failed to remove product thumbnail").Wrap(err)
 	}
 
-	if ps.objectService != nil {
-		_ = ps.objectService.DeleteObjectByID(ctx, oldID)
+	if oldObj != nil && ps.storageProvider != nil {
+		if delErr := ps.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
+			_ = ps.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+				return ps.objectRepo.MarkDeletedByKey(ctx, db, oldObj.Bucket, oldObj.Key)
+			})
+		}
 	}
 	return nil
+}
+
+// ListProductReviews retrieves paginated reviews for a product using the review repository.
+func (s *ProductService) ListProductReviews(
+	ctx context.Context,
+	q *pagination.ListQuery,
+	productID uuid.UUID,
+	status *model.ReviewStatus,
+) (*pagination.PagedResult[model.Review], error) {
+	if s.reviewRepo == nil {
+		return &pagination.PagedResult[model.Review]{Items: []*model.Review{}}, nil
+	}
+	var items []model.Review
+	var total int
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		items, total, err = s.reviewRepo.List(ctx, db, q, &productID, nil, status)
+		return err
+	})
+	if err != nil {
+		return nil, s.handleError(err, "list reviews")
+	}
+
+	resultItems := make([]*model.Review, len(items))
+	for i := range items {
+		resultItems[i] = &items[i]
+	}
+
+	return pagination.NewPagedResult(resultItems, pagination.NewPage(q.Page, q.PageSize, total)), nil
+}
+
+// GetProductRatingSummary returns aggregated star rating statistics for a product.
+func (s *ProductService) GetProductRatingSummary(
+	ctx context.Context,
+	productID uuid.UUID,
+) (*model.RatingSummary, error) {
+	if s.reviewRepo == nil {
+		return &model.RatingSummary{}, nil
+	}
+	var summary *model.RatingSummary
+	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		summary, err = s.reviewRepo.GetRatingSummaryByProductID(ctx, db, productID)
+		return err
+	})
+	if err != nil {
+		return nil, s.handleError(err, "get rating summary")
+	}
+	return summary, nil
 }

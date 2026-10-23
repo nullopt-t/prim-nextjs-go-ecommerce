@@ -109,7 +109,7 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	s.inventoryService = inventory.NewService(logger, s.txRunner, s.inventoryRepo, nil)
 
 	s.variantRepo = variant.NewRepository()
-	s.variantService = variant.NewService(logger, s.txRunner, nil, s.variantRepo, s.inventoryService)
+	s.variantService = variant.NewService(logger, s.txRunner, nil, nil, s.variantRepo, s.inventoryRepo)
 
 	s.categoryID = uuid.New()
 	_, err = s.db.Exec(ctx, `

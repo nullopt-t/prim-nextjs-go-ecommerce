@@ -893,7 +893,7 @@ func (h *ProductHandler) ListProductReviews(c *gin.Context) {
 
 	status := model.ReviewStatusApproved
 
-	result, err := h.service.reviewService.ListReviews(c.Request.Context(), q, &productID, nil, &status)
+	result, err := h.service.ListProductReviews(c.Request.Context(), q, productID, &status)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -945,7 +945,7 @@ func (h *ProductHandler) GetProductRatingSummary(c *gin.Context) {
 		return
 	}
 
-	summary, err := h.service.reviewService.GetRatingSummary(c.Request.Context(), details.Product.ID)
+	summary, err := h.service.GetProductRatingSummary(c.Request.Context(), details.Product.ID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -1137,7 +1137,7 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 		res.Tags = tagRes
 	}
 
-	summary, err := h.service.reviewService.GetRatingSummary(c.Request.Context(), details.Product.ID)
+	summary, err := h.service.GetProductRatingSummary(c.Request.Context(), details.Product.ID)
 	if err == nil && summary != nil {
 		res.Rating = &ProductRatingSummaryResponse{
 			AverageRating: summary.AverageRating,

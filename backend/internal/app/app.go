@@ -224,9 +224,10 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	variantService := variant.NewService(
 		app.logger,
 		txRunner,
-		objectService,
+		objectRepository,
+		app.storageProvider,
 		variantRepository,
-		inventoryService,
+		inventoryRepo,
 	)
 
 	variantHandler := variant.NewHandler(variantService)
@@ -246,13 +247,15 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		txRunner,
 		app.logger,
 		productRepo,
-		objectService,
-		brandService,
-		categoryService,
-		tagService,
+		brandRepo,
+		categoryRepo,
+		tagRepo,
+		inventoryRepo,
+		reviewRepo,
+		objectRepository,
+		app.storageProvider,
 		variantService,
-		inventoryService,
-		reviewService,
+		variantRepository,
 	)
 	productHandler := product.NewHandler(productService)
 	productRouter := product.NewRouter(productHandler, sessionStore)

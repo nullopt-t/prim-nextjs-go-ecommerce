@@ -36,3 +36,7 @@ go.work.sum
 /api
 /bin
 bin/
+
+# Skills
+.skills/
+skills/

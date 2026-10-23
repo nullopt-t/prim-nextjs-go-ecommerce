@@ -21,15 +21,25 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	fileUtil "github.com/nullopt-t/prim-backend/pkg/file"
 	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
-// ObjectService defines storage URL resolution and object management methods for product and variant media.
-type ObjectService interface {
-	UploadObject(ctx context.Context, contentType string, size int64, bucket string, file io.Reader) (*model.Object, error)
-	GetObjectByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
-	DeleteObject(ctx context.Context, bucket, key string) error
-	DeleteObjectByID(ctx context.Context, id uuid.UUID) error
-	GetObjectURL(ctx context.Context, bucket, key string) string
+// ObjectRepository defines database persistence methods for media storage records.
+type ObjectRepository interface {
+	Create(ctx context.Context, qe database.QueryExecutor, object *model.Object) error
+	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error)
+	GetByIDs(ctx context.Context, qe database.QueryExecutor, ids []uuid.UUID) ([]*model.Object, error)
+	MarkDeletingByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error
+	MarkDeletedByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error
+}
+
+// InventoryRepository defines stock management and ledger methods for product variants.
+type InventoryRepository interface {
+	GetStock(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) (*model.InventoryStock, error)
+	GetStockForVariants(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
+	ListVariantLedgers(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID, q *pagination.ListQuery) (*pagination.PagedResult[model.InventoryLedger], error)
+	LockVariantForUpdate(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) error
+	CreateLedger(ctx context.Context, qe database.QueryExecutor, ledger *model.InventoryLedger) error
 }
 
 // errSimpleProductLocked signals that a lifecycle change was rejected because the
@@ -244,28 +254,64 @@ func buildVariantTitle(productTitle string, axes []string, attrs map[string]any)
 // VariantService coordinates business logic, transaction handling, and cross-domain inventory integration
 // for product variants (SKUs), media galleries, and stock availability.
 type VariantService struct {
-	logger           log.Logger
-	dr               database.Runner
-	objectService    ObjectService
-	vr               *VariantRepository
-	inventoryService *inventory.InventoryService
+	logger          log.Logger
+	dr              database.Runner
+	objectRepo      ObjectRepository
+	storageProvider storage.StorageProvider
+	vr              *VariantRepository
+	inventoryRepo   InventoryRepository
 }
 
-// NewService constructs a new VariantService with injected database runner, media object service,
-// variant repository, and inventory service.
+// NewService constructs a new VariantService with injected database runner, media object repository,
+// storage provider, variant repository, and inventory repository.
 func NewService(
 	logger log.Logger,
 	r database.Runner,
-	objectService ObjectService,
+	objectRepo ObjectRepository,
+	storageProvider storage.StorageProvider,
 	vr *VariantRepository,
-	inventoryService *inventory.InventoryService,
+	inventoryRepo InventoryRepository,
 ) *VariantService {
 	return &VariantService{
-		logger:           logger,
-		dr:               r,
-		objectService:    objectService,
-		vr:               vr,
-		inventoryService: inventoryService,
+		logger:          logger,
+		dr:              r,
+		objectRepo:      objectRepo,
+		storageProvider: storageProvider,
+		vr:              vr,
+		inventoryRepo:   inventoryRepo,
+	}
+}
+
+// handleError maps repository errors to standard API errors.
+func (vs *VariantService) handleError(err error, fallbackMsg string) error {
+	if err == nil {
+		return nil
+	}
+
+	var apiErr *apierr.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr
+	}
+
+	mappedErr := database.MapError(err)
+	switch {
+	case errors.Is(mappedErr, database.ErrNotFound):
+		return apierr.NotFoundError("Variant not found").
+			WithCode(errcode.CodeVariantNotFound).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrConflict):
+		return apierr.ConflictError("Variant combination or SKU already exists").
+			WithCode(errcode.CodeVariantCombinationExists).
+			Wrap(err)
+	case errors.Is(mappedErr, database.ErrForeignKeyViolation):
+		return apierr.BadRequestError("Referenced record does not exist").
+			WithCode(apierr.CodeInvalidInput).
+			Wrap(err)
+	default:
+		return apierr.InternalServerError(fallbackMsg).
+			WithCode(apierr.CodeInternalError).
+			Wrap(err).
+			WithStack()
 	}
 }
 
@@ -549,12 +595,13 @@ func (vs *VariantService) CreateVariantsBatch(
 				}
 			}
 
-			if in.InitialStock != nil && *in.InitialStock > 0 && vs.inventoryService != nil {
-				if _, err := vs.inventoryService.AdjustStockWithTx(ctx, tx, inventory.AdjustStockInput{
+			if in.InitialStock != nil && *in.InitialStock > 0 && vs.inventoryRepo != nil {
+				ledger := &model.InventoryLedger{
 					VariantID: variant.ID,
 					Quantity:  *in.InitialStock,
-					Reason:    string(model.InventoryReasonRestock),
-				}); err != nil {
+					Reason:    model.InventoryReasonRestock,
+				}
+				if err := vs.inventoryRepo.CreateLedger(ctx, tx, ledger); err != nil {
 					return err
 				}
 			}
@@ -649,9 +696,8 @@ func (vs *VariantService) getVariantByID(
 		}
 	}
 
-	if variant.Thumbnail != nil && vs.objectService != nil {
-		variant.Thumbnail.PublicURL = vs.objectService.GetObjectURL(
-			ctx,
+	if variant.Thumbnail != nil && vs.storageProvider != nil {
+		variant.Thumbnail.PublicURL = vs.storageProvider.GetPublicURL(
 			variant.Thumbnail.Bucket,
 			variant.Thumbnail.Key,
 		)
@@ -702,9 +748,8 @@ func (vs *VariantService) GetVariantBySKU(
 		}
 	}
 
-	if variant.Thumbnail != nil && vs.objectService != nil {
-		variant.Thumbnail.PublicURL = vs.objectService.GetObjectURL(
-			ctx,
+	if variant.Thumbnail != nil && vs.storageProvider != nil {
+		variant.Thumbnail.PublicURL = vs.storageProvider.GetPublicURL(
 			variant.Thumbnail.Bucket,
 			variant.Thumbnail.Key,
 		)
@@ -900,9 +945,8 @@ func (vs *VariantService) ListVariantsByProductID(
 			continue
 		}
 
-		if v.Thumbnail != nil && vs.objectService != nil {
-			v.Thumbnail.PublicURL = vs.objectService.GetObjectURL(
-				ctx,
+		if v.Thumbnail != nil && vs.storageProvider != nil {
+			v.Thumbnail.PublicURL = vs.storageProvider.GetPublicURL(
 				v.Thumbnail.Bucket,
 				v.Thumbnail.Key,
 			)
@@ -911,9 +955,8 @@ func (vs *VariantService) ListVariantsByProductID(
 		if mediaMap != nil {
 			if list, ok := mediaMap[v.ID]; ok {
 				for _, m := range list {
-					if m.Object != nil && vs.objectService != nil {
-						m.Object.PublicURL = vs.objectService.GetObjectURL(
-							ctx,
+					if m.Object != nil && vs.storageProvider != nil {
+						m.Object.PublicURL = vs.storageProvider.GetPublicURL(
 							m.Object.Bucket,
 							m.Object.Key,
 						)
@@ -1264,9 +1307,8 @@ func (vs *VariantService) listVariantMedia(
 			continue
 		}
 
-		if m.Object.PublicURL == "" && m.Object.Bucket != "" && m.Object.Key != "" && vs.objectService != nil {
-			url := vs.objectService.GetObjectURL(
-				ctx,
+		if m.Object.PublicURL == "" && m.Object.Bucket != "" && m.Object.Key != "" && vs.storageProvider != nil {
+			url := vs.storageProvider.GetPublicURL(
 				m.Object.Bucket,
 				m.Object.Key,
 			)
@@ -1332,38 +1374,108 @@ func (vs *VariantService) SetDefaultVariant(
 	return nil
 }
 
-// AdjustStock delegates stock adjustment to the injected inventory service.
+// AdjustStock updates variant stock within a transaction and records an inventory ledger entry.
 func (vs *VariantService) AdjustStock(
 	ctx context.Context,
 	in inventory.AdjustStockInput,
 ) (*model.InventoryStock, error) {
-	if vs.inventoryService == nil {
-		return nil, apierr.InternalServerError("inventory service is not configured")
+	if vs.inventoryRepo == nil {
+		return nil, apierr.InternalServerError("inventory repository is not configured")
 	}
-	return vs.inventoryService.AdjustStock(ctx, in)
+	if in.VariantID == uuid.Nil {
+		return nil, apierr.BadRequestError("Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+	if in.Quantity == 0 {
+		return nil, apierr.BadRequestError("Quantity adjustment cannot be zero").
+			WithCode(apierr.CodeInvalidInput)
+	}
+	reason, err := model.ParseInventoryReason(in.Reason)
+	if err != nil {
+		return nil, apierr.BadRequestError("Invalid inventory reason: " + in.Reason).
+			WithCode(errcode.CodeInvalidInventoryReason).
+			Wrap(err)
+	}
+
+	var stock *model.InventoryStock
+	err = vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		if err := vs.inventoryRepo.LockVariantForUpdate(ctx, tx, in.VariantID); err != nil {
+			return err
+		}
+		curStock, err := vs.inventoryRepo.GetStock(ctx, tx, in.VariantID)
+		if err != nil {
+			return err
+		}
+		if in.Quantity < 0 && (curStock.OnHandQuantity+in.Quantity < curStock.ReservedQuantity) {
+			return apierr.BadRequestError("Insufficient available inventory").
+				WithCode(errcode.CodeInsufficientInventory)
+		}
+		ledger := &model.InventoryLedger{
+			VariantID: in.VariantID,
+			Quantity:  in.Quantity,
+			Reason:    reason,
+		}
+		if err := vs.inventoryRepo.CreateLedger(ctx, tx, ledger); err != nil {
+			return err
+		}
+		stock, err = vs.inventoryRepo.GetStock(ctx, tx, in.VariantID)
+		return err
+	})
+	if err != nil {
+		return nil, vs.handleError(err, "Failed to adjust stock")
+	}
+	return stock, nil
 }
 
-// GetStockByVariantID delegates stock balance lookup to the injected inventory service.
+// GetStockByVariantID retrieves stock levels for a given variant.
 func (vs *VariantService) GetStockByVariantID(
 	ctx context.Context,
 	variantID uuid.UUID,
 ) (*model.InventoryStock, error) {
-	if vs.inventoryService == nil {
-		return nil, apierr.InternalServerError("inventory service is not configured")
+	if vs.inventoryRepo == nil {
+		return nil, apierr.InternalServerError("inventory repository is not configured")
 	}
-	return vs.inventoryService.GetStockByVariantID(ctx, variantID)
+	if variantID == uuid.Nil {
+		return nil, apierr.BadRequestError("Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	var stock *model.InventoryStock
+	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		stock, err = vs.inventoryRepo.GetStock(ctx, db, variantID)
+		return err
+	})
+	if err != nil {
+		return nil, vs.handleError(err, "Failed to fetch stock")
+	}
+	return stock, nil
 }
 
-// ListLedgers delegates inventory audit ledger queries to the injected inventory service.
+// ListLedgers returns paginated audit log entries for variant inventory movements.
 func (vs *VariantService) ListLedgers(
 	ctx context.Context,
 	variantID uuid.UUID,
 	q *pagination.ListQuery,
 ) (*pagination.PagedResult[model.InventoryLedger], error) {
-	if vs.inventoryService == nil {
-		return nil, apierr.InternalServerError("inventory service is not configured")
+	if vs.inventoryRepo == nil {
+		return nil, apierr.InternalServerError("inventory repository is not configured")
 	}
-	return vs.inventoryService.ListLedgers(ctx, variantID, q)
+	if variantID == uuid.Nil {
+		return nil, apierr.BadRequestError("Variant ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	var result *pagination.PagedResult[model.InventoryLedger]
+	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+		var err error
+		result, err = vs.inventoryRepo.ListVariantLedgers(ctx, db, variantID, q)
+		return err
+	})
+	if err != nil {
+		return nil, vs.handleError(err, "Failed to list inventory ledgers")
+	}
+	return result, nil
 }
 
 // UploadVariantThumbnail handles multipart thumbnail upload, size and MIME type validation,
@@ -1378,7 +1490,7 @@ func (vs *VariantService) UploadVariantThumbnail(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	if vs.objectService == nil {
+	if vs.storageProvider == nil || vs.objectRepo == nil {
 		return nil, apierr.InternalServerError("storage service is not configured")
 	}
 
@@ -1417,50 +1529,67 @@ func (vs *VariantService) UploadVariantThumbnail(
 		).WithCode(apierr.CodeUnsupportedMediaType)
 	}
 
-	variant, err := vs.GetVariantByID(ctx, variantID)
-	if err != nil {
-		return nil, err
-	}
-
 	bucket := "product-thumbnails"
+	key := uuid.New().String()
 
 	cleanCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	obj, err := vs.objectService.UploadObject(
-		cleanCtx,
-		detectedContentType,
-		fileHeader.Size,
-		bucket,
-		file,
-	)
-	if err != nil {
+	if err := vs.storageProvider.Upload(cleanCtx, bucket, key, file, fileHeader.Size, detectedContentType); err != nil {
 		return nil, apierr.InternalServerError("Failed to upload file to storage").
 			WithCode(apierr.CodeStorageError).
 			Wrap(err).
 			WithStack()
 	}
 
-	oldThumbnailObjectID := variant.ThumbnailObjectID
-	err = vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	obj := &model.Object{
+		ID:          uuid.New(),
+		Bucket:      bucket,
+		Key:         key,
+		ContentType: detectedContentType,
+		FileSize:    fileHeader.Size,
+		Status:      model.ObjectStatusUploaded,
+	}
+
+	var oldThumbnailObjectID *uuid.UUID
+	var oldObj *model.Object
+	txErr := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		variant, err := vs.vr.GetByID(ctx, tx, variantID)
+		if err != nil {
+			return err
+		}
+		oldThumbnailObjectID = variant.ThumbnailObjectID
+
+		if err := vs.objectRepo.Create(ctx, tx, obj); err != nil {
+			return err
+		}
+
+		if oldThumbnailObjectID != nil && *oldThumbnailObjectID != obj.ID {
+			oldObj, _ = vs.objectRepo.GetByID(ctx, tx, *oldThumbnailObjectID)
+			if oldObj != nil {
+				_ = vs.objectRepo.MarkDeletingByKey(ctx, tx, oldObj.Bucket, oldObj.Key)
+			}
+		}
+
 		return vs.vr.Update(ctx, tx, variantID, UpdateVariantFields{
 			ThumbnailObjectID: &obj.ID,
 		})
 	})
 
-	if err != nil {
-		_ = vs.objectService.DeleteObjectByID(ctx, obj.ID)
-		return nil, apierr.InternalServerError("Failed to attach thumbnail to variant").
-			WithCode(apierr.CodeInternalError).
-			Wrap(err).
-			WithStack()
+	if txErr != nil {
+		_ = vs.storageProvider.Delete(ctx, bucket, key)
+		return nil, vs.handleError(txErr, "Failed to attach thumbnail to variant")
 	}
 
-	if oldThumbnailObjectID != nil && *oldThumbnailObjectID != obj.ID {
-		_ = vs.objectService.DeleteObjectByID(ctx, *oldThumbnailObjectID)
+	if oldObj != nil && vs.storageProvider != nil {
+		if delErr := vs.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
+			_ = vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+				return vs.objectRepo.MarkDeletedByKey(ctx, db, oldObj.Bucket, oldObj.Key)
+			})
+		}
 	}
 
-	obj.PublicURL = vs.objectService.GetObjectURL(ctx, obj.Bucket, obj.Key)
+	obj.PublicURL = vs.storageProvider.GetPublicURL(obj.Bucket, obj.Key)
 	return obj, nil
 }
 
@@ -1474,25 +1603,30 @@ func (vs *VariantService) DeleteVariantThumbnail(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	variant, err := vs.GetVariantByID(ctx, variantID)
-	if err != nil {
-		return err
-	}
-
-	if variant.ThumbnailObjectID == nil {
-		return nil
-	}
-
-	oldID := *variant.ThumbnailObjectID
-	err = vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	var oldObj *model.Object
+	txErr := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		variant, err := vs.vr.GetByID(ctx, tx, variantID)
+		if err != nil {
+			return err
+		}
+		if variant.ThumbnailObjectID != nil && vs.objectRepo != nil {
+			oldObj, _ = vs.objectRepo.GetByID(ctx, tx, *variant.ThumbnailObjectID)
+			if oldObj != nil {
+				_ = vs.objectRepo.MarkDeletingByKey(ctx, tx, oldObj.Bucket, oldObj.Key)
+			}
+		}
 		return vs.vr.ClearThumbnail(ctx, tx, variantID)
 	})
-	if err != nil {
-		return apierr.InternalServerError("Failed to remove variant thumbnail").Wrap(err)
+	if txErr != nil {
+		return vs.handleError(txErr, "Failed to remove variant thumbnail")
 	}
 
-	if vs.objectService != nil {
-		_ = vs.objectService.DeleteObjectByID(ctx, oldID)
+	if oldObj != nil && vs.storageProvider != nil {
+		if delErr := vs.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
+			_ = vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+				return vs.objectRepo.MarkDeletedByKey(ctx, db, oldObj.Bucket, oldObj.Key)
+			})
+		}
 	}
 	return nil
 }
@@ -1508,7 +1642,7 @@ func (vs *VariantService) UploadVariantMedia(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	if vs.objectService == nil {
+	if vs.storageProvider == nil || vs.objectRepo == nil {
 		return nil, apierr.InternalServerError("storage service is not configured")
 	}
 
@@ -1547,32 +1681,36 @@ func (vs *VariantService) UploadVariantMedia(
 		).WithCode(apierr.CodeUnsupportedMediaType)
 	}
 
-	_, err = vs.GetVariantByID(ctx, variantID)
-	if err != nil {
-		return nil, err
-	}
-
 	bucket := "catalog"
+	key := uuid.New().String()
 
 	cleanCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	obj, err := vs.objectService.UploadObject(
-		cleanCtx,
-		detectedContentType,
-		fileHeader.Size,
-		bucket,
-		file,
-	)
-	if err != nil {
+	if err := vs.storageProvider.Upload(cleanCtx, bucket, key, file, fileHeader.Size, detectedContentType); err != nil {
 		return nil, apierr.InternalServerError("Failed to upload file to storage").
 			WithCode(apierr.CodeStorageError).
 			Wrap(err).
 			WithStack()
 	}
 
+	obj := &model.Object{
+		ID:          uuid.New(),
+		Bucket:      bucket,
+		Key:         key,
+		ContentType: detectedContentType,
+		FileSize:    fileHeader.Size,
+		Status:      model.ObjectStatusUploaded,
+	}
+
 	var createdMedia *model.VariantMedia
-	err = vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	txErr := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		if _, err := vs.vr.GetByID(ctx, tx, variantID); err != nil {
+			return err
+		}
+		if err := vs.objectRepo.Create(ctx, tx, obj); err != nil {
+			return err
+		}
 		var repoErr error
 		createdMedia, repoErr = vs.vr.AddMedia(ctx, tx, CreateVariantMediaInput{
 			VariantID: variantID,
@@ -1583,15 +1721,12 @@ func (vs *VariantService) UploadVariantMedia(
 		return repoErr
 	})
 
-	if err != nil {
-		_ = vs.objectService.DeleteObjectByID(ctx, obj.ID)
-		return nil, apierr.InternalServerError("Failed to attach media to variant").
-			WithCode(apierr.CodeInternalError).
-			Wrap(err).
-			WithStack()
+	if txErr != nil {
+		_ = vs.storageProvider.Delete(ctx, bucket, key)
+		return nil, vs.handleError(txErr, "Failed to attach media to variant")
 	}
 
-	obj.PublicURL = vs.objectService.GetObjectURL(ctx, obj.Bucket, obj.Key)
+	obj.PublicURL = vs.storageProvider.GetPublicURL(obj.Bucket, obj.Key)
 	createdMedia.Object = obj
 	return createdMedia, nil
 }

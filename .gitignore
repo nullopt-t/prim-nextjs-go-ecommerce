@@ -101,3 +101,7 @@ logs/
 
 # Task board (kept out of version control)
 NEXT_TASKS.md
+
+# Skills & Agent customizations
+.skills/
+skills/

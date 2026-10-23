@@ -165,7 +165,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	s.inventoryService = inventory.NewService(logger, s.txRunner, inventoryRepo, nil)
 
 	variantRepo := variant.NewRepository()
-	s.variantService = variant.NewService(logger, s.txRunner, nil, variantRepo, s.inventoryService)
+	s.variantService = variant.NewService(logger, s.txRunner, nil, nil, variantRepo, inventoryRepo)
 
 	cartRepo := cart.NewRepository()
 	s.cartService = cart.NewService(
