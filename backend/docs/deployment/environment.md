@@ -25,11 +25,11 @@ Production variables are listed in `backend/.env.example`; local Docker Compose 
 
 **Fix:** set `APP_ENV` appropriately for the target environment.
 
-### 2. Compose files contain no environment values
+### 2. Compose files read values from `backend/.env`
 
-The Compose files (dev and prod) only reference `env_file`. They do **not** define inline `environment:` values and do **not** use `${VAR}` interpolation. All values live in `backend/.env`.
+The Compose files only reference `env_file` for container runtime configuration. All runtime values live in `backend/.env`.
 
-`env_file:` injects variables **into the container**. Docker Compose interpolation is not involved, so there is no second source of truth to keep in sync.
+The production Compose file also uses `${NEXT_PUBLIC_API_URL}` for the frontend **build argument**. Docker Compose interpolation is only involved in that build step; pass `--env-file backend/.env` (the `make prod-up` target does this) so the value is available at build time.
 
 The Compose files hardcode service ports. `HTTP_PORT` in `backend/.env` must match the app's host/container port:
 
@@ -56,12 +56,10 @@ Operational notes:
 
 ## Frontend production image
 
-`frontend/Dockerfile.prod` builds a Next.js standalone image. `NEXT_PUBLIC_API_URL` is compiled into the browser bundle, so pass it at build time:
+`frontend/Dockerfile` builds a Next.js standalone image. `NEXT_PUBLIC_API_URL` is compiled into the browser bundle, so it is supplied as a build argument from `backend/.env`:
 
-```bash
-docker build -f frontend/Dockerfile.prod \
-  --build-arg NEXT_PUBLIC_API_URL=https://api.example.com \
-  -t prim-frontend frontend
+```env
+NEXT_PUBLIC_API_URL=https://api.example.com
 ```
 
 `API_URL` is read at runtime for server-side calls. When using Compose, set it in `backend/.env`:
@@ -70,13 +68,13 @@ docker build -f frontend/Dockerfile.prod \
 API_URL=http://api:8080
 ```
 
-Build through Compose with the same build arg:
+Build and start the production stack from the repository root:
 
 ```bash
-docker compose -f backend/docker/docker-compose.prod.yml build \
-  --build-arg NEXT_PUBLIC_API_URL=https://api.example.com frontend
-docker compose -f backend/docker/docker-compose.prod.yml up -d
+make prod-up
 ```
+
+That runs `docker compose --env-file backend/.env -f backend/docker/docker-compose.prod.yml up -d --build`. The production Compose file runs pending migrations before starting the API and worker.
 
 ---
 
@@ -86,15 +84,19 @@ docker compose -f backend/docker/docker-compose.prod.yml up -d
 
 Keep `backend/.env` **on the server only** (it is already in `.gitignore`). The prod Compose file reads `../.env` relative to `backend/docker/`, i.e. `backend/.env`.
 
+The production stack uses external PostgreSQL and Redis through `DATABASE_URL` and `REDIS_URL`. Set those to managed services (or to hosts reachable from the Compose network) before starting it.
+
 ```bash
 # On the server, as the deploy user
 install -m 600 /dev/null /srv/prim/backend/.env
 $EDITOR /srv/prim/backend/.env   # fill from .env.example
 chown deploy:deploy /srv/prim/backend/.env
 
-cd /srv/prim/backend
-docker compose -f docker/docker-compose.prod.yml up -d
+cd /srv/prim
+make prod-up
 ```
+
+`make prod-up` builds the images, runs migrations, and starts the stack in the background. Use `make prod-ps`, `make prod-logs`, and `make prod-down` to manage it.
 
 If your secrets live elsewhere, symlink them:
 
@@ -102,14 +104,12 @@ If your secrets live elsewhere, symlink them:
 ln -s /etc/prim/api.env /srv/prim/backend/.env
 ```
 
-No `--env-file` or `PRIM_ENV_FILE` is needed; Compose only passes the env file to the containers.
-
 ### B. systemd + Docker
 
 ```ini
 [Service]
-WorkingDirectory=/srv/prim/backend
-ExecStart=/usr/bin/docker compose -f docker/docker-compose.prod.yml up
+WorkingDirectory=/srv/prim
+ExecStart=/usr/bin/docker compose --env-file backend/.env -f backend/docker/docker-compose.prod.yml up
 ```
 
 Put the values in `/srv/prim/backend/.env` (or symlink it to `/etc/prim/api.env`) and restrict permissions with `chmod 600`.
