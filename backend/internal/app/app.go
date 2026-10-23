@@ -95,12 +95,15 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	router.Use(middleware.SecurityHeadersExcept())
 
 	v1 := router.Group("/api/v1")
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
-	v1.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
+	healthHandler := func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "prim-api"})
+	}
+	router.GET("/", healthHandler)
+	router.HEAD("/", healthHandler)
+	router.GET("/health", healthHandler)
+	router.HEAD("/health", healthHandler)
+	v1.GET("/health", healthHandler)
+	v1.HEAD("/health", healthHandler)
 
 	// settings: constructed early so the maintenance gate can wrap the whole API
 	// surface before any routes are mounted.
