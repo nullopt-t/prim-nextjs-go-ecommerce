@@ -1,0 +1,8 @@
+.git
+.github
+.agents
+frontend/
+backend/bin/
+backend/tmp/
+backend/.env
+backend/.env.*
