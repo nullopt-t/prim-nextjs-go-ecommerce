@@ -112,3 +112,100 @@ npm run build
 ```
 
 For SSR checks, inspect the raw HTML response (for example with `curl`) and confirm that primary content and metadata are present before client JavaScript runs.
+
+# Working Agreement
+
+Scope: everything under `frontend/`. This file governs the Next.js app only. Do
+not change the Go backend, migrations, or API contracts from a frontend task;
+call out the contract you need and keep the UI compatible with the current API.
+The backend has its own `backend/AGENTS.md`.
+
+## Start here
+
+1. Load `using-agent-skills` before a non-trivial task.
+2. For Next.js APIs, routing, caching, or metadata work, load
+   `source-driven-development` and read the version-matched docs in
+   `node_modules/next/dist/docs/` — this Next.js version differs from older
+   training data.
+3. Read the existing feature module and service before adding a parallel one.
+   Reuse the established patterns instead of creating a second data layer.
+
+## Commands
+
+Run from `frontend/`:
+
+```bash
+npm run dev        # http://localhost:3000
+npm run build      # production build; must pass before handoff
+npm run lint       # ESLint
+npx tsc --noEmit   # type check
+```
+
+The first two commands plus the `nextjs-agent-rules` block at the top of this
+file are part of the normal workflow; do not delete that block.
+
+## Code conventions
+
+- Use tabs with width 4 per `.prettierrc`. Match the surrounding file's quote and
+  semicolon style.
+- Import through the `@/*` alias; do not introduce long `../../..` chains.
+- Put typed API calls in `src/services/*` using `src/api/client.ts`. Components
+  should call services/hooks, not raw `fetch`, except in server components or
+  route handlers where server-side fetching is intentional.
+- Keep browser calls credentialed (`credentials: "include"`); the session is an
+  HTTP-only cookie. Never trust role/identity from local storage.
+- Use `useFetch` / `useMutation` for client data and put URL state (filters,
+  search, pagination) where it can be shared and restored.
+- Keep feature code in `src/features/<feature>/` and route files in
+  `src/app/[locale]/...` thin. Shared primitives belong in `src/components/ui`.
+- Add every user-facing string to both `messages/en.json` and
+  `messages/ar.json`; verify RTL layout, not just the English copy.
+- Preserve the vendor portal's mock-data boundary until a backend exists.
+- Do not hardcode brand, shipping, tax, payment, or contact values that already
+  come from public settings.
+- Avoid `any` in new public types. If the backend shape is genuinely unknown,
+  define the narrow type you use and note the gap.
+
+## Performance and accessibility
+
+- Keep client bundles small; add `"use client"` only at interactive leaves.
+- Use `next/image`, semantic HTML, labeled controls, and visible focus states.
+- Do not ship a page whose primary content only appears after hydration if it is
+  in the rendering matrix as server-rendered.
+- Check the browser console and network panel for errors before calling UI work
+  done; use `browser-testing-with-devtools` when a real browser is needed.
+
+## Skill routing
+
+Global skills live in `~/.agents/skills/` and are loaded with the `skill` tool.
+Load the most specific one before starting.
+
+| Task | Skill |
+| --- | --- |
+| Session setup / deciding which workflow applies | `using-agent-skills` |
+| Next.js/React/library APIs and version-specific behavior | `source-driven-development` |
+| Building or restyling UI, responsive layout, accessibility | `frontend-ui-engineering` |
+| Real-browser verification, DOM/console/network checks | `browser-testing-with-devtools` |
+| New behavior or bug fix that needs proof | `test-driven-development` |
+| Broken build, hydration error, failing request | `debugging-and-error-recovery` |
+| Client bundle size, Core Web Vitals, slow pages | `performance-optimization` |
+| Auth flows, untrusted input, XSS, dependency risk | `security-and-hardening` |
+| Reviewing a diff before merge | `code-review-and-quality` |
+| Large UI change that must land in slices | `incremental-implementation` |
+| High-stakes or irreversible change | `doubt-driven-development` |
+| ADRs, component/API docs | `documentation-and-adrs` |
+| Commits, branches, PRs, releases | `git-workflow-and-versioning` |
+| Enforcing lint/type/performance thresholds | `constraint-driven-development` |
+
+## Definition of done (frontend)
+
+- `npx tsc --noEmit` and `npm run build` pass.
+- `npm run lint` passes, or the remaining warnings are pre-existing and noted.
+- No hydration warnings or console errors in the touched flow.
+- Primary content and metadata are in the initial HTML for server-rendered
+  routes.
+- Both `en` and `ar` strings exist; RTL was checked.
+- API calls still send the session cookie and handle `401` through the existing
+  client behavior.
+- No secrets or internal service URLs are exposed to the client bundle.
+
