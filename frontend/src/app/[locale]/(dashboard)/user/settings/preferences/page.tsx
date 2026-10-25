@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import SettingsShell from "@/features/settings/components/layout/settingsShell";
-import Preferences from "@/features/settings/components/ui/preferences";
+import SettingsShell from "@/modules/account/components/settings/components/layout/settingsShell";
+import Preferences from "@/modules/account/components/settings/components/ui/preferences";
 
 export default function PreferencesSettingsPage() {
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminAudit } from "@/features/admin";
+import { AdminAudit } from "@/modules/admin";
 
 export default function AdminAuditPage() {
   return <AdminAudit />;

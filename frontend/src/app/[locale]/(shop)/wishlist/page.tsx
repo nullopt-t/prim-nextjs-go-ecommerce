@@ -1,4 +1,4 @@
-import { WishlistContent } from "@/features/wishlist";
+import { WishlistContent } from "@/modules/wishlist";
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 

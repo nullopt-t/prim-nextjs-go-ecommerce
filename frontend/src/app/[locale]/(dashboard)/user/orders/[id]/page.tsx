@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import OrderDetailsContent from "@/features/user/components/ui/orderDetailsContent";
+import OrderDetailsContent from "@/modules/account/components/ui/orderDetailsContent";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata(): Promise<Metadata> {

@@ -1,7 +1,12 @@
-"use client";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { Returns } from "@/modules/content/components/pages/Returns";
 
-import { Returns } from "@/app/pages_info/Returns";
+export async function generateMetadata(): Promise<Metadata> {
+	const t = await getTranslations("meta.shop.returns");
+	return { title: t("title"), description: t("description") };
+}
 
 export default function ReturnsPage() {
-  return <Returns />;
+	return <Returns />;
 }

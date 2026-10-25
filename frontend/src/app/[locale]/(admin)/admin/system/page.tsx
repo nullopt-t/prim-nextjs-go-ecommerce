@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminSystem } from "@/features/admin";
+import { AdminSystem } from "@/modules/admin";
 
 export default function AdminSystemPage() {
   return <AdminSystem />;

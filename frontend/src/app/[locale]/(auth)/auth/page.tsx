@@ -1,4 +1,4 @@
-import { LoginView } from "@/features/auth";
+import { LoginView } from "@/modules/auth";
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 

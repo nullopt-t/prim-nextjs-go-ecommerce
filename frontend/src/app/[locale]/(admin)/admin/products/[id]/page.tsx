@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminProductEditor } from "@/features/admin";
+import { AdminProductEditor } from "@/modules/admin";
 
 export default function AdminEditProductPage() {
   return <AdminProductEditor mode="edit" />;

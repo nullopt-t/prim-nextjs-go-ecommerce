@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { SettingsShell, ActiveSessions } from "@/features/settings";
+import { SettingsShell, ActiveSessions } from "@/modules/account/components/settings";
 import { ShieldCheck } from "lucide-react";
 
 export async function generateMetadata(): Promise<Metadata> {

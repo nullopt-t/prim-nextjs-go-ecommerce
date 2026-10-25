@@ -1,4 +1,4 @@
-import { VerifyView } from "@/features/auth";
+import { VerifyView } from "@/modules/auth";
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 

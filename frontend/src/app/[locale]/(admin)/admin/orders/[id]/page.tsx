@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminOrderDetails } from "@/features/admin";
+import { AdminOrderDetails } from "@/modules/admin";
 
 export default function AdminOrderDetailsPage() {
   return <AdminOrderDetails />;

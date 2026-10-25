@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
-import { notFound } from "next/navigation";
-import { routing } from "@/i18n/routing";
-import { ThemeProvider } from "@/context/theme";
+import { notFound, redirect } from "next/navigation";
+import { cookies, headers } from "next/headers";
+import { routing } from "@/shared/i18n/routing";
+import { ThemeProvider } from "@/shared/theme";
 import { IBM_Plex_Sans, IBM_Plex_Sans_Arabic } from "next/font/google";
 import "@/styles/index.css";
 
@@ -24,6 +25,9 @@ const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta.home");
   return {
+    metadataBase: new URL(
+      process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+    ),
     title: t("title"),
     description: t("description"),
     icons: {
@@ -40,16 +44,16 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
-import { CartProvider } from "@/context/CartContext";
-import { CatalogProvider } from "@/context/CatalogContext";
-import { AuthProvider } from "@/context/AuthContext";
-import { WishlistProvider } from "@/context/WishlistContext";
-import { NotificationProvider } from "@/context/NotificationContext";
-import { PublicSettingsProvider } from "@/context/PublicSettingsContext";
-import { getPublicSettings } from "@/lib/server/publicSettings";
+import { CartProvider } from "@/modules/cart/model/cartContext";
+import { AuthProvider } from "@/modules/auth/model/authContext";
+import { WishlistProvider } from "@/modules/wishlist/model/wishlistContext";
+import { NotificationProvider } from "@/modules/notifications/model/notificationContext";
+import { PublicSettingsProvider } from "@/modules/settings/model/publicSettingsContext";
+import { getPublicSettings } from "@/shared/lib/server/publicSettings";
+import { EXPLICIT_LOCALE_COOKIE_NAME } from "@/shared/lib/localePreference";
 
-import { CartSidebar } from "@/components/ui/cartSidebar";
-import { ResponsiveToaster } from "@/components/ui/responsiveToaster";
+import { CartSidebar } from "@/shared/ui/cartSidebar";
+import { ResponsiveToaster } from "@/shared/ui/responsiveToaster";
 
 export default async function RootLayout({
   children,
@@ -68,6 +72,36 @@ export default async function RootLayout({
     getMessages(),
     getPublicSettings(),
   ]);
+
+  // Locale resolution is server-first:
+  // 1. An explicit visitor choice is stored in the short `locale` cookie (and
+  //    NEXT_LOCALE, which the middleware reads) and wins.
+  // 2. Explicit /ar or /en URLs win.
+  // 3. Otherwise the store's configured default language applies.
+  const explicitLocale = (await cookies()).get(
+    EXPLICIT_LOCALE_COOKIE_NAME,
+  )?.value;
+  const askedPath = (await headers()).get("x-pathname") || "/";
+  const hasLocalePrefix = /^\/(en|ar)(?=\/|$)/.test(askedPath);
+  const storeDefault = publicSettings?.defaultLocale;
+  const chosenLocale =
+    explicitLocale === "ar" || explicitLocale === "en"
+      ? explicitLocale
+      : undefined;
+  const targetLocale = chosenLocale ?? storeDefault;
+  const canRedirect =
+    !hasLocalePrefix &&
+    (targetLocale === "ar" || targetLocale === "en") &&
+    targetLocale !== locale;
+
+  if (canRedirect) {
+    const pathWithoutLocale =
+      askedPath.replace(/^\/(en|ar)(?=\/|$)/, "") || "/";
+    redirect(
+      `/${targetLocale}${pathWithoutLocale === "/" ? "" : pathWithoutLocale}`,
+    );
+  }
+
   const dir = locale === "ar" ? "rtl" : "ltr";
 
   return (
@@ -77,6 +111,15 @@ export default async function RootLayout({
       className={`${ibmPlexSans.variable} ${ibmPlexSansArabic.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <script
+          // Apply the stored theme before first paint to avoid a light flash.
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('theme');if(t==='dark'||t==='light'){document.documentElement.setAttribute('data-theme',t)}}catch(e){}",
+          }}
+        />
+      </head>
       <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       <body className={`antialiased ${locale === "ar" ? "font-arabic" : "font-sans"}`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
@@ -85,12 +128,10 @@ export default async function RootLayout({
               <AuthProvider>
                 <WishlistProvider>
                   <NotificationProvider>
-                    <CatalogProvider>
-                      <CartProvider>
-                        {children}
-                        <CartSidebar />
-                      </CartProvider>
-                    </CatalogProvider>
+                    <CartProvider>
+                      {children}
+                      <CartSidebar />
+                    </CartProvider>
                   </NotificationProvider>
                 </WishlistProvider>
               </AuthProvider>

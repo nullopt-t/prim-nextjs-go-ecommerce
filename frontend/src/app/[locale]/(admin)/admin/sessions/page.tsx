@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminSessions } from "@/features/admin";
+import { AdminSessions } from "@/modules/admin";
 
 export default function AdminSessionsPage() {
   return <AdminSessions />;

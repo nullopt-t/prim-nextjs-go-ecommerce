@@ -1,4 +1,4 @@
-import { PortalManager } from "@/features/portal/portalManager";
+import { PortalManager } from "@/modules/portal/portalManager";
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 

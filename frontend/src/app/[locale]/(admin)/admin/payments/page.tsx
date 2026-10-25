@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminPayments } from "@/features/admin";
+import { AdminPayments } from "@/modules/admin";
 
 export default function AdminPaymentsPage() {
   return <AdminPayments />;

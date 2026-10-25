@@ -1,4 +1,4 @@
-import CartLayout from "@/features/cart/components/layout/cartLayout";
+import CartLayout from "@/modules/cart/components/layout/cartLayout";
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 

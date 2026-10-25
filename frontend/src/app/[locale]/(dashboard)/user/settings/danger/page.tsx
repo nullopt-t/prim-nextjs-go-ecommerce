@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import SettingsShell from "@/features/settings/components/layout/settingsShell";
-import DangerZone from "@/features/settings/components/ui/danger";
+import SettingsShell from "@/modules/account/components/settings/components/layout/settingsShell";
+import DangerZone from "@/modules/account/components/settings/components/ui/danger";
 
 export default function DangerSettingsPage() {
   return (

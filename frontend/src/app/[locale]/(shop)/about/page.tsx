@@ -1,4 +1,4 @@
-import AboutLayout from "@/features/about/components/layout/aboutLayout";
+import AboutLayout from "@/modules/content/components/about/layout/aboutLayout";
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 

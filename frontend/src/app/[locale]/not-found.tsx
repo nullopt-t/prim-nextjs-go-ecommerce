@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
-import { Title } from "@/components/ui/title";
+import { Link } from "@/shared/i18n/navigation";
+import { Title } from "@/shared/ui/title";
 
 export default function NotFound() {
   const t = useTranslations("notFound");

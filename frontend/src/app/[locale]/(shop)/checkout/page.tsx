@@ -1,4 +1,4 @@
-import { Checkout } from "@/features/checkout";
+import { Checkout } from "@/modules/checkout";
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 

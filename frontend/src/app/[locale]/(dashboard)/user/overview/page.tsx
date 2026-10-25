@@ -1,4 +1,4 @@
-import { OverviewContent } from "@/features/user";
+import { OverviewContent } from "@/modules/account";
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 

@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { OrdersContent } from "@/features/user";
+import { OrdersContent } from "@/modules/account";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata(): Promise<Metadata> {

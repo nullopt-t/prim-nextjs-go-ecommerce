@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import SettingsShell, { SettingsLinksMenu } from "@/features/settings/components/layout/settingsShell";
-import PersonalInfoForm from "@/features/settings/components/ui/personalInfoForm";
+import SettingsShell, { SettingsLinksMenu } from "@/modules/account/components/settings/components/layout/settingsShell";
+import PersonalInfoForm from "@/modules/account/components/settings/components/ui/personalInfoForm";
 
 export default function SettingsIndexPage() {
   const t = useTranslations("settings");

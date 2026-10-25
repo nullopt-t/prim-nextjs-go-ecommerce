@@ -2,7 +2,7 @@
 
 import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
-import { PUBLIC_SETTINGS_TAG } from "@/lib/server/publicSettings";
+import { PUBLIC_SETTINGS_TAG } from "@/shared/lib/server/publicSettings";
 
 /**
  * Invalidate the server cache for public settings after an admin save.

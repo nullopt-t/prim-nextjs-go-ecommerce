@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminInventory } from "@/features/admin";
+import { AdminInventory } from "@/modules/admin";
 
 export default function AdminInventoryPage() {
   return <AdminInventory />;

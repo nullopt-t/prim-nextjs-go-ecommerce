@@ -1,6 +1,6 @@
 "use client";
 
-import { AdminCategories } from "@/features/admin";
+import { AdminCategories } from "@/modules/admin";
 
 export default function AdminCategoriesPage() {
   return <AdminCategories />;
