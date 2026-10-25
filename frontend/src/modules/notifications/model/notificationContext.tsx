@@ -1,0 +1,151 @@
+"use client";
+
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { notificationService, NotificationItem } from "@/modules/notifications/api/notificationService";
+import { useAuthContext } from "@/modules/auth/model/authContext";
+
+interface NotificationContextType {
+  notifications: NotificationItem[];
+  unreadCount: number;
+  loading: boolean;
+  refresh: () => Promise<void>;
+  markAsRead: (id: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
+}
+
+const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+
+export function NotificationProvider({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuthContext();
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!isAuthenticated) {
+      setNotifications([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await notificationService.getNotifications(1, 15, false);
+      if (res && res.data) {
+        setNotifications(res.data);
+      }
+    } catch {
+      // Quiet fail
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  const unreadRef = useRef<number>(0);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!isAuthenticated) {
+      unreadRef.current = 0;
+      setUnreadCount(0);
+      return;
+    }
+    try {
+      const res = await notificationService.getUnreadCount();
+      const count = Number(res?.data?.count ?? 0);
+      setUnreadCount(count);
+      // New notifications arrived: refresh the list outside the state updater.
+      if (count > unreadRef.current) {
+        fetchNotifications();
+      }
+      unreadRef.current = count;
+    } catch {
+      // Quiet fail on network hiccups
+    }
+  }, [isAuthenticated, fetchNotifications]);
+
+  const refresh = useCallback(async () => {
+    await Promise.all([fetchUnreadCount(), fetchNotifications()]);
+  }, [fetchUnreadCount, fetchNotifications]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setUnreadCount(0);
+      unreadRef.current = 0;
+      return;
+    }
+
+    refresh();
+
+    // Poll less aggressively, and pause while the tab is hidden.
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchUnreadCount();
+      }
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, refresh, fetchUnreadCount]);
+
+  const markAsRead = async (id: string) => {
+    try {
+      await notificationService.markAsRead(id);
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, isRead: true, readAt: new Date().toISOString() } : item
+        )
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications((prev) =>
+        prev.map((item) => ({ ...item, isRead: true, readAt: new Date().toISOString() }))
+      );
+      setUnreadCount(0);
+    } catch (err) {
+      console.error("Failed to mark all notifications as read", err);
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    try {
+      await notificationService.deleteNotification(id);
+      const target = notifications.find((n) => n.id === id);
+      if (target && !target.isRead) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error("Failed to delete notification", err);
+    }
+  };
+
+  return (
+    <NotificationContext.Provider
+      value={{
+        notifications,
+        unreadCount,
+        loading,
+        refresh,
+        markAsRead,
+        markAllAsRead,
+        deleteNotification,
+      }}
+    >
+      {children}
+    </NotificationContext.Provider>
+  );
+}
+
+export function useNotifications() {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error("useNotifications must be used within a NotificationProvider");
+  }
+  return context;
+}

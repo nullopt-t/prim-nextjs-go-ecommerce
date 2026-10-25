@@ -1,0 +1,457 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useAuthContext } from "@/modules/auth/model/authContext";
+import { Link } from "@/shared/i18n/navigation";
+import { userService } from "@/modules/account/api/userService";
+import { wishlistService, WishlistItem } from "@/modules/wishlist/api/wishlistService";
+import { useTranslations, useLocale } from "next-intl";
+import {
+  Package,
+  Heart,
+  MapPin,
+  CreditCard,
+  Star,
+  Settings,
+  ChevronRight,
+  ChevronLeft,
+  ArrowRight,
+  ArrowLeft,
+  ShoppingBag,
+  ExternalLink,
+  RotateCcw,
+  CheckCircle2,
+  Clock,
+  Truck,
+  Shield,
+  ShieldAlert,
+} from "lucide-react";
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+interface OrderItem {
+  id: string;
+  variantId: string;
+  quantity: number;
+  priceAtPurchase: number;
+  productSnapshot: string;
+}
+
+interface Order {
+  id: string;
+  customerEmail: string;
+  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  totalAmount: number;
+  discountAmount: number;
+  currency: string;
+  items: OrderItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+import { normalizeMediaUrl } from "@/shared/lib/media";
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function parseSnapshot(snapshot?: string): { title: string; img: string } {
+  if (!snapshot) return { title: "Product", img: "/placeholder-product.png" };
+  try {
+    const snap = JSON.parse(snapshot) ?? {};
+    const title = snap.title || snap.name || "Product";
+    const rawImg = snap.image || snap.thumbnailUrl || snap.thumbnail || snap.img;
+    const img = normalizeMediaUrl(rawImg);
+    return { title, img };
+  } catch {
+    return { title: "Product", img: "/placeholder-product.png" };
+  }
+}
+
+export default function OverviewContent() {
+  const { user } = useAuthContext();
+  const t = useTranslations("overview");
+  const locale = useLocale();
+  const isRtl = locale === "ar";
+  const Chevron = isRtl ? ChevronLeft : ChevronRight;
+  const Arrow = isRtl ? ArrowLeft : ArrowRight;
+
+  const STATUS_BADGE: Record<
+    Order["status"],
+    { label: string; icon: typeof Clock; className: string }
+  > = {
+    pending: {
+      label: t("status.pending"),
+      icon: Clock,
+      className: "text-amber-600 bg-amber-500/10 border-amber-500/20",
+    },
+    processing: {
+      label: t("status.processing"),
+      icon: Clock,
+      className: "text-blue-600 bg-blue-500/10 border-blue-500/20",
+    },
+    shipped: {
+      label: t("status.shipped"),
+      icon: Truck,
+      className: "text-violet-600 bg-violet-500/10 border-violet-500/20",
+    },
+    delivered: {
+      label: t("status.delivered"),
+      icon: CheckCircle2,
+      className: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20",
+    },
+    cancelled: {
+      label: t("status.cancelled"),
+      icon: Clock,
+      className: "text-destructive bg-destructive/10 border-destructive/20",
+    },
+  };
+
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [wishlistPreview, setWishlistPreview] = useState<WishlistItem[]>([]);
+  const [wishlistCount, setWishlistCount] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [addressCount, setAddressCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      try {
+        const [ordersRes, reviewsRes, addressesRes, wishlistRes] = await Promise.all([
+          userService.getOrders().catch(() => ({ data: [] })),
+          userService.getMyReviews().catch(() => ({ data: [] })),
+          userService.getAddresses().catch(() => ({ data: [] })),
+          wishlistService.getItems(1, 6).catch(() => ({ data: [], meta: { totalItems: 0 } })),
+        ]);
+
+        if (cancelled) return;
+
+        const rawOrders: Order[] = Array.isArray(ordersRes?.data)
+          ? ordersRes.data
+          : Array.isArray(ordersRes)
+          ? ordersRes
+          : [];
+
+        const rawReviews: unknown[] = Array.isArray(reviewsRes?.data)
+          ? reviewsRes.data
+          : Array.isArray(reviewsRes)
+          ? reviewsRes
+          : [];
+
+        const rawAddresses: unknown[] = Array.isArray(addressesRes?.data)
+          ? addressesRes.data
+          : Array.isArray(addressesRes)
+          ? addressesRes
+          : [];
+
+        const rawWishlist: WishlistItem[] = Array.isArray(wishlistRes?.data)
+          ? wishlistRes.data
+          : [];
+
+        setOrders(rawOrders);
+        setReviewCount(rawReviews.length);
+        setAddressCount(rawAddresses.length);
+        setWishlistPreview(rawWishlist);
+        setWishlistCount(wishlistRes?.meta?.totalItems ?? rawWishlist.length);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const sortedOrders = [...orders].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  // Current active orders waiting for fulfillment or delivery
+  const activeOrders = sortedOrders.filter(
+    (o) => o.status === "pending" || o.status === "processing" || o.status === "shipped"
+  );
+  const activeOrdersPreview = activeOrders.slice(0, 4);
+
+  // Secondary account shortcuts: if there are no active in-progress orders,
+  // include an Orders tile here so the user can easily access their past/all orders.
+  const secondaryAccountTiles = [
+    ...(activeOrders.length === 0
+      ? [
+          {
+            id: "orders",
+            title: t("accountShortcuts.orders"),
+            desc: t("accountShortcuts.ordersDesc"),
+            href: "/user/orders",
+            icon: Package,
+          },
+        ]
+      : []),
+    {
+      id: "addresses",
+      title: t("accountShortcuts.addresses"),
+      desc: t("accountShortcuts.addressesDesc"),
+      href: "/user/address",
+      icon: MapPin,
+    },
+    {
+      id: "payment",
+      title: t("accountShortcuts.payment"),
+      desc: t("accountShortcuts.paymentDesc"),
+      href: "/user/payment",
+      icon: CreditCard,
+    },
+    {
+      id: "reviews",
+      title: t("accountShortcuts.reviews"),
+      desc: t("accountShortcuts.reviewsDesc"),
+      href: "/user/reviews",
+      icon: Star,
+    },
+    {
+      id: "settings",
+      title: t("accountShortcuts.settings"),
+      desc: t("accountShortcuts.settingsDesc"),
+      href: "/user/settings",
+      icon: Settings,
+    },
+  ];
+
+  return (
+    <div className="w-full flex flex-col gap-6 pb-16">
+      {/* ── Staff Elevated Access Banner ── */}
+      {(user?.role === "admin" || user?.role === "superadmin") && (
+        <div className="w-full p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-primary/10 to-blue-500/10 border border-purple-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3.5">
+            <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30 shrink-0">
+              {user.role === "superadmin" ? <ShieldAlert className="size-5" /> : <Shield className="size-5" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm text-foreground">
+                  {user.role === "superadmin"
+                    ? t("staff.superadmin")
+                    : t("staff.admin")}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-700 dark:text-purple-300">
+                  {t("staff.badge")}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t("staff.desc")}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/customers"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all shadow-xs shrink-0"
+          >
+            <span>{t("openAdminConsole")}</span>
+            <ExternalLink className="size-3.5" />
+          </Link>
+        </div>
+      )}
+
+      {/* ── 2. Open Orders Sub-Section with Live Preview (Hidden when no active orders) ── */}
+      {(loading || activeOrdersPreview.length > 0) && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
+              {t("yourOrders.title")}
+            </h2>
+            <Link
+              href="/user/orders"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-accent-brand hover:underline"
+            >
+              <span>{t("yourOrders.seeAll")}</span>
+              <Arrow className="size-3.5" />
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="animate-pulse bg-secondary/50 rounded-2xl aspect-square border border-border/60" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {activeOrdersPreview.map((order) => {
+                const items = order.items ?? [];
+                const snaps = items.map((it) => parseSnapshot(it.productSnapshot));
+                const firstSnap = snaps[0] ?? { title: "Product", img: "/placeholder-product.png" };
+
+                return (
+                  <Link
+                    key={order.id}
+                    href={`/user/orders/${order.id}`}
+                    className="group relative block aspect-square w-full rounded-2xl bg-secondary/35 border border-border/80 hover:border-accent-brand/50 p-2.5 overflow-hidden shadow-2xs hover:shadow-xs transition-all"
+                  >
+                    {items.length <= 1 ? (
+                      // Single item: fills the card cleanly
+                      <div className="w-full h-full rounded-xl overflow-hidden bg-background border border-border/40">
+                        <img
+                          src={firstSnap.img}
+                          alt={firstSnap.title}
+                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    ) : items.length === 2 ? (
+                      // 2 items: large angled overlapping pile filling card
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        {/* Back / 2nd item */}
+                        <div className="absolute w-[76%] h-[76%] rounded-2xl overflow-hidden bg-background border border-border/80 shadow-xs rotate-6 translate-x-3 -translate-y-2 group-hover:rotate-10 group-hover:translate-x-4 transition-transform duration-300">
+                          <img
+                            src={snaps[1]?.img}
+                            alt={snaps[1]?.title}
+                            className="w-full h-full object-cover object-center"
+                          />
+                        </div>
+                        {/* Front / 1st item */}
+                        <div className="relative w-[76%] h-[76%] rounded-2xl overflow-hidden bg-background border border-border shadow-md -rotate-4 -translate-x-3 translate-y-2 group-hover:-rotate-6 group-hover:-translate-x-4 transition-transform duration-300 z-10">
+                          <img
+                            src={snaps[0]?.img}
+                            alt={snaps[0]?.title}
+                            className="w-full h-full object-cover object-center"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      // 3+ items: large fanned 3-card pile filling card generously
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        {/* Back 3rd card */}
+                        <div className="absolute w-[72%] h-[72%] rounded-2xl overflow-hidden bg-background border border-border/70 shadow-xs rotate-12 translate-x-4 -translate-y-2.5 opacity-90 group-hover:rotate-16 transition-transform duration-300">
+                          <img
+                            src={snaps[2]?.img}
+                            alt={snaps[2]?.title}
+                            className="w-full h-full object-cover object-center"
+                          />
+                        </div>
+                        {/* Middle 2nd card */}
+                        <div className="absolute w-[72%] h-[72%] rounded-2xl overflow-hidden bg-background border border-border/90 shadow-sm -rotate-8 -translate-x-3 translate-y-0.5 group-hover:-rotate-12 transition-transform duration-300 z-5">
+                          <img
+                            src={snaps[1]?.img}
+                            alt={snaps[1]?.title}
+                            className="w-full h-full object-cover object-center"
+                          />
+                        </div>
+                        {/* Front 1st card */}
+                        <div className="relative w-[72%] h-[72%] rounded-2xl overflow-hidden bg-background border border-border shadow-md rotate-2 translate-y-2 group-hover:rotate-0 transition-transform duration-300 z-10">
+                          <img
+                            src={snaps[0]?.img}
+                            alt={snaps[0]?.title}
+                            className="w-full h-full object-cover object-center"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── 3. Your Wishlist Sub-Section with Live Product Preview ── */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
+            {t("yourLists.title")}
+          </h2>
+          <Link
+            href="/user/wishlist"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-accent-brand hover:underline"
+          >
+            <span>{t("yourLists.seeAll")}</span>
+            <Arrow className="size-3.5" />
+          </Link>
+        </div>
+
+        {wishlistPreview.length === 0 ? (
+          <div className="bg-card border border-dashed border-border/80 rounded-2xl p-8 text-center flex flex-col items-center justify-center gap-2.5">
+            <div className="size-10 rounded-full bg-secondary flex items-center justify-center text-muted-foreground">
+              <Heart className="size-5" />
+            </div>
+            <p className="text-xs text-muted-foreground">{t("yourLists.empty")}</p>
+            <Link
+              href="/products"
+              className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground border border-border text-xs font-semibold transition-colors"
+            >
+              <ExternalLink className="size-3.5" />
+              <span>{t("yourLists.exploreProducts")}</span>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 sm:gap-3 max-w-2xl">
+            {wishlistPreview.map((item, index) => {
+              const product = item.product;
+              const imgSrc = normalizeMediaUrl(product?.thumbnailUrl);
+
+              return (
+                <Link
+                  key={item.id}
+                  href={`/products/${product?.slug || product?.id}`}
+                  title={product?.title}
+                  className={`group aspect-square w-full rounded-2xl bg-secondary/50 border border-border/80 hover:border-accent-brand/50 overflow-hidden shadow-2xs hover:shadow-xs transition-all ${
+                    index >= 4 ? "hidden sm:block" : "block"
+                  }`}
+                >
+                  <img
+                    src={imgSrc}
+                    alt={product?.title || "Product"}
+                    className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-300"
+                  />
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── 4. Account Management & Preferences Tiles ── */}
+      <div className="flex flex-col gap-3">
+        <h2 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
+          {t("accountShortcuts.title")}
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {secondaryAccountTiles.map((card) => {
+            const Icon = card.icon;
+
+            return (
+              <Link
+                key={card.id}
+                href={card.href}
+                className="group bg-secondary/30 hover:bg-secondary/50 border border-border/50 hover:border-accent-brand/40 rounded-xl p-3.5 sm:p-4 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between gap-3 cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="size-11 rounded-lg bg-background border border-border/60 text-foreground group-hover:text-accent-brand flex items-center justify-center shrink-0 p-1 shadow-2xs transition-colors">
+                    <Icon className="size-5" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs sm:text-sm font-semibold text-foreground group-hover:text-accent-brand transition-colors truncate">
+                        {card.title}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                      {card.desc}
+                    </span>
+                  </div>
+                </div>
+
+                <Chevron className="size-4 text-muted-foreground group-hover:text-accent-brand group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-all shrink-0" />
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
