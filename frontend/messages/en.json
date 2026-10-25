@@ -1300,7 +1300,15 @@
         "listTitle": "Versions",
         "imagesCount": "{count} images",
         "adjustStock": "Adjust quantity",
-        "currentStock": "Available quantity"
+        "currentStock": "Available quantity",
+        "validation": {
+          "titleRequired": "Enter a version name.",
+          "priceRequired": "Enter a selling price.",
+          "priceInvalid": "Enter a valid price of 0 or more.",
+          "originalPriceInvalid": "Enter a valid original price or leave it empty.",
+          "stockRequired": "Enter the available quantity.",
+          "stockInvalid": "Quantity must be a whole number of 0 or more."
+        }
       },
       "form": {
         "title": "Product Title *",

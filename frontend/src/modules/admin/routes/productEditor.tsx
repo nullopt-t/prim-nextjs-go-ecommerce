@@ -32,10 +32,26 @@ import { catalogService } from "@/modules/catalog/api/catalogService";
 import { adminService } from "@/modules/admin/api/adminService";
 import { ProductBrandFormatFields } from "@/modules/admin/components/ProductBrandFormatFields";
 import { ProductCoreFields } from "@/modules/admin/components/ProductCoreFields";
+import { VariantBasicsFields } from "@/modules/admin/components/VariantBasicsFields";
 import { SimplePricingFields } from "@/modules/admin/components/SimplePricingFields";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
 import { normalizeMediaUrl } from "@/shared/lib/media";
+
+interface VariantFormState {
+  mode: "create" | "edit";
+  id: string | null;
+  title: string;
+  sku: string;
+  price: string;
+  originalPrice: string;
+  currency: string;
+  stock: string;
+  currentStock: number;
+  adjustmentReason: string;
+  isDefault: boolean;
+  attributes: Record<string, string>;
+}
 
 function slugifyProduct(value: string): string {
   const slug = value
@@ -106,7 +122,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
   const [creatingAxis, setCreatingAxis] = useState(false);
 
   // Variant editing & media management state
-  const [variantForm, setVariantForm] = useState<any>(null);
+  const [variantForm, setVariantForm] = useState<VariantFormState | null>(null);
   const [selectedVariantForMedia, setSelectedVariantForMedia] = useState<any>(null);
   const [uploadingProductThumbnail, setUploadingProductThumbnail] = useState(false);
   const [uploadingVariantThumb, setUploadingVariantThumb] = useState(false);
@@ -1013,8 +1029,18 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     if (!variantForm || !productDetail) return;
 
     const price = parseFloat(variantForm.price);
-    if (!variantForm.title.trim() || Number.isNaN(price)) {
+    if (
+      !variantForm.title.trim() ||
+      Number.isNaN(price) ||
+      price < 0
+    ) {
       notify.error(t("products.variants.requiredFields"));
+      return;
+    }
+
+    const stock = Number(variantForm.stock);
+    if (!Number.isInteger(stock) || stock < 0) {
+      notify.error(t("products.variants.validation.stockInvalid"));
       return;
     }
 
@@ -1043,7 +1069,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
           isDefault: Boolean(variantForm.isDefault),
         });
         notify.success(t("products.variants.created"));
-      } else {
+      } else if (variantForm.id) {
         await catalogService.updateVariant(variantForm.id, {
           title: variantForm.title.trim(),
           sku: variantForm.sku || undefined,
@@ -2057,76 +2083,20 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-foreground">{t("products.variants.fields.title")}</label>
-                        <input
-                          type="text"
-                          value={variantForm.title}
-                          onChange={(e) => setVariantForm({ ...variantForm, title: e.target.value })}
-                          placeholder={t("products.variants.fields.titlePlaceholder")}
-                          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-foreground">{t("products.variants.fields.sku")}</label>
-                        <input
-                          type="text"
-                          value={variantForm.sku}
-                          onChange={(e) => setVariantForm({ ...variantForm, sku: e.target.value })}
-                          className="w-full rounded-xl border border-border bg-background px-3 py-2 font-mono text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-                        />
-                        <p className="text-[10px] text-muted-foreground">{t("products.form.skuHint")}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-foreground">{t("products.variants.fields.price")}</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={variantForm.price}
-                          onChange={(e) => setVariantForm({ ...variantForm, price: e.target.value })}
-                          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-foreground">{t("products.variants.fields.originalPrice")}</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={variantForm.originalPrice}
-                          onChange={(e) => setVariantForm({ ...variantForm, originalPrice: e.target.value })}
-                          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-foreground">
-                          {variantForm.mode === "create" ? t("products.variants.fields.initialStock") : t("products.form.stockQty")} *
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          required
-                          value={variantForm.stock}
-                          onChange={(e) => setVariantForm({ ...variantForm, stock: e.target.value })}
-                          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-                        />
-                      </div>
-                      {variantForm.mode === "edit" && (
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-semibold text-foreground">{t("products.form.auditReason")}</label>
-                          <select
-                            value={variantForm.adjustmentReason || "restock"}
-                            onChange={(e) => setVariantForm({ ...variantForm, adjustmentReason: e.target.value })}
-                            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-                          >
-                            <option value="restock">{t("products.form.reasonRestock")}</option>
-                            <option value="adjustment">{t("products.form.reasonAdjustment")}</option>
-                            <option value="return">{t("products.form.reasonReturn")}</option>
-                            <option value="sale">{t("products.form.reasonSale")}</option>
-                          </select>
-                        </div>
-                      )}
-                    </div>
+                    <VariantBasicsFields
+                      mode={variantForm.mode}
+                      value={{
+                        title: variantForm.title,
+                        sku: variantForm.sku,
+                        price: variantForm.price,
+                        originalPrice: variantForm.originalPrice,
+                        stock: variantForm.stock,
+                        adjustmentReason: variantForm.adjustmentReason || "restock",
+                      }}
+                      onChange={(patch) =>
+                        setVariantForm((prev) => (prev ? { ...prev, ...patch } : prev))
+                      }
+                    />
 
                     {/* Option Values for this Variant - Fully flexible for the Editor */}
                     {activeAxes.length > 0 && (

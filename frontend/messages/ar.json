@@ -1300,7 +1300,15 @@
         "listTitle": "النسخ",
         "imagesCount": "{count} صور",
         "adjustStock": "تعديل الكمية",
-        "currentStock": "الكمية المتاحة"
+        "currentStock": "الكمية المتاحة",
+        "validation": {
+          "titleRequired": "أدخل اسم النسخة.",
+          "priceRequired": "أدخل سعر البيع.",
+          "priceInvalid": "أدخل سعرًا صحيحًا يساوي 0 أو أكثر.",
+          "originalPriceInvalid": "أدخل سعرًا أصليًا صحيحًا أو اتركه فارغًا.",
+          "stockRequired": "أدخل الكمية المتاحة.",
+          "stockInvalid": "يجب أن تكون الكمية عددًا صحيحًا يساوي 0 أو أكثر."
+        }
       },
       "form": {
         "title": "عنوان المنتج *",
