@@ -6,6 +6,7 @@ import { ChevronRight, Package } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { AnimatedSection, CustomButton } from "@/shared/ui";
 import { ProductsGrid } from "@/shared/ui/productsGrid";
+import { CardDetails } from "@/shared/ui/productsCard";
 import SectionTitle from "@/modules/home/components/ui/sectionTitle";
 import { useAllProducts, useProductBySlug } from "@/modules/catalog/model/useCatalog";
 import { useCartContext } from "@/modules/cart/model/cartContext";
@@ -525,7 +526,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
             link={`/products?category=${product.categoryId || product.category}`}
           />
           <ProductsGrid
-            products={similarProducts}
+            products={similarProducts as unknown as CardDetails[]}
             className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
           />
         </div>

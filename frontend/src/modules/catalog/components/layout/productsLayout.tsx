@@ -5,12 +5,13 @@ import Content from "@/modules/catalog/components/ui/content";
 import { Title } from "@/shared/ui/title";
 import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
 import { useTranslations } from "next-intl";
+import type { Category, ProductDetailsEntity } from "@/modules/catalog/types";
 
 import { useSearchParams } from "next/navigation";
 
 interface ProductsLayoutProps {
   category?: string;
-  products?: any[];
+  products?: ProductDetailsEntity[];
 }
 
 export default function ProductsLayout({ category = "All", products }: ProductsLayoutProps) {
@@ -26,11 +27,11 @@ export default function ProductsLayout({ category = "All", products }: ProductsL
     displayTitle = t("layout.searchTitle", { query: searchQuery });
     displaySubtitle = t("layout.matching");
   } else if (category && category.toLowerCase() !== "all") {
-    const matchedCategory = categories.find((c: any) => c.id === category || c.slug === category);
+    const matchedCategory = categories.find((c: Category) => c.id === category || c.slug === category);
     if (matchedCategory) {
-      displayTitle = typeof matchedCategory.name === "object"
-        ? (matchedCategory.name.en || matchedCategory.name.ar)
-        : (matchedCategory.name || category);
+      const name = matchedCategory.name as string | { en?: string; ar?: string };
+      displayTitle =
+        typeof name === "object" ? (name.en || name.ar || category) : (name || category);
     } else {
       displayTitle = category.replace(/-/g, " ");
     }

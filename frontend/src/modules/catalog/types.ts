@@ -5,6 +5,7 @@
 export interface Category {
   id: string;
   name: string;
+  slug?: string;
 }
 
 export interface AdminCategory {
@@ -22,6 +23,7 @@ export interface Brand {
   name: string;
   link?: string;
   logoUrl?: string;
+  logo?: string;
   productCount?: number;
 }
 

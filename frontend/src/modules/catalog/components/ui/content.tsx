@@ -5,16 +5,17 @@ import { useSearchParams } from "next/navigation";
 import { ProductsGrid } from "@/shared/ui/productsGrid";
 import { CardDetails } from "@/shared/ui/productsCard";
 import { useCatalogContext, normalizeProduct } from "@/modules/catalog/model/catalogContext";
+import type { ProductDetailsEntity } from "@/modules/catalog/types";
 import { catalogService } from "@/modules/catalog/api/catalogService";
 
 interface ContentProps {
-  products?: CardDetails[];
+  products?: ProductDetailsEntity[];
   category?: string;
 }
 
 export default function Content({ products, category }: ContentProps) {
   const { products: contextProducts, loading: contextLoading, filters } = useCatalogContext();
-  const [categoryProducts, setCategoryProducts] = useState<CardDetails[] | null>(products ?? null);
+  const [categoryProducts, setCategoryProducts] = useState<ProductDetailsEntity[] | null>(products ?? null);
   const [catLoading, setCatLoading] = useState(false);
   const searchParams = useSearchParams();
   const searchQuery = (searchParams.get("q") || "").trim().toLowerCase();
@@ -40,7 +41,7 @@ export default function Content({ products, category }: ContentProps) {
       .then((res) => {
         if (!isMounted) return;
         const rawList = res.data ?? [];
-        setCategoryProducts(rawList.map(normalizeProduct).filter(Boolean) as CardDetails[]);
+        setCategoryProducts(rawList.map(normalizeProduct).filter(Boolean) as unknown as ProductDetailsEntity[]);
       })
       .catch((err) => {
         console.error("Failed to fetch products by category:", err);
@@ -58,10 +59,14 @@ export default function Content({ products, category }: ContentProps) {
   const activeProducts = categoryProducts !== null ? categoryProducts : (products || contextProducts);
   const loading = catLoading || (categoryProducts === null && contextLoading);
 
-  const filtered = activeProducts.filter((p: any) => {
+  const filtered = activeProducts.filter((p: ProductDetailsEntity) => {
     // Search query filter (matches title, brand, description or tags)
     if (searchQuery) {
-      const title = (p.title || p.product?.en || p.product?.ar || "").toLowerCase();
+      const productName =
+        typeof p.product === "object"
+          ? p.product?.en || p.product?.ar || ""
+          : (p.product || "");
+      const title = (p.title || productName || "").toLowerCase();
       const brand = (typeof p.brand === "string" ? p.brand : p.brand?.name || "").toLowerCase();
       const desc = (p.description || "").toLowerCase();
       if (!title.includes(searchQuery) && !brand.includes(searchQuery) && !desc.includes(searchQuery)) {
@@ -106,7 +111,7 @@ export default function Content({ products, category }: ContentProps) {
 
   return (
     <ProductsGrid
-      products={filtered}
+      products={filtered as unknown as CardDetails[]}
       className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
     />
   );

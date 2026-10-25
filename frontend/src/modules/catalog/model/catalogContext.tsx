@@ -4,25 +4,28 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import { normalizeMediaUrl } from "@/shared/lib/media";
 import { normalizeProduct } from "./normalizeProduct";
+import type { Brand, Category, ProductDetailsEntity, Tag } from "../types";
 
 export { normalizeProduct };
 
+interface CatalogFilters {
+  brand: string | null;
+  inStockOnly: boolean;
+  rating: number | null;
+  discount: number | null;
+}
+
 interface CatalogContextType {
-  products: any[];
-  categories: any[];
-  brands: any[];
-  tags: any[];
+  products: ProductDetailsEntity[];
+  categories: Category[];
+  brands: Brand[];
+  tags: Tag[];
   loading: boolean;
   errorMsg: string | null;
-  filters: {
-    brand: string | null;
-    inStockOnly: boolean;
-    rating: number | null;
-    discount: number | null;
-  };
-  setFilter: (key: string, value: any) => void;
+  filters: CatalogFilters;
+  setFilter: (key: keyof CatalogFilters, value: CatalogFilters[keyof CatalogFilters]) => void;
   clearFilters: () => void;
-  getProductBySlug: (slug: string) => any;
+  getProductBySlug: (slug: string) => ProductDetailsEntity | null;
   refreshCatalog: () => Promise<void>;
 }
 
@@ -30,9 +33,9 @@ const CatalogContext = createContext<CatalogContextType | null>(null);
 
 export interface CatalogProviderProps {
   children: React.ReactNode;
-  initialProducts?: any[];
-  initialCategories?: any[];
-  initialBrands?: any[];
+  initialProducts?: ProductDetailsEntity[];
+  initialCategories?: Category[];
+  initialBrands?: Brand[];
 }
 
 export function CatalogProvider({
@@ -42,21 +45,24 @@ export function CatalogProvider({
   initialBrands,
 }: CatalogProviderProps) {
   const hasInitialData = Array.isArray(initialProducts);
-  const [products, setProducts] = useState<any[]>(initialProducts ?? []);
-  const [categories, setCategories] = useState<any[]>(initialCategories ?? []);
-  const [brands, setBrands] = useState<any[]>(initialBrands ?? []);
-  const [tags, setTags] = useState<any[]>([]);
+  const [products, setProducts] = useState<ProductDetailsEntity[]>(initialProducts ?? []);
+  const [categories, setCategories] = useState<Category[]>(initialCategories ?? []);
+  const [brands, setBrands] = useState<Brand[]>(initialBrands ?? []);
+  const [tags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(!hasInitialData);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const [filters, setFilters] = useState({
-    brand: null as string | null,
+  const [filters, setFilters] = useState<CatalogFilters>({
+    brand: null,
     inStockOnly: false,
-    rating: null as number | null,
-    discount: null as number | null,
+    rating: null,
+    discount: null,
   });
 
-  const setFilter = (key: string, value: any) => {
+  const setFilter = (
+    key: keyof CatalogFilters,
+    value: CatalogFilters[keyof CatalogFilters]
+  ) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -80,33 +86,33 @@ export function CatalogProvider({
       ]);
 
       if (prodRes.status === "fulfilled" && prodRes.value) {
-        const rawList = Array.isArray(prodRes.value) 
-          ? prodRes.value 
+        const rawList = Array.isArray(prodRes.value)
+          ? prodRes.value
           : (Array.isArray(prodRes.value.data) ? prodRes.value.data : []);
-        setProducts(rawList.map(normalizeProduct));
+        setProducts(rawList.map(normalizeProduct) as unknown as ProductDetailsEntity[]);
       }
 
       if (catRes.status === "fulfilled" && catRes.value) {
-        const rawCats = Array.isArray(catRes.value) 
-          ? catRes.value 
+        const rawCats = Array.isArray(catRes.value)
+          ? catRes.value
           : (Array.isArray(catRes.value.data) ? catRes.value.data : []);
         setCategories(rawCats);
       }
 
       if (brandRes.status === "fulfilled" && brandRes.value) {
-        const rawBrands = Array.isArray(brandRes.value) 
-          ? brandRes.value 
+        const rawBrands = Array.isArray(brandRes.value)
+          ? brandRes.value
           : (Array.isArray(brandRes.value.data) ? brandRes.value.data : []);
         setBrands(
-          rawBrands.map((b: any) => ({
+          rawBrands.map((b: Brand) => ({
             ...b,
             logoUrl: b.logoUrl || b.logo ? normalizeMediaUrl(b.logoUrl || b.logo) : undefined,
             logo: b.logoUrl || b.logo ? normalizeMediaUrl(b.logoUrl || b.logo) : undefined,
           }))
         );
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to load catalog");
+    } catch (err) {
+      setErrorMsg((err as { message?: string }).message || "Failed to load catalog");
     } finally {
       setLoading(false);
     }
