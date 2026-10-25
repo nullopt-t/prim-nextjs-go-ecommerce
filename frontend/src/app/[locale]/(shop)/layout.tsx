@@ -1,16 +1,33 @@
 import React from "react";
+import { headers } from "next/headers";
 import MainLayout from "@/shared/layouts/mainLayout";
 import { MaintenanceGate } from "@/shared/ui";
 import Recently from "@/modules/home/components/ui/recently";
 import { CatalogProvider } from "@/modules/catalog/model/catalogContext";
-import { getCatalogSnapshot } from "@/shared/lib/server/catalog";
+import {
+	getCatalogFacets,
+	getCatalogSnapshot,
+} from "@/shared/lib/server/catalog";
+
+function needsProductFeed(pathname: string) {
+	const path =
+		pathname.split("?")[0].replace(/^\/(en|ar)(?=\/|$)/, "") || "/";
+	return (
+		path === "/" ||
+		path === "/categories" ||
+		/^\/products\/[^/]+\/?$/.test(path)
+	);
+}
 
 export default async function ShopLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
-	const { products, categories, brands } = await getCatalogSnapshot();
+	const pathname = (await headers()).get("x-pathname") || "/";
+	const { products, categories, brands } = needsProductFeed(pathname)
+		? await getCatalogSnapshot()
+		: { products: [], ...(await getCatalogFacets()) };
 
 	return (
 		<CatalogProvider

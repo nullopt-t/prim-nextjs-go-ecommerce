@@ -91,3 +91,15 @@ export async function getCatalogSnapshot(pageSize = 100): Promise<CatalogSnapsho
 	return { products, categories, brands };
 }
 
+/**
+ * Navigation and filtering only need the category/brand facets. Use this for
+ * storefront routes that do not render a product feed so the RSC payload does
+ * not carry up to 100 serialized products.
+ */
+export async function getCatalogFacets(): Promise<
+	Pick<CatalogSnapshot, "categories" | "brands">
+> {
+	const [categories, brands] = await Promise.all([getCategories(), getBrands()]);
+	return { categories, brands };
+}
+
