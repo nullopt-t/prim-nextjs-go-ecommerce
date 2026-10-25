@@ -1,8 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import type { User } from "@/modules/auth/types";
 import { userService } from "@/modules/account/api/userService";
-import type { Address, CreateAddressPayload, UpdateAddressPayload } from "@/modules/account/types";
+import type {
+  Address,
+  CreateAddressPayload,
+  PaymentMethod,
+  UpdateAddressPayload,
+} from "@/modules/account/types";
+import type { Review } from "@/modules/catalog/types";
 
 export function useAddresses() {
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -13,8 +20,8 @@ export function useAddresses() {
     try {
       const res = await userService.getAddresses();
       setAddresses(res?.data || []);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load addresses");
+    } catch (err) {
+      setError((err as { message?: string })?.message || "Failed to load addresses");
     } finally {
       setLoading(false);
     }
@@ -29,8 +36,8 @@ export function useAddresses() {
       const res = await userService.createAddress(payload);
       await fetchAddresses();
       return { success: true, data: res?.data };
-    } catch (err: any) {
-      return { success: false, error: err?.message };
+    } catch (err) {
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 
@@ -39,8 +46,8 @@ export function useAddresses() {
       const res = await userService.updateAddress(id, payload);
       await fetchAddresses();
       return { success: true, data: res?.data };
-    } catch (err: any) {
-      return { success: false, error: err?.message };
+    } catch (err) {
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 
@@ -49,8 +56,8 @@ export function useAddresses() {
       const res = await userService.setDefaultAddress(id);
       await fetchAddresses();
       return { success: true, data: res?.data };
-    } catch (err: any) {
-      return { success: false, error: err?.message };
+    } catch (err) {
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 
@@ -59,8 +66,8 @@ export function useAddresses() {
       await userService.deleteAddress(id);
       await fetchAddresses();
       return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err?.message };
+    } catch (err) {
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 
@@ -77,7 +84,7 @@ export function useAddresses() {
 }
 
 export function usePaymentMethods() {
-  const [cards, setCards] = useState<any[]>([]);
+  const [cards, setCards] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,8 +92,8 @@ export function usePaymentMethods() {
     try {
       const data = await userService.getPaymentMethods();
       setCards(data || []);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load payment methods");
+    } catch (err) {
+      setError((err as { message?: string })?.message || "Failed to load payment methods");
     } finally {
       setLoading(false);
     }
@@ -96,13 +103,13 @@ export function usePaymentMethods() {
     fetchCards();
   }, [fetchCards]);
 
-  const addCard = async (payload: any) => {
+  const addCard = async (payload: Record<string, unknown>) => {
     try {
       const newCard = await userService.createPaymentMethod(payload);
       await fetchCards();
       return { success: true, data: newCard };
-    } catch (err: any) {
-      return { success: false, error: err?.message };
+    } catch (err) {
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 
@@ -111,8 +118,8 @@ export function usePaymentMethods() {
       await userService.deletePaymentMethod(id);
       await fetchCards();
       return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err?.message };
+    } catch (err) {
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 
@@ -121,8 +128,8 @@ export function usePaymentMethods() {
       await userService.setDefaultPaymentMethod(id);
       await fetchCards();
       return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err?.message };
+    } catch (err) {
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 
@@ -138,7 +145,7 @@ export function usePaymentMethods() {
 }
 
 export function useUserReviews() {
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -147,8 +154,8 @@ export function useUserReviews() {
       const res = await userService.getReviews();
       const list = Array.isArray(res) ? res : res?.data || [];
       setReviews(list);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load reviews");
+    } catch (err) {
+      setError((err as { message?: string })?.message || "Failed to load reviews");
     } finally {
       setLoading(false);
     }
@@ -160,13 +167,18 @@ export function useUserReviews() {
 
   const toggleHelpful = async (id: string) => {
     try {
-      const res: any = await userService.markReviewHelpful(id);
+      const res = (await userService.markReviewHelpful(id)) as {
+        likes?: number;
+        userLiked?: boolean;
+      } | undefined;
       setReviews((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, likes: res?.likes, userLiked: res?.userLiked } : r))
+        prev.map((r) =>
+          r.id === id ? ({ ...r, likes: res?.likes, userLiked: res?.userLiked } as Review) : r
+        )
       );
       return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err?.message };
+    } catch (err) {
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 
@@ -175,8 +187,8 @@ export function useUserReviews() {
       await userService.deleteReview(id);
       await fetchReviews();
       return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err?.message };
+    } catch (err) {
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 
@@ -191,16 +203,16 @@ export function useUserReviews() {
 }
 
 export function useUserProfile() {
-  const [profile, setProfile] = useState<any | null>(null);
+  const [profile, setProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async () => {
     try {
       const data = await userService.getProfile();
-      setProfile(data);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load profile");
+      setProfile(data?.data ?? null);
+    } catch (err) {
+      setError((err as { message?: string })?.message || "Failed to load profile");
     } finally {
       setLoading(false);
     }
@@ -210,13 +222,13 @@ export function useUserProfile() {
     fetchProfile();
   }, [fetchProfile]);
 
-  const updateProfile = async (payload: any) => {
+  const updateProfile = async (payload: Record<string, unknown>) => {
     try {
       const updated = await userService.updateProfile(payload);
       setProfile(updated);
       return { success: true, data: updated };
-    } catch (err: any) {
-      return { success: false, error: err?.message };
+    } catch (err) {
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 

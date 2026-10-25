@@ -36,3 +36,11 @@ export interface CreateAddressPayload {
 }
 
 export type UpdateAddressPayload = Partial<CreateAddressPayload>;
+
+/**
+ * Payment method UI model. The backend endpoint is not yet implemented
+ * (@todo), so this is the narrow shape the frontend currently uses.
+ */
+export interface PaymentMethod {
+  id: string;
+}
