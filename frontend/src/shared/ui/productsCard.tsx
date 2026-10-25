@@ -10,6 +10,7 @@ import { useCartContext } from "@/modules/cart/model/cartContext";
 import { useWishlist } from "@/modules/wishlist/model/useWishlist";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { normalizeMediaUrl } from "@/shared/lib/media";
+import { CatalogImage } from "@/shared/ui/catalogImage";
 
 export interface CardDetails {
   id: string | number;
@@ -130,10 +131,11 @@ export function ProductsCard({
             className="block w-full h-full"
           >
             {typeof cardDetails.img === "string" ? (
-              <img
-                src={normalizeMediaUrl(cardDetails.img)}
+              <CatalogImage
+                src={cardDetails.img}
                 alt={productName}
-                className="object-cover object-center w-full h-full group-hover:scale-105 transition-transform duration-300"
+                fill
+                className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
               />
             ) : (
               <Image

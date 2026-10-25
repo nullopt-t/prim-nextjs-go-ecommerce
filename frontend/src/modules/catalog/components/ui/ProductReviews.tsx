@@ -3,6 +3,7 @@ import { Star } from "lucide-react";
 import { Stars } from "@/shared/ui/stars";
 import { useTranslations } from "next-intl";
 import { ProductReview } from "../../types";
+import { CatalogImage } from "@/shared/ui/catalogImage";
 
 interface ProductReviewsProps {
   stars?: number;
@@ -371,10 +372,11 @@ export function ProductReviews({
                 >
                   <div className="flex items-start gap-3">
                     {review.avatar && (
-                      <img
+                      <CatalogImage
                         src={review.avatar}
                         alt={review.author}
-                        loading="lazy"
+                        width={40}
+                        height={40}
                         className="size-10 shrink-0 rounded-full object-cover"
                       />
                     )}
