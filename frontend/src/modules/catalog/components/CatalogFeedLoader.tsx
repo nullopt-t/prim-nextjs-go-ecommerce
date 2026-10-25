@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useCatalogContext } from "../model/catalogContext";
 
 /**
@@ -11,9 +11,11 @@ import { useCatalogContext } from "../model/catalogContext";
  */
 export function CatalogFeedLoader() {
 	const { products, loading, refreshCatalog } = useCatalogContext();
+	const attempted = useRef(false);
 
 	useEffect(() => {
-		if (!loading && products.length === 0) {
+		if (!loading && products.length === 0 && !attempted.current) {
+			attempted.current = true;
 			void refreshCatalog();
 		}
 	}, [loading, products.length, refreshCatalog]);
