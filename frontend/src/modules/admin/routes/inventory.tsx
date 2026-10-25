@@ -2,30 +2,64 @@ import { ResponsiveTable } from "@/shared/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Minus, Search, History, ImageOff } from "lucide-react";
 import { adminService } from "@/modules/admin/api/adminService";
-import type { InventoryLedger, InventoryStock } from "@/modules/admin/types";
+import type { InventoryLedger } from "@/modules/admin/types";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
 import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
 
+interface InventoryItem {
+  variantId: string;
+  productId: string;
+  productName: string;
+  variantTitle?: string;
+  sku: string;
+  thumbnail?: string;
+  onHandQuantity: number;
+  availableQuantity: number;
+}
+
+interface InventoryProduct {
+  id: string;
+  variantId: string;
+  productId: string;
+  name: string;
+  sku: string;
+  stock: number;
+  available: number;
+  image: string;
+  lowStockThreshold: number;
+}
+
+interface InventoryLogEntry {
+  id: string;
+  product: string;
+  sku: string;
+  change: string;
+  quantity: number;
+  type: string;
+  date: string;
+  user: string;
+}
+
 export function AdminInventory() {
   const t = useTranslations("admin");
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<InventoryProduct[]>([]);
   const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<InventoryLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedProduct, setSelectedProduct] = useState<InventoryProduct | null>(null);
   const [adjustAmount, setAdjustAmount] = useState(0);
   const [adjustReason, setAdjustReason] = useState("restock");
-  const [auditProduct, setAuditProduct] = useState<any>(null);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditProduct, setAuditProduct] = useState<InventoryProduct | null>(null);
+  const [auditLogs, setAuditLogs] = useState<InventoryLogEntry[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const { cursor, hasPrev, next, prev, page } = useCursorPagination();
 
-  const handleViewAudit = async (prod: any) => {
+  const handleViewAudit = async (prod: InventoryProduct) => {
     setAuditProduct(prod);
     setLoadingAudit(true);
     try {
@@ -38,7 +72,7 @@ export function AdminInventory() {
       setAuditLogs(list.map((l: InventoryLedger) => ({
         id: l.id,
         product: `${l.productName} (${l.sku})`,
-        sku: l.sku,
+        sku: l.sku || "",
         change: l.quantity > 0 ? `+${l.quantity}` : `${l.quantity}`,
         quantity: l.quantity,
         type: l.reason ? l.reason.toUpperCase() : "AUDIT",
@@ -56,13 +90,13 @@ export function AdminInventory() {
     try {
       setLoading(true);
       setLoadError(false);
-      const [invRes, logsRes]: [any, any] = await Promise.all([
+      const [invRes, logsRes] = await Promise.all([
         adminService.getInventory({ cursor: cursor || undefined, pageSize: 50 }),
         adminService.getInventoryLedgers(30)
       ]);
 
-      const items = invRes?.data ?? [];
-      setProducts(items.map((it: any) => ({
+      const items: InventoryItem[] = (invRes?.data ?? []) as unknown as InventoryItem[];
+      setProducts(items.map((it) => ({
         id: it.variantId || it.productId,
         variantId: it.variantId,
         productId: it.productId,
@@ -73,13 +107,14 @@ export function AdminInventory() {
         image: it.thumbnail || "",
         lowStockThreshold: 10
       })));
-      if (invRes?.meta) setMeta(invRes.meta);
+      if (invRes?.meta) setMeta(invRes.meta as CursorMeta);
 
       const ledgerList = logsRes?.data ?? [];
       setLogs(ledgerList.map((l: InventoryLedger) => ({
         id: l.id,
         product: `${l.productName} (${l.sku})`,
-        sku: l.sku,
+        sku: l.sku || "",
+        quantity: l.quantity,
         change: l.quantity > 0 ? `+${l.quantity}` : `${l.quantity}`,
         type: l.reason ? l.reason.toUpperCase() : "AUDIT",
         date: l.createdAt ? l.createdAt.replace("T", " ").substring(0, 16) : new Date().toISOString().substring(0, 16),
@@ -96,7 +131,7 @@ export function AdminInventory() {
     loadInventoryData();
   }, [loadInventoryData]);
 
-  const handleAdjustStock = (prod: any) => {
+  const handleAdjustStock = (prod: InventoryProduct) => {
     setSelectedProduct(prod);
     setAdjustAmount(0);
     setAdjustReason("restock");
@@ -117,7 +152,7 @@ export function AdminInventory() {
       notify.success(t("inventory.toast.adjusted", { name: selectedProduct.name }));
       setSelectedProduct(null);
       loadInventoryData();
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("inventory.toast.adjustFailed")));
     }
   };
