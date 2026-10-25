@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { cartService } from "@/modules/cart/api/cartService";
-import type { Cart, CartItem } from "@/modules/cart/types";
+import type { Cart, CartItem, CouponApplication } from "@/modules/cart/types";
 import type { ApiResponse } from "@/shared/api/types";
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import { normalizeMediaUrl } from "@/shared/lib/media";
@@ -78,7 +78,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user, loading: authLoading } = useAuthContext();
+  const { user, loading: authLoading } = useAuthContext();
   const [cartItems, setCartItems] = useState<CartContextItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartSummary, setCartSummary] = useState({
@@ -163,8 +163,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const res = await cartService.getCart();
       normalizeCartData(res);
       setErrorMsg(null);
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to load cart");
+    } catch (err) {
+      setErrorMsg((err as { message?: string }).message || "Failed to load cart");
     } finally {
       if (isInitial) setLoading(false);
     }
@@ -186,14 +186,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
       await fetchCart(false);
       return { success: true };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    } catch (err) {
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 
   const updateCartItem = async (id: string, quantity: number) => {
     // 1. Optimistic update
-    const previousItems = cartItems;
     setCartItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, quantity } : item))
     );
@@ -204,25 +203,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // 3. Sync authoritative cart data from backend without flipping loading state
       await fetchCart(false);
       return { success: true };
-    } catch (err: any) {
-      // 4. If the item was not found on the server (stale cart / re-seeded session), sync authoritative state
-      await fetchCart(false);
-      return { success: false, error: err.message };
+    } catch (err) {
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 
   const removeFromCart = async (id: string) => {
-    const previousItems = cartItems;
     setCartItems((prev) => prev.filter((item) => item.id !== id));
 
     try {
       await cartService.removeItem(id);
       await fetchCart(false);
       return { success: true };
-    } catch (err: any) {
+    } catch (err) {
       // If already deleted or stale, re-sync with backend
       await fetchCart(false);
-      return { success: false, error: err.message };
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 
@@ -234,9 +230,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       await cartService.clearCart();
       await fetchCart(false);
       return { success: true };
-    } catch (err: any) {
+    } catch (err) {
       setCartItems(previousItems);
-      return { success: false, error: err.message };
+      return { success: false, error: (err as { message?: string })?.message };
     }
   };
 
@@ -249,9 +245,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return acc + raw * (item.quantity || 1);
       }, 0);
 
-      const res: any = await cartService.applyCoupon(code, currentSubtotal);
-      const raw: any = res?.data || res || {};
-      
+      const res = await cartService.applyCoupon(code, currentSubtotal);
+      const raw = (res?.data || res) as CouponApplication & {
+        discountPercent?: number;
+        fixedDiscount?: number;
+      };
       const discountType = raw.discountType || (raw.discountPercent ? "percentage" : "fixed_amount");
       const discountValue = Number(raw.discountValue || 0);
       const discountAmount = raw.discountAmount !== undefined ? Number(raw.discountAmount) / 100 : undefined;
@@ -289,8 +287,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
 
       return { success: true, coupon: couponData };
-    } catch (err: any) {
-      return { success: false, error: err.message || "Invalid coupon code" };
+    } catch (err) {
+      return { success: false, error: (err as { message?: string }).message || "Invalid coupon code" };
     }
   };
 
