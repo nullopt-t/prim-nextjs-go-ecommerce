@@ -32,6 +32,9 @@ import { catalogService } from "@/modules/catalog/api/catalogService";
 import { adminService } from "@/modules/admin/api/adminService";
 import { ProductBrandFormatFields } from "@/modules/admin/components/ProductBrandFormatFields";
 import { ProductCoreFields } from "@/modules/admin/components/ProductCoreFields";
+import { ProductOptionAxesFields } from "@/modules/admin/components/ProductOptionAxesFields";
+import { VariantAxisInputsFields } from "@/modules/admin/components/VariantAxisInputsFields";
+import { VariantAxisValuesFields } from "@/modules/admin/components/VariantAxisValuesFields";
 import { VariantBasicsFields } from "@/modules/admin/components/VariantBasicsFields";
 import { SimplePricingFields } from "@/modules/admin/components/SimplePricingFields";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
@@ -133,9 +136,6 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
   const variantMediaInputRef = useRef<HTMLInputElement>(null);
 
   const [axisDraftValues, setAxisDraftValues] = useState<Record<string, string[]>>({});
-  const [axisInputs, setAxisInputs] = useState<Record<string, string>>({});
-  const [newAxisName, setNewAxisName] = useState("");
-  const [formAxisToAdd, setFormAxisToAdd] = useState("");
   const [matrixStock, setMatrixStock] = useState("");
 
   // Quick variant inventory adjustment modal state
@@ -358,11 +358,6 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     [attributes, formData.categoryId]
   );
 
-  const formInactiveAxisCandidates = useMemo(
-    () => formCategoryAttributes.filter((attribute: any) => !formData.variationAxes.includes(attribute.key)),
-    [formCategoryAttributes, formData.variationAxes]
-  );
-
   const activeAxes: string[] = useMemo(
     () => (Array.isArray(productDetail?.variationAxes) ? productDetail.variationAxes : formData.variationAxes),
     [productDetail, formData.variationAxes]
@@ -409,7 +404,6 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     if (!productDetail) {
       axisDraftProductRef.current = null;
       setAxisDraftValues({});
-      setAxisInputs({});
       return;
     }
     const next: Record<string, string[]> = {};
@@ -462,7 +456,6 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       }
       return merged;
     });
-    setAxisInputs({});
   }, [productDetail?.id, productDetail?.updatedAt, variantFingerprint, isEditMode]);
 
   // Keep unsaved option choices across refreshes while the admin is still in
@@ -782,7 +775,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
 
   // Inline Option / Axis creation
   const handleCreateInlineAxis = async (customLabel?: string) => {
-    const label = (customLabel || newAxisName).trim();
+    const label = (customLabel || "").trim();
     if (!label || !formData.categoryId || formAxesLocked) return;
 
     const key =
@@ -808,7 +801,6 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
         ...prev,
         variationAxes: [...prev.variationAxes, existingAttr.key],
       }));
-      setNewAxisName("");
       notify.success(t("products.wizard.axisCreated", { name: existingAttr.label }));
       return;
     }
@@ -840,61 +832,12 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
         ...prev,
         variationAxes: [...prev.variationAxes, key],
       }));
-      setNewAxisName("");
       notify.success(t("products.wizard.axisCreated", { name: label }));
     } catch (err: any) {
       notify.error(apiErrorMessage(err, t("products.wizard.axisCreateFailed")));
     } finally {
       setCreatingAxis(false);
     }
-  };
-
-  const handleFormAddAxis = () => {
-    if (!formAxisToAdd || formAxesLocked || formData.variationAxes.includes(formAxisToAdd)) return;
-    setFormData((prev) => ({
-      ...prev,
-      variationAxes: [...prev.variationAxes, formAxisToAdd],
-    }));
-    setFormAxisToAdd("");
-  };
-
-  const handleFormRemoveAxis = (key: string) => {
-    if (formAxesLocked) return;
-    setFormData((prev) => ({
-      ...prev,
-      variationAxes: prev.variationAxes.filter((axis) => axis !== key),
-    }));
-  };
-
-  const handleAddAxisValue = (key: string) => {
-    const value = (axisInputs[key] || "").trim();
-    if (!value) return;
-    const existingValues = axisDraftValues[key] || [];
-    if (existingValues.includes(value)) {
-      notify.error(t("products.variants.axisValueExists", { value }));
-      return;
-    }
-
-    const definition =
-      formCategoryAttributes.find((attribute: any) => attribute.key === key) ||
-      attributeByKey[key];
-    const allowedValues: string[] = Array.isArray(definition?.allowedValues)
-      ? definition.allowedValues.map((allowed: any) => String(allowed))
-      : [];
-    if (
-      allowedValues.length > 0 &&
-      !allowedValues.some((allowed) => allowed.toLowerCase() === value.toLowerCase())
-    ) {
-      notify.error(
-        t("products.variants.axisValueNotAllowed", {
-          value,
-          allowed: allowedValues.join(", "),
-        })
-      );
-      return;
-    }
-    setAxisDraftValues((prev) => ({ ...prev, [key]: [...(prev[key] || []), value] }));
-    setAxisInputs((prev) => ({ ...prev, [key]: "" }));
   };
 
   const handleCreateMissingCombinations = async () => {
@@ -1604,135 +1547,14 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
 
             {/* Step 3: Option dimensions (dependent on the product format chosen in Step 2) */}
             {showStep(3) && formData.productType === "variable" && (
-              <div className="space-y-4 rounded-xl border border-border bg-secondary/20 p-5 max-w-2xl">
-                <div>
-                  <label className="text-xs font-bold text-foreground">{t("products.form.variationAxes")} *</label>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{t("products.form.variationAxesHint")}</p>
-                </div>
-
-                {/* Selected Options Pills */}
-                <div className="flex flex-wrap gap-2 min-h-[36px] items-center">
-                  {formData.variationAxes.length === 0 ? (
-                    <span className="text-xs text-muted-foreground italic">{t("products.form.noAxes")}</span>
-                  ) : (
-                    formData.variationAxes.map((key) => {
-                      const definition = formCategoryAttributes.find((attribute: any) => attribute.key === key);
-                      return (
-                        <span
-                          key={key}
-                          className="flex items-center gap-2 rounded-full border border-accent-brand/30 bg-accent-brand/10 px-3 py-1.5 text-xs font-semibold text-accent-brand"
-                        >
-                          {definition?.label || key}
-                          {!formAxesLocked && (
-                            <button
-                              type="button"
-                              onClick={() => handleFormRemoveAxis(key)}
-                              className="rounded-full p-0.5 hover:bg-accent-brand/20 transition-all"
-                              title={t("products.variants.removeAxis")}
-                            >
-                              <X className="size-3" />
-                            </button>
-                          )}
-                        </span>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Dropdown to add from existing category options */}
-                {!formAxesLocked && formInactiveAxisCandidates.length > 0 && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-border">
-                    <select
-                      value={formAxisToAdd}
-                      onChange={(e) => setFormAxisToAdd(e.target.value)}
-                      className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground"
-                    >
-                      <option value="">{t("products.variants.addAxis")}</option>
-                      {formInactiveAxisCandidates.map((attribute: any) => (
-                        <option key={attribute.key} value={attribute.key}>
-                          {attribute.label || attribute.key}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleFormAddAxis}
-                      disabled={!formAxisToAdd}
-                      className="px-4 py-2 rounded-xl border border-border text-xs font-semibold text-foreground hover:bg-secondary disabled:opacity-50 shrink-0"
-                    >
-                      {t("products.variants.addAxisAction")}
-                    </button>
-                  </div>
-                )}
-
-                {/* Instant Inline Option Creator & Presets */}
-                {!formAxesLocked && (
-                  <div className="space-y-3 pt-3 border-t border-border">
-                    <div className="space-y-1">
-                      <span className="text-xs font-bold text-foreground block">{t("products.wizard.quickAddAxis")}</span>
-                      {formCategoryAttributes.length === 0 && (
-                        <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                          {t("products.wizard.noAttributesNotice")}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Presets */}
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { label: t("products.wizard.presetColor"), key: "color" },
-                        { label: t("products.wizard.presetSize"), key: "size" },
-                        { label: t("products.wizard.presetStorage"), key: "storage" },
-                        { label: t("products.wizard.presetMaterial"), key: "material" },
-                      ].map((preset) => {
-                        const isAdded = formData.variationAxes.includes(preset.key);
-                        return (
-                          <button
-                            key={preset.key}
-                            type="button"
-                            disabled={isAdded || creatingAxis}
-                            onClick={() => handleCreateInlineAxis(preset.label)}
-                            className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                              isAdded
-                                ? "border-transparent bg-secondary/40 text-muted-foreground opacity-50 cursor-default"
-                                : "border-dashed border-border bg-background text-foreground hover:border-accent-brand/50 hover:text-accent-brand hover:bg-accent-brand/5"
-                            }`}
-                          >
-                            {isAdded ? `✓ ${preset.label}` : `+ ${preset.label}`}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Custom Option Input */}
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={newAxisName}
-                        onChange={(e) => setNewAxisName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleCreateInlineAxis();
-                          }
-                        }}
-                        placeholder={t("products.wizard.quickAddAxisPlaceholder")}
-                        className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleCreateInlineAxis()}
-                        disabled={!newAxisName.trim() || creatingAxis}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-brand text-white text-xs font-semibold hover:bg-accent-brand/90 disabled:opacity-50 shrink-0 transition-all shadow-2xs"
-                      >
-                        {creatingAxis && <Loader2 className="size-3 animate-spin" />}
-                        <Plus className="size-3" />
-                        {t("products.wizard.createAxisAction")}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <ProductOptionAxesFields
+                value={{ variationAxes: formData.variationAxes }}
+                categoryAttributes={formCategoryAttributes}
+                locked={formAxesLocked}
+                creating={creatingAxis}
+                onChange={(patch) => setFormData((prev) => ({ ...prev, ...patch }))}
+                onCreateAxis={handleCreateInlineAxis}
+              />
             )}
           </div>
         )}
@@ -1796,114 +1618,29 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {activeAxes.map((key) => {
-                      const definition = attributeByKey[key] || formCategoryAttributes.find((a: any) => a.key === key);
-                      const values = axisDraftValues[key] || [];
-
-                      return (
-                        <div key={key} className="rounded-xl border border-border bg-background p-4 space-y-3 shadow-2xs">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-foreground">{definition?.label || key}</span>
-                            <span className="text-[10px] text-muted-foreground">
-                              {t("products.variants.valueCount", { count: values.length })}
-                            </span>
-                          </div>
-
-                          {/* Value chips */}
-                          <div className="flex flex-wrap gap-1.5 min-h-[30px] items-center">
-                            {values.length === 0 ? (
-                              <span className="text-[11px] text-muted-foreground italic">
-                                {t("products.variants.noAxisValues")}
-                              </span>
-                            ) : (
-                              values.map((value) => (
-                                <span
-                                  key={value}
-                                  className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary/40 px-2.5 py-1 text-xs font-medium text-foreground"
-                                >
-                                  {value}
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setAxisDraftValues((prev) => ({
-                                        ...prev,
-                                        [key]: (prev[key] || []).filter((v) => v !== value),
-                                      }))
-                                    }
-                                    className="text-muted-foreground hover:text-destructive"
-                                  >
-                                    <X className="size-3" />
-                                  </button>
-                                </span>
-                              ))
-                            )}
-                          </div>
-
-                          {/* Add value input */}
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={axisInputs[key] || ""}
-                              onChange={(e) => setAxisInputs((prev) => ({ ...prev, [key]: e.target.value }))}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  handleAddAxisValue(key);
-                                }
-                              }}
-                              placeholder={t("products.variants.addValuePlaceholder")}
-                              className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleAddAxisValue(key)}
-                              className="rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary shrink-0"
-                            >
-                              {t("products.variants.addValueAction")}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex flex-wrap items-end gap-3 pt-2">
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-semibold text-foreground">
-                        {t("products.variants.matrixStock")}
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={matrixStock}
-                        onChange={(e) => setMatrixStock(e.target.value)}
-                        className="w-32 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="text-[11px] font-semibold text-foreground">
-                        {t("products.variants.combinations", { count: matrixCombinationCount })}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {axisValuesReady
-                          ? t("products.variants.combinationsReady")
-                          : t("products.variants.combinationsMissing")}
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleCreateMissingCombinations}
-                      disabled={matrixSaving || !axisValuesReady}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-accent-brand px-5 py-2.5 text-xs font-semibold text-white hover:bg-accent-brand/90 disabled:opacity-60 shadow-xs"
-                    >
-                      {matrixSaving && <Loader2 className="size-3.5 animate-spin" />}
-                      <Sparkles className="size-3.5" />
-                      <span>{t("products.variants.createMissing")}</span>
-                    </button>
-                  </div>
+                  <VariantAxisValuesFields
+                    axes={activeAxes}
+                    values={axisDraftValues}
+                    definitions={attributeByKey}
+                    stock={matrixStock}
+                    onAddValue={(key, value) =>
+                      setAxisDraftValues((prev) => ({
+						...prev,
+						[key]: [...(prev[key] || []), value],
+					}))
+					}
+                    onRemoveValue={(key, value) =>
+                      setAxisDraftValues((prev) => ({
+						...prev,
+						[key]: (prev[key] || []).filter((v) => v !== value),
+					}))
+					}
+                    onChangeStock={(v) => setMatrixStock(v)}
+                    onCreateMissing={handleCreateMissingCombinations}
+                    creating={matrixSaving}
+                    ready={axisValuesReady}
+                    count={matrixCombinationCount}
+                  />
                 </div>
 
                 {/* Generated Variants List */}
@@ -2098,89 +1835,35 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                       }
                     />
 
-                    {/* Option Values for this Variant - Fully flexible for the Editor */}
                     {activeAxes.length > 0 && (
-                      <div className="space-y-3 pt-3 border-t border-border">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-foreground">
-                            {t("products.variants.variationAxes")} *
-                          </label>
-                          <span className="text-[11px] text-muted-foreground">
-                            {t("products.wizard.step4VariableHint")}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                          {activeAxes.map((key) => {
-                            const attribute = attributeByKey[key] || formCategoryAttributes.find((a: any) => a.key === key);
-                            const label = attribute?.label || key;
-                            const draftVals = axisDraftValues[key] || [];
-                            const currentValue = variantForm.attributes?.[key] ?? "";
-
-                            const handleAxisValueChange = (val: string) => {
-                              const nextAttrs = { ...variantForm.attributes, [key]: val };
-                              if (val.trim() && !draftVals.includes(val.trim())) {
-                                setAxisDraftValues((prev) => ({
-                                  ...prev,
-                                  [key]: [...(prev[key] || []), val.trim()],
-                                }));
-                              }
-                              const parts = activeAxes.map((k) => nextAttrs[k]).filter(Boolean);
-                              setVariantForm({
-                                ...variantForm,
-                                attributes: nextAttrs,
-                                title:
-                                  variantForm.mode === "create" && parts.length > 0
-                                    ? `${formData.name.trim() || productDetail?.title || "Variant"} - ${parts.join(", ")}`
-                                    : variantForm.title,
-                              });
-                            };
-
-                            return (
-                              <div key={key} className="space-y-1.5">
-                                <label className="text-[11px] font-semibold text-foreground">
-                                  {label} *
-                                </label>
-                                <input
-                                  type="text"
-                                  list={`datalist-${key}`}
-                                  value={currentValue}
-                                  onChange={(e) => handleAxisValueChange(e.target.value)}
-                                  placeholder={`Type ${label} value...`}
-                                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-                                />
-
-                                {draftVals.length > 0 && (
-                                  <>
-                                    <datalist id={`datalist-${key}`}>
-                                      {draftVals.map((opt, optIdx) => (
-                                        <option key={`dl-${key}-${opt}-${optIdx}`} value={opt} />
-                                      ))}
-                                    </datalist>
-
-                                    <div className="flex flex-wrap gap-1">
-                                      {draftVals.map((opt, optIdx) => (
-                                        <button
-                                          key={`chip-${key}-${opt}-${optIdx}`}
-                                          type="button"
-                                          onClick={() => handleAxisValueChange(opt)}
-                                          className={`px-2 py-0.5 rounded-md text-[10px] font-medium border transition-all ${
-                                            currentValue === opt
-                                              ? "border-accent-brand bg-accent-brand/20 text-accent-brand font-bold"
-                                              : "border-border bg-secondary/30 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                                          }`}
-                                        >
-                                          {opt}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                      <VariantAxisInputsFields
+                        axes={activeAxes}
+                        attributes={variantForm.attributes}
+                        definitions={attributeByKey}
+                        draftValues={axisDraftValues}
+                        onAttributeChange={(key, val) => {
+                          const nextAttrs = { ...variantForm.attributes, [key]: val };
+                          if (val.trim() && !(axisDraftValues[key] || []).includes(val.trim())) {
+                            setAxisDraftValues((prev) => ({
+                              ...prev,
+                              [key]: [...(prev[key] || []), val.trim()],
+                            }));
+                          }
+                          const parts = activeAxes.map((k) => nextAttrs[k]).filter(Boolean);
+                          setVariantForm((prev) =>
+                            prev
+                              ? {
+									...prev,
+									attributes: nextAttrs,
+									title:
+										prev.mode === "create" && parts.length > 0
+											? `${formData.name.trim() || productDetail?.title || "Variant"} - ${parts.join(", ")}`
+											: prev.title,
+							  }
+                              : prev,
+                          );
+                        }}
+                      />
                     )}
 
                     <div className="flex justify-end gap-2 pt-2 border-t border-border">
