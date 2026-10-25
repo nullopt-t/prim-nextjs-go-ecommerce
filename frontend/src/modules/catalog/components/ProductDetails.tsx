@@ -15,7 +15,7 @@ import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { copyTextToClipboard } from "@/shared/lib/clipboard";
 import { recordRecentlyViewed } from "@/shared/lib/recentlyViewed";
 
-import { ProductReview, Review } from "../types";
+import type { ProductDetailsEntity, ProductReview, ProductVariant, Review } from "../types";
 import {
   getProductDisplayName,
   resolveVariantByAttributes,
@@ -30,9 +30,8 @@ import { ProductReviews } from "./ui/ProductReviews";
 import { CatalogFeedLoader } from "./CatalogFeedLoader";
 
 import { useAuthContext } from "@/modules/auth/model/authContext";
-import { userService } from "@/modules/account/api/userService";
 
-export function ProductDetails({ initialProduct = null }: { initialProduct?: any }) {
+export function ProductDetails({ initialProduct = null }: { initialProduct?: ProductDetailsEntity | null }) {
   const { id } = useParams();
   const searchParams = useSearchParams();
   const navigate = useRouter();
@@ -64,9 +63,9 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
     const variantParam = searchParams.get("variant");
     const colorParam = searchParams.get("color");
 
-    let initialVariant = variants.find((v: any) => v.isDefault) || variants[0];
+    let initialVariant = variants.find((v: ProductVariant) => v.isDefault) || variants[0];
     if (variantParam) {
-      const match = variants.find((v: any) => v.id === variantParam || v.sku === variantParam);
+      const match = variants.find((v: ProductVariant) => v.id === variantParam || v.sku === variantParam);
       if (match) initialVariant = match;
     }
 
@@ -109,8 +108,8 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
           const isOwn = user?.id && String(r.userId) === String(user.id);
           return {
             id: r.id,
-            author: isOwn ? (user.name || tProducts("details.you")) : (r as any).user?.name || tProducts("details.customer"),
-            avatar: isOwn ? null : (r as any).user?.avatar || null,
+            author: isOwn ? (user.name || tProducts("details.you")) : r.user?.name || tProducts("details.customer"),
+            avatar: isOwn ? null : r.user?.avatar || null,
             rating: Number(r.rating) || 0,
             date: r.createdAt
               ? new Date(r.createdAt).toLocaleDateString("en-US", {
@@ -147,9 +146,9 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
 
     catalogService
       .checkReviewEligibility(String(product.id))
-      .then((res: any) => {
+      .then((res) => {
         if (!isMounted) return;
-        const eligible = Boolean(res?.data?.canReview ?? res?.canReview);
+        const eligible = Boolean(res.data?.canReview);
         setCanReview(eligible);
       })
       .catch(() => {
@@ -197,9 +196,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
   const { availableStock, isVariantInStock } = resolveVariantStock(product, activeVariant);
   const imageEntries = resolveProductImageEntries(product, activeVariant);
   const images = imageEntries.map((image) => image.url);
-  const highlights = Array.isArray((product as any).highlights)
-    ? (product as any).highlights
-    : [];
+  const highlights = Array.isArray(product.highlights) ? product.highlights : [];
   const reviewCount = reviews.length || product.reviews || 0;
   const averageRating =
     reviews.length > 0
@@ -244,35 +241,30 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
     setActiveImage(nextIndex >= 0 ? nextIndex : 0);
   };
 
-  const resolvePrice = (val: any): number => {
+  const resolvePrice = (val: string | number | undefined): number => {
     if (typeof val === "number" && !isNaN(val)) return val;
     if (!val) return 0;
     const parsed = parseFloat(String(val).replace(/[^0-9.-]+/g, ""));
     return isNaN(parsed) ? 0 : parsed;
   };
 
-  const activeVariantPrice = (activeVariant as any)?.extractedPrice ?? activeVariant?.price;
+  const activeVariantPrice = activeVariant?.extractedPrice ?? activeVariant?.price;
   const numVariantPrice = resolvePrice(activeVariantPrice);
-  const numProductPrice = resolvePrice((product as any)?.extractedPrice ?? product.price);
+  const numProductPrice = resolvePrice(product.extractedPrice ?? product.price);
   const currentPrice = numVariantPrice > 0 ? numVariantPrice : numProductPrice;
 
-  const hasVariantOldPrice = activeVariant && (
-    (activeVariant as any)?.extractedOriginalPrice !== undefined ||
-    (activeVariant as any)?.oldPrice !== undefined ||
-    (activeVariant as any)?.originalPrice !== undefined
-  );
+  const hasVariantOldPrice =
+    activeVariant?.extractedOriginalPrice !== undefined ||
+    activeVariant?.oldPrice !== undefined ||
+    activeVariant?.originalPrice !== undefined;
   const numVariantOldPrice = hasVariantOldPrice
     ? resolvePrice(
-        (activeVariant as any)?.extractedOriginalPrice ??
-        (activeVariant as any)?.oldPrice ??
-        (activeVariant as any)?.originalPrice
+        activeVariant?.extractedOriginalPrice ??
+        activeVariant?.oldPrice ??
+        activeVariant?.originalPrice
       )
     : 0;
-  const numProductOldPrice = resolvePrice(
-    (product as any)?.extractedOriginalPrice ??
-    product.oldPrice ??
-    (product as any)?.originalPrice
-  );
+  const numProductOldPrice = resolvePrice(product.extractedOriginalPrice ?? product.oldPrice ?? product.originalPrice);
 
   // If an active variant is selected, use its old price (do not bleed another variant's price onto it).
   // Only fall back to product-level old price if no active variant is selected.
@@ -287,18 +279,16 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
     ? `${Math.round(((currentOldPrice - currentPrice) / currentOldPrice) * 100)}%`
     : undefined;
   const discountPercentage = activeVariant ? calculatedDiscount : (product.discountPercentage || calculatedDiscount);
-  const selectedColorLabel =
-    (activeVariant?.attributes as any)?.color ??
-    selectedValues.color ??
-    Object.values(selectedValues)[0] ??
-    "Default";
+  const selectedColorLabel = String(
+    activeVariant?.attributes?.color ?? selectedValues.color ?? Object.values(selectedValues)[0] ?? "Default"
+  );
 
   const handleAddToCart = async () => {
     if (!isVariantInStock) return;
     setIsAdding(true);
     const resolvedVariantId =
       activeVariant?.id ||
-      (product.variants && product.variants.find((v: any) => v.isDefault)?.id) ||
+      (product.variants && product.variants.find((v: ProductVariant) => v.isDefault)?.id) ||
       (product.variants && product.variants[0]?.id) ||
       product.variantId ||
       product.defaultVariantId;
@@ -310,7 +300,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
       productPrice: `EGP ${currentPrice}`,
       img: images[0],
       quantity,
-      color: String(selectedColorLabel),
+      color: selectedColorLabel,
     };
     const res = await addToCart(payload);
     setIsAdding(false);
@@ -326,7 +316,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
     setIsAdding(true);
     const resolvedVariantId =
       activeVariant?.id ||
-      (product.variants && product.variants.find((v: any) => v.isDefault)?.id) ||
+      (product.variants && product.variants.find((v: ProductVariant) => v.isDefault)?.id) ||
       (product.variants && product.variants[0]?.id) ||
       product.variantId ||
       product.defaultVariantId;
@@ -338,7 +328,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
       productPrice: `EGP ${currentPrice}`,
       img: images[0],
       quantity,
-      color: String(selectedColorLabel),
+      color: selectedColorLabel,
     };
     const res = await addToCart(payload);
     setIsAdding(false);
@@ -371,14 +361,17 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
     }
 
     try {
-      const res: any = await catalogService.submitReview({
+      const res = await catalogService.submitReview({
         productId: String(product.id),
         rating: newReviewData.rating,
         title: newReviewData.title,
         body: newReviewData.content,
       });
 
-      const serverReview = res?.data || res;
+      const serverReview = (res?.data ?? res) as {
+        id?: string | number;
+        verifiedPurchase?: boolean;
+      };
       notify.success(tReviews("submitSuccess"));
 
       const newRev: ProductReview = {
@@ -402,9 +395,10 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
       setReviews((prev) => [newRev, ...prev]);
       setCanReview(false);
       return true;
-    } catch (err: any) {
-      const errCode = err?.response?.data?.code;
-      const statusCode = err?.response?.status;
+    } catch (err) {
+      const e = err as { response?: { data?: { code?: string }; status?: number } } | undefined;
+      const errCode = e?.response?.data?.code;
+      const statusCode = e?.response?.status;
 
       if (errCode === "REVIEW_NOT_ELIGIBLE") {
         notify.error(tReviews("errors.notEligible"));
@@ -507,8 +501,8 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
         brand={typeof product.brand === "string" ? product.brand : product.brand?.name}
         description={product.description}
         attributes={activeVariant?.attributes}
-        condition={(product as any).condition}
-        warranty={(product as any).warranty}
+        condition={product.condition}
+        warranty={product.warranty}
       />
 
       {/* Reviews Section */}

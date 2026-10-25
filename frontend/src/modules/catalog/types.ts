@@ -126,6 +126,7 @@ export interface Review {
   productId: string;
   userId: string;
   orderItemId?: string;
+  user?: { name?: string; avatar?: string } | null;
   rating: number;
   title?: string;
   body?: string;
