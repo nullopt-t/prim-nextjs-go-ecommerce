@@ -4,7 +4,8 @@ import { Search } from "lucide-react";
 import {
   INITIAL_VENDOR_ORDERS,
   getLocalVendorData,
-  setLocalVendorData
+  setLocalVendorData,
+  type VendorOrder
 } from "../data/mockVendorData";
 import { orderService } from "@/modules/orders/api/orderService";
 import { notify } from "@/shared/lib/notify";
@@ -16,7 +17,7 @@ interface MarketplaceOrder {
 	id?: string;
 	status?: string;
 	date?: string;
-	shippingAddress?: string;
+	shippingAddress?: string | { street?: string };
 	orderItems?: Array<{
 		name?: string;
 		price?: string | number;
@@ -28,7 +29,9 @@ export function VendorOrders() {
   const t = useTranslations("vendor");
   const { vendor } = useVendorContext();
 
-  const [orders, setOrders] = useState(() => getLocalVendorData("orders", INITIAL_VENDOR_ORDERS));
+  const [orders, setOrders] = useState<VendorOrder[]>(() =>
+    getLocalVendorData("orders", INITIAL_VENDOR_ORDERS)
+  );
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
@@ -36,12 +39,12 @@ export function VendorOrders() {
     async function loadOrders() {
       try {
         const res = await orderService.getOrders();
-        const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
+        const list: MarketplaceOrder[] = (res?.data ?? []) as unknown as MarketplaceOrder[];
         if (list.length > 0) {
           const commissionRate = (vendor?.commissionRate || 10) / 100;
 
           // Convert marketplace orders to vendor orders view
-          const serverMappedOrders = (list as any[]).map((o: any, idx: number) => {
+          const serverMappedOrders = list.map((o: MarketplaceOrder, idx: number) => {
             const firstItem = o.orderItems?.[0];
             const rawPrice = firstItem?.price ? parseFloat(String(firstItem.price).replace(/[^0-9.]/g, "")) : 99.99;
             const quantity = firstItem?.quantity || 1;
@@ -68,11 +71,11 @@ export function VendorOrders() {
 
           // Merge server mapped orders with initial/local vendor orders, keeping unique orderIds
           setOrders((currentOrders) => {
-            const existingIds = new Set(serverMappedOrders.map((m: any) => m.orderId));
-            const localOnly = currentOrders.filter((o: any) => !existingIds.has(o.orderId));
+            const existingIds = new Set(serverMappedOrders.map((m) => m.orderId));
+            const localOnly = currentOrders.filter((o) => !existingIds.has(o.orderId));
             const merged = [...serverMappedOrders, ...localOnly];
             setLocalVendorData("orders", merged);
-            return merged as any;
+            return merged;
           });
         }
       } catch {
@@ -82,7 +85,7 @@ export function VendorOrders() {
     loadOrders();
   }, [vendor?.id, vendor?.commissionRate]);
 
-  const saveOrders = (updated: any[]) => {
+  const saveOrders = (updated: VendorOrder[]) => {
     setOrders(updated);
     setLocalVendorData("orders", updated);
   };
@@ -99,8 +102,8 @@ export function VendorOrders() {
   };
 
   const handleUpdateFulfillment = async (orderId: string, newFulfillment: string) => {
-    const targetOrder = orders.find((o: any) => o.id === orderId || o.orderId === orderId);
-    const updated = orders.map((o: any) =>
+    const targetOrder = orders.find((o: VendorOrder) => o.id === orderId || o.orderId === orderId);
+    const updated = orders.map((o: VendorOrder) =>
       o.id === orderId ? { ...o, fulfillmentStatus: newFulfillment } : o
     );
     saveOrders(updated);
@@ -116,7 +119,7 @@ export function VendorOrders() {
     notify.success(t("toasts.orderStatusUpdated", { status: statusLabel(newFulfillment) }));
   };
 
-  const filtered = orders.filter((o: any) => {
+  const filtered = orders.filter((o: VendorOrder) => {
     const matchesSearch =
       o.orderId.toLowerCase().includes(search.toLowerCase()) ||
       o.customer.toLowerCase().includes(search.toLowerCase()) ||
@@ -185,7 +188,7 @@ export function VendorOrders() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {filtered.map((ord: any) => (
+              {filtered.map((ord: VendorOrder) => (
                 <tr key={ord.id} className="hover:bg-secondary/20 transition-colors">
                   <td className="py-3.5 pl-4 font-mono font-bold text-foreground">{ord.orderId}</td>
                   <td className="py-3.5 text-muted-foreground">{ord.date}</td>
