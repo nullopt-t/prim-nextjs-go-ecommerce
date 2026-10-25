@@ -2041,7 +2041,7 @@
     },
     "payment": {
       "heading": "3. Payment Method",
-      "security": "All transactions are encrypted with 256-bit bank-grade security.",
+      "security": "No card details are collected on this page.",
       "savedCard": "Saved Card",
       "creditCard": "Credit Card",
       "digital": "Digital Pay",
@@ -2059,7 +2059,10 @@
       "digitalTitle": "Instant 1-Click Digital Payment",
       "digitalDesc": "Authenticate with Touch ID, Face ID, or your biometric wallet when you confirm the order below.",
       "codTitle": "Cash on Delivery",
-      "codDesc": "Pay with cash directly to the courier upon delivery. Please ensure exact change is available at your address."
+      "codDesc": "Pay with cash directly to the courier upon delivery. Please ensure exact change is available at your address.",
+      "cardsUnavailableTitle": "Card payments are not available yet",
+      "cardsUnavailable": "This store cannot accept card payments online yet. Choose cash on delivery or contact the store.",
+      "noPaymentMethods": "No payment method is currently available. Please contact the store to complete this order."
     },
     "summary": {
       "product": "Product",
@@ -2111,7 +2114,8 @@
       "cardCvc": "Please enter card security code (CVC)",
       "cardDetails": "Please enter your card details",
       "orderConfirmed": "Order confirmed successfully!",
-      "orderFailed": "Failed to place order"
+      "orderFailed": "Failed to place order",
+      "paymentUnavailable": "This payment method is not available. Please contact the store."
     },
     "actions": {
       "change": "Change",

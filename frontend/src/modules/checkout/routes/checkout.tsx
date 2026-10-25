@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useCart } from "@/modules/cart/model/useCart";
 import { calculateCartTotals, SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from "@/modules/cart/utils/cartCalculations";
 import { useCheckout } from "@/modules/orders/model/useOrders";
-import { useAddresses, usePaymentMethods } from "@/modules/account/model/useUserAccount";
+import { useAddresses } from "@/modules/account/model/useUserAccount";
 import { useRouter } from "@/shared/i18n/navigation";
 import MainLayout from "@/shared/layouts/mainLayout";
 import { CustomButton } from "@/shared/ui";
@@ -19,7 +19,6 @@ import {
 	ArrowLeft,
 	Clock, 
 	Banknote, 
-	Smartphone,
 	Sparkles,
 	PackageCheck,
 	Pencil,
@@ -64,16 +63,6 @@ interface CheckoutAddress {
 	country?: string;
 }
 
-interface CheckoutCard {
-	id: string;
-	type: string;
-	last4: string;
-}
-
-interface NewCardData {
-	number: string;
-}
-
 function resolveShippingAddress(
 	addresses: CheckoutAddress[] | undefined,
 	effectiveId: string | null,
@@ -86,21 +75,6 @@ function resolveShippingAddress(
 	return `${name ? name + " - " : ""}${street}, ${addr.city}, ${addr.country}`;
 }
 
-function resolvePaymentLabel(
-	paymentType: string,
-	cards: CheckoutCard[] | undefined,
-	effectiveCardId: string | null,
-	newCardData: NewCardData,
-) {
-	if (paymentType === "saved-card") {
-		const card = cards?.find((c) => c.id === effectiveCardId);
-		return card ? `${card.type} ending in ${card.last4}` : "Saved Card";
-	}
-	if (paymentType === "cod") return "Cash on Delivery (COD)";
-	if (paymentType === "apple-pay") return "Apple Pay / Digital Wallet";
-	return `Card ending in ${newCardData.number.slice(-4) || "0000"}`;
-}
-
 export function Checkout() {
 	const t = useTranslations("checkout");
 	const tCart = useTranslations("cart");
@@ -111,7 +85,6 @@ export function Checkout() {
 	const [couponInput, setCouponInput] = useState("");
 	const [applyingCoupon, setApplyingCoupon] = useState(false);
 	const { addresses, addAddress, refreshAddresses, loading: addressesLoading } = useAddresses();
-	const { cards } = usePaymentMethods();
 	const router = useRouter();
 	const { settings: storeSettings } = usePublicSettings();
 
@@ -133,30 +106,17 @@ export function Checkout() {
 
 	const [shippingSpeed, setShippingSpeed] = useState("standard"); // 'standard' | 'express'
 	const [deliveryNotes, setDeliveryNotes] = useState("");
-	const [paymentType, setPaymentType] = useState("cod"); // default to COD
-	const [selectedCardId, setSelectedCardId] = useState("");
 
-	// Keep the selected payment method valid when the admin disables COD.
-	useEffect(() => {
-		if (!storeSettings) return;
-		if (paymentType === "cod" && storeSettings.allowCod === false) {
-			setPaymentType(storeSettings.allowCards === false ? "saved-card" : "new-card");
-		}
-	}, [storeSettings, paymentType]);
-
-	const [newCardData, setNewCardData] = useState({
-		name: "",
-		number: "",
-		expiry: "",
-		cvc: "",
-	});
+	// Card checkout stays disabled until the backend exposes a payment-provider
+	// token/intent contract. This page must never collect raw PAN/CVC data.
+	const codAvailable = storeSettings?.allowCod !== false;
+	const canPlaceOrder = codAvailable;
 
 	// Order confirmation modal state
 	const [completedOrder, setCompletedOrder] = useState<any>(null);
 
 	// Derived selection IDs without setState in effect
 	const effectiveAddressId = selectedAddressId || addresses?.find((a: any) => a.isDefault)?.id || addresses?.[0]?.id || "";
-	const effectiveCardId = selectedCardId || cards?.find((c: any) => c.isDefault)?.id || cards?.[0]?.id || "";
 
 	// Calculations using standard cartCalculations utility
 	const standardShippingCost = storeSettings?.flatRateShipping ?? STANDARD_SHIPPING_COST;
@@ -182,7 +142,7 @@ export function Checkout() {
 			: 0;
 
 	// Cash-on-delivery surcharge, applied only when COD is the selected method.
-	const codFee = paymentType === "cod" && storeSettings?.allowCod ? storeSettings?.codFee ?? 0 : 0;
+	const codFee = codAvailable ? (storeSettings?.codFee ?? 0) : 0;
 
 	const finalTotal = Math.max(0, subtotal - discount + shippingCost + taxAmount + codFee);
 
@@ -289,26 +249,8 @@ export function Checkout() {
 			return;
 		}
 
-		if (paymentType === "new-card") {
-			if (!newCardData.name.trim()) {
-				notify.error(t("validation.cardName"));
-				return;
-			}
-			if (!newCardData.number.trim() || newCardData.number.replace(/\s/g, "").length < 13) {
-				notify.error(t("validation.cardNumber"));
-				return;
-			}
-			if (!newCardData.expiry.trim()) {
-				notify.error(t("validation.cardExpiry"));
-				return;
-			}
-			if (!newCardData.cvc.trim() || newCardData.cvc.length < 3) {
-				notify.error(t("validation.cardCvc"));
-				return;
-			}
-		} else if (paymentType === "saved-card" && (!cards || cards.length === 0)) {
-			setPaymentType("new-card");
-			notify.error(t("validation.cardDetails"));
+		if (!canPlaceOrder) {
+			notify.error(t("validation.paymentUnavailable"));
 			return;
 		}
 
@@ -317,7 +259,7 @@ export function Checkout() {
 		const orderPayload = {
 			shippingAddressId: effectiveAddressId,
 			couponId: appliedCoupon?.id || undefined,
-			paymentMethod: paymentType === "cod" ? "cash_on_delivery" : paymentType,
+			paymentMethod: "cash_on_delivery",
 		};
 
 		const result = await checkout(orderPayload);
@@ -1054,161 +996,35 @@ export function Checkout() {
 											</div>
 										</div>
 
-										{/* Payment Tabs */}
-										<div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6">
-											{storeSettings?.allowCards !== false && cards.length > 0 && (
-												<button
-													type="button"
-													onClick={() => setPaymentType("saved-card")}
-													className={`p-3 rounded-xl border text-xs font-medium flex flex-col items-center gap-1.5 transition-all ${
-														paymentType === "saved-card"
-															? "border-accent-brand bg-accent-brand/10 text-accent-brand font-semibold ring-1 ring-accent-brand"
-															: "border-border hover:bg-secondary text-muted-foreground hover:text-foreground"
-													}`}
-												>
-													<CreditCard className="size-4" />
-													<span>{t("payment.savedCard")}</span>
-												</button>
-											)}
-											{storeSettings?.allowCards !== false && (
-											<button
-												type="button"
-												onClick={() => setPaymentType("new-card")}
-												className={`p-3 rounded-xl border text-xs font-medium flex flex-col items-center gap-1.5 transition-all ${
-													paymentType === "new-card"
-														? "border-accent-brand bg-accent-brand/10 text-accent-brand font-semibold ring-1 ring-accent-brand"
-														: "border-border hover:bg-secondary text-muted-foreground hover:text-foreground"
-												}`}
-											>
-												<CreditCard className="size-4" />
-												<span>{t("payment.creditCard")}</span>
-											</button>
-											)}
-											{storeSettings?.allowCards !== false && (
-											<button
-												type="button"
-												onClick={() => setPaymentType("apple-pay")}
-												className={`p-3 rounded-xl border text-xs font-medium flex flex-col items-center gap-1.5 transition-all ${
-													paymentType === "apple-pay"
-														? "border-accent-brand bg-accent-brand/10 text-accent-brand font-semibold ring-1 ring-accent-brand"
-														: "border-border hover:bg-secondary text-muted-foreground hover:text-foreground"
-												}`}
-											>
-												<Smartphone className="size-4" />
-												<span>{t("payment.digital")}</span>
-											</button>
-											)}
-											{storeSettings?.allowCod !== false && (
-											<button
-												type="button"
-												onClick={() => setPaymentType("cod")}
-												className={`p-3 rounded-xl border text-xs font-medium flex flex-col items-center gap-1.5 transition-all ${
-													paymentType === "cod"
-														? "border-accent-brand bg-accent-brand/10 text-accent-brand font-semibold ring-1 ring-accent-brand"
-														: "border-border hover:bg-secondary text-muted-foreground hover:text-foreground"
-												}`}
-											>
-												<Banknote className="size-4" />
-												<span>{t("payment.cod")}</span>
-											</button>
-											)}
-										</div>
-
-										{/* Payment method content */}
-										{paymentType === "saved-card" && cards.length > 0 && (
-											<div className="flex flex-col gap-3">
-												{cards.map((c) => (
-													<div
-														key={c.id}
-														onClick={() => setSelectedCardId(c.id)}
-														className={`p-4 rounded-xl border cursor-pointer flex items-center justify-between transition-all ${
-															effectiveCardId === c.id
-																? "border-accent-brand bg-accent-brand/5 ring-1 ring-accent-brand"
-																: "border-border hover:border-border/80 bg-background"
-														}`}
-													>
-														<div className="flex items-center gap-3">
-															<div className="p-2 rounded-lg bg-secondary">
-																<CreditCard className="size-4 text-foreground" />
-															</div>
-															<div>
-																<p className="text-sm font-semibold text-foreground">{t("payment.cardEnding", { type: c.type, last4: c.last4 })}</p>
-																<p className="text-xs text-muted-foreground">{t("payment.expires", { expiry: c.expiry, name: c.name })}</p>
-															</div>
-														</div>
-														{effectiveCardId === c.id && (
-															<CheckCircle2 className="size-4 text-accent-brand" />
-														)}
-													</div>
-												))}
+										{codAvailable ? (
+											<div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-accent-brand bg-accent-brand/10 p-3.5 text-xs font-semibold text-accent-brand ring-1 ring-accent-brand">
+												<span className="flex items-center gap-2">
+													<Banknote className="size-4" />
+													{t("payment.cod")}
+												</span>
+												<CheckCircle2 className="size-4" />
+											</div>
+										) : (
+											<div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-800 dark:text-amber-300">
+												{t("payment.noPaymentMethods")}
 											</div>
 										)}
 
-										{paymentType === "new-card" && (
-											<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-												<div className="flex flex-col gap-1.5 sm:col-span-2">
-													<label className="text-xs font-medium text-foreground">{t("payment.nameOnCard")}</label>
-													<input
-														type="text"
-														className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent-brand"
-														placeholder={t("payment.namePlaceholder")}
-														value={newCardData.name}
-														onChange={(e) => setNewCardData({ ...newCardData, name: e.target.value })}
-														required
-													/>
-												</div>
-												<div className="flex flex-col gap-1.5 sm:col-span-2">
-													<label className="text-xs font-medium text-foreground">{t("payment.cardNumber")}</label>
-													<input
-														type="text"
-														maxLength={19}
-														className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent-brand"
-														placeholder={t("payment.cardNumberPlaceholder")}
-														value={newCardData.number}
-														onChange={(e) => setNewCardData({ ...newCardData, number: e.target.value })}
-														required
-													/>
-												</div>
-												<div className="flex flex-col gap-1.5">
-													<label className="text-xs font-medium text-foreground">{t("payment.expiry")}</label>
-													<input
-														type="text"
-														maxLength={5}
-														className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent-brand"
-														placeholder={t("payment.expiryPlaceholder")}
-														value={newCardData.expiry}
-														onChange={(e) => setNewCardData({ ...newCardData, expiry: e.target.value })}
-														required
-													/>
-												</div>
-												<div className="flex flex-col gap-1.5">
-													<label className="text-xs font-medium text-foreground">{t("payment.cvc")}</label>
-													<input
-														type="password"
-														maxLength={4}
-														className="px-3.5 py-2.5 border border-border rounded-xl bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent-brand"
-														placeholder={t("payment.cvcPlaceholder")}
-														value={newCardData.cvc}
-														onChange={(e) => setNewCardData({ ...newCardData, cvc: e.target.value })}
-														required
-													/>
+										{storeSettings?.allowCards !== false && (
+											<div className="mb-6 flex items-start gap-3 rounded-xl border border-border bg-secondary/30 p-4">
+												<CreditCard className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+												<div className="space-y-0.5 text-xs">
+													<span className="block font-semibold text-foreground">
+														{t("payment.cardsUnavailableTitle")}
+													</span>
+													<span className="block leading-relaxed text-muted-foreground">
+														{t("payment.cardsUnavailable")}
+													</span>
 												</div>
 											</div>
 										)}
 
-										{paymentType === "apple-pay" && (
-											<div className="p-6 rounded-xl bg-secondary/30 border border-border text-center flex flex-col items-center">
-												<div className="w-12 h-12 rounded-full bg-foreground text-background flex items-center justify-center mb-3">
-													<Smartphone className="size-6" />
-												</div>
-												<h4 className="font-semibold text-foreground text-sm mb-1">{t("payment.digitalTitle")}</h4>
-												<p className="text-xs text-muted-foreground max-w-sm">
-													{t("payment.digitalDesc")}
-												</p>
-											</div>
-										)}
-
-										{paymentType === "cod" && (
+										{codAvailable && (
 											<div className="p-5 rounded-xl bg-secondary/30 border border-border flex items-start gap-3">
 												<Banknote className="size-5 text-accent-brand shrink-0 mt-0.5" />
 												<div className="flex flex-col gap-1 text-xs">
@@ -1233,7 +1049,7 @@ export function Checkout() {
 											<button
 												type="button"
 												onClick={handlePlaceOrder}
-												disabled={placingOrder}
+												disabled={placingOrder || !canPlaceOrder}
 												className="flex items-center gap-2 px-6 py-3 bg-accent-brand text-white font-bold text-sm rounded-xl shadow-md hover:bg-accent-brand/90 transition-all disabled:opacity-50"
 											>
 												<span>{placingOrder ? t("actions.placingOrder") : t("actions.placeOrder", { total: finalTotal.toFixed(2) })}</span>
@@ -1403,7 +1219,7 @@ export function Checkout() {
 								<button
 									type="button"
 									onClick={handlePlaceOrder}
-									disabled={placingOrder || !cartItems || cartItems.length === 0}
+									disabled={placingOrder || !cartItems || cartItems.length === 0 || !canPlaceOrder}
 									className="w-full py-3.5 px-6 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-bold text-base shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
 								>
 									<span>{placingOrder ? t("actions.processingOrder") : t("actions.placeOrder", { total: finalTotal.toFixed(2) })}</span>
