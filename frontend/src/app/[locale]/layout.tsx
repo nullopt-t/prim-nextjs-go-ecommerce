@@ -52,6 +52,11 @@ import { NotificationProvider } from "@/modules/notifications/model/notification
 import { PublicSettingsProvider } from "@/modules/settings/model/publicSettingsContext";
 import { getPublicSettings } from "@/shared/lib/server/publicSettings";
 import { EXPLICIT_LOCALE_COOKIE_NAME } from "@/shared/lib/localePreference";
+import {
+	resolveTargetLocale,
+	shouldAddLocalePrefix,
+	type SupportedLocale,
+} from "@/shared/lib/server/locale";
 
 import { CartSidebar } from "@/shared/ui/cartSidebar";
 import { ResponsiveToaster } from "@/shared/ui/responsiveToaster";
@@ -75,27 +80,19 @@ export default async function RootLayout({
   ]);
 
   // Locale resolution is server-first:
-  // 1. An explicit visitor choice is stored in the short `locale` cookie (and
-  //    NEXT_LOCALE, which the middleware reads) and wins.
-  // 2. Explicit /ar or /en URLs win.
-  // 3. Otherwise the store's configured default language applies.
+  // 1. An explicit visitor choice stored in the short `locale` cookie wins.
+  // 2. Otherwise the store's configured default language applies.
   const explicitLocale = (await cookies()).get(
     EXPLICIT_LOCALE_COOKIE_NAME,
   )?.value;
   const askedPath = (await headers()).get("x-pathname") || "/";
-  const hasLocalePrefix = /^\/(en|ar)(?=\/|$)/.test(askedPath);
   const storeDefault = publicSettings?.defaultLocale;
-  const chosenLocale =
-    explicitLocale === "ar" || explicitLocale === "en"
-      ? explicitLocale
-      : undefined;
-  const targetLocale = chosenLocale ?? storeDefault;
-  const canRedirect =
-    !hasLocalePrefix &&
-    (targetLocale === "ar" || targetLocale === "en") &&
-    targetLocale !== locale;
+  const targetLocale = resolveTargetLocale(explicitLocale, storeDefault);
 
-  if (canRedirect) {
+  if (
+  	targetLocale &&
+  	shouldAddLocalePrefix(locale as SupportedLocale, askedPath, targetLocale)
+  ) {
     const pathWithoutLocale =
       askedPath.replace(/^\/(en|ar)(?=\/|$)/, "") || "/";
     redirect(
