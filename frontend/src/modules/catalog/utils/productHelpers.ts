@@ -4,6 +4,10 @@ import {
 } from "../types";
 import { normalizeMediaUrl } from "@/shared/lib/media";
 
+/** A product image URL as returned by the catalog backend: a plain string or an
+ * object exposing `url` / `publicUrl` / `src`. */
+type RawImage = string | { url?: string; publicUrl?: string; src?: string };
+
 /**
  * Resolves localized display name for a product
  */
@@ -29,7 +33,7 @@ export function resolveVariantByAttributes(
 
   const axes = product.variationAxes || [];
   if (axes.length === 0) {
-    return variants.find((v) => (v as any).isDefault) || variants[0];
+    return variants.find((v) => v.isDefault) || variants[0];
   }
 
   const hasAllSelections = axes.every((axis) => Boolean(selectedValues[axis.key]));
@@ -43,7 +47,7 @@ export function resolveVariantByAttributes(
     if (match) return match;
   }
 
-  return variants.find((v) => (v as any).isDefault) || variants[0];
+  return variants.find((v) => v.isDefault) || variants[0];
 }
 
 /**
@@ -117,9 +121,9 @@ export function resolveProductImageEntries(
   // gallery click can still resolve to a concrete option.
   const variantUrlPriority = new Map<string, { variant: ProductVariant; priority: number }>();
 
-  const normalizeImageUrl = (rawUrl?: any): string | null => {
+  const normalizeImageUrl = (rawUrl?: RawImage): string | null => {
     if (!rawUrl) return null;
-    let urlStr = rawUrl;
+    let urlStr: RawImage | undefined = rawUrl;
     if (typeof rawUrl === "object") {
       urlStr = rawUrl.publicUrl || rawUrl.url || rawUrl.src;
     }
@@ -131,16 +135,23 @@ export function resolveProductImageEntries(
     return normalized;
   };
 
-  const getVariantImageUrls = (variant: ProductVariant): any[] => {
-    const urls: any[] = [];
-    const vThumb = typeof variant.thumbnail === "string"
-      ? variant.thumbnail
-      : (variant.thumbnail as any)?.url || (variant.thumbnail as any)?.publicUrl;
+  const getVariantImageUrls = (variant: ProductVariant): string[] => {
+    const urls: string[] = [];
+    const thumbnail = variant.thumbnail as unknown as RawImage;
+    const vThumb =
+      typeof thumbnail === "string"
+        ? thumbnail
+        : thumbnail?.url || thumbnail?.publicUrl;
     if (vThumb) urls.push(vThumb);
 
     if (Array.isArray(variant.media)) {
       for (const m of variant.media) {
-        const mUrl = typeof m === "string" ? m : (m?.url || (m as any)?.publicUrl || (m as any)?.object?.publicUrl);
+        const mUrl =
+          typeof m === "string"
+            ? m
+            : (m?.url ||
+              (m as { publicUrl?: string })?.publicUrl ||
+              (m as { object?: { publicUrl?: string } })?.object?.publicUrl);
         if (mUrl) urls.push(mUrl);
       }
     }
@@ -162,7 +173,7 @@ export function resolveProductImageEntries(
     });
   }
 
-  const addImage = (rawUrl?: any) => {
+  const addImage = (rawUrl?: RawImage) => {
     const normalized = normalizeImageUrl(rawUrl);
     if (!normalized || seen.has(normalized)) return;
 
@@ -187,8 +198,8 @@ export function resolveProductImageEntries(
   }
 
   // 2. Product master thumbnail & img
-  addImage((product as any)?.thumbnail);
-  addImage((product as any)?.thumbnailUrl);
+  addImage((product as { thumbnail?: string; thumbnailUrl?: string })?.thumbnail);
+  addImage((product as { thumbnailUrl?: string })?.thumbnailUrl);
   addImage(product.img);
 
   // 3. Product images list
