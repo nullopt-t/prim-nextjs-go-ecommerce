@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import { adminService } from "@/modules/admin/api/adminService";
+import { ProductBrandFormatFields } from "@/modules/admin/components/ProductBrandFormatFields";
 import { ProductCoreFields } from "@/modules/admin/components/ProductCoreFields";
 import { SimplePricingFields } from "@/modules/admin/components/SimplePricingFields";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
@@ -1560,97 +1561,18 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
               </div>
             </div>
 
-            {/* Brand Selection - Strictly filtered to category */}
-            <div className="space-y-2 rounded-xl border border-border bg-secondary/20 p-4 max-w-xl">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-foreground">{t("products.form.brand")}</label>
-                <span className="text-[11px] text-muted-foreground">
-                  {t("products.wizard.brandCategoryHint", { category: currentCategoryName })}
-                </span>
-              </div>
-              <select
-                value={formData.brandId}
-                onChange={(e) => {
-                  const brandId = e.target.value;
-                  const brand = brands.find((b: any) => b.id === brandId);
-                  setFormData({ ...formData, brandId, brand: brand?.name || "" });
-                }}
-                className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-              >
-                <option value="">{t("products.form.noBrand")}</option>
-                {categoryBrands.map((b: any, bIdx: number) => (
-                  <option key={b.id ? `brand-opt-${b.id}` : `brand-opt-${bIdx}`} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Product Type Selection Cards */}
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-foreground">{t("products.form.productType")}</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-                <button
-                  type="button"
-                  disabled={formAxesLocked}
-                  onClick={() => setFormData({ ...formData, productType: "simple", variationAxes: [] })}
-                  className={`p-4 rounded-xl border text-start transition-all ${
-                    formData.productType === "simple"
-                      ? "border-accent-brand bg-accent-brand/5 ring-1 ring-accent-brand shadow-2xs"
-                      : "border-border bg-secondary/20 hover:bg-secondary/40"
-                  } ${formAxesLocked ? "opacity-60 cursor-not-allowed" : ""}`}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-bold text-foreground">{t("products.form.typeSimple")}</span>
-                    <span
-                      className={`size-4 rounded-full border flex items-center justify-center ${
-                        formData.productType === "simple"
-                          ? "border-accent-brand bg-accent-brand text-white"
-                          : "border-border"
-                      }`}
-                    >
-                      {formData.productType === "simple" && <Check className="size-2.5 stroke-[3]" />}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {t("products.wizard.simpleProductDesc")}
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={formAxesLocked}
-                  onClick={() => setFormData({ ...formData, productType: "variable" })}
-                  className={`p-4 rounded-xl border text-start transition-all ${
-                    formData.productType === "variable"
-                      ? "border-accent-brand bg-accent-brand/5 ring-1 ring-accent-brand shadow-2xs"
-                      : "border-border bg-secondary/20 hover:bg-secondary/40"
-                  } ${formAxesLocked ? "opacity-60 cursor-not-allowed" : ""}`}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-bold text-foreground">{t("products.form.typeVariable")}</span>
-                    <span
-                      className={`size-4 rounded-full border flex items-center justify-center ${
-                        formData.productType === "variable"
-                          ? "border-accent-brand bg-accent-brand text-white"
-                          : "border-border"
-                      }`}
-                    >
-                      {formData.productType === "variable" && <Check className="size-2.5 stroke-[3]" />}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {t("products.wizard.variableProductDesc")}
-                  </p>
-                </button>
-              </div>
-
-              {formAxesLocked && (
-                <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                  {t("products.form.axesLocked")}
-                </p>
-              )}
-            </div>
+            <ProductBrandFormatFields
+              value={{
+                brandId: formData.brandId,
+                productType: formData.productType,
+              }}
+              brands={categoryBrands}
+              currentCategoryName={currentCategoryName}
+              axesLocked={formAxesLocked}
+              onChange={(patch) =>
+                setFormData((prev) => ({ ...prev, ...patch }))
+              }
+            />
               </>
             )}
 
