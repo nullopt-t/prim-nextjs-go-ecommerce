@@ -41,6 +41,8 @@
     "sign": {
       "emailLabel": "Email Address",
       "emailPlaceholder": "name@example.com",
+      "emailRequired": "Please enter your email address.",
+      "emailInvalid": "Please enter a valid email address.",
       "signButton": "Continue",
       "subtitle": "Enter your email to sign in or create a new account.",
       "title": "Get Started",
@@ -462,6 +464,12 @@
     "defaultSuccess": "Default delivery address updated",
     "removedSuccess": "Address removed",
     "phoneCopied": "Phone number copied to clipboard",
+    "validation": {
+      "fullName": "Enter the recipient's full name.",
+      "line1": "Enter the street address and building number.",
+      "city": "Enter the city.",
+      "country": "Select a country."
+    },
     "labels": {
       "addressLabel": "Address Label",
       "home": "Home",
@@ -1354,6 +1362,13 @@
         "auditFailed": "Failed to load audit history for product",
         "variantLoadFailed": "Failed to load product versions",
         "invalidOriginalPrice": "Enter a valid original price."
+      },
+      "validation": {
+        "priceRequired": "Enter a selling price.",
+        "priceInvalid": "Enter a valid price of 0 or more.",
+        "compareInvalid": "Enter a valid original price of 0 or more, or leave it empty.",
+        "stockRequired": "Enter the available stock.",
+        "stockInvalid": "Enter a whole number of 0 or more."
       }
     },
     "promotions": {
@@ -1614,6 +1629,7 @@
       "outOfStock": "Out of Stock",
       "out of stock": "Out of Stock",
       "paid": "Paid",
+      "unknown": "Unknown",
       "refunded": "Refunded",
       "failed": "Failed",
       "authorized": "Authorized",
@@ -1940,6 +1956,7 @@
       "cancelled": "Cancelled",
       "pending": "Pending",
       "paid": "Paid",
+      "unknown": "Unknown",
       "completed": "Completed"
     },
     "actions": {
@@ -2350,6 +2367,34 @@
       "checkout": {
         "title": "Secure Checkout | PRIM",
         "description": "Complete your order with secure delivery and payment options"
+      },
+      "categories": {
+        "title": "Browse Categories | PRIM",
+        "description": "Shop every department in the PRIM catalog"
+      },
+      "careers": {
+        "title": "Careers | PRIM",
+        "description": "Join the team behind PRIM"
+      },
+      "contact": {
+        "title": "Contact Us | PRIM",
+        "description": "Get in touch with PRIM support"
+      },
+      "faqs": {
+        "title": "FAQs | PRIM",
+        "description": "Answers to common questions about orders and delivery"
+      },
+      "press": {
+        "title": "Press | PRIM",
+        "description": "PRIM news, media, and brand resources"
+      },
+      "returns": {
+        "title": "Returns | PRIM",
+        "description": "How to return or exchange an order"
+      },
+      "shipping": {
+        "title": "Shipping | PRIM",
+        "description": "Delivery options, timelines, and costs"
       }
     },
     "dashboard": {

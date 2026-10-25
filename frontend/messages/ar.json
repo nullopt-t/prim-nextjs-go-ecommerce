@@ -41,6 +41,8 @@
     "sign": {
       "emailLabel": "البريد الإلكتروني",
       "emailPlaceholder": "name@example.com",
+      "emailRequired": "يرجى إدخال بريدك الإلكتروني.",
+      "emailInvalid": "يرجى إدخال بريد إلكتروني صالح.",
       "signButton": "المتابعة",
       "subtitle": "أدخل بريدك الإلكتروني لتسجيل الدخول أو إنشاء حساب جديد.",
       "title": "ابدأ الآن",
@@ -462,6 +464,12 @@
     "defaultSuccess": "تم تحديث عنوان التوصيل الافتراضي",
     "removedSuccess": "تم حذف العنوان",
     "phoneCopied": "تم نسخ رقم الهاتف إلى الحافظة",
+    "validation": {
+      "fullName": "أدخل الاسم الكامل للمستلم.",
+      "line1": "أدخل عنوان الشارع ورقم المبنى.",
+      "city": "أدخل المدينة.",
+      "country": "اختر الدولة."
+    },
     "labels": {
       "addressLabel": "نوع العنوان",
       "home": "المنزل",
@@ -1354,6 +1362,13 @@
         "auditFailed": "تعذّر تحميل سجل تدقيق المنتج",
         "variantLoadFailed": "تعذّر تحميل نسخ المنتج",
         "invalidOriginalPrice": "أدخل سعرًا أصليًا صالحًا."
+      },
+      "validation": {
+        "priceRequired": "أدخل سعر البيع.",
+        "priceInvalid": "أدخل سعرًا صالحًا أكبر من أو يساوي 0.",
+        "compareInvalid": "أدخل سعرًا أصليًا صالحًا أكبر من أو يساوي 0، أو اتركه فارغًا.",
+        "stockRequired": "أدخل الكمية المتاحة.",
+        "stockInvalid": "أدخل عددًا صحيحًا أكبر من أو يساوي 0."
       }
     },
     "promotions": {
@@ -1614,6 +1629,7 @@
       "outOfStock": "نفذ المخزون",
       "out of stock": "نفذ المخزون",
       "paid": "مدفوع",
+      "unknown": "غير معروف",
       "refunded": "مسترد",
       "failed": "فشل",
       "authorized": "مصرّح به",
@@ -1940,6 +1956,7 @@
       "cancelled": "ملغى",
       "pending": "قيد الانتظار",
       "paid": "مدفوع",
+      "unknown": "غير معروف",
       "completed": "مكتمل"
     },
     "actions": {
@@ -2350,6 +2367,34 @@
       "checkout": {
         "title": "دفع آمن | PRIM",
         "description": "أكمل طلبك مع خيارات التوصيل والدفع الآمنة"
+      },
+      "categories": {
+        "title": "تصفح الأقسام | PRIM",
+        "description": "تسوق جميع أقسام متجر PRIM"
+      },
+      "careers": {
+        "title": "الوظائف | PRIM",
+        "description": "انضم إلى فريق PRIM"
+      },
+      "contact": {
+        "title": "اتصل بنا | PRIM",
+        "description": "تواصل مع دعم PRIM"
+      },
+      "faqs": {
+        "title": "الأسئلة الشائعة | PRIM",
+        "description": "إجابات عن أسئلة الطلبات والتوصيل"
+      },
+      "press": {
+        "title": "الأخبار الصحفية | PRIM",
+        "description": "أخبار PRIM والمواد الإعلامية"
+      },
+      "returns": {
+        "title": "الإرجاع | PRIM",
+        "description": "كيفية إرجاع أو استبدال طلب"
+      },
+      "shipping": {
+        "title": "الشحن | PRIM",
+        "description": "خيارات التوصيل والمواعيد والتكاليف"
       }
     },
     "dashboard": {
