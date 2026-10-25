@@ -40,6 +40,7 @@ import { SimplePricingFields } from "@/modules/admin/components/SimplePricingFie
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
 import { normalizeMediaUrl } from "@/shared/lib/media";
+import type { ProductVariant } from "@/modules/catalog/types";
 
 interface VariantFormState {
   mode: "create" | "edit";
@@ -67,16 +68,17 @@ function slugifyProduct(value: string): string {
   return slug || `product-${Date.now()}`;
 }
 
-function getVariantThumbnailUrl(v: any): string | null {
-  if (!v?.thumbnail) return null;
-  const raw = typeof v.thumbnail === "string" ? v.thumbnail : (v.thumbnail.url || v.thumbnail.publicUrl || null);
-  return raw ? normalizeMediaUrl(raw) : null;
-}
+type ThumbnailSource = {
+	thumbnail?: string | { url?: string; publicUrl?: string } | null;
+};
 
-function getProductThumbnailUrl(p: any): string | null {
-  if (!p?.thumbnail) return null;
-  const raw = typeof p.thumbnail === "string" ? p.thumbnail : (p.thumbnail.url || p.thumbnail.publicUrl || null);
-  return raw ? normalizeMediaUrl(raw) : null;
+function getVariantThumbnailUrl(v: ThumbnailSource): string | null {
+	if (!v?.thumbnail) return null;
+	const raw =
+		typeof v.thumbnail === "string"
+			? v.thumbnail
+			: (v.thumbnail.url || v.thumbnail.publicUrl || null);
+	return raw ? normalizeMediaUrl(raw) : null;
 }
 
 interface AdminProductEditorProps {
@@ -126,7 +128,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
 
   // Variant editing & media management state
   const [variantForm, setVariantForm] = useState<VariantFormState | null>(null);
-  const [selectedVariantForMedia, setSelectedVariantForMedia] = useState<any>(null);
+  const [selectedVariantForMedia, setSelectedVariantForMedia] = useState<ProductVariant | null>(null);
   const [uploadingProductThumbnail, setUploadingProductThumbnail] = useState(false);
   const [uploadingVariantThumb, setUploadingVariantThumb] = useState(false);
   const [uploadingVariantMedia, setUploadingVariantMedia] = useState(false);
@@ -139,7 +141,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
   const [matrixStock, setMatrixStock] = useState("");
 
   // Quick variant inventory adjustment modal state
-  const [quickStockVariant, setQuickStockVariant] = useState<any | null>(null);
+  const [quickStockVariant, setQuickStockVariant] = useState<ProductVariant | null>(null);
   const [quickStockAmount, setQuickStockAmount] = useState<string>("");
   const [quickStockReason, setQuickStockReason] = useState<string>("restock");
   const [savingQuickStock, setSavingQuickStock] = useState(false);
@@ -224,24 +226,25 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       setLoading(true);
       setLoadError(false);
 
-      const [catsRes, brandsRes, attrsRes, prodsRes]: [any, any, any, any] = await Promise.all([
+      const [catsRes, brandsRes, attrsRes, prodsRes] = await Promise.all([
         catalogService.getAdminCategories(100),
         catalogService.getBrands(100),
         adminService.getAttributes(),
         catalogService.getProducts("pageSize=100"),
       ]);
 
-      const catList = (Array.isArray(catsRes) ? catsRes : (Array.isArray(catsRes?.data) ? catsRes.data : []))
-        .filter((category: any) => !category.deletedAt);
+      const catList = catsRes.data.filter(
+        (category) => !(category as { deletedAt?: string }).deletedAt,
+      );
       setCategories(catList);
 
-      const brandList = Array.isArray(brandsRes) ? brandsRes : (Array.isArray(brandsRes?.data) ? brandsRes.data : []);
+      const brandList = brandsRes.data;
       setBrands(brandList);
 
-      const attrList = Array.isArray(attrsRes) ? attrsRes : (Array.isArray(attrsRes?.data) ? attrsRes.data : []);
+      const attrList = attrsRes.data;
       setAttributes(attrList);
 
-      const prodList = Array.isArray(prodsRes) ? prodsRes : (Array.isArray(prodsRes?.data) ? prodsRes.data : []);
+      const prodList = prodsRes.data;
       setCatalogProducts(prodList);
 
       if (productId) {
