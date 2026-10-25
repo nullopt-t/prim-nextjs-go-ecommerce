@@ -38,12 +38,63 @@ const CHART_DATA = [
 
 import { useVendorContext } from "./vendorContext";
 
+interface DashboardProduct {
+  id: string;
+  name: string;
+  sku: string;
+  price: number;
+  stock: number;
+  salesCount: number;
+  image: string;
+}
+
+interface VendorOrderSummary {
+  id: string;
+  orderId: string;
+  item: string;
+  unitPrice: number;
+  quantity: number;
+  vendorEarnings: number;
+  fulfillmentStatus: string;
+}
+
+/** Narrow shape of the catalog product fields this dashboard actually reads. */
+interface VendorProductRaw {
+  id: string;
+  vendorId?: string;
+  sku?: string;
+  name?: string;
+  product?: { en?: string; ar?: string } | string;
+  title?: string;
+  price?: string | number;
+  stock?: number;
+  stockCount?: number;
+  salesCount?: number;
+  img?: string;
+  image?: string;
+}
+
+/** Narrow shape of the order fields this dashboard actually reads. */
+interface VendorOrderRaw {
+  id: string;
+  status?: string;
+  orderItems?: Array<{
+    price?: number | string;
+    name?: string;
+    quantity?: number;
+  } | null>;
+}
+
 export function VendorDashboard() {
   const t = useTranslations("vendor");
   const { vendor } = useVendorContext();
 
-  const [products, setProducts] = useState(() => getLocalVendorData("products", INITIAL_VENDOR_PRODUCTS));
-  const [orders, setOrders] = useState(() => getLocalVendorData("orders", INITIAL_VENDOR_ORDERS));
+  const [products, setProducts] = useState<DashboardProduct[]>(() =>
+    getLocalVendorData("products", INITIAL_VENDOR_PRODUCTS)
+  );
+  const [orders, setOrders] = useState<VendorOrderSummary[]>(() =>
+    getLocalVendorData("orders", INITIAL_VENDOR_ORDERS)
+  );
   const [statsData, setStatsData] = useState<Record<string, number> | null>(null);
 
   useEffect(() => {
@@ -61,24 +112,24 @@ export function VendorDashboard() {
         }
 
         if (productsRes.status === "fulfilled" && productsRes.value) {
-          const rawProds = Array.isArray(productsRes.value) ? productsRes.value : Array.isArray(productsRes.value?.data) ? productsRes.value.data : [];
+          const rawProds: VendorProductRaw[] = productsRes.value.data ?? [];
           const matched = rawProds
-            .filter((p: any) => !p.vendorId || p.vendorId === (vendor?.id || "v-1"))
-            .map((p: any) => ({
+            .filter((p: VendorProductRaw) => !p.vendorId || p.vendorId === (vendor?.id || "v-1"))
+            .map((p: VendorProductRaw) => ({
               id: p.id,
-              name: p.product?.en || p.name || p.title || "Product",
+              name: (typeof p.product === "object" ? p.product?.en : undefined) || p.name || p.title || "Product",
               sku: p.sku || `SKU-${p.id}`,
               price: typeof p.price === "number" ? p.price : parseFloat(String(p.price).replace(/[^0-9.]/g, "")) || 0,
               stock: p.stock ?? p.stockCount ?? 20,
               salesCount: p.salesCount || Math.floor(Math.random() * 40 + 10),
               image: p.img || p.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80"
             }));
-          if (matched.length > 0) setProducts(matched as any);
+          if (matched.length > 0) setProducts(matched);
         }
 
         if (ordersRes.status === "fulfilled" && ordersRes.value) {
-          const rawOrders: any[] = Array.isArray(ordersRes.value) ? ordersRes.value : Array.isArray((ordersRes.value as any)?.data) ? (ordersRes.value as any).data : [];
-          const mappedOrders = rawOrders.map((o: any) => {
+          const rawOrders: VendorOrderRaw[] = ordersRes.value.data ?? [];
+          const mappedOrders = rawOrders.map((o: VendorOrderRaw) => {
             const first = o.orderItems?.[0];
             const price = first?.price ? parseFloat(String(first.price).replace(/[^0-9.]/g, "")) : 89.99;
             return {
@@ -91,7 +142,7 @@ export function VendorDashboard() {
               fulfillmentStatus: o.status || "Processing"
             };
           });
-          if (mappedOrders.length > 0) setOrders(mappedOrders as any);
+          if (mappedOrders.length > 0) setOrders(mappedOrders);
         }
       } catch {
         // Retain local state
@@ -101,13 +152,13 @@ export function VendorDashboard() {
   }, [vendor?.id]);
 
   const totalGrossSales =
-    statsData?.grossSales ?? orders.reduce((acc: number, o: any) => acc + (o.unitPrice || 0) * (o.quantity || 1), 0);
+    statsData?.grossSales ?? orders.reduce((acc: number, o: VendorOrderSummary) => acc + (o.unitPrice || 0) * (o.quantity || 1), 0);
   const totalNetEarnings =
-    statsData?.netEarnings ?? orders.reduce((acc: number, o: any) => acc + (o.vendorEarnings || 0), 0);
+    statsData?.netEarnings ?? orders.reduce((acc: number, o: VendorOrderSummary) => acc + (o.vendorEarnings || 0), 0);
   const totalUnitsSold =
-    statsData?.totalUnitsSold ?? products.reduce((acc: number, p: any) => acc + (p.salesCount || 0), 0);
+    statsData?.totalUnitsSold ?? products.reduce((acc: number, p: DashboardProduct) => acc + (p.salesCount || 0), 0);
   const pendingOrdersCount =
-    statsData?.pendingOrdersCount ?? orders.filter((o: any) => o.fulfillmentStatus === "Processing").length;
+    statsData?.pendingOrdersCount ?? orders.filter((o: VendorOrderSummary) => o.fulfillmentStatus === "Processing").length;
 
   const statusLabel = (status: string) => {
     const map: Record<string, string> = {
@@ -254,7 +305,7 @@ export function VendorDashboard() {
           </div>
 
           <div className="divide-y divide-border/60">
-            {products.slice(0, 3).map((prod: any) => (
+            {products.slice(0, 3).map((prod: DashboardProduct) => (
               <div key={prod.id} className="py-3 flex items-center gap-3">
                 <img src={prod.image} alt={prod.name} className="size-12 rounded-xl object-cover border border-border" />
                 <div className="flex-1 min-w-0">
@@ -281,7 +332,7 @@ export function VendorDashboard() {
           </div>
 
           <div className="divide-y divide-border/60">
-            {orders.slice(0, 3).map((ord: any) => (
+            {orders.slice(0, 3).map((ord: VendorOrderSummary) => (
               <div key={ord.id} className="py-3 flex items-center justify-between text-xs">
                 <div>
                   <div className="font-mono font-bold text-foreground">{ord.orderId}</div>
