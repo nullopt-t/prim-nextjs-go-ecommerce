@@ -16,6 +16,9 @@ services:
       - "3000:3000"
     environment:
       PORT: "3000"
+      # Server Components and route handlers must use the compose network.
+      # NEXT_PUBLIC_API_URL stays host-facing for browser requests.
+      API_URL: "http://api:8081"
     env_file:
       - ./backend/.env
     depends_on:

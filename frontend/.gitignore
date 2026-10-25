@@ -26,3 +26,6 @@ dist-ssr
 *.sw?
 
 .env
+
+# Local refactor journal (intentionally not committed)
+REFACTOR_LOG.md
