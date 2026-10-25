@@ -27,6 +27,7 @@ import { ProductActions } from "./ui/ProductActions";
 import { ProductSpecs } from "./ui/ProductSpecs";
 import { ProductHighlights } from "./ui/ProductHighlights";
 import { ProductReviews } from "./ui/ProductReviews";
+import { CatalogFeedLoader } from "./CatalogFeedLoader";
 
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import { userService } from "@/modules/account/api/userService";
@@ -436,6 +437,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
 
   return (
     <AnimatedSection className="mx-auto w-full max-w-7xl">
+      <CatalogFeedLoader />
       {/* Breadcrumb */}
       <nav className="mb-4 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1 text-xs text-muted-foreground scrollbar-none sm:mb-6 sm:text-sm">
         <Link href="/" className="hover:text-foreground transition-colors">
