@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
+import { getRouteMessages } from "@/shared/i18n/messages";
 import { notFound, redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { routing } from "@/shared/i18n/routing";
@@ -69,7 +70,7 @@ export default async function RootLayout({
   }
 
   const [messages, publicSettings] = await Promise.all([
-    getMessages(),
+    getRouteMessages(),
     getPublicSettings(),
   ]);
 

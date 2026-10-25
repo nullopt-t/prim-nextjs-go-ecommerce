@@ -8,6 +8,7 @@ import {
 	getCatalogFacets,
 	getCatalogSnapshot,
 } from "@/shared/lib/server/catalog";
+import { RouteMessages } from "@/shared/i18n/messages";
 
 function needsProductFeed(pathname: string) {
 	const path =
@@ -30,14 +31,16 @@ export default async function ShopLayout({
 		: { products: [], ...(await getCatalogFacets()) };
 
 	return (
-		<CatalogProvider
-			initialProducts={products}
-			initialCategories={categories}
-			initialBrands={brands}
-		>
-			<MaintenanceGate>
-				<MainLayout recently={<Recently />}>{children}</MainLayout>
-			</MaintenanceGate>
-		</CatalogProvider>
+		<RouteMessages group="shop">
+			<CatalogProvider
+				initialProducts={products}
+				initialCategories={categories}
+				initialBrands={brands}
+			>
+				<MaintenanceGate>
+					<MainLayout recently={<Recently />}>{children}</MainLayout>
+				</MaintenanceGate>
+			</CatalogProvider>
+		</RouteMessages>
 	);
 }
