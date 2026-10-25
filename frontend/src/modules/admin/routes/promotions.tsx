@@ -15,7 +15,31 @@ import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
 type SortKey = "code" | "discount" | "usage" | "validity" | "status" | "createdAt";
 type SortDir = "asc" | "desc";
 
-function sortValue(promo: any, key: SortKey): string | number {
+interface PromotionView {
+  id: string;
+  code: string;
+  discountType: string;
+  value: string;
+  discountPercent: number;
+  fixedDiscount: number;
+  usageLimit: number;
+  currentUsage: number;
+  status: string;
+  startsAt: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+interface Redemption {
+  id: string;
+  userName?: string;
+  userEmail?: string;
+  orderId: string;
+  discountAmount: number;
+  createdAt: string;
+}
+
+function sortValue(promo: PromotionView, key: SortKey): string | number {
   switch (key) {
     case "code":
       return promo.code;
@@ -50,7 +74,7 @@ function SortButton({ label, active, dir, onClick }: { label: string; active: bo
 
 export function AdminPromotions() {
   const t = useTranslations("admin");
-  const [promotions, setPromotions] = useState<any[]>([]);
+  const [promotions, setPromotions] = useState<PromotionView[]>([]);
   const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,7 +83,7 @@ export function AdminPromotions() {
   const [deleting, setDeleting] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: "createdAt", dir: "desc" });
   const [logPromo, setLogPromo] = useState<{ id: string; code: string } | null>(null);
-  const [redemptions, setRedemptions] = useState<any[]>([]);
+  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [logLoading, setLogLoading] = useState(false);
   const [logError, setLogError] = useState(false);
   const [logMeta, setLogMeta] = useState<CursorMeta>(emptyCursorMeta);
@@ -113,7 +137,7 @@ export function AdminPromotions() {
       await adminService.updatePromotionStatus(id, nextStatus);
       notify.success(t("promotions.toast.statusUpdated"));
       loadPromos();
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("promotions.toast.statusFailed")));
     }
   };
@@ -143,7 +167,7 @@ export function AdminPromotions() {
       notify.success(t("promotions.toast.created", { code: payload.code }));
       setIsModalOpen(false);
       loadPromos();
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("promotions.toast.createFailed")));
     }
   };
@@ -160,7 +184,7 @@ export function AdminPromotions() {
       notify.success(t("promotions.toast.deleted"));
       setPendingDelete(null);
       loadPromos();
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("promotions.toast.deleteFailed")));
     } finally {
       setDeleting(false);
@@ -173,10 +197,10 @@ export function AdminPromotions() {
     setLogError(false);
     setLogLoading(true);
     try {
-      const res: any = await adminService.getPromotionRedemptions(promo.id, { pageSize: 100 });
-      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      const res = await adminService.getPromotionRedemptions(promo.id, { pageSize: 100 });
+      const list: Redemption[] = res?.data ?? [];
       setRedemptions(list);
-      setLogMeta(res?.meta ?? emptyCursorMeta);
+      setLogMeta((res?.meta ?? emptyCursorMeta) as CursorMeta);
     } catch {
       setLogError(true);
     } finally {
@@ -188,13 +212,13 @@ export function AdminPromotions() {
     if (!logPromo || !logMeta.hasMore || logLoading) return;
     setLogLoading(true);
     try {
-      const res: any = await adminService.getPromotionRedemptions(logPromo.id, {
+      const res = await adminService.getPromotionRedemptions(logPromo.id, {
         cursor: logMeta.nextCursor,
         pageSize: 100,
       });
-      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      const list: Redemption[] = res?.data ?? [];
       setRedemptions((prev) => [...prev, ...list]);
-      setLogMeta(res?.meta ?? emptyCursorMeta);
+      setLogMeta((res?.meta ?? emptyCursorMeta) as CursorMeta);
     } catch {
       setLogError(true);
     } finally {
@@ -202,7 +226,7 @@ export function AdminPromotions() {
     }
   };
 
-  const openShare = (promo: any) => {
+  const openShare = (promo: PromotionView) => {
     setSharePromo({
       code: promo.code,
       value: promo.value,
@@ -218,7 +242,7 @@ export function AdminPromotions() {
 
   const sorted = useMemo(() => {
     const dir = sort.dir === "asc" ? 1 : -1;
-    return [...promotions].sort((a: any, b: any) => {
+    return [...promotions].sort((a: PromotionView, b: PromotionView) => {
       const av = sortValue(a, sort.key);
       const bv = sortValue(b, sort.key);
       const cmp =
