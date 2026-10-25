@@ -131,11 +131,11 @@ export default function OverviewContent() {
 
         if (cancelled) return;
 
-        const rawOrders: Order[] = Array.isArray(ordersRes?.data)
+        const rawOrders = (Array.isArray(ordersRes?.data)
           ? ordersRes.data
           : Array.isArray(ordersRes)
           ? ordersRes
-          : [];
+          : []) as Order[];
 
         const rawReviews: unknown[] = Array.isArray(reviewsRes?.data)
           ? reviewsRes.data
@@ -157,7 +157,7 @@ export default function OverviewContent() {
         setReviewCount(rawReviews.length);
         setAddressCount(rawAddresses.length);
         setWishlistPreview(rawWishlist);
-        setWishlistCount(wishlistRes?.meta?.totalItems ?? rawWishlist.length);
+        setWishlistCount((wishlistRes?.meta as { totalItems?: number })?.totalItems ?? rawWishlist.length);
       } finally {
         if (!cancelled) setLoading(false);
       }

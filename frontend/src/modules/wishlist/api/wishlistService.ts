@@ -1,82 +1,47 @@
 import { api } from "@/shared/api/client";
+import type { ApiResponse, ApiPaginatedResponse, ApiMessageResponse, OffsetMeta } from "@/shared/api/types";
+import type {
+  WishlistCheck,
+  WishlistCount,
+  WishlistItem,
+  WishlistProduct,
+} from "@/modules/wishlist/types";
 
-export interface WishlistProduct {
-  id: string;
-  slug: string;
-  title: string;
-  description?: string;
-  productType: string;
-  brandName?: string;
-  categoryName?: string;
-  thumbnailUrl?: string;
-  price?: string;
-  extractedPrice?: number;
-  originalPrice?: string;
-  extractedOriginalPrice?: number;
-  currency?: string;
-  inStock: boolean;
-  variantId?: string;
-  variantTitle?: string;
-  variantSku?: string;
-}
+export type { WishlistProduct, WishlistItem, WishlistCheck, WishlistCount };
 
-export interface WishlistItem {
-  id: string;
-  productId: string;
-  variantId?: string;
-  userId: string;
-  createdAt: string;
-  product: WishlistProduct;
-}
-
-export interface WishlistResponse {
-  data: WishlistItem[];
-  meta: {
-    page: number;
-    pageSize: number;
-    totalItems: number;
-    totalPages: number;
-    hasPrevious: boolean;
-    hasNext: boolean;
-  };
-}
-
-export interface WishlistCheckResponse {
-  data: {
-    inWishlist: boolean;
-    wishlistItemId: string | null;
-  };
-}
-
-export interface WishlistCountResponse {
-  data: {
-    count: number;
-  };
-}
+// Backwards-compatible aliases
+export type WishlistResponse = ApiPaginatedResponse<WishlistItem, OffsetMeta>;
+export type WishlistCheckResponse = ApiResponse<WishlistCheck>;
+export type WishlistCountResponse = ApiResponse<WishlistCount>;
 
 export const wishlistService = {
   getItems: (page = 1, pageSize = 50) =>
-    api.get<WishlistResponse>(`/api/v1/wishlist?page=${page}&pageSize=${pageSize}`),
+    api.get<ApiPaginatedResponse<WishlistItem, OffsetMeta>>(
+      `/api/v1/wishlist?page=${page}&pageSize=${pageSize}`
+    ),
 
   getCount: () =>
-    api.get<WishlistCountResponse>("/api/v1/wishlist/count"),
+    api.get<ApiResponse<WishlistCount>>("/api/v1/wishlist/count"),
 
   checkInWishlist: (productId: string, variantId?: string) =>
-    api.get<WishlistCheckResponse>(
+    api.get<ApiResponse<WishlistCheck>>(
       `/api/v1/wishlist/check/${productId}${variantId ? `?variantId=${encodeURIComponent(variantId)}` : ""}`
     ),
 
+  checkItem: (productId: string) =>
+    api.get<ApiResponse<WishlistCheck>>(`/api/v1/wishlist/check?productId=${productId}`),
+
   addItem: (productId: string, variantId?: string) =>
-    api.post<{ data: WishlistItem }>("/api/v1/wishlist", {
+    api.post<ApiResponse<WishlistItem>, { productId: string; variantId?: string }>("/api/v1/wishlist", {
       productId,
       ...(variantId ? { variantId } : {}),
     }),
 
   removeItem: (itemId: string) =>
-    api.delete<{ message: string }>(`/api/v1/wishlist/items/${itemId}`),
+    api.delete<ApiMessageResponse>(`/api/v1/wishlist/items/${itemId}`),
 
   removeByProductId: (productId: string, variantId?: string) =>
-    api.delete<{ message: string }>(
+    api.delete<ApiMessageResponse>(
       `/api/v1/wishlist/products/${productId}${variantId ? `?variantId=${encodeURIComponent(variantId)}` : ""}`
     ),
 
@@ -86,6 +51,6 @@ export const wishlistService = {
     if (params?.variantId) query.set("variantId", params.variantId);
     if (params?.itemId) query.set("itemId", params.itemId);
     const qs = query.toString();
-    return api.delete<{ message: string }>(`/api/v1/wishlist${qs ? `?${qs}` : ""}`);
+    return api.delete<ApiMessageResponse>(`/api/v1/wishlist${qs ? `?${qs}` : ""}`);
   },
 };

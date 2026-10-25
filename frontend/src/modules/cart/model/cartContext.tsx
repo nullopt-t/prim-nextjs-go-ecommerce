@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { cartService } from "@/modules/cart/api/cartService";
+import type { Cart, CartItem } from "@/modules/cart/types";
+import type { ApiResponse } from "@/shared/api/types";
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import { normalizeMediaUrl } from "@/shared/lib/media";
 
@@ -106,34 +108,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setAppliedCoupon(null);
   }, []);
 
-  const normalizeCartData = (res: any) => {
-    const rawCart = res?.data || res || {};
-    const rawItems = Array.isArray(rawCart.items) 
-      ? rawCart.items 
-      : (Array.isArray(rawCart) ? rawCart : []);
+  const normalizeCartData = (res: ApiResponse<Cart> | Cart | null | undefined) => {
+    const rawCart: Partial<Cart> = (res && "data" in res && res.data ? res.data : (res as Cart)) || {};
+    const rawItems: CartItem[] = Array.isArray(rawCart.items)
+      ? rawCart.items
+      : [];
 
-    const formattedItems: CartContextItem[] = rawItems.map((item: any) => {
-      const title = item.title || item.name || item.productName || "Product";
+    const formattedItems: CartContextItem[] = rawItems.map((item: CartItem) => {
+      const title = item.title || "Product";
       const price = item.unitPrice !== undefined
         ? `EGP ${(item.unitPrice / 100).toFixed(2)}`
-        : (item.productPrice || item.price || "EGP 0.00");
-      const rawThumbnail = item.thumbnailUrl 
-        || (typeof item.thumbnail === "string" ? item.thumbnail : (item.thumbnail?.publicUrl || item.thumbnail?.url))
-        || item.img 
-        || item.image;
-      const img = normalizeMediaUrl(rawThumbnail);
+        : "EGP 0.00";
+      const img = normalizeMediaUrl(item.thumbnailUrl);
 
       return {
         id: String(item.id),
         productId: item.productId,
-        productSlug: item.productSlug || item.slug,
+        productSlug: item.productSlug,
         variantId: item.variantId,
         productName: typeof title === "object" ? title : { en: title, ar: title },
-        productBrand: item.brand || item.productBrand || "",
+        productBrand: "",
         productPrice: price,
         quantity: item.quantity || 1,
         img,
-        color: item.color || item.attributes?.color || "Default",
+        color: item.color || (item.attributes?.color as string) || "Default",
         inStock: item.inStock ?? true,
         availableStock: item.availableStock,
       };

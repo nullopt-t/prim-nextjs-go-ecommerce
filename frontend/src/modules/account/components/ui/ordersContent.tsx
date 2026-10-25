@@ -276,11 +276,11 @@ export default function OrdersContent() {
       try {
         const res = await userService.getOrders();
         if (cancelled) return;
-        const raw: Order[] = Array.isArray(res?.data)
+        const raw = (Array.isArray(res?.data)
           ? res.data
           : Array.isArray(res)
           ? res
-          : [];
+          : []) as Order[];
         setOrders(raw);
       } catch (err: unknown) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load orders.");

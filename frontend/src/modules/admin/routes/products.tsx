@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import { adminService } from "@/modules/admin/api/adminService";
+import type { AdminCategory, Product } from "@/modules/catalog/types";
+import type { InventoryLedger } from "@/modules/admin/types";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
@@ -59,12 +61,12 @@ export function AdminProducts() {
         catalogService.getAdminCategories(100),
       ]);
 
-      const catList = (Array.isArray(catsRes) ? catsRes : (Array.isArray(catsRes?.data) ? catsRes.data : []))
+      const catList = (catsRes.data ?? [])
         .filter((category: any) => !category.deletedAt);
       setCategories(catList);
 
-      const list = Array.isArray(prodsRes) ? prodsRes : (Array.isArray(prodsRes?.data) ? prodsRes.data : []);
-      const formatted = list.map((p: any, idx: number) => {
+      const list = prodsRes.data ?? [];
+      const formatted = list.map((p: Product, idx: number) => {
         let categoryName = "Electronics";
         if (typeof p.category === "string") {
           categoryName = p.category;
@@ -129,8 +131,8 @@ export function AdminProducts() {
         pageSize: 50,
         productId: prod.id,
       });
-      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      const mapped = list.map((l: any, idx: number) => ({
+      const list = res?.data ?? [];
+      const mapped = list.map((l: InventoryLedger, idx: number) => ({
         id: l.id || `audit-${idx}`,
         productName: l.productName || prod.name,
         variantTitle: l.variantTitle || "Default Variant",

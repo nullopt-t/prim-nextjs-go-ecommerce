@@ -1,45 +1,50 @@
 import { api } from "@/shared/api/client";
+import type { ApiResponse } from "@/shared/api/types";
+import type { Address, CreateAddressPayload, UpdateAddressPayload } from "@/modules/account/types";
+import type { Session, User } from "@/modules/auth/types";
+import type { Order } from "@/modules/orders/types";
+import type { Review } from "@/modules/catalog/types";
 
 export const userService = {
   // Profile — uses auth endpoints
-  getProfile: () => api.get("/api/v1/auth/me"),
+  getProfile: () => api.get<ApiResponse<User>>("/api/v1/auth/me"),
   /** @todo Not yet implemented on the backend */
   updateProfile: (_payload: Record<string, unknown>) =>
     Promise.reject(new Error("Profile update is not yet available.")),
 
   // Orders
-  getOrders: () => api.get("/api/v1/orders"),
-  getOrderById: (id: string) => api.get(`/api/v1/orders/${id}`),
-  cancelOrder: (id: string) => api.post(`/api/v1/orders/${id}/cancel`),
+  getOrders: () => api.get<ApiResponse<Order[]>>("/api/v1/orders"),
+  getOrderById: (id: string) => api.get<ApiResponse<Order>>(`/api/v1/orders/${id}`),
+  cancelOrder: (id: string) => api.post<ApiResponse<Order>>(`/api/v1/orders/${id}/cancel`),
 
   // Reviews
-  getMyReviews: () => api.get("/api/v1/reviews/me"),
+  getMyReviews: () => api.get<ApiResponse<Review[]>>("/api/v1/reviews/me"),
   /** Alias kept for legacy hook compatibility */
-  getReviews: () => api.get("/api/v1/reviews/me"),
-  deleteReview: (id: string) => api.delete(`/api/v1/reviews/${id}`),
+  getReviews: () => api.get<ApiResponse<Review[]>>("/api/v1/reviews/me"),
+  deleteReview: (id: string) => api.delete<void>(`/api/v1/reviews/${id}`),
   updateReview: (
     id: string,
     payload: { rating?: number; title?: string; body?: string }
-  ) => api.patch(`/api/v1/reviews/${id}`, payload),
+  ) => api.patch<ApiResponse<Review>, { rating?: number; title?: string; body?: string }>(`/api/v1/reviews/${id}`, payload),
   /** @todo Not yet implemented on the backend */
   markReviewHelpful: (_id: string) =>
     Promise.reject(new Error("Helpful votes are not yet available.")),
 
   // Sessions
-  getSessions: () => api.get("/api/v1/auth/sessions"),
-  deleteSession: (id: string) => api.delete(`/api/v1/auth/sessions/${id}`),
-  deleteAllSessions: () => api.delete("/api/v1/auth/sessions"),
+  getSessions: () => api.get<ApiResponse<Session[]>>("/api/v1/auth/sessions"),
+  deleteSession: (id: string) => api.delete<void>(`/api/v1/auth/sessions/${id}`),
+  deleteAllSessions: () => api.delete<void>("/api/v1/auth/sessions"),
 
   // Addresses
-  getAddresses: () => api.get("/api/v1/user/addresses"),
-  getAddressById: (id: string) => api.get(`/api/v1/user/addresses/${id}`),
-  createAddress: (payload: Record<string, unknown>) =>
-    api.post("/api/v1/user/addresses", payload),
-  updateAddress: (id: string, payload: Record<string, unknown>) =>
-    api.put(`/api/v1/user/addresses/${id}`, payload),
+  getAddresses: () => api.get<ApiResponse<Address[]>>("/api/v1/user/addresses"),
+  getAddressById: (id: string) => api.get<ApiResponse<Address>>(`/api/v1/user/addresses/${id}`),
+  createAddress: (payload: CreateAddressPayload) =>
+    api.post<ApiResponse<Address>, CreateAddressPayload>("/api/v1/user/addresses", payload),
+  updateAddress: (id: string, payload: UpdateAddressPayload) =>
+    api.put<ApiResponse<Address>, UpdateAddressPayload>(`/api/v1/user/addresses/${id}`, payload),
   setDefaultAddress: (id: string) =>
-    api.patch(`/api/v1/user/addresses/${id}/default`),
-  deleteAddress: (id: string) => api.delete(`/api/v1/user/addresses/${id}`),
+    api.patch<ApiResponse<Address>>(`/api/v1/user/addresses/${id}/default`),
+  deleteAddress: (id: string) => api.delete<void>(`/api/v1/user/addresses/${id}`),
 
   // Payment methods — @todo Not yet implemented on the backend
   getPaymentMethods: () =>

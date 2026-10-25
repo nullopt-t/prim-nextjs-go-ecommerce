@@ -27,7 +27,7 @@ function handleAuthRedirect() {
   window.location.href = `${authUrl}?redirect=${returnParam}`;
 }
 
-export async function request<T = any>(
+export async function request<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
@@ -69,27 +69,27 @@ export async function request<T = any>(
 }
 
 export const api = {
-  get: <T = any>(endpoint: string, options?: RequestInit) =>
+  get: <T = unknown>(endpoint: string, options?: RequestInit) =>
     request<T>(endpoint, { method: "GET", ...options }),
-  post: <T = any, B = any>(endpoint: string, payload?: B, options?: RequestInit) =>
+  post: <T = unknown, B = unknown>(endpoint: string, payload?: B, options?: RequestInit) =>
     request<T>(endpoint, {
       method: "POST",
       body: payload !== undefined ? JSON.stringify(payload) : undefined,
       ...options,
     }),
-  patch: <T = any, B = any>(endpoint: string, payload?: B, options?: RequestInit) =>
+  patch: <T = unknown, B = unknown>(endpoint: string, payload?: B, options?: RequestInit) =>
     request<T>(endpoint, {
       method: "PATCH",
       body: payload !== undefined ? JSON.stringify(payload) : undefined,
       ...options,
     }),
-  put: <T = any, B = any>(endpoint: string, payload?: B, options?: RequestInit) =>
+  put: <T = unknown, B = unknown>(endpoint: string, payload?: B, options?: RequestInit) =>
     request<T>(endpoint, {
       method: "PUT",
       body: payload !== undefined ? JSON.stringify(payload) : undefined,
       ...options,
     }),
-  delete: <T = any>(endpoint: string, options?: RequestInit) =>
+  delete: <T = unknown>(endpoint: string, options?: RequestInit) =>
     request<T>(endpoint, { method: "DELETE", ...options }),
   /**
    * Fetches a binary/CSV endpoint with credentials and saves it to disk via an
@@ -127,7 +127,7 @@ export const api = {
     link.remove();
     URL.revokeObjectURL(objectUrl);
   },
-  upload: <T = any>(endpoint: string, formData: FormData, options?: RequestInit) => {
+  upload: <T = unknown>(endpoint: string, formData: FormData, options?: RequestInit) => {
     const url = endpoint.startsWith("http") ? endpoint : `${getBaseUrl()}${endpoint}`;
     const locale = getActiveLocale();
     return fetch(url, {

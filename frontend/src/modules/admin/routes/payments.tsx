@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "@/shared/i18n/navigation";
 import { CheckCircle2, Eye, RefreshCcw, Search, Download } from "lucide-react";
 import { adminService } from "@/modules/admin/api/adminService";
+import type { AdminPayment } from "@/modules/admin/types";
 import { useTranslations } from "next-intl";
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
@@ -36,8 +37,8 @@ export function AdminPayments() {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
       });
-      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      setPayments(list.map((p: any) => ({
+      const list = res?.data ?? [];
+      setPayments(list.map((p: AdminPayment) => ({
         id: p.id,
         orderId: p.orderId,
         customer: p.customerEmail ? p.customerEmail.split("@")[0] : "—",

@@ -2,16 +2,17 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { userService } from "@/modules/account/api/userService";
+import type { Address, CreateAddressPayload, UpdateAddressPayload } from "@/modules/account/types";
 
 export function useAddresses() {
-  const [addresses, setAddresses] = useState<any[]>([]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAddresses = useCallback(async () => {
     try {
-      const res: any = await userService.getAddresses();
-      setAddresses(res?.data || res || []);
+      const res = await userService.getAddresses();
+      setAddresses(res?.data || []);
     } catch (err: any) {
       setError(err?.message || "Failed to load addresses");
     } finally {
@@ -23,21 +24,21 @@ export function useAddresses() {
     fetchAddresses();
   }, [fetchAddresses]);
 
-  const addAddress = async (payload: any) => {
+  const addAddress = async (payload: CreateAddressPayload) => {
     try {
-      const res: any = await userService.createAddress(payload);
+      const res = await userService.createAddress(payload);
       await fetchAddresses();
-      return { success: true, data: res?.data || res };
+      return { success: true, data: res?.data };
     } catch (err: any) {
       return { success: false, error: err?.message };
     }
   };
 
-  const updateAddress = async (id: string, payload: any) => {
+  const updateAddress = async (id: string, payload: UpdateAddressPayload) => {
     try {
-      const res: any = await userService.updateAddress(id, payload);
+      const res = await userService.updateAddress(id, payload);
       await fetchAddresses();
-      return { success: true, data: res?.data || res };
+      return { success: true, data: res?.data };
     } catch (err: any) {
       return { success: false, error: err?.message };
     }
@@ -45,9 +46,9 @@ export function useAddresses() {
 
   const setDefaultAddress = async (id: string) => {
     try {
-      const res: any = await userService.setDefaultAddress(id);
+      const res = await userService.setDefaultAddress(id);
       await fetchAddresses();
-      return { success: true, data: res?.data || res };
+      return { success: true, data: res?.data };
     } catch (err: any) {
       return { success: false, error: err?.message };
     }
@@ -143,8 +144,9 @@ export function useUserReviews() {
 
   const fetchReviews = useCallback(async () => {
     try {
-      const data = await userService.getReviews();
-      setReviews(data || []);
+      const res = await userService.getReviews();
+      const list = Array.isArray(res) ? res : res?.data || [];
+      setReviews(list);
     } catch (err: any) {
       setError(err?.message || "Failed to load reviews");
     } finally {

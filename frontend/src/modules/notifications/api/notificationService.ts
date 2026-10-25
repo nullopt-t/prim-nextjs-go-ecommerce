@@ -1,46 +1,24 @@
 import { api } from "@/shared/api/client";
+import type { ApiResponse, ApiPaginatedResponse, ApiMessageResponse } from "@/shared/api/types";
+import type { Notification, NotificationCount } from "@/modules/notifications/types";
 
-export interface NotificationItem {
-  id: string;
-  title: string;
-  message: string;
-  category: string;
-  actionUrl?: string;
-  metadata?: any;
-  isRead: boolean;
-  readAt?: string;
-  createdAt: string;
-}
+export type { Notification, NotificationItem, NotificationCount } from "@/modules/notifications/types";
 
-export interface NotificationResponse {
-  data: NotificationItem[];
-  meta: {
-    page: number;
-    pageSize: number;
-    totalItems: number;
-    totalPages: number;
-    hasPrevious: boolean;
-    hasNext: boolean;
-  };
-}
-
-export interface UnreadCountResponse {
-  data: {
-    count: number;
-  };
-}
+// Backwards-compatible aliases
+export type NotificationResponse = ApiPaginatedResponse<Notification>;
+export type UnreadCountResponse = ApiResponse<NotificationCount>;
 
 export const notificationService = {
   getNotifications: (page = 1, pageSize = 15, unreadOnly = false) =>
-    api.get<NotificationResponse>(
+    api.get<ApiPaginatedResponse<Notification>>(
       `/api/v1/user/notifications?page=${page}&pageSize=${pageSize}&unreadOnly=${unreadOnly}`
     ),
   getUnreadCount: () =>
-    api.get<UnreadCountResponse>("/api/v1/user/notifications/unread-count"),
+    api.get<ApiResponse<NotificationCount>>("/api/v1/user/notifications/unread-count"),
   markAsRead: (id: string) =>
-    api.patch<{ message: string }>(`/api/v1/user/notifications/${id}/read`),
+    api.patch<ApiMessageResponse>(`/api/v1/user/notifications/${id}/read`),
   markAllAsRead: () =>
-    api.patch<{ message: string }>("/api/v1/user/notifications/mark-all-read"),
+    api.patch<ApiMessageResponse>("/api/v1/user/notifications/mark-all-read"),
   deleteNotification: (id: string) =>
-    api.delete<{ message: string }>(`/api/v1/user/notifications/${id}`),
+    api.delete<ApiMessageResponse>(`/api/v1/user/notifications/${id}`),
 };

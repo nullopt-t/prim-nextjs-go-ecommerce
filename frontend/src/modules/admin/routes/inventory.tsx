@@ -2,6 +2,7 @@ import { ResponsiveTable } from "@/shared/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Minus, Search, History, ImageOff } from "lucide-react";
 import { adminService } from "@/modules/admin/api/adminService";
+import type { InventoryLedger, InventoryStock } from "@/modules/admin/types";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
@@ -33,8 +34,8 @@ export function AdminInventory() {
         variantId: prod.variantId,
         productId: prod.productId
       });
-      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      setAuditLogs(list.map((l: any) => ({
+      const list = res?.data ?? [];
+      setAuditLogs(list.map((l: InventoryLedger) => ({
         id: l.id,
         product: `${l.productName} (${l.sku})`,
         sku: l.sku,
@@ -60,7 +61,7 @@ export function AdminInventory() {
         adminService.getInventoryLedgers(30)
       ]);
 
-      const items = Array.isArray(invRes?.data) ? invRes.data : (Array.isArray(invRes) ? invRes : []);
+      const items = invRes?.data ?? [];
       setProducts(items.map((it: any) => ({
         id: it.variantId || it.productId,
         variantId: it.variantId,
@@ -74,8 +75,8 @@ export function AdminInventory() {
       })));
       if (invRes?.meta) setMeta(invRes.meta);
 
-      const ledgerList = Array.isArray(logsRes?.data) ? logsRes.data : (Array.isArray(logsRes) ? logsRes : []);
-      setLogs(ledgerList.map((l: any) => ({
+      const ledgerList = logsRes?.data ?? [];
+      setLogs(ledgerList.map((l: InventoryLedger) => ({
         id: l.id,
         product: `${l.productName} (${l.sku})`,
         sku: l.sku,

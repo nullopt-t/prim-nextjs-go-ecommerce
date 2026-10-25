@@ -313,7 +313,7 @@ export default function AddressesContent() {
                       <div className="mt-1">
                         <button
                           type="button"
-                          onClick={() => copyPhoneToClipboard(addr.id, addr.phone)}
+                          onClick={() => addr.phone && copyPhoneToClipboard(addr.id, addr.phone)}
                           className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground cursor-pointer text-[11px] transition-colors"
                         >
                           <span className="font-mono tabular-nums [direction:ltr] [unicode-bidi:isolate]">

@@ -3,6 +3,7 @@
 import useFetch from "@/shared/api/hooks/useFetch";
 import { useMutation } from "@/shared/api/hooks/useMutation";
 import { orderService } from "@/modules/orders/api/orderService";
+import type { CheckoutPayload } from "@/modules/orders/types";
 
 export function useOrders() {
   const { data, loading, errorMsg, refetch } = useFetch(() => orderService.getOrders(), "");
@@ -15,6 +16,8 @@ export function useOrder(id: string) {
 }
 
 export function useCheckout() {
-  const { mutate, loading, errorMsg } = useMutation((payload: any) => orderService.checkout(payload));
+  const { mutate, loading, errorMsg } = useMutation((payload: CheckoutPayload) =>
+    orderService.checkout(payload)
+  );
   return { checkout: mutate, loading, errorMsg };
 }

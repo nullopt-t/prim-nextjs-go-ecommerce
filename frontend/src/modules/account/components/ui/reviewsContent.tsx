@@ -140,7 +140,7 @@ export default function ReviewsContent() {
       try {
         const res = await userService.getMyReviews();
         if (cancelled) return;
-        const raw: Review[] = Array.isArray(res) ? res : res?.data ?? [];
+        const raw = (Array.isArray(res) ? res : res?.data ?? []) as Review[];
         setReviews(raw);
       } catch (err: unknown) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load reviews.");

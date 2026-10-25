@@ -41,7 +41,7 @@ export function VendorOrders() {
           const commissionRate = (vendor?.commissionRate || 10) / 100;
 
           // Convert marketplace orders to vendor orders view
-          const serverMappedOrders = list.map((o: MarketplaceOrder, idx: number) => {
+          const serverMappedOrders = (list as any[]).map((o: any, idx: number) => {
             const firstItem = o.orderItems?.[0];
             const rawPrice = firstItem?.price ? parseFloat(String(firstItem.price).replace(/[^0-9.]/g, "")) : 99.99;
             const quantity = firstItem?.quantity || 1;
@@ -52,8 +52,8 @@ export function VendorOrders() {
             return {
               id: `VORD-${o.id || idx}`,
               vendorId: vendor?.id || "v-1",
-              orderId: o.id,
-              customer: o.shippingAddress ? o.shippingAddress.split(",")[0] : "Customer",
+              orderId: String(o.id || `ORD-${idx}`),
+              customer: typeof o.shippingAddress === "string" ? o.shippingAddress.split(",")[0] : (o.shippingAddress?.street || "Customer"),
               email: "customer@market.com",
               date: o.date || "Recent",
               item: firstItem?.name || "Marketplace Product",
@@ -72,7 +72,7 @@ export function VendorOrders() {
             const localOnly = currentOrders.filter((o: any) => !existingIds.has(o.orderId));
             const merged = [...serverMappedOrders, ...localOnly];
             setLocalVendorData("orders", merged);
-            return merged;
+            return merged as any;
           });
         }
       } catch {

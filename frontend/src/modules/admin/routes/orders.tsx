@@ -4,6 +4,7 @@ import { useRouter } from "@/shared/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Search, Filter, Eye, Download } from "lucide-react";
 import { adminService } from "@/modules/admin/api/adminService";
+import type { Order } from "@/modules/orders/types";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { ErrorState } from "@/shared/ui/errorState";
@@ -36,8 +37,8 @@ export function AdminOrders() {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
       });
-      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      const formatted = list.map((so: any) => ({
+      const list = res?.data ?? [];
+      const formatted = list.map((so: Order) => ({
         id: so.id,
         customer: so.customerEmail ? so.customerEmail.split("@")[0] : "—",
         email: so.customerEmail || "—",

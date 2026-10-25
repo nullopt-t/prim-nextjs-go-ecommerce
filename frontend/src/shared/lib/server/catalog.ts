@@ -1,4 +1,5 @@
 import { normalizeProduct } from "@/modules/catalog/model/normalizeProduct";
+import type { Brand, Category, ProductDetailsEntity } from "@/modules/catalog/types";
 
 export const CATALOG_REVALIDATE_SECONDS = 300;
 export const PRODUCTS_TAG = "catalog:products";
@@ -13,7 +14,7 @@ function productTag(slug: string) {
 	return `product:${slug}`;
 }
 
-async function fetchJson(path: string, tags: string[] = []) {
+async function fetchJson<T = unknown>(path: string, tags: string[] = []): Promise<T | null> {
 	const baseUrl = getApiBaseUrl();
 	if (!baseUrl) return null;
 
@@ -24,27 +25,30 @@ async function fetchJson(path: string, tags: string[] = []) {
 		});
 		if (!response.ok) return null;
 		const payload = await response.json();
-		return payload?.data ?? null;
+		return (payload?.data ?? null) as T | null;
 	} catch {
 		return null;
 	}
 }
 
-function asList(payload: any): any[] {
-	if (Array.isArray(payload)) return payload;
-	return Array.isArray(payload?.data) ? payload.data : [];
+function asList<T>(payload: unknown): T[] {
+	if (Array.isArray(payload)) return payload as T[];
+	if (payload && typeof payload === "object" && "data" in payload && Array.isArray((payload as { data: unknown }).data)) {
+		return (payload as { data: T[] }).data;
+	}
+	return [];
 }
 
 /**
  * Server-side product lookup for the product detail route. Returns the
  * normalized product so the page and its metadata share one payload.
  */
-export async function getProductBySlug(slug: string) {
+export async function getProductBySlug(slug: string): Promise<ProductDetailsEntity | null> {
 	const raw = await fetchJson(`/api/v1/products/${encodeURIComponent(slug)}`, [
 		PRODUCTS_TAG,
 		productTag(slug),
 	]);
-	return raw ? normalizeProduct(raw) : null;
+	return raw ? (normalizeProduct(raw) as ProductDetailsEntity | null) : null;
 }
 
 export interface CatalogQuery {
@@ -53,7 +57,7 @@ export interface CatalogQuery {
 	search?: string;
 }
 
-export async function getProducts(query: CatalogQuery = {}) {
+export async function getProducts(query: CatalogQuery = {}): Promise<ProductDetailsEntity[]> {
 	const params = new URLSearchParams();
 	params.set("pageSize", String(query.pageSize ?? 100));
 	if (query.category && query.category.toLowerCase() !== "all") {
@@ -62,23 +66,25 @@ export async function getProducts(query: CatalogQuery = {}) {
 	if (query.search) params.set("search", query.search);
 
 	const raw = await fetchJson(`/api/v1/products?${params.toString()}`, [PRODUCTS_TAG]);
-	return asList(raw).map(normalizeProduct);
+	return asList(raw)
+		.map(normalizeProduct)
+		.filter((p): p is ProductDetailsEntity => p !== null);
 }
 
-export async function getCategories(pageSize = 50) {
-	const raw = await fetchJson(`/api/v1/categories?pageSize=${pageSize}`, [CATEGORIES_TAG]);
-	return asList(raw);
+export async function getCategories(pageSize = 50): Promise<Category[]> {
+	const raw = await fetchJson<Category[]>(`/api/v1/categories?pageSize=${pageSize}`, [CATEGORIES_TAG]);
+	return asList<Category>(raw);
 }
 
-export async function getBrands(pageSize = 50) {
-	const raw = await fetchJson(`/api/v1/brands?pageSize=${pageSize}`, [BRANDS_TAG]);
-	return asList(raw);
+export async function getBrands(pageSize = 50): Promise<Brand[]> {
+	const raw = await fetchJson<Brand[]>(`/api/v1/brands?pageSize=${pageSize}`, [BRANDS_TAG]);
+	return asList<Brand>(raw);
 }
 
 export interface CatalogSnapshot {
-	products: ReturnType<typeof normalizeProduct>[];
-	categories: any[];
-	brands: any[];
+	products: ProductDetailsEntity[];
+	categories: Category[];
+	brands: Brand[];
 }
 
 /** One cached catalog read shared by the storefront shell and its pages. */
@@ -102,4 +108,3 @@ export async function getCatalogFacets(): Promise<
 	const [categories, brands] = await Promise.all([getCategories(), getBrands()]);
 	return { categories, brands };
 }
-

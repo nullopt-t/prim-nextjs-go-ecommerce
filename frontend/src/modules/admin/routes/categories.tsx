@@ -5,6 +5,8 @@ import CategoryTreeMap from "@/modules/admin/components/CategoryTreeMap";
 import CategoryProductsPanel from "@/modules/admin/components/CategoryProductsPanel";
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import { adminService } from "@/modules/admin/api/adminService";
+import type { AdminCategory } from "@/modules/catalog/types";
+import type { AdminAttribute } from "@/modules/admin/types";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
@@ -12,7 +14,7 @@ import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
 import { revalidateCatalog } from "@/app/actions/revalidateCatalog";
 
-function mapCategory(c: any) {
+function mapCategory(c: AdminCategory & { slug?: string; deletedAt?: string }) {
   return {
     id: c.id,
     name: c.name,
@@ -54,17 +56,17 @@ export function AdminCategories() {
     try {
       setLoading(true);
       setLoadError(false);
-      const [res, attrRes]: [any, any] = await Promise.all([
+      const [res, attrRes] = await Promise.all([
         catalogService.getAdminCategories({ cursor: cursor || undefined, pageSize: 20, keyset: true, search: debouncedSearch || undefined }),
         adminService.getAttributes()
       ]);
-      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
-      const attrs = Array.isArray(attrRes?.data) ? attrRes.data : (Array.isArray(attrRes) ? attrRes : []);
+      const list = res.data ?? [];
+      const attrs = attrRes.data ?? [];
       setAllAttributes(attrs);
       // The admin endpoint includes soft-deleted rows; this table only renders
       // active taxonomy nodes (status is not modelled separately in the UI).
       setCategories(list.filter((c: any) => !c.deletedAt).map(mapCategory));
-      if (res?.meta) setMeta(res.meta);
+      if ("meta" in res && res.meta) setMeta(res.meta as CursorMeta);
     } catch {
       setLoadError(true);
     } finally {
@@ -75,8 +77,8 @@ export function AdminCategories() {
   const loadAllCategories = useCallback(async () => {
     try {
       // Admin listing so empty top-level parents are selectable as parents.
-      const res: any = await catalogService.getAdminCategories(100);
-      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      const res = await catalogService.getAdminCategories(100);
+      const list = res.data ?? [];
       const mapped = list.filter((c: any) => !c.deletedAt).map(mapCategory);
       setAllCategories(mapped);
       // Keep the map selection pointing at the refreshed row, or clear it if the

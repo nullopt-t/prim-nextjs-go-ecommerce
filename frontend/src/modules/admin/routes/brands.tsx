@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Search, Edit2, Trash2, ExternalLink, X } from "lucide-react";
 import { catalogService } from "@/modules/catalog/api/catalogService";
+import type { Brand } from "@/modules/catalog/types";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
@@ -42,17 +43,17 @@ export function AdminBrands() {
     try {
       setLoading(true);
       setLoadError(false);
-      const res: any = await catalogService.getBrands({ cursor: cursor || undefined, pageSize: 20, keyset: true, search: debouncedSearch || undefined });
-      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
-      setBrands(list.map((b: any) => ({
+      const res = await catalogService.getBrands({ cursor: cursor || undefined, pageSize: 20, keyset: true, search: debouncedSearch || undefined });
+      const list = res.data ?? [];
+      setBrands(list.map((b: Brand) => ({
         id: b.id,
         name: b.name,
-        website: b.link || b.website || "https://prim.com",
+        website: b.link || "https://prim.com",
         productsCount: b.productCount || 0,
         status: "Active",
         logo: b.logoUrl ? normalizeMediaUrl(b.logoUrl) : brandPlaceholder(b.name)
       })));
-      if (res?.meta) setMeta(res.meta);
+      if ("meta" in res && res.meta) setMeta(res.meta as CursorMeta);
     } catch {
       setLoadError(true);
     } finally {

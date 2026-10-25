@@ -41,7 +41,7 @@ export function VendorInventory() {
             }));
 
           if (serverProducts.length > 0) {
-            setProducts(serverProducts);
+            setProducts(serverProducts as any);
             setLocalVendorData("products", serverProducts);
           }
         }

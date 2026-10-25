@@ -14,7 +14,7 @@ interface ContentProps {
 
 export default function Content({ products, category }: ContentProps) {
   const { products: contextProducts, loading: contextLoading, filters } = useCatalogContext();
-  const [categoryProducts, setCategoryProducts] = useState<any[] | null>(products ?? null);
+  const [categoryProducts, setCategoryProducts] = useState<CardDetails[] | null>(products ?? null);
   const [catLoading, setCatLoading] = useState(false);
   const searchParams = useSearchParams();
   const searchQuery = (searchParams.get("q") || "").trim().toLowerCase();
@@ -37,10 +37,10 @@ export default function Content({ products, category }: ContentProps) {
 
     catalogService
       .getProducts({ pageSize: 100, category })
-      .then((res: any) => {
+      .then((res) => {
         if (!isMounted) return;
-        const rawList = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
-        setCategoryProducts(rawList.map(normalizeProduct));
+        const rawList = res.data ?? [];
+        setCategoryProducts(rawList.map(normalizeProduct).filter(Boolean) as CardDetails[]);
       })
       .catch((err) => {
         console.error("Failed to fetch products by category:", err);

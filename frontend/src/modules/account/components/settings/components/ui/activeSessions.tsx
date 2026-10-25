@@ -44,7 +44,7 @@ export default function ActiveSessions() {
     setError(null);
     try {
       const res = await userService.getSessions();
-      const raw: Session[] = Array.isArray(res) ? res : res?.data ?? [];
+      const raw: Session[] = res?.data ?? [];
       setSessions(raw);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("error"));

@@ -73,11 +73,11 @@ export function VendorDashboard() {
               salesCount: p.salesCount || Math.floor(Math.random() * 40 + 10),
               image: p.img || p.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80"
             }));
-          if (matched.length > 0) setProducts(matched);
+          if (matched.length > 0) setProducts(matched as any);
         }
 
         if (ordersRes.status === "fulfilled" && ordersRes.value) {
-          const rawOrders = Array.isArray(ordersRes.value) ? ordersRes.value : Array.isArray(ordersRes.value?.data) ? ordersRes.value.data : [];
+          const rawOrders: any[] = Array.isArray(ordersRes.value) ? ordersRes.value : Array.isArray((ordersRes.value as any)?.data) ? (ordersRes.value as any).data : [];
           const mappedOrders = rawOrders.map((o: any) => {
             const first = o.orderItems?.[0];
             const price = first?.price ? parseFloat(String(first.price).replace(/[^0-9.]/g, "")) : 89.99;
@@ -91,7 +91,7 @@ export function VendorDashboard() {
               fulfillmentStatus: o.status || "Processing"
             };
           });
-          if (mappedOrders.length > 0) setOrders(mappedOrders);
+          if (mappedOrders.length > 0) setOrders(mappedOrders as any);
         }
       } catch {
         // Retain local state

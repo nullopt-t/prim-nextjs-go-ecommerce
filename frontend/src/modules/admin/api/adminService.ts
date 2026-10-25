@@ -1,5 +1,25 @@
 import { api } from "@/shared/api/client";
+import type { ApiResponse, ApiPaginatedResponse, ApiMessageResponse } from "@/shared/api/types";
 import type { CursorMeta } from "@/shared/lib/pagination";
+import type { Order } from "@/modules/orders/types";
+import type { Promotion } from "@/modules/promotions/types";
+import type {
+  AdminAttribute,
+  AdminDashboardOverview,
+  AdminMedia,
+  AdminPayment,
+  InventoryLedger,
+  InventoryStock,
+} from "@/modules/admin/types";
+
+export type {
+  AdminAttribute,
+  AdminDashboardOverview,
+  AdminMedia,
+  AdminPayment,
+  InventoryLedger,
+  InventoryStock,
+} from "@/modules/admin/types";
 
 export interface AdminUser {
   id: string;
@@ -176,7 +196,7 @@ export const adminService = {
   },
 
   // Orders Management
-  getOrders: async (params?: { cursor?: string; pageSize?: number; customerId?: string; status?: string; dateFrom?: string; dateTo?: string }): Promise<any> => {
+  getOrders: async (params?: { cursor?: string; pageSize?: number; customerId?: string; status?: string; dateFrom?: string; dateTo?: string }): Promise<ApiPaginatedResponse<Order, CursorMeta>> => {
     const query = new URLSearchParams();
     if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
@@ -187,58 +207,58 @@ export const adminService = {
 
     const qs = query.toString();
     const endpoint = `/api/v1/admin/orders${qs ? `?${qs}` : ""}`;
-    return api.get(endpoint);
+    return api.get<ApiPaginatedResponse<Order, CursorMeta>>(endpoint);
   },
 
-  getOrderById: async (id: string): Promise<any> => {
-    return api.get(`/api/v1/admin/orders/${id}`);
+  getOrderById: async (id: string): Promise<ApiResponse<Order>> => {
+    return api.get<ApiResponse<Order>>(`/api/v1/admin/orders/${id}`);
   },
 
-  updateOrderStatus: async (id: string, status: string, notes?: string): Promise<{ message: string }> => {
-    return api.patch<{ message: string }>(`/api/v1/admin/orders/${id}/status`, { status, notes });
+  updateOrderStatus: async (id: string, status: string, notes?: string): Promise<ApiMessageResponse> => {
+    return api.patch<ApiMessageResponse>(`/api/v1/admin/orders/${id}/status`, { status, notes });
   },
 
-  updateOrderTracking: async (id: string, trackingNumber: string): Promise<{ message: string }> => {
-    return api.patch<{ message: string }>(`/api/v1/admin/orders/${id}/tracking`, { trackingNumber });
+  updateOrderTracking: async (id: string, trackingNumber: string): Promise<ApiMessageResponse> => {
+    return api.patch<ApiMessageResponse>(`/api/v1/admin/orders/${id}/tracking`, { trackingNumber });
   },
 
   // Dashboard Overview
-  getDashboard: async (): Promise<any> => {
-    return api.get(`/api/v1/admin/dashboard`);
+  getDashboard: async (): Promise<ApiResponse<AdminDashboardOverview>> => {
+    return api.get<ApiResponse<AdminDashboardOverview>>(`/api/v1/admin/dashboard`);
   },
 
   // Promotions
-  getPromotions: async (params?: { cursor?: string; pageSize?: number; status?: string }): Promise<any> => {
+  getPromotions: async (params?: { cursor?: string; pageSize?: number; status?: string }): Promise<ApiPaginatedResponse<Promotion, CursorMeta>> => {
     const query = new URLSearchParams();
     if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     if (params?.status && params.status !== "all") query.set("status", params.status);
     const qs = query.toString();
-    return api.get(`/api/v1/admin/promotions${qs ? `?${qs}` : ""}`);
+    return api.get<ApiPaginatedResponse<Promotion, CursorMeta>>(`/api/v1/admin/promotions${qs ? `?${qs}` : ""}`);
   },
 
-  createPromotion: async (payload: any): Promise<any> => {
-    return api.post(`/api/v1/admin/promotions`, payload);
+  createPromotion: async (payload: Partial<Promotion>): Promise<ApiResponse<Promotion>> => {
+    return api.post<ApiResponse<Promotion>>(`/api/v1/admin/promotions`, payload);
   },
 
-  updatePromotionStatus: async (id: string, status: string): Promise<any> => {
-    return api.patch(`/api/v1/admin/promotions/${id}/status`, { status });
+  updatePromotionStatus: async (id: string, status: string): Promise<ApiResponse<Promotion>> => {
+    return api.patch<ApiResponse<Promotion>>(`/api/v1/admin/promotions/${id}/status`, { status });
   },
 
-  deletePromotion: async (id: string): Promise<any> => {
-    return api.delete(`/api/v1/admin/promotions/${id}`);
+  deletePromotion: async (id: string): Promise<void> => {
+    return api.delete<void>(`/api/v1/admin/promotions/${id}`);
   },
 
-  getPromotionRedemptions: async (id: string, params?: { cursor?: string; pageSize?: number }): Promise<any> => {
+  getPromotionRedemptions: async (id: string, params?: { cursor?: string; pageSize?: number }): Promise<ApiPaginatedResponse<any>> => {
     const query = new URLSearchParams();
     if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     const qs = query.toString();
-    return api.get(`/api/v1/admin/promotions/${id}/redemptions${qs ? `?${qs}` : ""}`);
+    return api.get<ApiPaginatedResponse<any>>(`/api/v1/admin/promotions/${id}/redemptions${qs ? `?${qs}` : ""}`);
   },
 
   // Payments
-  getPayments: async (params?: { cursor?: string; pageSize?: number; status?: string; dateFrom?: string; dateTo?: string }): Promise<any> => {
+  getPayments: async (params?: { cursor?: string; pageSize?: number; status?: string; dateFrom?: string; dateTo?: string }): Promise<ApiPaginatedResponse<AdminPayment>> => {
     const query = new URLSearchParams();
     if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
@@ -246,30 +266,30 @@ export const adminService = {
     if (params?.dateFrom) query.set("dateFrom", params.dateFrom);
     if (params?.dateTo) query.set("dateTo", params.dateTo);
     const qs = query.toString();
-    return api.get(`/api/v1/admin/payments${qs ? `?${qs}` : ""}`);
+    return api.get<ApiPaginatedResponse<AdminPayment>>(`/api/v1/admin/payments${qs ? `?${qs}` : ""}`);
   },
 
-  refundPayment: async (id: string): Promise<any> => {
-    return api.post(`/api/v1/admin/payments/${id}/refund`, {});
+  refundPayment: async (id: string): Promise<ApiResponse<AdminPayment>> => {
+    return api.post<ApiResponse<AdminPayment>>(`/api/v1/admin/payments/${id}/refund`, {});
   },
 
-  updatePaymentStatus: async (id: string, status: string): Promise<any> => {
-    return api.patch(`/api/v1/admin/payments/${id}/status`, { status });
+  updatePaymentStatus: async (id: string, status: string): Promise<ApiResponse<AdminPayment>> => {
+    return api.patch<ApiResponse<AdminPayment>>(`/api/v1/admin/payments/${id}/status`, { status });
   },
 
   // Media Library
-  getMedia: async (params?: { cursor?: string; pageSize?: number }): Promise<any> => {
+  getMedia: async (params?: { cursor?: string; pageSize?: number }): Promise<ApiPaginatedResponse<AdminMedia, CursorMeta>> => {
     const query = new URLSearchParams();
     if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     const qs = query.toString();
-    return api.get(`/api/v1/admin/media${qs ? `?${qs}` : ""}`);
+    return api.get<ApiPaginatedResponse<AdminMedia, CursorMeta>>(`/api/v1/admin/media${qs ? `?${qs}` : ""}`);
   },
 
-  uploadMedia: async (file: File): Promise<any> => {
+  uploadMedia: async (file: File): Promise<ApiResponse<AdminMedia>> => {
     const formData = new FormData();
     formData.append("file", file);
-    return api.upload(`/api/v1/admin/media`, formData);
+    return api.upload<ApiResponse<AdminMedia>>(`/api/v1/admin/media`, formData);
   },
 
   deleteMedia: async (id: string): Promise<{ message: string }> => {
@@ -277,32 +297,32 @@ export const adminService = {
   },
 
   // Attributes
-  getAttributes: async (): Promise<any> => {
-    return api.get(`/api/v1/admin/attributes`);
+  getAttributes: async (): Promise<ApiResponse<AdminAttribute[]>> => {
+    return api.get<ApiResponse<AdminAttribute[]>>(`/api/v1/admin/attributes`);
   },
 
-  createAttribute: async (payload: any): Promise<any> => {
-    return api.post(`/api/v1/admin/attributes`, payload);
+  createAttribute: async (payload: { name?: string; type?: string; key?: string; label?: string; valueType?: string; categoryId?: string; values?: string[]; allowedValues?: string[]; [key: string]: unknown }): Promise<ApiResponse<AdminAttribute>> => {
+    return api.post<ApiResponse<AdminAttribute>>(`/api/v1/admin/attributes`, payload);
   },
 
-  updateAttribute: async (id: string, payload: any): Promise<any> => {
-    return api.patch(`/api/v1/admin/attributes/${id}`, payload);
+  updateAttribute: async (id: string, payload: { name?: string; categoryId?: string; values?: string[]; allowedValues?: string[]; [key: string]: unknown }): Promise<ApiResponse<AdminAttribute>> => {
+    return api.patch<ApiResponse<AdminAttribute>>(`/api/v1/admin/attributes/${id}`, payload);
   },
 
-  deleteAttribute: async (id: string): Promise<any> => {
-    return api.delete(`/api/v1/admin/attributes/${id}`);
+  deleteAttribute: async (id: string): Promise<void> => {
+    return api.delete<void>(`/api/v1/admin/attributes/${id}`);
   },
 
   // Inventory
-  getInventory: async (params?: { cursor?: string; pageSize?: number }): Promise<any> => {
+  getInventory: async (params?: { cursor?: string; pageSize?: number }): Promise<ApiPaginatedResponse<InventoryStock>> => {
     const query = new URLSearchParams();
     if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     const qs = query.toString();
-    return api.get(`/api/v1/admin/inventory${qs ? `?${qs}` : ""}`);
+    return api.get<ApiPaginatedResponse<InventoryStock>>(`/api/v1/admin/inventory${qs ? `?${qs}` : ""}`);
   },
 
-  getInventoryLedgers: async (params?: number | { cursor?: string; pageSize?: number; variantId?: string; productId?: string }): Promise<any> => {
+  getInventoryLedgers: async (params?: number | { cursor?: string; pageSize?: number; variantId?: string; productId?: string }): Promise<ApiPaginatedResponse<InventoryLedger>> => {
     const query = new URLSearchParams();
     if (typeof params === "number") {
       query.set("pageSize", String(params));
@@ -313,7 +333,7 @@ export const adminService = {
       if (params.productId) query.set("productId", params.productId);
     }
     const qs = query.toString();
-    return api.get(`/api/v1/admin/inventory/ledgers${qs ? `?${qs}` : ""}`);
+    return api.get<ApiPaginatedResponse<InventoryLedger>>(`/api/v1/admin/inventory/ledgers${qs ? `?${qs}` : ""}`);
   },
 
   adjustInventory: async (variantId: string, quantity: number, reason: string): Promise<any> => {

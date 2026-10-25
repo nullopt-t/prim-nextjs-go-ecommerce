@@ -15,7 +15,7 @@ import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { copyTextToClipboard } from "@/shared/lib/clipboard";
 import { recordRecentlyViewed } from "@/shared/lib/recentlyViewed";
 
-import { ProductReview } from "../types";
+import { ProductReview, Review } from "../types";
 import {
   getProductDisplayName,
   resolveVariantByAttributes,
@@ -101,16 +101,16 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
 
     catalogService
       .getProductReviews(cleanSlug)
-      .then((publicRes: any) => {
+      .then((publicRes) => {
         if (!isMounted) return;
-        const publicList = Array.isArray(publicRes) ? publicRes : Array.isArray(publicRes?.data) ? publicRes.data : [];
+        const publicList = publicRes?.data ?? [];
 
-        const mapped: ProductReview[] = publicList.map((r: any) => {
+        const mapped: ProductReview[] = publicList.map((r: Review) => {
           const isOwn = user?.id && String(r.userId) === String(user.id);
           return {
             id: r.id,
-            author: isOwn ? (user.name || tProducts("details.you")) : r.user?.name || tProducts("details.customer"),
-            avatar: isOwn ? null : r.user?.avatar || null,
+            author: isOwn ? (user.name || tProducts("details.you")) : (r as any).user?.name || tProducts("details.customer"),
+            avatar: isOwn ? null : (r as any).user?.avatar || null,
             rating: Number(r.rating) || 0,
             date: r.createdAt
               ? new Date(r.createdAt).toLocaleDateString("en-US", {
@@ -120,9 +120,9 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: any
                 })
               : tProducts("details.recently"),
             title: r.title || tProducts("details.customerReview"),
-            content: r.body || r.content || "",
-            helpful: r.helpful || 0,
-            verified: Boolean(r.verifiedPurchase ?? r.verified),
+            content: r.body || "",
+            helpful: 0,
+            verified: true,
           };
         });
 

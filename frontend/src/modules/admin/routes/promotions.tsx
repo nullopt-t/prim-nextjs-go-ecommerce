@@ -2,6 +2,7 @@ import { ResponsiveTable } from "@/shared/ui/responsiveTable";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Plus, Trash2, X, ArrowUp, ArrowDown, ArrowUpDown, ScrollText, Loader2, Share2 } from "lucide-react";
 import { adminService } from "@/modules/admin/api/adminService";
+import type { Promotion } from "@/modules/promotions/types";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { formatDateTime } from "@/shared/lib/datetime";
@@ -69,9 +70,9 @@ export function AdminPromotions() {
     try {
       setLoading(true);
       setLoadError(false);
-      const res: any = await adminService.getPromotions({ cursor: cursor || undefined, pageSize: 50 });
-      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      setPromotions(list.map((p: any) => ({
+      const res = await adminService.getPromotions({ cursor: cursor || undefined, pageSize: 50 });
+      const list = res?.data ?? [];
+      setPromotions(list.map((p: Promotion) => ({
         id: p.id,
         code: p.code,
         discountType: p.discountType,

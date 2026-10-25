@@ -7,11 +7,12 @@ import { useRouter } from "@/shared/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { useOptionalCatalogContext } from "@/modules/catalog/model/catalogContext";
 import { catalogService } from "@/modules/catalog/api/catalogService";
+import type { Category } from "@/modules/catalog/types";
 
 export function MobileSearchDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [fetchedCategories, setFetchedCategories] = useState<any[]>([]);
+  const [fetchedCategories, setFetchedCategories] = useState<Category[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -29,9 +30,9 @@ export function MobileSearchDialog() {
     let cancelled = false;
     catalogService
       .getCategories(8)
-      .then((res: any) => {
-        const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
-        if (!cancelled) setFetchedCategories(list);
+      .then((res) => {
+        const list = Array.isArray(res) ? res : res.data;
+        if (!cancelled && Array.isArray(list)) setFetchedCategories(list);
       })
       .catch(() => {
         // Suggestions are optional.

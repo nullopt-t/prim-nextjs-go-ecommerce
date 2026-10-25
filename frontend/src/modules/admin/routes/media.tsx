@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { UploadCloud, Search, Trash2, Copy, Check, Eye, X, Loader2 } from "lucide-react";
 import { adminService } from "@/modules/admin/api/adminService";
+import type { AdminMedia } from "@/modules/admin/types";
 import { useLocale, useTranslations } from "next-intl";
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
@@ -53,14 +54,14 @@ export function AdminMedia() {
       }
 
       try {
-        const res: any = await adminService.getMedia({
+        const res = await adminService.getMedia({
           cursor: isReset ? undefined : cursorRef.current,
           pageSize: MEDIA_PAGE_SIZE,
         });
         if (requestId !== requestIdRef.current) return;
 
-        const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-        const mapped = rows.map((m: any) => ({
+        const rows = res?.data ?? [];
+        const mapped = rows.map((m: AdminMedia) => ({
           id: m.id,
           name: m.objectKey || `media-${m.id.slice(0, 8)}`,
           size: `${((m.fileSize || 500000) / (1024 * 1024)).toFixed(1)} MB`,

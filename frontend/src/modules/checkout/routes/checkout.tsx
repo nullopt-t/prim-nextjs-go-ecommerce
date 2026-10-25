@@ -267,7 +267,8 @@ export function Checkout() {
 		if (result.success) {
 			if (resetCart) resetCart();
 			if (refreshCart) await refreshCart();
-			const orderData = result.data || {};
+			const rawResult: any = result.data || {};
+			const orderData = rawResult.data || rawResult;
 			const order = orderData.order || orderData;
 			const completedOrderInfo = {
 				id: orderData.orderId || order.id || "",

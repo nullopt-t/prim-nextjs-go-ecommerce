@@ -1,4 +1,18 @@
 import { api } from "@/shared/api/client";
+import type { ApiResponse, ApiPaginatedResponse } from "@/shared/api/types";
+import type {
+  AdminCategory,
+  Brand,
+  Category,
+  Product,
+  ProductDetails,
+  ProductRatingSummary,
+  ProductVariant,
+  ProductVariantMedia,
+  Review,
+  ReviewEligibility,
+  Tag,
+} from "@/modules/catalog/types";
 
 export interface GetProductsParams {
   pageSize?: number;
@@ -30,7 +44,7 @@ function buildCatalogListQuery(params?: CatalogListParams): string {
 export const catalogService = {
   getProducts: (params?: GetProductsParams | string) => {
     if (typeof params === "string") {
-      return api.get(`/api/v1/products${params ? `?${params}` : ""}`);
+      return api.get<ApiPaginatedResponse<Product>>(`/api/v1/products${params ? `?${params}` : ""}`);
     }
 
     const query = new URLSearchParams();
@@ -43,30 +57,54 @@ export const catalogService = {
     if (params?.inStock !== undefined) query.append("inStock", String(params.inStock));
 
     const qs = query.toString();
-    return api.get(`/api/v1/products${qs ? `?${qs}` : ""}`);
+    return api.get<ApiPaginatedResponse<Product>>(`/api/v1/products${qs ? `?${qs}` : ""}`);
   },
 
-  getProductBySlug: (slug: string) => api.get(`/api/v1/products/${slug}`),
-  getCategories: (params?: CatalogListParams) => api.get(`/api/v1/categories${buildCatalogListQuery(params ?? 50)}`),
-  // Admin listing: unlike the public endpoint it includes categories with no
-  // products (such as top-level parents) and soft-deleted rows, and returns
-  // parentId/parentName for the taxonomy table and parent selector.
+  getProductBySlug: (slug: string) =>
+    api.get<ApiResponse<ProductDetails>>(`/api/v1/products/${slug}`),
+
+  getCategories: (params?: CatalogListParams) =>
+    api.get<ApiResponse<Category[]> | ApiPaginatedResponse<Category>>(
+      `/api/v1/categories${buildCatalogListQuery(params ?? 50)}`
+    ),
+
+  // Admin listing includes categories with no products and taxonomy tree fields
   getAdminCategories: (params?: CatalogListParams) =>
-    api.get(`/api/v1/admin/categories${buildCatalogListQuery(params ?? 100)}`),
-  getBrands: (params?: CatalogListParams) => api.get(`/api/v1/brands${buildCatalogListQuery(params ?? 50)}`),
-  getTags: () => api.get("/api/v1/tags"),
-  getVariantById: (id: string) => api.get(`/api/v1/variants/${id}`),
+    api.get<ApiResponse<AdminCategory[]> | ApiPaginatedResponse<AdminCategory>>(
+      `/api/v1/admin/categories${buildCatalogListQuery(params ?? 100)}`
+    ),
+
+  getBrands: (params?: CatalogListParams) =>
+    api.get<ApiResponse<Brand[]> | ApiPaginatedResponse<Brand>>(
+      `/api/v1/brands${buildCatalogListQuery(params ?? 50)}`
+    ),
+
+  getTags: () => api.get<ApiResponse<Tag[]>>("/api/v1/tags"),
+
+  getVariantById: (id: string) =>
+    api.get<ApiResponse<ProductVariant>>(`/api/v1/variants/${id}`),
+
   getProductReviews: (slug: string, query?: string) =>
-    api.get(`/api/v1/products/${slug}/reviews${query ? `?${query}` : ""}`),
-  getProductRatingSummary: (slug: string) => api.get(`/api/v1/products/${slug}/reviews/summary`),
+    api.get<ApiPaginatedResponse<Review>>(`/api/v1/products/${slug}/reviews${query ? `?${query}` : ""}`),
+
+  getProductRatingSummary: (slug: string) =>
+    api.get<ApiResponse<ProductRatingSummary>>(`/api/v1/products/${slug}/reviews/summary`),
+
   submitReview: (payload: { productId: string; rating: number; title?: string; body?: string }) =>
-    api.post("/api/v1/reviews", payload),
+    api.post<ApiResponse<Review>, { productId: string; rating: number; title?: string; body?: string }>(
+      "/api/v1/reviews",
+      payload
+    ),
+
   checkReviewEligibility: (productId: string) =>
-    api.get<{ canReview: boolean }>(`/api/v1/reviews/eligibility?productId=${productId}`),
-  createProduct: (payload: any) => api.post("/api/v1/admin/products", payload),
+    api.get<ApiResponse<ReviewEligibility>>(`/api/v1/reviews/eligibility?productId=${productId}`),
+
+  createProduct: (payload: Record<string, unknown>) =>
+    api.post<ApiResponse<ProductDetails>>("/api/v1/admin/products", payload),
+
   getAdminProducts: (params?: GetProductsParams | string) => {
     if (typeof params === "string") {
-      return api.get(`/api/v1/admin/products${params ? `?${params}` : ""}`);
+      return api.get<ApiPaginatedResponse<Product>>(`/api/v1/admin/products${params ? `?${params}` : ""}`);
     }
 
     const query = new URLSearchParams();
@@ -79,63 +117,86 @@ export const catalogService = {
     if (params?.status) query.append("status", params.status);
 
     const qs = query.toString();
-    return api.get(`/api/v1/admin/products${qs ? `?${qs}` : ""}`);
+    return api.get<ApiPaginatedResponse<Product>>(`/api/v1/admin/products${qs ? `?${qs}` : ""}`);
   },
-  getAdminProduct: (id: string) => api.get(`/api/v1/admin/products/${id}`),
-  updateProduct: (id: string, payload: any) => api.patch(`/api/v1/admin/products/${id}`, payload),
-  publishProduct: (id: string) => api.post(`/api/v1/admin/products/${id}/publish`),
-  archiveProduct: (id: string) => api.post(`/api/v1/admin/products/${id}/archive`),
-  deleteProduct: (id: string) => api.delete(`/api/v1/admin/products/${id}`),
+
+  getAdminProduct: (id: string) =>
+    api.get<ApiResponse<ProductDetails>>(`/api/v1/admin/products/${id}`),
+
+  updateProduct: (id: string, payload: Record<string, unknown>) =>
+    api.patch<ApiResponse<ProductDetails>>(`/api/v1/admin/products/${id}`, payload),
+
+  publishProduct: (id: string) =>
+    api.post<ApiResponse<ProductDetails>>(`/api/v1/admin/products/${id}/publish`),
+
+  archiveProduct: (id: string) =>
+    api.post<ApiResponse<ProductDetails>>(`/api/v1/admin/products/${id}/archive`),
+
+  deleteProduct: (id: string) => api.delete<void>(`/api/v1/admin/products/${id}`),
 
   // Product Media & Thumbnails
   uploadProductThumbnail: (productId: string, file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return api.upload<any>(`/api/v1/admin/products/${productId}/thumbnail`, fd);
+    return api.upload<ApiResponse<{ url: string }>>(`/api/v1/admin/products/${productId}/thumbnail`, fd);
   },
+
   deleteProductThumbnail: (productId: string) =>
-    api.delete(`/api/v1/admin/products/${productId}/thumbnail`),
+    api.delete<void>(`/api/v1/admin/products/${productId}/thumbnail`),
 
   // Product Variants
-  createVariant: (productId: string, payload: any) =>
-    api.post(`/api/v1/admin/products/${productId}/variants`, payload),
-  createVariantsBatch: (productId: string, payload: any) =>
-    api.post(`/api/v1/admin/products/${productId}/variants/batch`, payload),
-  updateVariant: (variantId: string, payload: any) =>
-    api.patch(`/api/v1/admin/variants/${variantId}`, payload),
+  createVariant: (productId: string, payload: Record<string, unknown>) =>
+    api.post<ApiResponse<ProductVariant>>(`/api/v1/admin/products/${productId}/variants`, payload),
+
+  createVariantsBatch: (productId: string, payload: Record<string, unknown>) =>
+    api.post<ApiResponse<ProductVariant[]>>(`/api/v1/admin/products/${productId}/variants/batch`, payload),
+
+  updateVariant: (variantId: string, payload: Record<string, unknown>) =>
+    api.patch<ApiResponse<ProductVariant>>(`/api/v1/admin/variants/${variantId}`, payload),
+
   deleteVariant: (variantId: string) =>
-    api.delete(`/api/v1/admin/variants/${variantId}`),
+    api.delete<void>(`/api/v1/admin/variants/${variantId}`),
+
   setDefaultVariant: (productId: string, variantId: string) =>
-    api.post(`/api/v1/admin/products/${productId}/variants/default`, { variantId }),
+    api.post<ApiResponse<ProductVariant>>(`/api/v1/admin/products/${productId}/variants/default`, { variantId }),
+
   uploadVariantThumbnail: (variantId: string, file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return api.upload<any>(`/api/v1/admin/variants/${variantId}/thumbnail`, fd);
+    return api.upload<ApiResponse<{ url: string }>>(`/api/v1/admin/variants/${variantId}/thumbnail`, fd);
   },
+
   deleteVariantThumbnail: (variantId: string) =>
-    api.delete(`/api/v1/admin/variants/${variantId}/thumbnail`),
+    api.delete<void>(`/api/v1/admin/variants/${variantId}/thumbnail`),
+
   uploadVariantMedia: (variantId: string, file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return api.upload<any>(`/api/v1/admin/variants/${variantId}/media/upload`, fd);
+    return api.upload<ApiResponse<ProductVariantMedia>>(`/api/v1/admin/variants/${variantId}/media/upload`, fd);
   },
+
   detachVariantMedia: (variantId: string, mediaId: string) =>
-    api.delete(`/api/v1/admin/variants/${variantId}/media/${mediaId}`),
+    api.delete<void>(`/api/v1/admin/variants/${variantId}/media/${mediaId}`),
+
   getVariantMedia: (variantId: string) =>
-    api.get(`/api/v1/variants/${variantId}/media`),
+    api.get<ApiResponse<ProductVariantMedia[]>>(`/api/v1/variants/${variantId}/media`),
 
   // Category Admin
   createCategory: (payload: { name: string; parentId?: string }) =>
-    api.post("/api/v1/admin/categories", payload),
+    api.post<ApiResponse<AdminCategory>>("/api/v1/admin/categories", payload),
+
   updateCategory: (id: string, payload: { name?: string; parentId?: string }) =>
-    api.patch(`/api/v1/admin/categories/${id}`, payload),
-  deleteCategory: (id: string) => api.delete(`/api/v1/admin/categories/${id}`),
+    api.patch<ApiResponse<AdminCategory>>(`/api/v1/admin/categories/${id}`, payload),
+
+  deleteCategory: (id: string) => api.delete<void>(`/api/v1/admin/categories/${id}`),
 
   // Brand Admin
   createBrand: (payload: { name: string; link?: string }) =>
-    api.post("/api/v1/admin/brands", payload),
+    api.post<ApiResponse<Brand>>("/api/v1/admin/brands", payload),
+
   updateBrand: (id: string, payload: { name?: string; link?: string }) =>
-    api.patch(`/api/v1/admin/brands/${id}`, payload),
+    api.patch<ApiResponse<Brand>>(`/api/v1/admin/brands/${id}`, payload),
+
   deleteBrand: (id: string) =>
-    api.delete(`/api/v1/admin/brands/${id}`),
+    api.delete<void>(`/api/v1/admin/brands/${id}`),
 };

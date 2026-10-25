@@ -131,7 +131,7 @@ export default function OrderDetailsContent() {
       try {
         const res = await userService.getOrderById(String(id));
         if (cancelled) return;
-        const data = res?.data ?? res;
+        const data = (res?.data ?? res) as Order;
         setOrder(data);
       } catch (err: unknown) {
         if (!cancelled) setError(err instanceof Error ? err.message : t("error"));
