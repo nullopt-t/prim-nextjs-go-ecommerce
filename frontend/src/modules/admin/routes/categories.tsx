@@ -6,7 +6,6 @@ import CategoryProductsPanel from "@/modules/admin/components/CategoryProductsPa
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import { adminService } from "@/modules/admin/api/adminService";
 import type { AdminCategory } from "@/modules/catalog/types";
-import type { AdminAttribute } from "@/modules/admin/types";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
@@ -14,7 +13,30 @@ import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
 import { revalidateCatalog } from "@/app/actions/revalidateCatalog";
 
-function mapCategory(c: AdminCategory & { slug?: string; deletedAt?: string }) {
+interface CategoryItem {
+  id: string;
+  name: string;
+  slug: string;
+  parent: string;
+  parentId: string | undefined;
+  productsCount: number;
+  status: string;
+  icon: string;
+}
+
+interface CategoryAttribute {
+  id: string;
+  name: string;
+  categoryId: string;
+  key: string;
+  label?: string;
+  valueType?: string;
+  allowedValues?: string[];
+}
+
+type AdminCategoryRow = AdminCategory & { slug?: string; deletedAt?: string };
+
+function mapCategory(c: AdminCategoryRow): CategoryItem {
   return {
     id: c.id,
     name: c.name,
@@ -29,16 +51,16 @@ function mapCategory(c: AdminCategory & { slug?: string; deletedAt?: string }) {
 
 export function AdminCategories() {
   const t = useTranslations("admin");
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   // Full (unpaginated) category list backing the parent selector in the modal.
-  const [allCategories, setAllCategories] = useState<any[]>([]);
+  const [allCategories, setAllCategories] = useState<CategoryItem[]>([]);
   const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
-  const [allAttributes, setAllAttributes] = useState<any[]>([]);
+  const [allAttributes, setAllAttributes] = useState<CategoryAttribute[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<any>(null);
-  const [viewingCategoryAttrs, setViewingCategoryAttrs] = useState<any>(null);
+  const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
+  const [viewingCategoryAttrs, setViewingCategoryAttrs] = useState<CategoryItem | null>(null);
   const [newLinkedAttrName, setNewLinkedAttrName] = useState("");
   const [newLinkedAttrType, setNewLinkedAttrType] = useState("text");
   const [newLinkedAttrValues, setNewLinkedAttrValues] = useState("");
@@ -49,7 +71,7 @@ export function AdminCategories() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "map">("table");
   // Category highlighted in the map; its products are listed in the side panel.
-  const [selectedCategory, setSelectedCategory] = useState<any>(null);
+  const [selectedCategory, setSelectedCategory] = useState<CategoryItem | null>(null);
   const { cursor, hasPrev, next, prev, reset, page } = useCursorPagination();
 
   const loadCategories = useCallback(async () => {
@@ -60,12 +82,12 @@ export function AdminCategories() {
         catalogService.getAdminCategories({ cursor: cursor || undefined, pageSize: 20, keyset: true, search: debouncedSearch || undefined }),
         adminService.getAttributes()
       ]);
-      const list = res.data ?? [];
-      const attrs = attrRes.data ?? [];
+      const list: AdminCategoryRow[] = res.data ?? [];
+      const attrs = (attrRes.data ?? []) as unknown as CategoryAttribute[];
       setAllAttributes(attrs);
       // The admin endpoint includes soft-deleted rows; this table only renders
       // active taxonomy nodes (status is not modelled separately in the UI).
-      setCategories(list.filter((c: any) => !c.deletedAt).map(mapCategory));
+      setCategories(list.filter((c: AdminCategoryRow) => !c.deletedAt).map(mapCategory));
       if ("meta" in res && res.meta) setMeta(res.meta as CursorMeta);
     } catch {
       setLoadError(true);
@@ -78,13 +100,13 @@ export function AdminCategories() {
     try {
       // Admin listing so empty top-level parents are selectable as parents.
       const res = await catalogService.getAdminCategories(100);
-      const list = res.data ?? [];
-      const mapped = list.filter((c: any) => !c.deletedAt).map(mapCategory);
+      const list: AdminCategoryRow[] = res.data ?? [];
+      const mapped = list.filter((c: AdminCategoryRow) => !c.deletedAt).map(mapCategory);
       setAllCategories(mapped);
       // Keep the map selection pointing at the refreshed row, or clear it if the
       // category was deleted.
-      setSelectedCategory((current: any) =>
-        current ? mapped.find((c: any) => c.id === current.id) ?? null : null
+      setSelectedCategory((current) =>
+        current ? mapped.find((c: CategoryItem) => c.id === current.id) ?? null : null
       );
     } catch {
       // The parent selector simply stays empty if this auxiliary fetch fails.
@@ -115,7 +137,7 @@ export function AdminCategories() {
     status: "Active"
   });
 
-  const handleOpenModal = (cat: any = null) => {
+  const handleOpenModal = (cat: CategoryItem | null = null) => {
     if (cat) {
       setEditingCategory(cat);
       setFormData({ name: cat.name, slug: cat.slug, parentId: cat.parentId || "", status: cat.status });
@@ -148,7 +170,7 @@ export function AdminCategories() {
       void revalidateCatalog().catch(() => false);
       loadCategories();
       loadAllCategories();
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("categories.toast.saveFailed")));
     }
   };
@@ -161,7 +183,7 @@ export function AdminCategories() {
         void revalidateCatalog().catch(() => false);
         loadCategories();
         loadAllCategories();
-      } catch (err: any) {
+      } catch (err) {
         notify.error(apiErrorMessage(err, t("categories.toast.deleteFailed")));
       }
     }
@@ -209,7 +231,7 @@ export function AdminCategories() {
     }
   };
 
-  const handleAddAttributeValue = async (attr: any) => {
+  const handleAddAttributeValue = async (attr: CategoryAttribute) => {
     const value = (valueDrafts[attr.id] || "").trim();
     if (!value) return;
     const existing: string[] = Array.isArray(attr.allowedValues) ? attr.allowedValues : [];
@@ -230,7 +252,7 @@ export function AdminCategories() {
     }
   };
 
-  const handleRemoveAttributeValue = async (attr: any, value: string) => {
+  const handleRemoveAttributeValue = async (attr: CategoryAttribute, value: string) => {
     const existing: string[] = Array.isArray(attr.allowedValues) ? attr.allowedValues : [];
     setBusyValueId(attr.id);
     try {
@@ -244,7 +266,7 @@ export function AdminCategories() {
     }
   };
 
-  const handleDeleteAttribute = async (attr: any) => {
+  const handleDeleteAttribute = async (attr: CategoryAttribute) => {
     if (!confirm(t("categories.attrs.confirmUnlink", { name: attr.label || attr.key }))) return;
     try {
       await adminService.deleteAttribute(attr.id);
@@ -381,7 +403,7 @@ export function AdminCategories() {
           <CategoryTreeMap
             categories={allCategories}
             selectedId={selectedCategory?.id}
-            onSelect={(category) => setSelectedCategory(category)}
+            onSelect={(category) => setSelectedCategory(category as CategoryItem)}
             emptyLabel={t("categories.mapEmpty")}
             emptyNodeLabel={t("categories.mapEmptyNode")}
             itemsLabel={(count) => t("categories.items", { count })}
