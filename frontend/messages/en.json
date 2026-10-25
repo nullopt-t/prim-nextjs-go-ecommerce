@@ -1368,7 +1368,9 @@
         "priceInvalid": "Enter a valid price of 0 or more.",
         "compareInvalid": "Enter a valid original price of 0 or more, or leave it empty.",
         "stockRequired": "Enter the available stock.",
-        "stockInvalid": "Enter a whole number of 0 or more."
+        "stockInvalid": "Enter a whole number of 0 or more.",
+        "titleRequired": "Enter the product title.",
+        "categoryRequired": "Select a category."
       }
     },
     "promotions": {

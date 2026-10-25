@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import { adminService } from "@/modules/admin/api/adminService";
+import { ProductCoreFields } from "@/modules/admin/components/ProductCoreFields";
 import { SimplePricingFields } from "@/modules/admin/components/SimplePricingFields";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
@@ -1497,52 +1498,28 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
               </p>
             </div>
 
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">{t("products.form.title")} *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder={t("products.form.titlePlaceholder")}
-                  className="w-full px-3.5 py-2.5 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">{t("products.form.category")} *</label>
-                <select
-                  value={formData.categoryId}
-                  onChange={(e) => {
-                    const categoryId = e.target.value;
-                    const cat = categories.find((c: any) => c.id === categoryId);
-                    setFormData({ ...formData, categoryId, category: cat?.name || formData.category });
-                  }}
-                  className="w-full px-3.5 py-2.5 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-                >
-                  {categories.map((c, cIdx) => (
-                    <option key={c.id ? `cat-opt-${c.id}` : `cat-opt-${cIdx}`} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-muted-foreground">
-                  {t("products.wizard.selectedCategoryNotice", { category: currentCategoryName })}
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">{t("products.form.description")}</label>
-                <textarea
-                  rows={4}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder={t("products.form.descriptionPlaceholder")}
-                  className="w-full px-3.5 py-2.5 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-                />
-              </div>
-            </div>
+            <ProductCoreFields
+              value={{
+                name: formData.name,
+                categoryId: formData.categoryId,
+                description: formData.description,
+              }}
+              categories={categories}
+              currentCategoryName={currentCategoryName}
+              onChange={(patch) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  ...patch,
+                  ...(patch.categoryId
+                    ? {
+                        category:
+                          categories.find((c: any) => c.id === patch.categoryId)
+                            ?.name || prev.category,
+                      }
+                    : {}),
+                }))
+              }
+            />
           </div>
         )}
 
