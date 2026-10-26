@@ -4,7 +4,8 @@ import { Plus, Minus, Search, AlertTriangle } from "lucide-react";
 import {
   INITIAL_VENDOR_PRODUCTS,
   getLocalVendorData,
-  setLocalVendorData
+  setLocalVendorData,
+  type VendorProduct
 } from "../data/mockVendorData";
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import { useOptionalCatalogContext } from "@/modules/catalog/model/catalogContext";
@@ -13,12 +14,33 @@ import { useTranslations } from "next-intl";
 
 import { useVendorContext } from "./vendorContext";
 
+interface VendorProductRaw {
+  id: string;
+  vendorId?: string;
+  vendorName?: string;
+  sku?: string;
+  name?: string;
+  product?: { en?: string; ar?: string } | string;
+  title?: string;
+  category?: string | { name?: string };
+  price?: string | number;
+  cost?: number;
+  stock?: number;
+  stockCount?: number;
+  status?: string;
+  salesCount?: number;
+  img?: string;
+  image?: string;
+}
+
 export function VendorInventory() {
   const t = useTranslations("vendor");
   const { vendor } = useVendorContext();
   const { refreshCatalog } = useOptionalCatalogContext() || {};
 
-  const [products, setProducts] = useState(() => getLocalVendorData("products", INITIAL_VENDOR_PRODUCTS));
+  const [products, setProducts] = useState<VendorProduct[]>(() =>
+    getLocalVendorData("products", INITIAL_VENDOR_PRODUCTS)
+  );
   const [search, setSearch] = useState("");
   const [filterLowStock, setFilterLowStock] = useState(false);
 
@@ -26,22 +48,27 @@ export function VendorInventory() {
     async function loadCatalog() {
       try {
         const res = await catalogService.getProducts();
-        const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
+        const list: VendorProductRaw[] = res?.data ?? [];
         if (list.length > 0) {
           const serverProducts = list
-            .filter((p: any) => !p.vendorId || p.vendorId === (vendor?.id || "v-1"))
-            .map((p: any) => ({
+            .filter((p: VendorProductRaw) => !p.vendorId || p.vendorId === (vendor?.id || "v-1"))
+            .map((p: VendorProductRaw) => ({
               id: p.id,
               vendorId: p.vendorId || vendor?.id || "v-1",
-              name: p.product?.en || p.name || p.title || "Product",
+              vendorName: p.vendorName || vendor?.name || "SoundMaster Studio",
+              name: (typeof p.product === "object" ? p.product?.en : undefined) || p.name || p.title || "Product",
               sku: p.sku || `SKU-${p.id}`,
               category: typeof p.category === "string" ? p.category : "Electronics",
+              price: typeof p.price === "number" ? p.price : parseFloat(String(p.price || "0").replace(/[^0-9.]/g, "")) || 0,
+              cost: p.cost ? parseFloat(String(p.cost)) : 45.00,
               stock: p.stock !== undefined ? p.stock : (p.stockCount ?? 20),
-              status: p.status || ((p.stock ?? 20) > 0 ? "Active" : "Out of Stock")
+              status: p.status || ((p.stock ?? 20) > 0 ? "Active" : "Out of Stock"),
+              salesCount: p.salesCount || Math.floor(Math.random() * 50 + 10),
+              image: p.img || p.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80"
             }));
 
           if (serverProducts.length > 0) {
-            setProducts(serverProducts as any);
+            setProducts(serverProducts);
             setLocalVendorData("products", serverProducts);
           }
         }
@@ -52,7 +79,7 @@ export function VendorInventory() {
     loadCatalog();
   }, [vendor?.id]);
 
-  const saveProducts = (updated: any[]) => {
+  const saveProducts = (updated: VendorProduct[]) => {
     setProducts(updated);
     setLocalVendorData("products", updated);
   };
@@ -79,7 +106,7 @@ export function VendorInventory() {
     let updatedStock = 0;
     let updatedStatus = "Active";
 
-    const updated = products.map((p: any) => {
+    const updated = products.map((p: VendorProduct) => {
       if (p.id === id) {
         const newStock = Math.max(0, (p.stock || 0) + delta);
         const newStatus = newStock === 0 ? "Out of Stock" : newStock < 10 ? "Low Stock" : "Active";
@@ -100,7 +127,7 @@ export function VendorInventory() {
 
     const newStatus = parsed === 0 ? "Out of Stock" : parsed < 10 ? "Low Stock" : "Active";
 
-    const updated = products.map((p: any) => {
+    const updated = products.map((p: VendorProduct) => {
       if (p.id === id) {
         return { ...p, stock: parsed, status: newStatus };
       }
@@ -110,7 +137,7 @@ export function VendorInventory() {
     syncStockToApi(id, parsed, newStatus);
   };
 
-  const filtered = products.filter((p: any) => {
+  const filtered = products.filter((p: VendorProduct) => {
     const matchesSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.sku.toLowerCase().includes(search.toLowerCase());
@@ -118,7 +145,7 @@ export function VendorInventory() {
     return matchesSearch && matchesLowStock;
   });
 
-  const lowStockCount = products.filter((p: any) => p.stock < 10).length;
+  const lowStockCount = products.filter((p: VendorProduct) => p.stock < 10).length;
 
   return (
     <div className="space-y-6 w-full">
@@ -179,7 +206,7 @@ export function VendorInventory() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {filtered.map((prod: any) => (
+              {filtered.map((prod: VendorProduct) => (
                 <tr key={prod.id} className="hover:bg-secondary/20 transition-colors">
                   <td className="py-3.5 pl-4">
                     <div className="font-semibold text-foreground">{prod.name}</div>
