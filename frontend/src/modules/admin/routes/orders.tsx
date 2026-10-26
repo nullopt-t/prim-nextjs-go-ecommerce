@@ -4,18 +4,33 @@ import { useRouter } from "@/shared/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Search, Filter, Eye, Download } from "lucide-react";
 import { adminService } from "@/modules/admin/api/adminService";
-import type { Order } from "@/modules/orders/types";
+import type { Order, OrderItem } from "@/modules/orders/types";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { ErrorState } from "@/shared/ui/errorState";
 import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
 
+interface OrderView {
+  id: string;
+  customer: string;
+  email: string;
+  date: string;
+  total: string;
+  discount: string | null;
+  couponCode: string | null;
+  status: string;
+  fulfillmentStatus: string;
+  paymentStatus: string;
+  items: OrderItem[];
+  history: { date: string; note: string }[];
+}
+
 export function AdminOrders() {
   const navigate = useRouter();
   const t = useTranslations("admin");
   const locale = useLocale();
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<OrderView[]>([]);
   const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -51,11 +66,10 @@ export function AdminOrders() {
         paymentStatus: so.paymentStatus
           ? String(so.paymentStatus).toLowerCase()
           : "unknown",
-        items: Array.isArray(so.items) ? so.items.length : 0,
         shippingAddress: so.shippingAddress ? `${so.shippingAddress.street || ""}, ${so.shippingAddress.city || ""}` : "Online Order",
         paymentMethod: so.paymentMethod || "—",
         trackingNumber: so.trackingNumber || "",
-        itemsList: so.items || [],
+        items: so.items || [],
         history: [
           { date: formatDateTime(so.createdAt, locale), note: "Order placed successfully." }
         ]
@@ -78,7 +92,7 @@ export function AdminOrders() {
       await adminService.updateOrderStatus(id, newStatus.toLowerCase());
       notify.success(t("orders.toast.statusUpdated", { status: newStatus }));
       loadOrders();
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("orders.toast.statusUpdateFailed")));
       loadOrders();
     }
@@ -93,7 +107,7 @@ export function AdminOrders() {
         status: statusFilter !== "all" ? statusFilter : undefined,
       });
       notify.success(t("reports.exportStarted", { type: t("reports.types.orders") }));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("reports.exportFailed")));
     } finally {
       setExporting(false);
