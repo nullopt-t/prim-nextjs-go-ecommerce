@@ -8,7 +8,21 @@ import { useAuthContext } from "@/modules/auth/model/authContext";
 import { useCartContext } from "@/modules/cart/model/cartContext";
 import { notify } from "@/shared/lib/notify";
 import { normalizeProduct } from "@/modules/catalog/model/catalogContext";
+import { CardDetails } from "@/shared/ui/productsCard";
 import { Link } from "@/shared/i18n/navigation";
+
+interface WishlistItemView {
+  id: string;
+  productId?: string;
+  slug?: string;
+  title?: string;
+  product?: { en?: string; ar?: string } | string;
+  variantId?: string;
+  wishlistItemId?: string;
+  price?: number | string;
+  img?: string;
+  defaultVariantId?: string;
+}
 
 export default function WishlistContent() {
   const t = useTranslations("wishlist");
@@ -19,8 +33,8 @@ export default function WishlistContent() {
   const [isAddingAll, setIsAddingAll] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
-  const items = Array.isArray(wishlistItems)
-    ? wishlistItems.map(normalizeProduct).filter(Boolean)
+  const items: WishlistItemView[] = Array.isArray(wishlistItems)
+    ? wishlistItems.map(normalizeProduct).filter(Boolean) as WishlistItemView[]
     : [];
 
   const handleAddAllToCart = async () => {
@@ -65,8 +79,11 @@ export default function WishlistContent() {
     }
   };
 
-  const handleRemove = async (item: any) => {
-    const productName = typeof item.product === "object" ? (item.product.ar || item.product.en) : item.title || "Product";
+  const handleRemove = async (item: WishlistItemView) => {
+    const productName =
+      typeof item.product === "object"
+        ? item.product?.ar || item.product?.en || item.title || "Product"
+        : item.title || "Product";
     try {
       if (item.wishlistItemId) {
         await removeWishlistItem(item.wishlistItemId, productName);
@@ -171,10 +188,10 @@ export default function WishlistContent() {
         </div>
       ) : (
         <ProductsGrid
-          products={items}
+          products={items as (CardDetails & { slug?: string })[]}
           className="grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
           isWishlist={true}
-          onRemoveItem={handleRemove}
+          onRemoveItem={handleRemove as (item: CardDetails & { slug?: string }) => void}
         />
       )}
     </div>
