@@ -96,7 +96,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       }
       notify.success(productName ? t("toast.addedNamed", { name: productName }) : t("toast.added"));
       return true;
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("toast.addFailed")));
       return false;
     }
@@ -121,7 +121,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       await wishlistService.removeByProductId(productId, variantId);
       notify.info(productName ? t("toast.itemRemoved", { name: productName }) : t("toast.removed"));
       return true;
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("toast.removeFailed")));
       await refreshWishlist();
       return false;
@@ -139,7 +139,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       await wishlistService.removeItem(itemId);
       notify.info(productName ? t("toast.itemRemoved", { name: productName }) : t("toast.removed"));
       return true;
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("toast.itemRemoveFailed")));
       await refreshWishlist();
       return false;
@@ -164,7 +164,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       await wishlistService.clearWishlist();
       notify.success(t("toast.cleared"));
       return true;
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("toast.clearFailed")));
       await refreshWishlist();
       return false;
