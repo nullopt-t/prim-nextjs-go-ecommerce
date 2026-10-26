@@ -147,7 +147,7 @@ export default function Form({
           <FormButton
             type={formType}
             payload={inputs}
-            handle={handleSubmit}
+            handle={handleSubmit as (type: string, payload: unknown) => void}
             isLoading={isLoading}
             disabled={
               formType === "verify"

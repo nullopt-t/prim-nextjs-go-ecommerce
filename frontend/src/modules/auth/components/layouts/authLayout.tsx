@@ -1,7 +1,6 @@
 "use client";
 
 import { Brand } from "@/shared/ui/Brand";
-import { Link } from "@/shared/i18n/navigation";
 import { House, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/shared/theme";
 import { useTranslations } from "next-intl";

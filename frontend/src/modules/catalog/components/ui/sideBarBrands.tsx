@@ -24,7 +24,7 @@ export default function SideBarBrands() {
     <div className="border-b border-border pb-5">
       <SideBarTitle title={t("brands")} />
       <div className="flex flex-col gap-2.5">
-        {brandList.slice(0, 6).map((brand: any) => {
+        {brandList.slice(0, 6).map((brand: { id: string; name: string; brand?: string }) => {
           const brandName = brand.name || brand.brand || tProducts("sideBar.brandFallback");
           const isSelected = filters.brand?.toLowerCase() === brandName.toLowerCase();
           return (

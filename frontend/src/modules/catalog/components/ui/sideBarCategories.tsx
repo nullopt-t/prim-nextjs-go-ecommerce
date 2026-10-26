@@ -55,10 +55,10 @@ export default function SideBarCategories() {
               {t("allCategories")}
             </Link>
           </li>
-          {categories.map((category: any) => {
+          {categories.map((category: { id: string; name: string | { en?: string; ar?: string }; slug?: string }) => {
             const catName = typeof category.name === "object"
-              ? (category.name.en || category.name.ar)
-              : (category.name || category.title);
+              ? (category.name.en || category.name.ar || "")
+              : (category.name || "");
             const catSlug = category.slug || catName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
             const categoryId = category.id;

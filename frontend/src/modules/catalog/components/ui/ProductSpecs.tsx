@@ -6,7 +6,7 @@ interface ProductSpecsProps {
 	category?: string;
 	brand?: string;
 	description?: string;
-	attributes?: Record<string, any>;
+	attributes?: Record<string, unknown>;
 	condition?: string;
 	warranty?: string;
 }

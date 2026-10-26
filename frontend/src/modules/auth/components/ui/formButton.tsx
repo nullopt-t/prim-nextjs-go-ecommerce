@@ -5,8 +5,8 @@ import { Loader2 } from "lucide-react";
 
 interface FormButtonProps {
   type: string;
-  payload: any;
-  handle: (type: string, payload: any) => void;
+  payload: Record<string, unknown>;
+  handle: (type: string, payload: unknown) => void;
   isLoading?: boolean;
   disabled?: boolean;
 }

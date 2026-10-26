@@ -50,7 +50,7 @@ export function useAddToCart() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const mutate = async (payload: any) => {
+  const mutate = async (payload: Record<string, unknown>) => {
     setLoading(true);
     setErrorMsg(null);
     const result = await addToCart(payload);
