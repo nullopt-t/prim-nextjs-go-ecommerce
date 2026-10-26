@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import { adminService } from "@/modules/admin/api/adminService";
-import type { AdminCategory, Product } from "@/modules/catalog/types";
+import type { AdminCategory, Product, ProductVariant } from "@/modules/catalog/types";
 import type { InventoryLedger } from "@/modules/admin/types";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
@@ -25,13 +25,43 @@ import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
 import { normalizeMediaUrl } from "@/shared/lib/media";
 
+interface ProductView {
+  id: string;
+  variantId?: string;
+  name: string;
+  sku: string;
+  category: string | { name?: string };
+  brand: string | { name?: string };
+  price: number;
+  compareAtPrice: number | null;
+  cost: number;
+  stock: number;
+  lowStockThreshold: number;
+  status: string;
+  image: string;
+  variants: ProductVariant[];
+  salesCount: number;
+}
+
+interface AuditLogEntry {
+  id: string;
+  productName: string;
+  variantTitle: string;
+  sku: string;
+  change: string;
+  quantity: number;
+  reason: string;
+  date: string;
+  ledgerId: string;
+}
+
 export function AdminProducts() {
   const t = useTranslations("admin");
   const router = useRouter();
 
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<ProductView[]>([]);
   const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
@@ -39,8 +69,8 @@ export function AdminProducts() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
 
-  const [auditProduct, setAuditProduct] = useState<any>(null);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditProduct, setAuditProduct] = useState<ProductView | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
 
   const { cursor, hasPrev, next, prev, reset, page } = useCursorPagination();
@@ -56,13 +86,14 @@ export function AdminProducts() {
       if (selectedCategory !== "All") productQuery.set("category", selectedCategory);
       if (selectedStatus !== "All") productQuery.set("status", selectedStatus);
 
-      const [prodsRes, catsRes]: [any, any] = await Promise.all([
+      const [prodsRes, catsRes] = await Promise.all([
         catalogService.getAdminProducts(productQuery.toString()),
         catalogService.getAdminCategories(100),
       ]);
 
-      const catList = (catsRes.data ?? [])
-        .filter((category: any) => !category.deletedAt);
+      const catList = (catsRes.data ?? []).filter(
+        (category: AdminCategory & { deletedAt?: string }) => !category.deletedAt
+      );
       setCategories(catList);
 
       const list = prodsRes.data ?? [];
@@ -102,7 +133,7 @@ export function AdminProducts() {
         };
       });
       setProducts(formatted);
-      if (prodsRes?.meta) setMeta(prodsRes.meta);
+      if (prodsRes?.meta) setMeta(prodsRes.meta as CursorMeta);
     } catch {
       setLoadError(true);
     } finally {
@@ -123,7 +154,7 @@ export function AdminProducts() {
     return () => clearTimeout(timer);
   }, [search, reset]);
 
-  const handleViewAudit = async (prod: any) => {
+  const handleViewAudit = async (prod: ProductView) => {
     setAuditProduct(prod);
     setLoadingAudit(true);
     try {
@@ -159,7 +190,7 @@ export function AdminProducts() {
       setProducts((prev) => prev.filter((p) => p.id !== id));
       void revalidateCatalog().catch(() => false);
       notify.success(t("products.toast.deleted"));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.toast.deleteFailed")));
     }
   };
@@ -275,7 +306,10 @@ export function AdminProducts() {
                           </div>
                           <div className="text-[10px] text-muted-foreground">
                             {t("products.brandLabel", {
-                              name: typeof prod.brand === "object" ? prod.brand?.name : String(prod.brand || "PRIM"),
+                              name:
+                                typeof prod.brand === "object"
+                                  ? prod.brand?.name || "PRIM"
+                                  : String(prod.brand || "PRIM"),
                             })}
                           </div>
                         </div>
@@ -283,7 +317,9 @@ export function AdminProducts() {
                     </td>
                     <td className="py-3.5 font-mono text-muted-foreground font-medium">{prod.sku}</td>
                     <td className="py-3.5 font-medium text-foreground">
-                      {typeof prod.category === "object" ? prod.category?.name : String(prod.category || "General")}
+                      {(typeof prod.category === "object"
+                        ? prod.category?.name || "General"
+                        : String(prod.category || "General"))}
                     </td>
                     <td className="py-3.5">
                       <div className="font-bold text-foreground">EGP {prod.price.toFixed(2)}</div>
@@ -391,7 +427,7 @@ export function AdminProducts() {
 
             {auditProduct.variants && auditProduct.variants.length > 1 && (
               <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-secondary/20 border border-border">
-                {auditProduct.variants.map((v: any, vIdx: number) => (
+                {auditProduct.variants.map((v: ProductVariant, vIdx: number) => (
                   <span
                     key={v.id || vIdx}
                     className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-background border border-border text-[11px]"
