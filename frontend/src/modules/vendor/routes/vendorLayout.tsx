@@ -12,7 +12,7 @@ import {
   X,
   UserCheck
 } from "lucide-react";
-import { INITIAL_VENDORS } from "../data/mockVendorData";
+import { type Vendor } from "../data/mockVendorData";
 import { vendorService } from "@/modules/vendor/api/vendorService";
 import { useTranslations } from "next-intl";
 
@@ -23,22 +23,6 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { vendor: selectedVendor, setSelectedVendor, vendors, setVendors } = useVendorContext();
 
-  const loadVendors = async () => {
-    try {
-      const res = await vendorService.getVendors();
-      const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
-      if (list.length > 0) {
-        setVendors(list);
-        setSelectedVendor((prev) => {
-          const matching = list.find((v: any) => v.id === prev.id);
-          return matching || list[0];
-        });
-      }
-    } catch {
-      // Graceful fallback to initial vendors
-    }
-  };
-
   useEffect(() => {
     let isMounted = true;
     vendorService.getVendors().then((res) => {
@@ -47,7 +31,7 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
       if (list.length > 0) {
         setVendors(list);
         setSelectedVendor((prev) => {
-          const matching = list.find((v: any) => v.id === prev.id);
+          const matching = list.find((v: Vendor) => v.id === prev.id);
           return matching || list[0];
         });
       }
@@ -100,12 +84,12 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
             <select
               value={selectedVendor.id}
               onChange={(e) => {
-                const found = vendors.find((v: any) => v.id === e.target.value);
+                const found = vendors.find((v: Vendor) => v.id === e.target.value);
                 if (found) setSelectedVendor(found);
               }}
               className="bg-transparent font-semibold text-foreground focus:outline-none cursor-pointer"
             >
-              {vendors.map((v: any) => (
+              {vendors.map((v: Vendor) => (
                 <option key={v.id} value={v.id}>
                   {v.name}
                 </option>
@@ -148,10 +132,10 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
               <span>{t("layout.commissionRate")}</span>
               <span className="font-bold">{selectedVendor.commissionRate}%</span>
             </div>
-            {(selectedVendor as any)?.balance !== undefined && (
+            {(selectedVendor as Vendor)?.balance !== undefined && (
               <div className="mt-1 text-[11px] font-medium text-muted-foreground flex items-center justify-between">
                 <span>{t("layout.availableBalance")}</span>
-                <span className="font-bold text-foreground">EGP {Number((selectedVendor as any)?.balance).toFixed(2)}</span>
+                <span className="font-bold text-foreground">EGP {Number((selectedVendor as Vendor)?.balance).toFixed(2)}</span>
               </div>
             )}
           </div>
