@@ -46,13 +46,14 @@ export function VendorProvider({ children }: { children: React.ReactNode }) {
 
   const loadVendors = async () => {
     try {
-      const res: any = await vendorService.getVendors();
-      const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
+      const res = await vendorService.getVendors();
+      const data = Array.isArray(res) ? res : (res as { data?: unknown })?.data;
+      const list: Vendor[] = Array.isArray(data) ? data : [];
       if (list.length > 0) {
         setVendors(list);
         setSelectedVendor((prev) => list.find((v: Vendor) => v.id === prev.id) || list[0]);
       }
-    } catch (e) {
+    } catch {
       // Graceful fallback
     } finally {
       setLoading(false);
