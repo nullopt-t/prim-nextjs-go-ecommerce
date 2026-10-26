@@ -4,7 +4,8 @@ import { DollarSign, Landmark, CheckCircle2, Clock, X } from "lucide-react";
 import {
   INITIAL_VENDOR_PAYOUTS,
   getLocalVendorData,
-  setLocalVendorData
+  setLocalVendorData,
+  type VendorPayout
 } from "../data/mockVendorData";
 import { vendorService } from "@/modules/vendor/api/vendorService";
 import { notify } from "@/shared/lib/notify";
@@ -60,7 +61,7 @@ export function VendorPayouts() {
     loadPayouts();
   }, [vendor?.id, vendor?.balance]);
 
-  const savePayouts = (updated: any[]) => {
+  const savePayouts = (updated: VendorPayout[]) => {
     setPayouts(updated);
     setLocalVendorData("payouts", updated);
   };
@@ -214,7 +215,7 @@ export function VendorPayouts() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {payouts.map((p: any) => (
+              {payouts.map((p) => (
                 <tr key={p.id} className="hover:bg-secondary/20 transition-colors">
                   <td className="py-3.5 pl-6 font-mono font-bold text-foreground">{p.id}</td>
                   <td className="py-3.5 font-bold text-foreground text-sm">{p.amount}</td>
