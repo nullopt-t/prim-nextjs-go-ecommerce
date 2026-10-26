@@ -14,18 +14,38 @@ import {
   Calendar,
 } from "lucide-react";
 import { catalogService } from "@/modules/catalog/api/catalogService";
+import type { AdminCategory, Brand } from "@/modules/catalog/types";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
 import { formatDateTime } from "@/shared/lib/datetime";
+
+interface DraftProductRaw {
+  id: string;
+  ID?: string;
+  title?: string;
+  Title?: string;
+  status?: string;
+  Status?: string;
+  categoryId?: string;
+  category?: string | { id?: string; name?: string } | null;
+  CategoryID?: string;
+  brandId?: string;
+  brand?: string | { id?: string; name?: string } | null;
+  BrandID?: string;
+  updatedAt?: string;
+  UpdatedAt?: string;
+  createdAt?: string;
+  CreatedAt?: string;
+}
 
 export function AdminProductDrafts() {
   const t = useTranslations("admin");
   const router = useRouter();
   const locale = useLocale();
 
-  const [drafts, setDrafts] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [brands, setBrands] = useState<any[]>([]);
+  const [drafts, setDrafts] = useState<DraftProductRaw[]>([]);
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
@@ -34,14 +54,14 @@ export function AdminProductDrafts() {
       setLoading(true);
       setLoadError(false);
 
-      const [prodsRes, catsRes, brandsRes]: [any, any, any] = await Promise.all([
+      const [prodsRes, catsRes, brandsRes] = await Promise.all([
         catalogService.getAdminProducts({ pageSize: 100, status: "draft" }),
         catalogService.getAdminCategories(100),
         catalogService.getBrands(100),
       ]);
 
       const catList = (Array.isArray(catsRes) ? catsRes : (Array.isArray(catsRes?.data) ? catsRes.data : []))
-        .filter((c: any) => !c.deletedAt);
+        .filter((c: AdminCategory & { deletedAt?: string }) => !c.deletedAt);
       setCategories(catList);
 
       const brandList = Array.isArray(brandsRes) ? brandsRes : (Array.isArray(brandsRes?.data) ? brandsRes.data : []);
@@ -49,7 +69,7 @@ export function AdminProductDrafts() {
 
       const rawItems = Array.isArray(prodsRes) ? prodsRes : (Array.isArray(prodsRes?.data) ? prodsRes.data : []);
       // Filter strictly to draft items (handling both camelCase and Go PascalCase JSON)
-      const draftList = rawItems.filter((p: any) => {
+      const draftList = rawItems.filter((p: DraftProductRaw) => {
         const s = String(p.status || p.Status || "").toLowerCase();
         return s === "draft";
       });
@@ -66,13 +86,13 @@ export function AdminProductDrafts() {
     loadData();
   }, [loadData]);
 
-  const handleDeleteDraft = async (id: string, title: string) => {
+  const handleDeleteDraft = async (id: string) => {
     if (!confirm(t("products.confirmDelete"))) return;
     try {
       await catalogService.deleteProduct(id);
       setDrafts((prev) => prev.filter((d) => (d.id || d.ID) !== id));
       notify.success(t("products.toast.deleted"));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.toast.deleteFailed")));
     }
   };
@@ -143,10 +163,10 @@ export function AdminProductDrafts() {
       ) : (
         <div className="grid grid-cols-1 gap-3">
           {drafts.map((draft, idx) => {
-            const draftId = draft.id || draft.ID;
+            const draftId = draft.id || draft.ID || '';
             const draftTitle = draft.title || draft.Title;
-            const catId = draft.categoryId || draft.category?.id || draft.CategoryID;
-            const brandId = draft.brandId || draft.brand?.id || draft.BrandID;
+            const catId = draft.categoryId || (typeof draft.category === "object" ? draft.category?.id : undefined) || draft.CategoryID;
+            const brandId = draft.brandId || (typeof draft.brand === "object" ? draft.brand?.id : undefined) || draft.BrandID;
             const cat = categories.find((c) => c.id === catId);
             const categoryName =
               (typeof draft.category === "object" ? draft.category?.name : draft.category) ||
@@ -201,7 +221,7 @@ export function AdminProductDrafts() {
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   <button
                     type="button"
-                    onClick={() => handleDeleteDraft(draftId, draftTitle)}
+                    onClick={() => handleDeleteDraft(draftId)}
                     className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
                     title={t("products.deleteProduct")}
                   >
