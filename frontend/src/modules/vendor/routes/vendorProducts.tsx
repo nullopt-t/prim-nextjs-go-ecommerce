@@ -4,7 +4,8 @@ import { Search, Plus, Edit2, Trash2, X } from "lucide-react";
 import {
   INITIAL_VENDOR_PRODUCTS,
   getLocalVendorData,
-  setLocalVendorData
+  setLocalVendorData,
+  type VendorProduct
 } from "../data/mockVendorData";
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import { useOptionalCatalogContext } from "@/modules/catalog/model/catalogContext";
@@ -13,36 +14,57 @@ import { useTranslations } from "next-intl";
 
 import { useVendorContext } from "./vendorContext";
 
+interface VendorProductRaw {
+  id: string;
+  vendorId?: string;
+  vendorName?: string;
+  sku?: string;
+  name?: string;
+  product?: { en?: string; ar?: string } | string;
+  title?: string;
+  category?: string | { name?: string };
+  price?: string | number;
+  cost?: number;
+  stock?: number;
+  stockCount?: number;
+  status?: string;
+  salesCount?: number;
+  img?: string;
+  image?: string;
+}
+
 export function VendorProducts() {
   const t = useTranslations("vendor");
   const { vendor } = useVendorContext();
   const { refreshCatalog } = useOptionalCatalogContext() || {};
 
-  const [products, setProducts] = useState(() => getLocalVendorData("products", INITIAL_VENDOR_PRODUCTS));
+  const [products, setProducts] = useState<VendorProduct[]>(() =>
+    getLocalVendorData("products", INITIAL_VENDOR_PRODUCTS)
+  );
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [editingProduct, setEditingProduct] = useState<VendorProduct | null>(null);
 
   useEffect(() => {
     async function loadCatalog() {
       try {
         const res = await catalogService.getProducts();
-        const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
+        const list: VendorProductRaw[] = res?.data ?? [];
         if (list.length > 0) {
           // Map backend products to vendor products format if needed
           const serverProducts = list
-            .filter((p: any) => !p.vendorId || p.vendorId === (vendor?.id || "v-1"))
-            .map((p: any) => ({
+            .filter((p: VendorProductRaw) => !p.vendorId || p.vendorId === (vendor?.id || "v-1"))
+            .map((p: VendorProductRaw) => ({
               id: p.id,
               vendorId: p.vendorId || vendor?.id || "v-1",
               vendorName: p.vendorName || vendor?.name || "SoundMaster Studio",
-              name: p.product?.en || p.name || p.title || "Product",
+              name: (typeof p.product === "object" ? p.product?.en : undefined) || p.name || p.title || "Product",
               sku: p.sku || `SKU-${p.id}`,
               category: typeof p.category === "string" ? p.category : "Electronics",
               price: typeof p.price === "number" ? p.price : parseFloat(String(p.price).replace(/[^0-9.]/g, "")) || 0,
-              cost: p.cost ? parseFloat(p.cost) : 45.00,
+              cost: p.cost ? parseFloat(String(p.cost)) : 45.00,
               stock: p.stock !== undefined ? p.stock : (p.stockCount ?? 20),
-              status: p.status || (p.stock > 0 ? "Active" : "Out of Stock"),
+              status: p.status || ((p.stock ?? 0) > 0 ? "Active" : "Out of Stock"),
               salesCount: p.salesCount || Math.floor(Math.random() * 50 + 10),
               image: p.img || p.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80"
             }));
@@ -69,7 +91,7 @@ export function VendorProducts() {
     image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80"
   });
 
-  const saveProducts = (updated: any[]) => {
+  const saveProducts = (updated: VendorProduct[]) => {
     setProducts(updated);
     setLocalVendorData("products", updated);
   };
@@ -97,7 +119,7 @@ export function VendorProducts() {
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (prod: any) => {
+  const handleOpenEdit = (prod: VendorProduct) => {
     setEditingProduct(prod);
     setFormData({
       name: prod.name,
@@ -133,7 +155,7 @@ export function VendorProducts() {
         image: formData.image
       };
 
-      const updated = products.map((p: any) =>
+      const updated = products.map((p: VendorProduct) =>
         p.id === editingProduct.id
           ? {
               ...p,
@@ -186,7 +208,7 @@ export function VendorProducts() {
 
   const handleDelete = async (id: string) => {
     if (confirm(t("products.confirmDelete"))) {
-      saveProducts(products.filter((p: any) => p.id !== id));
+      saveProducts(products.filter((p: VendorProduct) => p.id !== id));
       try {
         await catalogService.deleteProduct(id);
         refreshCatalog?.();
@@ -198,7 +220,7 @@ export function VendorProducts() {
   };
 
   const filtered = products.filter(
-    (p: any) =>
+    (p: VendorProduct) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.sku.toLowerCase().includes(search.toLowerCase()) ||
       p.category.toLowerCase().includes(search.toLowerCase())
@@ -254,7 +276,7 @@ export function VendorProducts() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {filtered.map((prod: any) => (
+              {filtered.map((prod: VendorProduct) => (
                 <tr key={prod.id} className="hover:bg-secondary/20 transition-colors">
                   <td className="py-3.5 pl-4">
                     <div className="flex items-center gap-3">
