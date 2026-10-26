@@ -17,7 +17,7 @@ export function AdminPayments() {
   const { user } = useAuthContext();
   const isSuperadmin = user?.role === "superadmin";
 
-  const [payments, setPayments] = useState<any[]>([]);
+  const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -31,7 +31,7 @@ export function AdminPayments() {
     try {
       setLoading(true);
       setLoadError(false);
-      const res: any = await adminService.getPayments({
+      const res = await adminService.getPayments({
         cursor: cursor || undefined,
         pageSize: 50,
         dateFrom: dateFrom || undefined,
@@ -41,14 +41,16 @@ export function AdminPayments() {
       setPayments(list.map((p: AdminPayment) => ({
         id: p.id,
         orderId: p.orderId,
-        customer: p.customerEmail ? p.customerEmail.split("@")[0] : "—",
+        customerEmail: p.customerEmail ? p.customerEmail.split("@")[0] : "—",
         email: p.customerEmail || "—",
-        gateway: p.provider ? p.provider.toUpperCase() : "—",
-        amount: `EGP ${((p.amount || 0) / 100).toFixed(2)}`,
-        fee: p.fee != null ? `EGP ${((Number(p.fee) || 0) / 100).toFixed(2)}` : "—",
-        status: p.status === "captured" ? "Succeeded" : (p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : "Unknown")
+        provider: p.provider ? p.provider.toUpperCase() : "—",
+        amount: (p.amount || 0) / 100,
+        fee: p.fee != null ? (Number(p.fee) || 0) / 100 : undefined,
+        status: p.status === "captured" ? "Succeeded" : (p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : "Unknown"),
+        currency: p.currency,
+        createdAt: p.createdAt,
       })));
-      if (res?.meta) setMeta(res.meta);
+      if (res?.meta) setMeta(res.meta as CursorMeta);
     } catch {
       setLoadError(true);
     } finally {
@@ -68,32 +70,32 @@ export function AdminPayments() {
         dateTo: dateTo || undefined,
       });
       notify.success(t("reports.exportStarted", { type: t("reports.types.payments") }));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("reports.exportFailed")));
     } finally {
       setExporting(false);
     }
   };
 
-  const handleIssueRefund = async (pay: any) => {
+  const handleIssueRefund = async (pay: AdminPayment) => {
     if (confirm(t("payments.confirmRefund", { id: pay.id }))) {
       try {
         await adminService.refundPayment(pay.id);
-        notify.success(t("payments.toast.refundIssued", { customer: pay.customer }));
+        notify.success(t("payments.toast.refundIssued", { customer: pay.customerEmail || "—" }));
         loadPayments();
-      } catch (err: any) {
+      } catch (err) {
         notify.error(apiErrorMessage(err, t("payments.toast.refundFailed")));
       }
     }
   };
 
-  const handleMarkPaid = async (pay: any) => {
+  const handleMarkPaid = async (pay: AdminPayment) => {
     if (confirm(t("payments.confirmMarkPaid", { id: pay.id }))) {
       try {
         await adminService.updatePaymentStatus(pay.id, "captured");
-        notify.success(t("payments.toast.markedPaid", { customer: pay.customer }));
+        notify.success(t("payments.toast.markedPaid", { customer: pay.customerEmail || "—" }));
         loadPayments();
-      } catch (err: any) {
+      } catch (err) {
         notify.error(apiErrorMessage(err, t("payments.toast.statusFailed")));
       }
     }
@@ -103,7 +105,7 @@ export function AdminPayments() {
     (p) =>
       p.id.toLowerCase().includes(search.toLowerCase()) ||
       p.orderId.toLowerCase().includes(search.toLowerCase()) ||
-      p.customer.toLowerCase().includes(search.toLowerCase())
+      p.customerEmail?.toLowerCase().includes(search.toLowerCase())
   );
 
   if (loadError) {
@@ -185,8 +187,8 @@ export function AdminPayments() {
               {filtered.map((pay) => (
                 <tr key={pay.id} className="hover:bg-secondary/20 transition-colors">
                   <td className="py-3.5 ps-4 font-mono font-bold text-foreground">{pay.id}</td>
-                  <td className="py-3.5 font-semibold text-foreground">{pay.customer}</td>
-                  <td className="py-3.5 text-muted-foreground">{pay.gateway}</td>
+                  <td className="py-3.5 font-semibold text-foreground">{pay.customerEmail}</td>
+                  <td className="py-3.5 text-muted-foreground">{pay.provider || "—"}</td>
                   <td className="py-3.5 font-bold text-foreground">{pay.amount}</td>
                   <td className="py-3.5 text-muted-foreground">{pay.fee}</td>
                   <td className="py-3.5 text-foreground">
