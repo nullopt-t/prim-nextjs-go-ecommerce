@@ -28,7 +28,7 @@ export interface CardDetails {
   price: number | string;
   oldPrice?: number | string;
   discountPercentage?: string;
-  variants?: any[];
+  variants?: unknown[];
   /** Fallback variant ID used when no variants array is present */
   defaultVariantId?: string;
   brand?: string;
@@ -53,13 +53,11 @@ export function ProductsCard({
   const tCard = useTranslations("components");
   const locale = useLocale();
   const { addToCart } = useCartContext();
-  const { isWishlisted: checkIsWishlisted, toggleWishlist } = useWishlist();
+  const { toggleWishlist } = useWishlist();
 
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const targetProductId = String(cardDetails.productId || cardDetails.id);
-  const isLiked = isWishlist || checkIsWishlisted(targetProductId, cardDetails.variantId);
-
   const productName =
     typeof cardDetails.product === "object"
       ? (locale === "ar" ? cardDetails.product.ar || cardDetails.product.en : cardDetails.product.en || cardDetails.product.ar)
@@ -83,7 +81,7 @@ export function ProductsCard({
     setIsAdding(true);
 
     try {
-      const defaultVariant = (cardDetails.variants && cardDetails.variants[0]) || null;
+      const defaultVariant = (cardDetails.variants && (cardDetails.variants[0] as { id?: string })) || null;
       const payload = {
         id: String(cardDetails.id),
         slug: cardDetails.slug || String(cardDetails.id),
@@ -102,7 +100,7 @@ export function ProductsCard({
       } else {
         notify.error(apiErrorMessage(res, tCard("productsCard.addToCartFailed")));
       }
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, tCard("productsCard.addToCartFailed")));
     } finally {
       setIsAdding(false);

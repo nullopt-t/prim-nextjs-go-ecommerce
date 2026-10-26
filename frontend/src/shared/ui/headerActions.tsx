@@ -36,7 +36,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 	const pathname = usePathname();
 	const { cartItems, openCart } = useCart();
 	const { user, isAuthenticated, logout } = useAuthContext();
-	const { wishlistCount } = useWishlist();
+	const { } = useWishlist();
 	const t = useTranslations("common.header");
 	const tAdmin = useTranslations("admin");
 

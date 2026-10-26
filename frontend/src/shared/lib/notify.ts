@@ -44,9 +44,14 @@ export function apiErrorMessage(err: unknown, fallback: string): string {
   }
 
   if (err && typeof err === "object") {
-    const e = err as Record<string, any>;
-    const response = e.response?.data;
-    const candidates = [e.error, e.message, response?.message, response?.error];
+    const e = err as Record<string, unknown>;
+    const response = (e.response as { data?: { message?: string; error?: string } } | undefined)?.data;
+    const candidates = [
+      e.error as string | undefined,
+      e.message as string | undefined,
+      response?.message,
+      response?.error,
+    ];
 
     for (const candidate of candidates) {
       if (typeof candidate === "string" && candidate.trim()) {

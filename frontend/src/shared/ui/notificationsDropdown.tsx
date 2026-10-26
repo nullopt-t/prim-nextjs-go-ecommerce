@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Bell,
-  Check,
   CheckCheck,
   Package,
   ShieldCheck,
@@ -73,7 +72,7 @@ export function NotificationsDropdown() {
     }
   };
 
-  const handleNotificationClick = async (item: any) => {
+  const handleNotificationClick = async (item: { id: string; isRead: boolean; actionUrl?: string }) => {
     if (!item.isRead) {
       await markAsRead(item.id);
     }

@@ -14,7 +14,6 @@ export function MobileSearchDialog() {
   const [query, setQuery] = useState("");
   const [fetchedCategories, setFetchedCategories] = useState<Category[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
 
   const t = useTranslations("common.header");
   const locale = useLocale();
@@ -157,14 +156,14 @@ export function MobileSearchDialog() {
                   {t("popularCategories")}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {categories.slice(0, 8).map((cat: any) => (
+                  {categories.slice(0, 8).map((cat: Category) => (
                     <button
                       key={cat.id || cat.slug || cat.name}
                       type="button"
-                      onClick={() => handleSelectCategory(cat.id || cat.slug)}
+                      onClick={() => handleSelectCategory(cat.id || cat.slug || "")}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary/70 hover:bg-accent-brand hover:text-white text-foreground border border-border/50 transition-all cursor-pointer"
                     >
-                      <span>{cat.name}</span>
+                      <span>{cat.name || ""}</span>
                       <ArrowIcon className="size-3 opacity-60" />
                     </button>
                   ))}

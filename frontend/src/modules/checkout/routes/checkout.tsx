@@ -296,7 +296,7 @@ export function Checkout() {
 			notify.success(t("validation.orderConfirmed"));
 			window.scrollTo({ top: 0, behavior: "smooth" });
 		} else {
-			const errorMsg = typeof result.error === "string" ? result.error : result.error?.message || t("validation.orderFailed");
+			const errorMsg = typeof result.error === "string" ? result.error : t("validation.orderFailed");
 			notify.error(errorMsg);
 		}
 	};
