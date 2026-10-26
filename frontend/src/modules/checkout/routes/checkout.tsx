@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useCart } from "@/modules/cart/model/useCart";
 import { calculateCartTotals, SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from "@/modules/cart/utils/cartCalculations";
 import { useCheckout } from "@/modules/orders/model/useOrders";
 import { useAddresses } from "@/modules/account/model/useUserAccount";
+import type { Address } from "@/modules/account/types";
 import { useRouter } from "@/shared/i18n/navigation";
-import MainLayout from "@/shared/layouts/mainLayout";
-import { CustomButton } from "@/shared/ui";
 import { 
 	CheckCircle2, 
 	Check,
@@ -63,6 +62,22 @@ interface CheckoutAddress {
 	country?: string;
 }
 
+interface CheckoutOrder {
+	id: string;
+	trackingNumber: string;
+	total: string;
+	shippingAddress: string;
+	date: string;
+}
+
+interface CheckoutData {
+	orderId?: string;
+	trackingNumber?: string;
+	totalAmount?: number;
+	order?: { orderId?: string; trackingNumber?: string; totalAmount?: number };
+	data?: CheckoutData;
+}
+
 function resolveShippingAddress(
 	addresses: CheckoutAddress[] | undefined,
 	effectiveId: string | null,
@@ -84,7 +99,7 @@ export function Checkout() {
 	const { checkout, loading: placingOrder } = useCheckout();
 	const [couponInput, setCouponInput] = useState("");
 	const [applyingCoupon, setApplyingCoupon] = useState(false);
-	const { addresses, addAddress, refreshAddresses, loading: addressesLoading } = useAddresses();
+	const { addresses, addAddress, refreshAddresses } = useAddresses();
 	const router = useRouter();
 	const { settings: storeSettings } = usePublicSettings();
 
@@ -113,10 +128,10 @@ export function Checkout() {
 	const canPlaceOrder = codAvailable;
 
 	// Order confirmation modal state
-	const [completedOrder, setCompletedOrder] = useState<any>(null);
+	const [completedOrder, setCompletedOrder] = useState<CheckoutOrder | null>(null);
 
 	// Derived selection IDs without setState in effect
-	const effectiveAddressId = selectedAddressId || addresses?.find((a: any) => a.isDefault)?.id || addresses?.[0]?.id || "";
+	const effectiveAddressId = selectedAddressId || addresses?.find((a: Address) => a.isDefault)?.id || addresses?.[0]?.id || "";
 
 	// Calculations using standard cartCalculations utility
 	const standardShippingCost = storeSettings?.flatRateShipping ?? STANDARD_SHIPPING_COST;
@@ -172,7 +187,7 @@ export function Checkout() {
 			} else {
 				notify.error(apiErrorMessage(res, tAddresses("failedToAdd")));
 			}
-		} catch (err: any) {
+		} catch (err) {
 			notify.error(apiErrorMessage(err, tAddresses("failedToAdd")));
 		} finally {
 			setSavingAddress(false);
@@ -194,7 +209,7 @@ export function Checkout() {
 			} else {
 				notify.error(apiErrorMessage(res, t("validation.couponFailed")));
 			}
-		} catch (err: any) {
+		} catch (err) {
 			notify.error(apiErrorMessage(err, t("validation.invalidCoupon")));
 		} finally {
 			setApplyingCoupon(false);
@@ -267,11 +282,11 @@ export function Checkout() {
 		if (result.success) {
 			if (resetCart) resetCart();
 			if (refreshCart) await refreshCart();
-			const rawResult: any = result.data || {};
+			const rawResult = (result.data || {}) as CheckoutData;
 			const orderData = rawResult.data || rawResult;
 			const order = orderData.order || orderData;
 			const completedOrderInfo = {
-				id: orderData.orderId || order.id || "",
+				id: orderData.orderId || order.orderId || "",
 				trackingNumber: orderData.trackingNumber || order.trackingNumber || "",
 				total: `EGP ${Number(orderData.totalAmount ?? order.totalAmount ?? finalTotal).toFixed(2)}`,
 				shippingAddress: finalShippingAddress,
