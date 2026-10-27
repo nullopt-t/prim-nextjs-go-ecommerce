@@ -101,6 +101,33 @@ services:
       - ../.env
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ../seed/media:/seed/media:ro
+    env_file:
+      - ../.env
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        /usr/bin/mc alias set myminio http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}";
+        /usr/bin/mc mb --ignore-existing myminio/catalog;
+        /usr/bin/mc mb --ignore-existing myminio/product-thumbnails;
+        /usr/bin/mc mb --ignore-existing myminio/product-media;
+        /usr/bin/mc anonymous set download myminio/catalog;
+        /usr/bin/mc anonymous set download myminio/product-thumbnails;
+        /usr/bin/mc anonymous set download myminio/product-media;
+        if [ -d /seed/media/catalog ]; then /usr/bin/mc cp --recursive /seed/media/catalog/ myminio/catalog/; fi;
+        exit 0;
 
 volumes:
   postgres_data:
