@@ -363,8 +363,8 @@ func (s *OrderService) handleError(err error, fallbackMsg string) error {
 // GetOrderByID loads an order by its UUID within a read-only database query execution block.
 func (s *OrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.Order, error) {
 	var order *model.Order
-	err := s.qexecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		res, err := s.orderRepo.GetOrderByID(ctx, db, id)
+	err := s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		res, err := s.orderRepo.GetOrderByID(ctx, exec, id)
 		if err != nil {
 			return err
 		}
@@ -391,8 +391,8 @@ func (s *OrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.O
 // GetCustomerOrders fetches all orders belonging to the specified customer UUID.
 func (s *OrderService) GetCustomerOrders(ctx context.Context, customerID uuid.UUID) ([]model.Order, error) {
 	var orders []model.Order
-	err := s.qexecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		res, err := s.orderRepo.GetOrdersByCustomerID(ctx, db, customerID)
+	err := s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		res, err := s.orderRepo.GetOrdersByCustomerID(ctx, exec, customerID)
 		if err != nil {
 			return err
 		}
@@ -425,7 +425,7 @@ func (s *OrderService) ListOrders(
 		return nil, nil, apierr.BadRequestError("Invalid pagination cursor").Wrap(err)
 	}
 
-	err = s.qexecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err = s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		pageSize := q.PageSize
 		if pageSize <= 0 {
 			pageSize = 10
@@ -440,7 +440,7 @@ func (s *OrderService) ListOrders(
 			Cursor:     cursor,
 		}
 
-		res, err := s.orderRepo.ListOrders(ctx, db, filter)
+		res, err := s.orderRepo.ListOrders(ctx, exec, filter)
 		if err != nil {
 			return err
 		}
@@ -623,9 +623,9 @@ func (s *OrderService) ReapExpiredReservations(ctx context.Context) (int, error)
 	}
 
 	var orderIDs []uuid.UUID
-	if err := s.qexecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	if err := s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		orderIDs, err = s.inventoryRepo.ExpiredReservationOrderIDs(ctx, db)
+		orderIDs, err = s.inventoryRepo.ExpiredReservationOrderIDs(ctx, exec)
 		return err
 	}); err != nil {
 		return 0, s.handleError(err, "Failed to list expired reservation orders")
@@ -699,9 +699,9 @@ func (s *OrderService) expirePendingOrder(ctx context.Context, orderID uuid.UUID
 // GetDashboardStats aggregates live metrics for administrative reporting.
 func (s *OrderService) GetDashboardStats(ctx context.Context) (*DashboardStats, error) {
 	var stats *DashboardStats
-	err := s.qexecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		stats, err = s.orderRepo.GetDashboardStats(ctx, db)
+		stats, err = s.orderRepo.GetDashboardStats(ctx, exec)
 		return err
 	})
 	if err != nil {
@@ -714,9 +714,9 @@ func (s *OrderService) GetDashboardStats(ctx context.Context) (*DashboardStats, 
 func (s *OrderService) ListPayments(ctx context.Context, filter PaymentListFilter) ([]PaymentItem, *pagination.CursorPage, error) {
 	var payments []PaymentItem
 	var page *pagination.CursorPage
-	err := s.qexecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		payments, page, err = s.orderRepo.ListPayments(ctx, db, filter)
+		payments, page, err = s.orderRepo.ListPayments(ctx, exec, filter)
 		return err
 	})
 	if err != nil {

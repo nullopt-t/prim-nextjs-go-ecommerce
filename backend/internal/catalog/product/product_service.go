@@ -259,8 +259,8 @@ func (s *ProductService) CreateProductAsDraft(
 
 	// Validate category existence and active status
 	if s.categoryRepo != nil {
-		err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-			_, err := s.categoryRepo.GetByID(ctx, db, input.CategoryID)
+		err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+			_, err := s.categoryRepo.GetByID(ctx, exec, input.CategoryID)
 			return err
 		})
 		if err != nil {
@@ -272,8 +272,8 @@ func (s *ProductService) CreateProductAsDraft(
 
 	// Validate brand existence and active status if specified
 	if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandRepo != nil {
-		err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-			_, err := s.brandRepo.GetByID(ctx, db, *input.BrandID)
+		err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+			_, err := s.brandRepo.GetByID(ctx, exec, *input.BrandID)
 			return err
 		})
 		if err != nil {
@@ -295,8 +295,8 @@ func (s *ProductService) CreateProductAsDraft(
 	}
 
 	var product *model.Product
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		axes, err := s.validateVariationAxes(ctx, db, input.CategoryID, input.VariationAxes)
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		axes, err := s.validateVariationAxes(ctx, exec, input.CategoryID, input.VariationAxes)
 		if err != nil {
 			return err
 		}
@@ -313,14 +313,14 @@ func (s *ProductService) CreateProductAsDraft(
 
 		finalSlug := baseSlug
 		// Check for slug collisions across all products (including soft-deleted)
-		exists, err := s.productRepo.SlugExists(ctx, db, finalSlug)
+		exists, err := s.productRepo.SlugExists(ctx, exec, finalSlug)
 		if err != nil {
 			return err
 		}
 		if exists {
 			for i := 1; i <= 10; i++ {
 				candidate := fmt.Sprintf("%s-%s", baseSlug, uuid.New().String()[:8])
-				candidateExists, err := s.productRepo.SlugExists(ctx, db, candidate)
+				candidateExists, err := s.productRepo.SlugExists(ctx, exec, candidate)
 				if err != nil {
 					return err
 				}
@@ -343,7 +343,7 @@ func (s *ProductService) CreateProductAsDraft(
 			VariationAxes: axes,
 		}
 
-		return s.productRepo.Create(ctx, db, product)
+		return s.productRepo.Create(ctx, exec, product)
 	})
 	if err != nil {
 		var apiErr *apierr.APIError
@@ -505,9 +505,9 @@ func (s *ProductService) GetByID(
 	productID uuid.UUID,
 ) (*model.Product, error) {
 	var product *model.Product
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var repoErr error
-		product, repoErr = s.getByID(ctx, db, productID)
+		product, repoErr = s.getByID(ctx, exec, productID)
 		return repoErr
 	})
 	if err != nil {
@@ -639,13 +639,13 @@ func (s *ProductService) GetAdminDetailsByID(
 	productID uuid.UUID,
 ) (*ProductDetails, error) {
 	var details *ProductDetails
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		prod, err := s.productRepo.GetByIDWithDeleted(ctx, db, productID)
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		prod, err := s.productRepo.GetByIDWithDeleted(ctx, exec, productID)
 		if err != nil {
 			return err
 		}
 		var popErr error
-		details, popErr = s.populateProductDetails(ctx, db, prod, true)
+		details, popErr = s.populateProductDetails(ctx, exec, prod, true)
 		return popErr
 	})
 
@@ -674,13 +674,13 @@ func (s *ProductService) GetBySlug(
 ) (*ProductDetails, error) {
 	cleanSlug := strings.TrimSpace(slug)
 	var details *ProductDetails
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		prod, err := s.productRepo.GetBySlug(ctx, db, cleanSlug)
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		prod, err := s.productRepo.GetBySlug(ctx, exec, cleanSlug)
 		if err != nil {
 			return err
 		}
 		var popErr error
-		details, popErr = s.populateProductDetails(ctx, db, prod, false)
+		details, popErr = s.populateProductDetails(ctx, exec, prod, false)
 		return popErr
 	})
 
@@ -709,9 +709,9 @@ func (s *ProductService) List(
 	includeDeleted bool,
 ) (*pagination.PagedResult[ProductCardReadModel], error) {
 	var res *pagination.PagedResult[ProductCardReadModel]
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		res, err = s.productRepo.List(ctx, db, q, includeDeleted)
+		res, err = s.productRepo.List(ctx, exec, q, includeDeleted)
 		return err
 	})
 
@@ -738,9 +738,9 @@ func (s *ProductService) List(
 		}
 
 		var ratingsMap map[uuid.UUID]*model.RatingSummary
-		_ = s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+		_ = s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 			var err error
-			ratingsMap, err = s.reviewRepo.GetRatingSummariesByProductIDs(ctx, db, productIDs)
+			ratingsMap, err = s.reviewRepo.GetRatingSummariesByProductIDs(ctx, exec, productIDs)
 			return err
 		})
 		if ratingsMap != nil {
@@ -763,8 +763,8 @@ func (s *ProductService) PublishProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		count, err := s.variantRepo.CountByProductID(ctx, db, productID)
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		count, err := s.variantRepo.CountByProductID(ctx, exec, productID)
 		if err != nil {
 			return err
 		}
@@ -772,7 +772,7 @@ func (s *ProductService) PublishProduct(
 			return apierr.BadRequestError("Product must have at least one variant before publishing").
 				WithCode(errcode.CodePublishFailed)
 		}
-		return s.productRepo.UpdateStatus(ctx, db, productID, model.PublicationStatusPublished)
+		return s.productRepo.UpdateStatus(ctx, exec, productID, model.PublicationStatusPublished)
 	})
 
 	if err != nil {
@@ -803,8 +803,8 @@ func (s *ProductService) ArchiveProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		return s.productRepo.UpdateStatus(ctx, db, productID, model.PublicationStatusArchived)
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		return s.productRepo.UpdateStatus(ctx, exec, productID, model.PublicationStatusArchived)
 	})
 
 	if err != nil {
@@ -1038,8 +1038,8 @@ func (ps *ProductService) UploadProductThumbnail(
 
 	if oldObj != nil && ps.storageProvider != nil {
 		if delErr := ps.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = ps.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-				return ps.objectRepo.MarkDeletedByKey(ctx, db, oldObj.Bucket, oldObj.Key)
+			_ = ps.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+				return ps.objectRepo.MarkDeletedByKey(ctx, exec, oldObj.Bucket, oldObj.Key)
 			})
 		}
 	}
@@ -1081,8 +1081,8 @@ func (ps *ProductService) DeleteProductThumbnail(ctx context.Context, productID 
 
 	if oldObj != nil && ps.storageProvider != nil {
 		if delErr := ps.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = ps.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-				return ps.objectRepo.MarkDeletedByKey(ctx, db, oldObj.Bucket, oldObj.Key)
+			_ = ps.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+				return ps.objectRepo.MarkDeletedByKey(ctx, exec, oldObj.Bucket, oldObj.Key)
 			})
 		}
 	}
@@ -1101,9 +1101,9 @@ func (s *ProductService) ListProductReviews(
 	}
 	var items []model.Review
 	var total int
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		items, total, err = s.reviewRepo.List(ctx, db, q, &productID, nil, status)
+		items, total, err = s.reviewRepo.List(ctx, exec, q, &productID, nil, status)
 		return err
 	})
 	if err != nil {
@@ -1127,9 +1127,9 @@ func (s *ProductService) GetProductRatingSummary(
 		return &model.RatingSummary{}, nil
 	}
 	var summary *model.RatingSummary
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		summary, err = s.reviewRepo.GetRatingSummaryByProductID(ctx, db, productID)
+		summary, err = s.reviewRepo.GetRatingSummaryByProductID(ctx, exec, productID)
 		return err
 	})
 	if err != nil {

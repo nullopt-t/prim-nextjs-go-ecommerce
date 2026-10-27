@@ -166,9 +166,9 @@ func (os *ObjectService) DeleteObject(
 
 func (os *ObjectService) DeleteObjectByID(ctx context.Context, id uuid.UUID) error {
 	var obj *model.Object
-	err := os.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := os.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		obj, err = os.objectRepo.GetByID(ctx, db, id)
+		obj, err = os.objectRepo.GetByID(ctx, exec, id)
 		return err
 	})
 	if err != nil {
@@ -183,9 +183,9 @@ func (os *ObjectService) DeleteObjectByID(ctx context.Context, id uuid.UUID) err
 
 func (os *ObjectService) GetObjectByID(ctx context.Context, id uuid.UUID) (*model.Object, error) {
 	var obj *model.Object
-	err := os.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := os.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		obj, err = os.objectRepo.GetByID(ctx, db, id)
+		obj, err = os.objectRepo.GetByID(ctx, exec, id)
 		return err
 	})
 	if err != nil {
@@ -199,9 +199,9 @@ func (os *ObjectService) GetObjectsByIDs(ctx context.Context, ids []uuid.UUID) (
 		return nil, nil
 	}
 	var objects []*model.Object
-	err := os.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := os.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		objects, err = os.objectRepo.GetByIDs(ctx, db, ids)
+		objects, err = os.objectRepo.GetByIDs(ctx, exec, ids)
 		return err
 	})
 	if err != nil {
@@ -231,8 +231,8 @@ type MediaItem struct {
 func (os *ObjectService) ListMedia(ctx context.Context, limit int, cursor *pagination.Keyset) ([]MediaItem, *pagination.CursorPage, error) {
 	var list []MediaItem
 	var page *pagination.CursorPage
-	err := os.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		objects, p, err := os.objectRepo.ListMedia(ctx, db, limit, cursor)
+	err := os.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		objects, p, err := os.objectRepo.ListMedia(ctx, exec, limit, cursor)
 		if err != nil {
 			return err
 		}

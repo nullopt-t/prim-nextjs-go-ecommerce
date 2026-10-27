@@ -100,8 +100,8 @@ func (bs *BrandService) CreateBrand(
 		Link: in.Link,
 	}
 
-	err := bs.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		return bs.brandRepo.Create(ctx, db, brand)
+	err := bs.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		return bs.brandRepo.Create(ctx, exec, brand)
 	})
 
 	if err != nil {
@@ -116,13 +116,13 @@ func (bs *BrandService) GetBrandByID(
 	id uuid.UUID,
 ) (*model.ProductBrand, error) {
 	var brand *model.ProductBrand
-	err := bs.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := bs.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var repoErr error
-		brand, repoErr = bs.brandRepo.GetByID(ctx, db, id)
+		brand, repoErr = bs.brandRepo.GetByID(ctx, exec, id)
 		if repoErr != nil {
 			return repoErr
 		}
-		return bs.populateLogoURLs(ctx, db, []*model.ProductBrand{brand})
+		return bs.populateLogoURLs(ctx, exec, []*model.ProductBrand{brand})
 	})
 
 	if err != nil {
@@ -156,8 +156,8 @@ func (bs *BrandService) UpdateBrand(
 		fields.Name = &name
 	}
 
-	err := bs.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		return bs.brandRepo.Update(ctx, db, brandID, fields)
+	err := bs.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		return bs.brandRepo.Update(ctx, exec, brandID, fields)
 	})
 
 	if err != nil {
@@ -188,9 +188,9 @@ func (bs *BrandService) listBrands(
 	}
 
 	var result *pagination.PagedResult[model.ProductBrand]
-	err = bs.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err = bs.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var repoErr error
-		result, repoErr = bs.brandRepo.List(ctx, db, ListBrandOptions{
+		result, repoErr = bs.brandRepo.List(ctx, exec, ListBrandOptions{
 			Query:          q,
 			IncludeDeleted: opts.includeDeleted,
 			Cursor:         cursor,
@@ -199,7 +199,7 @@ func (bs *BrandService) listBrands(
 			return repoErr
 		}
 		if opts.populateURL {
-			return bs.populateLogoURLs(ctx, db, result.Items)
+			return bs.populateLogoURLs(ctx, exec, result.Items)
 		}
 		return nil
 	})
@@ -349,8 +349,8 @@ func (bs *BrandService) UploadBrandLogo(
 
 	if oldLogoObj != nil {
 		if delErr := bs.storageProvider.Delete(ctx, oldLogoObj.Bucket, oldLogoObj.Key); delErr == nil {
-			_ = bs.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-				return bs.objectRepo.MarkDeletedByKey(ctx, db, oldLogoObj.Bucket, oldLogoObj.Key)
+			_ = bs.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+				return bs.objectRepo.MarkDeletedByKey(ctx, exec, oldLogoObj.Bucket, oldLogoObj.Key)
 			})
 		}
 	}

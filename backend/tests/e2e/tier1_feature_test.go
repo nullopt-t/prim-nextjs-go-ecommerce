@@ -229,9 +229,9 @@ func TestTier1_F2_Product_ResolvesStockViaInventoryRepo(t *testing.T) {
 
 	// Single WithExecutor reading stock for multiple variants via consumer repository
 	var stockMap map[uuid.UUID]*model.InventoryStock
-	err := runner.WithExecutor(context.Background(), func(db database.QueryExecutor) error {
+	err := runner.WithExecutor(context.Background(), func(exec database.QueryExecutor) error {
 		var err error
-		stockMap, err = inventoryRepo.GetStockForVariants(context.Background(), db, []uuid.UUID{var1, var2})
+		stockMap, err = inventoryRepo.GetStockForVariants(context.Background(), exec, []uuid.UUID{var1, var2})
 		return err
 	})
 
@@ -562,8 +562,8 @@ func TestTier1_F10_Checkout_ValidateCoupon_SingleWithExecutor(t *testing.T) {
 
 	// Rule 2 & Feature F10: ValidateCoupon executes within a single WithExecutor
 	var discount int64
-	err := runner.WithExecutor(context.Background(), func(db database.QueryExecutor) error {
-		c, err := couponRepo.GetByCode(context.Background(), db, "SAVE10")
+	err := runner.WithExecutor(context.Background(), func(exec database.QueryExecutor) error {
+		c, err := couponRepo.GetByCode(context.Background(), exec, "SAVE10")
 		if err != nil {
 			return CanonicalHandleError(err, "coupon")
 		}

@@ -107,8 +107,8 @@ func (s *UserService) CreateUser(
 		Identifier: identifier,
 	}
 
-	err := s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		id, err := s.repo.Create(ctx, db, u)
+	err := s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		id, err := s.repo.Create(ctx, exec, u)
 		if err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrConflict) {
@@ -134,9 +134,9 @@ func (s *UserService) GetUserByID(
 	userID uuid.UUID,
 ) (*model.User, error) {
 	var user *model.User
-	err := s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var repoErr error
-		user, repoErr = s.getUserByID(ctx, db, userID)
+		user, repoErr = s.getUserByID(ctx, exec, userID)
 		return repoErr
 	})
 	if err != nil {
@@ -155,9 +155,9 @@ func (s *UserService) UserExists(ctx context.Context, userID uuid.UUID) (bool, e
 	}
 
 	var exists bool
-	err := s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var repoErr error
-		exists, repoErr = s.repo.ExistsByID(ctx, db, userID)
+		exists, repoErr = s.repo.ExistsByID(ctx, exec, userID)
 		return repoErr
 	})
 	if err != nil {
@@ -185,9 +185,9 @@ func (s *UserService) GetUserByIdentifier(
 	identifier string,
 ) (*model.User, error) {
 	var user *model.User
-	err := s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var repoErr error
-		user, repoErr = s.repo.GetByIdentifier(ctx, db, identifier)
+		user, repoErr = s.repo.GetByIdentifier(ctx, exec, identifier)
 		return repoErr
 	})
 	if err != nil {
@@ -211,7 +211,7 @@ func (s *UserService) GetAllUsers(
 		return nil, nil, apierr.BadRequestError("Invalid pagination cursor").Wrap(err)
 	}
 
-	err = s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err = s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		// PageSize is already clamped and overflow-safe from ListQuery.Process
 		limit := q.PageSize
 
@@ -228,7 +228,7 @@ func (s *UserService) GetAllUsers(
 			Cursor: cursor,
 		}
 
-		uList, err := s.repo.ListUsers(ctx, db, filter)
+		uList, err := s.repo.ListUsers(ctx, exec, filter)
 		if err != nil {
 			return err
 		}
@@ -284,8 +284,8 @@ func (s *UserService) DeleteUserByID(
 		}
 	}
 
-	err = s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		return s.repo.SoftDelete(ctx, db, userID)
+	err = s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		return s.repo.SoftDelete(ctx, exec, userID)
 	})
 	if err != nil {
 		s.logger.Error("failed to delete user", log.Meta{"userId": userID, "error": err.Error()})
@@ -377,8 +377,8 @@ func (s *UserService) UpdateUserRole(
 	}
 
 	// Update role in database
-	err = s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		return s.repo.UpdateRole(ctx, db, targetUserID, newRole)
+	err = s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		return s.repo.UpdateRole(ctx, exec, targetUserID, newRole)
 	})
 
 	if err != nil {
@@ -457,11 +457,11 @@ func (s *UserService) UpdateAccountStatus(
 	// Update status in PostgreSQL. A deleted status is a real soft delete:
 	// status and deleted_at are set atomically so the account disappears from
 	// listings.
-	err = s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err = s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		if newStatus == model.StatusDeleted {
-			return s.repo.SoftDelete(ctx, db, targetUserID)
+			return s.repo.SoftDelete(ctx, exec, targetUserID)
 		}
-		return s.repo.UpdateStatus(ctx, db, targetUserID, newStatus, suspendedUntil)
+		return s.repo.UpdateStatus(ctx, exec, targetUserID, newStatus, suspendedUntil)
 	})
 
 	if err != nil {
@@ -558,9 +558,9 @@ func (s *UserService) ListStaffSessions(
 	}
 
 	var users []model.User
-	if err := s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	if err := s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var repoErr error
-		users, repoErr = s.repo.ListByRoles(ctx, db, roles)
+		users, repoErr = s.repo.ListByRoles(ctx, exec, roles)
 		return repoErr
 	}); err != nil {
 		return nil, s.handleError(err, "Failed to list staff accounts")

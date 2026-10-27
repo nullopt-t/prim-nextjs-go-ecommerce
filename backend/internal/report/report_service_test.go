@@ -35,7 +35,7 @@ func (m *mockReportRunner) WithTx(ctx context.Context, fn func(ctx context.Conte
 	return fn(ctx, qe)
 }
 
-func (m *mockReportRunner) WithExecutor(ctx context.Context, fn func(db database.QueryExecutor) error) error {
+func (m *mockReportRunner) WithExecutor(ctx context.Context, fn func(exec database.QueryExecutor) error) error {
 	m.withDBCalled = true
 	if m.withDBErr != nil {
 		return m.withDBErr

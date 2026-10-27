@@ -225,13 +225,13 @@ func (s *CartService) GetOrCreateCart(
 
 func (s *CartService) GetCartByID(ctx context.Context, id uuid.UUID) (*model.Cart, error) {
 	var cart *model.Cart
-	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		cart, err = s.cartRepo.GetCartByID(ctx, db, id)
+		cart, err = s.cartRepo.GetCartByID(ctx, exec, id)
 		if err != nil {
 			return err
 		}
-		return s.populateCartDetails(ctx, db, cart)
+		return s.populateCartDetails(ctx, exec, cart)
 	})
 	if err != nil {
 		return nil, err
@@ -241,13 +241,13 @@ func (s *CartService) GetCartByID(ctx context.Context, id uuid.UUID) (*model.Car
 
 func (s *CartService) GetCartByUserID(ctx context.Context, userID uuid.UUID) (*model.Cart, error) {
 	var cart *model.Cart
-	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		cart, err = s.cartRepo.GetCartByUserID(ctx, db, userID)
+		cart, err = s.cartRepo.GetCartByUserID(ctx, exec, userID)
 		if err != nil {
 			return err
 		}
-		return s.populateCartDetails(ctx, db, cart)
+		return s.populateCartDetails(ctx, exec, cart)
 	})
 	if err != nil {
 		return nil, err
@@ -257,13 +257,13 @@ func (s *CartService) GetCartByUserID(ctx context.Context, userID uuid.UUID) (*m
 
 func (s *CartService) GetCartBySessionID(ctx context.Context, sessionID string) (*model.Cart, error) {
 	var cart *model.Cart
-	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		cart, err = s.cartRepo.GetCartBySessionID(ctx, db, sessionID)
+		cart, err = s.cartRepo.GetCartBySessionID(ctx, exec, sessionID)
 		if err != nil {
 			return err
 		}
-		return s.populateCartDetails(ctx, db, cart)
+		return s.populateCartDetails(ctx, exec, cart)
 	})
 	if err != nil {
 		return nil, err

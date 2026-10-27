@@ -648,9 +648,9 @@ func (vs *VariantService) GetVariantByID(
 	variantID uuid.UUID,
 ) (*model.ProductVariant, error) {
 	var variant *model.ProductVariant
-	err := vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var repoErr error
-		variant, repoErr = vs.getVariantByID(ctx, db, variantID)
+		variant, repoErr = vs.getVariantByID(ctx, exec, variantID)
 		return repoErr
 	})
 	if err != nil {
@@ -709,8 +709,8 @@ func (vs *VariantService) GetVariantBySKU(
 	}
 
 	var variant *model.ProductVariant
-	err := vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		v, err := vs.vr.GetBySKU(ctx, db, cleanSKU)
+	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		v, err := vs.vr.GetBySKU(ctx, exec, cleanSKU)
 		if err != nil {
 			return err
 		}
@@ -892,9 +892,9 @@ func (vs *VariantService) ListVariantsByProductID(
 	var result *pagination.PagedResult[model.ProductVariant]
 	var mediaMap map[uuid.UUID][]*model.VariantMedia
 
-	err := vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var repoErr error
-		result, repoErr = vs.vr.ListByProductID(ctx, db, ListVariantOptions{
+		result, repoErr = vs.vr.ListByProductID(ctx, exec, ListVariantOptions{
 			ProductID:      productID,
 			Query:          q,
 			IncludeDeleted: includeDeleted,
@@ -910,7 +910,7 @@ func (vs *VariantService) ListVariantsByProductID(
 					variantIDs = append(variantIDs, item.ID)
 				}
 			}
-			mediaMap, repoErr = vs.vr.ListMediaByVariantIDs(ctx, db, variantIDs)
+			mediaMap, repoErr = vs.vr.ListMediaByVariantIDs(ctx, exec, variantIDs)
 			if repoErr != nil {
 				return repoErr
 			}
@@ -1258,9 +1258,9 @@ func (vs *VariantService) ListVariantMedia(
 	variantID uuid.UUID,
 ) ([]*model.VariantMedia, error) {
 	var mediaList []*model.VariantMedia
-	err := vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var repoErr error
-		mediaList, repoErr = vs.listVariantMedia(ctx, db, variantID)
+		mediaList, repoErr = vs.listVariantMedia(ctx, exec, variantID)
 		return repoErr
 	})
 	if err != nil {
@@ -1427,9 +1427,9 @@ func (vs *VariantService) GetStockByVariantID(
 	}
 
 	var stock *model.InventoryStock
-	err := vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		stock, err = vs.inventoryRepo.GetStock(ctx, db, variantID)
+		stock, err = vs.inventoryRepo.GetStock(ctx, exec, variantID)
 		return err
 	})
 	if err != nil {
@@ -1453,9 +1453,9 @@ func (vs *VariantService) ListLedgers(
 	}
 
 	var result *pagination.PagedResult[model.InventoryLedger]
-	err := vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		result, err = vs.inventoryRepo.ListVariantLedgers(ctx, db, variantID, q)
+		result, err = vs.inventoryRepo.ListVariantLedgers(ctx, exec, variantID, q)
 		return err
 	})
 	if err != nil {
@@ -1569,8 +1569,8 @@ func (vs *VariantService) UploadVariantThumbnail(
 
 	if oldObj != nil && vs.storageProvider != nil {
 		if delErr := vs.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
-				return vs.objectRepo.MarkDeletedByKey(ctx, db, oldObj.Bucket, oldObj.Key)
+			_ = vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+				return vs.objectRepo.MarkDeletedByKey(ctx, exec, oldObj.Bucket, oldObj.Key)
 			})
 		}
 	}
@@ -1609,8 +1609,8 @@ func (vs *VariantService) DeleteVariantThumbnail(
 
 	if oldObj != nil && vs.storageProvider != nil {
 		if delErr := vs.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
-				return vs.objectRepo.MarkDeletedByKey(ctx, db, oldObj.Bucket, oldObj.Key)
+			_ = vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+				return vs.objectRepo.MarkDeletedByKey(ctx, exec, oldObj.Bucket, oldObj.Key)
 			})
 		}
 	}

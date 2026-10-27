@@ -89,9 +89,9 @@ func (s *AddressService) handleError(err error, fallbackMsg string) error {
 // ListAddresses returns all non-deleted saved addresses for the authenticated user, ordered default-first.
 func (s *AddressService) ListAddresses(ctx context.Context, userID uuid.UUID) ([]model.UserAddress, error) {
 	var addresses []model.UserAddress
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		addresses, err = s.repo.ListByUser(ctx, db, userID)
+		addresses, err = s.repo.ListByUser(ctx, exec, userID)
 		return err
 	})
 	if err != nil {
@@ -104,9 +104,9 @@ func (s *AddressService) ListAddresses(ctx context.Context, userID uuid.UUID) ([
 // GetAddress retrieves a single address by its UUID, verifying it belongs to the authenticated user.
 func (s *AddressService) GetAddress(ctx context.Context, id, userID uuid.UUID) (*model.UserAddress, error) {
 	var address *model.UserAddress
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var repoErr error
-		address, repoErr = s.getAddress(ctx, db, id, userID)
+		address, repoErr = s.getAddress(ctx, exec, id, userID)
 		return repoErr
 	})
 	if err != nil {

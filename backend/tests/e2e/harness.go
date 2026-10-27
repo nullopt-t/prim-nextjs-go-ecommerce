@@ -27,12 +27,12 @@ import (
 
 // MockQueryExecutor implements database.QueryExecutor for in-memory testing.
 type MockQueryExecutor struct {
-	mu           sync.Mutex
-	queries      []string
-	execErr      error
-	queryErr     error
-	queryRowErr  error
-	rowScanFn    func(dest ...any) error
+	mu          sync.Mutex
+	queries     []string
+	execErr     error
+	queryErr    error
+	queryRowErr error
+	rowScanFn   func(dest ...any) error
 }
 
 func NewMockQueryExecutor() *MockQueryExecutor {
@@ -117,15 +117,15 @@ type mockRows struct {
 	closed bool
 }
 
-func (r *mockRows) Close()                                           { r.closed = true }
-func (r *mockRows) Err() error                                       { return nil }
-func (r *mockRows) CommandTag() pgconn.CommandTag                    { return pgconn.NewCommandTag("SELECT 0") }
-func (r *mockRows) FieldDescriptions() []pgconn.FieldDescription     { return nil }
-func (r *mockRows) Next() bool                                       { return false }
-func (r *mockRows) Scan(dest ...any) error                           { return nil }
-func (r *mockRows) Values() ([]any, error)                           { return nil, nil }
-func (r *mockRows) RawValues() [][]byte                              { return nil }
-func (r *mockRows) Conn() *pgx.Conn                                  { return nil }
+func (r *mockRows) Close()                                       { r.closed = true }
+func (r *mockRows) Err() error                                   { return nil }
+func (r *mockRows) CommandTag() pgconn.CommandTag                { return pgconn.NewCommandTag("SELECT 0") }
+func (r *mockRows) FieldDescriptions() []pgconn.FieldDescription { return nil }
+func (r *mockRows) Next() bool                                   { return false }
+func (r *mockRows) Scan(dest ...any) error                       { return nil }
+func (r *mockRows) Values() ([]any, error)                       { return nil, nil }
+func (r *mockRows) RawValues() [][]byte                          { return nil }
+func (r *mockRows) Conn() *pgx.Conn                              { return nil }
 
 // FakePgxTx implements pgx.Tx to allow instantiating real *database.Tx in tests.
 type FakePgxTx struct {
@@ -197,18 +197,18 @@ func NewTestTx() (*database.Tx, *FakePgxTx) {
 // MockRunner implements database.Runner and tracks connection acquisitions,
 // enforcing that concurrent operations do not exceed MaxConns (default 1).
 type MockRunner struct {
-	mu           sync.Mutex
-	maxConns     int32
-	activeConns  int32
-	withDBCount  int32
-	withTxCount  int32
-	commitCount  int32
+	mu            sync.Mutex
+	maxConns      int32
+	activeConns   int32
+	withDBCount   int32
+	withTxCount   int32
+	commitCount   int32
 	rollbackCount int32
-	txErr        error
-	dbErr        error
-	commitErr    error
-	executor     *MockQueryExecutor
-	hopDetected  bool
+	txErr         error
+	dbErr         error
+	commitErr     error
+	executor      *MockQueryExecutor
+	hopDetected   bool
 }
 
 func NewMockRunner(maxConns ...int32) *MockRunner {
@@ -271,7 +271,7 @@ func (r *MockRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx
 	return nil
 }
 
-func (r *MockRunner) WithExecutor(ctx context.Context, fn func(db database.QueryExecutor) error) error {
+func (r *MockRunner) WithExecutor(ctx context.Context, fn func(exec database.QueryExecutor) error) error {
 	atomic.AddInt32(&r.withDBCount, 1)
 
 	current := atomic.AddInt32(&r.activeConns, 1)
@@ -328,13 +328,13 @@ func (r *MockRunner) ConnectionHopDetected() bool {
 
 // MockStorageProvider satisfies storage.StorageProvider directly in memory.
 type MockStorageProvider struct {
-	mu           sync.RWMutex
-	objects      map[string][]byte
-	uploadCalls  int
-	deleteCalls  int
-	urlCalls     int
-	uploadErr    error
-	deleteErr    error
+	mu            sync.RWMutex
+	objects       map[string][]byte
+	uploadCalls   int
+	deleteCalls   int
+	urlCalls      int
+	uploadErr     error
+	deleteErr     error
 	publicBaseURL string
 }
 

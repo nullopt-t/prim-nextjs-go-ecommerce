@@ -25,9 +25,9 @@ func NewService(dr database.Runner, repo *AttributeRepository) *AttributeService
 
 func (s *AttributeService) ListAttributes(ctx context.Context) ([]AttributeItem, error) {
 	var list []AttributeItem
-	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		list, err = s.repo.ListAttributes(ctx, db)
+		list, err = s.repo.ListAttributes(ctx, exec)
 		return err
 	})
 	if err != nil {
@@ -38,9 +38,9 @@ func (s *AttributeService) ListAttributes(ctx context.Context) ([]AttributeItem,
 
 func (s *AttributeService) GetAttributeByID(ctx context.Context, id uuid.UUID) (*AttributeItem, error) {
 	var item *AttributeItem
-	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		item, err = s.repo.GetByID(ctx, db, id)
+		item, err = s.repo.GetByID(ctx, exec, id)
 		return err
 	})
 	if err != nil {

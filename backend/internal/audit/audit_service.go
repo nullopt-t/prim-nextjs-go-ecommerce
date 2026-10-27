@@ -93,9 +93,9 @@ func (s *Service) List(
 ) ([]*model.AuditLog, *pagination.CursorPage, error) {
 	var entries []*model.AuditLog
 	var page *pagination.CursorPage
-	err := s.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		entries, page, err = s.repo.List(ctx, db, f, limit, cursor)
+		entries, page, err = s.repo.List(ctx, exec, f, limit, cursor)
 		return err
 	})
 	if err != nil {

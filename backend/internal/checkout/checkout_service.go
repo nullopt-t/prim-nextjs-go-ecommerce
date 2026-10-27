@@ -614,16 +614,16 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 
 	// One read connection for the whole use case: cart pricing, coupon lookup and
 	// redemption counts all run on the same QueryExecutor (no connection hopping).
-	err := s.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		if userID != nil || sessionID != nil {
 			var (
 				cartData *model.Cart
 				err      error
 			)
 			if userID != nil {
-				cartData, err = s.cartRepo.GetCartByUserID(ctx, db, *userID)
+				cartData, err = s.cartRepo.GetCartByUserID(ctx, exec, *userID)
 			} else {
-				cartData, err = s.cartRepo.GetCartBySessionID(ctx, db, *sessionID)
+				cartData, err = s.cartRepo.GetCartBySessionID(ctx, exec, *sessionID)
 			}
 			if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
 				return s.handleError(err, "Failed to load cart")
@@ -633,7 +633,7 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 					// grossTotal is computed from the authoritative live variant
 					// price; the snapshot price is only a fallback when the variant
 					// has no live price left.
-					v, vErr := s.variantRepo.GetByID(ctx, db, item.VariantID)
+					v, vErr := s.variantRepo.GetByID(ctx, exec, item.VariantID)
 					if vErr == nil && v.Price != nil {
 						grossTotal += int64(item.Quantity) * *v.Price
 						continue
@@ -647,7 +647,7 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 		}
 
 		// Client-supplied subtotals are never trusted for pricing decisions.
-		coupon, err := s.couponRepo.GetByCode(ctx, db, code)
+		coupon, err := s.couponRepo.GetByCode(ctx, exec, code)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' not found", code)).WithCode("COUPON_NOT_FOUND")
@@ -669,7 +669,7 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 
 		// Check global usage limit
 		if coupon.UsageLimit != nil {
-			usedCount, err := s.couponRepo.GetRedemptionCount(ctx, db, coupon.ID)
+			usedCount, err := s.couponRepo.GetRedemptionCount(ctx, exec, coupon.ID)
 			if err != nil {
 				return s.handleError(err, "Failed to check coupon usage")
 			}
@@ -684,7 +684,7 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 			if coupon.PerUserLimit != nil && *coupon.PerUserLimit > 0 {
 				userLimit = *coupon.PerUserLimit
 			}
-			userUsedCount, err := s.couponRepo.GetUserRedemptionCount(ctx, db, coupon.ID, *userID)
+			userUsedCount, err := s.couponRepo.GetUserRedemptionCount(ctx, exec, coupon.ID, *userID)
 			if err != nil {
 				return s.handleError(err, "Failed to check per-user coupon limit")
 			}

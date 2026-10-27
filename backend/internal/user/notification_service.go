@@ -60,8 +60,8 @@ func (s *NotificationService) CreateNotification(
 	ctx context.Context,
 	n *model.UserNotification,
 ) error {
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		return s.repo.Create(ctx, db, n)
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		return s.repo.Create(ctx, exec, n)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to create notification")
@@ -80,9 +80,9 @@ func (s *NotificationService) GetMyNotifications(
 	var items []*model.UserNotification
 	var total int
 
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		items, total, err = s.repo.ListByUser(ctx, db, userID, unreadOnly, q)
+		items, total, err = s.repo.ListByUser(ctx, exec, userID, unreadOnly, q)
 		return err
 	})
 	if err != nil {
@@ -99,9 +99,9 @@ func (s *NotificationService) GetUnreadCount(
 	userID uuid.UUID,
 ) (int, error) {
 	var count int
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		count, err = s.repo.CountUnreadByUser(ctx, db, userID)
+		count, err = s.repo.CountUnreadByUser(ctx, exec, userID)
 		return err
 	})
 	if err != nil {
@@ -115,8 +115,8 @@ func (s *NotificationService) MarkAsRead(
 	ctx context.Context,
 	id int64, userID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		return s.repo.MarkAsRead(ctx, db, id, userID)
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		return s.repo.MarkAsRead(ctx, exec, id, userID)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to mark notification as read")
@@ -130,9 +130,9 @@ func (s *NotificationService) MarkAllAsRead(
 	userID uuid.UUID,
 ) (int64, error) {
 	var count int64
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		count, err = s.repo.MarkAllAsRead(ctx, db, userID)
+		count, err = s.repo.MarkAllAsRead(ctx, exec, userID)
 		return err
 	})
 	if err != nil {
@@ -146,8 +146,8 @@ func (s *NotificationService) DeleteNotification(
 	ctx context.Context,
 	id int64, userID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
-		return s.repo.Delete(ctx, db, id, userID)
+	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+		return s.repo.Delete(ctx, exec, id, userID)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to delete notification")
