@@ -6,15 +6,26 @@ import (
 	"context"
 )
 
-// Runner defines the contract for executing units of work either within
-// a managed database transaction (WithTx) or against the connection pool directly (WithExecutor).
+// Runner defines the contract for executing units of work.
+//
+// The two methods differ in whether they *ensure* a transaction exists:
+//
+//   - WithTx ensures a transaction: it begins one when none is in flight, and
+//     joins the ambient transaction when the context already carries one.
+//   - WithExecutor never begins a transaction: it hands back the ambient
+//     transaction if present, otherwise the connection pool.
+//
+// Both methods only ever hand out a single QueryExecutor. Implementations are
+// expected to be backed by one database pool; a transaction created by one
+// runner must not be shared with a runner for a different pool.
 type Runner interface {
 	// WithTx runs the provided callback inside a database transaction.
 	// It automatically commits on success or rolls back on error/panic.
 	WithTx(ctx context.Context, fn func(ctx context.Context, tx QueryExecutor) error) error
 
-	// WithExecutor runs the provided callback directly against the connection pool.
-	WithExecutor(ctx context.Context, fn func(db QueryExecutor) error) error
+	// WithExecutor runs the provided callback without starting a transaction,
+	// reusing the ambient one when the context already carries it.
+	WithExecutor(ctx context.Context, fn func(exec QueryExecutor) error) error
 }
 
 // Executor implements the Runner interface by managing transactions and pool access
@@ -30,8 +41,8 @@ type txContextKey struct{}
 // TxFromContext returns the transaction bound to ctx by an enclosing WithTx.
 //
 // Code that runs inside a transaction can use this to stay on the caller's
-// connection; callers that just issue queries can call WithExecutor, which performs
-// the same lookup for them.
+// connection; callers that just issue queries can call WithExecutor, which
+// performs the same lookup for them.
 func TxFromContext(ctx context.Context) (QueryExecutor, bool) {
 	tx, ok := ctx.Value(txContextKey{}).(QueryExecutor)
 	return tx, ok
@@ -53,15 +64,22 @@ func NewTxRunner(db *DB) *Executor {
 // of beginning another: a nested Begin would check out a second pooled
 // connection while the outer transaction still holds the first, and concurrent
 // requests doing that exhaust the pool. A joined callback neither commits nor
-// rolls back on its own - the outermost transaction decides.
+// rolls back on its own - the outermost transaction decides, so every error
+// that invalidates the unit of work must be propagated to the outermost
+// callback.
 func (t *Executor) WithTx(ctx context.Context, fn func(ctx context.Context, tx QueryExecutor) error) error {
-	if t == nil || t.db == nil || t.db.Pool == nil {
+	if t == nil || t.db == nil {
 		return ErrConnectionFailure
 	}
 
-	// Join the transaction already in flight for this context, if any.
+	// Join the transaction already in flight for this context, if any. The
+	// ambient transaction owns the connection, so the pool is not consulted.
 	if currentTx, ok := TxFromContext(ctx); ok {
 		return fn(ctx, currentTx)
+	}
+
+	if t.db.Pool == nil {
+		return ErrConnectionFailure
 	}
 
 	tx, err := t.db.Pool.Begin(ctx)
@@ -100,8 +118,7 @@ func (t *Executor) WithTx(ctx context.Context, fn func(ctx context.Context, tx Q
 	return nil
 }
 
-// WithExecutor executes the provided callback against the connection pool without
-// starting a transaction.
+// WithExecutor executes the provided callback without starting a transaction.
 //
 // If ctx already carries a transaction (that is, the caller is inside WithTx),
 // the callback runs on that transaction instead of the pool. Checking a second
@@ -112,8 +129,14 @@ func (t *Executor) WithExecutor(ctx context.Context, fn func(exec QueryExecutor)
 		return ErrConnectionFailure
 	}
 
+	// Reuse the ambient transaction before touching the pool: it owns the
+	// connection, so a runner without a usable pool can still join.
 	if currentTx, ok := TxFromContext(ctx); ok {
 		return fn(currentTx)
+	}
+
+	if t.db.Pool == nil {
+		return ErrConnectionFailure
 	}
 
 	return fn(t.db)
