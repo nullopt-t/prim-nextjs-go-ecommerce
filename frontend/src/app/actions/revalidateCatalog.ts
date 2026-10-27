@@ -7,6 +7,7 @@ import {
 	CATEGORIES_TAG,
 	PRODUCTS_TAG,
 } from "@/shared/lib/server/catalog";
+import { getServerApiBaseUrl } from "@/shared/lib/server/apiBaseUrl";
 
 /**
  * Invalidate the cached storefront catalog after an admin mutation.
@@ -15,7 +16,7 @@ import {
  * has an admin role before dropping the cache.
  */
 export async function revalidateCatalog(): Promise<boolean> {
-	const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+	const apiUrl = getServerApiBaseUrl();
 	if (!apiUrl) return false;
 
 	const cookieStore = await cookies();
@@ -26,7 +27,7 @@ export async function revalidateCatalog(): Promise<boolean> {
 	if (!cookieHeader) return false;
 
 	try {
-		const response = await fetch(`${apiUrl.replace(/\/$/, "")}/api/v1/auth/me`, {
+		const response = await fetch(`${apiUrl}/api/v1/auth/me`, {
 			cache: "no-store",
 			headers: { Accept: "application/json", Cookie: cookieHeader },
 		});

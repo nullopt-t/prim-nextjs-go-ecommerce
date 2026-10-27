@@ -1,5 +1,6 @@
 import { normalizeProduct, type RawProductPayload } from "@/modules/catalog/model/normalizeProduct";
 import type { Brand, Category, ProductDetailsEntity } from "@/modules/catalog/types";
+import { getServerApiBaseUrl } from "@/shared/lib/server/apiBaseUrl";
 
 export const CATALOG_REVALIDATE_SECONDS = 300;
 export const PRODUCTS_TAG = "catalog:products";
@@ -7,7 +8,7 @@ export const CATEGORIES_TAG = "catalog:categories";
 export const BRANDS_TAG = "catalog:brands";
 
 function getApiBaseUrl() {
-	return (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+	return getServerApiBaseUrl() || "";
 }
 
 function productTag(slug: string) {

@@ -3,13 +3,14 @@
 import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { PUBLIC_SETTINGS_TAG } from "@/shared/lib/server/publicSettings";
+import { getServerApiBaseUrl } from "@/shared/lib/server/apiBaseUrl";
 
 /**
  * Invalidate the server cache for public settings after an admin save.
  * The backend call verifies that the caller still has an admin session.
  */
 export async function revalidatePublicSettings(): Promise<boolean> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl = getServerApiBaseUrl();
   if (!apiUrl) return false;
 
   const cookieStore = await cookies();
@@ -19,7 +20,7 @@ export async function revalidatePublicSettings(): Promise<boolean> {
     .join("; ");
   if (!cookieHeader) return false;
 
-  const response = await fetch(`${apiUrl.replace(/\/$/, "")}/api/v1/admin/settings`, {
+  const response = await fetch(`${apiUrl}/api/v1/admin/settings`, {
     cache: "no-store",
     headers: {
       Accept: "application/json",

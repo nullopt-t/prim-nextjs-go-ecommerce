@@ -1,4 +1,5 @@
 import type { PublicSettings } from "@/modules/settings/api/settingsService";
+import { getServerApiBaseUrl } from "@/shared/lib/server/apiBaseUrl";
 
 export const PUBLIC_SETTINGS_TAG = "public-settings";
 
@@ -7,12 +8,12 @@ export const PUBLIC_SETTINGS_TAG = "public-settings";
  * dependent UI (brand, footer, announcement) in the initial HTML response.
  */
 export async function getPublicSettings(): Promise<PublicSettings | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+  const baseUrl = getServerApiBaseUrl();
   if (!baseUrl) return null;
 
   try {
     const response = await fetch(
-      `${baseUrl.replace(/\/$/, "")}/api/v1/settings/public`,
+      `${baseUrl}/api/v1/settings/public`,
       {
         next: { revalidate: 60, tags: [PUBLIC_SETTINGS_TAG] },
         headers: { Accept: "application/json" },
