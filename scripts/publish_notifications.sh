@@ -3,12 +3,13 @@
 # Prim Notification Publisher Script
 # ==============================================================================
 # Sends simulated notification events directly into Apache Kafka.
-# Does NOT touch Go source files or trigger Air hot-reloading.
+# Requires the production stack to be running (`make up-d`).
 # ==============================================================================
 
 set -e
 
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.dev.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-backend/docker/docker-compose.prod.yml}"
+COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-backend/.env}"
 USER_ID="${1:-67ce034a-47e2-4ada-9b46-dbc6f94cecd0}" # Default: test@gmail.com
 
 generate_uuid() {
@@ -37,7 +38,7 @@ send_notification() {
     local kafka_payload
     kafka_payload="{\"eventId\":\"$event_id\",\"type\":\"in_app\",\"category\":\"$category\",\"userId\":\"$USER_ID\",\"recipient\":\"$USER_ID\",\"locale\":\"ar\",\"timestamp\":\"$now\",\"data\":$inner_data}"
 
-    echo "$kafka_payload" | docker compose -f "$COMPOSE_FILE" exec -T kafka \
+    echo "$kafka_payload" | docker compose --env-file "$COMPOSE_ENV_FILE" -f "$COMPOSE_FILE" exec -T kafka \
         /opt/kafka/bin/kafka-console-producer.sh \
         --bootstrap-server localhost:9092 \
         --topic notifications.inapp >/dev/null 2>&1

@@ -12,7 +12,6 @@ The Go API behind PRIM: REST endpoints for the storefront and admin back office,
 - **Auth:** Passwordless email OTP with server-side sessions stored in Redis
 - **API docs:** Swagger / OpenAPI, generated with `swag`
 - **Migrations:** `golang-migrate`
-- **Hot reload:** Air
 - **Testing:** `testify` + `testcontainers-go`
 
 ## Architecture
@@ -93,7 +92,7 @@ The easiest path is the full stack from the repository root:
 make up        # or: make up-d
 ```
 
-That starts the API on <http://localhost:8081> together with PostgreSQL, Redis, Kafka, MinIO, and the worker, and runs the migrations.
+That starts the API on <http://localhost:8081> together with PostgreSQL, Redis, Kafka, MinIO, the worker, and the storefront, and runs the migrations. There is a single production stack; both Makefiles point at it.
 
 To run just the API against your own Postgres/Redis, from `backend/`:
 
@@ -102,7 +101,7 @@ go run ./cmd/api      # the API
 go run ./cmd/worker   # Kafka notification worker + reservation reaper
 ```
 
-Or use the backend's own compose stack (API + Postgres + Redis + MinIO) from `backend/`:
+Or use the backend's own Makefile, which runs the same production compose stack, from `backend/`:
 
 ```bash
 make up
@@ -152,7 +151,7 @@ make migrate-force   # force a version (when a migration is stuck)
 
 ## Configuration
 
-Configuration is **environment-only**; there is no committed `configs/config.yaml` and the Compose files contain no env values. Copy `dev.env.example` to `.env` for local Docker Compose, or `.env.example` to `.env` for production (see `docs/deployment/environment.md`). The main variables:
+Configuration is **environment-only**; there is no committed `configs/config.yaml` and the Compose file contains no secrets. Copy `.env.example` to `.env` for the stack (see `docs/deployment/environment.md`). The main variables:
 
 | Variable | Default | Notes |
 | --- | --- | --- |
@@ -184,10 +183,11 @@ Integration tests spin up real PostgreSQL and Redis containers via `testcontaine
 From `backend/`:
 
 ```bash
-make up          # start the backend dev stack
+make up          # start the production stack
 make up-build    # rebuild images first
 make down        # stop it
-make clean       # stop and remove volumes
+make clean       # stop and remove containers, keep volumes
+make clean-volumes # stop and remove volumes
 make logs        # tail the stack
 make logs-api    # only the API
 make logs-worker # only the worker
@@ -217,7 +217,6 @@ backend/
 │   ├── shared/               # middleware, error codes, jobs, OTP, crypto, email templates
 │   └── model/                # database models
 ├── pkg/                      # config, database, log, storage, mail, broker, api helpers
-├── configs/                  # Air configs
 ├── migrations/               # schema and seed SQL
 ├── docs/                     # generated Swagger specs (public + admin)
 ├── seed/                     # seed media for the catalog
