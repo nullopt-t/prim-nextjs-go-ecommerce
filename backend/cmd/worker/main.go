@@ -52,7 +52,7 @@ func main() {
 		logger.Error("failed to configure redis client", log.Meta{"error": err})
 		return
 	}
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 	if err := redisClient.Ping(ctx); err != nil {
 		logger.Warn("redis connection issue", log.Meta{"error": err})
 	}
@@ -75,13 +75,13 @@ func main() {
 	// 2. Initialize Kafka Consumer & Producer
 	kafkaCfg := brokerkafka.DefaultConfig(cfg.KafkaCfg.Brokers, cfg.KafkaCfg.GroupID)
 	dlqProducer := brokerkafka.NewProducer(kafkaCfg)
-	defer dlqProducer.Close()
+	defer func() { _ = dlqProducer.Close() }()
 
 	emailConsumer := brokerkafka.NewConsumer(kafkaCfg, job.TopicNotificationsEmail)
-	defer emailConsumer.Close()
+	defer func() { _ = emailConsumer.Close() }()
 
 	inappConsumer := brokerkafka.NewConsumer(kafkaCfg, job.TopicNotificationsInApp)
-	defer inappConsumer.Close()
+	defer func() { _ = inappConsumer.Close() }()
 
 	// 3. Initialize Mailer & HTML Template Renderer
 	mailer := mail.NewMailer(&mail.Config{

@@ -305,13 +305,14 @@ func (s *CouponService) calculateDiscount(
 	}
 
 	var calculatedDiscount int64
-	if c.DiscountType == model.CouponDiscountTypePercentage {
+	switch c.DiscountType {
+	case model.CouponDiscountTypePercentage:
 		pct := int(c.DiscountValue)
 		res.DiscountPercent = &pct
 		if grossTotal > 0 {
 			calculatedDiscount = (grossTotal * c.DiscountValue) / 100
 		}
-	} else if c.DiscountType == model.CouponDiscountTypeFixedAmount {
+	case model.CouponDiscountTypeFixedAmount:
 		fixed := float64(c.DiscountValue) / 100.0
 		res.FixedDiscount = &fixed
 		calculatedDiscount = c.DiscountValue

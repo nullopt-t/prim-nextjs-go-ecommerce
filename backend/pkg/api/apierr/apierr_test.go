@@ -26,7 +26,6 @@ func TestNilReceiverSafety(t *testing.T) {
 	})
 }
 
-
 func TestWithMessagePreservesCauseAndStack(t *testing.T) {
 	cause := errors.New("underlying cause")
 	err := apierr.New(http.StatusBadRequest, "initial").
@@ -36,7 +35,7 @@ func TestWithMessagePreservesCauseAndStack(t *testing.T) {
 	require.Equal(t, cause, err.Unwrap())
 	require.NotEmpty(t, err.Stack())
 
-	err.WithMessage("updated message")
+	_ = err.WithMessage("updated message")
 	assert.Equal(t, "updated message", err.Error())
 	assert.Equal(t, cause, err.Unwrap())
 	assert.NotEmpty(t, err.Stack())

@@ -95,19 +95,6 @@ func mapReviewToResponse(r *model.Review) ReviewResponse {
 	}
 }
 
-func mapRatingSummaryResponse(s *model.RatingSummary) RatingSummaryResponse {
-	if s == nil {
-		return RatingSummaryResponse{
-			Distribution: map[int16]int{1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
-		}
-	}
-	return RatingSummaryResponse{
-		AverageRating: s.AverageRating,
-		ReviewCount:   s.ReviewCount,
-		Distribution:  s.Distribution,
-	}
-}
-
 func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -388,11 +375,7 @@ func (h *ReviewHandler) UpdateReview(c *gin.Context) {
 		return
 	}
 
-	rv, err := h.service.UpdateUserReview(c.Request.Context(), id, userID, UpdateReviewInput{
-		Rating: req.Rating,
-		Title:  req.Title,
-		Body:   req.Body,
-	})
+	rv, err := h.service.UpdateUserReview(c.Request.Context(), id, userID, UpdateReviewInput(req))
 	if err != nil {
 		_ = c.Error(err)
 		return

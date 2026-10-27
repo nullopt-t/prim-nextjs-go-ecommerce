@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/errs"
+	"github.com/nullopt-t/prim-backend/pkg/api"
 )
 
 // FieldError is an alias for api.FieldError, capturing individual field-level validation failures.
@@ -16,52 +16,52 @@ type FieldError = api.FieldError
 // Standard API Error Codes (Generic & Infrastructure Concerns)
 const (
 	// CodeBadRequest represents general malformed HTTP requests.
-	CodeBadRequest            = "BAD_REQUEST"
+	CodeBadRequest = "BAD_REQUEST"
 	// CodeInvalidInput represents malformed data parameters (e.g. invalid UUIDs or wrong types).
-	CodeInvalidInput          = "INVALID_INPUT"
+	CodeInvalidInput = "INVALID_INPUT"
 	// CodeInvalidPayload represents unparseable request body JSON/form data.
-	CodeInvalidPayload        = "INVALID_PAYLOAD"
+	CodeInvalidPayload = "INVALID_PAYLOAD"
 	// CodeValidationFailed represents domain or schema constraint validation failures.
-	CodeValidationFailed      = "VALIDATION_FAILED"
+	CodeValidationFailed = "VALIDATION_FAILED"
 	// CodeUnauthorized represents unauthenticated requests lacking valid credentials.
-	CodeUnauthorized          = "UNAUTHORIZED"
+	CodeUnauthorized = "UNAUTHORIZED"
 	// CodeForbidden represents authenticated requests lacking required permissions or role.
-	CodeForbidden             = "FORBIDDEN"
+	CodeForbidden = "FORBIDDEN"
 	// CodeNotFound represents requests targeting non-existent resources.
-	CodeNotFound              = "NOT_FOUND"
+	CodeNotFound = "NOT_FOUND"
 	// CodeAlreadyExists represents uniqueness constraint violations during creation.
-	CodeAlreadyExists         = "ALREADY_EXISTS"
+	CodeAlreadyExists = "ALREADY_EXISTS"
 	// CodeResourceConflict represents concurrent state conflicts or optimistic locking failures.
-	CodeResourceConflict      = "RESOURCE_CONFLICT"
+	CodeResourceConflict = "RESOURCE_CONFLICT"
 	// CodeRateLimitExceeded represents client request rate limit throttling.
-	CodeRateLimitExceeded     = "RATE_LIMIT_EXCEEDED"
+	CodeRateLimitExceeded = "RATE_LIMIT_EXCEEDED"
 	// CodeExpired represents token, challenge, or entity expiration.
-	CodeExpired               = "EXPIRED"
+	CodeExpired = "EXPIRED"
 	// CodeInvalidOrExpired represents auth tokens that are either invalid or expired.
-	CodeInvalidOrExpired      = "INVALID_OR_EXPIRED"
+	CodeInvalidOrExpired = "INVALID_OR_EXPIRED"
 	// CodeInternalError represents unexpected backend panics or system failures.
-	CodeInternalError         = "INTERNAL_ERROR"
+	CodeInternalError = "INTERNAL_ERROR"
 	// CodeClientClosedRequest represents a request the client abandoned (disconnected or aborted) before a response could be sent.
-	CodeClientClosedRequest   = "CLIENT_CLOSED_REQUEST"
+	CodeClientClosedRequest = "CLIENT_CLOSED_REQUEST"
 	// CodeServiceUnavailable represents a transient inability to serve a request, such as a downstream outage or resource exhaustion.
-	CodeServiceUnavailable    = "SERVICE_UNAVAILABLE"
+	CodeServiceUnavailable = "SERVICE_UNAVAILABLE"
 	// CodeGatewayTimeout represents an upstream dependency (e.g. the database) that failed to respond in time.
-	CodeGatewayTimeout        = "GATEWAY_TIMEOUT"
+	CodeGatewayTimeout = "GATEWAY_TIMEOUT"
 	// CodeInvalidReference represents invalid foreign key relationships.
-	CodeInvalidReference      = "INVALID_REFERENCE"
+	CodeInvalidReference = "INVALID_REFERENCE"
 	// CodeInvalidQueryParameter represents unparseable or out-of-range URL query parameters.
 	CodeInvalidQueryParameter = "INVALID_QUERY_PARAMETER"
 
 	// Media & File Transfer Codes
 
 	// CodeFileRequired indicates a required multipart file upload is missing.
-	CodeFileRequired         = "FILE_REQUIRED"
+	CodeFileRequired = "FILE_REQUIRED"
 	// CodeFileTooLarge indicates uploaded payload exceeds configured byte limits.
-	CodeFileTooLarge         = "FILE_TOO_LARGE"
+	CodeFileTooLarge = "FILE_TOO_LARGE"
 	// CodeUnsupportedMediaType indicates uploaded Content-Type or MIME type is rejected.
 	CodeUnsupportedMediaType = "UNSUPPORTED_MEDIA_TYPE"
 	// CodeStorageError indicates an internal error during S3/MinIO upload/download.
-	CodeStorageError         = "STORAGE_ERROR"
+	CodeStorageError = "STORAGE_ERROR"
 )
 
 // APIError represents a structured application API error embedding nullopt-t/errs.
@@ -99,7 +99,7 @@ func (ae *APIError) WithMessage(m string) *APIError {
 	if ae.AppError == nil {
 		ae.AppError = errs.New(m)
 	} else {
-		ae.AppError.Message = m
+		ae.Message = m
 	}
 	return ae
 }
@@ -143,7 +143,6 @@ func (ae *APIError) Unwrap() error {
 	}
 	return ae.AppError.Unwrap()
 }
-
 
 // LogValue implements slog.LogValuer to produce structured slog attribute groups
 // containing error status, code, message, underlying cause, validation fields, and stack trace.
@@ -335,4 +334,3 @@ func GatewayTimeoutError(message ...string) *APIError {
 	}
 	return New(http.StatusGatewayTimeout, msg).WithCode(CodeGatewayTimeout)
 }
-

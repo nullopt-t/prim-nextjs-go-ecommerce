@@ -54,15 +54,15 @@ func (h *InventoryHandler) ListRecentLedgers(c *gin.Context) {
 	q.Process(pagination.QueryOptions{DefaultPageSize: 30, MaxPageSize: 100})
 
 	var variantUUID *uuid.UUID
-	if vId := c.Query("variantId"); vId != "" {
-		if parsed, err := uuid.Parse(vId); err == nil {
+	if vID := c.Query("variantId"); vID != "" {
+		if parsed, err := uuid.Parse(vID); err == nil {
 			variantUUID = &parsed
 		}
 	}
 
 	var productUUID *uuid.UUID
-	if pId := c.Query("productId"); pId != "" {
-		if parsed, err := uuid.Parse(pId); err == nil {
+	if pID := c.Query("productId"); pID != "" {
+		if parsed, err := uuid.Parse(pID); err == nil {
 			productUUID = &parsed
 		}
 	}

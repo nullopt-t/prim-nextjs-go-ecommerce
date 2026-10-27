@@ -363,12 +363,12 @@ func TestTier1_F5_Order_Cancellation_ReleasesHoldViaConsumerInventoryRepo(t *tes
 	orderID := uuid.New()
 	resID := uuid.New()
 
-	inventoryRepo.CreateReservation(context.Background(), nil, &model.InventoryReservation{
+	require.NoError(t, inventoryRepo.CreateReservation(context.Background(), nil, &model.InventoryReservation{
 		ID:        resID,
 		OrderID:   &orderID,
 		Quantity:  3,
 		ExpiresAt: time.Now().Add(time.Hour),
-	})
+	}))
 
 	// Order cancellation calls consumer inventoryRepo.ReleaseReservationsForOrder on held qe
 	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {

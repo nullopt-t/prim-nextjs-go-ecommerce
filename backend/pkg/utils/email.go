@@ -40,11 +40,12 @@ func IsValidPhone(phone string, defaultRegion ...string) (string, error) {
 	var num *phonenumbers.PhoneNumber
 	var err error
 
-	if strings.HasPrefix(input, "+") {
+	switch {
+	case strings.HasPrefix(input, "+"):
 		num, err = phonenumbers.Parse(input, "")
-	} else if region != "" {
+	case region != "":
 		num, err = phonenumbers.Parse(input, region)
-	} else {
+	default:
 		// Attempt parsing by auto-prepending '+' for numbers provided with country code but no '+'
 		num, err = phonenumbers.Parse("+"+input, "")
 	}

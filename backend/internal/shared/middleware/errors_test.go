@@ -38,7 +38,7 @@ func serveError(t *testing.T, logger *recordingLogger, err error, req *http.Requ
 	r := gin.New()
 	r.Use(ErrorHandler(logger))
 	r.GET("/api/v1/products", func(c *gin.Context) {
-		c.Error(err)
+		_ = c.Error(err)
 	})
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)

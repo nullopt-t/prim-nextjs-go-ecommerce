@@ -48,11 +48,11 @@ func (e paymentStatusExecutor) QueryRow(context.Context, string, ...interface{})
 type paymentStatusRunner struct{ tag pgconn.CommandTag }
 
 func (r paymentStatusRunner) WithTx(_ context.Context, fn func(context.Context, database.QueryExecutor) error) error {
-	return fn(context.Background(), paymentStatusExecutor{tag: r.tag})
+	return fn(context.Background(), paymentStatusExecutor(r))
 }
 
 func (r paymentStatusRunner) WithExecutor(_ context.Context, fn func(database.QueryExecutor) error) error {
-	return fn(paymentStatusExecutor{tag: r.tag})
+	return fn(paymentStatusExecutor(r))
 }
 
 func TestUpdatePaymentStatusValidation(t *testing.T) {

@@ -153,19 +153,19 @@ func (r *CouponRepository) List(ctx context.Context, qe database.QueryExecutor, 
 	`)
 
 	if filter.Status != nil {
-		sb.WriteString(fmt.Sprintf(" AND status = $%d::coupon_status", idx))
+		fmt.Fprintf(&sb, " AND status = $%d::coupon_status", idx)
 		args = append(args, string(*filter.Status))
 		idx++
 	}
 
 	if filter.Cursor != nil {
-		sb.WriteString(fmt.Sprintf(" AND (created_at, id) < ($%d, $%d)", idx, idx+1))
+		fmt.Fprintf(&sb, " AND (created_at, id) < ($%d, $%d)", idx, idx+1)
 		args = append(args, filter.Cursor.CreatedAt, filter.Cursor.ID)
 		idx += 2
 	}
 
 	sb.WriteString(" ORDER BY created_at DESC, id DESC")
-	sb.WriteString(fmt.Sprintf(" LIMIT $%d", idx))
+	fmt.Fprintf(&sb, " LIMIT $%d", idx)
 	args = append(args, filter.Limit+1)
 
 	rows, err := qe.Query(ctx, sb.String(), args...)

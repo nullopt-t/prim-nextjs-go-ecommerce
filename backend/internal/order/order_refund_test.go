@@ -45,11 +45,11 @@ func (e refundExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Ro
 type refundRunner struct{ row pgx.Row }
 
 func (r refundRunner) WithTx(_ context.Context, fn func(context.Context, database.QueryExecutor) error) error {
-	return fn(context.Background(), refundExecutor{row: r.row})
+	return fn(context.Background(), refundExecutor(r))
 }
 
 func (r refundRunner) WithExecutor(_ context.Context, fn func(database.QueryExecutor) error) error {
-	return fn(refundExecutor{row: r.row})
+	return fn(refundExecutor(r))
 }
 
 func TestRefundPaymentStateValidation(t *testing.T) {

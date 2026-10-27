@@ -29,6 +29,6 @@ func TestPaginatedResponseJSON(t *testing.T) {
 func TestBadRequestErrorResponseAlias(t *testing.T) {
 	var errResp api.BadRequestErrorResponse
 	errResp.Code = "TEST"
-	var badReq api.BadReqResponse = errResp
+	badReq := errResp
 	assert.Equal(t, "TEST", badReq.Code)
 }

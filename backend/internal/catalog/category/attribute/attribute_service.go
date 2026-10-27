@@ -76,13 +76,7 @@ type UpdateAttributeInput struct {
 
 func (s *AttributeService) UpdateAttribute(ctx context.Context, id uuid.UUID, in UpdateAttributeInput) error {
 	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		return s.repo.UpdateAttribute(ctx, tx, id, UpdateAttributeFields{
-			Label:         in.Label,
-			ValueType:     in.ValueType,
-			AllowedValues: in.AllowedValues,
-			IsFilterable:  in.IsFilterable,
-			SortOrder:     in.SortOrder,
-		})
+		return s.repo.UpdateAttribute(ctx, tx, id, UpdateAttributeFields(in))
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to update attribute")

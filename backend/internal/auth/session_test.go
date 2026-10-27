@@ -51,7 +51,7 @@ func (s *AuthTestSuite) TestSession_AuthenticatedRequest() {
 	s.Require().Equal(http.StatusOK, w.Code)
 
 	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &resp))
 	data := resp["data"].(map[string]interface{})
 	s.Require().Equal("active", data["status"])
 	s.Require().Equal("customer", data["role"])
@@ -65,8 +65,6 @@ func (s *AuthTestSuite) TestSession_MissingSession() {
 
 	s.Require().Equal(http.StatusUnauthorized, w.Code)
 }
-
-
 
 func (s *AuthTestSuite) TestSession_Logout() {
 	cookies := s.authenticateAndGetCookies("logout@example.com")
@@ -89,7 +87,7 @@ func (s *AuthTestSuite) TestSession_Logout() {
 	s.Require().Equal(http.StatusOK, wList1.Code)
 
 	var resp1 map[string]interface{}
-	json.Unmarshal(wList1.Body.Bytes(), &resp1)
+	s.Require().NoError(json.Unmarshal(wList1.Body.Bytes(), &resp1))
 	data1 := resp1["data"].([]interface{})
 	s.Require().Len(data1, 1)
 
@@ -131,7 +129,7 @@ func (s *AuthTestSuite) TestSession_Logout_SubsequentMe() {
 	}
 	wMe := httptest.NewRecorder()
 	s.router.ServeHTTP(wMe, reqMe)
-	
+
 	// Should be 401 because session is revoked (checked by StrictSessionCheck)
 	s.Require().Equal(http.StatusUnauthorized, wMe.Code)
 }
@@ -188,4 +186,3 @@ func (s *AuthTestSuite) TestSession_AutoRefresh() {
 	s.Require().NoError(err)
 	s.Require().Greater(ttl, 25*24*time.Hour, "Session TTL in redis should have been extended to full duration")
 }
-

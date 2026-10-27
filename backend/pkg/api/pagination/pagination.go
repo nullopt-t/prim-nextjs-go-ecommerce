@@ -12,28 +12,28 @@ const (
 	DefaultPageSize = 10
 
 	// MaxPageSize is the hard upper limit for items per page to prevent denial-of-service memory exhaustion.
-	MaxPageSize     = 100
+	MaxPageSize = 100
 )
 
 // Page encapsulates pagination navigation metadata returned to API clients.
 type Page struct {
 	// Page is the current 1-based page index.
-	Page        int  `json:"page" example:"1"`
+	Page int `json:"page" example:"1"`
 
 	// PageSize is the maximum number of items per page.
-	PageSize    int  `json:"pageSize" example:"10"`
+	PageSize int `json:"pageSize" example:"10"`
 
 	// TotalItems is the total count of matching items across all pages.
-	TotalItems  int  `json:"totalItems" example:"20"`
+	TotalItems int `json:"totalItems" example:"20"`
 
 	// TotalPages is the total number of pages calculated from TotalItems and PageSize.
-	TotalPages  int  `json:"totalPages" example:"2"`
+	TotalPages int `json:"totalPages" example:"2"`
 
 	// HasPrevious is true if there is a page preceding the current page.
 	HasPrevious bool `json:"hasPrevious" example:"false"`
 
 	// HasNext is true if there is a page following the current page.
-	HasNext     bool `json:"hasNext" example:"true"`
+	HasNext bool `json:"hasNext" example:"true"`
 }
 
 // NewPage constructs a Page metadata object given current page, pageSize, and totalItems count.
@@ -69,7 +69,7 @@ type SortOrder string
 
 const (
 	// SortAsc represents ascending sort order (A-Z, 0-9).
-	SortAsc  SortOrder = "asc"
+	SortAsc SortOrder = "asc"
 
 	// SortDesc represents descending sort order (Z-A, 9-0).
 	SortDesc SortOrder = "desc"
@@ -78,7 +78,7 @@ const (
 // Sort represents a single field sorting directive.
 type Sort struct {
 	// Field is the database column or property name to sort by.
-	Field string    `example:"name"`
+	Field string `example:"name"`
 
 	// Order is the sort direction (SortAsc or SortDesc).
 	Order SortOrder `example:"asc"`
@@ -88,14 +88,14 @@ type Sort struct {
 // supporting pagination, full-text search, and multi-field sorting.
 type ListQuery struct {
 	// Page is the requested 1-based page number from query parameters.
-	Page     int `form:"page" example:"1"`
+	Page int `form:"page" example:"1"`
 
 	// PageSize is the requested number of items per page.
 	PageSize int `form:"pageSize" example:"10"`
 
 	// Cursor is an opaque keyset token. When present, repositories should use
 	// keyset pagination instead of OFFSET.
-	Cursor   string `form:"cursor" example:"eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9"`
+	Cursor string `form:"cursor" example:"eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9"`
 
 	// KeysetMode explicitly requests keyset pagination even when no cursor has
 	// been supplied yet (i.e. for the very first page). Endpoints that still
@@ -103,7 +103,7 @@ type ListQuery struct {
 	KeysetMode bool `form:"keyset" example:"true"`
 
 	// Offset is the computed SQL OFFSET (0-based) for database queries.
-	Offset   int `form:"-"`
+	Offset int `form:"-"`
 
 	// Search is an optional free-text search query string.
 	Search string `form:"search" example:"television"`
@@ -112,7 +112,7 @@ type ListQuery struct {
 	RawSort []string `form:"sort" example:"name,-created_at"`
 
 	// Sort contains the parsed and structured sort directives.
-	Sort    []Sort   `form:"-"`
+	Sort []Sort `form:"-"`
 }
 
 // QueryOptions defines overriding defaults and limits for ListQuery processing.
@@ -121,7 +121,7 @@ type QueryOptions struct {
 	DefaultPageSize int
 
 	// MaxPageSize overrides MaxPageSize if positive.
-	MaxPageSize     int
+	MaxPageSize int
 }
 
 // Process sanitizes input, applies default fallbacks, and computes offset/sort slices.
@@ -203,7 +203,10 @@ func (q *ListQuery) parseSort() {
 			if field != "" {
 				valid := true
 				for _, r := range field {
-					if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
+					isLower := r >= 'a' && r <= 'z'
+					isUpper := r >= 'A' && r <= 'Z'
+					isDigit := r >= '0' && r <= '9'
+					if !isLower && !isUpper && !isDigit && r != '_' {
 						valid = false
 						break
 					}

@@ -264,7 +264,6 @@ func (r *UserRepository) CountUsers(
 		pattern := "%" + *filter.Search + "%"
 		query += fmt.Sprintf(" AND (lower(email) LIKE lower($%d) OR lower(full_name) LIKE lower($%d))", i, i)
 		args = append(args, pattern)
-		i++
 	}
 
 	var count int

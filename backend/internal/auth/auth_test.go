@@ -109,7 +109,7 @@ func (s *AuthTestSuite) TestStartChallenge_MaxResends() {
 	s.Require().Equal(http.StatusTooManyRequests, w.Code)
 
 	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &resp))
 	s.Require().Equal("Too many resend attempts", resp["message"])
 }
 
@@ -272,7 +272,7 @@ func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Suspended() {
 
 	s.Require().Equal(http.StatusForbidden, wVerify.Code)
 	var resp map[string]interface{}
-	json.Unmarshal(wVerify.Body.Bytes(), &resp)
+	s.Require().NoError(json.Unmarshal(wVerify.Body.Bytes(), &resp))
 	s.Require().Equal("Account is suspended", resp["message"])
 }
 
@@ -333,6 +333,6 @@ func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Locked() {
 
 	s.Require().Equal(http.StatusForbidden, wVerify.Code)
 	var resp map[string]interface{}
-	json.Unmarshal(wVerify.Body.Bytes(), &resp)
+	s.Require().NoError(json.Unmarshal(wVerify.Body.Bytes(), &resp))
 	s.Require().Equal("Account is temporarily locked", resp["message"])
 }

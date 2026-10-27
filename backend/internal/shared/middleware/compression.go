@@ -170,7 +170,7 @@ func (w *compressWriter) finish() {
 		return
 	}
 
-	header := w.ResponseWriter.Header()
+	header := w.Header()
 	header.Set("Content-Encoding", "gzip")
 	header.Del("Content-Length")
 	addVary(header, "Accept-Encoding")
@@ -197,7 +197,7 @@ func (w *compressWriter) writePlain(body []byte) {
 // existing Content-Encoding, a no-transform cache directive, and media types
 // that are already compressed.
 func (w *compressWriter) shouldCompress() bool {
-	switch status := w.ResponseWriter.Status(); {
+	switch status := w.Status(); {
 	case status < http.StatusOK,
 		status == http.StatusNoContent,
 		status == http.StatusResetContent,
@@ -205,7 +205,7 @@ func (w *compressWriter) shouldCompress() bool {
 		return false
 	}
 
-	header := w.ResponseWriter.Header()
+	header := w.Header()
 	if header.Get("Content-Encoding") != "" {
 		return false
 	}

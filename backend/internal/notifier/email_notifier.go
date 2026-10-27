@@ -47,9 +47,10 @@ func (n *EmailNotifier) NotifyOTP(
 	}
 
 	var msgType job.MessageType
-	if channel == "sms" {
+	switch channel {
+	case "sms":
 		msgType = job.MessageTypeSMS
-	} else if channel == "email" {
+	case "email":
 		msgType = job.MessageTypeEmail
 	}
 

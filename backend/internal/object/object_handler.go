@@ -76,7 +76,7 @@ func (h *ObjectHandler) UploadMedia(c *gin.Context) {
 		_ = c.Error(apierr.InternalServerError("Failed to read uploaded file").Wrap(err))
 		return
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
 	// Trust the bytes, not the client: sniff the real content type and enforce a
 	// raster-image allowlist. This rejects SVG (which can carry scripts and cause

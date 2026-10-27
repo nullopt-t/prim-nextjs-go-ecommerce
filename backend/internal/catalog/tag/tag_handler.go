@@ -94,9 +94,7 @@ func (th *TagHandler) CreateTag(c *gin.Context) {
 		return
 	}
 
-	in := CreateTagInput{
-		Name: body.Name,
-	}
+	in := CreateTagInput(body)
 
 	tag, err := th.tservice.CreateTag(c.Request.Context(), in)
 	if err != nil {
@@ -191,9 +189,7 @@ func (th *TagHandler) UpdateTagByID(c *gin.Context) {
 	err = th.tservice.UpdateTag(
 		c.Request.Context(),
 		tagID,
-		UpdateTagInput{
-			Name: body.Name,
-		},
+		UpdateTagInput(body),
 	)
 	if err != nil {
 		_ = c.Error(err)

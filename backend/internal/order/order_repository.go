@@ -586,7 +586,6 @@ func (r *Repository) CountOrders(
 	if filter.Status != nil && *filter.Status != "" {
 		query += fmt.Sprintf(" AND status = $%d::order_status", i)
 		args = append(args, *filter.Status)
-		i++
 	}
 
 	var count int

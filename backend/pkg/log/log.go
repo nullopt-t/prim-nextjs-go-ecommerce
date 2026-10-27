@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/Marlliton/slogpretty"
 )
@@ -45,7 +44,6 @@ func (lc LogContext) LogValue() slog.Value {
 
 // ConsoleLogger implements the Logger interface by wrapping an underlying *slog.Logger.
 type ConsoleLogger struct {
-	mu     sync.RWMutex
 	logger *slog.Logger
 }
 
@@ -135,4 +133,3 @@ func (l *ConsoleLogger) Warn(msg string, meta ...Meta) {
 func (l *ConsoleLogger) Debug(msg string, meta ...Meta) {
 	l.logger.Debug(msg, l.buildAttrs(meta)...)
 }
-

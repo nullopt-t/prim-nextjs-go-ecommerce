@@ -229,20 +229,6 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 	return createdOrder, nil
 }
 
-// restockOrderItems releases the purchased quantity of every line item back to
-// variant stock within the caller's transaction.
-func (s *OrderService) restockOrderItems(
-	ctx context.Context,
-	tx database.QueryExecutor,
-	orderID uuid.UUID,
-) error {
-	items, err := s.orderRepo.GetOrderItems(ctx, tx, orderID)
-	if err != nil {
-		return fmt.Errorf("fetch order items for restock: %w", err)
-	}
-	return s.restockItems(ctx, tx, items)
-}
-
 // restockItems writes a compensating 'return' ledger entry for each line item,
 // restoring previously deducted units to salable stock. On-hand stock is
 // derived from the ledger sum, so the ledger entry is the restock. It runs

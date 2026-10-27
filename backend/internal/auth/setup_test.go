@@ -90,7 +90,6 @@ func (s *AuthTestSuite) SetupSuite() {
 	_, err = db.Exec(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
-
 	// 3. Start Redis Container
 	rContainer, err := redisContainer.Run(ctx,
 		"redis:7-alpine",
@@ -165,10 +164,10 @@ func (s *AuthTestSuite) SetupSuite() {
 func (s *AuthTestSuite) TearDownSuite() {
 	ctx := context.Background()
 	if s.pgContainer != nil {
-		s.pgContainer.Terminate(ctx)
+		_ = s.pgContainer.Terminate(ctx)
 	}
 	if s.redisContainer != nil {
-		s.redisContainer.Terminate(ctx)
+		_ = s.redisContainer.Terminate(ctx)
 	}
 }
 

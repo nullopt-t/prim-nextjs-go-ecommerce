@@ -47,7 +47,7 @@ func decodeGzip(t *testing.T, body []byte) string {
 	t.Helper()
 	zr, err := gzip.NewReader(bytes.NewReader(body))
 	require.NoError(t, err)
-	defer zr.Close()
+	defer func() { _ = zr.Close() }()
 
 	raw, err := io.ReadAll(zr)
 	require.NoError(t, err)

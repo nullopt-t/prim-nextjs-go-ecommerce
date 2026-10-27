@@ -137,11 +137,7 @@ func (bs *BrandService) UpdateBrand(
 	brandID uuid.UUID,
 	in UpdateBrandInput,
 ) error {
-	fields := UpdateBrandFields{
-		Name:         in.Name,
-		Link:         in.Link,
-		LogoObjectID: in.LogoObjectID,
-	}
+	fields := UpdateBrandFields(in)
 
 	if in.Name != nil {
 		name := strings.TrimSpace(*in.Name)
@@ -396,4 +392,3 @@ func (bs *BrandService) populateLogoURLs(
 	}
 	return nil
 }
-

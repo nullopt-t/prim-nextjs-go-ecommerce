@@ -118,10 +118,7 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 		return
 	}
 
-	in := CreateCategoryInput{
-		Name:     body.Name,
-		ParentID: body.ParentID,
-	}
+	in := CreateCategoryInput(body)
 
 	ctx := c.Request.Context()
 	category, err := h.categoryService.CreateCategory(ctx, in)
@@ -300,10 +297,7 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 		return
 	}
 
-	in := UpdateCategoryInput{
-		Name:     body.Name,
-		ParentID: body.ParentID,
-	}
+	in := UpdateCategoryInput(body)
 
 	ctx := c.Request.Context()
 	if err := h.categoryService.UpdateCategory(ctx, categoryID, in); err != nil {

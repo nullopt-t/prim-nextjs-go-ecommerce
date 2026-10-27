@@ -219,12 +219,12 @@ func TestTier4_RealWorld_OrderCancellationAndInventoryRestockFlow(t *testing.T) 
 	varID := uuid.New()
 	customerID := uuid.New()
 
-	orderRepo.CreateOrder(context.Background(), nil, &model.Order{
+	require.NoError(t, orderRepo.CreateOrder(context.Background(), nil, &model.Order{
 		ID:          orderID,
 		CustomerID:  &customerID,
 		TotalAmount: 9000,
 		Status:      model.OrderStatusProcessing,
-	})
+	}))
 
 	// Cancel Order & Restock inside single transaction
 	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
