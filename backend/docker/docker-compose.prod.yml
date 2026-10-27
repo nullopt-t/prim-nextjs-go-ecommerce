@@ -49,6 +49,11 @@ services:
     restart: unless-stopped
     environment:
       PORT: "3000"
+      # Runtime value used by SSR fetchers inside the Compose network. The
+      # build arg (set above) is baked into the client bundle for browser
+      # calls; this runtime value is for server-side API fetches from inside
+      # the container network.
+      NEXT_PUBLIC_API_URL: "http://api:8080"
     env_file:
       - ../.env
     depends_on:
