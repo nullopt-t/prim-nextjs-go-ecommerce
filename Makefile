@@ -1,13 +1,13 @@
-COMPOSE = docker compose --env-file backend/.env -f backend/docker/docker-compose.prod.yml
+COMPOSE = docker compose -f docker-compose.dev.yml
+PROD_COMPOSE = docker compose --env-file backend/.env -f backend/docker/docker-compose.prod.yml
 
-.PHONY: up up-build up-d down clean clean-volumes logs logs-api logs-worker logs-frontend \
+.PHONY: up up-build up-d down clean clean-dev clean-prod clean-volumes-dev clean-volumes-prod \
+	logs logs-api logs-worker logs-frontend \
 	migrate-up migrate-down migrate-drop migrate-reset \
-	prod-up prod-down prod-ps prod-logs prod-migrate
+	prod-up prod-down prod-logs prod-ps prod-migrate
 
-## ─── Stack ───────────────────────────────────────────────
+## ─── Full Stack ──────────────────────────────────────────
 
-# Foreground / detached startup of the production stack. Images are rebuilt
-# when they do not exist yet; use `up-build` to force a rebuild.
 up:
 	$(COMPOSE) up
 
@@ -15,7 +15,7 @@ up-build:
 	$(COMPOSE) up --build
 
 up-d:
-	$(COMPOSE) up -d --build
+	$(COMPOSE) up -d
 
 down:
 	$(COMPOSE) down
@@ -23,13 +23,22 @@ down:
 ## ─── Cleanup ─────────────────────────────────────────────
 
 # Safe cleanup: removes containers and networks, keeps all named volumes.
-clean:
+clean: clean-dev
+
+clean-dev:
 	$(COMPOSE) down --remove-orphans
 
+clean-prod:
+	$(PROD_COMPOSE) down --remove-orphans
+
 # Explicitly destructive. Only use when you intend to delete persisted data.
-clean-volumes:
-	@echo "WARNING: removing stack volumes (Postgres, Redis, MinIO, Kafka)"
+clean-volumes-dev:
+	@echo "WARNING: removing dev volumes (Postgres, Redis, MinIO, Kafka)"
 	$(COMPOSE) down -v --remove-orphans
+
+clean-volumes-prod:
+	@echo "WARNING: removing the production MinIO volume"
+	$(PROD_COMPOSE) down -v --remove-orphans
 
 ## ─── Logs ────────────────────────────────────────────────
 
@@ -47,34 +56,35 @@ logs-frontend:
 
 ## ─── Migrations ──────────────────────────────────────────
 
-MIGRATE = $(COMPOSE) run --rm --entrypoint migrate migrate -path /migrations -database "$${DATABASE_URL}"
-
 migrate-up:
-	$(MIGRATE) up
+	$(COMPOSE) run --rm migrate
 
 migrate-down:
-	$(MIGRATE) down 1
+	$(COMPOSE) run --rm migrate down
 
 migrate-drop:
-	$(MIGRATE) drop -f
+	$(COMPOSE) run --rm migrate drop -f
 
 migrate-reset:
-	$(MIGRATE) drop -f
-	$(MIGRATE) up
+	$(COMPOSE) run --rm migrate drop -f
+	$(COMPOSE) run --rm migrate
 
-## ─── Production aliases ──────────────────────────────────
+## ─── Production ──────────────────────────────────────────
 
+# Builds the production images, runs pending migrations, then starts the
+# production stack in the background. Requires backend/.env (including
+# NEXT_PUBLIC_API_URL, DATABASE_URL, and REDIS_URL).
 prod-up:
-	$(COMPOSE) up -d --build
+	$(PROD_COMPOSE) up -d --build
 
 prod-down:
-	$(COMPOSE) down
-
-prod-ps:
-	$(COMPOSE) ps
+	$(PROD_COMPOSE) down
 
 prod-logs:
-	$(COMPOSE) logs -f
+	$(PROD_COMPOSE) logs -f
+
+prod-ps:
+	$(PROD_COMPOSE) ps
 
 prod-migrate:
-	$(MIGRATE) up
+	$(PROD_COMPOSE) run --rm migrate

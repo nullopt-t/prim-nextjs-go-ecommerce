@@ -67,7 +67,7 @@ graph LR
 | Cache & sessions | Redis 8 |
 | Messaging | Apache Kafka (KRaft) |
 | Object storage | MinIO (S3-compatible) |
-| Tooling | Docker Compose, golang-migrate, GitHub Actions, CodeQL |
+| Tooling | Docker Compose, Air (hot reload), golang-migrate, GitHub Actions, CodeQL |
 
 ## Getting started
 
@@ -75,14 +75,14 @@ You need Docker and Docker Compose. From the repository root:
 
 ```bash
 make up       # start everything and follow the logs
-make up-d     # or build and start it in the background
+make up-d     # or start it in the background
 ```
 
-There is a single production stack (`backend/docker/docker-compose.prod.yml`). It brings up the storefront, API, worker, PostgreSQL, Redis, Kafka, and MinIO, seeds the media bucket, and runs the migrations. The first build takes a few minutes while Go modules and npm packages download.
+This brings up the storefront, API, worker, PostgreSQL, Redis, Kafka, and MinIO, seeds the media bucket, and runs the migrations. The first build takes a few minutes while Go modules and npm packages download.
 
 Once it's up, open the storefront at <http://localhost:3000>. The API is at <http://localhost:8081>, and a quick health check lives at <http://localhost:8081/health>.
 
-> **A note on the URL configuration.** `backend/.env` holds the browser-facing `NEXT_PUBLIC_API_URL` (for example `http://192.168.1.16:8081`) plus `MINIO_PUBLIC_URL` and `CLIENT_BASE_URL`. The compose file bakes `NEXT_PUBLIC_API_URL` into the client bundle at build time and overrides it at runtime to `http://api:8080` so server rendering uses the Compose network. Change the values in `backend/.env` and rebuild with `make up-build` after changing the public URL.
+> **A note on the URL configuration.** `docker-compose.dev.yml` points the frontend and MinIO at a LAN address (`192.168.1.16`) so the stack is reachable from other devices on the network. If you only ever use your own machine, change `NEXT_PUBLIC_API_URL`, `API_URL`, `MINIO_PUBLIC_URL`, and `CLIENT_BASE_URL` in that file to `localhost`.
 
 ### Services and ports
 
@@ -95,9 +95,9 @@ Once it's up, open the storefront at <http://localhost:3000>. The API is at <htt
 | Admin API docs | <http://localhost:8081/api/v1/docs/admin/index.html> | Requires an admin session |
 | MinIO API | <http://localhost:9000> | S3 endpoint |
 | MinIO console | <http://localhost:9001> | `admin` / `supersecret` |
-| PostgreSQL | internal only | db `prim`, user `prim`, password `prim` |
-| Redis | internal only | |
-| Kafka | `localhost:9092` | KRaft mode |
+| PostgreSQL | `localhost:5432` | db `prim`, user `prim`, password `prim` |
+| Redis | `localhost:6379` | |
+| Kafka | `localhost:9092` | |
 
 ## Common commands
 
@@ -108,8 +108,7 @@ make up            # start the full stack in the foreground
 make up-d          # start it detached
 make up-build      # rebuild images, then start
 make down          # stop the containers
-make clean         # stop and remove containers, keep volumes
-make clean-volumes # stop and remove volumes (fresh database)
+make clean         # stop and remove volumes (fresh database)
 
 make logs          # tail everything
 make logs-api      # only the Go API
@@ -132,14 +131,15 @@ prim/
 │   ├── internal/                # domain packages (auth, catalog, cart, checkout, order, user, setting, ...)
 │   ├── migrations/              # SQL schema + seed data
 │   ├── pkg/                     # shared config, database, storage, logging, mail, broker
+│   ├── configs/                 # config.yaml and Air hot-reload configs
 │   ├── docs/                    # generated Swagger specs (public + admin)
 │   └── seed/                    # seed media for the catalog
 ├── frontend/                    # Next.js 16 storefront, account, admin, and vendor apps
 │   ├── messages/                # en.json / ar.json
 │   ├── public/                  # static assets
 │   └── src/                     # app routes, features, context, services, hooks
-├── backend/docker/docker-compose.prod.yml  # the production stack
-├── Makefile                     # stack shortcuts
+├── docker-compose.dev.yml       # the local development stack
+├── Makefile                     # development shortcuts
 └── README.md
 ```
 

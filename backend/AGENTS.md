@@ -31,7 +31,7 @@ make build              # build ./bin/server and ./bin/worker
 Run from the repository root:
 
 ```bash
-make up-d               # full stack (production compose)
+make up-d               # full dev stack
 make logs-api           # API logs
 make logs-worker        # worker logs
 make migrate-up         # apply migrations

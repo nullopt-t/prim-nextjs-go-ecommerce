@@ -1,4 +1,4 @@
-COMPOSE=docker compose --env-file .env -f docker/docker-compose.prod.yml
+COMPOSE=docker compose -f docker/docker-compose.dev.yml
 
 # Swagger tags used exclusively by /admin routes, derived from the source
 # annotations so the public and admin specs stay disjoint. Every admin handler
@@ -8,7 +8,7 @@ ADMIN_TAGS := $(shell grep -rhoE '@Tags[[:space:]]+Admin [A-Za-z ]+' --include='
 # The same tags negated: swag excludes every tag prefixed with '!'.
 PUBLIC_EXCLUDE_TAGS := $(shell printf '%s' '$(ADMIN_TAGS)' | sed 's/^/!/; s/,/,!/g')
 
-.PHONY: up up-d up-build down clean clean-volumes logs logs-api logs-worker migrate-up migrate-down migrate-drop migrate-reset migrate-force swagger
+.PHONY: up up-d down clean logs logs-api logs-worker migrate-up migrate-down migrate-drop migrate-reset migrate-force swagger
 
 swagger:
 	@test -n "$(ADMIN_TAGS)" || { echo "swagger: no 'Admin *' tags found, refusing to generate specs" >&2; exit 1; }
@@ -31,17 +31,13 @@ build:
 	CGO_ENABLED=0 GOOS=linux go build -o ./bin/worker ./cmd/worker/main.go
 
 up-d:
-	$(COMPOSE) up -d --build
+	$(COMPOSE) up -d
 
 down:
 	$(COMPOSE) down
 
 clean:
-	$(COMPOSE) down --remove-orphans
-
-clean-volumes:
-	@echo "WARNING: removing stack volumes (Postgres, Redis, MinIO, Kafka)"
-	$(COMPOSE) down -v --remove-orphans
+	$(COMPOSE) down -v
 
 logs:
 	$(COMPOSE) logs -f
@@ -52,20 +48,18 @@ logs-api:
 logs-worker:
 	$(COMPOSE) logs -f worker
 
-MIGRATE = $(COMPOSE) run --rm --entrypoint migrate migrate -path /migrations -database "$${DATABASE_URL}"
-
 migrate-up:
-	$(MIGRATE) up
+	$(COMPOSE) run --rm migrate
 
 migrate-down:
-	$(MIGRATE) down 1
+	$(COMPOSE) run --rm migrate down
 
 migrate-drop:
-	$(MIGRATE) drop -f
+	$(COMPOSE) run --rm migrate drop -f
 
 migrate-reset:
-	$(MIGRATE) drop -f
-	$(MIGRATE) up
+	$(COMPOSE) run --rm migrate drop -f
+	$(COMPOSE) run --rm migrate
 
 migrate-force:
-	$(MIGRATE) force $(version)
+	$(COMPOSE) run --rm migrate force $(version)
