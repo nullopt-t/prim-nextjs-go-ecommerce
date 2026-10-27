@@ -13,11 +13,15 @@ import { RouteMessages } from "@/shared/i18n/messages";
 function needsProductFeed(pathname: string) {
 	const path =
 		pathname.split("?")[0].replace(/^\/(en|ar)(?=\/|$)/, "") || "/";
-	return (
-		path === "/" ||
-		path === "/categories" ||
-		/^\/products\/[^/]+\/?$/.test(path)
-	);
+	return path === "/" || /^\/products\/[^/]+\/?$/.test(path);
+}
+
+function feedPageSize(pathname: string): number {
+	const path =
+		pathname.split("?")[0].replace(/^\/(en|ar)(?=\/|$)/, "") || "/";
+	// Product detail only needs enough products for the "similar products"
+	// carousel (5 items). Home needs shelves + the recently-viewed strip.
+	return 24;
 }
 
 export default async function ShopLayout({
@@ -27,7 +31,7 @@ export default async function ShopLayout({
 }) {
 	const pathname = (await headers()).get("x-pathname") || "/";
 	const { products, categories, brands } = needsProductFeed(pathname)
-		? await getCatalogSnapshot()
+		? await getCatalogSnapshot(feedPageSize(pathname))
 		: { products: [], ...(await getCatalogFacets()) };
 
 	return (
