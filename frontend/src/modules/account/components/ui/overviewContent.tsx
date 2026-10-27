@@ -17,12 +17,7 @@ import {
   ChevronLeft,
   ArrowRight,
   ArrowLeft,
-  ShoppingBag,
   ExternalLink,
-  RotateCcw,
-  CheckCircle2,
-  Clock,
-  Truck,
   Shield,
   ShieldAlert,
 } from "lucide-react";
@@ -50,13 +45,6 @@ interface Order {
 
 import { normalizeMediaUrl } from "@/shared/lib/media";
 
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
-
 function parseSnapshot(snapshot?: string): { title: string; img: string } {
   if (!snapshot) return { title: "Product", img: "/placeholder-product.png" };
   try {
@@ -78,42 +66,8 @@ export default function OverviewContent() {
   const Chevron = isRtl ? ChevronLeft : ChevronRight;
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
 
-  const STATUS_BADGE: Record<
-    Order["status"],
-    { label: string; icon: typeof Clock; className: string }
-  > = {
-    pending: {
-      label: t("status.pending"),
-      icon: Clock,
-      className: "text-amber-600 bg-amber-500/10 border-amber-500/20",
-    },
-    processing: {
-      label: t("status.processing"),
-      icon: Clock,
-      className: "text-blue-600 bg-blue-500/10 border-blue-500/20",
-    },
-    shipped: {
-      label: t("status.shipped"),
-      icon: Truck,
-      className: "text-violet-600 bg-violet-500/10 border-violet-500/20",
-    },
-    delivered: {
-      label: t("status.delivered"),
-      icon: CheckCircle2,
-      className: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20",
-    },
-    cancelled: {
-      label: t("status.cancelled"),
-      icon: Clock,
-      className: "text-destructive bg-destructive/10 border-destructive/20",
-    },
-  };
-
   const [orders, setOrders] = useState<Order[]>([]);
   const [wishlistPreview, setWishlistPreview] = useState<WishlistItem[]>([]);
-  const [wishlistCount, setWishlistCount] = useState(0);
-  const [reviewCount, setReviewCount] = useState(0);
-  const [addressCount, setAddressCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -122,10 +76,8 @@ export default function OverviewContent() {
     async function load() {
       setLoading(true);
       try {
-        const [ordersRes, reviewsRes, addressesRes, wishlistRes] = await Promise.all([
+        const [ordersRes, wishlistRes] = await Promise.all([
           userService.getOrders().catch(() => ({ data: [] })),
-          userService.getMyReviews().catch(() => ({ data: [] })),
-          userService.getAddresses().catch(() => ({ data: [] })),
           wishlistService.getItems(1, 6).catch(() => ({ data: [], meta: { totalItems: 0 } })),
         ]);
 
@@ -137,27 +89,12 @@ export default function OverviewContent() {
           ? ordersRes
           : []) as Order[];
 
-        const rawReviews: unknown[] = Array.isArray(reviewsRes?.data)
-          ? reviewsRes.data
-          : Array.isArray(reviewsRes)
-          ? reviewsRes
-          : [];
-
-        const rawAddresses: unknown[] = Array.isArray(addressesRes?.data)
-          ? addressesRes.data
-          : Array.isArray(addressesRes)
-          ? addressesRes
-          : [];
-
         const rawWishlist: WishlistItem[] = Array.isArray(wishlistRes?.data)
           ? wishlistRes.data
           : [];
 
         setOrders(rawOrders);
-        setReviewCount(rawReviews.length);
-        setAddressCount(rawAddresses.length);
         setWishlistPreview(rawWishlist);
-        setWishlistCount((wishlistRes?.meta as { totalItems?: number })?.totalItems ?? rawWishlist.length);
       } finally {
         if (!cancelled) setLoading(false);
       }

@@ -43,6 +43,7 @@ export interface ProductVariantMedia {
   id?: string;
   mediaType?: string;
   sortOrder?: number;
+  [key: string]: unknown;
 }
 
 export interface ProductVariant {
@@ -63,6 +64,7 @@ export interface ProductVariant {
   media?: ProductVariantMedia[];
   thumbnail?: string;
   color?: string;
+  [key: string]: unknown;
 }
 
 export interface ProductColorOption {
@@ -111,13 +113,19 @@ export interface Product {
   stock?: number;
   brand?: { id?: string; name?: string } | string;
   category?: { id?: string; name?: string } | string;
+  categoryId?: string;
+  brandId?: string;
   categories?: Array<string | { id?: string; name?: string }>;
   variants?: ProductVariant[];
+  [key: string]: unknown;
 }
 
 export interface ProductDetails extends Product {
   brand?: { id?: string; name?: string };
   category?: { id?: string; name?: string } | string;
+  categoryId?: string;
+  brandId?: string;
+  updatedAt?: string;
   variants: ProductVariant[];
   tags?: Tag[];
   rating?: ProductRatingSummary;

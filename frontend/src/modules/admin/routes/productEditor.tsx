@@ -40,7 +40,9 @@ import { SimplePricingFields } from "@/modules/admin/components/SimplePricingFie
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
 import { normalizeMediaUrl } from "@/shared/lib/media";
+import type { AdminCategory, Brand, Product, ProductDetails } from "@/modules/catalog/types";
 import type { ProductVariant } from "@/modules/catalog/types";
+import type { AdminAttribute } from "@/modules/admin/types";
 
 interface VariantFormState {
   mode: "create" | "edit";
@@ -81,6 +83,24 @@ function getVariantThumbnailUrl(v: ThumbnailSource): string | null {
 	return raw ? normalizeMediaUrl(raw) : null;
 }
 
+/**
+ * Resolves a category/brand name that the API may return either as a plain
+ * string or as a localized object (`{ en, ar }`).
+ */
+function labelOf(value: unknown): string {
+	if (typeof value === "string") return value;
+	if (value && typeof value === "object") {
+		const named = value as { en?: string; ar?: string; name?: unknown };
+		if (typeof named.name === "string") return named.name;
+		if (named.name && typeof named.name === "object") {
+			const nested = named.name as { en?: string; ar?: string };
+			return nested.en ?? nested.ar ?? "";
+		}
+		return named.en ?? named.ar ?? "";
+	}
+	return "";
+}
+
 interface AdminProductEditorProps {
   mode?: "create" | "edit";
 }
@@ -110,11 +130,11 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
 
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4 | 5>(initialWizardStep);
   const [editTab, setEditTab] = useState<"details" | "variants" | "publishing">("details");
-  const [categories, setCategories] = useState<any[]>([]);
-  const [brands, setBrands] = useState<any[]>([]);
-  const [attributes, setAttributes] = useState<any[]>([]);
-  const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
-  const [productDetail, setProductDetail] = useState<any>(null);
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [attributes, setAttributes] = useState<AdminAttribute[]>([]);
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
+  const [productDetail, setProductDetail] = useState<ProductDetails | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -166,12 +186,12 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     image: "",
   });
 
-  const applyDetailToForm = useCallback((detail: any) => {
+  const applyDetailToForm = useCallback((detail: ProductDetails) => {
     if (!detail) return;
     const variants = Array.isArray(detail.variants) ? detail.variants : [];
-    const activeVariant = variants.find((variant: any) => variant.isDefault) || variants[0];
+    const activeVariant = variants.find((variant) => variant.isDefault) || variants[0];
     const availableStock = variants.reduce(
-      (total: number, variant: any) => total + Number(variant.stock?.availableQuantity ?? 0),
+      (total: number, variant) => total + Number(variant.stock?.availableQuantity ?? 0),
       0
     );
     const price = Number(activeVariant?.extractedPrice ?? 0);
@@ -180,7 +200,10 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       ...prev,
       name: detail.title ?? prev.name,
       categoryId: detail.categoryId ?? prev.categoryId,
-      category: detail.category?.name ?? prev.category,
+      category:
+        typeof detail.category === "string"
+          ? prev.category
+          : detail.category?.name ?? prev.category,
       brandId: detail.brandId ?? prev.brandId ?? "",
       brand: detail.brand?.name ?? prev.brand,
       description: detail.description ?? "",
@@ -192,7 +215,10 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
         ? String(activeVariant.extractedOriginalPrice)
         : (detail.extractedOriginalPrice != null ? String(detail.extractedOriginalPrice) : ""),
       stock: variants.length > 0 ? String(availableStock) : prev.stock,
-      image: detail.thumbnail?.url ?? detail.thumbnail?.publicUrl ?? prev.image,
+      image:
+        (detail.thumbnail as { url?: string; publicUrl?: string } | null)?.url ??
+        (detail.thumbnail as { url?: string; publicUrl?: string } | null)?.publicUrl ??
+        prev.image,
       status: detail.status || "draft",
     }));
   }, []);
@@ -200,14 +226,14 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
   const loadProductDetail = useCallback(async (idToLoad: string) => {
     try {
       setDetailLoading(true);
-      const res: any = await catalogService.getAdminProduct(idToLoad);
-      const detail = res?.data ?? res ?? null;
+      const res = await catalogService.getAdminProduct(idToLoad);
+      const detail = res?.data ?? null;
       setProductDetail(detail);
       if (detail) {
         applyDetailToForm(detail);
-        setSelectedVariantForMedia((prev: any) => {
+        setSelectedVariantForMedia((prev) => {
           if (!prev) return null;
-          return detail.variants?.find((v: any) => v.id === prev.id) || prev;
+          return detail.variants?.find((v) => v.id === prev.id) || prev;
         });
       }
       return detail;
@@ -294,7 +320,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
   const formAxesLocked = Boolean(productId) && hasChildren;
 
   const currentCategoryName = useMemo(() => {
-    const cat = categories.find((c: any) => c.id === formData.categoryId);
+    const cat = categories.find((c) => c.id === formData.categoryId);
     return cat?.name || formData.category || t("products.form.category");
   }, [categories, formData.categoryId, formData.category, t]);
 
@@ -305,7 +331,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     for (const c of categories) {
       if (c.parentId === formData.categoryId) relatedCategoryIds.add(c.id);
     }
-    const currentCat = categories.find((c: any) => c.id === formData.categoryId);
+    const currentCat = categories.find((c) => c.id === formData.categoryId);
     if (currentCat?.parentId) relatedCategoryIds.add(currentCat.parentId);
 
     const currentCatName = currentCat?.name ? String(currentCat.name).toLowerCase() : "";
@@ -313,13 +339,13 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     const associatedIds = new Set<string>();
     for (const p of catalogProducts) {
       const pCatId = p.categoryId || (typeof p.category === "object" ? p.category?.id : undefined);
-      const matchId = Boolean(pCatId && relatedCategoryIds.has(pCatId));
+      const matchId = pCatId ? relatedCategoryIds.has(pCatId) : false;
 
       let pCatName = "";
       if (typeof p.category === "string") {
         pCatName = p.category;
       } else if (p.category && typeof p.category === "object") {
-        pCatName = p.category.name || p.category.en || "";
+        pCatName = labelOf(p.category);
       } else if (Array.isArray(p.categories) && p.categories.length > 0) {
         pCatName = typeof p.categories[0] === "string" ? p.categories[0] : (p.categories[0]?.name || "");
       }
@@ -333,12 +359,12 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
         if (typeof p.brand === "string") {
           pBrandName = p.brand;
         } else if (p.brand && typeof p.brand === "object") {
-          pBrandName = p.brand.name || p.brand.en || "";
+          pBrandName = labelOf(p.brand);
         }
 
         if (pBrandName) {
-          const bObj = brands.find((b: any) => {
-            const bName = typeof b.name === "string" ? b.name : (b.name?.en || "");
+          const bObj = brands.find((b) => {
+            const bName = labelOf(b.name);
             return bName && bName.toLowerCase() === pBrandName.toLowerCase();
           });
           if (bObj?.id) associatedIds.add(bObj.id);
@@ -346,10 +372,10 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       }
     }
 
-    const related = brands.filter((b: any) => associatedIds.has(b.id));
+    const related = brands.filter((b) => associatedIds.has(b.id));
 
     if (formData.brandId && !associatedIds.has(formData.brandId)) {
-      const existing = brands.find((b: any) => b.id === formData.brandId);
+      const existing = brands.find((b) => b.id === formData.brandId);
       if (existing) related.unshift(existing);
     }
 
@@ -357,7 +383,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
   }, [brands, catalogProducts, formData.categoryId, formData.brandId, categories]);
 
   const formCategoryAttributes = useMemo(
-    () => attributes.filter((attribute: any) => !attribute.categoryId || attribute.categoryId === formData.categoryId),
+    () => attributes.filter((attribute) => !attribute.categoryId || attribute.categoryId === formData.categoryId),
     [attributes, formData.categoryId]
   );
 
@@ -384,15 +410,17 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
   );
 
   const attributeByKey = useMemo(() => {
-    const map: Record<string, any> = {};
-    for (const attribute of attributes) map[attribute.key] = attribute;
+    const map: Record<string, AdminAttribute> = {};
+    for (const attribute of attributes) {
+      if (attribute.key) map[attribute.key] = attribute;
+    }
     return map;
   }, [attributes]);
 
   const variantFingerprint = useMemo(
     () =>
       (productDetail?.variants || [])
-        .map((v: any) => `${v.id}:${JSON.stringify(v.attributes || {})}`)
+        .map((v) => `${v.id}:${JSON.stringify(v.attributes || {})}`)
         .join("|"),
     [productDetail]
   );
@@ -486,7 +514,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     if (!productId) {
       setIsSavingStep(true);
       try {
-        const createdResponse: any = await catalogService.createProduct({
+        const createdResponse = await catalogService.createProduct({
           title: formData.name.trim(),
           slug: slugifyProduct(formData.name),
           categoryId: formData.categoryId,
@@ -505,7 +533,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
         // here would remount the editor in edit mode and reset the wizard.
         notify.success(t("products.saveDraftSuccess"));
         setWizardStep(2);
-      } catch (err: any) {
+      } catch (err) {
         notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
       } finally {
         setIsSavingStep(false);
@@ -521,7 +549,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
         await loadProductDetail(productId);
         void revalidateCatalog().catch(() => false);
         setWizardStep(2);
-      } catch (err: any) {
+      } catch (err) {
         notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
       } finally {
         setIsSavingStep(false);
@@ -538,7 +566,14 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
 
     setIsSavingStep(true);
     try {
-      const payload: any = {
+      const payload: {
+        title: string;
+        categoryId: string;
+        description: string;
+        brandId?: string;
+        productType?: string;
+        variationAxes?: string[];
+      } = {
         title: formData.name.trim(),
         categoryId: formData.categoryId,
         description: formData.description.trim(),
@@ -555,7 +590,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       void revalidateCatalog().catch(() => false);
       // The system chooses the next stage from the saved product format.
       setWizardStep(formData.productType === "variable" ? 3 : 4);
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
     } finally {
       setIsSavingStep(false);
@@ -580,7 +615,14 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
 
     setIsSavingStep(true);
     try {
-      const payload: any = {
+      const payload: {
+        title: string;
+        categoryId: string;
+        description: string;
+        brandId?: string;
+        productType?: string;
+        variationAxes?: string[];
+      } = {
         title: formData.name.trim(),
         categoryId: formData.categoryId,
         description: formData.description.trim(),
@@ -592,7 +634,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       await loadProductDetail(productId);
       void revalidateCatalog().catch(() => false);
       setWizardStep(4);
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
     } finally {
       setIsSavingStep(false);
@@ -669,7 +711,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
         await loadProductDetail(productId);
         void revalidateCatalog().catch(() => false);
         setWizardStep(5);
-      } catch (err: any) {
+      } catch (err) {
         notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
       } finally {
         setIsSavingStep(false);
@@ -696,7 +738,14 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
 
     setIsSavingStep(true);
     try {
-      const payload: any = {
+      const payload: {
+        title: string;
+        categoryId: string;
+        description: string;
+        brandId?: string;
+        productType?: string;
+        variationAxes?: string[];
+      } = {
         title: formData.name.trim(),
         description: formData.description.trim(),
         categoryId: formData.categoryId,
@@ -713,7 +762,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       await loadProductDetail(productId);
       void revalidateCatalog().catch(() => false);
       notify.success(t("products.saveDraftSuccess"));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
     } finally {
       setIsSavingStep(false);
@@ -730,7 +779,14 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
 
     setPublishing(true);
     try {
-      const payload: any = {
+      const payload: {
+        title: string;
+        categoryId: string;
+        description: string;
+        brandId?: string;
+        productType?: string;
+        variationAxes?: string[];
+      } = {
         title: formData.name.trim(),
         description: formData.description.trim(),
         categoryId: formData.categoryId,
@@ -751,7 +807,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       } else {
         router.push("/admin/products");
       }
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.toast.publishFailed")));
     } finally {
       setPublishing(false);
@@ -769,7 +825,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       notify.success(t("products.editMode.archiveSuccess"));
       await loadProductDetail(productId);
       void revalidateCatalog().catch(() => false);
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.editMode.archiveFailed")));
     } finally {
       setArchiving(false);
@@ -794,7 +850,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     }
 
     const existingAttr = attributes.find(
-      (a: any) =>
+      (a) =>
         (!a.categoryId || a.categoryId === formData.categoryId) &&
         (a.key === key || (typeof a.label === "string" && a.label.toLowerCase() === label.toLowerCase()))
     );
@@ -802,15 +858,15 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     if (existingAttr) {
       setFormData((prev) => ({
         ...prev,
-        variationAxes: [...prev.variationAxes, existingAttr.key],
+        variationAxes: [...prev.variationAxes, ...(existingAttr.key ? [existingAttr.key] : [])],
       }));
-      notify.success(t("products.wizard.axisCreated", { name: existingAttr.label }));
+      notify.success(t("products.wizard.axisCreated", { name: existingAttr.label ?? key }));
       return;
     }
 
     setCreatingAxis(true);
     try {
-      const res: any = await adminService.createAttribute({
+      const res = await adminService.createAttribute({
         categoryId: formData.categoryId,
         key,
         label,
@@ -820,11 +876,13 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
         sortOrder: 0,
       });
       const created = res?.data ?? res;
-      const newAttr = {
+      const newAttr: AdminAttribute = {
         id: created?.id || key,
         categoryId: formData.categoryId,
         key,
         label,
+        name: label,
+        type: "text",
         valueType: "text",
         allowedValues: [],
         isFilterable: true,
@@ -836,7 +894,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
         variationAxes: [...prev.variationAxes, key],
       }));
       notify.success(t("products.wizard.axisCreated", { name: label }));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.wizard.axisCreateFailed")));
     } finally {
       setCreatingAxis(false);
@@ -907,7 +965,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       await loadProductDetail(productDetail.id);
       void revalidateCatalog().catch(() => false);
       notify.success(t("products.variants.matrixCreated", { count: missing.length }));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.variants.matrixSaveFailed")));
     } finally {
       setMatrixSaving(false);
@@ -943,7 +1001,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     });
   };
 
-  const openVariantEdit = (variant: any) => {
+  const openVariantEdit = (variant: ProductVariant) => {
     const existingAttrs = variant.attributes || {};
     const initialAttrs: Record<string, string> = {};
     for (const key of activeAxes) {
@@ -1044,7 +1102,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       setVariantForm(null);
       await loadProductDetail(productDetail.id);
       void revalidateCatalog().catch(() => false);
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.variants.saveFailed")));
     } finally {
       setSavingVariant(false);
@@ -1072,33 +1130,33 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       setQuickStockVariant(null);
       if (productId) await loadProductDetail(productId);
       void revalidateCatalog().catch(() => false);
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
     } finally {
       setSavingQuickStock(false);
     }
   };
 
-  const handleDeleteVariant = async (variant: any) => {
-    if (!productDetail || !confirm(t("products.variants.confirmDelete", { title: variant.title }))) return;
+  const handleDeleteVariant = async (variant: ProductVariant) => {
+    if (!productDetail || !confirm(t("products.variants.confirmDelete", { title: variant.title ?? "" }))) return;
     try {
       await catalogService.deleteVariant(variant.id);
       notify.success(t("products.variants.deleted"));
       await loadProductDetail(productDetail.id);
       void revalidateCatalog().catch(() => false);
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.variants.deleteFailed")));
     }
   };
 
-  const handleSetDefaultVariant = async (variant: any) => {
+  const handleSetDefaultVariant = async (variant: ProductVariant) => {
     if (!productDetail) return;
     try {
       await catalogService.setDefaultVariant(productDetail.id, variant.id);
       notify.success(t("products.variants.defaultSet"));
       await loadProductDetail(productDetail.id);
       void revalidateCatalog().catch(() => false);
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.variants.defaultFailed")));
     }
   };
@@ -1111,15 +1169,15 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
     }
     setUploadingProductThumbnail(true);
     try {
-      const res: any = await catalogService.uploadProductThumbnail(productId, file);
-      const thumbUrl = res?.data?.url || res?.data?.publicUrl || "";
+      const res = await catalogService.uploadProductThumbnail(productId, file);
+      const thumbUrl = res?.data?.url || "";
       if (thumbUrl) {
         setFormData((prev) => ({ ...prev, image: thumbUrl }));
       }
       await loadProductDetail(productId);
       void revalidateCatalog().catch(() => false);
       notify.success(t("products.form.thumbnailSuccess"));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.variants.uploadFailed")));
     } finally {
       setUploadingProductThumbnail(false);
@@ -1136,7 +1194,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       await loadProductDetail(productId);
       void revalidateCatalog().catch(() => false);
       notify.success(t("products.form.thumbnailRemoved"));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
     } finally {
       setUploadingProductThumbnail(false);
@@ -1151,7 +1209,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       if (productId) await loadProductDetail(productId);
       void revalidateCatalog().catch(() => false);
       notify.success(t("products.variants.mediaUploadSuccess"));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.variants.uploadFailed")));
     } finally {
       setUploadingVariantThumb(false);
@@ -1166,7 +1224,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       if (productId) await loadProductDetail(productId);
       void revalidateCatalog().catch(() => false);
       notify.success(t("products.variants.mediaDeleteSuccess"));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
     } finally {
       setUploadingVariantThumb(false);
@@ -1183,7 +1241,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       if (productId) await loadProductDetail(productId);
       void revalidateCatalog().catch(() => false);
       notify.success(t("products.variants.mediaUploadSuccess"));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.variants.uploadFailed")));
     } finally {
       setUploadingVariantMedia(false);
@@ -1197,7 +1255,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       if (productId) await loadProductDetail(productId);
       void revalidateCatalog().catch(() => false);
       notify.success(t("products.variants.mediaDeleteSuccess"));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("products.toast.updatePartialFailed")));
     }
   };
@@ -1486,8 +1544,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                   ...(patch.categoryId
                     ? {
                         category:
-                          categories.find((c: any) => c.id === patch.categoryId)
-                            ?.name || prev.category,
+                          categories.find((c) => c.id === patch.categoryId)?.name || prev.category,
                       }
                     : {}),
                 }))
@@ -1552,7 +1609,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
             {showStep(3) && formData.productType === "variable" && (
               <ProductOptionAxesFields
                 value={{ variationAxes: formData.variationAxes }}
-                categoryAttributes={formCategoryAttributes}
+                categoryAttributes={formCategoryAttributes.map((a) => ({ key: a.key ?? "", label: a.label }))}
                 locked={formAxesLocked}
                 creating={creatingAxis}
                 onChange={(patch) => setFormData((prev) => ({ ...prev, ...patch }))}
@@ -1674,7 +1731,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-2.5">
-                      {productDetail.variants.map((variant: any, vIdx: number) => {
+                      {productDetail.variants.map((variant, vIdx: number) => {
                         const thumbUrl = getVariantThumbnailUrl(variant);
                         const mediaCount = Array.isArray(variant.media) ? variant.media.length : 0;
 
@@ -2038,7 +2095,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                     {t("products.units", {
                       count:
                         (productDetail?.variants || []).reduce(
-                          (acc: number, v: any) => acc + (v.stock?.availableQuantity ?? 0),
+                          (acc: number, v) => acc + (v.stock?.availableQuantity ?? 0),
                           0
                         ) || parseInt(formData.stock, 10) || 0,
                     })}
@@ -2367,7 +2424,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
               {/* Previews Gallery Grid */}
               {Array.isArray(selectedVariantForMedia.media) && selectedVariantForMedia.media.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                  {selectedVariantForMedia.media.map((med: any, idx: number) => (
+                  {selectedVariantForMedia.media.map((med, idx: number) => (
                     <div
                       key={med.id || `med-${idx}`}
                       className="group relative rounded-xl border border-border bg-background overflow-hidden aspect-square shadow-2xs"
@@ -2386,7 +2443,10 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <button
                           type="button"
-                          onClick={() => handleDeleteVariantMedia(selectedVariantForMedia.id, med.id)}
+                          onClick={() => {
+                            if (!med.id) return;
+                            handleDeleteVariantMedia(selectedVariantForMedia.id, med.id);
+                          }}
                           className="p-2 rounded-xl bg-destructive text-white hover:bg-destructive/90 transition-all shadow-sm"
                           title={t("products.variants.deletePreview")}
                         >

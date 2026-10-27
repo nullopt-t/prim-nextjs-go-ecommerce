@@ -4,9 +4,42 @@ import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Truck, Clock, MapPin, CreditCard, User, Tag } from "lucide-react";
 import { adminService } from "@/modules/admin/api/adminService";
+import type { Order, OrderItem } from "@/modules/orders/types";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { ErrorState } from "@/shared/ui/errorState";
+
+interface OrderViewItem {
+  id: string;
+  name: string;
+  price: string;
+  quantity: number;
+}
+
+interface OrderViewHistory {
+  date: string;
+  note: string;
+}
+
+interface OrderView {
+  id: string;
+  customer: string;
+  email: string;
+  date: string;
+  total: string;
+  discount: string | null;
+  discountAmount: number;
+  couponCode: string | null;
+  couponId: string | null;
+  status: string;
+  fulfillmentStatus: string;
+  paymentStatus: string;
+  shippingAddress: string;
+  paymentMethod: string;
+  trackingNumber: string;
+  items: OrderViewItem[];
+  history: OrderViewHistory[];
+}
 
 export function AdminOrderDetails() {
   const { id } = useParams();
@@ -14,7 +47,7 @@ export function AdminOrderDetails() {
   const t = useTranslations("admin");
 
   const locale = useLocale();
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<OrderView | null>(null);
   const [loading, setLoading] = useState(true);
   const [trackingNumber, setTrackingNumber] = useState("");
   const [noteInput, setNoteInput] = useState("");
@@ -25,8 +58,8 @@ export function AdminOrderDetails() {
     try {
       setLoading(true);
       setLoadError(false);
-      const res: any = await adminService.getOrderById(String(id));
-      const remoteOrder = res?.data || res;
+      const res = await adminService.getOrderById(String(id));
+      const remoteOrder: Order = res?.data || res;
       if (remoteOrder) {
         const formatted = {
           id: remoteOrder.id,
@@ -46,17 +79,19 @@ export function AdminOrderDetails() {
           shippingAddress: remoteOrder.shippingAddress ? `${remoteOrder.shippingAddress.street || ""}, ${remoteOrder.shippingAddress.city || ""}, ${remoteOrder.shippingAddress.state || ""} ${remoteOrder.shippingAddress.postalCode || ""}` : t("orderDetails.noShippingAddress"),
           paymentMethod: remoteOrder.paymentMethod || "—",
           trackingNumber: remoteOrder.trackingNumber || "",
-          items: (Array.isArray(remoteOrder.items) ? remoteOrder.items : []).map((it: any) => {
+          items: (Array.isArray(remoteOrder.items) ? remoteOrder.items : []).map((it: OrderItem) => {
             let itemName = t("orderDetails.orderItem");
-            if (typeof it.productSnapshot === "string") {
+            const snapshot: unknown = it.productSnapshot;
+            if (typeof snapshot === "string") {
               try {
-                const parsed = JSON.parse(it.productSnapshot);
+                const parsed = JSON.parse(snapshot);
                 itemName = parsed.title || parsed.name || itemName;
               } catch {
-                itemName = it.productSnapshot;
+                itemName = snapshot;
               }
-            } else if (it.productSnapshot && typeof it.productSnapshot === "object") {
-              itemName = it.productSnapshot.title || it.productSnapshot.name || itemName;
+            } else if (snapshot && typeof snapshot === "object") {
+              const snap = snapshot as { title?: string; name?: string };
+              itemName = snap.title || snap.name || itemName;
             }
             return {
               id: it.id,
@@ -100,7 +135,7 @@ export function AdminOrderDetails() {
       await adminService.updateOrderStatus(order.id, newStatus.toLowerCase());
       notify.success(t("orderDetails.toast.statusUpdated", { status: newStatus }));
       fetchOrderFromApi();
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("orderDetails.toast.statusFailed")));
       fetchOrderFromApi();
     }
@@ -114,7 +149,7 @@ export function AdminOrderDetails() {
     try {
       await adminService.updateOrderTracking(order.id, trackingNumber);
       notify.success(t("orderDetails.toast.trackingSaved"));
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("orderDetails.toast.trackingFailed")));
     }
   };
@@ -128,7 +163,7 @@ export function AdminOrderDetails() {
       notify.success(t("orderDetails.toast.noteAdded"));
       setNoteInput("");
       fetchOrderFromApi();
-    } catch (err: any) {
+    } catch (err) {
       notify.error(apiErrorMessage(err, t("orderDetails.toast.noteFailed")));
     }
   };
@@ -202,7 +237,7 @@ export function AdminOrderDetails() {
           <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
             <h3 className="font-bold text-base text-foreground border-b border-border pb-3">{t("orderDetails.lineItems", { count: order.items.length })}</h3>
             <div className="divide-y divide-border">
-              {order.items.map((item: any) => (
+              {order.items.map((item: OrderViewItem) => (
                 <div key={item.id} className="py-3 flex items-center justify-between text-xs">
                   <div>
                     <div className="font-semibold text-foreground">{item.name}</div>
@@ -264,7 +299,7 @@ export function AdminOrderDetails() {
               <span>{t("orderDetails.timeline")}</span>
             </h3>
             <div className="space-y-3">
-              {order.history.map((log: any, idx: number) => (
+              {order.history.map((log: OrderViewHistory, idx: number) => (
                 <div key={idx} className="flex items-start gap-3 text-xs">
                   <div className="size-2 rounded-full bg-accent-brand mt-1.5 shrink-0"></div>
                   <div>

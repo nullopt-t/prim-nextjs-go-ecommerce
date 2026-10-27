@@ -1,4 +1,4 @@
-import { normalizeProduct } from "@/modules/catalog/model/normalizeProduct";
+import { normalizeProduct, type RawProductPayload } from "@/modules/catalog/model/normalizeProduct";
 import type { Brand, Category, ProductDetailsEntity } from "@/modules/catalog/types";
 
 export const CATALOG_REVALIDATE_SECONDS = 300;
@@ -48,7 +48,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailsEnti
 		PRODUCTS_TAG,
 		productTag(slug),
 	]);
-	return raw ? (normalizeProduct(raw) as ProductDetailsEntity | null) : null;
+	return raw ? (normalizeProduct(raw as RawProductPayload) as ProductDetailsEntity | null) : null;
 }
 
 export interface CatalogQuery {
@@ -66,9 +66,9 @@ export async function getProducts(query: CatalogQuery = {}): Promise<ProductDeta
 	if (query.search) params.set("search", query.search);
 
 	const raw = await fetchJson(`/api/v1/products?${params.toString()}`, [PRODUCTS_TAG]);
-	return asList(raw)
+	return (asList<RawProductPayload>(raw)
 		.map(normalizeProduct)
-		.filter((p): p is ProductDetailsEntity => p !== null);
+		.filter((p) => p !== null)) as unknown as ProductDetailsEntity[];
 }
 
 export async function getCategories(pageSize = 50): Promise<Category[]> {

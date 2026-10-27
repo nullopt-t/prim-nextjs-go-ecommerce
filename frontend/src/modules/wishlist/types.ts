@@ -20,6 +20,7 @@ export interface WishlistProduct {
   variantId?: string;
   variantTitle?: string;
   variantSku?: string;
+  [key: string]: unknown;
 }
 
 export interface WishlistItem {
@@ -29,6 +30,7 @@ export interface WishlistItem {
   userId: string;
   createdAt: string;
   product: WishlistProduct;
+  [key: string]: unknown;
 }
 
 export interface WishlistCheck {

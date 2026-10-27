@@ -3,15 +3,80 @@ import { normalizeMediaUrl } from "@/shared/lib/media";
 /**
  * Shape-agnostic normalizer for catalog payloads coming from the Go API.
  * Kept free of `"use client"` so both Server and Client Components can use it.
+ *
+ * The raw payload can arrive in several shapes (backend product, wishlist item
+ * envelope, legacy mock), so it is typed permissively with an index signature
+ * rather than `any`.
  */
-export function normalizeProduct(raw: any) {
+
+export interface RawProductMedia {
+	url?: string;
+	publicUrl?: string;
+	object?: { publicUrl?: string };
+	[key: string]: unknown;
+}
+
+export interface RawProductVariant {
+	id?: string;
+	sku?: string;
+	title?: string;
+	price?: string | number;
+	extractedPrice?: number;
+	originalPrice?: string;
+	oldPrice?: string | number;
+	extractedOriginalPrice?: number;
+	stock?: { isInStock?: boolean; availableQuantity?: number };
+	thumbnail?: string | { url?: string; publicUrl?: string };
+	media?: RawProductMedia[];
+	attributes?: Record<string, unknown>;
+	color?: string;
+	[key: string]: unknown;
+}
+
+export interface RawProductPayload {
+	[key: string]: unknown;
+	id?: string;
+	productId?: string;
+	slug?: string;
+	wishlistItemId?: string;
+	title?: string | { en?: string; ar?: string };
+	product?: { title?: string; slug?: string; en?: string; ar?: string; [key: string]: unknown };
+	name?: string;
+	categoryName?: string;
+	brandName?: string;
+	price?: string | number;
+	extractedPrice?: number;
+	originalPrice?: string;
+	oldPrice?: string | number;
+	extractedOriginalPrice?: number;
+	discountPercentage?: string | number;
+	rating?: { averageRating?: number; reviewCount?: number };
+	stars?: number | string;
+	reviews?: number | string;
+	thumbnail?: string | { url?: string; publicUrl?: string };
+	thumbnailUrl?: string;
+	img?: string;
+	image?: string;
+	images?: Array<string | { url?: string; publicUrl?: string }>;
+	variants?: RawProductVariant[];
+	variationAxes?: string[];
+	category?: string | { id?: string; name?: string };
+	categories?: Array<string | { id?: string; name?: string }>;
+	inStock?: boolean;
+	stockCount?: number;
+	variantId?: string;
+	defaultVariantId?: string;
+	brand?: string | { logoUrl?: string; logo?: string; [key: string]: unknown };
+}
+
+export function normalizeProduct(raw: RawProductPayload | null) {
 	if (!raw) return null;
 
 	// Handle both backend Go format, WishlistItem envelope, and legacy mock format
 	const isWishlistItem = Boolean(
 		raw.product && typeof raw.product === "object" && (raw.product.title || raw.product.slug)
 	);
-	const p = isWishlistItem ? raw.product : raw;
+	const p: RawProductPayload = isWishlistItem ? (raw.product ?? raw) : raw;
 	const wishlistItemId = isWishlistItem ? raw.id : raw.wishlistItemId || undefined;
 
 	const id = p.id || raw.productId || p.slug || raw.id || "";
@@ -19,19 +84,31 @@ export function normalizeProduct(raw: any) {
 	const titleStr =
 		typeof p.title === "string"
 			? p.title
-			: p.product?.en || p.product?.ar || p.name || raw.title || "Product";
+			: typeof p.product?.en === "string"
+				? p.product.en
+				: typeof p.product?.ar === "string"
+					? p.product.ar
+					: typeof p.name === "string"
+						? p.name
+						: typeof raw.title === "string"
+							? raw.title
+							: "Product";
 
 	const product = {
 		en: typeof p.product?.en === "string" ? p.product.en : titleStr,
 		ar: typeof p.product?.ar === "string" ? p.product.ar : titleStr,
 	};
 
+	const firstImage = Array.isArray(p.images) ? p.images[0] : undefined;
+	const firstImageStr =
+		typeof firstImage === "string" ? firstImage : firstImage?.url || firstImage?.publicUrl;
+
 	const rawImg =
 		p.thumbnailUrl ||
 		(typeof p.thumbnail === "string" ? p.thumbnail : p.thumbnail?.publicUrl || p.thumbnail?.url) ||
 		p.img ||
 		p.image ||
-		(p.images && p.images[0]) ||
+		firstImageStr ||
 		(typeof raw.thumbnail === "string" ? raw.thumbnail : raw.thumbnail?.publicUrl || raw.thumbnail?.url) ||
 		raw.img;
 	const img = normalizeMediaUrl(rawImg);
@@ -41,9 +118,11 @@ export function normalizeProduct(raw: any) {
 	const priceNum =
 		rawPrice !== undefined
 			? Number(rawPrice)
-			: typeof (p.price ?? raw.price) === "number"
-				? (p.price ?? raw.price)
-				: parseFloat(String(p.price || raw.price || "0").replace(/[^0-9.-]+/g, "")) || 0;
+			: typeof p.price === "number"
+				? p.price
+				: typeof raw.price === "number"
+					? raw.price
+					: parseFloat(String(p.price || raw.price || "0").replace(/[^0-9.-]+/g, "")) || 0;
 
 	const rawOldPrice =
 		p.extractedOriginalPrice !== undefined
@@ -78,7 +157,7 @@ export function normalizeProduct(raw: any) {
 
 	const variantMedia: string[] = [];
 	if (Array.isArray(raw.variants)) {
-		raw.variants.forEach((v: any) => {
+		raw.variants.forEach((v: RawProductVariant) => {
 			const vThumbRaw =
 				typeof v.thumbnail === "string" ? v.thumbnail : v.thumbnail?.url || v.thumbnail?.publicUrl;
 			const vThumb = normalizeMediaUrl(vThumbRaw);
@@ -86,7 +165,7 @@ export function normalizeProduct(raw: any) {
 				variantMedia.push(vThumb);
 			}
 			if (Array.isArray(v.media)) {
-				v.media.forEach((m: any) => {
+				v.media.forEach((m: RawProductMedia) => {
 					const mUrlRaw = typeof m === "string" ? m : m?.url || m?.publicUrl || m?.object?.publicUrl;
 					const mUrl = normalizeMediaUrl(mUrlRaw);
 					if (mUrl && mUrl !== "/placeholder-product.png" && !variantMedia.includes(mUrl)) {
@@ -104,7 +183,7 @@ export function normalizeProduct(raw: any) {
 
 	const rawImagesList =
 		Array.isArray(raw.images) && raw.images.length > 0
-			? raw.images.map((im: any) =>
+			? raw.images.map((im: string | { url?: string; publicUrl?: string }) =>
 					normalizeMediaUrl(typeof im === "string" ? im : im?.url || im?.publicUrl)
 				)
 			: [];
@@ -116,8 +195,10 @@ export function normalizeProduct(raw: any) {
 	const colors: { name: string; class: string; variantIndex: number }[] = [];
 	const seenColors = new Set<string>();
 	if (Array.isArray(raw.variants)) {
-		raw.variants.forEach((v: any, idx: number) => {
-			const colorName = v.attributes?.color || v.color;
+		raw.variants.forEach((v: RawProductVariant, idx: number) => {
+			const colorNameRaw = v.attributes?.color ?? v.color;
+			const colorName =
+				colorNameRaw === undefined || colorNameRaw === null ? "" : String(colorNameRaw);
 			if (colorName && !seenColors.has(colorName)) {
 				seenColors.add(colorName);
 				colors.push({
@@ -152,9 +233,9 @@ export function normalizeProduct(raw: any) {
 	let axisKeys: string[] = [];
 	const declaredAxes = raw.variationAxes ?? p.variationAxes;
 	if (Array.isArray(declaredAxes) && declaredAxes.length > 0) {
-		axisKeys = declaredAxes.filter((k: any) => typeof k === "string" && k.trim() !== "");
+		axisKeys = declaredAxes.filter((k: string) => typeof k === "string" && k.trim() !== "");
 	} else if (rawVariants.length > 1) {
-		const keySets = rawVariants.map((v: any) =>
+		const keySets = rawVariants.map((v: RawProductVariant) =>
 			v.attributes && typeof v.attributes === "object" ? Object.keys(v.attributes) : []
 		);
 		axisKeys = keySets[0].filter((key: string) =>
@@ -182,14 +263,22 @@ export function normalizeProduct(raw: any) {
 	const stockCount = firstVariant?.stock?.availableQuantity ?? raw.stockCount ?? 0;
 
 	// Extract category — backend list/detail may provide category object { id, name } or string or categories array
+	const firstCategory = Array.isArray(raw.categories) ? raw.categories[0] : undefined;
+	const firstCategoryName =
+		typeof firstCategory === "string" ? firstCategory : firstCategory?.name || "";
+	const firstCategoryId = typeof firstCategory !== "string" ? firstCategory?.id : undefined;
+
 	const categoryName =
 		typeof raw.category === "string"
 			? raw.category
-			: raw.category?.name || raw.categories?.[0]?.name || "";
-	const categoryId = raw.category?.id || raw.categories?.[0]?.id || "";
+			: raw.category?.name || firstCategoryName || "";
+	const categoryId =
+		(typeof raw.category !== "string" ? raw.category?.id : undefined) ||
+		firstCategoryId ||
+		"";
 
 	const variants = Array.isArray(raw.variants)
-		? raw.variants.map((v: any) => {
+		? raw.variants.map((v: RawProductVariant) => {
 				const vPrice =
 					v.extractedPrice !== undefined
 						? Number(v.extractedPrice)
@@ -208,7 +297,7 @@ export function normalizeProduct(raw: any) {
 						: v.thumbnail?.url || v.thumbnail?.publicUrl || undefined;
 				const vThumb = vThumbRaw ? normalizeMediaUrl(vThumbRaw) : undefined;
 				const vMedia = Array.isArray(v.media)
-					? v.media.map((m: any) => {
+					? v.media.map((m: RawProductMedia) => {
 							const url = normalizeMediaUrl(
 								typeof m === "string" ? m : m?.url || m?.publicUrl || m?.object?.publicUrl
 							);
@@ -234,7 +323,9 @@ export function normalizeProduct(raw: any) {
 
 	const rawBrand = p.brand ?? raw.brand;
 	const brandName =
-		typeof rawBrand === "string" ? rawBrand : p.brandName || p.brand?.name || raw.brand?.name || "";
+		typeof rawBrand === "string"
+			? rawBrand
+			: p.brandName || String(rawBrand?.name ?? "") || "";
 	const brandObj =
 		typeof rawBrand === "object" && rawBrand !== null
 			? {
@@ -273,7 +364,8 @@ export function normalizeProduct(raw: any) {
 			p.originalPrice ||
 			raw.originalPrice ||
 			(oldPriceNum !== undefined ? `E£${oldPriceNum.toFixed(2)}` : undefined),
-		discountPercentage,
+		discountPercentage:
+			typeof discountPercentage === "number" ? `${discountPercentage}%` : discountPercentage,
 		stars,
 		reviews,
 		inStock,

@@ -153,7 +153,14 @@ export interface AdminAttribute {
   id: string;
   name: string;
   type: string;
+  key?: string;
+  label?: string;
+  categoryId?: string;
+  valueType?: string;
   values?: string[];
+  allowedValues?: string[];
+  isFilterable?: boolean;
+  sortOrder?: number;
   createdAt?: string;
   updatedAt?: string;
 }
