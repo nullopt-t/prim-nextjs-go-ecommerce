@@ -2083,6 +2083,10 @@
       "secure": "Guaranteed Safe & Encrypted Checkout",
       "shipTo": "Ship To"
     },
+    "review": {
+      "heading": "Review your order",
+      "subtitle": "Check your items and totals, then continue to enter your delivery details."
+    },
     "success": {
       "badge": "Order Placed Successfully",
       "title": "Thank You for Your Order!",
@@ -2122,6 +2126,7 @@
       "returnToCart": "Return to Cart",
       "continueToDelivery": "Continue to Delivery Speed",
       "backToAddress": "Back to Address",
+      "continueToCheckout": "Continue to Checkout",
       "continueToPayment": "Continue to Payment",
       "backToDelivery": "Back to Delivery",
       "placeOrder": "Place Order • EGP {total}",

@@ -105,6 +105,9 @@ export function Checkout() {
 
 	// Step management: 1: Delivery Address, 2: Delivery Speed, 3: Payment & Confirm
 	const [currentStep, setCurrentStep] = useState(1);
+	// Checkout starts with a read-only order summary. The address, delivery and
+	// payment inputs stay hidden until the customer confirms the summary.
+	const [hasStartedCheckout, setHasStartedCheckout] = useState(false);
 
 	// Address states
 	const [selectedAddressId, setSelectedAddressId] = useState("");
@@ -240,6 +243,16 @@ export function Checkout() {
 		}
 
 		return true;
+	};
+
+	const handleStartCheckout = () => {
+		if (!cartItems || cartItems.length === 0) {
+			notify.error(tCart("empty.title"));
+			router.push("/cart");
+			return;
+		}
+		setHasStartedCheckout(true);
+		window.scrollTo({ top: 0, behavior: "smooth" });
 	};
 
 	const handleGoToShipping = (e?: FormEvent) => {
@@ -395,7 +408,7 @@ export function Checkout() {
 		<div className="w-full py-4 sm:py-8">
 				
 				{/* Step Progress Bar */}
-				<div className="mb-10">
+				<div className={hasStartedCheckout ? "mb-10" : "hidden"}>
 					<div className="max-w-xl mx-auto">
 						<nav aria-label={t("steps.progressAria")}>
 							<ol className="flex items-center justify-between relative">
@@ -458,9 +471,16 @@ export function Checkout() {
 					</div>
 				</div>
 
-				<div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-					{/* Left Column: Multi-step Active View */}
-					<div className="lg:col-span-7 flex flex-col gap-6">
+				<div
+					className={
+						hasStartedCheckout
+							? "grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
+							: "grid grid-cols-1 gap-8 max-w-2xl mx-auto"
+					}
+				>
+					{/* Left Column: Multi-step Active View — hidden until the
+					    customer confirms the order summary. */}
+					<div className={hasStartedCheckout ? "lg:col-span-7 flex flex-col gap-6" : "hidden"}>
 						<AnimatePresence mode="wait">
 							
 							{/* STEP 1: DELIVERY ADDRESS */}
@@ -1079,7 +1099,17 @@ export function Checkout() {
 					</div>
 
 					{/* Right Column: Order Summary & Quick Action */}
-					<div className="lg:col-span-5 sticky top-24">
+					<div className={hasStartedCheckout ? "lg:col-span-5 sticky top-24" : "w-full"}>
+						{!hasStartedCheckout && (
+							<div className="mb-5 text-center">
+								<h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+									{t("review.heading")}
+								</h1>
+								<p className="mt-2 text-sm text-muted-foreground">
+									{t("review.subtitle")}
+								</p>
+							</div>
+						)}
 						<div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col gap-6">
 							<div className="flex items-center justify-between">
 								<h3 className="font-semibold text-lg text-foreground">{tCart("orderSummary.title")}</h3>
@@ -1209,7 +1239,28 @@ export function Checkout() {
 							</div>
 
 							{/* Context-aware primary button */}
-							{currentStep === 1 && (
+							{!hasStartedCheckout && (
+								<div className="flex flex-col gap-3">
+									<button
+										type="button"
+										onClick={handleStartCheckout}
+										className="w-full py-3.5 px-6 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2"
+									>
+										<span>{t("actions.continueToCheckout")}</span>
+										<ArrowRight className="size-4" />
+									</button>
+									<button
+										type="button"
+										onClick={() => router.push("/cart")}
+										className="w-full py-2.5 px-6 rounded-xl text-muted-foreground hover:text-foreground font-medium text-xs transition-colors flex items-center justify-center gap-2"
+									>
+										<ArrowLeft className="size-3.5" />
+										<span>{t("actions.returnToCart")}</span>
+									</button>
+								</div>
+							)}
+
+							{hasStartedCheckout && currentStep === 1 && (
 								<button
 									type="button"
 									onClick={handleGoToShipping}
@@ -1220,7 +1271,7 @@ export function Checkout() {
 								</button>
 							)}
 
-							{currentStep === 2 && (
+							{hasStartedCheckout && currentStep === 2 && (
 								<button
 									type="button"
 									onClick={handleGoToPayment}
@@ -1231,7 +1282,7 @@ export function Checkout() {
 								</button>
 							)}
 
-							{currentStep === 3 && (
+							{hasStartedCheckout && currentStep === 3 && (
 								<button
 									type="button"
 									onClick={handlePlaceOrder}

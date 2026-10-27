@@ -2083,6 +2083,10 @@
       "secure": "إتمام شراء آمن ومشفر مضمون",
       "shipTo": "الشحن إلى"
     },
+    "review": {
+      "heading": "راجع طلبك",
+      "subtitle": "تأكد من المنتجات والإجمالي، ثم تابع لإدخال تفاصيل التوصيل."
+    },
     "success": {
       "badge": "تم تقديم الطلب بنجاح",
       "title": "شكراً لك على طلبك!",
@@ -2122,6 +2126,7 @@
       "returnToCart": "العودة إلى السلة",
       "continueToDelivery": "المتابعة إلى سرعة التوصيل",
       "backToAddress": "العودة إلى العنوان",
+      "continueToCheckout": "متابعة إلى إتمام الطلب",
       "continueToPayment": "المتابعة إلى الدفع",
       "backToDelivery": "العودة إلى التوصيل",
       "placeOrder": "تقديم الطلب • EGP {total}",
