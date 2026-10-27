@@ -82,7 +82,9 @@ This brings up the storefront, API, worker, PostgreSQL, Redis, Kafka, and MinIO,
 
 Once it's up, open the storefront at <http://localhost:3000>. The API is at <http://localhost:8081>, and a quick health check lives at <http://localhost:8081/health>.
 
-> **A note on the URL configuration.** `docker-compose.dev.yml` points the frontend and MinIO at a LAN address (`192.168.1.16`) so the stack is reachable from other devices on the network. If you only ever use your own machine, change `NEXT_PUBLIC_API_URL`, `API_URL`, `MINIO_PUBLIC_URL`, and `CLIENT_BASE_URL` in that file to `localhost`.
+> **A note on the URL configuration.** `backend/.env` holds the browser-facing `NEXT_PUBLIC_API_URL` plus `MINIO_PUBLIC_URL` and `CLIENT_BASE_URL` (LAN address by default, so the stack is reachable from other devices). Server-side rendering uses `API_URL` to reach the API over the Compose network (`http://api:8081` in dev, `http://api:8080` in prod), so the public URL is never used from inside a container. Change the public values in `backend/.env` and rebuild the frontend after changing them.
+
+> **Two stacks.** `make up*` starts the dev stack (`docker-compose.dev.yml`: Next dev server + Air hot reload). `make prod-*` starts the production stack (`backend/docker/docker-compose.prod.yml`: built standalone images). They use separate containers and volumes.
 
 ### Services and ports
 
@@ -118,6 +120,11 @@ make logs-frontend # only the Next.js app
 make migrate-up    # apply pending migrations
 make migrate-down  # roll back the last migration
 make migrate-reset # drop and re-apply everything
+
+make prod-up       # build and start the production stack
+make prod-down     # stop the production stack
+make prod-logs     # tail the production stack
+make prod-ps       # production stack status
 ```
 
 More backend-specific targets (Swagger generation, binary builds, linting) live in `backend/Makefile`.

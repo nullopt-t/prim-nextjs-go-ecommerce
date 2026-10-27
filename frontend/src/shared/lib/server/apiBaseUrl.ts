@@ -7,15 +7,21 @@
  * bundle, where it may be unreachable, so SSR fetches hang until the TCP
  * connect times out.
  *
- * Reading the value through a variable key keeps the lookup dynamic, so the
- * server bundle reads the runtime environment instead of the build-time value.
- * The browser bundle still gets the build-time value through the direct
- * references in `src/shared/api/client.ts`.
+ * `API_URL` is the optional server-only override (the Compose network address,
+ * e.g. `http://api:8081`). `NEXT_PUBLIC_API_URL` remains the single public
+ * browser-facing value and is the fallback when no override is set.
+ *
+ * Reading through variable keys keeps both lookups dynamic, so the server
+ * bundle reads the runtime environment instead of the build-time value. The
+ * browser bundle still gets the build-time `NEXT_PUBLIC_API_URL` through the
+ * direct references in `src/shared/api/client.ts`.
  */
-const API_BASE_URL_KEY = "NEXT_PUBLIC_API_URL";
+const SERVER_API_URL_KEY = "API_URL";
+const PUBLIC_API_URL_KEY = "NEXT_PUBLIC_API_URL";
 
 export function getServerApiBaseUrl(): string | null {
-	const value = process.env[API_BASE_URL_KEY];
+	const value =
+		process.env[SERVER_API_URL_KEY] || process.env[PUBLIC_API_URL_KEY];
 	if (!value) return null;
 	return value.replace(/\/$/, "");
 }
