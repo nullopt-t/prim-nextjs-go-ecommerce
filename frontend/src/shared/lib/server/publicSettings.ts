@@ -7,7 +7,7 @@ export const PUBLIC_SETTINGS_TAG = "public-settings";
  * dependent UI (brand, footer, announcement) in the initial HTML response.
  */
 export async function getPublicSettings(): Promise<PublicSettings | null> {
-  const baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!baseUrl) return null;
 
   try {

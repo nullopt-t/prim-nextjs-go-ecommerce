@@ -7,7 +7,7 @@ export const CATEGORIES_TAG = "catalog:categories";
 export const BRANDS_TAG = "catalog:brands";
 
 function getApiBaseUrl() {
-	return (process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+	return (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 }
 
 function productTag(slug: string) {

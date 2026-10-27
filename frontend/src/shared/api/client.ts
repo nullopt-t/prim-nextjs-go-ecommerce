@@ -1,11 +1,9 @@
 const getBaseUrl = () => {
-  // The browser calls the API on its own origin, with credentialed requests, so
-  // the backend must allow this origin via CORS. The server prefers the
-  // internal API_URL when one is configured.
-  if (typeof window !== "undefined") {
-    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
-  }
-  return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
+  // One env variable for the API base URL: NEXT_PUBLIC_API_URL. It is available
+  // on both the server and the browser, so client and server API calls use the
+  // same value. The browser calls the API on its own origin, with credentialed
+  // requests, so the backend must allow this origin via CORS.
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
 };
 
 const getActiveLocale = () => {

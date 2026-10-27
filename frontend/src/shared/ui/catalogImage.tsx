@@ -23,7 +23,7 @@ interface CatalogImageProps {
  *
  * A custom loader normalizes media URLs through `normalizeMediaUrl`, so images
  * resolve identically on the server and in the browser regardless of whether
- * media is served from MinIO (`API_URL:9000`), `NEXT_PUBLIC_MEDIA_BASE_URL`, or
+ * media is served from MinIO (`NEXT_PUBLIC_API_URL:9000`), `NEXT_PUBLIC_MEDIA_BASE_URL`, or
  * an absolute CDN origin. This avoids restricting `next.config.mjs`
  * `remotePatterns` to known hosts.
  *

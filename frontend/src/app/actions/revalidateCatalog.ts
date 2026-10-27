@@ -15,7 +15,7 @@ import {
  * has an admin role before dropping the cache.
  */
 export async function revalidateCatalog(): Promise<boolean> {
-	const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
+	const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 	if (!apiUrl) return false;
 
 	const cookieStore = await cookies();
