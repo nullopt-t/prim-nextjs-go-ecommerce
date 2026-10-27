@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("next/cache", () => ({
@@ -8,13 +9,13 @@ vi.mock("next/headers", () => ({
 }));
 
 import { updateTag } from "next/cache";
-import { cookies, type RequestCookies } from "next/headers";
+import { cookies } from "next/headers";
 import { revalidateCatalog } from "@/app/actions/revalidateCatalog";
 
 const fetchMock = vi.fn();
 
-const mockCookies = vi.mocked(cookies);
 const mockUpdateTag = vi.mocked(updateTag);
+const mockCookies = vi.mocked(cookies) as Mock<() => unknown>;
 
 beforeEach(() => {
 	process.env.NEXT_PUBLIC_API_URL = "http://api:8081";
@@ -37,7 +38,7 @@ describe("revalidateCatalog", () => {
 	});
 
 	it("returns false when there are no session cookies", async () => {
-		vi.mocked(cookies).mockResolvedValue({ getAll: () => [] } as unknown as RequestCookies);
+		mockCookies.mockResolvedValue({ getAll: () => [] });
 
 		expect(await revalidateCatalog()).toBe(false);
 		expect(fetchMock).not.toHaveBeenCalled();
@@ -45,9 +46,7 @@ describe("revalidateCatalog", () => {
 	});
 
 	it("returns false when the session check fails", async () => {
-		vi.mocked(cookies).mockResolvedValue(
-			{ getAll: () => [{ name: "session", value: "abc" }] } as unknown as RequestCookies
-		);
+		mockCookies.mockResolvedValue({ getAll: () => [{ name: "session", value: "abc" }] });
 		fetchMock.mockResolvedValueOnce({ ok: false, status: 401 } as Response);
 
 		expect(await revalidateCatalog()).toBe(false);
@@ -56,9 +55,7 @@ describe("revalidateCatalog", () => {
 	});
 
 	it("returns false when the caller is not an admin", async () => {
-		vi.mocked(cookies).mockResolvedValue(
-			{ getAll: () => [{ name: "session", value: "abc" }] } as unknown as RequestCookies
-		);
+		mockCookies.mockResolvedValue({ getAll: () => [{ name: "session", value: "abc" }] });
 		fetchMock.mockResolvedValueOnce({
 			ok: true,
 			json: async () => ({ data: { role: "customer" } }),
@@ -69,9 +66,7 @@ describe("revalidateCatalog", () => {
 	});
 
 	it("revalidates all catalog tags and returns true for an admin", async () => {
-		vi.mocked(cookies).mockResolvedValue(
-			{ getAll: () => [{ name: "session", value: "abc" }] } as unknown as RequestCookies
-		);
+		mockCookies.mockResolvedValue({ getAll: () => [{ name: "session", value: "abc" }] });
 		fetchMock.mockResolvedValueOnce({
 			ok: true,
 			json: async () => ({ data: { role: "superadmin" } }),
