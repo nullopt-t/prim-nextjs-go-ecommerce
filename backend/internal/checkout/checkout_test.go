@@ -198,7 +198,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 		s.inventoryService,
 		userRepo,
 		addressRepo,
-		coupon.NewRepository(),
+		coupon.NewService(s.txRunner, coupon.NewRepository()),
 		variantRepo,
 		product.NewProductRepository(),
 		object.NewRepository(),

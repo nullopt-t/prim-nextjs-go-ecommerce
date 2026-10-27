@@ -31,6 +31,23 @@ type ValidationResult struct {
 	Message         string    `json:"message"`
 }
 
+// AppliedCoupon is the authoritative coupon eligibility and discount result for
+// a given gross amount. It intentionally excludes shipping and tax: those are
+// the caller's pricing rules, not the coupon domain's. Consumers that only need
+// to enforce coupon rules (checkout, cart previews) should use this instead of
+// reimplementing them against the coupon tables.
+type AppliedCoupon struct {
+	ID              uuid.UUID
+	Code            string
+	DiscountType    string
+	DiscountValue   int64
+	DiscountAmount  int64
+	DiscountPercent *int
+	FixedDiscount   *float64
+	MinCartAmount   *int64
+	Message         string
+}
+
 type CreateCouponInput struct {
 	Code          string
 	DiscountType  model.CouponDiscountType
@@ -236,14 +253,60 @@ func (s *CouponService) ListRedemptions(ctx context.Context, couponID uuid.UUID,
 	return list, page, nil
 }
 
-// calculateDiscount evaluates coupon constraints and calculates discount and totals on the provided connection.
-func (s *CouponService) calculateDiscount(
+// ApplyByID validates and prices a coupon on the caller's executor, locking the
+// coupon row. Callers must hold a transaction: the lock is what serializes
+// redemption-limit checks with the redemption insert.
+func (s *CouponService) ApplyByID(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	couponID uuid.UUID,
+	grossTotal int64,
+	userID *uuid.UUID,
+) (*AppliedCoupon, error) {
+	if couponID == uuid.Nil {
+		return nil, apierr.BadRequestError("Coupon ID is required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+
+	c, err := s.repo.GetByIDForUpdate(ctx, qe, couponID)
+	if err != nil {
+		return nil, err
+	}
+	return s.applyCoupon(ctx, qe, c, grossTotal, userID)
+}
+
+// ApplyByCode validates and prices a coupon by code on the caller's executor.
+// It does not lock, so it is suitable for read-only previews.
+func (s *CouponService) ApplyByCode(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	code string,
+	grossTotal int64,
+	userID *uuid.UUID,
+) (*AppliedCoupon, error) {
+	trimmedCode := strings.TrimSpace(code)
+	if trimmedCode == "" {
+		return nil, apierr.BadRequestError("Coupon code is required").
+			WithCode(apierr.CodeValidationFailed)
+	}
+
+	c, err := s.repo.GetByCode(ctx, qe, trimmedCode)
+	if err != nil {
+		return nil, err
+	}
+	return s.applyCoupon(ctx, qe, c, grossTotal, userID)
+}
+
+// applyCoupon enforces the coupon invariants and computes the discount on the
+// provided executor. Lookup errors are returned raw so callers can map them to
+// their own presentation; rule violations are typed APIErrors.
+func (s *CouponService) applyCoupon(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	c *model.Coupon,
 	grossTotal int64,
 	userID *uuid.UUID,
-) (*ValidationResult, error) {
+) (*AppliedCoupon, error) {
 	if c.Status != model.CouponStatusActive {
 		return nil, apierr.BadRequestError(fmt.Sprintf("Coupon '%s' is not active", c.Code)).
 			WithCode(errcode.CodeCouponInactive)
@@ -295,7 +358,7 @@ func (s *CouponService) calculateDiscount(
 		}
 	}
 
-	res := &ValidationResult{
+	applied := &AppliedCoupon{
 		ID:            c.ID,
 		Code:          c.Code,
 		DiscountType:  string(c.DiscountType),
@@ -304,41 +367,64 @@ func (s *CouponService) calculateDiscount(
 		Message:       fmt.Sprintf("Coupon %s applied successfully!", c.Code),
 	}
 
-	var calculatedDiscount int64
 	switch c.DiscountType {
 	case model.CouponDiscountTypePercentage:
 		pct := int(c.DiscountValue)
-		res.DiscountPercent = &pct
+		applied.DiscountPercent = &pct
 		if grossTotal > 0 {
-			calculatedDiscount = (grossTotal * c.DiscountValue) / 100
+			applied.DiscountAmount = (grossTotal * c.DiscountValue) / 100
 		}
 	case model.CouponDiscountTypeFixedAmount:
 		fixed := float64(c.DiscountValue) / 100.0
-		res.FixedDiscount = &fixed
-		calculatedDiscount = c.DiscountValue
+		applied.FixedDiscount = &fixed
+		applied.DiscountAmount = c.DiscountValue
 	}
 
-	if calculatedDiscount > grossTotal && grossTotal > 0 {
-		calculatedDiscount = grossTotal
+	if applied.DiscountAmount > grossTotal && grossTotal > 0 {
+		applied.DiscountAmount = grossTotal
+	}
+
+	return applied, nil
+}
+
+// calculateDiscount evaluates coupon constraints and calculates discount and totals on the provided connection.
+func (s *CouponService) calculateDiscount(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	c *model.Coupon,
+	grossTotal int64,
+	userID *uuid.UUID,
+) (*ValidationResult, error) {
+	applied, err := s.applyCoupon(ctx, qe, c, grossTotal, userID)
+	if err != nil {
+		return nil, err
 	}
 
 	// Standard shipping: free at >= 15000 cents (150 EGP), 999 cents (9.99 EGP) otherwise
-	var shippingCost int64 = 0
+	var shippingCost int64
 	if grossTotal > 0 && grossTotal < 15000 {
 		shippingCost = 999
 	}
 
-	finalTotal := grossTotal - calculatedDiscount + shippingCost
+	finalTotal := grossTotal - applied.DiscountAmount + shippingCost
 	if finalTotal < 0 {
 		finalTotal = 0
 	}
 
-	res.Subtotal = grossTotal
-	res.DiscountAmount = calculatedDiscount
-	res.Shipping = shippingCost
-	res.Total = finalTotal
-
-	return res, nil
+	return &ValidationResult{
+		ID:              applied.ID,
+		Code:            applied.Code,
+		DiscountType:    applied.DiscountType,
+		DiscountValue:   applied.DiscountValue,
+		DiscountAmount:  applied.DiscountAmount,
+		Subtotal:        grossTotal,
+		Shipping:        shippingCost,
+		Total:           finalTotal,
+		DiscountPercent: applied.DiscountPercent,
+		FixedDiscount:   applied.FixedDiscount,
+		MinCartAmount:   applied.MinCartAmount,
+		Message:         applied.Message,
+	}, nil
 }
 
 // ValidateAndCalculate validates a coupon code against a gross cart subtotal and optional customer ID,
@@ -409,21 +495,44 @@ func (s *CouponService) RecordRedemption(
 	orderID uuid.UUID,
 	discountAmount int64,
 ) error {
-	if couponID == uuid.Nil || userID == uuid.Nil || orderID == uuid.Nil {
-		return apierr.BadRequestError("Coupon ID, User ID, and Order ID are required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-	red := &model.CouponRedemption{
-		CouponID:       couponID,
-		UserID:         userID,
-		OrderID:        orderID,
-		DiscountAmount: discountAmount,
-	}
 	err := s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		return s.repo.RecordRedemption(ctx, tx, red)
+		return s.recordRedemption(ctx, tx, couponID, userID, orderID, discountAmount)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to record coupon redemption")
 	}
 	return nil
+}
+
+// RecordRedemptionWithTx records a redemption on the caller's transaction so it
+// commits or rolls back with the order that earned it.
+func (s *CouponService) RecordRedemptionWithTx(
+	ctx context.Context,
+	tx *database.Tx,
+	couponID uuid.UUID,
+	userID uuid.UUID,
+	orderID uuid.UUID,
+	discountAmount int64,
+) error {
+	return s.recordRedemption(ctx, tx, couponID, userID, orderID, discountAmount)
+}
+
+func (s *CouponService) recordRedemption(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	couponID uuid.UUID,
+	userID uuid.UUID,
+	orderID uuid.UUID,
+	discountAmount int64,
+) error {
+	if couponID == uuid.Nil || userID == uuid.Nil || orderID == uuid.Nil {
+		return apierr.BadRequestError("Coupon ID, User ID, and Order ID are required").
+			WithCode(apierr.CodeInvalidInput)
+	}
+	return s.repo.RecordRedemption(ctx, qe, &model.CouponRedemption{
+		CouponID:       couponID,
+		UserID:         userID,
+		OrderID:        orderID,
+		DiscountAmount: discountAmount,
+	})
 }

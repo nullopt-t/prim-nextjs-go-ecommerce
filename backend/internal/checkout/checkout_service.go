@@ -12,10 +12,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/setting"
+	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/storage"
@@ -53,13 +55,13 @@ type AddressRepository interface {
 	GetByIDAndUser(ctx context.Context, qe database.QueryExecutor, id uuid.UUID, userID uuid.UUID) (*model.UserAddress, error)
 }
 
-// CouponRepository is the subset of coupon persistence checkout needs.
-type CouponRepository interface {
-	GetByIDForUpdate(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Coupon, error)
-	GetByCode(ctx context.Context, qe database.QueryExecutor, code string) (*model.Coupon, error)
-	GetRedemptionCount(ctx context.Context, qe database.QueryExecutor, couponID uuid.UUID) (int, error)
-	GetUserRedemptionCount(ctx context.Context, qe database.QueryExecutor, couponID uuid.UUID, userID uuid.UUID) (int, error)
-	RecordRedemption(ctx context.Context, qe database.QueryExecutor, red *model.CouponRedemption) error
+// CouponService owns coupon eligibility and discount rules. Checkout supplies
+// the authoritative gross total and the executor it already holds, so the
+// rules live in one place without opening a second connection.
+type CouponService interface {
+	ApplyByID(ctx context.Context, qe database.QueryExecutor, couponID uuid.UUID, grossTotal int64, userID *uuid.UUID) (*coupon.AppliedCoupon, error)
+	ApplyByCode(ctx context.Context, qe database.QueryExecutor, code string, grossTotal int64, userID *uuid.UUID) (*coupon.AppliedCoupon, error)
+	RecordRedemptionWithTx(ctx context.Context, tx *database.Tx, couponID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, discountAmount int64) error
 }
 
 // VariantRepository is the subset of variant persistence checkout needs for
@@ -92,19 +94,19 @@ type SettingsProvider interface {
 }
 
 type CheckoutService struct {
-	cartRepo    CartRepository
-	orderWriter OrderWriter
-	stockWriter StockWriter
-	userRepo    UserRepository
-	addressRepo AddressRepository
-	couponRepo  CouponRepository
-	variantRepo VariantRepository
-	productRepo ProductRepository
-	objectRepo  ObjectRepository
-	paymentRepo PaymentRepository
-	storage     storage.StorageProvider
-	settings    SettingsProvider
-	runner      database.Runner
+	cartRepo      CartRepository
+	orderWriter   OrderWriter
+	stockWriter   StockWriter
+	userRepo      UserRepository
+	addressRepo   AddressRepository
+	couponService CouponService
+	variantRepo   VariantRepository
+	productRepo   ProductRepository
+	objectRepo    ObjectRepository
+	paymentRepo   PaymentRepository
+	storage       storage.StorageProvider
+	settings      SettingsProvider
+	runner        database.Runner
 }
 
 func NewService(
@@ -113,7 +115,7 @@ func NewService(
 	stockWriter StockWriter,
 	userRepo UserRepository,
 	addressRepo AddressRepository,
-	couponRepo CouponRepository,
+	couponService CouponService,
 	variantRepo VariantRepository,
 	productRepo ProductRepository,
 	objectRepo ObjectRepository,
@@ -123,19 +125,19 @@ func NewService(
 	runner database.Runner,
 ) *CheckoutService {
 	return &CheckoutService{
-		cartRepo:    cartRepo,
-		orderWriter: orderWriter,
-		stockWriter: stockWriter,
-		userRepo:    userRepo,
-		addressRepo: addressRepo,
-		couponRepo:  couponRepo,
-		variantRepo: variantRepo,
-		productRepo: productRepo,
-		objectRepo:  objectRepo,
-		paymentRepo: paymentRepo,
-		storage:     storageProvider,
-		settings:    settings,
-		runner:      runner,
+		cartRepo:      cartRepo,
+		orderWriter:   orderWriter,
+		stockWriter:   stockWriter,
+		userRepo:      userRepo,
+		addressRepo:   addressRepo,
+		couponService: couponService,
+		variantRepo:   variantRepo,
+		productRepo:   productRepo,
+		objectRepo:    objectRepo,
+		paymentRepo:   paymentRepo,
+		storage:       storageProvider,
+		settings:      settings,
+		runner:        runner,
 	}
 }
 
@@ -359,66 +361,16 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		var appliedCouponCode *string
 		var totalDiscount int64
 		if in.CouponID != nil {
-			coupon, err := s.couponRepo.GetByIDForUpdate(ctx, tx, *in.CouponID)
+			applied, err := s.couponService.ApplyByID(ctx, tx, *in.CouponID, grossTotal, &in.CustomerID)
 			if err != nil {
 				if errors.Is(database.MapError(err), database.ErrNotFound) {
-					return apierr.BadRequestError("Coupon not found").WithCode("COUPON_NOT_FOUND")
+					return apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
 				}
 				return s.handleError(err, "Failed to validate coupon")
 			}
-			code := coupon.Code
+			code := applied.Code
 			appliedCouponCode = &code
-
-			if coupon.Status != model.CouponStatusActive {
-				return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' is not active", code)).WithCode("COUPON_INACTIVE")
-			}
-
-			now := time.Now()
-			if coupon.StartsAt != nil && now.Before(*coupon.StartsAt) {
-				return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' has not started yet", code)).WithCode("COUPON_NOT_STARTED")
-			}
-			if coupon.ExpiresAt != nil && now.After(*coupon.ExpiresAt) {
-				return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' has expired", code)).WithCode("COUPON_EXPIRED")
-			}
-
-			if coupon.MinCartAmount != nil && grossTotal < *coupon.MinCartAmount {
-				return apierr.BadRequestError(fmt.Sprintf("Order total does not meet the minimum requirement of %.2f for coupon '%s'", float64(*coupon.MinCartAmount)/100, code)).WithCode("COUPON_MIN_AMOUNT_NOT_MET")
-			}
-
-			// Check global usage limit
-			if coupon.UsageLimit != nil {
-				usedCount, err := s.couponRepo.GetRedemptionCount(ctx, tx, coupon.ID)
-				if err != nil {
-					return s.handleError(err, "Failed to check coupon usage")
-				}
-				if usedCount >= *coupon.UsageLimit {
-					return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' usage limit has been reached", code)).WithCode("COUPON_USAGE_LIMIT_EXCEEDED")
-				}
-			}
-
-			// Check per-user usage limit
-			userLimit := 1
-			if coupon.PerUserLimit != nil && *coupon.PerUserLimit > 0 {
-				userLimit = *coupon.PerUserLimit
-			}
-			userUsedCount, err := s.couponRepo.GetUserRedemptionCount(ctx, tx, coupon.ID, in.CustomerID)
-			if err != nil {
-				return s.handleError(err, "Failed to check per-user coupon limit")
-			}
-			if userUsedCount >= userLimit {
-				return apierr.BadRequestError(fmt.Sprintf("You have already used coupon '%s' the maximum allowable times", code)).WithCode("COUPON_USER_LIMIT_EXCEEDED")
-			}
-
-			// Calculate discount
-			switch coupon.DiscountType {
-			case model.CouponDiscountTypePercentage:
-				totalDiscount = (grossTotal * coupon.DiscountValue) / 100
-			case model.CouponDiscountTypeFixedAmount:
-				totalDiscount = coupon.DiscountValue
-			}
-			if totalDiscount > grossTotal {
-				totalDiscount = grossTotal
-			}
+			totalDiscount = applied.DiscountAmount
 		}
 
 		// 5. Apply the admin-configured shipping rule: free at/above the
@@ -539,13 +491,9 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 
 		// 8. Record the coupon redemption; surface errors so the transaction rolls back.
 		if in.CouponID != nil && totalDiscount > 0 {
-			redemption := &model.CouponRedemption{
-				CouponID:       *in.CouponID,
-				UserID:         in.CustomerID,
-				OrderID:        createdOrder.ID,
-				DiscountAmount: totalDiscount,
-			}
-			if err := s.couponRepo.RecordRedemption(ctx, tx, redemption); err != nil {
+			if err := s.couponService.RecordRedemptionWithTx(
+				ctx, dbTx, *in.CouponID, in.CustomerID, createdOrder.ID, totalDiscount,
+			); err != nil {
 				return s.handleError(err, "Failed to record coupon redemption")
 			}
 		}
@@ -647,80 +595,12 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 		}
 
 		// Client-supplied subtotals are never trusted for pricing decisions.
-		coupon, err := s.couponRepo.GetByCode(ctx, exec, code)
+		applied, err := s.couponService.ApplyByCode(ctx, exec, code, grossTotal, userID)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' not found", code)).WithCode("COUPON_NOT_FOUND")
+				return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' not found", code)).WithCode(errcode.CodeCouponNotFound)
 			}
 			return s.handleError(err, "Failed to validate coupon")
-		}
-
-		if coupon.Status != model.CouponStatusActive {
-			return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' is not active", coupon.Code)).WithCode("COUPON_INACTIVE")
-		}
-
-		now := time.Now()
-		if coupon.StartsAt != nil && now.Before(*coupon.StartsAt) {
-			return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' has not started yet", coupon.Code)).WithCode("COUPON_NOT_STARTED")
-		}
-		if coupon.ExpiresAt != nil && now.After(*coupon.ExpiresAt) {
-			return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' has expired", coupon.Code)).WithCode("COUPON_EXPIRED")
-		}
-
-		// Check global usage limit
-		if coupon.UsageLimit != nil {
-			usedCount, err := s.couponRepo.GetRedemptionCount(ctx, exec, coupon.ID)
-			if err != nil {
-				return s.handleError(err, "Failed to check coupon usage")
-			}
-			if usedCount >= *coupon.UsageLimit {
-				return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' usage limit has been reached", coupon.Code)).WithCode("COUPON_USAGE_LIMIT_EXCEEDED")
-			}
-		}
-
-		// Check per-user limit if userID is provided
-		if userID != nil {
-			userLimit := 1
-			if coupon.PerUserLimit != nil && *coupon.PerUserLimit > 0 {
-				userLimit = *coupon.PerUserLimit
-			}
-			userUsedCount, err := s.couponRepo.GetUserRedemptionCount(ctx, exec, coupon.ID, *userID)
-			if err != nil {
-				return s.handleError(err, "Failed to check per-user coupon limit")
-			}
-			if userUsedCount >= userLimit {
-				return apierr.BadRequestError(fmt.Sprintf("You have already used coupon '%s' the maximum allowable times", coupon.Code)).WithCode("COUPON_USER_LIMIT_EXCEEDED")
-			}
-		}
-
-		res := &CouponValidationResult{
-			ID:            coupon.ID,
-			Code:          coupon.Code,
-			DiscountType:  string(coupon.DiscountType),
-			DiscountValue: coupon.DiscountValue,
-			Message:       fmt.Sprintf("Coupon %s applied successfully!", coupon.Code),
-		}
-
-		if coupon.MinCartAmount != nil {
-			res.MinCartAmount = coupon.MinCartAmount
-		}
-
-		var calculatedDiscount int64
-		switch coupon.DiscountType {
-		case model.CouponDiscountTypePercentage:
-			pct := int(coupon.DiscountValue)
-			res.DiscountPercent = &pct
-			if grossTotal > 0 {
-				calculatedDiscount = (grossTotal * coupon.DiscountValue) / 100
-			}
-		case model.CouponDiscountTypeFixedAmount:
-			fixed := float64(coupon.DiscountValue) / 100.0
-			res.FixedDiscount = &fixed
-			calculatedDiscount = coupon.DiscountValue
-		}
-
-		if calculatedDiscount > grossTotal && grossTotal > 0 {
-			calculatedDiscount = grossTotal
 		}
 
 		// Shipping follows the admin-configured rule: free at/above the configured
@@ -730,17 +610,25 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 			shippingCost = cfg.ShippingMinorUnits()
 		}
 
-		finalTotal := grossTotal - calculatedDiscount + shippingCost
+		finalTotal := grossTotal - applied.DiscountAmount + shippingCost
 		if finalTotal < 0 {
 			finalTotal = 0
 		}
 
-		res.Subtotal = grossTotal
-		res.DiscountAmount = calculatedDiscount
-		res.Shipping = shippingCost
-		res.Total = finalTotal
-
-		result = res
+		result = &CouponValidationResult{
+			ID:              applied.ID,
+			Code:            applied.Code,
+			DiscountType:    applied.DiscountType,
+			DiscountValue:   applied.DiscountValue,
+			DiscountPercent: applied.DiscountPercent,
+			FixedDiscount:   applied.FixedDiscount,
+			MinCartAmount:   applied.MinCartAmount,
+			DiscountAmount:  applied.DiscountAmount,
+			Subtotal:        grossTotal,
+			Shipping:        shippingCost,
+			Total:           finalTotal,
+			Message:         applied.Message,
+		}
 		return nil
 	})
 

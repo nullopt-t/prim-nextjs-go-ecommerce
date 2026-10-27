@@ -347,7 +347,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		inventoryService,
 		userRepo,
 		addressRepo,
-		couponRepo,
+		couponService,
 		variantRepository,
 		productRepo,
 		objectRepository,

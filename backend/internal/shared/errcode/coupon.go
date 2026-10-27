@@ -25,5 +25,5 @@ const (
 	CodeCouponUserLimitExceeded = "COUPON_USER_LIMIT_EXCEEDED"
 
 	// CodeCouponMinCartNotMet indicates that the cart subtotal does not meet the coupon's minimum requirement.
-	CodeCouponMinCartNotMet = "COUPON_MIN_CART_NOT_MET"
+	CodeCouponMinCartNotMet = "COUPON_MIN_AMOUNT_NOT_MET"
 )
