@@ -76,6 +76,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   worker:
     build:
@@ -89,6 +91,8 @@ services:
       migrate:
         condition: service_completed_successfully
       redis:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
 
   minio:
@@ -129,7 +133,24 @@ services:
         if [ -d /seed/media/catalog ]; then /usr/bin/mc cp --recursive /seed/media/catalog/ myminio/catalog/; fi;
         exit 0;
 
+  kafka:
+    image: apache/kafka:latest
+    ports:
+      - "9092:9092"
+    env_file:
+      - ../.env
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  kafka_data:
