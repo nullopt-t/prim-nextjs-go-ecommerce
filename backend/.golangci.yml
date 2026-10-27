@@ -1,21 +1,16 @@
-run:
-  timeout: 5m
-
+version: "2"
 linters:
+  default: standard
   enable:
-    - govet
-    - errcheck
-    - staticcheck
-    - ineffassign
     - gocritic
     - revive
-    - unused
-    - typecheck
-
-linters-settings:
-  revive:
-    rules:
-      - name: var-naming
-
-issues:
-  exclude-use-default: false
+  settings:
+    revive:
+      rules:
+        - name: var-naming
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
