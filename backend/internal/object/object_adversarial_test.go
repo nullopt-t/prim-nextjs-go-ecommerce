@@ -156,7 +156,7 @@ type mockObjectRunner struct {
 	qe          *mockObjQE
 }
 
-func (m *mockObjectRunner) WithDB(ctx context.Context, fn func(database.QueryExecutor) error) error {
+func (m *mockObjectRunner) WithExecutor(ctx context.Context, fn func(database.QueryExecutor) error) error {
 	m.withDBCalls++
 	return fn(m.qe)
 }
@@ -193,7 +193,7 @@ func TestAdversarial_CreateObject_UsesWithTx(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, obj)
 
-	assert.Equal(t, 0, runner.withDBCalls, "CreateObject must NOT use WithDB")
+	assert.Equal(t, 0, runner.withDBCalls, "CreateObject must NOT use WithExecutor")
 	assert.Equal(t, 1, runner.withTxCalls, "CreateObject must use WithTx")
 }
 
@@ -205,7 +205,7 @@ func TestAdversarial_DeleteObject_UsesWithTx(t *testing.T) {
 	err := svc.DeleteObject(context.Background(), "bkt", "key")
 	require.NoError(t, err)
 
-	assert.Equal(t, 0, runner.withDBCalls, "DeleteObject must NOT use WithDB")
+	assert.Equal(t, 0, runner.withDBCalls, "DeleteObject must NOT use WithExecutor")
 	assert.Equal(t, 2, runner.withTxCalls, "DeleteObject must use WithTx for both mark deleting and mark deleted")
 }
 

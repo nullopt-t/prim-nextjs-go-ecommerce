@@ -63,8 +63,8 @@ func TestTier3_Product_Variant_Storage_MediaResolution(t *testing.T) {
 
 	var result *ProductDTO
 
-	// Single connection (WithDB) reads across Product, Variant, Inventory, Storage
-	err := runner.WithDB(context.Background(), func(db database.QueryExecutor) error {
+	// Single connection (WithExecutor) reads across Product, Variant, Inventory, Storage
+	err := runner.WithExecutor(context.Background(), func(db database.QueryExecutor) error {
 		p, err := prodRepo.GetByID(context.Background(), db, prodID)
 		if err != nil {
 			return CanonicalHandleError(err, "product")

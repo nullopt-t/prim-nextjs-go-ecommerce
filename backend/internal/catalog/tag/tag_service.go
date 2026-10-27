@@ -67,7 +67,7 @@ func (ts *TagService) GetTagByID(
 	tagID uuid.UUID,
 ) (*model.ProductTag, error) {
 	var tag *model.ProductTag
-	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := ts.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		tag, repoErr = ts.repo.GetByID(ctx, db, tagID)
 		return repoErr
@@ -128,7 +128,7 @@ func (ts *TagService) ListTags(
 
 	var result *pagination.PagedResult[model.ProductTag]
 
-	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := ts.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		result, repoErr = ts.repo.List(ctx, db, ListTagOptions{
 			Query:          &q,
@@ -208,7 +208,7 @@ func (ts *TagService) GetTagsByProductID(
 	}
 
 	var tags []*model.ProductTag
-	err := ts.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := ts.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		tags, err = ts.repo.GetTagsByProductID(ctx, db, productID)
 		return err

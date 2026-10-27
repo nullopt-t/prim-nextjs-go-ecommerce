@@ -215,7 +215,7 @@ func (s *InventoryService) GetStockByVariantID(
 	}
 
 	var stock *model.InventoryStock
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		stock, repoErr = s.repo.GetStock(ctx, db, variantID)
 		return repoErr
@@ -247,7 +247,7 @@ func (s *InventoryService) GetStockForVariants(
 	}
 
 	var stocks map[uuid.UUID]*model.InventoryStock
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		stocks, repoErr = s.repo.GetStockForVariants(ctx, db, variantIDs)
 		return repoErr
@@ -271,7 +271,7 @@ func (s *InventoryService) ListVariantLedgers(
 	}
 
 	var result *pagination.PagedResult[model.InventoryLedger]
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		result, repoErr = s.repo.ListVariantLedgers(ctx, db, variantID, q)
 		return repoErr
@@ -457,7 +457,7 @@ func (s *InventoryService) ReleaseReservation(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		return s.repo.ReleaseReservation(ctx, db, reservationID)
 	})
 
@@ -486,7 +486,7 @@ func (s *InventoryService) ReleaseCartReservations(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		return s.repo.ReleaseCartReservations(ctx, db, cartID)
 	})
 
@@ -503,7 +503,7 @@ func (s *InventoryService) ReleaseExpiredReservations(
 	ctx context.Context,
 ) (int64, error) {
 	var count int64
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		count, repoErr = s.repo.ReleaseExpiredReservations(ctx, db)
 		return repoErr
@@ -635,7 +635,7 @@ func (s *InventoryService) ReleaseReservationsForOrderWithTx(
 // this to cancel stale pending orders and return their held stock to salable.
 func (s *InventoryService) ExpiredReservationOrderIDs(ctx context.Context) ([]uuid.UUID, error) {
 	var ids []uuid.UUID
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var e error
 		ids, e = s.repo.ExpiredReservationOrderIDs(ctx, db)
 		return e
@@ -664,7 +664,7 @@ func (s *InventoryService) CheckAvailability(
 func (s *InventoryService) ListInventoryOverview(ctx context.Context, limit int, cursor *pagination.Keyset) ([]InventoryStockItem, *pagination.CursorPage, error) {
 	var items []InventoryStockItem
 	var page *pagination.CursorPage
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		items, page, err = s.repo.ListInventoryOverview(ctx, db, limit, cursor)
 		return err
@@ -690,7 +690,7 @@ func (s *InventoryService) ListInventoryOverview(ctx context.Context, limit int,
 func (s *InventoryService) ListRecentLedgers(ctx context.Context, limit int, cursor *pagination.Keyset, variantID *uuid.UUID, productID *uuid.UUID) ([]InventoryLedgerItem, *pagination.CursorPage, error) {
 	var list []InventoryLedgerItem
 	var page *pagination.CursorPage
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		list, page, err = s.repo.ListRecentLedgers(ctx, db, limit, cursor, variantID, productID)
 		return err

@@ -51,8 +51,8 @@ database connection from entry to exit.
   They must not contain SQL.
 - Repositories own SQL and row mapping. Every repository method takes
   `(ctx context.Context, qe database.QueryExecutor, ...)`; repositories never
-  call `WithDB`/`WithTx` and never open their own connection.
-- Use exactly one `runner.WithDB` for reads or one `runner.WithTx` for writes
+  call `WithExecutor`/`WithTx` and never open their own connection.
+- Use exactly one `runner.WithExecutor` for reads or one `runner.WithTx` for writes
   per exported service method, at the top. Helpers that need the database take
   `qe` as a parameter instead of acquiring a connection.
 - Writes inside `WithTx`: validate → hierarchy/constraint checks → mutate →
@@ -172,7 +172,7 @@ Load the most specific one before starting; do not restate its content here.
 
 - `go build ./...`, `go test ./...`, and `go vet ./...` pass.
 - `go test -race ./...` passes for concurrency-sensitive changes.
-- No new `WithDB`/`WithTx` in helpers; no cross-domain service injection.
+- No new `WithExecutor`/`WithTx` in helpers; no cross-domain service injection.
 - Swagger regenerated if annotations/routes changed.
 - Migration has a working down path when schema changed.
 - Errors are typed and handled; no driver types reach handlers.

@@ -48,7 +48,7 @@ func (r refundRunner) WithTx(_ context.Context, fn func(context.Context, databas
 	return fn(context.Background(), refundExecutor{row: r.row})
 }
 
-func (r refundRunner) WithDB(_ context.Context, fn func(database.QueryExecutor) error) error {
+func (r refundRunner) WithExecutor(_ context.Context, fn func(database.QueryExecutor) error) error {
 	return fn(refundExecutor{row: r.row})
 }
 

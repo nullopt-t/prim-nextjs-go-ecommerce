@@ -81,7 +81,7 @@ func (s *Service) handleError(err error, fallbackMsg string) error {
 func (s *Service) GetSettings(ctx context.Context) (map[string]interface{}, error) {
 	settings := make(map[string]interface{})
 
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		list, err := s.repo.GetAll(ctx, db)
 		if err != nil {
 			return err

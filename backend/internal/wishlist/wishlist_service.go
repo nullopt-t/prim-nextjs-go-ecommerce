@@ -183,7 +183,7 @@ func (s *WishlistService) GetMyWishlist(
 	var items []model.WishlistItem
 	var total int
 
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		items, total, err = s.repo.ListByUser(ctx, db, userID, q)
 		return err
@@ -210,7 +210,7 @@ func (s *WishlistService) GetWishlistCount(
 ) (int, error) {
 	var count int
 
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		count, err = s.repo.CountByUser(ctx, db, userID)
 		return err
@@ -233,7 +233,7 @@ func (s *WishlistService) CheckInWishlist(
 	var exists bool
 	var itemID *uuid.UUID
 
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		exists, itemID, err = s.repo.Exists(ctx, db, userID, productID, variantID)
 		return err
@@ -304,7 +304,7 @@ func (s *WishlistService) ClearWishlist(
 	ctx context.Context,
 	userID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		return s.repo.ClearByUser(ctx, db, userID)
 	})
 

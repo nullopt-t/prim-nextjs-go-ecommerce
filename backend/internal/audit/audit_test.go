@@ -36,7 +36,7 @@ func (m *mockRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx
 	return fn(ctx, qe)
 }
 
-func (m *mockRunner) WithDB(ctx context.Context, fn func(db database.QueryExecutor) error) error {
+func (m *mockRunner) WithExecutor(ctx context.Context, fn func(db database.QueryExecutor) error) error {
 	m.withDBCalled = true
 	if m.withDBErr != nil {
 		return m.withDBErr
@@ -235,7 +235,7 @@ func TestService_Record(t *testing.T) {
 		err := svc.Record(context.Background(), entry)
 		require.NoError(t, err)
 		assert.True(t, runner.withTxCalled, "Record must execute inside WithTx")
-		assert.False(t, runner.withDBCalled, "Record must NOT execute inside WithDB")
+		assert.False(t, runner.withDBCalled, "Record must NOT execute inside WithExecutor")
 		assert.Equal(t, int64(42), entry.ID)
 	})
 
@@ -268,7 +268,7 @@ func TestService_List(t *testing.T) {
 		require.True(t, errors.As(err, &apiErr))
 		assert.Equal(t, http.StatusInternalServerError, apiErr.Status)
 		assert.Equal(t, apierr.CodeInternalError, apiErr.Code)
-		assert.True(t, runner.withDBCalled, "List must execute inside WithDB")
+		assert.True(t, runner.withDBCalled, "List must execute inside WithExecutor")
 		assert.False(t, runner.withTxCalled, "List must NOT execute inside WithTx")
 	})
 }

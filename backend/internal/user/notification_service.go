@@ -60,7 +60,7 @@ func (s *NotificationService) CreateNotification(
 	ctx context.Context,
 	n *model.UserNotification,
 ) error {
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		return s.repo.Create(ctx, db, n)
 	})
 	if err != nil {
@@ -80,7 +80,7 @@ func (s *NotificationService) GetMyNotifications(
 	var items []*model.UserNotification
 	var total int
 
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		items, total, err = s.repo.ListByUser(ctx, db, userID, unreadOnly, q)
 		return err
@@ -99,7 +99,7 @@ func (s *NotificationService) GetUnreadCount(
 	userID uuid.UUID,
 ) (int, error) {
 	var count int
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		count, err = s.repo.CountUnreadByUser(ctx, db, userID)
 		return err
@@ -115,7 +115,7 @@ func (s *NotificationService) MarkAsRead(
 	ctx context.Context,
 	id int64, userID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		return s.repo.MarkAsRead(ctx, db, id, userID)
 	})
 	if err != nil {
@@ -130,7 +130,7 @@ func (s *NotificationService) MarkAllAsRead(
 	userID uuid.UUID,
 ) (int64, error) {
 	var count int64
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		count, err = s.repo.MarkAllAsRead(ctx, db, userID)
 		return err
@@ -146,7 +146,7 @@ func (s *NotificationService) DeleteNotification(
 	ctx context.Context,
 	id int64, userID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		return s.repo.Delete(ctx, db, id, userID)
 	})
 	if err != nil {

@@ -70,7 +70,7 @@ func (cs *CategoryService) GetCategoryByID(
 	categoryID uuid.UUID,
 ) (*model.ProductCategory, error) {
 	var category *model.ProductCategory
-	err := cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := cs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		category, repoErr = cs.repo.GetByID(ctx, db, categoryID)
 		return repoErr
@@ -222,7 +222,7 @@ func (cs *CategoryService) ListCategories(
 
 	var result *pagination.PagedResult[model.ProductCategory]
 
-	err = cs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err = cs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		result, repoErr = cs.repo.List(ctx, db, ListCategoryOptions{
 			ListQuery:        q,

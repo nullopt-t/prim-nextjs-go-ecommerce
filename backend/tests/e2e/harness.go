@@ -271,7 +271,7 @@ func (r *MockRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx
 	return nil
 }
 
-func (r *MockRunner) WithDB(ctx context.Context, fn func(db database.QueryExecutor) error) error {
+func (r *MockRunner) WithExecutor(ctx context.Context, fn func(db database.QueryExecutor) error) error {
 	atomic.AddInt32(&r.withDBCount, 1)
 
 	current := atomic.AddInt32(&r.activeConns, 1)

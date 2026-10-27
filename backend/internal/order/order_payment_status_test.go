@@ -51,7 +51,7 @@ func (r paymentStatusRunner) WithTx(_ context.Context, fn func(context.Context, 
 	return fn(context.Background(), paymentStatusExecutor{tag: r.tag})
 }
 
-func (r paymentStatusRunner) WithDB(_ context.Context, fn func(database.QueryExecutor) error) error {
+func (r paymentStatusRunner) WithExecutor(_ context.Context, fn func(database.QueryExecutor) error) error {
 	return fn(paymentStatusExecutor{tag: r.tag})
 }
 

@@ -77,7 +77,7 @@ type InventoryRepository interface {
 // OrderService orchestrates database transactions, order status state machine validation,
 // and audit log tracking for order lifecycle events.
 type OrderService struct {
-	qexecuter     database.Runner
+	qexecutor     database.Runner
 	orderRepo     *Repository
 	logger        log.Logger
 	inventoryRepo InventoryRepository
@@ -91,7 +91,7 @@ func NewService(
 	inventoryRepo ...InventoryRepository,
 ) *OrderService {
 	s := &OrderService{
-		qexecuter: r,
+		qexecutor: r,
 		orderRepo: orderRepo,
 		logger:    logger,
 	}
@@ -200,7 +200,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 	var createdOrder *model.Order
 
 	// Execute within an atomic transaction.
-	err := s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		dbTx, ok := tx.(*database.Tx)
 		if !ok {
 			return apierr.InternalServerError("Order creation requires a database transaction").
@@ -363,7 +363,7 @@ func (s *OrderService) handleError(err error, fallbackMsg string) error {
 // GetOrderByID loads an order by its UUID within a read-only database query execution block.
 func (s *OrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.Order, error) {
 	var order *model.Order
-	err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.qexecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		res, err := s.orderRepo.GetOrderByID(ctx, db, id)
 		if err != nil {
 			return err
@@ -391,7 +391,7 @@ func (s *OrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.O
 // GetCustomerOrders fetches all orders belonging to the specified customer UUID.
 func (s *OrderService) GetCustomerOrders(ctx context.Context, customerID uuid.UUID) ([]model.Order, error) {
 	var orders []model.Order
-	err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.qexecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		res, err := s.orderRepo.GetOrdersByCustomerID(ctx, db, customerID)
 		if err != nil {
 			return err
@@ -425,7 +425,7 @@ func (s *OrderService) ListOrders(
 		return nil, nil, apierr.BadRequestError("Invalid pagination cursor").Wrap(err)
 	}
 
-	err = s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err = s.qexecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		pageSize := q.PageSize
 		if pageSize <= 0 {
 			pageSize = 10
@@ -503,7 +503,7 @@ func CanTransitionOrderStatus(current, next model.OrderStatus) bool {
 // UpdateOrderStatus modifies an existing order's state after validating the state machine transition.
 // It executes within a transaction and inserts an audit log entry in order_status_history.
 func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, status model.OrderStatus, notes *string) error {
-	err := s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		// Acquire an exclusive FOR UPDATE row-level lock on the order to prevent concurrent race conditions
 		// during status transitions.
 		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
@@ -561,7 +561,7 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 // CancelOrder handles customer-initiated cancellation for pending or confirmed orders.
 // Verifies customer authorization and valid transition before setting status to cancelled.
 func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID uuid.UUID) error {
-	err := s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
@@ -623,7 +623,7 @@ func (s *OrderService) ReapExpiredReservations(ctx context.Context) (int, error)
 	}
 
 	var orderIDs []uuid.UUID
-	if err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	if err := s.qexecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		orderIDs, err = s.inventoryRepo.ExpiredReservationOrderIDs(ctx, db)
 		return err
@@ -653,7 +653,7 @@ func (s *OrderService) ReapExpiredReservations(ctx context.Context) (int, error)
 // single transaction, reporting whether a transition occurred.
 func (s *OrderService) expirePendingOrder(ctx context.Context, orderID uuid.UUID) (bool, error) {
 	didCancel := false
-	err := s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, orderID)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
@@ -699,7 +699,7 @@ func (s *OrderService) expirePendingOrder(ctx context.Context, orderID uuid.UUID
 // GetDashboardStats aggregates live metrics for administrative reporting.
 func (s *OrderService) GetDashboardStats(ctx context.Context) (*DashboardStats, error) {
 	var stats *DashboardStats
-	err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.qexecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		stats, err = s.orderRepo.GetDashboardStats(ctx, db)
 		return err
@@ -714,7 +714,7 @@ func (s *OrderService) GetDashboardStats(ctx context.Context) (*DashboardStats, 
 func (s *OrderService) ListPayments(ctx context.Context, filter PaymentListFilter) ([]PaymentItem, *pagination.CursorPage, error) {
 	var payments []PaymentItem
 	var page *pagination.CursorPage
-	err := s.qexecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.qexecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		payments, page, err = s.orderRepo.ListPayments(ctx, db, filter)
 		return err
@@ -732,7 +732,7 @@ func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, st
 	if !model.PaymentStatus(status).IsValid() {
 		return apierr.BadRequestError(fmt.Sprintf("Invalid payment status '%s'", status)).WithCode(apierr.CodeInvalidInput)
 	}
-	return s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	return s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		// Lock the payment row and resolve its order up front.
 		orderID, err := s.orderRepo.GetPaymentOrderIDForUpdate(ctx, tx, id)
 		if err != nil {
@@ -767,7 +767,7 @@ func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, st
 
 // RefundPayment sets the payment status to refunded.
 func (s *OrderService) RefundPayment(ctx context.Context, id uuid.UUID) error {
-	return s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	return s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		status, err := s.orderRepo.GetPaymentStatusForUpdate(ctx, tx, id)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
@@ -792,7 +792,7 @@ func (s *OrderService) RefundPayment(ctx context.Context, id uuid.UUID) error {
 
 // UpdateOrderTracking updates the carrier tracking number for an order.
 func (s *OrderService) UpdateOrderTracking(ctx context.Context, id uuid.UUID, trackingNumber string) error {
-	err := s.qexecuter.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
 		return s.orderRepo.UpdateOrderTracking(ctx, tx, id, trackingNumber)
 	})
 	if err != nil {

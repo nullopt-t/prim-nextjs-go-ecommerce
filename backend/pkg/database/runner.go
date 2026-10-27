@@ -7,19 +7,19 @@ import (
 )
 
 // Runner defines the contract for executing units of work either within
-// a managed database transaction (WithTx) or against the connection pool directly (WithDB).
+// a managed database transaction (WithTx) or against the connection pool directly (WithExecutor).
 type Runner interface {
 	// WithTx runs the provided callback inside a database transaction.
 	// It automatically commits on success or rolls back on error/panic.
 	WithTx(ctx context.Context, fn func(ctx context.Context, tx QueryExecutor) error) error
 
-	// WithDB runs the provided callback directly against the connection pool.
-	WithDB(ctx context.Context, fn func(db QueryExecutor) error) error
+	// WithExecutor runs the provided callback directly against the connection pool.
+	WithExecutor(ctx context.Context, fn func(db QueryExecutor) error) error
 }
 
-// Executer implements the Runner interface by managing transactions and pool access
+// Executor implements the Runner interface by managing transactions and pool access
 // against a target DB instance.
-type Executer struct {
+type Executor struct {
 	// db points to the active database connection pool.
 	db *DB
 }
@@ -30,7 +30,7 @@ type txContextKey struct{}
 // TxFromContext returns the transaction bound to ctx by an enclosing WithTx.
 //
 // Code that runs inside a transaction can use this to stay on the caller's
-// connection; callers that just issue queries can call WithDB, which performs
+// connection; callers that just issue queries can call WithExecutor, which performs
 // the same lookup for them.
 func TxFromContext(ctx context.Context) (QueryExecutor, bool) {
 	tx, ok := ctx.Value(txContextKey{}).(QueryExecutor)
@@ -38,8 +38,8 @@ func TxFromContext(ctx context.Context) (QueryExecutor, bool) {
 }
 
 // NewTxRunner constructs a new transaction runner backed by the provided DB.
-func NewTxRunner(db *DB) *Executer {
-	return &Executer{db: db}
+func NewTxRunner(db *DB) *Executor {
+	return &Executor{db: db}
 }
 
 // WithTx begins a new PostgreSQL transaction, passes the wrapped transaction to the
@@ -54,7 +54,7 @@ func NewTxRunner(db *DB) *Executer {
 // connection while the outer transaction still holds the first, and concurrent
 // requests doing that exhaust the pool. A joined callback neither commits nor
 // rolls back on its own - the outermost transaction decides.
-func (t *Executer) WithTx(ctx context.Context, fn func(ctx context.Context, tx QueryExecutor) error) error {
+func (t *Executor) WithTx(ctx context.Context, fn func(ctx context.Context, tx QueryExecutor) error) error {
 	if t == nil || t.db == nil || t.db.Pool == nil {
 		return ErrConnectionFailure
 	}
@@ -83,7 +83,7 @@ func (t *Executer) WithTx(ctx context.Context, fn func(ctx context.Context, tx Q
 		}
 	}()
 
-	// Publish the transaction on the context so that every WithDB call made
+	// Publish the transaction on the context so that every WithExecutor call made
 	// below - nested service calls included - reuses this connection instead of
 	// acquiring another one from the pool.
 	wrappedTx := &Tx{tx}
@@ -100,14 +100,14 @@ func (t *Executer) WithTx(ctx context.Context, fn func(ctx context.Context, tx Q
 	return nil
 }
 
-// WithDB executes the provided callback against the connection pool without
+// WithExecutor executes the provided callback against the connection pool without
 // starting a transaction.
 //
 // If ctx already carries a transaction (that is, the caller is inside WithTx),
 // the callback runs on that transaction instead of the pool. Checking a second
 // connection out while the first is still held is what starves the pool and
 // stalls every other request.
-func (t *Executer) WithDB(ctx context.Context, fn func(pool QueryExecutor) error) error {
+func (t *Executor) WithExecutor(ctx context.Context, fn func(exec QueryExecutor) error) error {
 	if t == nil || t.db == nil {
 		return ErrConnectionFailure
 	}

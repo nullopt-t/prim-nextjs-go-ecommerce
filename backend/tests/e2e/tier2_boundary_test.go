@@ -177,7 +177,7 @@ func TestTier2_Boundary_MaxConnsOne_ExecutesReadFlowWithoutPoolStarvation(t *tes
 	})
 
 	// Rule 2: Execute multi-entity read on the held qe without acquiring second connection
-	err := runner.WithDB(context.Background(), func(db database.QueryExecutor) error {
+	err := runner.WithExecutor(context.Background(), func(db database.QueryExecutor) error {
 		p, err := repo.GetByID(context.Background(), db, prodID)
 		if err != nil {
 			return err
@@ -232,10 +232,10 @@ func TestTier2_Boundary_MaxConnsOne_ExecutesWriteFlowWithoutPoolStarvation(t *te
 func TestTier2_Boundary_ConnectionHopDetection_TriggersPoolExhaustion(t *testing.T) {
 	runner := NewMockRunner(1) // Pool limit = 1
 
-	// Simulate an anti-pattern: inner helper calls WithDB while WithTx holds a connection
+	// Simulate an anti-pattern: inner helper calls WithExecutor while WithTx holds a connection
 	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
-		// Anti-pattern: inner WithDB without passing held connection
-		return runner.WithDB(ctx, func(nestedDB database.QueryExecutor) error {
+		// Anti-pattern: inner WithExecutor without passing held connection
+		return runner.WithExecutor(ctx, func(nestedDB database.QueryExecutor) error {
 			return nil
 		})
 	})

@@ -227,9 +227,9 @@ func TestTier1_F2_Product_ResolvesStockViaInventoryRepo(t *testing.T) {
 	inventoryRepo.SetStock(var1, 20, 5)
 	inventoryRepo.SetStock(var2, 10, 0)
 
-	// Single WithDB reading stock for multiple variants via consumer repository
+	// Single WithExecutor reading stock for multiple variants via consumer repository
 	var stockMap map[uuid.UUID]*model.InventoryStock
-	err := runner.WithDB(context.Background(), func(db database.QueryExecutor) error {
+	err := runner.WithExecutor(context.Background(), func(db database.QueryExecutor) error {
 		var err error
 		stockMap, err = inventoryRepo.GetStockForVariants(context.Background(), db, []uuid.UUID{var1, var2})
 		return err
@@ -547,7 +547,7 @@ func TestTier1_F9_Checkout_DirectStorageResolutionInLineItems(t *testing.T) {
 	assert.Equal(t, "https://cdn.prim.com/store-assets/products/shoes_thumb.webp", publicURL)
 }
 
-func TestTier1_F10_Checkout_ValidateCoupon_SingleWithDB(t *testing.T) {
+func TestTier1_F10_Checkout_ValidateCoupon_SingleWithExecutor(t *testing.T) {
 	runner := NewMockRunner(1)
 	couponRepo := NewMockCouponRepository()
 
@@ -560,9 +560,9 @@ func TestTier1_F10_Checkout_ValidateCoupon_SingleWithDB(t *testing.T) {
 		Status:        model.CouponStatusActive,
 	})
 
-	// Rule 2 & Feature F10: ValidateCoupon executes within a single WithDB
+	// Rule 2 & Feature F10: ValidateCoupon executes within a single WithExecutor
 	var discount int64
-	err := runner.WithDB(context.Background(), func(db database.QueryExecutor) error {
+	err := runner.WithExecutor(context.Background(), func(db database.QueryExecutor) error {
 		c, err := couponRepo.GetByCode(context.Background(), db, "SAVE10")
 		if err != nil {
 			return CanonicalHandleError(err, "coupon")

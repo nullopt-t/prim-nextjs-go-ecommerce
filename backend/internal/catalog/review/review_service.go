@@ -171,7 +171,7 @@ func (s *ReviewService) GetReviewByID(ctx context.Context, id uuid.UUID) (*model
 	}
 
 	var rv *model.Review
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		rv, err = s.repo.GetByID(ctx, db, id)
 		return err
@@ -194,7 +194,7 @@ func (s *ReviewService) GetRatingSummary(ctx context.Context, productID uuid.UUI
 	}
 
 	var summary *model.RatingSummary
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		summary, err = s.repo.GetRatingSummaryByProductID(ctx, db, productID)
 		return err
@@ -214,7 +214,7 @@ func (s *ReviewService) GetRatingSummariesByProductIDs(
 	}
 
 	var summaries map[uuid.UUID]*model.RatingSummary
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		summaries, err = s.repo.GetRatingSummariesByProductIDs(ctx, db, productIDs)
 		return err
@@ -360,7 +360,7 @@ func (s *ReviewService) ListReviews(
 ) (*pagination.PagedResult[model.Review], error) {
 	var reviews []model.Review
 	var total int
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		reviews, total, err = s.repo.List(ctx, db, q, productID, userID, status)
 		return err
@@ -391,7 +391,7 @@ func (s *ReviewService) CheckReviewEligibility(
 	}
 
 	var eligibleID uuid.UUID
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		eligibleID, err = s.repo.FindEligibleOrderItem(ctx, db, userID, productID)
 		return err

@@ -112,7 +112,7 @@ func (f fakeRunner) WithTx(ctx context.Context, fn func(context.Context, databas
 	return fn(ctx, fakeExecutor{row: f.row, execErr: f.execErr})
 }
 
-func (f fakeRunner) WithDB(_ context.Context, fn func(database.QueryExecutor) error) error {
+func (f fakeRunner) WithExecutor(_ context.Context, fn func(database.QueryExecutor) error) error {
 	if f.dbErr != nil {
 		return f.dbErr
 	}

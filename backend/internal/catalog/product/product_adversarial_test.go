@@ -40,7 +40,7 @@ type mockConnectionTrackingRunner struct {
 	qe          *mockQE
 }
 
-func (m *mockConnectionTrackingRunner) WithDB(ctx context.Context, fn func(database.QueryExecutor) error) error {
+func (m *mockConnectionTrackingRunner) WithExecutor(ctx context.Context, fn func(database.QueryExecutor) error) error {
 	m.withDBCalls++
 	return fn(m.qe)
 }
@@ -77,7 +77,7 @@ func (f *fakeVariantRepoForInvariants) ListMediaByVariantIDs(ctx context.Context
 	return nil, nil
 }
 
-func TestAdversarial_PublishProduct_SingleWithDB(t *testing.T) {
+func TestAdversarial_PublishProduct_SingleWithExecutor(t *testing.T) {
 	qe := &mockQE{}
 	runner := &mockConnectionTrackingRunner{qe: qe}
 	prodID := uuid.New()
@@ -97,8 +97,8 @@ func TestAdversarial_PublishProduct_SingleWithDB(t *testing.T) {
 	err := svc.PublishProduct(context.Background(), prodID)
 	require.NoError(t, err)
 
-	// Invariant check: Exactly one WithDB call, zero WithTx calls
-	assert.Equal(t, 1, runner.withDBCalls, "PublishProduct must use exactly one WithDB")
+	// Invariant check: Exactly one WithExecutor call, zero WithTx calls
+	assert.Equal(t, 1, runner.withDBCalls, "PublishProduct must use exactly one WithExecutor")
 	assert.Equal(t, 0, runner.withTxCalls, "PublishProduct must NOT use WithTx")
 }
 
@@ -129,7 +129,7 @@ func TestAdversarial_SetDefaultVariant_SingleWithTx(t *testing.T) {
 	err := svc.SetDefaultVariant(context.Background(), prodID, varID)
 	require.Error(t, err)
 
-	// Invariant check: Exactly one WithTx call, zero WithDB calls
-	assert.Equal(t, 0, runner.withDBCalls, "SetDefaultVariant must NOT use WithDB")
+	// Invariant check: Exactly one WithTx call, zero WithExecutor calls
+	assert.Equal(t, 0, runner.withDBCalls, "SetDefaultVariant must NOT use WithExecutor")
 	assert.Equal(t, 1, runner.withTxCalls, "SetDefaultVariant must use exactly one WithTx")
 }

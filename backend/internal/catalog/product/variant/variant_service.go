@@ -648,7 +648,7 @@ func (vs *VariantService) GetVariantByID(
 	variantID uuid.UUID,
 ) (*model.ProductVariant, error) {
 	var variant *model.ProductVariant
-	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		variant, repoErr = vs.getVariantByID(ctx, db, variantID)
 		return repoErr
@@ -709,7 +709,7 @@ func (vs *VariantService) GetVariantBySKU(
 	}
 
 	var variant *model.ProductVariant
-	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		v, err := vs.vr.GetBySKU(ctx, db, cleanSKU)
 		if err != nil {
 			return err
@@ -892,7 +892,7 @@ func (vs *VariantService) ListVariantsByProductID(
 	var result *pagination.PagedResult[model.ProductVariant]
 	var mediaMap map[uuid.UUID][]*model.VariantMedia
 
-	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		result, repoErr = vs.vr.ListByProductID(ctx, db, ListVariantOptions{
 			ProductID:      productID,
@@ -1258,7 +1258,7 @@ func (vs *VariantService) ListVariantMedia(
 	variantID uuid.UUID,
 ) ([]*model.VariantMedia, error) {
 	var mediaList []*model.VariantMedia
-	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		mediaList, repoErr = vs.listVariantMedia(ctx, db, variantID)
 		return repoErr
@@ -1427,7 +1427,7 @@ func (vs *VariantService) GetStockByVariantID(
 	}
 
 	var stock *model.InventoryStock
-	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		stock, err = vs.inventoryRepo.GetStock(ctx, db, variantID)
 		return err
@@ -1453,7 +1453,7 @@ func (vs *VariantService) ListLedgers(
 	}
 
 	var result *pagination.PagedResult[model.InventoryLedger]
-	err := vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		result, err = vs.inventoryRepo.ListVariantLedgers(ctx, db, variantID, q)
 		return err
@@ -1569,7 +1569,7 @@ func (vs *VariantService) UploadVariantThumbnail(
 
 	if oldObj != nil && vs.storageProvider != nil {
 		if delErr := vs.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+			_ = vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 				return vs.objectRepo.MarkDeletedByKey(ctx, db, oldObj.Bucket, oldObj.Key)
 			})
 		}
@@ -1609,7 +1609,7 @@ func (vs *VariantService) DeleteVariantThumbnail(
 
 	if oldObj != nil && vs.storageProvider != nil {
 		if delErr := vs.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = vs.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+			_ = vs.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 				return vs.objectRepo.MarkDeletedByKey(ctx, db, oldObj.Bucket, oldObj.Key)
 			})
 		}

@@ -5,7 +5,7 @@
 
 ## TL;DR
 
-`database.Executer.WithDB` hands back the pool, and `WithTx` checks a connection
+`database.Executor.WithExecutor` hands back the pool, and `WithTx` checks a connection
 out until the callback returns. Service methods that ran **inside a
 transaction** called other service methods that were written for the pool, so
 each of those calls asked the pool for a *second* connection while the first was
@@ -17,7 +17,7 @@ for tens of seconds, even though nothing was slow or locked.
 The fix has two layers:
 
 1. **Transaction propagation (class-wide, in `pkg/database`).** `WithTx` binds
-   the transaction to the context it hands the callback, and `WithDB` — plus any
+   the transaction to the context it hands the callback, and `WithExecutor` — plus any
    nested `WithTx` — reuses that transaction instead of acquiring a second
    connection. Every `WithTx` call site was moved to the new callback signature,
    so *any* database call made inside a transaction now joins it automatically.
@@ -62,8 +62,8 @@ tx, err := t.db.Pool.Begin(ctx)
 ...
 if err := fn(&Tx{tx}); err != nil { ... }
 
-// WithDB runs fn against the pool, checking out a connection on demand.
-func (t *Executer) WithDB(ctx context.Context, fn func(pool QueryExecutor) error) error {
+// WithExecutor runs fn against the pool, checking out a connection on demand.
+func (t *Executor) WithExecutor(ctx context.Context, fn func(exec QueryExecutor) error) error {
 	return fn(t.db)
 }
 ```
@@ -84,7 +84,7 @@ and inside the inventory service:
 
 ```go
 func (s *InventoryService) GetStockByVariantID(ctx context.Context, variantID uuid.UUID) (...) {
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {   // connection #2
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {   // connection #2
 		stock, repoErr = s.repo.GetStock(ctx, db, variantID)
 		return repoErr
 	})
@@ -150,12 +150,12 @@ executor must pass it to every database-touching call it makes"*.
 
 **Rule:** *a function that has been given a `database.QueryExecutor` must pass it
 to every database-touching call it makes. Never invoke a pool-backed
-(`WithDB` / `ctx`-only) method from inside a transaction.*
+(`WithExecutor` / `ctx`-only) method from inside a transaction.*
 
 ### 1. Bind the transaction to the request context
 
 The structural fix is in `pkg/database/runner.go`: `WithTx` publishes the
-transaction on the context it passes to the callback, and both `WithDB` and a
+transaction on the context it passes to the callback, and both `WithExecutor` and a
 nested `WithTx` reuse it.
 
 ```go
@@ -167,7 +167,7 @@ func TxFromContext(ctx context.Context) (QueryExecutor, bool) {
 	return tx, ok
 }
 
-func (t *Executer) WithTx(ctx context.Context, fn func(ctx context.Context, tx QueryExecutor) error) error {
+func (t *Executor) WithTx(ctx context.Context, fn func(ctx context.Context, tx QueryExecutor) error) error {
 	if t == nil || t.db == nil || t.db.Pool == nil {
 		return ErrConnectionFailure
 	}
@@ -188,7 +188,7 @@ func (t *Executer) WithTx(ctx context.Context, fn func(ctx context.Context, tx Q
 	...
 }
 
-func (t *Executer) WithDB(ctx context.Context, fn func(pool QueryExecutor) error) error {
+func (t *Executor) WithExecutor(ctx context.Context, fn func(exec QueryExecutor) error) error {
 	if t == nil || t.db == nil {
 		return ErrConnectionFailure
 	}
@@ -236,7 +236,7 @@ For example:
 // Pool-backed entry point.
 func (s *InventoryService) GetStockByVariantID(ctx context.Context, variantID uuid.UUID) (*model.InventoryStock, error) {
 	var stock *model.InventoryStock
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		stock, repoErr = s.getStockByVariantID(ctx, db, variantID)
 		return repoErr
@@ -312,10 +312,10 @@ two more connections.
 
 **Mechanism.** A throwaway harness (`cmd/propcheck`, not committed) opens a pool
 with `MaxConns = 1` — so a second concurrent checkout is guaranteed to hang —
-and runs a nested `WithDB` through the transaction context:
+and runs a nested `WithExecutor` through the transaction context:
 
 ```
-PASS: nested WithDB reused the caller's transaction (MaxConns=1, no deadlock)
+PASS: nested WithExecutor reused the caller's transaction (MaxConns=1, no deadlock)
 PASS: detached control starved on the single connection, as expected
 ```
 

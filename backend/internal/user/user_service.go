@@ -47,7 +47,7 @@ func GetRoleRank(role model.UserRole) int {
 // account creation, retrieval by UUID/identifier, paginated queries, administrative role mutations,
 // account suspension/status transitions, and session invalidation.
 type UserService struct {
-	dbExecuter database.Runner
+	dbExecutor database.Runner
 	repo       *UserRepository
 	sessions   SessionManager
 	logger     log.Logger
@@ -55,12 +55,12 @@ type UserService struct {
 
 // NewService constructs a new UserService domain component.
 func NewService(
-	dbExecuter database.Runner,
+	dbExecutor database.Runner,
 	repo *UserRepository,
 	logger log.Logger,
 ) *UserService {
 	return &UserService{
-		dbExecuter: dbExecuter,
+		dbExecutor: dbExecutor,
 		repo:       repo,
 		logger:     logger,
 	}
@@ -107,7 +107,7 @@ func (s *UserService) CreateUser(
 		Identifier: identifier,
 	}
 
-	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		id, err := s.repo.Create(ctx, db, u)
 		if err != nil {
 			mappedErr := database.MapError(err)
@@ -134,7 +134,7 @@ func (s *UserService) GetUserByID(
 	userID uuid.UUID,
 ) (*model.User, error) {
 	var user *model.User
-	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		user, repoErr = s.getUserByID(ctx, db, userID)
 		return repoErr
@@ -155,7 +155,7 @@ func (s *UserService) UserExists(ctx context.Context, userID uuid.UUID) (bool, e
 	}
 
 	var exists bool
-	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		exists, repoErr = s.repo.ExistsByID(ctx, db, userID)
 		return repoErr
@@ -185,7 +185,7 @@ func (s *UserService) GetUserByIdentifier(
 	identifier string,
 ) (*model.User, error) {
 	var user *model.User
-	err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		user, repoErr = s.repo.GetByIdentifier(ctx, db, identifier)
 		return repoErr
@@ -211,7 +211,7 @@ func (s *UserService) GetAllUsers(
 		return nil, nil, apierr.BadRequestError("Invalid pagination cursor").Wrap(err)
 	}
 
-	err = s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err = s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		// PageSize is already clamped and overflow-safe from ListQuery.Process
 		limit := q.PageSize
 
@@ -284,7 +284,7 @@ func (s *UserService) DeleteUserByID(
 		}
 	}
 
-	err = s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err = s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		return s.repo.SoftDelete(ctx, db, userID)
 	})
 	if err != nil {
@@ -377,7 +377,7 @@ func (s *UserService) UpdateUserRole(
 	}
 
 	// Update role in database
-	err = s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err = s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		return s.repo.UpdateRole(ctx, db, targetUserID, newRole)
 	})
 
@@ -457,7 +457,7 @@ func (s *UserService) UpdateAccountStatus(
 	// Update status in PostgreSQL. A deleted status is a real soft delete:
 	// status and deleted_at are set atomically so the account disappears from
 	// listings.
-	err = s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	err = s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		if newStatus == model.StatusDeleted {
 			return s.repo.SoftDelete(ctx, db, targetUserID)
 		}
@@ -558,7 +558,7 @@ func (s *UserService) ListStaffSessions(
 	}
 
 	var users []model.User
-	if err := s.dbExecuter.WithDB(ctx, func(db database.QueryExecutor) error {
+	if err := s.dbExecutor.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		users, repoErr = s.repo.ListByRoles(ctx, db, roles)
 		return repoErr

@@ -225,7 +225,7 @@ func (s *CartService) GetOrCreateCart(
 
 func (s *CartService) GetCartByID(ctx context.Context, id uuid.UUID) (*model.Cart, error) {
 	var cart *model.Cart
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		cart, err = s.cartRepo.GetCartByID(ctx, db, id)
 		if err != nil {
@@ -241,7 +241,7 @@ func (s *CartService) GetCartByID(ctx context.Context, id uuid.UUID) (*model.Car
 
 func (s *CartService) GetCartByUserID(ctx context.Context, userID uuid.UUID) (*model.Cart, error) {
 	var cart *model.Cart
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		cart, err = s.cartRepo.GetCartByUserID(ctx, db, userID)
 		if err != nil {
@@ -257,7 +257,7 @@ func (s *CartService) GetCartByUserID(ctx context.Context, userID uuid.UUID) (*m
 
 func (s *CartService) GetCartBySessionID(ctx context.Context, sessionID string) (*model.Cart, error) {
 	var cart *model.Cart
-	err := s.dr.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		cart, err = s.cartRepo.GetCartBySessionID(ctx, db, sessionID)
 		if err != nil {

@@ -84,7 +84,7 @@ func (s *Service) GetSalesReport(ctx context.Context, f ReportFilter, groupBy st
 	}
 
 	var rep *SalesReport
-	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		rep, err = s.repo.Sales(ctx, db, f, groupBy)
 		return err
@@ -99,7 +99,7 @@ func (s *Service) GetSalesReport(ctx context.Context, f ReportFilter, groupBy st
 func (s *Service) BuildCSV(ctx context.Context, t ExportType, f ReportFilter) ([]byte, error) {
 	var header []string
 	var rows [][]string
-	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		header, rows, err = s.repo.ExportDataset(ctx, db, t, f)
 		return err

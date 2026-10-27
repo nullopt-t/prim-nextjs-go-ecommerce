@@ -86,7 +86,7 @@ func (f *fakeRunner) WithTx(ctx context.Context, fn func(context.Context, databa
 	return fn(ctx, &fakeSettingExecutor{items: f.items, execErr: f.execErr})
 }
 
-func (f *fakeRunner) WithDB(ctx context.Context, fn func(database.QueryExecutor) error) error {
+func (f *fakeRunner) WithExecutor(ctx context.Context, fn func(database.QueryExecutor) error) error {
 	if f.dbErr != nil {
 		return f.dbErr
 	}
@@ -213,10 +213,10 @@ func TestSettingService_GetSettings_ErrorMapping(t *testing.T) {
 func TestSettingService_GetConfig_CachingAndDefaults(t *testing.T) {
 	dbCalls := 0
 	runner := &fakeRunner{}
-	// Intercept WithDB to count calls
+	// Intercept WithExecutor to count calls
 	countingRunner := &testCountingRunner{
 		runner: runner,
-		onWithDB: func() {
+		onWithExecutor: func() {
 			dbCalls++
 		},
 	}
@@ -269,16 +269,16 @@ func TestSettingService_UpdateSettings_ErrorMapping(t *testing.T) {
 
 type testCountingRunner struct {
 	runner   *fakeRunner
-	onWithDB func()
+	onWithExecutor func()
 }
 
 func (c *testCountingRunner) WithTx(ctx context.Context, fn func(context.Context, database.QueryExecutor) error) error {
 	return c.runner.WithTx(ctx, fn)
 }
 
-func (c *testCountingRunner) WithDB(ctx context.Context, fn func(database.QueryExecutor) error) error {
-	if c.onWithDB != nil {
-		c.onWithDB()
+func (c *testCountingRunner) WithExecutor(ctx context.Context, fn func(database.QueryExecutor) error) error {
+	if c.onWithExecutor != nil {
+		c.onWithExecutor()
 	}
-	return c.runner.WithDB(ctx, fn)
+	return c.runner.WithExecutor(ctx, fn)
 }

@@ -259,7 +259,7 @@ func (s *ProductService) CreateProductAsDraft(
 
 	// Validate category existence and active status
 	if s.categoryRepo != nil {
-		err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 			_, err := s.categoryRepo.GetByID(ctx, db, input.CategoryID)
 			return err
 		})
@@ -272,7 +272,7 @@ func (s *ProductService) CreateProductAsDraft(
 
 	// Validate brand existence and active status if specified
 	if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandRepo != nil {
-		err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 			_, err := s.brandRepo.GetByID(ctx, db, *input.BrandID)
 			return err
 		})
@@ -295,7 +295,7 @@ func (s *ProductService) CreateProductAsDraft(
 	}
 
 	var product *model.Product
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		axes, err := s.validateVariationAxes(ctx, db, input.CategoryID, input.VariationAxes)
 		if err != nil {
 			return err
@@ -505,7 +505,7 @@ func (s *ProductService) GetByID(
 	productID uuid.UUID,
 ) (*model.Product, error) {
 	var product *model.Product
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var repoErr error
 		product, repoErr = s.getByID(ctx, db, productID)
 		return repoErr
@@ -639,7 +639,7 @@ func (s *ProductService) GetAdminDetailsByID(
 	productID uuid.UUID,
 ) (*ProductDetails, error) {
 	var details *ProductDetails
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		prod, err := s.productRepo.GetByIDWithDeleted(ctx, db, productID)
 		if err != nil {
 			return err
@@ -674,7 +674,7 @@ func (s *ProductService) GetBySlug(
 ) (*ProductDetails, error) {
 	cleanSlug := strings.TrimSpace(slug)
 	var details *ProductDetails
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		prod, err := s.productRepo.GetBySlug(ctx, db, cleanSlug)
 		if err != nil {
 			return err
@@ -709,7 +709,7 @@ func (s *ProductService) List(
 	includeDeleted bool,
 ) (*pagination.PagedResult[ProductCardReadModel], error) {
 	var res *pagination.PagedResult[ProductCardReadModel]
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		res, err = s.productRepo.List(ctx, db, q, includeDeleted)
 		return err
@@ -738,7 +738,7 @@ func (s *ProductService) List(
 		}
 
 		var ratingsMap map[uuid.UUID]*model.RatingSummary
-		_ = s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+		_ = s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 			var err error
 			ratingsMap, err = s.reviewRepo.GetRatingSummariesByProductIDs(ctx, db, productIDs)
 			return err
@@ -763,7 +763,7 @@ func (s *ProductService) PublishProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		count, err := s.variantRepo.CountByProductID(ctx, db, productID)
 		if err != nil {
 			return err
@@ -803,7 +803,7 @@ func (s *ProductService) ArchiveProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		return s.productRepo.UpdateStatus(ctx, db, productID, model.PublicationStatusArchived)
 	})
 
@@ -1038,7 +1038,7 @@ func (ps *ProductService) UploadProductThumbnail(
 
 	if oldObj != nil && ps.storageProvider != nil {
 		if delErr := ps.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = ps.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+			_ = ps.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 				return ps.objectRepo.MarkDeletedByKey(ctx, db, oldObj.Bucket, oldObj.Key)
 			})
 		}
@@ -1081,7 +1081,7 @@ func (ps *ProductService) DeleteProductThumbnail(ctx context.Context, productID 
 
 	if oldObj != nil && ps.storageProvider != nil {
 		if delErr := ps.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = ps.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+			_ = ps.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 				return ps.objectRepo.MarkDeletedByKey(ctx, db, oldObj.Bucket, oldObj.Key)
 			})
 		}
@@ -1101,7 +1101,7 @@ func (s *ProductService) ListProductReviews(
 	}
 	var items []model.Review
 	var total int
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		items, total, err = s.reviewRepo.List(ctx, db, q, &productID, nil, status)
 		return err
@@ -1127,7 +1127,7 @@ func (s *ProductService) GetProductRatingSummary(
 		return &model.RatingSummary{}, nil
 	}
 	var summary *model.RatingSummary
-	err := s.dbRunner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		summary, err = s.reviewRepo.GetRatingSummaryByProductID(ctx, db, productID)
 		return err

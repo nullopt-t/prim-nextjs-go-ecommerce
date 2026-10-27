@@ -614,7 +614,7 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 
 	// One read connection for the whole use case: cart pricing, coupon lookup and
 	// redemption counts all run on the same QueryExecutor (no connection hopping).
-	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		if userID != nil || sessionID != nil {
 			var (
 				cartData *model.Cart

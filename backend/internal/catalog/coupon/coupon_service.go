@@ -81,7 +81,7 @@ func (s *CouponService) handleError(err error, fallbackMsg string) error {
 // GetByID finds a coupon by its UUID identifier.
 func (s *CouponService) GetByID(ctx context.Context, id uuid.UUID) (*model.Coupon, error) {
 	var c *model.Coupon
-	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		c, err = s.repo.GetByID(ctx, db, id)
 		return err
@@ -95,7 +95,7 @@ func (s *CouponService) GetByID(ctx context.Context, id uuid.UUID) (*model.Coupo
 // GetByCode finds a coupon by code string.
 func (s *CouponService) GetByCode(ctx context.Context, code string) (*model.Coupon, error) {
 	var c *model.Coupon
-	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		c, err = s.repo.GetByCode(ctx, db, code)
 		return err
@@ -112,7 +112,7 @@ func (s *CouponService) ListCoupons(ctx context.Context, filter ListCouponFilter
 	var page *pagination.CursorPage
 	filter.Limit = limit
 	filter.Cursor = cursor
-	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		var err error
 		list, page, err = s.repo.List(ctx, db, filter)
 		return err
@@ -222,7 +222,7 @@ func (s *CouponService) ListRedemptions(ctx context.Context, couponID uuid.UUID,
 
 	var list []*RedemptionEntry
 	var page *pagination.CursorPage
-	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		if _, err := s.repo.GetByID(ctx, db, couponID); err != nil {
 			return err
 		}
@@ -355,7 +355,7 @@ func (s *CouponService) ValidateAndCalculate(
 	}
 
 	var result *ValidationResult
-	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		c, err := s.repo.GetByCode(ctx, db, trimmedCode)
 		if err != nil {
 			return err
@@ -384,7 +384,7 @@ func (s *CouponService) ValidateAndCalculateByID(
 	}
 
 	var result *ValidationResult
-	err := s.runner.WithDB(ctx, func(db database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(db database.QueryExecutor) error {
 		c, err := s.repo.GetByID(ctx, db, couponID)
 		if err != nil {
 			return err
