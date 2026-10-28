@@ -72,12 +72,13 @@ services:
       - ../migrations:/migrations
     env_file:
       - ../.env
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - >
-        migrate -path /migrations
-        -database "postgres://prim:prim@postgres:5432/prim?sslmode=disable"
-        up
+    entrypoint:
+      - migrate
+      - -path
+      - /migrations
+      - -database
+      - postgres://prim:prim@postgres:5432/prim?sslmode=disable
+    command: ["up"]
     depends_on:
       postgres:
         condition: service_healthy
