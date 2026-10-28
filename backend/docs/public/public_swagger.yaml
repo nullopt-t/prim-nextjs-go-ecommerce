@@ -98,6 +98,33 @@ definitions:
         example: Invalid request input or malformed payload
         type: string
     type: object
+  BatchCreateVariantsRequest:
+    properties:
+      variants:
+        items:
+          properties:
+            attributes:
+              additionalProperties: true
+              type: object
+            crossedOutPrice:
+              type: integer
+            currency:
+              type: string
+            initialStock:
+              type: integer
+            isDefault:
+              type: boolean
+            price:
+              type: integer
+            sku:
+              type: string
+            title:
+              type: string
+          type: object
+        type: array
+    required:
+    - variants
+    type: object
   BrandResponse:
     properties:
       id:
@@ -230,7 +257,7 @@ definitions:
     type: object
   CheckoutRequest:
     properties:
-      couponId:
+      couponCode:
         type: string
       paymentMethod:
         type: string
@@ -272,8 +299,6 @@ definitions:
       fixedDiscount:
         type: number
       id:
-        type: string
-      message:
         type: string
       minCartAmount:
         type: integer
@@ -1455,6 +1480,42 @@ info:
   title: Prim API
   version: "1.0"
 paths:
+  /admin/products/{id}/variants/batch:
+    post:
+      consumes:
+      - application/json
+      description: Atomically creates multiple child variants for a product.
+      parameters:
+      - description: Product ID (UUID)
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Matrix rows
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/BatchCreateVariantsRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/DataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Create a variation matrix in bulk
+      tags:
+      - Product Variants
   /auth/challenge/resend:
     post:
       consumes:

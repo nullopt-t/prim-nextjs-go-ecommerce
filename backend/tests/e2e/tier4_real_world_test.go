@@ -41,7 +41,7 @@ func TestTier4_RealWorld_CompleteCashOnDeliveryCheckout(t *testing.T) {
 	userRepo.AddUser(&model.User{
 		ID:         userID,
 		Identifier: "alice@example.com",
-		FullName:   &name,
+		FullName:   name,
 		Status:     model.StatusActive,
 		Role:       model.CustomerRole,
 	})

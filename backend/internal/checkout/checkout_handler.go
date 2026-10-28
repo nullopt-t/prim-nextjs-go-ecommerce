@@ -20,9 +20,9 @@ type AddressRequest struct {
 }
 
 type CheckoutRequest struct {
-	ShippingAddressID uuid.UUID  `json:"shippingAddressId" binding:"required"`
-	CouponID          *uuid.UUID `json:"couponId,omitempty"`
-	PaymentMethod     string     `json:"paymentMethod,omitempty"`
+	ShippingAddressID uuid.UUID `json:"shippingAddressId" binding:"required"`
+	CouponCode        *string   `json:"couponCode,omitempty"`
+	PaymentMethod     string    `json:"paymentMethod,omitempty"`
 }
 
 type CheckoutResponse struct {
@@ -68,7 +68,7 @@ func (h *CheckoutHandler) Checkout(c *gin.Context) {
 	in := &CheckoutInput{
 		CustomerID:        customerID,
 		ShippingAddressID: req.ShippingAddressID,
-		CouponID:          req.CouponID,
+		CouponCode:        req.CouponCode,
 		PaymentMethod:     req.PaymentMethod,
 	}
 

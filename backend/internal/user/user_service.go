@@ -102,9 +102,15 @@ func (s *UserService) CreateUser(
 	ctx context.Context,
 	identifier string,
 ) (*model.User, error) {
+	fullName := identifier
+	if atIdx := strings.Index(identifier, "@"); atIdx > 0 {
+		fullName = identifier[:atIdx]
+	}
+
 	u := &model.User{
 		ID:         uuid.New(),
 		Identifier: identifier,
+		FullName:   fullName,
 	}
 
 	err := s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
@@ -581,7 +587,7 @@ func (s *UserService) ListStaffSessions(
 				ID:         sess.ID,
 				UserID:     sess.UserID,
 				Email:      u.Identifier,
-				FullName:   u.FullName,
+				FullName:   &u.FullName,
 				Role:       string(u.Role),
 				UserAgent:  sess.UserAgent,
 				IPAddress:  sess.IPAddress,

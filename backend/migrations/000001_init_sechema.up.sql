@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS storage_objects (
 CREATE TABLE IF NOT EXISTS users (
     id                   uuid NOT NULL,
     email                text NOT NULL,
-    full_name            text NULL,
+    full_name            text NOT NULL,
     role                 user_role NOT NULL DEFAULT 'customer',
     is_email_verified    boolean NOT NULL DEFAULT false,
     status               text NOT NULL DEFAULT 'active',
@@ -474,6 +474,7 @@ CREATE TABLE IF NOT EXISTS coupon_redemptions (
     user_id            uuid NULL,
     order_id           uuid NOT NULL,
     discount_amount    bigint NOT NULL,
+    currency           text NOT NULL DEFAULT 'EGP',
     created_at         timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (id),
     FOREIGN KEY (coupon_id) REFERENCES coupons (id),

@@ -284,6 +284,7 @@ func TestTier3_Checkout_Cart_Coupon_Inventory_AtomicOrchestration(t *testing.T) 
 			UserID:         userID,
 			OrderID:        orderID,
 			DiscountAmount: discount,
+			Currency:       "EGP",
 		}); err != nil {
 			return CanonicalHandleError(err, "coupon redemption")
 		}

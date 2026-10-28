@@ -57,5 +57,6 @@ type CouponRedemption struct {
 	UserID         uuid.UUID `json:"userId"`
 	OrderID        uuid.UUID `json:"orderId"`
 	DiscountAmount int64     `json:"discountAmount"`
+	Currency       string    `json:"currency"`
 	CreatedAt      time.Time `json:"createdAt"`
 }

@@ -678,15 +678,16 @@ func (s *CheckoutTestSuite) TestCheckout_Success_PercentageCoupon() {
 	variantID := s.seedPricedVariant(10000, 5)
 	s.addToCart(userID, variantID, 1)
 
+	code := "PERCENT10-" + uuid.NewString()[:8]
 	couponID := s.seedCoupon(couponSeed{
-		Code:          "PERCENT10-" + uuid.NewString()[:8],
+		Code:          code,
 		DiscountType:  "percentage",
 		DiscountValue: 10,
 	})
 
 	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
 		ShippingAddressID: addressID,
-		CouponID:          &couponID,
+		CouponCode:        &code,
 	})
 	s.Require().Equal(http.StatusOK, w.Code)
 
@@ -721,15 +722,16 @@ func (s *CheckoutTestSuite) TestCheckout_Success_FixedAmountCoupon() {
 	variantID := s.seedPricedVariant(5000, 5)
 	s.addToCart(userID, variantID, 1)
 
-	couponID := s.seedCoupon(couponSeed{
-		Code:          "FLAT1000-" + uuid.NewString()[:8],
+	code := "FLAT1000-" + uuid.NewString()[:8]
+	s.seedCoupon(couponSeed{
+		Code:          code,
 		DiscountType:  "fixed_amount",
 		DiscountValue: 1000,
 	})
 
 	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
 		ShippingAddressID: addressID,
-		CouponID:          &couponID,
+		CouponCode:        &code,
 	})
 	s.Require().Equal(http.StatusOK, w.Code)
 
@@ -874,10 +876,10 @@ func (s *CheckoutTestSuite) TestCheckout_Red_CouponNotFound() {
 	variantID := s.seedPricedVariant(5000, 5)
 	s.addToCart(userID, variantID, 1)
 
-	missing := uuid.New()
+	missing := "DOES_NOT_EXIST"
 	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
 		ShippingAddressID: addressID,
-		CouponID:          &missing,
+		CouponCode:        &missing,
 	})
 	s.Require().Equal(http.StatusBadRequest, w.Code)
 	s.Equal("COUPON_NOT_FOUND", s.decodeError(w).Code)
@@ -890,8 +892,9 @@ func (s *CheckoutTestSuite) TestCheckout_Red_CouponInactive() {
 	variantID := s.seedPricedVariant(5000, 5)
 	s.addToCart(userID, variantID, 1)
 
-	couponID := s.seedCoupon(couponSeed{
-		Code:          "INACTIVE-" + uuid.NewString()[:8],
+	code := "INACTIVE-" + uuid.NewString()[:8]
+	s.seedCoupon(couponSeed{
+		Code:          code,
 		DiscountType:  "percentage",
 		DiscountValue: 10,
 		Status:        "disabled",
@@ -899,7 +902,7 @@ func (s *CheckoutTestSuite) TestCheckout_Red_CouponInactive() {
 
 	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
 		ShippingAddressID: addressID,
-		CouponID:          &couponID,
+		CouponCode:        &code,
 	})
 	s.Require().Equal(http.StatusBadRequest, w.Code)
 	s.Equal("COUPON_INACTIVE", s.decodeError(w).Code)
@@ -914,8 +917,9 @@ func (s *CheckoutTestSuite) TestCheckout_Red_CouponNotStarted() {
 	s.addToCart(userID, variantID, 1)
 
 	future := time.Now().Add(24 * time.Hour)
-	couponID := s.seedCoupon(couponSeed{
-		Code:          "FUTURE-" + uuid.NewString()[:8],
+	code := "FUTURE-" + uuid.NewString()[:8]
+	s.seedCoupon(couponSeed{
+		Code:          code,
 		DiscountType:  "percentage",
 		DiscountValue: 10,
 		StartsAt:      &future,
@@ -923,7 +927,7 @@ func (s *CheckoutTestSuite) TestCheckout_Red_CouponNotStarted() {
 
 	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
 		ShippingAddressID: addressID,
-		CouponID:          &couponID,
+		CouponCode:        &code,
 	})
 	s.Require().Equal(http.StatusBadRequest, w.Code)
 	s.Equal("COUPON_NOT_STARTED", s.decodeError(w).Code)
@@ -936,8 +940,9 @@ func (s *CheckoutTestSuite) TestCheckout_Red_CouponExpired() {
 	s.addToCart(userID, variantID, 1)
 
 	past := time.Now().Add(-24 * time.Hour)
-	couponID := s.seedCoupon(couponSeed{
-		Code:          "EXPIRED-" + uuid.NewString()[:8],
+	code := "EXPIRED-" + uuid.NewString()[:8]
+	s.seedCoupon(couponSeed{
+		Code:          code,
 		DiscountType:  "percentage",
 		DiscountValue: 10,
 		ExpiresAt:     &past,
@@ -945,7 +950,7 @@ func (s *CheckoutTestSuite) TestCheckout_Red_CouponExpired() {
 
 	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
 		ShippingAddressID: addressID,
-		CouponID:          &couponID,
+		CouponCode:        &code,
 	})
 	s.Require().Equal(http.StatusBadRequest, w.Code)
 	s.Equal("COUPON_EXPIRED", s.decodeError(w).Code)
@@ -958,8 +963,9 @@ func (s *CheckoutTestSuite) TestCheckout_Red_CouponMinAmountNotMet() {
 	s.addToCart(userID, variantID, 1) // gross 5000
 
 	min := int64(10000)
-	couponID := s.seedCoupon(couponSeed{
-		Code:          "MIN-" + uuid.NewString()[:8],
+	code := "MIN-" + uuid.NewString()[:8]
+	s.seedCoupon(couponSeed{
+		Code:          code,
 		DiscountType:  "percentage",
 		DiscountValue: 10,
 		MinCartAmount: &min,
@@ -967,7 +973,7 @@ func (s *CheckoutTestSuite) TestCheckout_Red_CouponMinAmountNotMet() {
 
 	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
 		ShippingAddressID: addressID,
-		CouponID:          &couponID,
+		CouponCode:        &code,
 	})
 	s.Require().Equal(http.StatusBadRequest, w.Code)
 	s.Equal("COUPON_MIN_AMOUNT_NOT_MET", s.decodeError(w).Code)
@@ -982,8 +988,9 @@ func (s *CheckoutTestSuite) TestCheckout_Red_CouponGlobalUsageLimitExceeded() {
 	s.addToCart(userID, variantID, 1)
 
 	limit := int32(1)
+	code := "GLOBAL-" + uuid.NewString()[:8]
 	couponID := s.seedCoupon(couponSeed{
-		Code:          "GLOBAL-" + uuid.NewString()[:8],
+		Code:          code,
 		DiscountType:  "percentage",
 		DiscountValue: 10,
 		UsageLimit:    &limit,
@@ -996,7 +1003,7 @@ func (s *CheckoutTestSuite) TestCheckout_Red_CouponGlobalUsageLimitExceeded() {
 
 	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
 		ShippingAddressID: addressID,
-		CouponID:          &couponID,
+		CouponCode:        &code,
 	})
 	s.Require().Equal(http.StatusBadRequest, w.Code)
 	s.Equal("COUPON_USAGE_LIMIT_EXCEEDED", s.decodeError(w).Code)
@@ -1010,8 +1017,9 @@ func (s *CheckoutTestSuite) TestCheckout_Red_CouponPerUserLimitExceeded() {
 	s.addToCart(userID, variantID, 1)
 
 	perUser := int32(1)
+	code := "PERUSER-" + uuid.NewString()[:8]
 	couponID := s.seedCoupon(couponSeed{
-		Code:          "PERUSER-" + uuid.NewString()[:8],
+		Code:          code,
 		DiscountType:  "percentage",
 		DiscountValue: 10,
 		PerUserLimit:  &perUser,
@@ -1024,7 +1032,7 @@ func (s *CheckoutTestSuite) TestCheckout_Red_CouponPerUserLimitExceeded() {
 
 	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
 		ShippingAddressID: addressID,
-		CouponID:          &couponID,
+		CouponCode:        &code,
 	})
 	s.Require().Equal(http.StatusBadRequest, w.Code)
 	s.Equal("COUPON_USER_LIMIT_EXCEEDED", s.decodeError(w).Code)
@@ -1080,8 +1088,9 @@ func (s *CheckoutTestSuite) TestCheckout_Red_AtomicityOnCouponFailure() {
 	s.addToCart(userID, variantID, 1)
 
 	past := time.Now().Add(-time.Hour)
+	code := "EXPIREDATOMIC-" + uuid.NewString()[:8]
 	couponID := s.seedCoupon(couponSeed{
-		Code:          "EXPIREDATOMIC-" + uuid.NewString()[:8],
+		Code:          code,
 		DiscountType:  "fixed_amount",
 		DiscountValue: 500,
 		ExpiresAt:     &past,
@@ -1089,7 +1098,7 @@ func (s *CheckoutTestSuite) TestCheckout_Red_AtomicityOnCouponFailure() {
 
 	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
 		ShippingAddressID: addressID,
-		CouponID:          &couponID,
+		CouponCode:        &code,
 	})
 	s.Require().Equal(http.StatusBadRequest, w.Code)
 

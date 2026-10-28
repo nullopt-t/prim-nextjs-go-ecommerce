@@ -23,6 +23,60 @@ const docTemplatepublic = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/products/{id}/variants/batch": {
+            "post": {
+                "description": "Atomically creates multiple child variants for a product.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Product Variants"
+                ],
+                "summary": "Create a variation matrix in bulk",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Matrix rows",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/BatchCreateVariantsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/DataResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/challenge/resend": {
             "post": {
                 "description": "Resends a new verification code to the provided email or phone number if allowed by the challenge policy.",
@@ -3662,6 +3716,47 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "BatchCreateVariantsRequest": {
+            "type": "object",
+            "required": [
+                "variants"
+            ],
+            "properties": {
+                "variants": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "attributes": {
+                                "type": "object",
+                                "additionalProperties": true
+                            },
+                            "crossedOutPrice": {
+                                "type": "integer"
+                            },
+                            "currency": {
+                                "type": "string"
+                            },
+                            "initialStock": {
+                                "type": "integer"
+                            },
+                            "isDefault": {
+                                "type": "boolean"
+                            },
+                            "price": {
+                                "type": "integer"
+                            },
+                            "sku": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "BrandResponse": {
             "type": "object",
             "properties": {
@@ -3838,7 +3933,7 @@ const docTemplatepublic = `{
                 "shippingAddressId"
             ],
             "properties": {
-                "couponId": {
+                "couponCode": {
                     "type": "string"
                 },
                 "paymentMethod": {
@@ -3898,9 +3993,6 @@ const docTemplatepublic = `{
                     "type": "number"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "message": {
                     "type": "string"
                 },
                 "minCartAmount": {

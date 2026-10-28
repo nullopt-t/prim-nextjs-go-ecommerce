@@ -69,7 +69,7 @@ func ToUserResponse(user model.User) UserResponse {
 	return UserResponse{
 		ID:              user.ID,
 		Email:           user.Identifier,
-		FullName:        user.FullName,
+		FullName:        &user.FullName,
 		Role:            roleStr,
 		IsEmailVerified: user.IsEmailVerified,
 		Status:          string(user.Status),

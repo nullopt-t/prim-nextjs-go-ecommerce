@@ -4,6 +4,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -118,7 +119,7 @@ func MapError(err error) error {
 	}
 
 	// 1. Standard Go Context & Driver Errors
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
 	}
 

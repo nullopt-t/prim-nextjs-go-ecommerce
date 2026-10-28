@@ -3649,8 +3649,8 @@ INSERT INTO order_status_history (order_id, status, notes, created_at) VALUES
 -- =====================================================================
 -- 20. COUPON REDEMPTIONS
 -- =====================================================================
-INSERT INTO coupon_redemptions (coupon_id, user_id, order_id, discount_amount, created_at) VALUES
-('c0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', '90000000-0000-0000-0000-000000000002', 13000, now() - INTERVAL '18 days');
+INSERT INTO coupon_redemptions (coupon_id, user_id, order_id, discount_amount, currency, created_at) VALUES
+('c0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', '90000000-0000-0000-0000-000000000002', 13000, 'EGP', now() - INTERVAL '18 days');
 
 -- =====================================================================
 -- 21. PAYMENTS

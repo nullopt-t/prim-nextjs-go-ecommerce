@@ -59,9 +59,8 @@ type AddressRepository interface {
 // the authoritative gross total and the executor it already holds, so the
 // rules live in one place without opening a second connection.
 type CouponService interface {
-	ApplyByID(ctx context.Context, qe database.QueryExecutor, couponID uuid.UUID, grossTotal int64, userID *uuid.UUID) (*coupon.AppliedCoupon, error)
-	ApplyByCode(ctx context.Context, qe database.QueryExecutor, code string, grossTotal int64, userID *uuid.UUID) (*coupon.AppliedCoupon, error)
-	RecordRedemptionWithTx(ctx context.Context, tx *database.Tx, couponID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, discountAmount int64) error
+	ApplyByCode(ctx context.Context, exec database.QueryExecutor, code string, grossTotal int64, userID *uuid.UUID) (*coupon.AppliedCoupon, error)
+	RecordRedemption(ctx context.Context, exec database.QueryExecutor, couponID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, discountAmount int64, currency string) error
 }
 
 // VariantRepository is the subset of variant persistence checkout needs for
@@ -203,7 +202,7 @@ func (s *CheckoutService) resolveConfig(ctx context.Context) setting.Config {
 type CheckoutInput struct {
 	CustomerID        uuid.UUID
 	ShippingAddressID uuid.UUID
-	CouponID          *uuid.UUID
+	CouponCode        *string
 	PaymentMethod     string
 }
 
@@ -358,16 +357,18 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		// 4. Validate and apply the coupon inside the same transaction, locking the coupon row
 		//    so concurrent redemptions are serialized; the unique index on
 		//    coupon_redemptions(coupon_id, user_id) backstops the per-user limit.
+		var appliedCouponID *uuid.UUID
 		var appliedCouponCode *string
 		var totalDiscount int64
-		if in.CouponID != nil {
-			applied, err := s.couponService.ApplyByID(ctx, tx, *in.CouponID, grossTotal, &in.CustomerID)
+		if in.CouponCode != nil && strings.TrimSpace(*in.CouponCode) != "" {
+			applied, err := s.couponService.ApplyByCode(ctx, tx, strings.TrimSpace(*in.CouponCode), grossTotal, &in.CustomerID)
 			if err != nil {
 				if errors.Is(database.MapError(err), database.ErrNotFound) {
 					return apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
 				}
 				return s.handleError(err, "Failed to validate coupon")
 			}
+			appliedCouponID = &applied.ID
 			code := applied.Code
 			appliedCouponCode = &code
 			totalDiscount = applied.DiscountAmount
@@ -432,7 +433,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			CustomerID:      &in.CustomerID,
 			CustomerEmail:   buyer.Identifier,
 			ShippingAddress: addr,
-			CouponID:        in.CouponID,
+			CouponID:        appliedCouponID,
 			CouponCode:      appliedCouponCode,
 			DiscountAmount:  totalDiscount,
 			ShippingAmount:  shippingCost,
@@ -490,9 +491,9 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		}
 
 		// 8. Record the coupon redemption; surface errors so the transaction rolls back.
-		if in.CouponID != nil && totalDiscount > 0 {
-			if err := s.couponService.RecordRedemptionWithTx(
-				ctx, dbTx, *in.CouponID, in.CustomerID, createdOrder.ID, totalDiscount,
+		if appliedCouponID != nil && totalDiscount > 0 {
+			if err := s.couponService.RecordRedemption(
+				ctx, dbTx, *appliedCouponID, in.CustomerID, createdOrder.ID, totalDiscount, createdOrder.Currency,
 			); err != nil {
 				return s.handleError(err, "Failed to record coupon redemption")
 			}
@@ -547,14 +548,9 @@ type CouponValidationResult struct {
 	Subtotal        int64     `json:"subtotal"`
 	Shipping        int64     `json:"shipping"`
 	Total           int64     `json:"total"`
-	Message         string    `json:"message"`
 }
 
 func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userID *uuid.UUID, sessionID *string) (*CouponValidationResult, error) {
-	if s.runner == nil {
-		return nil, apierr.InternalServerError("Database runner unavailable")
-	}
-
 	cfg := s.resolveConfig(ctx)
 
 	var grossTotal int64
@@ -627,7 +623,6 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 			Subtotal:        grossTotal,
 			Shipping:        shippingCost,
 			Total:           finalTotal,
-			Message:         applied.Message,
 		}
 		return nil
 	})

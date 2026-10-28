@@ -70,6 +70,7 @@ func toCouponResponse(c *model.Coupon) CouponResponse {
 		PerUserLimit:  c.PerUserLimit,
 		Status:        string(c.Status),
 		UsageCount:    c.UsageCount,
+		// TODO: we should have expiredAt
 		CreatedAt:     c.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:     c.UpdatedAt.Format(time.RFC3339),
 	}
@@ -263,6 +264,7 @@ type CouponRedemptionResponse struct {
 	UserEmail      *string `json:"userEmail,omitempty" example:"jane@example.com"`
 	OrderID        string  `json:"orderId" example:"90000000-0000-0000-0000-000000000002"`
 	DiscountAmount int64   `json:"discountAmount" example:"13000"`
+	Currency       string  `json:"currency" example:"EGP"`
 	CreatedAt      string  `json:"createdAt" example:"2026-06-01T00:00:00Z"`
 }
 
@@ -271,6 +273,7 @@ func toRedemptionResponse(e *RedemptionEntry) CouponRedemptionResponse {
 		ID:             strconv.FormatInt(e.ID, 10),
 		OrderID:        e.OrderID.String(),
 		DiscountAmount: e.DiscountAmount,
+		Currency:       e.Currency,
 		CreatedAt:      e.CreatedAt.Format(time.RFC3339),
 		UserName:       e.UserName,
 		UserEmail:      e.UserEmail,

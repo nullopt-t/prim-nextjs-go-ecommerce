@@ -45,7 +45,7 @@ type User struct {
 	// Identifier is the primary authentication handle (e.g. email address or phone).
 	Identifier string
 	// FullName is the user's display name.
-	FullName *string
+	FullName string
 	// Role is the administrative role tier, defaulting to CustomerRole.
 	Role UserRole
 	// IsEmailVerified indicates whether the user confirmed their email address.

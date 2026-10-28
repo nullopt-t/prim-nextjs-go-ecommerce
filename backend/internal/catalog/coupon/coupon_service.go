@@ -28,7 +28,6 @@ type ValidationResult struct {
 	DiscountPercent *int      `json:"discountPercent,omitempty"`
 	FixedDiscount   *float64  `json:"fixedDiscount,omitempty"`
 	MinCartAmount   *int64    `json:"minCartAmount,omitempty"`
-	Message         string    `json:"message"`
 }
 
 // AppliedCoupon is the authoritative coupon eligibility and discount result for
@@ -45,8 +44,8 @@ type AppliedCoupon struct {
 	DiscountPercent *int
 	FixedDiscount   *float64
 	MinCartAmount   *int64
-	Message         string
 }
+
 
 type CreateCouponInput struct {
 	Code          string
@@ -253,30 +252,10 @@ func (s *CouponService) ListRedemptions(ctx context.Context, couponID uuid.UUID,
 	return list, page, nil
 }
 
-// ApplyByID validates and prices a coupon on the caller's executor, locking the
-// coupon row. Callers must hold a transaction: the lock is what serializes
-// redemption-limit checks with the redemption insert.
-func (s *CouponService) ApplyByID(
-	ctx context.Context,
-	qe database.QueryExecutor,
-	couponID uuid.UUID,
-	grossTotal int64,
-	userID *uuid.UUID,
-) (*AppliedCoupon, error) {
-	if couponID == uuid.Nil {
-		return nil, apierr.BadRequestError("Coupon ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
 
-	c, err := s.repo.GetByIDForUpdate(ctx, qe, couponID)
-	if err != nil {
-		return nil, err
-	}
-	return s.applyCoupon(ctx, qe, c, grossTotal, userID)
-}
 
 // ApplyByCode validates and prices a coupon by code on the caller's executor.
-// It does not lock, so it is suitable for read-only previews.
+// It locks the coupon row so concurrent redemptions are serialized in transactions.
 func (s *CouponService) ApplyByCode(
 	ctx context.Context,
 	qe database.QueryExecutor,
@@ -290,81 +269,114 @@ func (s *CouponService) ApplyByCode(
 			WithCode(apierr.CodeValidationFailed)
 	}
 
-	c, err := s.repo.GetByCode(ctx, qe, trimmedCode)
+	c, err := s.repo.GetByCodeAndLock(ctx, qe, trimmedCode)
 	if err != nil {
 		return nil, err
 	}
-	return s.applyCoupon(ctx, qe, c, grossTotal, userID)
+	
+	if err := s.validateCoupon(ctx, qe, c, grossTotal, userID); err != nil {
+		return nil, err
+	}
+	return s.computeDiscount(c, grossTotal), nil
 }
 
-// applyCoupon enforces the coupon invariants and computes the discount on the
+// validateCoupon enforces the coupon invariants and computes the discount on the
 // provided executor. Lookup errors are returned raw so callers can map them to
 // their own presentation; rule violations are typed APIErrors.
-func (s *CouponService) applyCoupon(
+func (s *CouponService) validateCoupon(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	c *model.Coupon,
 	grossTotal int64,
 	userID *uuid.UUID,
-) (*AppliedCoupon, error) {
+) error {
+	if err := s.validateActiveWindow(c); err != nil {
+		return err
+	}
+	if err := s.validateMinCartAmount(c, grossTotal); err != nil {
+		return err
+	}
+	if err := s.validateGlobalUsageLimit(ctx, qe, c); err != nil {
+		return err
+	}
+	if err := s.validateUserUsageLimit(ctx, qe, c, userID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *CouponService) validateActiveWindow(c *model.Coupon) error {
 	if c.Status != model.CouponStatusActive {
-		return nil, apierr.BadRequestError(fmt.Sprintf("Coupon '%s' is not active", c.Code)).
+		return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' is not active", c.Code)).
 			WithCode(errcode.CodeCouponInactive)
 	}
 
 	now := time.Now()
 	if c.StartsAt != nil && now.Before(*c.StartsAt) {
-		return nil, apierr.BadRequestError(fmt.Sprintf("Coupon '%s' has not started yet", c.Code)).
+		return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' has not started yet", c.Code)).
 			WithCode(errcode.CodeCouponNotStarted)
 	}
 	if c.ExpiresAt != nil && now.After(*c.ExpiresAt) {
-		return nil, apierr.BadRequestError(fmt.Sprintf("Coupon '%s' has expired", c.Code)).
+		return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' has expired", c.Code)).
 			WithCode(errcode.CodeCouponExpired)
 	}
 
-	// Minimum cart amount check
+	return nil
+}
+
+func (s *CouponService) validateMinCartAmount(c *model.Coupon, grossTotal int64) error {
 	if c.MinCartAmount != nil && *c.MinCartAmount > 0 && grossTotal < *c.MinCartAmount {
 		minFormatted := float64(*c.MinCartAmount) / 100.0
-		return nil, apierr.BadRequestError(
+		return apierr.BadRequestError(
 			fmt.Sprintf("Coupon '%s' requires a minimum order amount of %.2f %s", c.Code, minFormatted, c.Currency),
 		).WithCode(errcode.CodeCouponMinCartNotMet)
 	}
+	return nil
+}
 
-	// Check global usage limit
-	if c.UsageLimit != nil && *c.UsageLimit > 0 {
-		usedCount, err := s.repo.GetRedemptionCount(ctx, qe, c.ID)
-		if err != nil {
-			return nil, err
-		}
-		if usedCount >= *c.UsageLimit {
-			return nil, apierr.BadRequestError(fmt.Sprintf("Coupon '%s' usage limit has been reached", c.Code)).
-				WithCode(errcode.CodeCouponUsageLimitExceeded)
-		}
+func (s *CouponService) validateGlobalUsageLimit(ctx context.Context, qe database.QueryExecutor, c *model.Coupon) error {
+	if c.UsageLimit == nil || *c.UsageLimit <= 0 {
+		return nil
 	}
 
-	// Check per-user limit
-	if userID != nil {
-		userLimit := 1
-		if c.PerUserLimit != nil && *c.PerUserLimit > 0 {
-			userLimit = *c.PerUserLimit
-		}
-		userUsedCount, err := s.repo.GetUserRedemptionCount(ctx, qe, c.ID, *userID)
-		if err != nil {
-			return nil, err
-		}
-		if userUsedCount >= userLimit {
-			return nil, apierr.BadRequestError(fmt.Sprintf("You have already used coupon '%s' the maximum allowable times", c.Code)).
-				WithCode(errcode.CodeCouponUserLimitExceeded)
-		}
+	usedCount, err := s.repo.GetRedemptionCount(ctx, qe, c.ID)
+	if err != nil {
+		return err
+	}
+	if usedCount >= *c.UsageLimit {
+		return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' usage limit has been reached", c.Code)).
+			WithCode(errcode.CodeCouponUsageLimitExceeded)
+	}
+	return nil
+}
+
+func (s *CouponService) validateUserUsageLimit(ctx context.Context, qe database.QueryExecutor, c *model.Coupon, userID *uuid.UUID) error {
+	if userID == nil {
+		return nil
 	}
 
+	userLimit := 1
+	if c.PerUserLimit != nil && *c.PerUserLimit > 0 {
+		userLimit = *c.PerUserLimit
+	}
+	userUsedCount, err := s.repo.GetUserRedemptionCount(ctx, qe, c.ID, *userID)
+	if err != nil {
+		return err
+	}
+	if userUsedCount >= userLimit {
+		return apierr.BadRequestError(fmt.Sprintf("You have already used coupon '%s' the maximum allowable times", c.Code)).
+			WithCode(errcode.CodeCouponUserLimitExceeded)
+	}
+	return nil
+}
+
+func (s *CouponService) computeDiscount(c *model.Coupon, grossTotal int64) *AppliedCoupon {
 	applied := &AppliedCoupon{
 		ID:            c.ID,
 		Code:          c.Code,
 		DiscountType:  string(c.DiscountType),
 		DiscountValue: c.DiscountValue,
 		MinCartAmount: c.MinCartAmount,
-		Message:       fmt.Sprintf("Coupon %s applied successfully!", c.Code),
 	}
 
 	switch c.DiscountType {
@@ -384,7 +396,7 @@ func (s *CouponService) applyCoupon(
 		applied.DiscountAmount = grossTotal
 	}
 
-	return applied, nil
+	return applied
 }
 
 // calculateDiscount evaluates coupon constraints and calculates discount and totals on the provided connection.
@@ -395,10 +407,11 @@ func (s *CouponService) calculateDiscount(
 	grossTotal int64,
 	userID *uuid.UUID,
 ) (*ValidationResult, error) {
-	applied, err := s.applyCoupon(ctx, qe, c, grossTotal, userID)
-	if err != nil {
+	if err := s.validateCoupon(ctx, qe, c, grossTotal, userID); err != nil {
 		return nil, err
 	}
+
+	applied := s.computeDiscount(c, grossTotal)
 
 	// Standard shipping: free at >= 15000 cents (150 EGP), 999 cents (9.99 EGP) otherwise
 	var shippingCost int64
@@ -423,7 +436,6 @@ func (s *CouponService) calculateDiscount(
 		DiscountPercent: applied.DiscountPercent,
 		FixedDiscount:   applied.FixedDiscount,
 		MinCartAmount:   applied.MinCartAmount,
-		Message:         applied.Message,
 	}, nil
 }
 
@@ -458,72 +470,14 @@ func (s *CouponService) ValidateAndCalculate(
 	return result, nil
 }
 
-// ValidateAndCalculateByID validates a coupon by its UUID identifier over a single database connection.
-func (s *CouponService) ValidateAndCalculateByID(
-	ctx context.Context,
-	couponID uuid.UUID,
-	grossTotal int64,
-	userID *uuid.UUID,
-) (*ValidationResult, error) {
-	if couponID == uuid.Nil {
-		return nil, apierr.BadRequestError("Coupon ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-
-	var result *ValidationResult
-	err := s.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
-		c, err := s.repo.GetByID(ctx, exec, couponID)
-		if err != nil {
-			return err
-		}
-		var calcErr error
-		result, calcErr = s.calculateDiscount(ctx, exec, c, grossTotal, userID)
-		return calcErr
-	})
-	if err != nil {
-		return nil, s.handleError(err, "Failed to validate coupon")
-	}
-
-	return result, nil
-}
-
-// RecordRedemption records a coupon redemption during checkout.
 func (s *CouponService) RecordRedemption(
-	ctx context.Context,
-	couponID uuid.UUID,
-	userID uuid.UUID,
-	orderID uuid.UUID,
-	discountAmount int64,
-) error {
-	err := s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		return s.recordRedemption(ctx, tx, couponID, userID, orderID, discountAmount)
-	})
-	if err != nil {
-		return s.handleError(err, "Failed to record coupon redemption")
-	}
-	return nil
-}
-
-// RecordRedemptionWithTx records a redemption on the caller's transaction so it
-// commits or rolls back with the order that earned it.
-func (s *CouponService) RecordRedemptionWithTx(
-	ctx context.Context,
-	tx *database.Tx,
-	couponID uuid.UUID,
-	userID uuid.UUID,
-	orderID uuid.UUID,
-	discountAmount int64,
-) error {
-	return s.recordRedemption(ctx, tx, couponID, userID, orderID, discountAmount)
-}
-
-func (s *CouponService) recordRedemption(
 	ctx context.Context,
 	qe database.QueryExecutor,
 	couponID uuid.UUID,
 	userID uuid.UUID,
 	orderID uuid.UUID,
 	discountAmount int64,
+	currency string,
 ) error {
 	if couponID == uuid.Nil || userID == uuid.Nil || orderID == uuid.Nil {
 		return apierr.BadRequestError("Coupon ID, User ID, and Order ID are required").
@@ -534,5 +488,6 @@ func (s *CouponService) recordRedemption(
 		UserID:         userID,
 		OrderID:        orderID,
 		DiscountAmount: discountAmount,
+		Currency:       currency,
 	})
 }

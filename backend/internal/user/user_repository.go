@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,13 +40,22 @@ func (r *UserRepository) Create(
 		role = string(user.Role)
 	}
 
+	fullName := strings.TrimSpace(user.FullName)
+	if fullName == "" {
+		fullName = user.Identifier
+		if atIdx := strings.Index(user.Identifier, "@"); atIdx > 0 {
+			fullName = user.Identifier[:atIdx]
+		}
+	}
+	user.FullName = fullName
+
 	query := `
-		INSERT INTO users (id, email, role, created_at, updated_at)
-		VALUES ($1, $2, $3, now(), now())
+		INSERT INTO users (id, email, full_name, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, now(), now())
 		RETURNING id, created_at, updated_at
 	`
 	var createdUserID uuid.UUID
-	err := qe.QueryRow(ctx, query, user.ID, user.Identifier, role).Scan(&createdUserID, &user.CreatedAt, &user.UpdatedAt)
+	err := qe.QueryRow(ctx, query, user.ID, user.Identifier, fullName, role).Scan(&createdUserID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create user: %w", err)
 	}

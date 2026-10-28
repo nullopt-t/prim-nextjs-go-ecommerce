@@ -108,7 +108,7 @@ func TestTier1_F1_F12_DirectUserRepositoryOnTx(t *testing.T) {
 	userRepo.AddUser(&model.User{
 		ID:         userID,
 		Identifier: "test@example.com",
-		FullName:   &name,
+		FullName:   name,
 		Role:       model.CustomerRole,
 		Status:     model.StatusActive,
 	})
