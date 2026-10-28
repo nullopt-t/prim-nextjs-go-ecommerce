@@ -3930,6 +3930,9 @@
                 "couponCode": {
                     "type": "string"
                 },
+                "couponId": {
+                    "type": "string"
+                },
                 "paymentMethod": {
                     "type": "string"
                 },
@@ -3969,6 +3972,9 @@
             "type": "object",
             "properties": {
                 "code": {
+                    "type": "string"
+                },
+                "currency": {
                     "type": "string"
                 },
                 "discountAmount": {

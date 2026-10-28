@@ -22,6 +22,7 @@ type ValidationResult struct {
 	DiscountType    string    `json:"discountType"`
 	DiscountValue   int64     `json:"discountValue"`
 	DiscountAmount  int64     `json:"discountAmount"`
+	Currency        string    `json:"currency"`
 	Subtotal        int64     `json:"subtotal"`
 	Shipping        int64     `json:"shipping"`
 	Total           int64     `json:"total"`
@@ -41,6 +42,7 @@ type AppliedCoupon struct {
 	DiscountType    string
 	DiscountValue   int64
 	DiscountAmount  int64
+	Currency        string
 	DiscountPercent *int
 	FixedDiscount   *float64
 	MinCartAmount   *int64
@@ -106,6 +108,15 @@ func (s *CouponService) GetByID(ctx context.Context, id uuid.UUID) (*model.Coupo
 		return nil, s.handleError(err, "Failed to retrieve coupon")
 	}
 	return c, nil
+}
+
+// GetCodeByID resolves a coupon's code by its UUID identifier on the provided executor.
+func (s *CouponService) GetCodeByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (string, error) {
+	c, err := s.repo.GetByID(ctx, qe, id)
+	if err != nil {
+		return "", err
+	}
+	return c.Code, nil
 }
 
 // GetByCode finds a coupon by code string.
@@ -371,12 +382,18 @@ func (s *CouponService) validateUserUsageLimit(ctx context.Context, qe database.
 }
 
 func (s *CouponService) computeDiscount(c *model.Coupon, grossTotal int64) *AppliedCoupon {
+	currency := c.Currency
+	if currency == "" {
+		currency = "EGP"
+	}
+
 	applied := &AppliedCoupon{
 		ID:            c.ID,
 		Code:          c.Code,
 		DiscountType:  string(c.DiscountType),
 		DiscountValue: c.DiscountValue,
 		MinCartAmount: c.MinCartAmount,
+		Currency:      currency,
 	}
 
 	switch c.DiscountType {
@@ -430,6 +447,7 @@ func (s *CouponService) calculateDiscount(
 		DiscountType:    applied.DiscountType,
 		DiscountValue:   applied.DiscountValue,
 		DiscountAmount:  applied.DiscountAmount,
+		Currency:        applied.Currency,
 		Subtotal:        grossTotal,
 		Shipping:        shippingCost,
 		Total:           finalTotal,

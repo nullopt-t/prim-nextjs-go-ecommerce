@@ -276,8 +276,8 @@ func (s *WishlistHTTPTestSuite) TearDownSuite() {
 func (s *WishlistHTTPTestSuite) createTestUser() (uuid.UUID, string) {
 	userID := uuid.New()
 	_, err := s.db.Exec(context.Background(), `
-		INSERT INTO users (id, email, role, status)
-		VALUES ($1, $2, 'customer', 'active')
+		INSERT INTO users (id, email, full_name, role, status)
+		VALUES ($1, $2, 'Test User', 'customer', 'active')
 	`, userID, fmt.Sprintf("user-%s@example.com", uuid.NewString()[:8]))
 	s.Require().NoError(err)
 

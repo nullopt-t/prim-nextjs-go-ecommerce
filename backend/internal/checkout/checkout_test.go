@@ -746,6 +746,45 @@ func (s *CheckoutTestSuite) TestCheckout_Success_FixedAmountCoupon() {
 	s.Equal(int64(4999), o.TotalAmount)
 }
 
+// TestCheckout_Success_CouponByID verifies applying a coupon using CouponID instead of CouponCode.
+func (s *CheckoutTestSuite) TestCheckout_Success_CouponByID() {
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	variantID := s.seedPricedVariant(5000, 5)
+	s.addToCart(userID, variantID, 1)
+
+	code := "BYID-" + uuid.NewString()[:8]
+	couponID := s.seedCoupon(couponSeed{
+		Code:          code,
+		DiscountType:  "fixed_amount",
+		DiscountValue: 1500,
+	})
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
+		ShippingAddressID: addressID,
+		CouponID:          &couponID,
+	})
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var resp dataEnvelope[checkout.CheckoutResponse]
+	s.decodeSuccess(w, &resp)
+	orderID, err := uuid.Parse(resp.Data.OrderID)
+	s.Require().NoError(err)
+
+	// 5000 - 1500 + 999 = 4499.
+	o := s.fetchOrder(orderID)
+	s.Equal(int64(1500), o.DiscountAmount)
+	s.Equal(int64(4499), o.TotalAmount)
+
+	var redemptionCount int
+	err = s.db.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1 AND user_id = $2 AND order_id = $3`,
+		couponID, userID, orderID,
+	).Scan(&redemptionCount)
+	s.Require().NoError(err)
+	s.Equal(1, redemptionCount)
+}
+
 // TestCheckout_Success_SnapshotAndAuthoritativePrice verifies the order line
 // captures the live variant price and an immutable product snapshot.
 func (s *CheckoutTestSuite) TestCheckout_Success_SnapshotAndAuthoritativePrice() {

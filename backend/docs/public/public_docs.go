@@ -3936,6 +3936,9 @@ const docTemplatepublic = `{
                 "couponCode": {
                     "type": "string"
                 },
+                "couponId": {
+                    "type": "string"
+                },
                 "paymentMethod": {
                     "type": "string"
                 },
@@ -3975,6 +3978,9 @@ const docTemplatepublic = `{
             "type": "object",
             "properties": {
                 "code": {
+                    "type": "string"
+                },
+                "currency": {
                     "type": "string"
                 },
                 "discountAmount": {

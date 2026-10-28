@@ -59,6 +59,7 @@ type AddressRepository interface {
 // the authoritative gross total and the executor it already holds, so the
 // rules live in one place without opening a second connection.
 type CouponService interface {
+	GetCodeByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (string, error)
 	ApplyByCode(ctx context.Context, exec database.QueryExecutor, code string, grossTotal int64, userID *uuid.UUID) (*coupon.AppliedCoupon, error)
 	RecordRedemption(ctx context.Context, exec database.QueryExecutor, couponID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, discountAmount int64, currency string) error
 }
@@ -203,6 +204,7 @@ type CheckoutInput struct {
 	CustomerID        uuid.UUID
 	ShippingAddressID uuid.UUID
 	CouponCode        *string
+	CouponID          *uuid.UUID
 	PaymentMethod     string
 }
 
@@ -359,9 +361,25 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		//    coupon_redemptions(coupon_id, user_id) backstops the per-user limit.
 		var appliedCouponID *uuid.UUID
 		var appliedCouponCode *string
+		var appliedCouponCurrency string
 		var totalDiscount int64
+
+		targetCode := ""
 		if in.CouponCode != nil && strings.TrimSpace(*in.CouponCode) != "" {
-			applied, err := s.couponService.ApplyByCode(ctx, tx, strings.TrimSpace(*in.CouponCode), grossTotal, &in.CustomerID)
+			targetCode = strings.TrimSpace(*in.CouponCode)
+		} else if in.CouponID != nil && *in.CouponID != uuid.Nil {
+			resolvedCode, err := s.couponService.GetCodeByID(ctx, tx, *in.CouponID)
+			if err != nil {
+				if errors.Is(database.MapError(err), database.ErrNotFound) {
+					return apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
+				}
+				return s.handleError(err, "Failed to resolve coupon")
+			}
+			targetCode = resolvedCode
+		}
+
+		if targetCode != "" {
+			applied, err := s.couponService.ApplyByCode(ctx, tx, targetCode, grossTotal, &in.CustomerID)
 			if err != nil {
 				if errors.Is(database.MapError(err), database.ErrNotFound) {
 					return apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
@@ -371,6 +389,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			appliedCouponID = &applied.ID
 			code := applied.Code
 			appliedCouponCode = &code
+			appliedCouponCurrency = applied.Currency
 			totalDiscount = applied.DiscountAmount
 		}
 
@@ -492,8 +511,12 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 
 		// 8. Record the coupon redemption; surface errors so the transaction rolls back.
 		if appliedCouponID != nil && totalDiscount > 0 {
+			redemptionCurrency := appliedCouponCurrency
+			if redemptionCurrency == "" {
+				redemptionCurrency = createdOrder.Currency
+			}
 			if err := s.couponService.RecordRedemption(
-				ctx, dbTx, *appliedCouponID, in.CustomerID, createdOrder.ID, totalDiscount, createdOrder.Currency,
+				ctx, dbTx, *appliedCouponID, in.CustomerID, createdOrder.ID, totalDiscount, redemptionCurrency,
 			); err != nil {
 				return s.handleError(err, "Failed to record coupon redemption")
 			}
@@ -541,6 +564,7 @@ type CouponValidationResult struct {
 	Code            string    `json:"code"`
 	DiscountType    string    `json:"discountType"`
 	DiscountValue   int64     `json:"discountValue"`
+	Currency        string    `json:"currency"`
 	DiscountPercent *int      `json:"discountPercent,omitempty"`
 	FixedDiscount   *float64  `json:"fixedDiscount,omitempty"`
 	MinCartAmount   *int64    `json:"minCartAmount,omitempty"`
@@ -616,6 +640,7 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 			Code:            applied.Code,
 			DiscountType:    applied.DiscountType,
 			DiscountValue:   applied.DiscountValue,
+			Currency:        applied.Currency,
 			DiscountPercent: applied.DiscountPercent,
 			FixedDiscount:   applied.FixedDiscount,
 			MinCartAmount:   applied.MinCartAmount,

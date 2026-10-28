@@ -259,6 +259,8 @@ definitions:
     properties:
       couponCode:
         type: string
+      couponId:
+        type: string
       paymentMethod:
         type: string
       shippingAddressId:
@@ -287,6 +289,8 @@ definitions:
   CouponValidationResult:
     properties:
       code:
+        type: string
+      currency:
         type: string
       discountAmount:
         type: integer
