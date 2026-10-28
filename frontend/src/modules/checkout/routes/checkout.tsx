@@ -287,6 +287,7 @@ export function Checkout() {
 		const orderPayload = {
 			shippingAddressId: effectiveAddressId,
 			couponId: appliedCoupon?.id || undefined,
+			couponCode: appliedCoupon?.code || undefined,
 			paymentMethod: "cash_on_delivery",
 		};
 
