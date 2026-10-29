@@ -154,10 +154,13 @@ func TestArch_RepositorySignatures(t *testing.T) {
 				nonCompliantMethods = append(nonCompliantMethods, path+": "+fn.Name.Name+" 1st param is not context.Context ("+param0Type+")")
 			}
 
-			// Param 2 check: database.QueryExecutor
+			// Param 2 check: database.QueryExecutor or *database.Tx
 			param1Type := typeToString(params[1].Type)
-			if !strings.Contains(param1Type, "QueryExecutor") && !strings.Contains(param1Type, "database.QueryExecutor") {
-				nonCompliantMethods = append(nonCompliantMethods, path+": "+fn.Name.Name+" 2nd param is not database.QueryExecutor ("+param1Type+")")
+			if !strings.Contains(param1Type, "QueryExecutor") &&
+				!strings.Contains(param1Type, "database.QueryExecutor") &&
+				!strings.Contains(param1Type, "database.Tx") &&
+				!strings.Contains(param1Type, "Tx") {
+				nonCompliantMethods = append(nonCompliantMethods, path+": "+fn.Name.Name+" 2nd param is not database.QueryExecutor or *database.Tx ("+param1Type+")")
 			}
 		}
 		return nil
@@ -165,6 +168,86 @@ func TestArch_RepositorySignatures(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Empty(t, nonCompliantMethods, "Repository methods must strictly begin with (ctx context.Context, qe database.QueryExecutor, ...):\n"+strings.Join(nonCompliantMethods, "\n"))
+}
+
+// =============================================================================
+// Invariant Check 2b: Consumer Repositories Are Read-Only
+// =============================================================================
+
+// TestArch_ConsumerRepositoriesAreReadOnly enforces that consumer-defined repository
+// interfaces outside their owning package contain ONLY read operations (lookups, queries).
+// Cross-domain writes must go through the owning domain's Service or Writer interface.
+func TestArch_ConsumerRepositoriesAreReadOnly(t *testing.T) {
+	internalDir := getBackendInternalDir(t)
+	fset := token.NewFileSet()
+
+	forbiddenWritePrefixes := []string{
+		"Create", "Update", "Delete", "Replace", "Insert", "Record", "Add", "Remove", "Clear", "Adjust", "SoftDelete",
+	}
+
+	var writeViolations []string
+
+	err := filepath.WalkDir(internalDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(d.Name(), ".go") || strings.HasSuffix(d.Name(), "_test.go") {
+			return nil
+		}
+
+		// Only check service files or consumers where repository interfaces are defined
+		if !strings.Contains(d.Name(), "service") {
+			return nil
+		}
+
+		node, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			return err
+		}
+
+		for _, decl := range node.Decls {
+			genDecl, ok := decl.(*ast.GenDecl)
+			if !ok || genDecl.Tok != token.TYPE {
+				continue
+			}
+
+			for _, spec := range genDecl.Specs {
+				typeSpec, ok := spec.(*ast.TypeSpec)
+				if !ok {
+					continue
+				}
+
+				if !strings.HasSuffix(typeSpec.Name.Name, "Repository") {
+					continue
+				}
+
+				// ObjectRepository is an infrastructure exception for storage blob pairing per Rule 3
+				if typeSpec.Name.Name == "ObjectRepository" {
+					continue
+				}
+
+				iface, ok := typeSpec.Type.(*ast.InterfaceType)
+				if !ok {
+					continue
+				}
+
+				for _, method := range iface.Methods.List {
+					for _, name := range method.Names {
+						methodName := name.Name
+						for _, prefix := range forbiddenWritePrefixes {
+							if strings.HasPrefix(methodName, prefix) {
+								writeViolations = append(writeViolations, path+": "+typeSpec.Name.Name+"."+methodName)
+							}
+						}
+					}
+				}
+			}
+		}
+		return nil
+	})
+
+	require.NoError(t, err)
+	assert.Empty(t, writeViolations, "Consumer repository interfaces must be read-only (cross-domain writes must use domain services or writers):\n"+strings.Join(writeViolations, "\n"))
 }
 
 // =============================================================================

@@ -110,13 +110,13 @@ func (r *AttributeRepository) ListByCategory(ctx context.Context, qe database.Qu
 	return list, rows.Err()
 }
 
-func (r *AttributeRepository) CreateAttribute(ctx context.Context, qe database.QueryExecutor, ai *AttributeItem) error {
+func (r *AttributeRepository) CreateAttribute(ctx context.Context, tx *database.Tx, ai *AttributeItem) error {
 	query := `
 		INSERT INTO category_attributes (id, category_id, key, label, value_type, allowed_values, is_filterable, sort_order, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5::attribute_value_type, $6, $7, $8, NOW(), NOW())
 		RETURNING created_at, updated_at
 	`
-	return qe.QueryRow(ctx, query,
+	return tx.QueryRow(ctx, query,
 		ai.ID, ai.CategoryID, ai.Key, ai.Label, ai.ValueType, ai.AllowedValues, ai.IsFilterable, ai.SortOrder,
 	).Scan(&ai.CreatedAt, &ai.UpdatedAt)
 }
@@ -135,7 +135,7 @@ type UpdateAttributeFields struct {
 // the attribute does not exist.
 func (r *AttributeRepository) UpdateAttribute(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	id uuid.UUID,
 	fields UpdateAttributeFields,
 ) error {
@@ -187,7 +187,7 @@ func (r *AttributeRepository) UpdateAttribute(
 
 	args = append(args, id)
 
-	cmd, err := qe.Exec(ctx, query, args...)
+	cmd, err := tx.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("update attribute: %w", err)
 	}
@@ -197,9 +197,9 @@ func (r *AttributeRepository) UpdateAttribute(
 	return nil
 }
 
-func (r *AttributeRepository) DeleteAttribute(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) error {
+func (r *AttributeRepository) DeleteAttribute(ctx context.Context, tx *database.Tx, id uuid.UUID) error {
 	query := `DELETE FROM category_attributes WHERE id = $1`
-	cmd, err := qe.Exec(ctx, query, id)
+	cmd, err := tx.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("delete attribute: %w", err)
 	}

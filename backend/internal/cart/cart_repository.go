@@ -25,7 +25,7 @@ func NewRepository() *CartRepository {
 // The created_at and updated_at timestamps are populated by PostgreSQL now() and scanned back into the model.
 func (r *CartRepository) CreateCart(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	cart *model.Cart,
 ) error {
 	// SQL query to persist the base cart entity.
@@ -35,7 +35,7 @@ func (r *CartRepository) CreateCart(
 		RETURNING created_at, updated_at
 	`
 	// Execute insertion and assign returned database timestamps to the passed cart pointer.
-	err := qe.QueryRow(ctx, query, cart.ID, cart.UserID, cart.SessionID).Scan(&cart.CreatedAt, &cart.UpdatedAt)
+	err := tx.QueryRow(ctx, query, cart.ID, cart.UserID, cart.SessionID).Scan(&cart.CreatedAt, &cart.UpdatedAt)
 	return err
 }
 
@@ -121,7 +121,7 @@ func (r *CartRepository) GetCartByID(
 // database.ErrNotFound when the customer has no cart.
 func (r *CartRepository) LockCartByUserID(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	userID uuid.UUID,
 ) error {
 	query := `
@@ -133,7 +133,7 @@ func (r *CartRepository) LockCartByUserID(
 		FOR UPDATE
 	`
 	var id uuid.UUID
-	err := qe.QueryRow(ctx, query, userID).Scan(&id)
+	err := tx.QueryRow(ctx, query, userID).Scan(&id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return database.ErrNotFound
@@ -149,11 +149,11 @@ func (r *CartRepository) LockCartByUserID(
 // waiting for a cart_items row that the mutation already locked.
 func (r *CartRepository) LockCartByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	cartID uuid.UUID,
 ) error {
 	var id uuid.UUID
-	err := qe.QueryRow(ctx, `SELECT id FROM carts WHERE id = $1 FOR UPDATE`, cartID).Scan(&id)
+	err := tx.QueryRow(ctx, `SELECT id FROM carts WHERE id = $1 FOR UPDATE`, cartID).Scan(&id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return database.ErrNotFound
@@ -239,12 +239,12 @@ func (r *CartRepository) GetCartBySessionID(
 
 func (r *CartRepository) AddItem(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	item *model.CartItem,
 ) error {
 	// Take the cart -> items lock order shared with checkout before touching
 	// cart_items; otherwise the child-first upsert can deadlock with checkout.
-	if err := r.LockCartByID(ctx, qe, item.CartID); err != nil {
+	if err := r.LockCartByID(ctx, tx, item.CartID); err != nil {
 		return err
 	}
 
@@ -259,7 +259,7 @@ func (r *CartRepository) AddItem(
 			carted_at = now()
 		RETURNING id, quantity, carted_at
 	`
-	err := qe.QueryRow(
+	err := tx.QueryRow(
 		ctx,
 		query,
 		item.CartID,
@@ -273,18 +273,18 @@ func (r *CartRepository) AddItem(
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = qe.Exec(ctx, updateCartQuery, item.CartID)
+	_, _ = tx.Exec(ctx, updateCartQuery, item.CartID)
 	return nil
 }
 
 func (r *CartRepository) UpdateItemQuantity(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	cartID uuid.UUID,
 	itemID int64,
 	quantity int,
 ) error {
-	if err := r.LockCartByID(ctx, qe, cartID); err != nil {
+	if err := r.LockCartByID(ctx, tx, cartID); err != nil {
 		return err
 	}
 
@@ -293,7 +293,7 @@ func (r *CartRepository) UpdateItemQuantity(
 		SET quantity = $1
 		WHERE id = $2 AND cart_id = $3
 	`
-	tag, err := qe.Exec(ctx, query, quantity, itemID, cartID)
+	tag, err := tx.Exec(ctx, query, quantity, itemID, cartID)
 	if err != nil {
 		return err
 	}
@@ -303,17 +303,17 @@ func (r *CartRepository) UpdateItemQuantity(
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = qe.Exec(ctx, updateCartQuery, cartID)
+	_, _ = tx.Exec(ctx, updateCartQuery, cartID)
 	return nil
 }
 
 func (r *CartRepository) RemoveItem(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	cartID uuid.UUID,
 	itemID int64,
 ) error {
-	if err := r.LockCartByID(ctx, qe, cartID); err != nil {
+	if err := r.LockCartByID(ctx, tx, cartID); err != nil {
 		return err
 	}
 
@@ -321,7 +321,7 @@ func (r *CartRepository) RemoveItem(
 		DELETE FROM cart_items
 		WHERE id = $1 AND cart_id = $2
 	`
-	tag, err := qe.Exec(ctx, query, itemID, cartID)
+	tag, err := tx.Exec(ctx, query, itemID, cartID)
 	if err != nil {
 		return err
 	}
@@ -330,33 +330,33 @@ func (r *CartRepository) RemoveItem(
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = qe.Exec(ctx, updateCartQuery, cartID)
+	_, _ = tx.Exec(ctx, updateCartQuery, cartID)
 	return nil
 }
 
 func (r *CartRepository) ClearCart(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	cartID uuid.UUID,
 ) error {
-	if err := r.LockCartByID(ctx, qe, cartID); err != nil {
+	if err := r.LockCartByID(ctx, tx, cartID); err != nil {
 		return err
 	}
 
 	query := `DELETE FROM cart_items WHERE cart_id = $1`
-	_, err := qe.Exec(ctx, query, cartID)
+	_, err := tx.Exec(ctx, query, cartID)
 	if err != nil {
 		return err
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = qe.Exec(ctx, updateCartQuery, cartID)
+	_, _ = tx.Exec(ctx, updateCartQuery, cartID)
 	return nil
 }
 
 func (r *CartRepository) DeleteCart(
 	ctx context.Context,
-	tx database.QueryExecutor,
+	tx *database.Tx,
 	cartID uuid.UUID,
 ) error {
 	query := `DELETE FROM carts WHERE id = $1`

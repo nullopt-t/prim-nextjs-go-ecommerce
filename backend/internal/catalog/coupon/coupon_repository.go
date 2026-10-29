@@ -227,7 +227,7 @@ func (r *CouponRepository) List(ctx context.Context, qe database.QueryExecutor, 
 }
 
 // Create inserts a new coupon into the database.
-func (r *CouponRepository) Create(ctx context.Context, qe database.QueryExecutor, c *model.Coupon) error {
+func (r *CouponRepository) Create(ctx context.Context, tx *database.Tx, c *model.Coupon) error {
 	query := `
 		INSERT INTO coupons (
 			id,
@@ -265,7 +265,7 @@ func (r *CouponRepository) Create(ctx context.Context, qe database.QueryExecutor
 		status = model.CouponStatusActive
 	}
 
-	return qe.QueryRow(ctx, query,
+	return tx.QueryRow(ctx, query,
 		c.ID,
 		c.Code,
 		c.DiscountType,
@@ -281,9 +281,9 @@ func (r *CouponRepository) Create(ctx context.Context, qe database.QueryExecutor
 }
 
 // UpdateStatus changes the coupon status.
-func (r *CouponRepository) UpdateStatus(ctx context.Context, qe database.QueryExecutor, id uuid.UUID, status model.CouponStatus) error {
+func (r *CouponRepository) UpdateStatus(ctx context.Context, tx *database.Tx, id uuid.UUID, status model.CouponStatus) error {
 	query := `UPDATE coupons SET status = $1::coupon_status, updated_at = NOW() WHERE id = $2`
-	ct, err := qe.Exec(ctx, query, string(status), id)
+	ct, err := tx.Exec(ctx, query, string(status), id)
 	if err != nil {
 		return fmt.Errorf("update coupon status: %w", err)
 	}
@@ -294,9 +294,9 @@ func (r *CouponRepository) UpdateStatus(ctx context.Context, qe database.QueryEx
 }
 
 // Delete permanently removes a coupon by its UUID.
-func (r *CouponRepository) Delete(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) error {
+func (r *CouponRepository) Delete(ctx context.Context, tx *database.Tx, id uuid.UUID) error {
 	query := `DELETE FROM coupons WHERE id = $1`
-	ct, err := qe.Exec(ctx, query, id)
+	ct, err := tx.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("delete coupon: %w", err)
 	}
@@ -329,13 +329,13 @@ func (r *CouponRepository) GetUserRedemptionCount(ctx context.Context, qe databa
 }
 
 // RecordRedemption logs a coupon usage against an order.
-func (r *CouponRepository) RecordRedemption(ctx context.Context, qe database.QueryExecutor, red *model.CouponRedemption) error {
+func (r *CouponRepository) RecordRedemption(ctx context.Context, tx *database.Tx, red *model.CouponRedemption) error {
 	query := `
 		INSERT INTO coupon_redemptions (coupon_id, user_id, order_id, discount_amount, currency, created_at)
 		VALUES ($1, $2, $3, $4, $5, NOW())
 		RETURNING id, created_at
 	`
-	return qe.QueryRow(ctx, query,
+	return tx.QueryRow(ctx, query,
 		red.CouponID,
 		red.UserID,
 		red.OrderID,

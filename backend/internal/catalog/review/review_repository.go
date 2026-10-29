@@ -98,7 +98,7 @@ func (r *ReviewRepository) FindEligibleOrderItem(
 }
 
 
-func (r *ReviewRepository) Create(ctx context.Context, qe database.QueryExecutor, rv *model.Review) error {
+func (r *ReviewRepository) Create(ctx context.Context, tx *database.Tx, rv *model.Review) error {
 	query := `
 		INSERT INTO reviews (
 			id,
@@ -116,7 +116,7 @@ func (r *ReviewRepository) Create(ctx context.Context, qe database.QueryExecutor
 		RETURNING created_at, updated_at
 	`
 
-	err := qe.QueryRow(
+	err := tx.QueryRow(
 		ctx,
 		query,
 		rv.ID,
@@ -208,7 +208,7 @@ func (r *ReviewRepository) GetByOrderItemID(ctx context.Context, qe database.Que
 	return rv, nil
 }
 
-func (r *ReviewRepository) Update(ctx context.Context, qe database.QueryExecutor, rv *model.Review) error {
+func (r *ReviewRepository) Update(ctx context.Context, tx *database.Tx, rv *model.Review) error {
 	query := `
 		UPDATE reviews
 		SET
@@ -220,12 +220,12 @@ func (r *ReviewRepository) Update(ctx context.Context, qe database.QueryExecutor
 		WHERE id = $5
 		RETURNING updated_at
 	`
-	return qe.QueryRow(ctx, query, rv.Rating, rv.Title, rv.Body, rv.Status, rv.ID).Scan(&rv.UpdatedAt)
+	return tx.QueryRow(ctx, query, rv.Rating, rv.Title, rv.Body, rv.Status, rv.ID).Scan(&rv.UpdatedAt)
 }
 
 func (r *ReviewRepository) UpdateStatus(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	id uuid.UUID,
 	status model.ReviewStatus,
 ) error {
@@ -236,17 +236,17 @@ func (r *ReviewRepository) UpdateStatus(
 			updated_at = now()
 		WHERE id = $2
 	`
-	_, err := qe.Exec(ctx, query, status, id)
+	_, err := tx.Exec(ctx, query, status, id)
 	return err
 }
 
 func (r *ReviewRepository) Delete(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	id uuid.UUID,
 ) error {
 	query := `DELETE FROM reviews WHERE id = $1`
-	_, err := qe.Exec(ctx, query, id)
+	_, err := tx.Exec(ctx, query, id)
 	return err
 }
 

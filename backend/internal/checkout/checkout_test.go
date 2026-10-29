@@ -170,7 +170,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	s.inventoryRepo = inventoryRepo
 
 	variantRepo := variant.NewRepository()
-	s.variantService = variant.NewService(logger, s.txRunner, nil, nil, variantRepo, inventoryRepo)
+	s.variantService = variant.NewService(logger, s.txRunner, nil, nil, variantRepo, inventoryRepo, s.inventoryService)
 
 	cartRepo := cart.NewRepository()
 	s.cartService = cart.NewService(
@@ -184,7 +184,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	)
 
 	s.orderRepo = order.NewRepository()
-	orderService := order.NewService(s.txRunner, s.orderRepo, logger, s.inventoryRepo)
+	orderService := order.NewService(s.txRunner, s.orderRepo, logger, s.inventoryRepo, s.inventoryService)
 
 	userRepo := user.NewPostgresRepository()
 	s.userService = user.NewService(s.txRunner, userRepo, logger)
@@ -194,6 +194,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 
 	s.checkoutService = checkout.NewService(
 		cartRepo,
+		s.cartService,
 		orderService,
 		s.inventoryService,
 		userRepo,
@@ -202,7 +203,6 @@ func (s *CheckoutTestSuite) SetupSuite() {
 		variantRepo,
 		product.NewProductRepository(),
 		object.NewRepository(),
-		s.orderRepo,
 		nil,
 		setting.NewService(s.txRunner, setting.NewRepository()),
 		s.txRunner,

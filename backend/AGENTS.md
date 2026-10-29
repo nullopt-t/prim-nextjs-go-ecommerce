@@ -71,9 +71,12 @@ database connection from entry to exit.
   (`tx *database.Tx` or `qe database.QueryExecutor`) and must not call
   `WithTx`/`WithExecutor` itself. The caller owns the unit of work. Keep a
   single public wrapper that acquires `WithTx` for direct handler use.
-- Do not add dead `FooWithTx` twins just to mirror a public method. A
-  `...WithTx` name is allowed only for the participating form above (see
-  `checkout.OrderWriter`/`StockWriter` and `coupon.ApplyByID`).
+- Do not add dead `FooWithTx` twins just to mirror a public method, and do not
+  encode the connection in the name: the participating form is signalled by its
+  `database.QueryExecutor` parameter, not a `...WithTx` suffix. A second public
+  entry point exists only for the handler-facing wrapper that acquires `WithTx`
+  itself (for example `order.PlaceOrder` — participating — versus
+  `order.CreateOrder`, which owns its transaction).
 
 ## Storage and external effects
 

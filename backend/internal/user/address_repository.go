@@ -142,7 +142,7 @@ func (r *AddressRepository) GetByIDAndUser(
 // Executed inside database transactions prior to setting a new default address.
 func (r *AddressRepository) ClearDefault(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	userID uuid.UUID,
 ) error {
 	query := `
@@ -150,7 +150,7 @@ func (r *AddressRepository) ClearDefault(
 		SET is_default = false, updated_at = now()
 		WHERE user_id = $1 AND is_default = true AND deleted_at IS NULL
 	`
-	_, err := qe.Exec(ctx, query, userID)
+	_, err := tx.Exec(ctx, query, userID)
 	if err != nil {
 		return fmt.Errorf("clear default address: %w", err)
 	}
@@ -160,7 +160,7 @@ func (r *AddressRepository) ClearDefault(
 // SetDefault marks a specific address as default for the user.
 func (r *AddressRepository) SetDefault(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	id uuid.UUID,
 	userID uuid.UUID,
 ) error {
@@ -169,7 +169,7 @@ func (r *AddressRepository) SetDefault(
 		SET is_default = true, updated_at = now()
 		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
 	`
-	tag, err := qe.Exec(ctx, query, id, userID)
+	tag, err := tx.Exec(ctx, query, id, userID)
 	if err != nil {
 		return fmt.Errorf("set default address: %w", err)
 	}
@@ -184,7 +184,7 @@ func (r *AddressRepository) SetDefault(
 // idx_addresses_user_default ON addresses (user_id) WHERE is_default = true AND deleted_at IS NULL.
 func (r *AddressRepository) Create(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	a *model.UserAddress,
 ) error {
 	query := `
@@ -199,7 +199,7 @@ func (r *AddressRepository) Create(
 		)
 		RETURNING created_at, updated_at
 	`
-	return qe.QueryRow(
+	return tx.QueryRow(
 		ctx,
 		query,
 		a.ID,
@@ -220,7 +220,7 @@ func (r *AddressRepository) Create(
 // Update updates fields of an existing address.
 func (r *AddressRepository) Update(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	a *model.UserAddress,
 ) error {
 	query := `
@@ -240,7 +240,7 @@ func (r *AddressRepository) Update(
 		WHERE id = $11 AND user_id = $12 AND deleted_at IS NULL
 		RETURNING updated_at
 	`
-	err := qe.QueryRow(
+	err := tx.QueryRow(
 		ctx,
 		query,
 		a.Label,
@@ -268,7 +268,7 @@ func (r *AddressRepository) Update(
 // SoftDelete marks an address as deleted and unsets is_default to prevent deleted addresses from acting as defaults.
 func (r *AddressRepository) SoftDelete(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	id uuid.UUID,
 	userID uuid.UUID,
 ) error {
@@ -277,7 +277,7 @@ func (r *AddressRepository) SoftDelete(
 		SET deleted_at = now(), is_default = false, updated_at = now()
 		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
 	`
-	tag, err := qe.Exec(ctx, query, id, userID)
+	tag, err := tx.Exec(ctx, query, id, userID)
 	if err != nil {
 		return fmt.Errorf("soft delete address: %w", err)
 	}

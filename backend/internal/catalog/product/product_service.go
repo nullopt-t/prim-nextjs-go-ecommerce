@@ -37,17 +37,19 @@ type CategoryRepository interface {
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductCategory, error)
 }
 
-// TagRepository defines product tag query and association replacement methods.
+// TagRepository defines read methods for product tag queries.
 type TagRepository interface {
 	GetTagsByProductID(ctx context.Context, qe database.QueryExecutor, productID uuid.UUID) ([]*model.ProductTag, error)
-	ReplaceTagsForProduct(ctx context.Context, qe database.QueryExecutor, productID uuid.UUID, tagIDs []uuid.UUID) error
 }
 
-// InventoryRepository defines stock lookup and adjustments for variants.
+// TagWriter defines mutation methods for product tag associations.
+type TagWriter interface {
+	ReplaceProductTags(ctx context.Context, productID uuid.UUID, tagIDs []uuid.UUID) error
+}
+
+// InventoryRepository defines stock lookup methods for variants.
 type InventoryRepository interface {
 	GetStockForVariants(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
-	CreateLedger(ctx context.Context, qe database.QueryExecutor, ledger *model.InventoryLedger) error
-	LockVariantForUpdate(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) error
 	GetStock(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) (*model.InventoryStock, error)
 }
 
@@ -60,11 +62,11 @@ type ReviewRepository interface {
 
 // ObjectRepository defines persistence methods for storage media records.
 type ObjectRepository interface {
-	Create(ctx context.Context, qe database.QueryExecutor, object *model.Object) error
+	Create(ctx context.Context, tx *database.Tx, object *model.Object) error
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error)
 	GetByIDs(ctx context.Context, qe database.QueryExecutor, ids []uuid.UUID) ([]*model.Object, error)
-	MarkDeletingByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error
-	MarkDeletedByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error
+	MarkDeletingByKey(ctx context.Context, tx *database.Tx, bucket, key string) error
+	MarkDeletedByKey(ctx context.Context, tx *database.Tx, bucket, key string) error
 }
 
 // VariantRepository defines read methods for product variant queries.
@@ -102,6 +104,7 @@ type ProductService struct {
 	brandRepo       BrandRepository
 	categoryRepo    CategoryRepository
 	tagRepo         TagRepository
+	tagWriter       TagWriter
 	inventoryRepo   InventoryRepository
 	reviewRepo      ReviewRepository
 	objectRepo      ObjectRepository
@@ -117,6 +120,7 @@ func NewService(
 	brandRepo BrandRepository,
 	categoryRepo CategoryRepository,
 	tagRepo TagRepository,
+	tagWriter TagWriter,
 	inventoryRepo InventoryRepository,
 	reviewRepo ReviewRepository,
 	objectRepo ObjectRepository,
@@ -130,6 +134,7 @@ func NewService(
 		brandRepo:       brandRepo,
 		categoryRepo:    categoryRepo,
 		tagRepo:         tagRepo,
+		tagWriter:       tagWriter,
 		inventoryRepo:   inventoryRepo,
 		reviewRepo:      reviewRepo,
 		objectRepo:      objectRepo,
@@ -257,32 +262,6 @@ func (s *ProductService) CreateProductAsDraft(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	// Validate category existence and active status
-	if s.categoryRepo != nil {
-		err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
-			_, err := s.categoryRepo.GetByID(ctx, exec, input.CategoryID)
-			return err
-		})
-		if err != nil {
-			return nil, apierr.BadRequestError("Referenced category does not exist").
-				WithCode(apierr.CodeInvalidReference).
-				Wrap(err)
-		}
-	}
-
-	// Validate brand existence and active status if specified
-	if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandRepo != nil {
-		err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
-			_, err := s.brandRepo.GetByID(ctx, exec, *input.BrandID)
-			return err
-		})
-		if err != nil {
-			return nil, apierr.BadRequestError("Referenced brand does not exist").
-				WithCode(apierr.CodeInvalidReference).
-				Wrap(err)
-		}
-	}
-
 	baseSlug := ""
 	if input.Slug != nil {
 		baseSlug = utils.Slugify(*input.Slug)
@@ -295,8 +274,26 @@ func (s *ProductService) CreateProductAsDraft(
 	}
 
 	var product *model.Product
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
-		axes, err := s.validateVariationAxes(ctx, exec, input.CategoryID, input.VariationAxes)
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+		// Validate category existence and active status.
+		if s.categoryRepo != nil {
+			if _, err := s.categoryRepo.GetByID(ctx, tx, input.CategoryID); err != nil {
+				return apierr.BadRequestError("Referenced category does not exist").
+					WithCode(apierr.CodeInvalidReference).
+					Wrap(err)
+			}
+		}
+
+		// Validate brand existence and active status if specified.
+		if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandRepo != nil {
+			if _, err := s.brandRepo.GetByID(ctx, tx, *input.BrandID); err != nil {
+				return apierr.BadRequestError("Referenced brand does not exist").
+					WithCode(apierr.CodeInvalidReference).
+					Wrap(err)
+			}
+		}
+
+		axes, err := s.validateVariationAxes(ctx, tx, input.CategoryID, input.VariationAxes)
 		if err != nil {
 			return err
 		}
@@ -312,15 +309,15 @@ func (s *ProductService) CreateProductAsDraft(
 		}
 
 		finalSlug := baseSlug
-		// Check for slug collisions across all products (including soft-deleted)
-		exists, err := s.productRepo.SlugExists(ctx, exec, finalSlug)
+		// Check for slug collisions across all products (including soft-deleted).
+		exists, err := s.productRepo.SlugExists(ctx, tx, finalSlug)
 		if err != nil {
 			return err
 		}
 		if exists {
 			for i := 1; i <= 10; i++ {
 				candidate := fmt.Sprintf("%s-%s", baseSlug, uuid.New().String()[:8])
-				candidateExists, err := s.productRepo.SlugExists(ctx, exec, candidate)
+				candidateExists, err := s.productRepo.SlugExists(ctx, tx, candidate)
 				if err != nil {
 					return err
 				}
@@ -343,7 +340,7 @@ func (s *ProductService) CreateProductAsDraft(
 			VariationAxes: axes,
 		}
 
-		return s.productRepo.Create(ctx, exec, product)
+		return s.productRepo.Create(ctx, tx, product)
 	})
 	if err != nil {
 		var apiErr *apierr.APIError
@@ -362,7 +359,7 @@ func (s *ProductService) UpdateProduct(
 	productID uuid.UUID,
 	input UpdateProductInput,
 ) error {
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		if input.CategoryID != nil && *input.CategoryID != uuid.Nil && s.categoryRepo != nil {
 			if _, err := s.categoryRepo.GetByID(ctx, tx, *input.CategoryID); err != nil {
 				return apierr.BadRequestError("Referenced category does not exist").
@@ -763,7 +760,7 @@ func (s *ProductService) PublishProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		count, err := s.variantRepo.CountByProductID(ctx, exec, productID)
 		if err != nil {
 			return err
@@ -803,7 +800,7 @@ func (s *ProductService) ArchiveProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		return s.productRepo.UpdateStatus(ctx, exec, productID, model.PublicationStatusArchived)
 	})
 
@@ -831,7 +828,7 @@ func (s *ProductService) SoftDeleteProduct(
 	ctx context.Context,
 	productID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		if err := s.productRepo.SoftDeleteByID(ctx, tx, productID); err != nil {
 			return err
 		}
@@ -879,7 +876,7 @@ func (s *ProductService) SetDefaultVariant(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		v, err := s.variantRepo.GetByID(ctx, tx, variantID)
 		if err != nil {
 			return err
@@ -923,18 +920,16 @@ func (s *ProductService) SetDefaultVariant(
 	return nil
 }
 
-// ReplaceProductTags replaces tag associations for a product atomically.
+// ReplaceProductTags replaces tag associations for a product atomically through the tag domain service.
 func (s *ProductService) ReplaceProductTags(
 	ctx context.Context,
 	productID uuid.UUID,
 	tagIDs []uuid.UUID,
 ) error {
-	if s.tagRepo == nil {
+	if s.tagWriter == nil {
 		return nil
 	}
-	return s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		return s.tagRepo.ReplaceTagsForProduct(ctx, tx, productID, tagIDs)
-	})
+	return s.tagWriter.ReplaceProductTags(ctx, productID, tagIDs)
 }
 
 // UploadProductThumbnail handles multipart thumbnail upload, size and MIME type validation,
@@ -1018,7 +1013,7 @@ func (ps *ProductService) UploadProductThumbnail(
 	oldThumbnailObjectID := product.ThumbnailObjectID
 	product.ThumbnailObjectID = &obj.ID
 	var oldObj *model.Object
-	txErr := ps.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	txErr := ps.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		if err := ps.objectRepo.Create(ctx, tx, obj); err != nil {
 			return err
 		}
@@ -1038,7 +1033,7 @@ func (ps *ProductService) UploadProductThumbnail(
 
 	if oldObj != nil && ps.storageProvider != nil {
 		if delErr := ps.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = ps.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+			_ = ps.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 				return ps.objectRepo.MarkDeletedByKey(ctx, exec, oldObj.Bucket, oldObj.Key)
 			})
 		}
@@ -1066,7 +1061,7 @@ func (ps *ProductService) DeleteProductThumbnail(ctx context.Context, productID 
 	var oldObj *model.Object
 	oldID := *product.ThumbnailObjectID
 	product.ThumbnailObjectID = nil
-	err = ps.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err = ps.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		if ps.objectRepo != nil {
 			oldObj, _ = ps.objectRepo.GetByID(ctx, tx, oldID)
 			if oldObj != nil {
@@ -1081,7 +1076,7 @@ func (ps *ProductService) DeleteProductThumbnail(ctx context.Context, productID 
 
 	if oldObj != nil && ps.storageProvider != nil {
 		if delErr := ps.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = ps.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+			_ = ps.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 				return ps.objectRepo.MarkDeletedByKey(ctx, exec, oldObj.Bucket, oldObj.Key)
 			})
 		}

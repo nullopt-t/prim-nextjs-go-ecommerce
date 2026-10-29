@@ -222,7 +222,7 @@ func NewMockRunner(maxConns ...int32) *MockRunner {
 	}
 }
 
-func (r *MockRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx database.QueryExecutor) error) error {
+func (r *MockRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx *database.Tx) error) error {
 	atomic.AddInt32(&r.withTxCount, 1)
 
 	// Single connection check: simulate connection acquisition.

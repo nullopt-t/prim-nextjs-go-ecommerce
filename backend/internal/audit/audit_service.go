@@ -75,7 +75,7 @@ func (s *Service) handleError(err error, fallbackMsg string) error {
 // failure here must never break the originating request: callers are expected
 // to log it and continue.
 func (s *Service) Record(ctx context.Context, entry *model.AuditLog) error {
-	err := s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return s.repo.Insert(ctx, tx, entry)
 	})
 	if err != nil {

@@ -21,7 +21,7 @@ func NewRepository() *CategoryRepository {
 
 func (cr *CategoryRepository) Create(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	category *model.ProductCategory,
 ) error {
 	const query = `
@@ -36,7 +36,7 @@ func (cr *CategoryRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err := qe.QueryRow(
+	err := tx.QueryRow(
 		ctx,
 		query,
 		category.ID,
@@ -112,7 +112,7 @@ type UpdateCategoryFields struct {
 
 func (cr *CategoryRepository) Update(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	categoryID uuid.UUID,
 	fields UpdateCategoryFields,
 ) error {
@@ -154,7 +154,7 @@ func (cr *CategoryRepository) Update(
 
 	args = append(args, categoryID)
 
-	cmdTag, err := qe.Exec(ctx, query, args...)
+	cmdTag, err := tx.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("update product category: %w", err)
 	}
@@ -465,9 +465,9 @@ func (cr *CategoryRepository) List(
 	return pagination.NewPagedResult(categories, page), nil
 }
 
-func (cr *CategoryRepository) SoftDeleteCategory(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) error {
+func (cr *CategoryRepository) SoftDeleteCategory(ctx context.Context, tx *database.Tx, id uuid.UUID) error {
 	query := `UPDATE product_categories SET deleted_at = now(), updated_at = now() WHERE id = $1 AND deleted_at IS NULL`
-	tag, err := qe.Exec(ctx, query, id)
+	tag, err := tx.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("soft delete category: %w", err)
 	}

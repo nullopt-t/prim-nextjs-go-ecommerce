@@ -50,7 +50,7 @@ func (s *AttributeService) GetAttributeByID(ctx context.Context, id uuid.UUID) (
 }
 
 func (s *AttributeService) CreateAttribute(ctx context.Context, ai *AttributeItem) error {
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		if ai.ID == uuid.Nil {
 			ai.ID = uuid.New()
 		}
@@ -75,7 +75,7 @@ type UpdateAttributeInput struct {
 }
 
 func (s *AttributeService) UpdateAttribute(ctx context.Context, id uuid.UUID, in UpdateAttributeInput) error {
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return s.repo.UpdateAttribute(ctx, tx, id, UpdateAttributeFields(in))
 	})
 	if err != nil {
@@ -85,7 +85,7 @@ func (s *AttributeService) UpdateAttribute(ctx context.Context, id uuid.UUID, in
 }
 
 func (s *AttributeService) DeleteAttribute(ctx context.Context, id uuid.UUID) error {
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return s.repo.DeleteAttribute(ctx, tx, id)
 	})
 	if err != nil {

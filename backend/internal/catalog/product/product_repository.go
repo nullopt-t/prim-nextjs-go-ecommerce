@@ -85,7 +85,7 @@ func NewProductRepository() *ProductRepository {
 // Create inserts a new product record in draft state.
 func (r *ProductRepository) Create(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	p *model.Product,
 ) error {
 	query := `
@@ -105,7 +105,7 @@ func (r *ProductRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err := qe.QueryRow(
+	err := tx.QueryRow(
 		ctx,
 		query,
 		p.ID,
@@ -218,7 +218,7 @@ func (r *ProductRepository) get(
 // Update modifies mutable product columns including taxonomy, title, description, and thumbnail.
 func (r *ProductRepository) Update(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	p *model.Product,
 ) error {
 	if p.ID == uuid.Nil {
@@ -243,7 +243,7 @@ func (r *ProductRepository) Update(
 		WHERE id = $12 AND deleted_at IS NULL
 	`
 
-	cmd, err := qe.Exec(
+	cmd, err := tx.Exec(
 		ctx,
 		query,
 		p.BrandID,
@@ -562,10 +562,10 @@ func (r *ProductRepository) List(
 // SoftDeleteByID soft-deletes a product by its UUID (setting deleted_at = now()).
 func (r *ProductRepository) SoftDeleteByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	id uuid.UUID,
 ) error {
-	return r.softDelete(ctx, qe, "id = $1", id)
+	return r.softDelete(ctx, tx, "id = $1", id)
 }
 
 func (r *ProductRepository) softDelete(
@@ -599,7 +599,7 @@ func (r *ProductRepository) softDelete(
 // UpdateStatus changes the publication lifecycle status (draft, published, archived) of a product.
 func (r *ProductRepository) UpdateStatus(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	productID uuid.UUID,
 	status model.PublicationStatus,
 ) error {
@@ -613,7 +613,7 @@ func (r *ProductRepository) UpdateStatus(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	cmd, err := qe.Exec(ctx, query, productID, status)
+	cmd, err := tx.Exec(ctx, query, productID, status)
 	if err != nil {
 		return fmt.Errorf("update product status: %w", err)
 	}
@@ -628,7 +628,7 @@ func (r *ProductRepository) UpdateStatus(
 // SetDefaultVariant updates the default_variant_id for a product.
 func (r *ProductRepository) SetDefaultVariant(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	productID uuid.UUID,
 	variantID *uuid.UUID,
 ) error {
@@ -637,7 +637,7 @@ func (r *ProductRepository) SetDefaultVariant(
 		SET default_variant_id = $2, updated_at = now()
 		WHERE id = $1 AND deleted_at IS NULL
 	`
-	cmd, err := qe.Exec(ctx, query, productID, variantID)
+	cmd, err := tx.Exec(ctx, query, productID, variantID)
 	if err != nil {
 		return fmt.Errorf("set default variant: %w", err)
 	}

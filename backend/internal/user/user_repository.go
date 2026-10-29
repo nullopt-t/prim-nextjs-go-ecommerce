@@ -32,7 +32,7 @@ func NewPostgresRepository() *UserRepository {
 // and returns the newly assigned user UUID and database-generated timestamps.
 func (r *UserRepository) Create(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	user *model.User,
 ) (uuid.UUID, error) {
 	role := "customer"
@@ -55,7 +55,7 @@ func (r *UserRepository) Create(
 		RETURNING id, created_at, updated_at
 	`
 	var createdUserID uuid.UUID
-	err := qe.QueryRow(ctx, query, user.ID, user.Identifier, fullName, role).Scan(&createdUserID, &user.CreatedAt, &user.UpdatedAt)
+	err := tx.QueryRow(ctx, query, user.ID, user.Identifier, fullName, role).Scan(&createdUserID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -348,7 +348,7 @@ func (r *UserRepository) ListByRoles(
 // Returns database.ErrNotFound if the user does not exist or has been soft-deleted.
 func (r *UserRepository) UpdateRole(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	userID uuid.UUID,
 	role model.UserRole,
 ) error {
@@ -357,7 +357,7 @@ func (r *UserRepository) UpdateRole(
 		SET role = $1::user_role, updated_at = now()
 		WHERE id = $2 AND deleted_at IS NULL
 	`
-	tag, err := qe.Exec(ctx, query, string(role), userID)
+	tag, err := tx.Exec(ctx, query, string(role), userID)
 	if err != nil {
 		return fmt.Errorf("update user role: %w", err)
 	}
@@ -371,7 +371,7 @@ func (r *UserRepository) UpdateRole(
 // Returns database.ErrNotFound if the user does not exist or has been soft-deleted.
 func (r *UserRepository) UpdateStatus(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	userID uuid.UUID,
 	status model.AccountStatus,
 	suspendedUntil *time.Time,
@@ -381,7 +381,7 @@ func (r *UserRepository) UpdateStatus(
 		SET status = $1, suspended_until = $2, updated_at = now()
 		WHERE id = $3 AND deleted_at IS NULL
 	`
-	tag, err := qe.Exec(ctx, query, string(status), suspendedUntil, userID)
+	tag, err := tx.Exec(ctx, query, string(status), suspendedUntil, userID)
 	if err != nil {
 		return fmt.Errorf("update user status: %w", err)
 	}
@@ -395,7 +395,7 @@ func (r *UserRepository) UpdateStatus(
 // Returns database.ErrNotFound if the user does not exist or has already been soft-deleted.
 func (r *UserRepository) SoftDelete(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	userID uuid.UUID,
 ) error {
 	query := `
@@ -403,7 +403,7 @@ func (r *UserRepository) SoftDelete(
 		SET status = 'deleted', deleted_at = now(), updated_at = now()
 		WHERE id = $1 AND deleted_at IS NULL
 	`
-	tag, err := qe.Exec(ctx, query, userID)
+	tag, err := tx.Exec(ctx, query, userID)
 	if err != nil {
 		return fmt.Errorf("soft delete user: %w", err)
 	}

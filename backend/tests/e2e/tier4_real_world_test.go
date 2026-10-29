@@ -72,7 +72,7 @@ func TestTier4_RealWorld_CompleteCashOnDeliveryCheckout(t *testing.T) {
 	})
 
 	// Execute COD Checkout in single transaction (Rule 2)
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		// 1. Validate Customer
 		user, err := userRepo.GetByID(ctx, tx, userID)
 		if err != nil || user.Status != model.StatusActive {
@@ -156,7 +156,7 @@ func TestTier4_RealWorld_CompleteOnlineCardPaymentCheckout(t *testing.T) {
 	invRepo.SetStock(varID, 10, 0)
 
 	// Stage 1: Checkout places order and stock hold
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		if err := orderRepo.CreateOrder(ctx, tx, &model.Order{
 			ID:            orderID,
 			TotalAmount:   7500,
@@ -180,7 +180,7 @@ func TestTier4_RealWorld_CompleteOnlineCardPaymentCheckout(t *testing.T) {
 	require.Len(t, unreleased, 1)
 
 	// Stage 2: Payment Webhook arrives (payment captured) -> commit hold to sale
-	err = runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err = runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		if err := orderRepo.UpdateOrderStatus(ctx, tx, orderID, model.OrderStatusProcessing); err != nil {
 			return err
 		}
@@ -227,7 +227,7 @@ func TestTier4_RealWorld_OrderCancellationAndInventoryRestockFlow(t *testing.T) 
 	}))
 
 	// Cancel Order & Restock inside single transaction
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		// Verify current order state
 		o, err := orderRepo.GetOrderByID(ctx, tx, orderID)
 		if err != nil {
@@ -291,7 +291,7 @@ func TestTier4_RealWorld_MediaUploadWithCompensatingCleanupOnDBFailure(t *testin
 	assert.True(t, storageProvider.HasObject(bucket, key), "Blob must exist after upload")
 
 	// Step 2: Attempt DB transaction that fails (e.g. unique constraint conflict)
-	dbErr := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	dbErr := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		_ = objRepo.Create(ctx, tx, &model.Object{
 			ID:     uuid.New(),
 			Bucket: bucket,
@@ -328,7 +328,7 @@ func TestTier4_RealWorld_MediaUploadAndURLResolutionSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	// 2. Persist in DB
-	err = runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err = runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		return objRepo.Create(ctx, tx, &model.Object{
 			ID:          objID,
 			Bucket:      bucket,
@@ -355,7 +355,7 @@ func TestTier4_RealWorld_AdminPrivilegedActionAuditTrail(t *testing.T) {
 	settingKey := "store.maintenance_mode"
 	settingValue := "true"
 
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		// Perform mutation and audit log insertion together
 		return auditRepo.Insert(ctx, tx, &model.AuditLog{
 			ID:         101,

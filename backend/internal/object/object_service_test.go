@@ -98,6 +98,23 @@ func (f fakeExecutor) Query(context.Context, string, ...interface{}) (pgx.Rows, 
 
 func (f fakeExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Row { return f.row }
 
+type fakeTx struct {
+	fakeExecutor
+}
+
+func (f *fakeTx) Begin(context.Context) (pgx.Tx, error) { return f, nil }
+func (f *fakeTx) Commit(context.Context) error { return nil }
+func (f *fakeTx) Rollback(context.Context) error { return nil }
+func (f *fakeTx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) {
+	return 0, nil
+}
+func (f *fakeTx) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { return nil }
+func (f *fakeTx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) {
+	return nil, nil
+}
+func (f *fakeTx) Conn() *pgx.Conn { return nil }
+func (f *fakeTx) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
+
 type fakeRunner struct {
 	row     pgx.Row
 	txErr   error
@@ -105,11 +122,11 @@ type fakeRunner struct {
 	execErr error
 }
 
-func (f fakeRunner) WithTx(ctx context.Context, fn func(context.Context, database.QueryExecutor) error) error {
+func (f fakeRunner) WithTx(ctx context.Context, fn func(context.Context, *database.Tx) error) error {
 	if f.txErr != nil {
 		return f.txErr
 	}
-	return fn(ctx, fakeExecutor{row: f.row, execErr: f.execErr})
+	return fn(ctx, database.NewTx(&fakeTx{fakeExecutor: fakeExecutor{row: f.row, execErr: f.execErr}}))
 }
 
 func (f fakeRunner) WithExecutor(_ context.Context, fn func(database.QueryExecutor) error) error {

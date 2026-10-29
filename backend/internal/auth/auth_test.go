@@ -246,8 +246,8 @@ func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Suspended() {
 
 	userID := uuid.New()
 	_, err := s.db.Exec(context.Background(), `
-		INSERT INTO users (id, email, status, suspended_until, created_at, updated_at) 
-		VALUES ($1, $2, 'suspended', now() + interval '1 day', now(), now())`,
+		INSERT INTO users (id, email, full_name, status, suspended_until, created_at, updated_at) 
+		VALUES ($1, $2, 'Suspended User', 'suspended', now() + interval '1 day', now(), now())`,
 		userID, email)
 	s.Require().NoError(err)
 
@@ -281,8 +281,8 @@ func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Inactive() {
 
 	userID := uuid.New()
 	_, err := s.db.Exec(context.Background(), `
-		INSERT INTO users (id, email, status, created_at, updated_at) 
-		VALUES ($1, $2, 'inactive', now(), now())`,
+		INSERT INTO users (id, email, full_name, status, created_at, updated_at) 
+		VALUES ($1, $2, 'Inactive User', 'inactive', now(), now())`,
 		userID, email)
 	s.Require().NoError(err)
 
@@ -310,8 +310,8 @@ func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Locked() {
 
 	userID := uuid.New()
 	_, err := s.db.Exec(context.Background(), `
-		INSERT INTO users (id, email, status, locked_until, created_at, updated_at) 
-		VALUES ($1, $2, 'active', now() + interval '1 hour', now(), now())`,
+		INSERT INTO users (id, email, full_name, status, locked_until, created_at, updated_at) 
+		VALUES ($1, $2, 'Locked User', 'active', now() + interval '1 hour', now(), now())`,
 		userID, email)
 	s.Require().NoError(err)
 

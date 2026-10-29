@@ -113,7 +113,7 @@ func (s *UserService) CreateUser(
 		FullName:   fullName,
 	}
 
-	err := s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbExecutor.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		id, err := s.repo.Create(ctx, exec, u)
 		if err != nil {
 			mappedErr := database.MapError(err)
@@ -290,7 +290,7 @@ func (s *UserService) DeleteUserByID(
 		}
 	}
 
-	err = s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err = s.dbExecutor.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		return s.repo.SoftDelete(ctx, exec, userID)
 	})
 	if err != nil {
@@ -383,7 +383,7 @@ func (s *UserService) UpdateUserRole(
 	}
 
 	// Update role in database
-	err = s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err = s.dbExecutor.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		return s.repo.UpdateRole(ctx, exec, targetUserID, newRole)
 	})
 
@@ -463,7 +463,7 @@ func (s *UserService) UpdateAccountStatus(
 	// Update status in PostgreSQL. A deleted status is a real soft delete:
 	// status and deleted_at are set atomically so the account disappears from
 	// listings.
-	err = s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err = s.dbExecutor.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		if newStatus == model.StatusDeleted {
 			return s.repo.SoftDelete(ctx, exec, targetUserID)
 		}

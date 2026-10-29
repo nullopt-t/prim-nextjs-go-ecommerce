@@ -45,10 +45,19 @@ func (e paymentStatusExecutor) QueryRow(context.Context, string, ...interface{})
 	return paymentStatusRow{orderID: uuid.New()}
 }
 
+func (e paymentStatusExecutor) Begin(context.Context) (pgx.Tx, error) { return e, nil }
+func (e paymentStatusExecutor) Commit(context.Context) error { return nil }
+func (e paymentStatusExecutor) Rollback(context.Context) error { return nil }
+func (e paymentStatusExecutor) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) { return 0, nil }
+func (e paymentStatusExecutor) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { return nil }
+func (e paymentStatusExecutor) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) { return nil, nil }
+func (e paymentStatusExecutor) Conn() *pgx.Conn { return nil }
+func (e paymentStatusExecutor) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
+
 type paymentStatusRunner struct{ tag pgconn.CommandTag }
 
-func (r paymentStatusRunner) WithTx(_ context.Context, fn func(context.Context, database.QueryExecutor) error) error {
-	return fn(context.Background(), paymentStatusExecutor(r))
+func (r paymentStatusRunner) WithTx(_ context.Context, fn func(context.Context, *database.Tx) error) error {
+	return fn(context.Background(), database.NewTx(paymentStatusExecutor(r)))
 }
 
 func (r paymentStatusRunner) WithExecutor(_ context.Context, fn func(database.QueryExecutor) error) error {
@@ -100,11 +109,15 @@ func TestUpdatePaymentStatusValidation(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := order.NewService(paymentStatusRunner{tag: tc.tag}, order.NewRepository(), nil)
+			writer := &fakeInventoryWriter{}
+			svc := order.NewService(paymentStatusRunner{tag: tc.tag}, order.NewRepository(), nil, nil, writer)
 
 			err := svc.UpdatePaymentStatus(context.Background(), uuid.New(), tc.status)
 			if !tc.wantErr {
 				require.NoError(t, err)
+				// Capturing a payment is a sale: the holds must be committed
+				// through the inventory writer, on the order's transaction.
+				assert.Equal(t, 1, writer.commitCalls)
 				return
 			}
 
@@ -113,6 +126,7 @@ func TestUpdatePaymentStatusValidation(t *testing.T) {
 			require.True(t, errors.As(err, &apiErr))
 			assert.Equal(t, tc.wantStatus, apiErr.Status)
 			assert.Equal(t, tc.wantCode, apiErr.Code)
+			assert.Zero(t, writer.commitCalls, "a rejected update must not touch stock")
 		})
 	}
 }

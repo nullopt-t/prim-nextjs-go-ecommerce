@@ -43,7 +43,7 @@ func NewRepository() *BrandRepository {
 // Create inserts a new product brand matching the full table schema.
 func (br *BrandRepository) Create(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	brand *model.ProductBrand,
 ) error {
 	query := `
@@ -59,7 +59,7 @@ func (br *BrandRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err := qe.QueryRow(
+	err := tx.QueryRow(
 		ctx,
 		query,
 		brand.ID,
@@ -129,7 +129,7 @@ func (br *BrandRepository) GetByName(
 // Update dynamically updates present fields on active records.
 func (br *BrandRepository) Update(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	brandID uuid.UUID,
 	fields UpdateBrandFields,
 ) error {
@@ -173,7 +173,7 @@ func (br *BrandRepository) Update(
 
 	args = append(args, brandID)
 
-	cmd, err := qe.Exec(ctx, query, args...)
+	cmd, err := tx.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("update brand: %w", err)
 	}
@@ -367,35 +367,35 @@ func (br *BrandRepository) delete(
 // DeleteByID performs a soft-delete on an active brand by ID.
 func (br *BrandRepository) DeleteByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	brandID uuid.UUID,
 ) error {
 	if brandID == uuid.Nil {
 		panic("delete brand: brandID is required")
 	}
-	return br.delete(ctx, qe, "id = $1", brandID)
+	return br.delete(ctx, tx, "id = $1", brandID)
 }
 
 // DeleteByName performs a soft-delete on an active brand by name.
 func (br *BrandRepository) DeleteByName(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	name string,
 ) error {
 	if name == "" {
 		panic("delete brand: name is required")
 	}
-	return br.delete(ctx, qe, "name = $1", name)
+	return br.delete(ctx, tx, "name = $1", name)
 }
 
 // Delete performs a soft-delete on an active brand given the model instance.
 func (br *BrandRepository) Delete(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	brand *model.ProductBrand,
 ) error {
 	if brand == nil || brand.ID == uuid.Nil {
 		panic("delete brand: valid brand instance is required")
 	}
-	return br.delete(ctx, qe, "id = $1", brand.ID)
+	return br.delete(ctx, tx, "id = $1", brand.ID)
 }

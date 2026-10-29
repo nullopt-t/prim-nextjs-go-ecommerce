@@ -26,7 +26,7 @@ func NewWishlistRepository() *WishlistRepository {
 
 func (r *WishlistRepository) Create(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	item *model.WishlistItem,
 ) error {
 	query := `
@@ -34,7 +34,7 @@ func (r *WishlistRepository) Create(
 		VALUES ($1, $2, $3, $4, now())
 		RETURNING created_at
 	`
-	return qe.QueryRow(ctx, query, item.ID, item.UserID, item.ProductID, item.VariantID).Scan(&item.CreatedAt)
+	return tx.QueryRow(ctx, query, item.ID, item.UserID, item.ProductID, item.VariantID).Scan(&item.CreatedAt)
 }
 
 func (r *WishlistRepository) GetByID(
@@ -291,12 +291,12 @@ func (r *WishlistRepository) CountByUser(
 
 func (r *WishlistRepository) DeleteByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	id uuid.UUID,
 	userID uuid.UUID,
 ) error {
 	query := `DELETE FROM wishlist_items WHERE id = $1 AND user_id = $2`
-	tag, err := qe.Exec(ctx, query, id, userID)
+	tag, err := tx.Exec(ctx, query, id, userID)
 	if err != nil {
 		return err
 	}
@@ -323,14 +323,14 @@ func (r *WishlistRepository) GetVariantProductID(
 // If variantID is nil, removes only the generic product bookmark where variant_id IS NULL.
 func (r *WishlistRepository) DeleteByProduct(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	userID uuid.UUID,
 	productID uuid.UUID,
 	variantID *uuid.UUID,
 ) error {
 	if variantID != nil {
 		query := `DELETE FROM wishlist_items WHERE user_id = $1 AND product_id = $2 AND variant_id = $3`
-		tag, err := qe.Exec(ctx, query, userID, productID, *variantID)
+		tag, err := tx.Exec(ctx, query, userID, productID, *variantID)
 		if err != nil {
 			return err
 		}
@@ -341,7 +341,7 @@ func (r *WishlistRepository) DeleteByProduct(
 	}
 
 	query := `DELETE FROM wishlist_items WHERE user_id = $1 AND product_id = $2 AND variant_id IS NULL`
-	tag, err := qe.Exec(ctx, query, userID, productID)
+	tag, err := tx.Exec(ctx, query, userID, productID)
 	if err != nil {
 		return err
 	}
@@ -353,11 +353,11 @@ func (r *WishlistRepository) DeleteByProduct(
 
 func (r *WishlistRepository) ClearByUser(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	userID uuid.UUID,
 ) error {
 	query := `DELETE FROM wishlist_items WHERE user_id = $1`
-	_, err := qe.Exec(ctx, query, userID)
+	_, err := tx.Exec(ctx, query, userID)
 	return err
 }
 

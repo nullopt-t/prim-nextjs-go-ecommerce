@@ -19,10 +19,10 @@ func NewRepository() *ObjectRepository {
 
 func (or *ObjectRepository) Create(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	object *model.Object,
 ) error {
-	err := qe.QueryRow(
+	err := tx.QueryRow(
 		ctx,
 		`
 		INSERT INTO storage_objects (
@@ -53,11 +53,11 @@ func (or *ObjectRepository) Create(
 
 func (or *ObjectRepository) UpdateStatus(
 	ctx context.Context,
-	db database.QueryExecutor,
+	tx *database.Tx,
 	objectID uuid.UUID,
 	status model.ObjectStatus,
 ) error {
-	_, err := db.Exec(
+	_, err := tx.Exec(
 		ctx,
 		`
 		UPDATE storage_objects
@@ -76,10 +76,10 @@ func (or *ObjectRepository) UpdateStatus(
 // MarkDeletingByKey sets the status of a storage_objects row to 'deleting' by bucket+key.
 func (or *ObjectRepository) MarkDeletingByKey(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	bucket, key string,
 ) error {
-	_, err := qe.Exec(ctx,
+	_, err := tx.Exec(ctx,
 		`UPDATE storage_objects SET status = 'deleting', updated_at = now() WHERE bucket = $1 AND object_key = $2`,
 		bucket, key,
 	)
@@ -92,10 +92,10 @@ func (or *ObjectRepository) MarkDeletingByKey(
 // MarkDeletedByKey sets the status of a storage_objects row to 'deleted' by bucket+key.
 func (or *ObjectRepository) MarkDeletedByKey(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	bucket, key string,
 ) error {
-	_, err := qe.Exec(ctx,
+	_, err := tx.Exec(ctx,
 		`UPDATE storage_objects SET status = 'deleted', deleted_at = now(), updated_at = now() WHERE bucket = $1 AND object_key = $2`,
 		bucket, key,
 	)

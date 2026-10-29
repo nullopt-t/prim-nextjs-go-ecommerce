@@ -60,7 +60,7 @@ func (s *NotificationService) CreateNotification(
 	ctx context.Context,
 	n *model.UserNotification,
 ) error {
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		return s.repo.Create(ctx, exec, n)
 	})
 	if err != nil {
@@ -115,7 +115,7 @@ func (s *NotificationService) MarkAsRead(
 	ctx context.Context,
 	id int64, userID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		return s.repo.MarkAsRead(ctx, exec, id, userID)
 	})
 	if err != nil {
@@ -130,7 +130,7 @@ func (s *NotificationService) MarkAllAsRead(
 	userID uuid.UUID,
 ) (int64, error) {
 	var count int64
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		var err error
 		count, err = s.repo.MarkAllAsRead(ctx, exec, userID)
 		return err
@@ -146,7 +146,7 @@ func (s *NotificationService) DeleteNotification(
 	ctx context.Context,
 	id int64, userID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		return s.repo.Delete(ctx, exec, id, userID)
 	})
 	if err != nil {

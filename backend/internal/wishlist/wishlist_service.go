@@ -97,7 +97,7 @@ func (s *WishlistService) AddToWishlist(
 
 	var createdItem *model.WishlistItem
 
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		// 1. Validate product existence and publication status on tx
 		if s.productRepo != nil {
 			prod, err := s.productRepo.GetByID(ctx, tx, productID)
@@ -252,7 +252,7 @@ func (s *WishlistService) RemoveItem(
 	userID uuid.UUID,
 	itemID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		err := s.repo.DeleteByID(ctx, tx, itemID, userID)
 		if err != nil {
 			mappedErr := database.MapError(err)
@@ -279,7 +279,7 @@ func (s *WishlistService) RemoveByProductID(
 	productID uuid.UUID,
 	variantID *uuid.UUID,
 ) error {
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		err := s.repo.DeleteByProduct(ctx, tx, userID, productID, variantID)
 		if err != nil {
 			mappedErr := database.MapError(err)
@@ -304,7 +304,7 @@ func (s *WishlistService) ClearWishlist(
 	ctx context.Context,
 	userID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		return s.repo.ClearByUser(ctx, exec, userID)
 	})
 

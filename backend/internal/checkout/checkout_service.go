@@ -25,24 +25,31 @@ import (
 
 // CartRepository is the subset of cart persistence checkout needs.
 type CartRepository interface {
-	LockCartByUserID(ctx context.Context, qe database.QueryExecutor, userID uuid.UUID) error
+	LockCartByUserID(ctx context.Context, tx *database.Tx, userID uuid.UUID) error
 	GetCartByUserID(ctx context.Context, qe database.QueryExecutor, userID uuid.UUID) (*model.Cart, error)
 	GetCartBySessionID(ctx context.Context, qe database.QueryExecutor, sessionID string) (*model.Cart, error)
-	ClearCart(ctx context.Context, qe database.QueryExecutor, cartID uuid.UUID) error
 }
 
-// OrderWriter owns order creation because it enforces order invariants
-// (line-item validation, totals, status history). It participates in the
+// CartWriter owns cart mutation. Checkout hands it the executor it already
+// holds, so clearing the cart commits atomically with the order instead of
+// writing the cart domain's table directly.
+type CartWriter interface {
+	ClearItems(ctx context.Context, tx *database.Tx, cartID uuid.UUID) error
+}
+
+// OrderWriter owns order creation and payment recording because it enforces order invariants
+// (line-item validation, totals, status history, payment recording). It participates in the
 // caller's transaction without opening a second connection.
 type OrderWriter interface {
-	CreateOrderWithTx(ctx context.Context, tx *database.Tx, in *order.CreateOrderInput) (*model.Order, error)
+	PlaceOrder(ctx context.Context, tx *database.Tx, in *order.CreateOrderInput) (*model.Order, error)
+	RecordPayment(ctx context.Context, tx *database.Tx, in *order.CreatePaymentInput) (*model.Payment, error)
 }
 
 // StockWriter owns stock reservation/commitment invariants and participates in
 // the caller's transaction without opening a second connection.
 type StockWriter interface {
-	ReserveStockWithTx(ctx context.Context, tx *database.Tx, in inventory.ReserveStockInput) (*model.InventoryReservation, error)
-	CommitReservationsForOrderWithTx(ctx context.Context, tx *database.Tx, orderID uuid.UUID) error
+	HoldStock(ctx context.Context, tx *database.Tx, in inventory.ReserveStockInput) (*model.InventoryReservation, error)
+	CommitReservationsForOrder(ctx context.Context, tx *database.Tx, orderID uuid.UUID) error
 }
 
 // UserRepository is the subset of user persistence checkout needs.
@@ -60,8 +67,8 @@ type AddressRepository interface {
 // rules live in one place without opening a second connection.
 type CouponService interface {
 	GetCodeByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (string, error)
-	ApplyByCode(ctx context.Context, exec database.QueryExecutor, code string, grossTotal int64, userID *uuid.UUID) (*coupon.AppliedCoupon, error)
-	RecordRedemption(ctx context.Context, exec database.QueryExecutor, couponID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, discountAmount int64, currency string) error
+	ApplyByCode(ctx context.Context, tx *database.Tx, code string, grossTotal int64, userID *uuid.UUID) (*coupon.AppliedCoupon, error)
+	RecordRedemption(ctx context.Context, tx *database.Tx, couponID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, discountAmount int64, currency string) error
 }
 
 // VariantRepository is the subset of variant persistence checkout needs for
@@ -82,11 +89,6 @@ type ObjectRepository interface {
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error)
 }
 
-// PaymentRepository persists payment records owned by the order domain.
-type PaymentRepository interface {
-	CreatePayment(ctx context.Context, qe database.QueryExecutor, p *model.Payment) error
-}
-
 // SettingsProvider exposes the effective store configuration used to price
 // orders (shipping, taxes, payment availability, reservation TTL).
 type SettingsProvider interface {
@@ -95,6 +97,7 @@ type SettingsProvider interface {
 
 type CheckoutService struct {
 	cartRepo      CartRepository
+	cartWriter    CartWriter
 	orderWriter   OrderWriter
 	stockWriter   StockWriter
 	userRepo      UserRepository
@@ -103,7 +106,6 @@ type CheckoutService struct {
 	variantRepo   VariantRepository
 	productRepo   ProductRepository
 	objectRepo    ObjectRepository
-	paymentRepo   PaymentRepository
 	storage       storage.StorageProvider
 	settings      SettingsProvider
 	runner        database.Runner
@@ -111,6 +113,7 @@ type CheckoutService struct {
 
 func NewService(
 	cartRepo CartRepository,
+	cartWriter CartWriter,
 	orderWriter OrderWriter,
 	stockWriter StockWriter,
 	userRepo UserRepository,
@@ -119,13 +122,13 @@ func NewService(
 	variantRepo VariantRepository,
 	productRepo ProductRepository,
 	objectRepo ObjectRepository,
-	paymentRepo PaymentRepository,
 	storageProvider storage.StorageProvider,
 	settings SettingsProvider,
 	runner database.Runner,
 ) *CheckoutService {
 	return &CheckoutService{
 		cartRepo:      cartRepo,
+		cartWriter:    cartWriter,
 		orderWriter:   orderWriter,
 		stockWriter:   stockWriter,
 		userRepo:      userRepo,
@@ -134,7 +137,6 @@ func NewService(
 		variantRepo:   variantRepo,
 		productRepo:   productRepo,
 		objectRepo:    objectRepo,
-		paymentRepo:   paymentRepo,
 		storage:       storageProvider,
 		settings:      settings,
 		runner:        runner,
@@ -221,13 +223,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 	// and redemption, stock reservation, order creation, payment recording, and
 	// cart clearance. Any failure rolls everything back (including reservations),
 	// so there is no deducted-but-no-order or order-without-payment outcome.
-	err := s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		dbTx, ok := tx.(*database.Tx)
-		if !ok {
-			return apierr.InternalServerError("Checkout requires a database transaction").
-				WithCode(apierr.CodeInternalError)
-		}
-
+	err := s.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		// 1. Lock the customer's cart FOR UPDATE so concurrent checkouts serialize.
 		//    Without the lock two requests can both read the same items, acquire
 		//    variant locks in different orders, and deadlock (or create duplicate
@@ -464,7 +460,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		}
 
 		var createErr error
-		createdOrder, createErr = s.orderWriter.CreateOrderWithTx(ctx, dbTx, orderIn)
+		createdOrder, createErr = s.orderWriter.PlaceOrder(ctx, tx, orderIn)
 		if createErr != nil {
 			return createErr
 		}
@@ -485,7 +481,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			})
 
 			for _, item := range sortedItems {
-				if _, err := s.stockWriter.ReserveStockWithTx(ctx, dbTx, inventory.ReserveStockInput{
+				if _, err := s.stockWriter.HoldStock(ctx, tx, inventory.ReserveStockInput{
 					VariantID: item.VariantID,
 					CartID:    &cart.ID,
 					OrderID:   &createdOrder.ID,
@@ -503,7 +499,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			// legitimate COD order. Card orders keep their hold until the
 			// payment is captured.
 			if isCOD {
-				if err := s.stockWriter.CommitReservationsForOrderWithTx(ctx, dbTx, createdOrder.ID); err != nil {
+				if err := s.stockWriter.CommitReservationsForOrder(ctx, tx, createdOrder.ID); err != nil {
 					return err
 				}
 			}
@@ -516,7 +512,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 				redemptionCurrency = createdOrder.Currency
 			}
 			if err := s.couponService.RecordRedemption(
-				ctx, dbTx, *appliedCouponID, in.CustomerID, createdOrder.ID, totalDiscount, redemptionCurrency,
+				ctx, tx, *appliedCouponID, in.CustomerID, createdOrder.ID, totalDiscount, redemptionCurrency,
 			); err != nil {
 				return s.handleError(err, "Failed to record coupon redemption")
 			}
@@ -529,8 +525,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			providerTxID = fmt.Sprintf("PAY-%s", createdOrder.ID.String()[:8])
 		}
 
-		payment := &model.Payment{
-			ID:                    uuid.New(),
+		paymentIn := &order.CreatePaymentInput{
 			OrderID:               createdOrder.ID,
 			Amount:                createdOrder.TotalAmount,
 			Currency:              createdOrder.Currency,
@@ -539,13 +534,13 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			Provider:              provider,
 			ProviderTransactionID: &providerTxID,
 		}
-		if err := s.paymentRepo.CreatePayment(ctx, tx, payment); err != nil {
+		if _, err := s.orderWriter.RecordPayment(ctx, tx, paymentIn); err != nil {
 			return s.handleError(err, "Failed to record payment")
 		}
 
 		// 10. Clear the cart inside the same transaction so checkout and cart
 		//     clearance commit atomically (no duplicate orders from a failed clear).
-		if err := s.cartRepo.ClearCart(ctx, tx, cart.ID); err != nil {
+		if err := s.cartWriter.ClearItems(ctx, tx, cart.ID); err != nil {
 			return s.handleError(err, "Failed to clear cart")
 		}
 
@@ -582,7 +577,7 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 
 	// One read connection for the whole use case: cart pricing, coupon lookup and
 	// redemption counts all run on the same QueryExecutor (no connection hopping).
-	err := s.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.runner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		if userID != nil || sessionID != nil {
 			var (
 				cartData *model.Cart

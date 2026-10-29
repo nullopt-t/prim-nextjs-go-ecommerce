@@ -191,7 +191,7 @@ func (s *CartService) GetOrCreateCart(
 	sessionID *string,
 ) (*model.Cart, error) {
 	var cart *model.Cart
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		var err error
 		if userID != nil {
 			cart, err = s.cartRepo.GetCartByUserID(ctx, tx, *userID)
@@ -283,7 +283,7 @@ func (s *CartService) AddItem(
 	}
 
 	var cart *model.Cart
-	txErr := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	txErr := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		v, getErr := s.variantRepo.GetByID(ctx, tx, variantID)
 		if getErr != nil {
 			return apierr.NotFoundError("Variant not found").
@@ -358,7 +358,7 @@ func (s *CartService) UpdateCartItemQuantity(
 	}
 
 	var cart *model.Cart
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		// Validate the target item and the requested quantity against stock on
 		// the same transaction before mutating, so an over-limit update is
 		// rejected (INSUFFICIENT_INVENTORY) instead of silently persisted.
@@ -429,7 +429,7 @@ func (s *CartService) RemoveCartItem(
 	itemID int64,
 ) (*model.Cart, error) {
 	var cart *model.Cart
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		if err := s.cartRepo.RemoveItem(ctx, tx, cartID, itemID); err != nil {
 			return err
 		}
@@ -456,12 +456,23 @@ func (s *CartService) RemoveCartItem(
 	return cart, nil
 }
 
+// ClearItems empties the cart's line items on the caller's executor. Checkout
+// calls this inside its own transaction so cart clearance commits with order
+// creation instead of opening a second connection.
+func (s *CartService) ClearItems(
+	ctx context.Context,
+	tx *database.Tx,
+	cartID uuid.UUID,
+) error {
+	return s.cartRepo.ClearCart(ctx, tx, cartID)
+}
+
 func (s *CartService) ClearCart(
 	ctx context.Context,
 	cartID uuid.UUID,
 ) error {
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		return s.cartRepo.ClearCart(ctx, tx, cartID)
+	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+		return s.ClearItems(ctx, tx, cartID)
 	})
 	if err != nil {
 		return apierr.InternalServerError("Failed to clear cart").
@@ -478,7 +489,7 @@ func (s *CartService) MergeGuestCart(
 	sessionID string,
 	userID uuid.UUID,
 ) error {
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		guestCart, gErr := s.cartRepo.GetCartBySessionID(ctx, tx, sessionID)
 		if gErr != nil {
 			if errors.Is(database.MapError(gErr), database.ErrNotFound) {

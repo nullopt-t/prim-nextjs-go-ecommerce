@@ -18,11 +18,11 @@ import (
 )
 
 type ObjectRepository interface {
-	Create(ctx context.Context, qe database.QueryExecutor, object *model.Object) error
+	Create(ctx context.Context, tx *database.Tx, object *model.Object) error
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error)
 	GetByIDs(ctx context.Context, qe database.QueryExecutor, ids []uuid.UUID) ([]*model.Object, error)
-	MarkDeletingByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error
-	MarkDeletedByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error
+	MarkDeletingByKey(ctx context.Context, tx *database.Tx, bucket, key string) error
+	MarkDeletedByKey(ctx context.Context, tx *database.Tx, bucket, key string) error
 }
 
 type BrandService struct {
@@ -100,7 +100,7 @@ func (bs *BrandService) CreateBrand(
 		Link: in.Link,
 	}
 
-	err := bs.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := bs.runner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		return bs.brandRepo.Create(ctx, exec, brand)
 	})
 
@@ -152,7 +152,7 @@ func (bs *BrandService) UpdateBrand(
 		fields.Name = &name
 	}
 
-	err := bs.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := bs.runner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 		return bs.brandRepo.Update(ctx, exec, brandID, fields)
 	})
 
@@ -239,7 +239,7 @@ func (bs *BrandService) DeleteBrandByID(
 	}
 
 	// Execute within a transaction so brand check and soft-delete are atomic
-	err := bs.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := bs.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return bs.brandRepo.DeleteByID(ctx, tx, id)
 	})
 
@@ -311,7 +311,7 @@ func (bs *BrandService) UploadBrandLogo(
 
 	var oldLogoObj *model.Object
 
-	txErr := bs.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	txErr := bs.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		brand, bErr := bs.brandRepo.GetByID(ctx, tx, brandID)
 		if bErr != nil {
 			return bErr
@@ -345,7 +345,7 @@ func (bs *BrandService) UploadBrandLogo(
 
 	if oldLogoObj != nil {
 		if delErr := bs.storageProvider.Delete(ctx, oldLogoObj.Bucket, oldLogoObj.Key); delErr == nil {
-			_ = bs.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+			_ = bs.runner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 				return bs.objectRepo.MarkDeletedByKey(ctx, exec, oldLogoObj.Bucket, oldLogoObj.Key)
 			})
 		}

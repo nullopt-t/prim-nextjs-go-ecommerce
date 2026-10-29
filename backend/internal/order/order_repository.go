@@ -28,7 +28,7 @@ func NewRepository() *Repository {
 // It serializes the structured ShippingAddress value to JSONB and scans the server-assigned timestamps.
 func (r *Repository) CreateOrder(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	o *model.Order,
 ) error {
 	shippingJSON, err := json.Marshal(o.ShippingAddress)
@@ -44,7 +44,7 @@ func (r *Repository) CreateOrder(
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now(), now())
 		RETURNING created_at, updated_at
 	`
-	err = qe.QueryRow(
+	err = tx.QueryRow(
 		ctx,
 		query,
 		o.ID,
@@ -72,14 +72,14 @@ func (r *Repository) CreateOrder(
 // It records the variant ID, quantity, purchase price, and the immutable product snapshot.
 func (r *Repository) AddOrderItem(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	item *model.OrderItem,
 ) error {
 	query := `
 		INSERT INTO order_items (id, order_id, variant_id, quantity, price_at_purchase, product_snapshot)
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`
-	_, err := qe.Exec(
+	_, err := tx.Exec(
 		ctx,
 		query,
 		item.ID,
@@ -99,7 +99,7 @@ func (r *Repository) AddOrderItem(
 // recording state transitions, optional operational notes, and timestamps.
 func (r *Repository) AddStatusHistory(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	orderID uuid.UUID,
 	status model.OrderStatus,
 	notes *string,
@@ -108,7 +108,7 @@ func (r *Repository) AddStatusHistory(
 		INSERT INTO order_status_history (order_id, status, notes, created_at)
 		VALUES ($1, $2, $3, now())
 	`
-	_, err := qe.Exec(ctx, query, orderID, status, notes)
+	_, err := tx.Exec(ctx, query, orderID, status, notes)
 	if err != nil {
 		return fmt.Errorf("add status history: %w", err)
 	}
@@ -408,7 +408,7 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 // Returns pgx.ErrNoRows if the target order ID was not found.
 func (r *Repository) UpdateOrderStatus(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	orderID uuid.UUID,
 	status model.OrderStatus,
 ) error {
@@ -417,7 +417,7 @@ func (r *Repository) UpdateOrderStatus(
 		SET status = $1, updated_at = NOW()
 		WHERE id = $2
 	`
-	tag, err := qe.Exec(ctx, query, status, orderID)
+	tag, err := tx.Exec(ctx, query, status, orderID)
 	if err != nil {
 		return fmt.Errorf("update order status: %w", err)
 	}
@@ -775,9 +775,9 @@ func (r *Repository) ListPayments(ctx context.Context, qe database.QueryExecutor
 	return payments, page, nil
 }
 
-func (r *Repository) UpdatePaymentStatus(ctx context.Context, qe database.QueryExecutor, id uuid.UUID, status string) error {
+func (r *Repository) UpdatePaymentStatus(ctx context.Context, tx *database.Tx, id uuid.UUID, status string) error {
 	query := `UPDATE payments SET status = $1::payment_status, updated_at = NOW() WHERE id = $2`
-	tag, err := qe.Exec(ctx, query, status, id)
+	tag, err := tx.Exec(ctx, query, status, id)
 	if err != nil {
 		return err
 	}
@@ -811,9 +811,9 @@ func (r *Repository) GetPaymentOrderIDForUpdate(ctx context.Context, qe database
 	return orderID, nil
 }
 
-func (r *Repository) UpdateOrderTracking(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID, trackingNumber string) error {
+func (r *Repository) UpdateOrderTracking(ctx context.Context, tx *database.Tx, orderID uuid.UUID, trackingNumber string) error {
 	query := `UPDATE orders SET tracking_number = $1, updated_at = NOW() WHERE id = $2`
-	tag, err := qe.Exec(ctx, query, trackingNumber, orderID)
+	tag, err := tx.Exec(ctx, query, trackingNumber, orderID)
 	if err != nil {
 		return fmt.Errorf("update order tracking: %w", err)
 	}
@@ -826,12 +826,12 @@ func (r *Repository) UpdateOrderTracking(ctx context.Context, qe database.QueryE
 // CreatePayment records a payment transaction for an order on the caller's
 // query executor. The order domain owns the payments table, so other domains
 // persist payment records through this method rather than raw SQL.
-func (r *Repository) CreatePayment(ctx context.Context, qe database.QueryExecutor, p *model.Payment) error {
+func (r *Repository) CreatePayment(ctx context.Context, tx *database.Tx, p *model.Payment) error {
 	query := `
 		INSERT INTO payments (id, order_id, amount, currency, status, provider, provider_transaction_id, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
 	`
-	if _, err := qe.Exec(
+	if _, err := tx.Exec(
 		ctx,
 		query,
 		p.ID,
@@ -869,13 +869,13 @@ func (r *Repository) RefundOrFailPaymentsForOrder(ctx context.Context, qe databa
 // FailPendingPaymentsForOrder marks never-captured payments as failed. It is
 // used when an unpaid order's stock hold lapses, so stale payments no longer
 // look receivable.
-func (r *Repository) FailPendingPaymentsForOrder(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID) error {
+func (r *Repository) FailPendingPaymentsForOrder(ctx context.Context, tx *database.Tx, orderID uuid.UUID) error {
 	query := `
 		UPDATE payments
 		SET status = 'failed'::payment_status, updated_at = now()
 		WHERE order_id = $1 AND status IN ('pending'::payment_status, 'authorized'::payment_status)
 	`
-	if _, err := qe.Exec(ctx, query, orderID); err != nil {
+	if _, err := tx.Exec(ctx, query, orderID); err != nil {
 		return fmt.Errorf("fail pending payments for order: %w", err)
 	}
 	return nil

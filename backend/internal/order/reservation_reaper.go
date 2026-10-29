@@ -14,7 +14,7 @@ import (
 //
 // Business rationale: a checkout places a short-lived hold on stock. If the
 // customer never pays, the hold must be resolved or it would strand inventory
-// indefinitely. Paid orders are handled by CommitReservationsForOrderWithTx
+// indefinitely. Paid orders are handled by CommitReservationsForOrder
 // (payment capture); this reaper handles the "never paid" branch.
 //
 // Safety: ReapExpiredReservations locks each order and only cancels it while it

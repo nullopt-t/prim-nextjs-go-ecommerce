@@ -51,7 +51,7 @@ func (ts *TagService) CreateTag(
 		Name: name,
 	}
 
-	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return ts.repo.Create(ctx, tx, tag)
 	})
 
@@ -104,7 +104,7 @@ func (ts *TagService) UpdateTag(
 		fields.Name = &name
 	}
 
-	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return ts.repo.Update(ctx, tx, tagID, fields)
 	})
 
@@ -166,7 +166,7 @@ func (ts *TagService) DeleteTagByID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return ts.repo.Delete(ctx, tx, tagID)
 	})
 
@@ -187,7 +187,7 @@ func (ts *TagService) ReplaceProductTags(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return ts.repo.ReplaceTagsForProduct(ctx, tx, productID, tagIDs)
 	})
 

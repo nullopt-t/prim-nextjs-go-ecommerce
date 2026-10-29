@@ -34,6 +34,23 @@ func (m *mockQE) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row 
 	return nil
 }
 
+type mockQETx struct {
+	*mockQE
+}
+
+func (m *mockQETx) Begin(context.Context) (pgx.Tx, error) { return m, nil }
+func (m *mockQETx) Commit(context.Context) error { return nil }
+func (m *mockQETx) Rollback(context.Context) error { return nil }
+func (m *mockQETx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) {
+	return 0, nil
+}
+func (m *mockQETx) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { return nil }
+func (m *mockQETx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) {
+	return nil, nil
+}
+func (m *mockQETx) Conn() *pgx.Conn { return nil }
+func (m *mockQETx) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
+
 type mockConnectionTrackingRunner struct {
 	withDBCalls int
 	withTxCalls int
@@ -45,9 +62,9 @@ func (m *mockConnectionTrackingRunner) WithExecutor(ctx context.Context, fn func
 	return fn(m.qe)
 }
 
-func (m *mockConnectionTrackingRunner) WithTx(ctx context.Context, fn func(context.Context, database.QueryExecutor) error) error {
+func (m *mockConnectionTrackingRunner) WithTx(ctx context.Context, fn func(context.Context, *database.Tx) error) error {
 	m.withTxCalls++
-	return fn(ctx, m.qe)
+	return fn(ctx, database.NewTx(&mockQETx{mockQE: m.qe}))
 }
 
 type fakeVariantRepoForInvariants struct {
@@ -77,7 +94,7 @@ func (f *fakeVariantRepoForInvariants) ListMediaByVariantIDs(ctx context.Context
 	return nil, nil
 }
 
-func TestAdversarial_PublishProduct_SingleWithExecutor(t *testing.T) {
+func TestAdversarial_PublishProduct_SingleWithTx(t *testing.T) {
 	qe := &mockQE{}
 	runner := &mockConnectionTrackingRunner{qe: qe}
 	prodID := uuid.New()
@@ -97,9 +114,9 @@ func TestAdversarial_PublishProduct_SingleWithExecutor(t *testing.T) {
 	err := svc.PublishProduct(context.Background(), prodID)
 	require.NoError(t, err)
 
-	// Invariant check: Exactly one WithExecutor call, zero WithTx calls
-	assert.Equal(t, 1, runner.withDBCalls, "PublishProduct must use exactly one WithExecutor")
-	assert.Equal(t, 0, runner.withTxCalls, "PublishProduct must NOT use WithTx")
+	// Invariant check: Exactly one WithTx call, zero WithExecutor calls
+	assert.Equal(t, 0, runner.withDBCalls, "PublishProduct must NOT use WithExecutor")
+	assert.Equal(t, 1, runner.withTxCalls, "PublishProduct must use exactly one WithTx")
 }
 
 func TestAdversarial_SetDefaultVariant_SingleWithTx(t *testing.T) {

@@ -60,18 +60,37 @@ type CreateOrderInput struct {
 	Items []CreateOrderItemInput
 }
 
-// InventoryRepository defines the subset of inventory persistence the order domain
-// needs for restocking cancelled orders, releasing reservations, and committing
-// payment captures — all on the caller's transaction.
+// CreatePaymentInput defines the parameters for recording a payment transaction on an order.
+type CreatePaymentInput struct {
+	OrderID               uuid.UUID
+	Amount                int64
+	Currency              string
+	Status                model.PaymentStatus
+	Type                  string
+	Provider              string
+	ProviderTransactionID *string
+}
+
+// InventoryRepository is the read-only subset of inventory persistence the order
+// domain needs. Reads carry no invariants, so the consumer-owned repository keeps
+// order independent of the inventory service for lookups.
 type InventoryRepository interface {
-	// CreateLedger writes an inventory ledger entry (e.g. 'return' on cancel) within the caller's tx.
-	CreateLedger(ctx context.Context, qe database.QueryExecutor, ledger *model.InventoryLedger) error
-	// ReleaseReservationsForOrder releases active stock holds for the given order within the caller's tx.
-	ReleaseReservationsForOrder(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID) (int64, error)
-	// CommitReservationsForOrder turns holds into deductions for the given order within the caller's tx.
-	CommitReservationsForOrder(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID) error
 	// ExpiredReservationOrderIDs lists orders whose reservation TTL has elapsed.
 	ExpiredReservationOrderIDs(ctx context.Context, qe database.QueryExecutor) ([]uuid.UUID, error)
+}
+
+// InventoryWriter owns the stock invariants the order lifecycle depends on:
+// appending compensating ledger entries and releasing or committing reservations.
+// It participates in the caller's transaction — every method receives the
+// executor the order use case already holds, so stock and order state commit
+// atomically.
+type InventoryWriter interface {
+	// ApplyStockAdjustment appends a signed ledger entry within the caller's tx.
+	ApplyStockAdjustment(ctx context.Context, tx *database.Tx, in inventory.AdjustStockInput) error
+	// ReleaseReservationsForOrder releases live holds and reports how many.
+	ReleaseReservationsForOrder(ctx context.Context, tx *database.Tx, orderID uuid.UUID) (int64, error)
+	// CommitReservationsForOrder turns holds into deductions on payment capture.
+	CommitReservationsForOrder(ctx context.Context, tx *database.Tx, orderID uuid.UUID) error
 }
 
 // OrderService orchestrates database transactions, order status state machine validation,
@@ -81,30 +100,32 @@ type OrderService struct {
 	orderRepo     *Repository
 	logger        log.Logger
 	inventoryRepo InventoryRepository
+	inventory     InventoryWriter
 }
 
-// NewService instantiates an OrderService with database runner, order repository, logger, and optional inventory repository dependencies.
+// NewService instantiates an OrderService with its database runner, order
+// repository, logger, inventory read repository, and the inventory writer that
+// owns stock mutation invariants.
 func NewService(
 	r database.Runner,
 	orderRepo *Repository,
 	logger log.Logger,
-	inventoryRepo ...InventoryRepository,
+	inventoryRepo InventoryRepository,
+	inventoryWriter InventoryWriter,
 ) *OrderService {
-	s := &OrderService{
-		qexecutor: r,
-		orderRepo: orderRepo,
-		logger:    logger,
+	return &OrderService{
+		qexecutor:     r,
+		orderRepo:     orderRepo,
+		logger:        logger,
+		inventoryRepo: inventoryRepo,
+		inventory:     inventoryWriter,
 	}
-	if len(inventoryRepo) > 0 {
-		s.inventoryRepo = inventoryRepo[0]
-	}
-	return s
 }
 
-// CreateOrderWithTx creates an order and its associated line items inside the
+// PlaceOrder creates an order and its associated line items inside the
 // caller's database transaction, so checkout can atomically bundle stock
 // reservation, coupon redemption, and payment recording with order creation.
-func (s *OrderService) CreateOrderWithTx(
+func (s *OrderService) PlaceOrder(
 	ctx context.Context,
 	tx *database.Tx,
 	in *CreateOrderInput,
@@ -193,6 +214,32 @@ func (s *OrderService) CreateOrderWithTx(
 	return newOrder, nil
 }
 
+// RecordPayment records a payment transaction for an order within the caller's transaction.
+func (s *OrderService) RecordPayment(ctx context.Context, tx *database.Tx, in *CreatePaymentInput) (*model.Payment, error) {
+	if in.OrderID == uuid.Nil {
+		return nil, apierr.BadRequestError("Order ID is required")
+	}
+	if in.Amount < 0 {
+		return nil, apierr.BadRequestError("Payment amount cannot be negative")
+	}
+
+	p := &model.Payment{
+		ID:                    uuid.New(),
+		OrderID:               in.OrderID,
+		Amount:                in.Amount,
+		Currency:              in.Currency,
+		Status:                in.Status,
+		Type:                  in.Type,
+		Provider:              in.Provider,
+		ProviderTransactionID: in.ProviderTransactionID,
+	}
+
+	if err := s.orderRepo.CreatePayment(ctx, tx, p); err != nil {
+		return nil, s.handleError(err, "Failed to record payment transaction")
+	}
+	return p, nil
+}
+
 // CreateOrder creates an order and its associated line items within an atomic database transaction.
 // It computes the gross total, applies discount deductions, persists the initial 'pending' status,
 // and creates the initial status history audit trail.
@@ -200,14 +247,9 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 	var createdOrder *model.Order
 
 	// Execute within an atomic transaction.
-	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		dbTx, ok := tx.(*database.Tx)
-		if !ok {
-			return apierr.InternalServerError("Order creation requires a database transaction").
-				WithCode(apierr.CodeInternalError)
-		}
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		var err error
-		createdOrder, err = s.CreateOrderWithTx(ctx, dbTx, in)
+		createdOrder, err = s.PlaceOrder(ctx, tx, in)
 		return err
 	})
 
@@ -229,27 +271,22 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 	return createdOrder, nil
 }
 
-// restockItems writes a compensating 'return' ledger entry for each line item,
-// restoring previously deducted units to salable stock. On-hand stock is
-// derived from the ledger sum, so the ledger entry is the restock. It runs
-// entirely on the caller's transaction; the inventory repository owns the SQL.
+// restockItems asks the inventory domain to append a compensating 'return'
+// ledger entry for each line item, restoring previously deducted units to
+// salable stock. On-hand stock is derived from the ledger sum, so the entry is
+// the restock. The inventory writer runs it on the caller's transaction.
 func (s *OrderService) restockItems(
 	ctx context.Context,
-	tx database.QueryExecutor,
+	tx *database.Tx,
 	items []model.OrderItem,
 ) error {
-	if s.inventoryRepo == nil {
-		return apierr.InternalServerError("Inventory repository is not configured").
-			WithCode(apierr.CodeInternalError)
-	}
-
 	for _, item := range items {
-		ledger := &model.InventoryLedger{
+		in := inventory.AdjustStockInput{
 			VariantID: item.VariantID,
 			Quantity:  item.Quantity,
-			Reason:    model.InventoryReasonReturn,
+			Reason:    string(model.InventoryReasonReturn),
 		}
-		if err := s.inventoryRepo.CreateLedger(ctx, tx, ledger); err != nil {
+		if err := s.inventory.ApplyStockAdjustment(ctx, tx, in); err != nil {
 			return fmt.Errorf("restore inventory for order item %s: %w", item.ID, err)
 		}
 	}
@@ -261,7 +298,7 @@ func (s *OrderService) restockItems(
 // inventory for a cancelled order (see releaseOrRestockCancelItems).
 func (s *OrderService) releaseOrRestockOnCancel(
 	ctx context.Context,
-	tx database.QueryExecutor,
+	tx *database.Tx,
 	orderID uuid.UUID,
 ) error {
 	items, err := s.orderRepo.GetOrderItems(ctx, tx, orderID)
@@ -285,18 +322,16 @@ func (s *OrderService) releaseOrRestockOnCancel(
 // unpaid order added stock that had never been removed.
 func (s *OrderService) releaseOrRestockCancelItems(
 	ctx context.Context,
-	tx database.QueryExecutor,
+	tx *database.Tx,
 	orderID uuid.UUID,
 	items []model.OrderItem,
 ) error {
-	if s.inventoryRepo != nil {
-		released, err := s.inventoryRepo.ReleaseReservationsForOrder(ctx, tx, orderID)
-		if err != nil {
-			return fmt.Errorf("release reservations for cancelled order %s: %w", orderID, err)
-		}
-		if released > 0 {
-			return nil
-		}
+	released, err := s.inventory.ReleaseReservationsForOrder(ctx, tx, orderID)
+	if err != nil {
+		return fmt.Errorf("release reservations for cancelled order %s: %w", orderID, err)
+	}
+	if released > 0 {
+		return nil
 	}
 	return s.restockItems(ctx, tx, items)
 }
@@ -489,7 +524,7 @@ func CanTransitionOrderStatus(current, next model.OrderStatus) bool {
 // UpdateOrderStatus modifies an existing order's state after validating the state machine transition.
 // It executes within a transaction and inserts an audit log entry in order_status_history.
 func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, status model.OrderStatus, notes *string) error {
-	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		// Acquire an exclusive FOR UPDATE row-level lock on the order to prevent concurrent race conditions
 		// during status transitions.
 		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
@@ -547,7 +582,7 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 // CancelOrder handles customer-initiated cancellation for pending or confirmed orders.
 // Verifies customer authorization and valid transition before setting status to cancelled.
 func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID uuid.UUID) error {
-	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
@@ -604,10 +639,6 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 // UPDATE and only transitions while still pending, so concurrent runs are
 // idempotent (the loser observes a non-pending status and does nothing).
 func (s *OrderService) ReapExpiredReservations(ctx context.Context) (int, error) {
-	if s.inventoryRepo == nil {
-		return 0, nil
-	}
-
 	var orderIDs []uuid.UUID
 	if err := s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
@@ -639,7 +670,7 @@ func (s *OrderService) ReapExpiredReservations(ctx context.Context) (int, error)
 // single transaction, reporting whether a transition occurred.
 func (s *OrderService) expirePendingOrder(ctx context.Context, orderID uuid.UUID) (bool, error) {
 	didCancel := false
-	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, orderID)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
@@ -667,7 +698,7 @@ func (s *OrderService) expirePendingOrder(ctx context.Context, orderID uuid.UUID
 
 		// The hold lapsed without ever being committed, so there is no stock to
 		// restock — releasing the reservation is the complete reversal.
-		if _, err := s.inventoryRepo.ReleaseReservationsForOrder(ctx, tx, orderID); err != nil {
+		if _, err := s.inventory.ReleaseReservationsForOrder(ctx, tx, orderID); err != nil {
 			return err
 		}
 
@@ -718,7 +749,7 @@ func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, st
 	if !model.PaymentStatus(status).IsValid() {
 		return apierr.BadRequestError(fmt.Sprintf("Invalid payment status '%s'", status)).WithCode(apierr.CodeInvalidInput)
 	}
-	return s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	return s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		// Lock the payment row and resolve its order up front.
 		orderID, err := s.orderRepo.GetPaymentOrderIDForUpdate(ctx, tx, id)
 		if err != nil {
@@ -736,14 +767,10 @@ func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, st
 		}
 
 		// Capture = sale. Commit the order's holds (deduct on-hand stock). The
-		// operation is idempotent, so re-capturing cannot double-deduct.
-		if status == string(model.StatusCaptured) && s.inventoryRepo != nil {
-			if err := s.inventoryRepo.CommitReservationsForOrder(ctx, tx, orderID); err != nil {
-				if errors.Is(err, inventory.ErrInsufficientStock) {
-					return apierr.BadRequestError(
-						fmt.Sprintf("Insufficient physical on-hand stock to capture payment for order %s", orderID),
-					).WithCode(errcode.CodeInsufficientInventory)
-				}
+		// operation is idempotent, so re-capturing cannot double-deduct. The
+		// inventory service owns the insufficient-stock error mapping.
+		if status == string(model.StatusCaptured) {
+			if err := s.inventory.CommitReservationsForOrder(ctx, tx, orderID); err != nil {
 				return s.handleError(err, "Failed to update payment status")
 			}
 		}
@@ -753,7 +780,7 @@ func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, st
 
 // RefundPayment sets the payment status to refunded.
 func (s *OrderService) RefundPayment(ctx context.Context, id uuid.UUID) error {
-	return s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	return s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		status, err := s.orderRepo.GetPaymentStatusForUpdate(ctx, tx, id)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
@@ -778,7 +805,7 @@ func (s *OrderService) RefundPayment(ctx context.Context, id uuid.UUID) error {
 
 // UpdateOrderTracking updates the carrier tracking number for an order.
 func (s *OrderService) UpdateOrderTracking(ctx context.Context, id uuid.UUID, trackingNumber string) error {
-	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return s.orderRepo.UpdateOrderTracking(ctx, tx, id, trackingNumber)
 	})
 	if err != nil {

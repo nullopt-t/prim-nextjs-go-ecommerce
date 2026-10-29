@@ -68,8 +68,9 @@ func main() {
 	inventoryRepo := inventory.NewRepository()
 	// The worker only drives reservation expiry, which never resolves image
 	// URLs, so the object URL resolver is intentionally nil here.
+	inventoryService := inventory.NewService(logger, txRunner, inventoryRepo, nil)
 	orderRepo := order.NewRepository()
-	orderService := order.NewService(txRunner, orderRepo, logger, inventoryRepo)
+	orderService := order.NewService(txRunner, orderRepo, logger, inventoryRepo, inventoryService)
 	reservationReaper := order.NewReservationReaper(orderService, logger, time.Minute)
 
 	// 2. Initialize Kafka Consumer & Producer

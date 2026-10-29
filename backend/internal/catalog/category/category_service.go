@@ -54,7 +54,7 @@ func (cs *CategoryService) CreateCategory(
 		Name:     name,
 	}
 
-	err := cs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := cs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return cs.repo.Create(ctx, tx, category)
 	})
 
@@ -165,7 +165,7 @@ func (cs *CategoryService) UpdateCategory(
 		}
 	}
 
-	err := cs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := cs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		if input.ParentID != nil && *input.ParentID != uuid.Nil {
 			isDescendant, descErr := cs.isDescendant(ctx, tx, categoryID, *input.ParentID)
 			if descErr != nil {
@@ -269,7 +269,7 @@ func (cs *CategoryService) AdminList(
 }
 
 func (cs *CategoryService) DeleteCategory(ctx context.Context, id uuid.UUID) error {
-	return cs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	return cs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		if err := cs.repo.SoftDeleteCategory(ctx, tx, id); err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Category not found").WithCode(apierr.CodeNotFound)

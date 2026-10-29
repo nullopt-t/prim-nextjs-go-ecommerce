@@ -26,20 +26,27 @@ import (
 
 // ObjectRepository defines database persistence methods for media storage records.
 type ObjectRepository interface {
-	Create(ctx context.Context, qe database.QueryExecutor, object *model.Object) error
+	Create(ctx context.Context, tx *database.Tx, object *model.Object) error
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error)
 	GetByIDs(ctx context.Context, qe database.QueryExecutor, ids []uuid.UUID) ([]*model.Object, error)
-	MarkDeletingByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error
-	MarkDeletedByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error
+	MarkDeletingByKey(ctx context.Context, tx *database.Tx, bucket, key string) error
+	MarkDeletedByKey(ctx context.Context, tx *database.Tx, bucket, key string) error
 }
 
-// InventoryRepository defines stock management and ledger methods for product variants.
+// InventoryRepository is the read-only subset of inventory persistence the
+// variant domain needs for stock projections and ledger history.
 type InventoryRepository interface {
 	GetStock(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) (*model.InventoryStock, error)
 	GetStockForVariants(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
 	ListVariantLedgers(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID, q *pagination.ListQuery) (*pagination.PagedResult[model.InventoryLedger], error)
-	LockVariantForUpdate(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) error
-	CreateLedger(ctx context.Context, qe database.QueryExecutor, ledger *model.InventoryLedger) error
+}
+
+// InventoryWriter owns stock mutation. ApplyStockAdjustment participates in the
+// caller's transaction so initial stock commits atomically with the variant that
+// owns it; AdjustStock is the standalone entry point and owns its transaction.
+type InventoryWriter interface {
+	AdjustStock(ctx context.Context, in inventory.AdjustStockInput) (*model.InventoryStock, error)
+	ApplyStockAdjustment(ctx context.Context, tx *database.Tx, in inventory.AdjustStockInput) error
 }
 
 // errSimpleProductLocked signals that a lifecycle change was rejected because the
@@ -260,10 +267,12 @@ type VariantService struct {
 	storageProvider storage.StorageProvider
 	vr              *VariantRepository
 	inventoryRepo   InventoryRepository
+	inventory       InventoryWriter
 }
 
 // NewService constructs a new VariantService with injected database runner, media object repository,
-// storage provider, variant repository, and inventory repository.
+// storage provider, variant repository, inventory read repository, and the inventory writer that
+// owns stock mutation invariants.
 func NewService(
 	logger log.Logger,
 	r database.Runner,
@@ -271,6 +280,7 @@ func NewService(
 	storageProvider storage.StorageProvider,
 	vr *VariantRepository,
 	inventoryRepo InventoryRepository,
+	inventoryWriter InventoryWriter,
 ) *VariantService {
 	return &VariantService{
 		logger:          logger,
@@ -279,6 +289,7 @@ func NewService(
 		storageProvider: storageProvider,
 		vr:              vr,
 		inventoryRepo:   inventoryRepo,
+		inventory:       inventoryWriter,
 	}
 }
 
@@ -419,7 +430,7 @@ func (vs *VariantService) CreateVariant(
 		ThumbnailObjectID: in.ThumbnailObjectID,
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		// Validate against the parent's chosen variation axes while holding an
 		// exclusive row lock, so two concurrent requests cannot create the same
 		// combination.
@@ -527,7 +538,7 @@ func (vs *VariantService) CreateVariantsBatch(
 
 	created := make([]*model.ProductVariant, 0, len(inputs))
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		productCtx, err := vs.vr.GetVariationContext(ctx, tx, productID, true)
 		if err != nil {
 			return err
@@ -595,13 +606,13 @@ func (vs *VariantService) CreateVariantsBatch(
 				}
 			}
 
-			if in.InitialStock != nil && *in.InitialStock > 0 && vs.inventoryRepo != nil {
-				ledger := &model.InventoryLedger{
+			if in.InitialStock != nil && *in.InitialStock > 0 {
+				adjustment := inventory.AdjustStockInput{
 					VariantID: variant.ID,
 					Quantity:  *in.InitialStock,
-					Reason:    model.InventoryReasonRestock,
+					Reason:    string(model.InventoryReasonRestock),
 				}
-				if err := vs.inventoryRepo.CreateLedger(ctx, tx, ledger); err != nil {
+				if err := vs.inventory.ApplyStockAdjustment(ctx, tx, adjustment); err != nil {
 					return err
 				}
 			}
@@ -791,7 +802,7 @@ func (vs *VariantService) UpdateVariant(
 		fields.Title = &title
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		existing, err := vs.vr.GetByID(ctx, tx, variantID)
 		if err != nil {
 			return err
@@ -967,7 +978,7 @@ func (vs *VariantService) DeleteVariantByID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		variant, err := vs.vr.GetByID(ctx, tx, variantID)
 		if err != nil {
 			return err
@@ -1030,7 +1041,7 @@ func (vs *VariantService) RestoreVariantByID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		// Fetch the variant including deleted records to inspect its product and default variant pointer
 		var (
 			productID        uuid.UUID
@@ -1120,7 +1131,7 @@ func (vs *VariantService) AttachMedia(
 
 	var createdMedia *model.VariantMedia
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		var repoErr error
 		createdMedia, repoErr = vs.vr.AddMedia(ctx, tx, CreateVariantMediaInput{
 			VariantID: in.VariantID,
@@ -1161,7 +1172,7 @@ func (vs *VariantService) RemoveMedia(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return vs.vr.RemoveMedia(ctx, tx, variantID, mediaID)
 	})
 
@@ -1209,7 +1220,7 @@ func (vs *VariantService) ReorderMedia(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		existingMedia, err := vs.vr.ListMediaByVariantID(ctx, tx, variantID)
 		if err != nil {
 			return err
@@ -1319,7 +1330,7 @@ func (vs *VariantService) SetDefaultVariant(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		v, err := vs.vr.GetByID(ctx, tx, variantID)
 		if err != nil {
 			return err
@@ -1360,57 +1371,14 @@ func (vs *VariantService) SetDefaultVariant(
 	return nil
 }
 
-// AdjustStock updates variant stock within a transaction and records an inventory ledger entry.
+// AdjustStock updates variant stock and records the ledger entry. The inventory
+// domain owns the mutation (lock, invariant check, ledger append, reload), so the
+// variant service delegates instead of reimplementing the stock math.
 func (vs *VariantService) AdjustStock(
 	ctx context.Context,
 	in inventory.AdjustStockInput,
 ) (*model.InventoryStock, error) {
-	if vs.inventoryRepo == nil {
-		return nil, apierr.InternalServerError("inventory repository is not configured")
-	}
-	if in.VariantID == uuid.Nil {
-		return nil, apierr.BadRequestError("Variant ID is required").
-			WithCode(apierr.CodeInvalidInput)
-	}
-	if in.Quantity == 0 {
-		return nil, apierr.BadRequestError("Quantity adjustment cannot be zero").
-			WithCode(apierr.CodeInvalidInput)
-	}
-	reason, err := model.ParseInventoryReason(in.Reason)
-	if err != nil {
-		return nil, apierr.BadRequestError("Invalid inventory reason: " + in.Reason).
-			WithCode(errcode.CodeInvalidInventoryReason).
-			Wrap(err)
-	}
-
-	var stock *model.InventoryStock
-	err = vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		if err := vs.inventoryRepo.LockVariantForUpdate(ctx, tx, in.VariantID); err != nil {
-			return err
-		}
-		curStock, err := vs.inventoryRepo.GetStock(ctx, tx, in.VariantID)
-		if err != nil {
-			return err
-		}
-		if in.Quantity < 0 && (curStock.OnHandQuantity+in.Quantity < curStock.ReservedQuantity) {
-			return apierr.BadRequestError("Insufficient available inventory").
-				WithCode(errcode.CodeInsufficientInventory)
-		}
-		ledger := &model.InventoryLedger{
-			VariantID: in.VariantID,
-			Quantity:  in.Quantity,
-			Reason:    reason,
-		}
-		if err := vs.inventoryRepo.CreateLedger(ctx, tx, ledger); err != nil {
-			return err
-		}
-		stock, err = vs.inventoryRepo.GetStock(ctx, tx, in.VariantID)
-		return err
-	})
-	if err != nil {
-		return nil, vs.handleError(err, "Failed to adjust stock")
-	}
-	return stock, nil
+	return vs.inventory.AdjustStock(ctx, in)
 }
 
 // GetStockByVariantID retrieves stock levels for a given variant.
@@ -1539,7 +1507,7 @@ func (vs *VariantService) UploadVariantThumbnail(
 
 	var oldThumbnailObjectID *uuid.UUID
 	var oldObj *model.Object
-	txErr := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	txErr := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		variant, err := vs.vr.GetByID(ctx, tx, variantID)
 		if err != nil {
 			return err
@@ -1569,7 +1537,7 @@ func (vs *VariantService) UploadVariantThumbnail(
 
 	if oldObj != nil && vs.storageProvider != nil {
 		if delErr := vs.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+			_ = vs.dr.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 				return vs.objectRepo.MarkDeletedByKey(ctx, exec, oldObj.Bucket, oldObj.Key)
 			})
 		}
@@ -1590,7 +1558,7 @@ func (vs *VariantService) DeleteVariantThumbnail(
 	}
 
 	var oldObj *model.Object
-	txErr := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	txErr := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		variant, err := vs.vr.GetByID(ctx, tx, variantID)
 		if err != nil {
 			return err
@@ -1609,7 +1577,7 @@ func (vs *VariantService) DeleteVariantThumbnail(
 
 	if oldObj != nil && vs.storageProvider != nil {
 		if delErr := vs.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+			_ = vs.dr.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
 				return vs.objectRepo.MarkDeletedByKey(ctx, exec, oldObj.Bucket, oldObj.Key)
 			})
 		}
@@ -1690,7 +1658,7 @@ func (vs *VariantService) UploadVariantMedia(
 	}
 
 	var createdMedia *model.VariantMedia
-	txErr := vs.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	txErr := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		if _, err := vs.vr.GetByID(ctx, tx, variantID); err != nil {
 			return err
 		}

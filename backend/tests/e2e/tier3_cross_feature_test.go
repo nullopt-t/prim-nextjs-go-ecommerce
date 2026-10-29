@@ -120,7 +120,7 @@ func TestTier3_Order_Inventory_StateTransition_CommitAndRestock(t *testing.T) {
 	invRepo.SetStock(varID, 20, 0)
 
 	// Step 1: Create Order & Hold Reservation on Tx
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		if err := orderRepo.CreateOrder(ctx, tx, &model.Order{
 			ID:          orderID,
 			TotalAmount: 5000,
@@ -143,7 +143,7 @@ func TestTier3_Order_Inventory_StateTransition_CommitAndRestock(t *testing.T) {
 	require.Len(t, unreleased, 1)
 
 	// Step 2: Payment Confirmed -> Commit reservation to finalized sale
-	err = runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err = runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		// Update status to processing
 		if err := orderRepo.UpdateOrderStatus(ctx, tx, orderID, model.OrderStatusProcessing); err != nil {
 			return err
@@ -164,7 +164,7 @@ func TestTier3_Order_Inventory_StateTransition_CommitAndRestock(t *testing.T) {
 	assert.Empty(t, unreleasedAfterCommit, "Reservation holds must be cleared upon sale commitment")
 
 	// Step 3: Order Cancelled -> Compensating return ledger restores stock
-	err = runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err = runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		if err := orderRepo.UpdateOrderStatus(ctx, tx, orderID, model.OrderStatusCancelled); err != nil {
 			return err
 		}
@@ -233,7 +233,7 @@ func TestTier3_Checkout_Cart_Coupon_Inventory_AtomicOrchestration(t *testing.T) 
 	})
 
 	// Execute complete checkout transaction within a single WithTx
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		// 1. Fetch Cart
 		c, err := cartRepo.GetCartByUserID(ctx, tx, userID)
 		if err != nil {
@@ -350,7 +350,7 @@ func TestTier3_Checkout_User_Address_OwnershipEnforcement(t *testing.T) {
 		FullName: "Other Customer",
 	})
 
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		// Verify customer
 		u, err := userRepo.GetByID(ctx, tx, validUser)
 		if err != nil {
@@ -385,7 +385,7 @@ func TestTier3_Settings_Audit_ConfigurationCacheInvalidation(t *testing.T) {
 	actorID := uuid.New()
 
 	updateSettingAndAudit := func(ctx context.Context, newThreshold int64) error {
-		return runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+		return runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 			// Update in memory or DB
 			cachedValue = newThreshold
 

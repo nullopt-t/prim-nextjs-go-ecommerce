@@ -160,8 +160,8 @@ func (s *ReviewHTTPTestSuite) TearDownSuite() {
 func (s *ReviewHTTPTestSuite) createTestUser(role string) (uuid.UUID, string) {
 	userID := uuid.New()
 	_, err := s.db.Exec(context.Background(), `
-		INSERT INTO users (id, email, role, status)
-		VALUES ($1, $2, $3, 'active')
+		INSERT INTO users (id, email, full_name, role, status)
+		VALUES ($1, $2, 'Test User', $3, 'active')
 	`, userID, fmt.Sprintf("user-%s@example.com", uuid.NewString()[:8]), role)
 	s.Require().NoError(err)
 

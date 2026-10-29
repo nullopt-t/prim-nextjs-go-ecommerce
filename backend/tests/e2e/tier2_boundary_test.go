@@ -203,7 +203,7 @@ func TestTier2_Boundary_MaxConnsOne_ExecutesWriteFlowWithoutPoolStarvation(t *te
 	orderID := uuid.New()
 
 	// Validate + mutate + reload strictly on the same tx
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		// Step 1: Validate / insert
 		if err := orderRepo.CreateOrder(ctx, tx, &model.Order{ID: orderID, Status: model.OrderStatusPending}); err != nil {
 			return err
@@ -233,7 +233,7 @@ func TestTier2_Boundary_ConnectionHopDetection_TriggersPoolExhaustion(t *testing
 	runner := NewMockRunner(1) // Pool limit = 1
 
 	// Simulate an anti-pattern: inner helper calls WithExecutor while WithTx holds a connection
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		// Anti-pattern: inner WithExecutor without passing held connection
 		return runner.WithExecutor(ctx, func(nestedExec database.QueryExecutor) error {
 			return nil
@@ -250,7 +250,7 @@ func TestTier2_Boundary_TxRollbackOnCallbackError(t *testing.T) {
 	orderRepo := NewMockOrderRepository()
 	orderID := uuid.New()
 
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		_ = orderRepo.CreateOrder(ctx, tx, &model.Order{ID: orderID, TotalAmount: 500})
 		// Fail deliberately inside transaction
 		return errors.New("simulated business rule rejection")
@@ -276,7 +276,7 @@ func TestTier2_Boundary_TxRollbackOnPanic_AndPropagatesPanic(t *testing.T) {
 		assert.Equal(t, 1, rollbacks, "Rollback must execute during panic recovery")
 	}()
 
-	_ = runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	_ = runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		panic("unexpected panic during tx execution")
 	})
 }
@@ -290,7 +290,7 @@ func TestTier2_Boundary_OptionalLookup_IgnoresErrNoRows_WithoutAbortingTx(t *tes
 	missingLogoID := uuid.New()
 
 	// Optional lookup pattern from SKILL.md: treat ErrNoRows as "absent" and continue
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		prod := &model.Product{ID: prodID, Title: "Logo-less Product"}
 		prodRepo.AddProduct(prod)
 

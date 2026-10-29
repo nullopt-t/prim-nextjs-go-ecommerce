@@ -72,6 +72,23 @@ func (e *fakeSettingExecutor) QueryRow(_ context.Context, _ string, _ ...interfa
 	return nil
 }
 
+type fakeSettingTx struct {
+	fakeSettingExecutor
+}
+
+func (f *fakeSettingTx) Begin(context.Context) (pgx.Tx, error) { return f, nil }
+func (f *fakeSettingTx) Commit(context.Context) error { return nil }
+func (f *fakeSettingTx) Rollback(context.Context) error { return nil }
+func (f *fakeSettingTx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) {
+	return 0, nil
+}
+func (f *fakeSettingTx) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { return nil }
+func (f *fakeSettingTx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) {
+	return nil, nil
+}
+func (f *fakeSettingTx) Conn() *pgx.Conn { return nil }
+func (f *fakeSettingTx) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
+
 type fakeRunner struct {
 	txErr   error
 	dbErr   error
@@ -79,11 +96,11 @@ type fakeRunner struct {
 	items   []Item
 }
 
-func (f *fakeRunner) WithTx(ctx context.Context, fn func(context.Context, database.QueryExecutor) error) error {
+func (f *fakeRunner) WithTx(ctx context.Context, fn func(context.Context, *database.Tx) error) error {
 	if f.txErr != nil {
 		return f.txErr
 	}
-	return fn(ctx, &fakeSettingExecutor{items: f.items, execErr: f.execErr})
+	return fn(ctx, database.NewTx(&fakeSettingTx{fakeSettingExecutor: fakeSettingExecutor{items: f.items, execErr: f.execErr}}))
 }
 
 func (f *fakeRunner) WithExecutor(ctx context.Context, fn func(database.QueryExecutor) error) error {
@@ -272,7 +289,7 @@ type testCountingRunner struct {
 	onWithExecutor func()
 }
 
-func (c *testCountingRunner) WithTx(ctx context.Context, fn func(context.Context, database.QueryExecutor) error) error {
+func (c *testCountingRunner) WithTx(ctx context.Context, fn func(context.Context, *database.Tx) error) error {
 	return c.runner.WithTx(ctx, fn)
 }
 

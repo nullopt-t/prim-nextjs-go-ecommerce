@@ -15,13 +15,18 @@ import (
 //   - WithExecutor never begins a transaction: it hands back the ambient
 //     transaction if present, otherwise the connection pool.
 //
-// Both methods only ever hand out a single QueryExecutor. Implementations are
+// Both methods only ever hand out a single executor. Implementations are
 // expected to be backed by one database pool; a transaction created by one
 // runner must not be shared with a runner for a different pool.
+//
+// WithTx hands out *Tx rather than QueryExecutor so that write paths - services
+// that participate in a unit of work and repository methods that mutate - can
+// require a transaction by type. Passing the pool where a *Tx is expected does
+// not compile.
 type Runner interface {
 	// WithTx runs the provided callback inside a database transaction.
 	// It automatically commits on success or rolls back on error/panic.
-	WithTx(ctx context.Context, fn func(ctx context.Context, tx QueryExecutor) error) error
+	WithTx(ctx context.Context, fn func(ctx context.Context, tx *Tx) error) error
 
 	// WithExecutor runs the provided callback without starting a transaction,
 	// reusing the ambient one when the context already carries it.
@@ -43,8 +48,8 @@ type txContextKey struct{}
 // Code that runs inside a transaction can use this to stay on the caller's
 // connection; callers that just issue queries can call WithExecutor, which
 // performs the same lookup for them.
-func TxFromContext(ctx context.Context) (QueryExecutor, bool) {
-	tx, ok := ctx.Value(txContextKey{}).(QueryExecutor)
+func TxFromContext(ctx context.Context) (*Tx, bool) {
+	tx, ok := ctx.Value(txContextKey{}).(*Tx)
 	return tx, ok
 }
 
@@ -67,7 +72,7 @@ func NewTxRunner(db *DB) *Executor {
 // rolls back on its own - the outermost transaction decides, so every error
 // that invalidates the unit of work must be propagated to the outermost
 // callback.
-func (t *Executor) WithTx(ctx context.Context, fn func(ctx context.Context, tx QueryExecutor) error) error {
+func (t *Executor) WithTx(ctx context.Context, fn func(ctx context.Context, tx *Tx) error) error {
 	if t == nil || t.db == nil {
 		return ErrConnectionFailure
 	}
@@ -105,7 +110,7 @@ func (t *Executor) WithTx(ctx context.Context, fn func(ctx context.Context, tx Q
 	// below - nested service calls included - reuses this connection instead of
 	// acquiring another one from the pool.
 	wrappedTx := &Tx{tx}
-	boundCtx := context.WithValue(ctx, txContextKey{}, QueryExecutor(wrappedTx))
+	boundCtx := context.WithValue(ctx, txContextKey{}, wrappedTx)
 
 	if err := fn(boundCtx, wrappedTx); err != nil {
 		return MapError(err)

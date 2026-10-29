@@ -126,7 +126,7 @@ func (s *Service) GetPublicConfig(ctx context.Context) (PublicConfig, error) {
 
 // UpdateSettings upserts the provided key/value pairs within a single transaction.
 func (s *Service) UpdateSettings(ctx context.Context, items map[string]interface{}) error {
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		for key, value := range items {
 			if err := s.repo.Upsert(ctx, tx, key, value); err != nil {
 				return err

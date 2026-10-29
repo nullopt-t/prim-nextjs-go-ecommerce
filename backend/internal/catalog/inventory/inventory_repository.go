@@ -41,10 +41,10 @@ var ErrInsufficientStock = errors.New("insufficient physical on-hand stock to co
 // finds no unreleased holds and does nothing.
 func (r *InventoryRepository) CommitReservationsForOrder(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	orderID uuid.UUID,
 ) error {
-	reservations, err := r.GetUnreleasedReservationsForOrder(ctx, qe, orderID)
+	reservations, err := r.GetUnreleasedReservationsForOrder(ctx, tx, orderID)
 	if err != nil {
 		return fmt.Errorf("fetch reservations for order %s: %w", orderID, err)
 	}
@@ -60,11 +60,11 @@ func (r *InventoryRepository) CommitReservationsForOrder(
 
 	for _, res := range reservations {
 		// Serialize stock deductions per variant across concurrent commits.
-		if err := r.LockVariantForUpdate(ctx, qe, res.VariantID); err != nil {
+		if err := r.LockVariantForUpdate(ctx, tx, res.VariantID); err != nil {
 			return fmt.Errorf("lock variant %s for commit: %w", res.VariantID, err)
 		}
 
-		stock, err := r.GetStock(ctx, qe, res.VariantID)
+		stock, err := r.GetStock(ctx, tx, res.VariantID)
 		if err != nil {
 			return fmt.Errorf("get stock for variant %s: %w", res.VariantID, err)
 		}
@@ -72,7 +72,7 @@ func (r *InventoryRepository) CommitReservationsForOrder(
 			return fmt.Errorf("commit reservation %s (variant %s): %w", res.ID, res.VariantID, ErrInsufficientStock)
 		}
 
-		if err := r.ReleaseReservation(ctx, qe, res.ID); err != nil {
+		if err := r.ReleaseReservation(ctx, tx, res.ID); err != nil {
 			return fmt.Errorf("release reservation %s: %w", res.ID, err)
 		}
 
@@ -81,14 +81,14 @@ func (r *InventoryRepository) CommitReservationsForOrder(
 			Quantity:  -res.Quantity,
 			Reason:    model.InventoryReasonSale,
 		}
-		if err := r.CreateLedger(ctx, qe, ledger); err != nil {
+		if err := r.CreateLedger(ctx, tx, ledger); err != nil {
 			return fmt.Errorf("create sale ledger for variant %s: %w", res.VariantID, err)
 		}
 	}
 
 	// Defensive: release anything still unreleased for this order (e.g. a hold
 	// inserted concurrently) so it cannot linger and be committed twice.
-	if _, err := r.ReleaseReservationsForOrder(ctx, qe, orderID); err != nil {
+	if _, err := r.ReleaseReservationsForOrder(ctx, tx, orderID); err != nil {
 		return fmt.Errorf("release lingering reservations for order %s: %w", orderID, err)
 	}
 
@@ -100,13 +100,13 @@ func (r *InventoryRepository) CommitReservationsForOrder(
 // preventing concurrent race conditions and preventing overselling.
 func (r *InventoryRepository) LockVariantForUpdate(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	variantID uuid.UUID,
 ) error {
 	// Query product_variants table by ID with FOR UPDATE to block competing transactions on this SKU.
 	query := `SELECT id FROM product_variants WHERE id = $1 FOR UPDATE`
 	var id uuid.UUID
-	err := qe.QueryRow(ctx, query, variantID).Scan(&id)
+	err := tx.QueryRow(ctx, query, variantID).Scan(&id)
 	if err != nil {
 		return fmt.Errorf("lock variant for update: %w", err)
 	}
@@ -118,7 +118,7 @@ func (r *InventoryRepository) LockVariantForUpdate(
 // indicate inventory reductions (sales fulfillments, scrap/damage adjustments).
 func (r *InventoryRepository) CreateLedger(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	ledger *model.InventoryLedger,
 ) error {
 	// Insert ledger entry with server-owned id and created_at timestamp.
@@ -133,7 +133,7 @@ func (r *InventoryRepository) CreateLedger(
 		RETURNING id, created_at
 	`
 
-	err := qe.QueryRow(
+	err := tx.QueryRow(
 		ctx,
 		query,
 		ledger.VariantID,
@@ -294,7 +294,7 @@ func (r *InventoryRepository) ListVariantLedgers(
 // CreateReservation inserts a new inventory reservation hold record into the database.
 func (r *InventoryRepository) CreateReservation(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	res *model.InventoryReservation,
 ) error {
 	query := `
@@ -311,7 +311,7 @@ func (r *InventoryRepository) CreateReservation(
 		RETURNING created_at
 	`
 
-	err := qe.QueryRow(
+	err := tx.QueryRow(
 		ctx,
 		query,
 		res.ID,
@@ -405,7 +405,7 @@ func (r *InventoryRepository) GetActiveCartReservation(
 // UpdateReservationQuantityAndExpiry updates the quantity and extends the expiry timestamp for an unreleased reservation.
 func (r *InventoryRepository) UpdateReservationQuantityAndExpiry(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	id uuid.UUID,
 	quantity int,
 	expiresAt time.Time,
@@ -416,7 +416,7 @@ func (r *InventoryRepository) UpdateReservationQuantityAndExpiry(
 		WHERE id = $1 AND released_at IS NULL
 	`
 
-	cmd, err := qe.Exec(ctx, query, id, quantity, expiresAt)
+	cmd, err := tx.Exec(ctx, query, id, quantity, expiresAt)
 	if err != nil {
 		return fmt.Errorf("update reservation quantity and expiry: %w", err)
 	}
@@ -432,7 +432,7 @@ func (r *InventoryRepository) UpdateReservationQuantityAndExpiry(
 // Returns pgx.ErrNoRows if the reservation does not exist or has already been released.
 func (r *InventoryRepository) ReleaseReservation(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	id uuid.UUID,
 ) error {
 	query := `
@@ -441,7 +441,7 @@ func (r *InventoryRepository) ReleaseReservation(
 		WHERE id = $1 AND released_at IS NULL
 	`
 
-	cmd, err := qe.Exec(ctx, query, id)
+	cmd, err := tx.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("release reservation: %w", err)
 	}
@@ -456,7 +456,7 @@ func (r *InventoryRepository) ReleaseReservation(
 // ReleaseCartReservations marks all unreleased reservations associated with a cart as released (e.g. upon cart clear).
 func (r *InventoryRepository) ReleaseCartReservations(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	cartID uuid.UUID,
 ) error {
 	query := `
@@ -465,7 +465,7 @@ func (r *InventoryRepository) ReleaseCartReservations(
 		WHERE cart_id = $1 AND released_at IS NULL
 	`
 
-	_, err := qe.Exec(ctx, query, cartID)
+	_, err := tx.Exec(ctx, query, cartID)
 	if err != nil {
 		return fmt.Errorf("release cart reservations: %w", err)
 	}
@@ -477,7 +477,7 @@ func (r *InventoryRepository) ReleaseCartReservations(
 // Returns the count of rows updated.
 func (r *InventoryRepository) ReleaseExpiredReservations(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 ) (int64, error) {
 	query := `
 		UPDATE inventory_reservations
@@ -485,7 +485,7 @@ func (r *InventoryRepository) ReleaseExpiredReservations(
 		WHERE released_at IS NULL AND expires_at <= now()
 	`
 
-	cmd, err := qe.Exec(ctx, query)
+	cmd, err := tx.Exec(ctx, query)
 	if err != nil {
 		return 0, fmt.Errorf("release expired reservations: %w", err)
 	}
@@ -541,7 +541,7 @@ func (r *InventoryRepository) GetUnreleasedReservationsForOrder(
 // which callers use to decide whether stock needs restoring.
 func (r *InventoryRepository) ReleaseReservationsForOrder(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	orderID uuid.UUID,
 ) (int64, error) {
 	query := `
@@ -550,7 +550,7 @@ func (r *InventoryRepository) ReleaseReservationsForOrder(
 		WHERE order_id = $1 AND released_at IS NULL
 	`
 
-	cmd, err := qe.Exec(ctx, query, orderID)
+	cmd, err := tx.Exec(ctx, query, orderID)
 	if err != nil {
 		return 0, fmt.Errorf("release order reservations: %w", err)
 	}

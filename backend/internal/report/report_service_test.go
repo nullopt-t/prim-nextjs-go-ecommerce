@@ -21,18 +21,19 @@ type mockReportRunner struct {
 	withTxErr    error
 	withDBErr    error
 	qe           database.QueryExecutor
+	tx           *database.Tx
 }
 
-func (m *mockReportRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx database.QueryExecutor) error) error {
+func (m *mockReportRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx *database.Tx) error) error {
 	m.withTxCalled = true
 	if m.withTxErr != nil {
 		return m.withTxErr
 	}
-	qe := m.qe
-	if qe == nil {
-		qe = &fakeReportExecutor{}
+	tx := m.tx
+	if tx == nil {
+		tx = database.NewTx(&fakeReportTx{})
 	}
-	return fn(ctx, qe)
+	return fn(ctx, tx)
 }
 
 func (m *mockReportRunner) WithExecutor(ctx context.Context, fn func(exec database.QueryExecutor) error) error {
@@ -46,6 +47,19 @@ func (m *mockReportRunner) WithExecutor(ctx context.Context, fn func(exec databa
 	}
 	return fn(qe)
 }
+
+type fakeReportTx struct {
+	fakeReportExecutor
+}
+
+func (f *fakeReportTx) Begin(context.Context) (pgx.Tx, error) { return f, nil }
+func (f *fakeReportTx) Commit(context.Context) error { return nil }
+func (f *fakeReportTx) Rollback(context.Context) error { return nil }
+func (f *fakeReportTx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) { return 0, nil }
+func (f *fakeReportTx) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { return nil }
+func (f *fakeReportTx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) { return nil, nil }
+func (f *fakeReportTx) Conn() *pgx.Conn { return nil }
+func (f *fakeReportTx) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
 
 type fakeReportExecutor struct{}
 

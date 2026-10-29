@@ -666,8 +666,8 @@ func (s *InventoryTestSuite) Test08_OrderReservationCommitAndRelease() {
 	s.Equal(7, stock.AvailableQuantity)
 
 	txRunner := database.NewTxRunner(s.db)
-	err = txRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		return s.service.CommitReservationsForOrderWithTx(ctx, tx.(*database.Tx), orderID)
+	err = txRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+		return s.service.CommitReservationsForOrder(ctx, tx, orderID)
 	})
 	s.Require().NoError(err)
 
@@ -678,8 +678,8 @@ func (s *InventoryTestSuite) Test08_OrderReservationCommitAndRelease() {
 	s.Equal(7, stock.AvailableQuantity)
 
 	// Idempotent: committing an order with no live hold is a no-op.
-	err = txRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
-		return s.service.CommitReservationsForOrderWithTx(ctx, tx.(*database.Tx), orderID)
+	err = txRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+		return s.service.CommitReservationsForOrder(ctx, tx, orderID)
 	})
 	s.Require().NoError(err)
 
@@ -695,9 +695,9 @@ func (s *InventoryTestSuite) Test08_OrderReservationCommitAndRelease() {
 	s.Require().NoError(err)
 
 	var released int64
-	err = txRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err = txRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		var relErr error
-		released, relErr = s.service.ReleaseReservationsForOrderWithTx(ctx, tx.(*database.Tx), orderID2)
+		released, relErr = s.service.ReleaseReservationsForOrder(ctx, tx, orderID2)
 		return relErr
 	})
 	s.Require().NoError(err)
@@ -711,9 +711,9 @@ func (s *InventoryTestSuite) Test08_OrderReservationCommitAndRelease() {
 
 	// A second release finds no live hold and reports zero (the signal callers
 	// use to decide whether a committed sale needs restocking).
-	err = txRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err = txRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		var relErr error
-		released, relErr = s.service.ReleaseReservationsForOrderWithTx(ctx, tx.(*database.Tx), orderID2)
+		released, relErr = s.service.ReleaseReservationsForOrder(ctx, tx, orderID2)
 		return relErr
 	})
 	s.Require().NoError(err)

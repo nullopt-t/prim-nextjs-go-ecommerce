@@ -161,7 +161,7 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 	// A per-user advisory transaction lock serializes concurrent creations so
 	// only one "first address" wins the default flag (the partial unique index
 	// on addresses(user_id) WHERE is_default is the backstop).
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock((hashtext($1::text))::bigint)`, userID.String()); err != nil {
 			return err
 		}
@@ -210,7 +210,7 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 	}
 
 	var updated *model.UserAddress
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		current, err := s.repo.GetByIDAndUser(ctx, tx, id, userID)
 		if err != nil {
 			return err
@@ -278,7 +278,7 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 // SetDefaultAddress marks the specified address as the default address within an atomic transaction.
 func (s *AddressService) SetDefaultAddress(ctx context.Context, id, userID uuid.UUID) (*model.UserAddress, error) {
 	var address *model.UserAddress
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		curr, err := s.repo.GetByIDAndUser(ctx, tx, id, userID)
 		if err != nil {
 			return err
@@ -313,7 +313,7 @@ func (s *AddressService) SetDefaultAddress(ctx context.Context, id, userID uuid.
 // If the deleted address was designated as the default address, it queries the most recently updated
 // active address and automatically promotes it as the new default address.
 func (s *AddressService) DeleteAddress(ctx context.Context, id, userID uuid.UUID) error {
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		current, err := s.repo.GetByIDAndUser(ctx, tx, id, userID)
 		if err != nil {
 			return err

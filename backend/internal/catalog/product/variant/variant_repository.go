@@ -72,7 +72,7 @@ func NewRepository() *VariantRepository {
 // Create inserts a new product variant record into the database.
 func (vr *VariantRepository) Create(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	variant *model.ProductVariant,
 ) error {
 	if variant.Attributes == nil {
@@ -97,7 +97,7 @@ func (vr *VariantRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err := qe.QueryRow(
+	err := tx.QueryRow(
 		ctx,
 		query,
 		variant.ID,
@@ -252,7 +252,7 @@ func (vr *VariantRepository) get(
 // Update applies partial updates to variant fields and refreshes the updated_at timestamp.
 func (vr *VariantRepository) Update(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	variantID uuid.UUID,
 	fields UpdateVariantFields,
 ) error {
@@ -324,7 +324,7 @@ func (vr *VariantRepository) Update(
 
 	args = append(args, variantID)
 
-	cmd, err := qe.Exec(ctx, query, args...)
+	cmd, err := tx.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("update variant: %w", err)
 	}
@@ -339,7 +339,7 @@ func (vr *VariantRepository) Update(
 // ClearDefaultFlags unsets default_variant_id on the specified product.
 func (vr *VariantRepository) ClearDefaultFlags(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	productID uuid.UUID,
 ) error {
 	if productID == uuid.Nil {
@@ -352,7 +352,7 @@ func (vr *VariantRepository) ClearDefaultFlags(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	_, err := qe.Exec(ctx, query, productID)
+	_, err := tx.Exec(ctx, query, productID)
 	if err != nil {
 		return fmt.Errorf("clear default flags: %w", err)
 	}
@@ -363,7 +363,7 @@ func (vr *VariantRepository) ClearDefaultFlags(
 // SetDefaultVariant sets default_variant_id on the specified product to the given variantID.
 func (vr *VariantRepository) SetDefaultVariant(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	productID uuid.UUID,
 	variantID uuid.UUID,
 ) error {
@@ -377,7 +377,7 @@ func (vr *VariantRepository) SetDefaultVariant(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	_, err := qe.Exec(ctx, query, productID, variantID)
+	_, err := tx.Exec(ctx, query, productID, variantID)
 	if err != nil {
 		return fmt.Errorf("set default variant: %w", err)
 	}
@@ -649,7 +649,7 @@ func (vr *VariantRepository) GetProductType(
 // Delete marks a variant as soft-deleted by setting deleted_at = now().
 func (vr *VariantRepository) Delete(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	variantID uuid.UUID,
 ) error {
 	if variantID == uuid.Nil {
@@ -662,7 +662,7 @@ func (vr *VariantRepository) Delete(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	cmd, err := qe.Exec(ctx, query, variantID)
+	cmd, err := tx.Exec(ctx, query, variantID)
 	if err != nil {
 		return fmt.Errorf("delete variant: %w", err)
 	}
@@ -677,7 +677,7 @@ func (vr *VariantRepository) Delete(
 		SET released_at = now()
 		WHERE variant_id = $1 AND released_at IS NULL
 	`
-	if _, err := qe.Exec(ctx, releaseReservationsQuery, variantID); err != nil {
+	if _, err := tx.Exec(ctx, releaseReservationsQuery, variantID); err != nil {
 		return fmt.Errorf("release variant reservations: %w", err)
 	}
 
@@ -687,7 +687,7 @@ func (vr *VariantRepository) Delete(
 // SetFirstAvailableAsDefault sets the oldest active variant of a product as the new default.
 func (vr *VariantRepository) SetFirstAvailableAsDefault(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	productID uuid.UUID,
 ) error {
 	if productID == uuid.Nil {
@@ -706,7 +706,7 @@ func (vr *VariantRepository) SetFirstAvailableAsDefault(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	_, err := qe.Exec(ctx, query, productID)
+	_, err := tx.Exec(ctx, query, productID)
 	if err != nil {
 		return fmt.Errorf("set first available as default: %w", err)
 	}
@@ -717,7 +717,7 @@ func (vr *VariantRepository) SetFirstAvailableAsDefault(
 // Restore un-deletes a variant by resetting deleted_at to NULL.
 func (vr *VariantRepository) Restore(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	variantID uuid.UUID,
 ) error {
 	if variantID == uuid.Nil {
@@ -730,7 +730,7 @@ func (vr *VariantRepository) Restore(
 		WHERE id = $1 AND deleted_at IS NOT NULL
 	`
 
-	cmd, err := qe.Exec(ctx, query, variantID)
+	cmd, err := tx.Exec(ctx, query, variantID)
 	if err != nil {
 		return fmt.Errorf("restore variant: %w", err)
 	}
@@ -749,7 +749,7 @@ func (vr *VariantRepository) Restore(
 // If in.SortOrder is negative, it appends to the end with MAX(sort_order) + 1.
 func (vr *VariantRepository) AddMedia(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	in CreateVariantMediaInput,
 ) (*model.VariantMedia, error) {
 	var (
@@ -763,7 +763,7 @@ func (vr *VariantRepository) AddMedia(
 			SET sort_order = sort_order + 1
 			WHERE variant_id = $1 AND sort_order >= $2
 		`
-		if _, err := qe.Exec(ctx, shiftQuery, in.VariantID, in.SortOrder); err != nil {
+		if _, err := tx.Exec(ctx, shiftQuery, in.VariantID, in.SortOrder); err != nil {
 			return nil, fmt.Errorf("shift variant media sort order: %w", err)
 		}
 
@@ -777,7 +777,7 @@ func (vr *VariantRepository) AddMedia(
 			VALUES ($1, $2, $3, $4)
 			RETURNING id, sort_order
 		`
-		err := qe.QueryRow(
+		err := tx.QueryRow(
 			ctx,
 			insertQuery,
 			in.VariantID,
@@ -804,7 +804,7 @@ func (vr *VariantRepository) AddMedia(
 			)
 			RETURNING id, sort_order
 		`
-		err := qe.QueryRow(
+		err := tx.QueryRow(
 			ctx,
 			insertQuery,
 			in.VariantID,
@@ -958,7 +958,7 @@ func (vr *VariantRepository) ListMediaByVariantIDs(
 // RemoveMedia deletes a media attachment and resequences remaining media to keep sort_order contiguous 0..N-1.
 func (vr *VariantRepository) RemoveMedia(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	variantID uuid.UUID,
 	mediaID int64,
 ) error {
@@ -971,7 +971,7 @@ func (vr *VariantRepository) RemoveMedia(
 		WHERE id = $1 AND variant_id = $2
 	`
 
-	cmd, err := qe.Exec(ctx, query, mediaID, variantID)
+	cmd, err := tx.Exec(ctx, query, mediaID, variantID)
 	if err != nil {
 		return fmt.Errorf("remove variant media: %w", err)
 	}
@@ -991,7 +991,7 @@ func (vr *VariantRepository) RemoveMedia(
 		) AS ranked
 		WHERE vm.id = ranked.id AND vm.variant_id = $1
 	`
-	_, _ = qe.Exec(ctx, resequenceQuery, variantID)
+	_, _ = tx.Exec(ctx, resequenceQuery, variantID)
 
 	return nil
 }
@@ -1032,7 +1032,7 @@ func (vr *VariantRepository) ReorderMedia(
 // ClearThumbnail unlinks the thumbnail storage object from a product variant.
 func (r *VariantRepository) ClearThumbnail(
 	ctx context.Context,
-	exec database.QueryExecutor,
+	tx *database.Tx,
 	variantID uuid.UUID,
 ) error {
 	query := `
@@ -1040,6 +1040,6 @@ func (r *VariantRepository) ClearThumbnail(
 		SET thumbnail_object_id = NULL, updated_at = now()
 		WHERE id = $1 AND deleted_at IS NULL
 	`
-	_, err := exec.Exec(ctx, query, variantID)
+	_, err := tx.Exec(ctx, query, variantID)
 	return err
 }

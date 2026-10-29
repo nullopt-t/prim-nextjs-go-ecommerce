@@ -37,7 +37,7 @@ func TestTier1_F1_F12_DirectObjectRepositoryOnTx(t *testing.T) {
 	}
 
 	// Directly call repository on tx - no ObjectService.CreateObjectWithTx needed
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		return repo.Create(ctx, tx, targetObj)
 	})
 	require.NoError(t, err)
@@ -65,7 +65,7 @@ func TestTier1_F1_F12_DirectVariantRepositoryOnTx(t *testing.T) {
 
 	// Directly call repository on tx - no VariantService.GetVariantByIDWithTx needed
 	var retrieved *model.ProductVariant
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		var err error
 		retrieved, err = repo.GetByID(ctx, tx, varID)
 		return err
@@ -90,7 +90,7 @@ func TestTier1_F1_F12_DirectProductRepositoryOnTx(t *testing.T) {
 
 	// Direct call on tx - no ProductService.GetByIDWithTx needed
 	var retrieved *model.Product
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		var err error
 		retrieved, err = repo.GetByID(ctx, tx, prodID)
 		return err
@@ -115,7 +115,7 @@ func TestTier1_F1_F12_DirectUserRepositoryOnTx(t *testing.T) {
 
 	// Direct call on tx - no UserService.GetUserByIDWithTx needed
 	var found *model.User
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		var err error
 		found, err = userRepo.GetByID(ctx, tx, userID)
 		return err
@@ -140,7 +140,7 @@ func TestTier1_F1_F12_DirectAddressRepositoryOnTx(t *testing.T) {
 
 	// Direct call on tx - no AddressService.GetAddressWithTx needed
 	var addr *model.UserAddress
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		var err error
 		addr, err = addrRepo.GetByIDAndUser(ctx, tx, addrID, userID)
 		return err
@@ -166,7 +166,7 @@ func TestTier1_F2_PublishProduct_RequiresAtLeastOneVariantViaRepo(t *testing.T) 
 	})
 
 	// Simulate PublishProduct: checks variantRepo.CountByProductID (no VariantService injection)
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		count, err := variantRepo.CountByProductID(ctx, tx, prodID)
 		if err != nil {
 			return err
@@ -201,7 +201,7 @@ func TestTier1_F2_PublishProduct_TransitionsToPublishedWhenVariantsExist(t *test
 		SKU:       sku,
 	})
 
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		count, err := variantRepo.CountByProductID(ctx, tx, prodID)
 		if err != nil {
 			return err
@@ -261,7 +261,7 @@ func TestTier1_F2_Product_InventoryStockLockOnSingleTx(t *testing.T) {
 	varID := uuid.New()
 
 	// Locking row and updating stock strictly within a single WithTx
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		if err := inventoryRepo.LockVariantForUpdate(ctx, tx, varID); err != nil {
 			return err
 		}
@@ -316,7 +316,7 @@ func TestTier1_F4_Object_CreateObject_SingleWithTx(t *testing.T) {
 	repo := NewMockObjectRepository()
 
 	// Rule 2 & Feature F4: Mutating operations use WithTx
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		return repo.Create(ctx, tx, &model.Object{
 			ID:     uuid.New(),
 			Bucket: "media",
@@ -338,7 +338,7 @@ func TestTier1_F4_Audit_Record_SingleConnection(t *testing.T) {
 	repo := NewMockAuditRepository()
 
 	actorID := uuid.New()
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		return repo.Insert(ctx, tx, &model.AuditLog{
 			ID:         1,
 			ActorID:    &actorID,
@@ -371,7 +371,7 @@ func TestTier1_F5_Order_Cancellation_ReleasesHoldViaConsumerInventoryRepo(t *tes
 	}))
 
 	// Order cancellation calls consumer inventoryRepo.ReleaseReservationsForOrder on held qe
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		released, err := inventoryRepo.ReleaseReservationsForOrder(ctx, tx, orderID)
 		if err != nil {
 			return CanonicalHandleError(err, "cancel order")
@@ -390,7 +390,7 @@ func TestTier1_F5_Order_Cancellation_RestocksViaConsumerLedger(t *testing.T) {
 	inventoryRepo := NewMockInventoryRepository()
 	varID := uuid.New()
 
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		return inventoryRepo.CreateLedger(ctx, tx, &model.InventoryLedger{
 			VariantID: varID,
 			Quantity:  2,
@@ -405,20 +405,22 @@ func TestTier1_F5_Order_Cancellation_RestocksViaConsumerLedger(t *testing.T) {
 	assert.Equal(t, 2, ledgers[0].Quantity)
 }
 
-func TestTier1_F6_Order_CreateOrderWithTx_TakesExplicitTx(t *testing.T) {
+func TestTier1_F6_Order_PlaceOrder_TakesCallerExecutor(t *testing.T) {
 	tx, fakePgx := NewTestTx()
 	orderRepo := NewMockOrderRepository()
 	orderID := uuid.New()
 
-	// Simulate OrderService.CreateOrderWithTx taking explicit *database.Tx
-	createOrderWithTx := func(ctx context.Context, callerTx *database.Tx, in *model.Order) error {
-		if callerTx == nil {
-			return errors.New("nil transaction provided")
+	// Simulate the participating OrderService.PlaceOrder form: the caller owns
+	// the unit of work and hands in the executor, so no second connection is
+	// acquired and no nested transaction is started.
+	placeOrder := func(ctx context.Context, callerQe database.QueryExecutor, in *model.Order) error {
+		if callerQe == nil {
+			return errors.New("nil executor provided")
 		}
-		return orderRepo.CreateOrder(ctx, callerTx, in)
+		return orderRepo.CreateOrder(ctx, callerQe, in)
 	}
 
-	err := createOrderWithTx(context.Background(), tx, &model.Order{
+	err := placeOrder(context.Background(), tx, &model.Order{
 		ID:          orderID,
 		TotalAmount: 4999,
 		Status:      model.OrderStatusPending,
@@ -466,7 +468,7 @@ func TestTier1_F8_Checkout_ValidatesUserViaConsumerRepo(t *testing.T) {
 		Role:       model.CustomerRole,
 	})
 
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		u, err := userRepo.GetByID(ctx, tx, userID)
 		if err != nil {
 			return CanonicalHandleError(err, "customer")
@@ -492,7 +494,7 @@ func TestTier1_F8_Checkout_ValidatesAddressOwnershipViaConsumerRepo(t *testing.T
 		UserID: ownerID,
 	})
 
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		_, err := addrRepo.GetByIDAndUser(ctx, tx, addrID, imposterID)
 		if err != nil {
 			return CanonicalHandleError(err, "shipping address")
@@ -514,7 +516,7 @@ func TestTier1_F8_Checkout_ReservesStockViaConsumerRepo(t *testing.T) {
 	orderID := uuid.New()
 	inventoryRepo.SetStock(varID, 10, 2) // available = 8
 
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		stock, err := inventoryRepo.GetStock(ctx, tx, varID)
 		if err != nil {
 			return CanonicalHandleError(err, "stock")
@@ -594,7 +596,7 @@ func TestTier1_F10_Checkout_SingleWithTxBundling(t *testing.T) {
 	})
 
 	// Feature F10: Entire checkout executes within 1 WithTx without opening second connection
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx database.QueryExecutor) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
 		// 1. Create order
 		if err := orderRepo.CreateOrder(ctx, tx, &model.Order{ID: orderID, TotalAmount: 2000}); err != nil {
 			return err

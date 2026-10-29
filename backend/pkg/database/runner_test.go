@@ -29,7 +29,7 @@ func (f *fakeExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Row
 	return nil
 }
 
-func contextWithTx(tx QueryExecutor) context.Context {
+func contextWithTx(tx *Tx) context.Context {
 	return context.WithValue(context.Background(), txContextKey{}, tx)
 }
 
@@ -62,13 +62,13 @@ func TestWithExecutor_RejectsNilDB(t *testing.T) {
 func TestWithTx_RejectsNilExecutor(t *testing.T) {
 	var runner *Executor
 
-	err := runner.WithTx(context.Background(), func(context.Context, QueryExecutor) error { return nil })
+	err := runner.WithTx(context.Background(), func(context.Context, *Tx) error { return nil })
 
 	require.ErrorIs(t, err, ErrConnectionFailure)
 }
 
 func TestWithExecutor_JoinsAmbientTransaction(t *testing.T) {
-	ambient := &fakeExecutor{name: "ambient"}
+	ambient := &Tx{}
 	ctx := contextWithTx(ambient)
 
 	// Joining must not require the runner's own pool: the ambient transaction
@@ -82,11 +82,11 @@ func TestWithExecutor_JoinsAmbientTransaction(t *testing.T) {
 }
 
 func TestWithTx_JoinsAmbientTransaction(t *testing.T) {
-	ambient := &fakeExecutor{name: "ambient"}
+	ambient := &Tx{}
 	ctx := contextWithTx(ambient)
 	joined := false
 
-	err := (&Executor{db: &DB{}}).WithTx(ctx, func(_ context.Context, tx QueryExecutor) error {
+	err := (&Executor{db: &DB{}}).WithTx(ctx, func(_ context.Context, tx *Tx) error {
 		joined = true
 		require.Same(t, ambient, tx, "inner call must reuse the ambient transaction")
 		return nil
@@ -98,7 +98,7 @@ func TestWithTx_JoinsAmbientTransaction(t *testing.T) {
 
 func TestWithExecutor_JoinReturnsCallbackErrorUnchanged(t *testing.T) {
 	sentinel := errors.New("business rule violated")
-	ctx := contextWithTx(&fakeExecutor{name: "ambient"})
+	ctx := contextWithTx(&Tx{})
 
 	err := (&Executor{db: &DB{}}).WithExecutor(ctx, func(QueryExecutor) error {
 		return sentinel

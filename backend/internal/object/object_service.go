@@ -97,7 +97,7 @@ func (os *ObjectService) CreateObject(
 
 	err := os.dbRunner.WithTx(
 		ctx,
-		func(ctx context.Context, tx database.QueryExecutor) error {
+		func(ctx context.Context, tx *database.Tx) error {
 			return os.objectRepo.Create(
 				ctx,
 				tx,
@@ -140,7 +140,7 @@ func (os *ObjectService) DeleteObject(
 	bucket, key string,
 ) error {
 	// First mark as deleting in DB within a transaction
-	err := os.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := os.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return os.objectRepo.MarkDeletingByKey(ctx, tx, bucket, key)
 	})
 	if err != nil {
@@ -154,7 +154,7 @@ func (os *ObjectService) DeleteObject(
 	}
 
 	// Finally mark as deleted in DB within a transaction
-	err = os.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err = os.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return os.objectRepo.MarkDeletedByKey(ctx, tx, bucket, key)
 	})
 	if err != nil {

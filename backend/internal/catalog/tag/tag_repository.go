@@ -45,7 +45,7 @@ func NewRepository() *TagRepository {
 // Create inserts a new product tag.
 func (tr *TagRepository) Create(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	tag *model.ProductTag,
 ) error {
 	query := `
@@ -59,7 +59,7 @@ func (tr *TagRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err := qe.QueryRow(
+	err := tx.QueryRow(
 		ctx,
 		query,
 		tag.ID,
@@ -145,7 +145,7 @@ func (tr *TagRepository) get(
 // Update dynamically modifies an active tag.
 func (tr *TagRepository) Update(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	tagID uuid.UUID,
 	fields UpdateTagFields,
 ) error {
@@ -163,7 +163,7 @@ func (tr *TagRepository) Update(
 		WHERE id = $2 AND deleted_at IS NULL
 	`
 
-	cmd, err := qe.Exec(ctx, query, *fields.Name, tagID)
+	cmd, err := tx.Exec(ctx, query, *fields.Name, tagID)
 	if err != nil {
 		return fmt.Errorf("update tag: %w", err)
 	}
@@ -267,7 +267,7 @@ func (tr *TagRepository) List(
 // Delete performs a soft-delete on an active tag by ID.
 func (tr *TagRepository) Delete(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	tagID uuid.UUID,
 ) error {
 	if tagID == uuid.Nil {
@@ -280,7 +280,7 @@ func (tr *TagRepository) Delete(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	cmd, err := qe.Exec(ctx, query, tagID)
+	cmd, err := tx.Exec(ctx, query, tagID)
 	if err != nil {
 		return fmt.Errorf("delete tag: %w", err)
 	}
@@ -296,7 +296,7 @@ func (tr *TagRepository) Delete(
 // Pass an empty slice to remove all tags.
 func (tr *TagRepository) ReplaceTagsForProduct(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	productID uuid.UUID,
 	tagIDs []uuid.UUID,
 ) error {
@@ -305,7 +305,7 @@ func (tr *TagRepository) ReplaceTagsForProduct(
 	}
 
 	// Delete all existing assignments
-	_, err := qe.Exec(ctx,
+	_, err := tx.Exec(ctx,
 		`DELETE FROM product_tag_assignments WHERE product_id = $1`,
 		productID,
 	)
@@ -331,7 +331,7 @@ func (tr *TagRepository) ReplaceTagsForProduct(
 		strings.Join(valueParts, ", "),
 	)
 
-	if _, err := qe.Exec(ctx, insertQuery, args...); err != nil {
+	if _, err := tx.Exec(ctx, insertQuery, args...); err != nil {
 		return fmt.Errorf("replace product tags: insert: %w", err)
 	}
 

@@ -232,6 +232,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		app.storageProvider,
 		variantRepository,
 		inventoryRepo,
+		inventoryService,
 	)
 
 	variantHandler := variant.NewHandler(variantService)
@@ -254,6 +255,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		brandRepo,
 		categoryRepo,
 		tagRepo,
+		tagService,
 		inventoryRepo,
 		reviewRepo,
 		objectRepository,
@@ -328,7 +330,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 
 	// order
 	orderRepo := order.NewRepository()
-	orderService := order.NewService(txRunner, orderRepo, app.logger, inventoryRepo)
+	orderService := order.NewService(txRunner, orderRepo, app.logger, inventoryRepo, inventoryService)
 	orderHandler := order.NewHandler(orderService)
 	orderRouter := order.NewRouter(orderHandler, sessionStore)
 	orderRouter.MapRoutes(v1)
@@ -343,6 +345,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	// checkout
 	checkoutService := checkout.NewService(
 		cartRepo,
+		cartService,
 		orderService,
 		inventoryService,
 		userRepo,
@@ -351,7 +354,6 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		variantRepository,
 		productRepo,
 		objectRepository,
-		orderRepo,
 		app.storageProvider,
 		settingService,
 		txRunner,

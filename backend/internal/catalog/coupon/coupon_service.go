@@ -201,7 +201,7 @@ func (s *CouponService) CreateCoupon(ctx context.Context, in CreateCouponInput) 
 		Status:        status,
 	}
 
-	err := s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return s.repo.Create(ctx, tx, c)
 	})
 	if err != nil {
@@ -220,7 +220,7 @@ func (s *CouponService) UpdateStatus(ctx context.Context, id uuid.UUID, status m
 			WithCode(apierr.CodeValidationFailed)
 	}
 
-	err := s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return s.repo.UpdateStatus(ctx, tx, id, status)
 	})
 	if err != nil {
@@ -231,7 +231,7 @@ func (s *CouponService) UpdateStatus(ctx context.Context, id uuid.UUID, status m
 
 // Delete permanently removes a coupon.
 func (s *CouponService) Delete(ctx context.Context, id uuid.UUID) error {
-	err := s.runner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		return s.repo.Delete(ctx, tx, id)
 	})
 	if err != nil {
@@ -269,7 +269,7 @@ func (s *CouponService) ListRedemptions(ctx context.Context, couponID uuid.UUID,
 // It locks the coupon row so concurrent redemptions are serialized in transactions.
 func (s *CouponService) ApplyByCode(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	code string,
 	grossTotal int64,
 	userID *uuid.UUID,
@@ -280,12 +280,12 @@ func (s *CouponService) ApplyByCode(
 			WithCode(apierr.CodeValidationFailed)
 	}
 
-	c, err := s.repo.GetByCodeAndLock(ctx, qe, trimmedCode)
+	c, err := s.repo.GetByCodeAndLock(ctx, tx, trimmedCode)
 	if err != nil {
 		return nil, err
 	}
 	
-	if err := s.validateCoupon(ctx, qe, c, grossTotal, userID); err != nil {
+	if err := s.validateCoupon(ctx, tx, c, grossTotal, userID); err != nil {
 		return nil, err
 	}
 	return s.computeDiscount(c, grossTotal), nil
@@ -490,7 +490,7 @@ func (s *CouponService) ValidateAndCalculate(
 
 func (s *CouponService) RecordRedemption(
 	ctx context.Context,
-	qe database.QueryExecutor,
+	tx *database.Tx,
 	couponID uuid.UUID,
 	userID uuid.UUID,
 	orderID uuid.UUID,
@@ -501,7 +501,7 @@ func (s *CouponService) RecordRedemption(
 		return apierr.BadRequestError("Coupon ID, User ID, and Order ID are required").
 			WithCode(apierr.CodeInvalidInput)
 	}
-	return s.repo.RecordRedemption(ctx, qe, &model.CouponRedemption{
+	return s.repo.RecordRedemption(ctx, tx, &model.CouponRedemption{
 		CouponID:       couponID,
 		UserID:         userID,
 		OrderID:        orderID,

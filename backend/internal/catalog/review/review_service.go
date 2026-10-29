@@ -90,7 +90,7 @@ func (s *ReviewService) CreateReview(
 	var targetOrderItemID uuid.UUID
 	var createdReview *model.Review
 
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		if in.OrderItemID != nil && *in.OrderItemID != uuid.Nil {
 			targetOrderItemID = *in.OrderItemID
 			// 1. Verify specific purchase
@@ -242,7 +242,7 @@ func (s *ReviewService) UpdateUserReview(
 	}
 
 	var updatedReview *model.Review
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		rv, err := s.repo.GetByID(ctx, tx, id)
 		if err != nil {
 			return err
@@ -297,7 +297,7 @@ func (s *ReviewService) DeleteReview(ctx context.Context, id uuid.UUID, userID u
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		rv, err := s.repo.GetByID(ctx, tx, id)
 		if err != nil {
 			return err
@@ -331,7 +331,7 @@ func (s *ReviewService) UpdateReviewStatus(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx database.QueryExecutor) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		rv, err := s.repo.GetByID(ctx, tx, id)
 		if err != nil {
 			return err

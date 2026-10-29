@@ -150,6 +150,23 @@ func (r *mockObjRow) Scan(dest ...any) error {
 	return nil
 }
 
+type mockObjTx struct {
+	*mockObjQE
+}
+
+func (m *mockObjTx) Begin(context.Context) (pgx.Tx, error) { return m, nil }
+func (m *mockObjTx) Commit(context.Context) error { return nil }
+func (m *mockObjTx) Rollback(context.Context) error { return nil }
+func (m *mockObjTx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) {
+	return 0, nil
+}
+func (m *mockObjTx) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { return nil }
+func (m *mockObjTx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) {
+	return nil, nil
+}
+func (m *mockObjTx) Conn() *pgx.Conn { return nil }
+func (m *mockObjTx) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
+
 type mockObjectRunner struct {
 	withDBCalls int
 	withTxCalls int
@@ -161,9 +178,9 @@ func (m *mockObjectRunner) WithExecutor(ctx context.Context, fn func(database.Qu
 	return fn(m.qe)
 }
 
-func (m *mockObjectRunner) WithTx(ctx context.Context, fn func(context.Context, database.QueryExecutor) error) error {
+func (m *mockObjectRunner) WithTx(ctx context.Context, fn func(context.Context, *database.Tx) error) error {
 	m.withTxCalls++
-	return fn(ctx, m.qe)
+	return fn(ctx, database.NewTx(&mockObjTx{mockObjQE: m.qe}))
 }
 
 type mockObjStorageForInvariants struct{}
