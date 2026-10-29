@@ -71,10 +71,10 @@ type CreatePaymentInput struct {
 	ProviderTransactionID *string
 }
 
-// InventoryRepository is the read-only subset of inventory persistence the order
+// InventoryReader is the read-only subset of inventory persistence the order
 // domain needs. Reads carry no invariants, so the consumer-owned repository keeps
 // order independent of the inventory service for lookups.
-type InventoryRepository interface {
+type InventoryReader interface {
 	// ExpiredReservationOrderIDs lists orders whose reservation TTL has elapsed.
 	ExpiredReservationOrderIDs(ctx context.Context, qe database.QueryExecutor) ([]uuid.UUID, error)
 }
@@ -96,11 +96,11 @@ type InventoryWriter interface {
 // OrderService orchestrates database transactions, order status state machine validation,
 // and audit log tracking for order lifecycle events.
 type OrderService struct {
-	qexecutor     database.Runner
-	orderRepo     *Repository
-	logger        log.Logger
-	inventoryRepo InventoryRepository
-	inventory     InventoryWriter
+	qexecutor       database.Runner
+	orderRepo       *Repository
+	logger          log.Logger
+	inventoryReader InventoryReader
+	inventory       InventoryWriter
 }
 
 // NewService instantiates an OrderService with its database runner, order
@@ -110,15 +110,15 @@ func NewService(
 	r database.Runner,
 	orderRepo *Repository,
 	logger log.Logger,
-	inventoryRepo InventoryRepository,
+	inventoryReader InventoryReader,
 	inventoryWriter InventoryWriter,
 ) *OrderService {
 	return &OrderService{
-		qexecutor:     r,
-		orderRepo:     orderRepo,
-		logger:        logger,
-		inventoryRepo: inventoryRepo,
-		inventory:     inventoryWriter,
+		qexecutor:       r,
+		orderRepo:       orderRepo,
+		logger:          logger,
+		inventoryReader: inventoryReader,
+		inventory:       inventoryWriter,
 	}
 }
 
@@ -642,7 +642,7 @@ func (s *OrderService) ReapExpiredReservations(ctx context.Context) (int, error)
 	var orderIDs []uuid.UUID
 	if err := s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		orderIDs, err = s.inventoryRepo.ExpiredReservationOrderIDs(ctx, exec)
+		orderIDs, err = s.inventoryReader.ExpiredReservationOrderIDs(ctx, exec)
 		return err
 	}); err != nil {
 		return 0, s.handleError(err, "Failed to list expired reservation orders")

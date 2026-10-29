@@ -13,50 +13,50 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
-type VariantRepository interface {
+type VariantReader interface {
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductVariant, error)
 	ListMediaByVariantIDs(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID][]*model.VariantMedia, error)
 }
 
-type ProductRepository interface {
+type ProductReader interface {
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Product, error)
 }
 
-type InventoryRepository interface {
+type InventoryReader interface {
 	GetStock(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) (*model.InventoryStock, error)
 	GetStockForVariants(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
 }
 
-type ObjectRepository interface {
+type ObjectReader interface {
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error)
 }
 
 type CartService struct {
 	dr              database.Runner
 	cartRepo        *CartRepository
-	variantRepo     VariantRepository
-	productRepo     ProductRepository
-	inventoryRepo   InventoryRepository
-	objectRepo      ObjectRepository
+	variantReader   VariantReader
+	productReader   ProductReader
+	inventoryReader InventoryReader
+	objectReader    ObjectReader
 	storageProvider storage.StorageProvider
 }
 
 func NewService(
 	dr database.Runner,
 	cartRepo *CartRepository,
-	variantRepo VariantRepository,
-	productRepo ProductRepository,
-	inventoryRepo InventoryRepository,
-	objectRepo ObjectRepository,
+	variantReader VariantReader,
+	productReader ProductReader,
+	inventoryReader InventoryReader,
+	objectReader ObjectReader,
 	storageProvider storage.StorageProvider,
 ) *CartService {
 	return &CartService{
 		dr:              dr,
 		cartRepo:        cartRepo,
-		variantRepo:     variantRepo,
-		productRepo:     productRepo,
-		inventoryRepo:   inventoryRepo,
-		objectRepo:      objectRepo,
+		variantReader:   variantReader,
+		productReader:   productReader,
+		inventoryReader: inventoryReader,
+		objectReader:    objectReader,
 		storageProvider: storageProvider,
 	}
 }
@@ -75,13 +75,13 @@ func (s *CartService) populateCartDetails(
 		item := &cart.Items[i]
 		variantIDs = append(variantIDs, item.VariantID)
 
-		if s.variantRepo != nil {
-			v, err := s.variantRepo.GetByID(ctx, qe, item.VariantID)
+		if s.variantReader != nil {
+			v, err := s.variantReader.GetByID(ctx, qe, item.VariantID)
 			if err == nil && v != nil {
 				item.Variant = v
 
-				if s.objectRepo != nil && v.ThumbnailObjectID != nil && *v.ThumbnailObjectID != uuid.Nil {
-					obj, oErr := s.objectRepo.GetByID(ctx, qe, *v.ThumbnailObjectID)
+				if s.objectReader != nil && v.ThumbnailObjectID != nil && *v.ThumbnailObjectID != uuid.Nil {
+					obj, oErr := s.objectReader.GetByID(ctx, qe, *v.ThumbnailObjectID)
 					if oErr == nil && obj != nil {
 						v.Thumbnail = obj
 						if s.storageProvider != nil {
@@ -100,14 +100,14 @@ func (s *CartService) populateCartDetails(
 					}
 				}
 
-				if s.productRepo != nil && v.ProductID != uuid.Nil {
-					p, pErr := s.productRepo.GetByID(ctx, qe, v.ProductID)
+				if s.productReader != nil && v.ProductID != uuid.Nil {
+					p, pErr := s.productReader.GetByID(ctx, qe, v.ProductID)
 					if pErr == nil && p != nil {
 						item.Product = p
 
 						if item.ThumbnailURL == "" {
-							if s.objectRepo != nil && p.ThumbnailObjectID != nil && *p.ThumbnailObjectID != uuid.Nil {
-								obj, oErr := s.objectRepo.GetByID(ctx, qe, *p.ThumbnailObjectID)
+							if s.objectReader != nil && p.ThumbnailObjectID != nil && *p.ThumbnailObjectID != uuid.Nil {
+								obj, oErr := s.objectReader.GetByID(ctx, qe, *p.ThumbnailObjectID)
 								if oErr == nil && obj != nil {
 									p.Thumbnail = obj
 									if s.storageProvider != nil {
@@ -132,7 +132,7 @@ func (s *CartService) populateCartDetails(
 		}
 	}
 
-	if s.variantRepo != nil && len(variantIDs) > 0 {
+	if s.variantReader != nil && len(variantIDs) > 0 {
 		var needsMedia []uuid.UUID
 		for i := range cart.Items {
 			if cart.Items[i].ThumbnailURL == "" {
@@ -140,13 +140,13 @@ func (s *CartService) populateCartDetails(
 			}
 		}
 		if len(needsMedia) > 0 {
-			mediaMap, mErr := s.variantRepo.ListMediaByVariantIDs(ctx, qe, needsMedia)
+			mediaMap, mErr := s.variantReader.ListMediaByVariantIDs(ctx, qe, needsMedia)
 			if mErr == nil && mediaMap != nil {
 				for i := range cart.Items {
 					if cart.Items[i].ThumbnailURL == "" {
 						if list, ok := mediaMap[cart.Items[i].VariantID]; ok && len(list) > 0 {
-							if list[0].ObjectID != uuid.Nil && s.objectRepo != nil {
-								obj, oErr := s.objectRepo.GetByID(ctx, qe, list[0].ObjectID)
+							if list[0].ObjectID != uuid.Nil && s.objectReader != nil {
+								obj, oErr := s.objectReader.GetByID(ctx, qe, list[0].ObjectID)
 								if oErr == nil && obj != nil {
 									list[0].Object = obj
 									if s.storageProvider != nil {
@@ -170,8 +170,8 @@ func (s *CartService) populateCartDetails(
 		}
 	}
 
-	if s.inventoryRepo != nil && len(variantIDs) > 0 {
-		stocks, err := s.inventoryRepo.GetStockForVariants(ctx, qe, variantIDs)
+	if s.inventoryReader != nil && len(variantIDs) > 0 {
+		stocks, err := s.inventoryReader.GetStockForVariants(ctx, qe, variantIDs)
 		if err == nil && stocks != nil {
 			for i := range cart.Items {
 				if st, ok := stocks[cart.Items[i].VariantID]; ok && st != nil {
@@ -284,15 +284,15 @@ func (s *CartService) AddItem(
 
 	var cart *model.Cart
 	txErr := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		v, getErr := s.variantRepo.GetByID(ctx, tx, variantID)
+		v, getErr := s.variantReader.GetByID(ctx, tx, variantID)
 		if getErr != nil {
 			return apierr.NotFoundError("Variant not found").
 				WithCode(errcode.CodeVariantNotFound).
 				Wrap(getErr)
 		}
 
-		if s.inventoryRepo != nil {
-			stock, stockErr := s.inventoryRepo.GetStock(ctx, tx, v.ID)
+		if s.inventoryReader != nil {
+			stock, stockErr := s.inventoryReader.GetStock(ctx, tx, v.ID)
 			if stockErr != nil {
 				var apiErr *apierr.APIError
 				if errors.As(stockErr, &apiErr) {
@@ -378,8 +378,8 @@ func (s *CartService) UpdateCartItemQuantity(
 			return database.ErrNotFound
 		}
 
-		if s.inventoryRepo != nil {
-			stock, stockErr := s.inventoryRepo.GetStock(ctx, tx, variantID)
+		if s.inventoryReader != nil {
+			stock, stockErr := s.inventoryReader.GetStock(ctx, tx, variantID)
 			if stockErr != nil {
 				var apiErr *apierr.APIError
 				if errors.As(stockErr, &apiErr) {

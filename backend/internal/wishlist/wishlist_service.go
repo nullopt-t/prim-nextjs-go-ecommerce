@@ -15,8 +15,8 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
-// ProductRepository defines the subset of product catalog queries required by WishlistService.
-type ProductRepository interface {
+// ProductReader defines the subset of product catalog queries required by WishlistService.
+type ProductReader interface {
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Product, error)
 }
 
@@ -24,7 +24,7 @@ type ProductRepository interface {
 type WishlistService struct {
 	dbRunner        database.Runner
 	repo            *WishlistRepository
-	productRepo     ProductRepository
+	productReader   ProductReader
 	storageProvider storage.StorageProvider
 	logger          log.Logger
 }
@@ -33,14 +33,14 @@ type WishlistService struct {
 func NewService(
 	dbRunner database.Runner,
 	repo *WishlistRepository,
-	productRepo ProductRepository,
+	productReader ProductReader,
 	storageProvider storage.StorageProvider,
 	logger log.Logger,
 ) *WishlistService {
 	return &WishlistService{
 		dbRunner:        dbRunner,
 		repo:            repo,
-		productRepo:     productRepo,
+		productReader:   productReader,
 		storageProvider: storageProvider,
 		logger:          logger,
 	}
@@ -99,8 +99,8 @@ func (s *WishlistService) AddToWishlist(
 
 	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		// 1. Validate product existence and publication status on tx
-		if s.productRepo != nil {
-			prod, err := s.productRepo.GetByID(ctx, tx, productID)
+		if s.productReader != nil {
+			prod, err := s.productReader.GetByID(ctx, tx, productID)
 			if err != nil {
 				if errors.Is(err, pgx.ErrNoRows) || errors.Is(database.MapError(err), database.ErrNotFound) {
 					return apierr.NotFoundError("Product not found").

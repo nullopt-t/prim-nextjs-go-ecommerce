@@ -33,9 +33,9 @@ type ObjectRepository interface {
 	MarkDeletedByKey(ctx context.Context, tx *database.Tx, bucket, key string) error
 }
 
-// InventoryRepository is the read-only subset of inventory persistence the
+// InventoryReader is the read-only subset of inventory persistence the
 // variant domain needs for stock projections and ledger history.
-type InventoryRepository interface {
+type InventoryReader interface {
 	GetStock(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) (*model.InventoryStock, error)
 	GetStockForVariants(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
 	ListVariantLedgers(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID, q *pagination.ListQuery) (*pagination.PagedResult[model.InventoryLedger], error)
@@ -266,7 +266,7 @@ type VariantService struct {
 	objectRepo      ObjectRepository
 	storageProvider storage.StorageProvider
 	vr              *VariantRepository
-	inventoryRepo   InventoryRepository
+	inventoryReader InventoryReader
 	inventory       InventoryWriter
 }
 
@@ -279,7 +279,7 @@ func NewService(
 	objectRepo ObjectRepository,
 	storageProvider storage.StorageProvider,
 	vr *VariantRepository,
-	inventoryRepo InventoryRepository,
+	inventoryReader InventoryReader,
 	inventoryWriter InventoryWriter,
 ) *VariantService {
 	return &VariantService{
@@ -288,7 +288,7 @@ func NewService(
 		objectRepo:      objectRepo,
 		storageProvider: storageProvider,
 		vr:              vr,
-		inventoryRepo:   inventoryRepo,
+		inventoryReader: inventoryReader,
 		inventory:       inventoryWriter,
 	}
 }
@@ -1386,8 +1386,8 @@ func (vs *VariantService) GetStockByVariantID(
 	ctx context.Context,
 	variantID uuid.UUID,
 ) (*model.InventoryStock, error) {
-	if vs.inventoryRepo == nil {
-		return nil, apierr.InternalServerError("inventory repository is not configured")
+	if vs.inventoryReader == nil {
+		return nil, apierr.InternalServerError("inventory reader is not configured")
 	}
 	if variantID == uuid.Nil {
 		return nil, apierr.BadRequestError("Variant ID is required").
@@ -1397,7 +1397,7 @@ func (vs *VariantService) GetStockByVariantID(
 	var stock *model.InventoryStock
 	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		stock, err = vs.inventoryRepo.GetStock(ctx, exec, variantID)
+		stock, err = vs.inventoryReader.GetStock(ctx, exec, variantID)
 		return err
 	})
 	if err != nil {
@@ -1412,8 +1412,8 @@ func (vs *VariantService) ListLedgers(
 	variantID uuid.UUID,
 	q *pagination.ListQuery,
 ) (*pagination.PagedResult[model.InventoryLedger], error) {
-	if vs.inventoryRepo == nil {
-		return nil, apierr.InternalServerError("inventory repository is not configured")
+	if vs.inventoryReader == nil {
+		return nil, apierr.InternalServerError("inventory reader is not configured")
 	}
 	if variantID == uuid.Nil {
 		return nil, apierr.BadRequestError("Variant ID is required").
@@ -1423,7 +1423,7 @@ func (vs *VariantService) ListLedgers(
 	var result *pagination.PagedResult[model.InventoryLedger]
 	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		result, err = vs.inventoryRepo.ListVariantLedgers(ctx, exec, variantID, q)
+		result, err = vs.inventoryReader.ListVariantLedgers(ctx, exec, variantID, q)
 		return err
 	})
 	if err != nil {

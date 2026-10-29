@@ -171,12 +171,12 @@ func TestArch_RepositorySignatures(t *testing.T) {
 }
 
 // =============================================================================
-// Invariant Check 2b: Consumer Repositories Are Read-Only
+// Invariant Check 2b: Consumer Readers Are Read-Only
 // =============================================================================
 
-// TestArch_ConsumerRepositoriesAreReadOnly enforces that consumer-defined repository
-// interfaces outside their owning package contain ONLY read operations (lookups, queries).
-// Cross-domain writes must go through the owning domain's Service or Writer interface.
+// TestArch_ConsumerRepositoriesAreReadOnly enforces that consumer-defined *Reader
+// and *Repository interfaces outside their owning package contain ONLY read operations (lookups, queries).
+// Cross-domain writes must go through the owning domain's Service or *Writer interface.
 func TestArch_ConsumerRepositoriesAreReadOnly(t *testing.T) {
 	internalDir := getBackendInternalDir(t)
 	fset := token.NewFileSet()
@@ -195,7 +195,7 @@ func TestArch_ConsumerRepositoriesAreReadOnly(t *testing.T) {
 			return nil
 		}
 
-		// Only check service files or consumers where repository interfaces are defined
+		// Only check service files or consumers where reader/repository interfaces are defined
 		if !strings.Contains(d.Name(), "service") {
 			return nil
 		}
@@ -217,12 +217,13 @@ func TestArch_ConsumerRepositoriesAreReadOnly(t *testing.T) {
 					continue
 				}
 
-				if !strings.HasSuffix(typeSpec.Name.Name, "Repository") {
+				name := typeSpec.Name.Name
+				if !strings.HasSuffix(name, "Reader") && !strings.HasSuffix(name, "Repository") {
 					continue
 				}
 
 				// ObjectRepository is an infrastructure exception for storage blob pairing per Rule 3
-				if typeSpec.Name.Name == "ObjectRepository" {
+				if name == "ObjectRepository" {
 					continue
 				}
 
@@ -232,11 +233,11 @@ func TestArch_ConsumerRepositoriesAreReadOnly(t *testing.T) {
 				}
 
 				for _, method := range iface.Methods.List {
-					for _, name := range method.Names {
-						methodName := name.Name
+					for _, mname := range method.Names {
+						methodName := mname.Name
 						for _, prefix := range forbiddenWritePrefixes {
 							if strings.HasPrefix(methodName, prefix) {
-								writeViolations = append(writeViolations, path+": "+typeSpec.Name.Name+"."+methodName)
+								writeViolations = append(writeViolations, path+": "+name+"."+methodName)
 							}
 						}
 					}
@@ -247,7 +248,7 @@ func TestArch_ConsumerRepositoriesAreReadOnly(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Empty(t, writeViolations, "Consumer repository interfaces must be read-only (cross-domain writes must use domain services or writers):\n"+strings.Join(writeViolations, "\n"))
+	assert.Empty(t, writeViolations, "Consumer reader interfaces must be read-only (cross-domain writes must use domain services or writers):\n"+strings.Join(writeViolations, "\n"))
 }
 
 // =============================================================================

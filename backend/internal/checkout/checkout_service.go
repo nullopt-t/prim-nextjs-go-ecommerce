@@ -23,8 +23,8 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
-// CartRepository is the subset of cart persistence checkout needs.
-type CartRepository interface {
+// CartReader is the subset of cart persistence checkout needs for reading and locking.
+type CartReader interface {
 	LockCartByUserID(ctx context.Context, tx *database.Tx, userID uuid.UUID) error
 	GetCartByUserID(ctx context.Context, qe database.QueryExecutor, userID uuid.UUID) (*model.Cart, error)
 	GetCartBySessionID(ctx context.Context, qe database.QueryExecutor, sessionID string) (*model.Cart, error)
@@ -52,13 +52,13 @@ type StockWriter interface {
 	CommitReservationsForOrder(ctx context.Context, tx *database.Tx, orderID uuid.UUID) error
 }
 
-// UserRepository is the subset of user persistence checkout needs.
-type UserRepository interface {
+// UserReader is the subset of user persistence checkout needs.
+type UserReader interface {
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.User, error)
 }
 
-// AddressRepository is the subset of address persistence checkout needs.
-type AddressRepository interface {
+// AddressReader is the subset of address persistence checkout needs.
+type AddressReader interface {
 	GetByIDAndUser(ctx context.Context, qe database.QueryExecutor, id uuid.UUID, userID uuid.UUID) (*model.UserAddress, error)
 }
 
@@ -71,21 +71,21 @@ type CouponService interface {
 	RecordRedemption(ctx context.Context, tx *database.Tx, couponID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, discountAmount int64, currency string) error
 }
 
-// VariantRepository is the subset of variant persistence checkout needs for
+// VariantReader is the subset of variant persistence checkout needs for
 // authoritative pricing and order snapshots.
-type VariantRepository interface {
+type VariantReader interface {
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductVariant, error)
 }
 
-// ProductRepository is the subset of product persistence checkout needs for
+// ProductReader is the subset of product persistence checkout needs for
 // order snapshots.
-type ProductRepository interface {
+type ProductReader interface {
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Product, error)
 }
 
-// ObjectRepository is the subset of storage-object persistence checkout needs
+// ObjectReader is the subset of storage-object persistence checkout needs
 // to resolve thumbnail public URLs.
-type ObjectRepository interface {
+type ObjectReader interface {
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error)
 }
 
@@ -96,47 +96,47 @@ type SettingsProvider interface {
 }
 
 type CheckoutService struct {
-	cartRepo      CartRepository
+	cartReader    CartReader
 	cartWriter    CartWriter
 	orderWriter   OrderWriter
 	stockWriter   StockWriter
-	userRepo      UserRepository
-	addressRepo   AddressRepository
+	userReader    UserReader
+	addressReader AddressReader
 	couponService CouponService
-	variantRepo   VariantRepository
-	productRepo   ProductRepository
-	objectRepo    ObjectRepository
+	variantReader VariantReader
+	productReader ProductReader
+	objectReader  ObjectReader
 	storage       storage.StorageProvider
 	settings      SettingsProvider
 	runner        database.Runner
 }
 
 func NewService(
-	cartRepo CartRepository,
+	cartReader CartReader,
 	cartWriter CartWriter,
 	orderWriter OrderWriter,
 	stockWriter StockWriter,
-	userRepo UserRepository,
-	addressRepo AddressRepository,
+	userReader UserReader,
+	addressReader AddressReader,
 	couponService CouponService,
-	variantRepo VariantRepository,
-	productRepo ProductRepository,
-	objectRepo ObjectRepository,
+	variantReader VariantReader,
+	productReader ProductReader,
+	objectReader ObjectReader,
 	storageProvider storage.StorageProvider,
 	settings SettingsProvider,
 	runner database.Runner,
 ) *CheckoutService {
 	return &CheckoutService{
-		cartRepo:      cartRepo,
+		cartReader:    cartReader,
 		cartWriter:    cartWriter,
 		orderWriter:   orderWriter,
 		stockWriter:   stockWriter,
-		userRepo:      userRepo,
-		addressRepo:   addressRepo,
+		userReader:    userReader,
+		addressReader: addressReader,
 		couponService: couponService,
-		variantRepo:   variantRepo,
-		productRepo:   productRepo,
-		objectRepo:    objectRepo,
+		variantReader: variantReader,
+		productReader: productReader,
+		objectReader:  objectReader,
 		storage:       storageProvider,
 		settings:      settings,
 		runner:        runner,
@@ -228,14 +228,14 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		//    Without the lock two requests can both read the same items, acquire
 		//    variant locks in different orders, and deadlock (or create duplicate
 		//    orders) before either clears the cart.
-		if err := s.cartRepo.LockCartByUserID(ctx, tx, in.CustomerID); err != nil {
+		if err := s.cartReader.LockCartByUserID(ctx, tx, in.CustomerID); err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
 			}
 			return s.handleError(err, "Failed to lock cart")
 		}
 
-		cart, err := s.cartRepo.GetCartByUserID(ctx, tx, in.CustomerID)
+		cart, err := s.cartReader.GetCartByUserID(ctx, tx, in.CustomerID)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
@@ -249,7 +249,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 
 		// 2. Resolve the user and shipping address (read-only lookups on the
 		//    same connection, through consumer repository interfaces).
-		buyer, err := s.userRepo.GetByID(ctx, tx, in.CustomerID)
+		buyer, err := s.userReader.GetByID(ctx, tx, in.CustomerID)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("User not found").WithCode(apierr.CodeNotFound)
@@ -257,7 +257,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			return s.handleError(err, "Failed to resolve user")
 		}
 
-		shippingAddr, err := s.addressRepo.GetByIDAndUser(ctx, tx, in.ShippingAddressID, in.CustomerID)
+		shippingAddr, err := s.addressReader.GetByIDAndUser(ctx, tx, in.ShippingAddressID, in.CustomerID)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Shipping address not found").WithCode(apierr.CodeNotFound)
@@ -272,7 +272,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		var grossTotal int64
 		currency := "EGP"
 		for _, item := range cart.Items {
-			v, err := s.variantRepo.GetByID(ctx, tx, item.VariantID)
+			v, err := s.variantReader.GetByID(ctx, tx, item.VariantID)
 			if err != nil {
 				if errors.Is(database.MapError(err), database.ErrNotFound) {
 					return apierr.BadRequestError(
@@ -291,7 +291,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 				currency = *v.Currency
 			}
 
-			prod, err := s.productRepo.GetByID(ctx, tx, v.ProductID)
+			prod, err := s.productReader.GetByID(ctx, tx, v.ProductID)
 			if err != nil {
 				if errors.Is(database.MapError(err), database.ErrNotFound) {
 					return apierr.BadRequestError(
@@ -306,8 +306,8 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			if thumbnailID == nil {
 				thumbnailID = prod.ThumbnailObjectID
 			}
-			if thumbnailID != nil && s.objectRepo != nil && s.storage != nil {
-				obj, err := s.objectRepo.GetByID(ctx, tx, *thumbnailID)
+			if thumbnailID != nil && s.objectReader != nil && s.storage != nil {
+				obj, err := s.objectReader.GetByID(ctx, tx, *thumbnailID)
 				if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
 					return s.handleError(err, "Failed to resolve thumbnail")
 				}
@@ -584,9 +584,9 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 				err      error
 			)
 			if userID != nil {
-				cartData, err = s.cartRepo.GetCartByUserID(ctx, exec, *userID)
+				cartData, err = s.cartReader.GetCartByUserID(ctx, exec, *userID)
 			} else {
-				cartData, err = s.cartRepo.GetCartBySessionID(ctx, exec, *sessionID)
+				cartData, err = s.cartReader.GetCartBySessionID(ctx, exec, *sessionID)
 			}
 			if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
 				return s.handleError(err, "Failed to load cart")
@@ -596,7 +596,7 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 					// grossTotal is computed from the authoritative live variant
 					// price; the snapshot price is only a fallback when the variant
 					// has no live price left.
-					v, vErr := s.variantRepo.GetByID(ctx, exec, item.VariantID)
+					v, vErr := s.variantReader.GetByID(ctx, exec, item.VariantID)
 					if vErr == nil && v.Price != nil {
 						grossTotal += int64(item.Quantity) * *v.Price
 						continue

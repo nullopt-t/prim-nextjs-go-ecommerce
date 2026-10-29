@@ -27,18 +27,18 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/utils"
 )
 
-// BrandRepository defines read methods for product brand associations.
-type BrandRepository interface {
+// BrandReader defines read methods for product brand associations.
+type BrandReader interface {
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductBrand, error)
 }
 
-// CategoryRepository defines read methods for product category associations.
-type CategoryRepository interface {
+// CategoryReader defines read methods for product category associations.
+type CategoryReader interface {
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductCategory, error)
 }
 
-// TagRepository defines read methods for product tag queries.
-type TagRepository interface {
+// TagReader defines read methods for product tag queries.
+type TagReader interface {
 	GetTagsByProductID(ctx context.Context, qe database.QueryExecutor, productID uuid.UUID) ([]*model.ProductTag, error)
 }
 
@@ -47,14 +47,14 @@ type TagWriter interface {
 	ReplaceProductTags(ctx context.Context, productID uuid.UUID, tagIDs []uuid.UUID) error
 }
 
-// InventoryRepository defines stock lookup methods for variants.
-type InventoryRepository interface {
+// InventoryReader defines stock lookup methods for variants.
+type InventoryReader interface {
 	GetStockForVariants(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
 	GetStock(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) (*model.InventoryStock, error)
 }
 
-// ReviewRepository defines review aggregation methods for products.
-type ReviewRepository interface {
+// ReviewReader defines review aggregation methods for products.
+type ReviewReader interface {
 	GetRatingSummaryByProductID(ctx context.Context, qe database.QueryExecutor, productID uuid.UUID) (*model.RatingSummary, error)
 	GetRatingSummariesByProductIDs(ctx context.Context, qe database.QueryExecutor, productIDs []uuid.UUID) (map[uuid.UUID]*model.RatingSummary, error)
 	List(ctx context.Context, qe database.QueryExecutor, q *pagination.ListQuery, productID *uuid.UUID, userID *uuid.UUID, status *model.ReviewStatus) ([]model.Review, int, error)
@@ -69,8 +69,8 @@ type ObjectRepository interface {
 	MarkDeletedByKey(ctx context.Context, tx *database.Tx, bucket, key string) error
 }
 
-// VariantRepository defines read methods for product variant queries.
-type VariantRepository interface {
+// VariantReader defines read methods for product variant queries.
+type VariantReader interface {
 	CountByProductID(ctx context.Context, qe database.QueryExecutor, productID uuid.UUID) (int, error)
 	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductVariant, error)
 	ListByProductID(ctx context.Context, qe database.QueryExecutor, opts variant.ListVariantOptions) (*pagination.PagedResult[model.ProductVariant], error)
@@ -101,15 +101,15 @@ type ProductService struct {
 	dbRunner        database.Runner
 	logger          log.Logger
 	productRepo     *ProductRepository
-	brandRepo       BrandRepository
-	categoryRepo    CategoryRepository
-	tagRepo         TagRepository
+	brandReader     BrandReader
+	categoryReader  CategoryReader
+	tagReader       TagReader
 	tagWriter       TagWriter
-	inventoryRepo   InventoryRepository
-	reviewRepo      ReviewRepository
+	inventoryReader InventoryReader
+	reviewReader    ReviewReader
 	objectRepo      ObjectRepository
 	storageProvider storage.StorageProvider
-	variantRepo     VariantRepository
+	variantReader   VariantReader
 }
 
 // NewService constructs a new ProductService with decoupled repository interfaces and storage provider injected.
@@ -117,29 +117,29 @@ func NewService(
 	r database.Runner,
 	logger log.Logger,
 	productRepo *ProductRepository,
-	brandRepo BrandRepository,
-	categoryRepo CategoryRepository,
-	tagRepo TagRepository,
+	brandReader BrandReader,
+	categoryReader CategoryReader,
+	tagReader TagReader,
 	tagWriter TagWriter,
-	inventoryRepo InventoryRepository,
-	reviewRepo ReviewRepository,
+	inventoryReader InventoryReader,
+	reviewReader ReviewReader,
 	objectRepo ObjectRepository,
 	storageProvider storage.StorageProvider,
-	variantRepo VariantRepository,
+	variantReader VariantReader,
 ) *ProductService {
 	return &ProductService{
 		dbRunner:        r,
 		logger:          logger,
 		productRepo:     productRepo,
-		brandRepo:       brandRepo,
-		categoryRepo:    categoryRepo,
-		tagRepo:         tagRepo,
+		brandReader:     brandReader,
+		categoryReader:  categoryReader,
+		tagReader:       tagReader,
 		tagWriter:       tagWriter,
-		inventoryRepo:   inventoryRepo,
-		reviewRepo:      reviewRepo,
+		inventoryReader: inventoryReader,
+		reviewReader:    reviewReader,
 		objectRepo:      objectRepo,
 		storageProvider: storageProvider,
-		variantRepo:     variantRepo,
+		variantReader:   variantReader,
 	}
 }
 
@@ -276,8 +276,8 @@ func (s *ProductService) CreateProductAsDraft(
 	var product *model.Product
 	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		// Validate category existence and active status.
-		if s.categoryRepo != nil {
-			if _, err := s.categoryRepo.GetByID(ctx, tx, input.CategoryID); err != nil {
+		if s.categoryReader != nil {
+			if _, err := s.categoryReader.GetByID(ctx, tx, input.CategoryID); err != nil {
 				return apierr.BadRequestError("Referenced category does not exist").
 					WithCode(apierr.CodeInvalidReference).
 					Wrap(err)
@@ -285,8 +285,8 @@ func (s *ProductService) CreateProductAsDraft(
 		}
 
 		// Validate brand existence and active status if specified.
-		if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandRepo != nil {
-			if _, err := s.brandRepo.GetByID(ctx, tx, *input.BrandID); err != nil {
+		if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandReader != nil {
+			if _, err := s.brandReader.GetByID(ctx, tx, *input.BrandID); err != nil {
 				return apierr.BadRequestError("Referenced brand does not exist").
 					WithCode(apierr.CodeInvalidReference).
 					Wrap(err)
@@ -360,16 +360,16 @@ func (s *ProductService) UpdateProduct(
 	input UpdateProductInput,
 ) error {
 	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		if input.CategoryID != nil && *input.CategoryID != uuid.Nil && s.categoryRepo != nil {
-			if _, err := s.categoryRepo.GetByID(ctx, tx, *input.CategoryID); err != nil {
+		if input.CategoryID != nil && *input.CategoryID != uuid.Nil && s.categoryReader != nil {
+			if _, err := s.categoryReader.GetByID(ctx, tx, *input.CategoryID); err != nil {
 				return apierr.BadRequestError("Referenced category does not exist").
 					WithCode(apierr.CodeInvalidReference).
 					Wrap(err)
 			}
 		}
 
-		if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandRepo != nil {
-			if _, err := s.brandRepo.GetByID(ctx, tx, *input.BrandID); err != nil {
+		if input.BrandID != nil && *input.BrandID != uuid.Nil && s.brandReader != nil {
+			if _, err := s.brandReader.GetByID(ctx, tx, *input.BrandID); err != nil {
 				return apierr.BadRequestError("Referenced brand does not exist").
 					WithCode(apierr.CodeInvalidReference).
 					Wrap(err)
@@ -550,8 +550,8 @@ func (s *ProductService) populateProductDetails(
 		Product: prod,
 	}
 
-	if prod.BrandID != nil && s.brandRepo != nil {
-		if brandObj, err := s.brandRepo.GetByID(ctx, qe, *prod.BrandID); err == nil && brandObj != nil {
+	if prod.BrandID != nil && s.brandReader != nil {
+		if brandObj, err := s.brandReader.GetByID(ctx, qe, *prod.BrandID); err == nil && brandObj != nil {
 			if brandObj.LogoObjectID != nil && s.objectRepo != nil && s.storageProvider != nil {
 				if logoObj, err := s.objectRepo.GetByID(ctx, qe, *brandObj.LogoObjectID); err == nil && logoObj != nil {
 					logoURL := s.storageProvider.GetPublicURL(logoObj.Bucket, logoObj.Key)
@@ -569,14 +569,14 @@ func (s *ProductService) populateProductDetails(
 		}
 	}
 
-	if prod.CategoryID != uuid.Nil && s.categoryRepo != nil {
-		if catObj, err := s.categoryRepo.GetByID(ctx, qe, prod.CategoryID); err == nil {
+	if prod.CategoryID != uuid.Nil && s.categoryReader != nil {
+		if catObj, err := s.categoryReader.GetByID(ctx, qe, prod.CategoryID); err == nil {
 			details.Category = catObj
 		}
 	}
 
-	if s.variantRepo != nil {
-		variantRes, err := s.variantRepo.ListByProductID(ctx, qe, variant.ListVariantOptions{
+	if s.variantReader != nil {
+		variantRes, err := s.variantReader.ListByProductID(ctx, qe, variant.ListVariantOptions{
 			ProductID:      prod.ID,
 			Query:          &pagination.ListQuery{PageSize: 100},
 			IncludeDeleted: includeDeletedVariants,
@@ -598,7 +598,7 @@ func (s *ProductService) populateProductDetails(
 							v.Thumbnail.PublicURL = s.storageProvider.GetPublicURL(v.Thumbnail.Bucket, v.Thumbnail.Key)
 						}
 					}
-					if mediaByVariant, mediaErr := s.variantRepo.ListMediaByVariantIDs(ctx, qe, vIDs); mediaErr == nil {
+					if mediaByVariant, mediaErr := s.variantReader.ListMediaByVariantIDs(ctx, qe, vIDs); mediaErr == nil {
 						for _, v := range details.Variants {
 							media := mediaByVariant[v.ID]
 							for _, m := range media {
@@ -611,8 +611,8 @@ func (s *ProductService) populateProductDetails(
 					}
 				}
 
-				if s.inventoryRepo != nil {
-					if stocks, err := s.inventoryRepo.GetStockForVariants(ctx, qe, vIDs); err == nil {
+				if s.inventoryReader != nil {
+					if stocks, err := s.inventoryReader.GetStockForVariants(ctx, qe, vIDs); err == nil {
 						details.Stock = stocks
 					}
 				}
@@ -620,8 +620,8 @@ func (s *ProductService) populateProductDetails(
 		}
 	}
 
-	if s.tagRepo != nil {
-		if tagsList, err := s.tagRepo.GetTagsByProductID(ctx, qe, prod.ID); err == nil {
+	if s.tagReader != nil {
+		if tagsList, err := s.tagReader.GetTagsByProductID(ctx, qe, prod.ID); err == nil {
 			details.Tags = tagsList
 		}
 	}
@@ -726,7 +726,7 @@ func (s *ProductService) List(
 		}
 	}
 
-	if len(res.Items) > 0 && s.reviewRepo != nil {
+	if len(res.Items) > 0 && s.reviewReader != nil {
 		productIDs := make([]uuid.UUID, 0, len(res.Items))
 		for _, item := range res.Items {
 			if item != nil {
@@ -737,7 +737,7 @@ func (s *ProductService) List(
 		var ratingsMap map[uuid.UUID]*model.RatingSummary
 		_ = s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 			var err error
-			ratingsMap, err = s.reviewRepo.GetRatingSummariesByProductIDs(ctx, exec, productIDs)
+			ratingsMap, err = s.reviewReader.GetRatingSummariesByProductIDs(ctx, exec, productIDs)
 			return err
 		})
 		if ratingsMap != nil {
@@ -761,7 +761,7 @@ func (s *ProductService) PublishProduct(
 	productID uuid.UUID,
 ) error {
 	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-		count, err := s.variantRepo.CountByProductID(ctx, exec, productID)
+		count, err := s.variantReader.CountByProductID(ctx, exec, productID)
 		if err != nil {
 			return err
 		}
@@ -877,7 +877,7 @@ func (s *ProductService) SetDefaultVariant(
 	}
 
 	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		v, err := s.variantRepo.GetByID(ctx, tx, variantID)
+		v, err := s.variantReader.GetByID(ctx, tx, variantID)
 		if err != nil {
 			return err
 		}
@@ -1091,14 +1091,14 @@ func (s *ProductService) ListProductReviews(
 	productID uuid.UUID,
 	status *model.ReviewStatus,
 ) (*pagination.PagedResult[model.Review], error) {
-	if s.reviewRepo == nil {
+	if s.reviewReader == nil {
 		return &pagination.PagedResult[model.Review]{Items: []*model.Review{}}, nil
 	}
 	var items []model.Review
 	var total int
 	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		items, total, err = s.reviewRepo.List(ctx, exec, q, &productID, nil, status)
+		items, total, err = s.reviewReader.List(ctx, exec, q, &productID, nil, status)
 		return err
 	})
 	if err != nil {
@@ -1118,13 +1118,13 @@ func (s *ProductService) GetProductRatingSummary(
 	ctx context.Context,
 	productID uuid.UUID,
 ) (*model.RatingSummary, error) {
-	if s.reviewRepo == nil {
+	if s.reviewReader == nil {
 		return &model.RatingSummary{}, nil
 	}
 	var summary *model.RatingSummary
 	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		summary, err = s.reviewRepo.GetRatingSummaryByProductID(ctx, exec, productID)
+		summary, err = s.reviewReader.GetRatingSummaryByProductID(ctx, exec, productID)
 		return err
 	})
 	if err != nil {

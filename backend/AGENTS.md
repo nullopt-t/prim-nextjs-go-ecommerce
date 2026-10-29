@@ -61,12 +61,14 @@ database connection from entry to exit.
   Scan or close rows before issuing another query.
 - Keep transactions short. No HTTP calls, uploads, email, Kafka publishes,
   sleeps, or other external I/O inside `WithTx`.
-- Cross-domain data access: use a consumer-owned repository interface for
-  ordinary reads, lookups, and projections. Inject another domain's `Service`
-  only when the consumer must enforce that domain's business rules (validation,
-  state transitions, limits, locking order, owned side effects). Declare the
-  narrow interface in the consuming package and wire the concrete
-  implementation in `internal/app`.
+- Cross-domain data access: use a consumer-owned `*Reader` interface for
+  ordinary reads, lookups, and projections (e.g. `ProductReader`, `VariantReader`,
+  `InventoryReader`, `CartReader`, `UserReader`). Cross-domain mutations use
+  a consumer-owned `*Writer` interface (`CartWriter`, `OrderWriter`, `StockWriter`,
+  `TagWriter`) or inject another domain's `Service` only when the consumer must
+  enforce that domain's business rules (validation, state transitions, limits,
+  locking order, owned side effects). Declare the narrow interface in the consuming
+  package and wire the concrete implementation in `internal/app`.
 - A participating service method takes the caller's transaction explicitly
   (`tx *database.Tx` or `qe database.QueryExecutor`) and must not call
   `WithTx`/`WithExecutor` itself. The caller owns the unit of work. Keep a

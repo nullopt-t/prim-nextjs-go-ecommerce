@@ -106,9 +106,9 @@ func TestAdversarial_PublishProduct_SingleWithTx(t *testing.T) {
 	}
 
 	svc := &ProductService{
-		dbRunner:    runner,
-		variantRepo: vRepo,
-		productRepo: NewProductRepository(),
+		dbRunner:      runner,
+		variantReader: vRepo,
+		productRepo:   NewProductRepository(),
 	}
 
 	err := svc.PublishProduct(context.Background(), prodID)
@@ -136,9 +136,9 @@ func TestAdversarial_SetDefaultVariant_SingleWithTx(t *testing.T) {
 	}
 
 	svc := &ProductService{
-		dbRunner:    runner,
-		variantRepo: vRepo,
-		productRepo: NewProductRepository(),
+		dbRunner:      runner,
+		variantReader: vRepo,
+		productRepo:   NewProductRepository(),
 	}
 
 	// This call will fail inside WithTx at productRepo.GetByID (returning ErrNoRows from our mock query)
