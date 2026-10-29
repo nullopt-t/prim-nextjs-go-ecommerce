@@ -126,6 +126,45 @@ func NewService(
 	settings SettingsProvider,
 	runner database.Runner,
 ) *CheckoutService {
+	if cartReader == nil {
+		panic("checkout: cart reader is required")
+	}
+	if cartWriter == nil {
+		panic("checkout: cart writer is required")
+	}
+	if orderWriter == nil {
+		panic("checkout: order writer is required")
+	}
+	if stockWriter == nil {
+		panic("checkout: stock writer is required")
+	}
+	if userReader == nil {
+		panic("checkout: user reader is required")
+	}
+	if addressReader == nil {
+		panic("checkout: address reader is required")
+	}
+	if couponService == nil {
+		panic("checkout: coupon service is required")
+	}
+	if variantReader == nil {
+		panic("checkout: variant reader is required")
+	}
+	if productReader == nil {
+		panic("checkout: product reader is required")
+	}
+	if objectReader == nil {
+		panic("checkout: object reader is required")
+	}
+	if storageProvider == nil {
+		panic("checkout: storage provider is required")
+	}
+	if settings == nil {
+		panic("checkout: settings provider is required")
+	}
+	if runner == nil {
+		panic("checkout: database runner is required")
+	}
 	return &CheckoutService{
 		cartReader:    cartReader,
 		cartWriter:    cartWriter,
@@ -192,9 +231,6 @@ func (s *CheckoutService) handleError(err error, fallbackMsg string) error {
 // keeps checkout available (with historical pricing) rather than failing closed
 // on a transient settings read error.
 func (s *CheckoutService) resolveConfig(ctx context.Context) setting.Config {
-	if s.settings == nil {
-		return setting.DefaultConfig()
-	}
 	cfg, err := s.settings.GetConfig(ctx)
 	if err != nil {
 		return setting.DefaultConfig()
@@ -211,10 +247,6 @@ type CheckoutInput struct {
 }
 
 func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*model.Order, error) {
-	if s.runner == nil {
-		return nil, apierr.InternalServerError("Database runner unavailable")
-	}
-
 	var createdOrder *model.Order
 
 	cfg := s.resolveConfig(ctx)
@@ -306,7 +338,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			if thumbnailID == nil {
 				thumbnailID = prod.ThumbnailObjectID
 			}
-			if thumbnailID != nil && s.objectReader != nil && s.storage != nil {
+			if thumbnailID != nil {
 				obj, err := s.objectReader.GetByID(ctx, tx, *thumbnailID)
 				if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
 					return s.handleError(err, "Failed to resolve thumbnail")
@@ -473,35 +505,33 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		//    Reserve variants in a deterministic order so two concurrent
 		//    checkouts that share variants cannot deadlock by acquiring the same
 		//    row locks in opposite orders (mirrors CommitReservationsForOrder).
-		if s.stockWriter != nil {
-			sortedItems := make([]order.CreateOrderItemInput, len(orderItems))
-			copy(sortedItems, orderItems)
-			sort.Slice(sortedItems, func(i, j int) bool {
-				return sortedItems[i].VariantID.String() < sortedItems[j].VariantID.String()
-			})
+		sortedItems := make([]order.CreateOrderItemInput, len(orderItems))
+		copy(sortedItems, orderItems)
+		sort.Slice(sortedItems, func(i, j int) bool {
+			return sortedItems[i].VariantID.String() < sortedItems[j].VariantID.String()
+		})
 
-			for _, item := range sortedItems {
-				if _, err := s.stockWriter.HoldStock(ctx, tx, inventory.ReserveStockInput{
-					VariantID: item.VariantID,
-					CartID:    &cart.ID,
-					OrderID:   &createdOrder.ID,
-					Quantity:  item.Quantity,
-					Duration:  time.Duration(cfg.ReservationTTLMinutes()) * time.Minute,
-				}); err != nil {
-					return err
-				}
+		for _, item := range sortedItems {
+			if _, err := s.stockWriter.HoldStock(ctx, tx, inventory.ReserveStockInput{
+				VariantID: item.VariantID,
+				CartID:    &cart.ID,
+				OrderID:   &createdOrder.ID,
+				Quantity:  item.Quantity,
+				Duration:  time.Duration(cfg.ReservationTTLMinutes()) * time.Minute,
+			}); err != nil {
+				return err
 			}
+		}
 
-			// Cash-on-delivery orders are confirmed the moment they are placed:
-			// payment is collected on delivery, so there is no online payment
-			// window to hold stock for. Commit the deduction immediately so the
-			// units leave salable stock and the expiry reaper never cancels a
-			// legitimate COD order. Card orders keep their hold until the
-			// payment is captured.
-			if isCOD {
-				if err := s.stockWriter.CommitReservationsForOrder(ctx, tx, createdOrder.ID); err != nil {
-					return err
-				}
+		// Cash-on-delivery orders are confirmed the moment they are placed:
+		// payment is collected on delivery, so there is no online payment
+		// window to hold stock for. Commit the deduction immediately so the
+		// units leave salable stock and the expiry reaper never cancels a
+		// legitimate COD order. Card orders keep their hold until the
+		// payment is captured.
+		if isCOD {
+			if err := s.stockWriter.CommitReservationsForOrder(ctx, tx, createdOrder.ID); err != nil {
+				return err
 			}
 		}
 

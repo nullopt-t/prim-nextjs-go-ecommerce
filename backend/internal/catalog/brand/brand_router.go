@@ -20,6 +20,12 @@ func NewRouter(
 	h *BrandHandler,
 	sessionStore middleware.SessionStore,
 ) *Router {
+	if h == nil {
+		panic("brand: handler is required")
+	}
+	if sessionStore == nil {
+		panic("brand: session store is required")
+	}
 	return &Router{
 		bh:           h,
 		sessionStore: sessionStore,

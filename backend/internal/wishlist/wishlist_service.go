@@ -37,6 +37,21 @@ func NewService(
 	storageProvider storage.StorageProvider,
 	logger log.Logger,
 ) *WishlistService {
+	if dbRunner == nil {
+		panic("wishlist: database runner is required")
+	}
+	if repo == nil {
+		panic("wishlist: wishlist repository is required")
+	}
+	if productReader == nil {
+		panic("wishlist: product reader is required")
+	}
+	if storageProvider == nil {
+		panic("wishlist: storage provider is required")
+	}
+	if logger == nil {
+		panic("wishlist: logger is required")
+	}
 	return &WishlistService{
 		dbRunner:        dbRunner,
 		repo:            repo,
@@ -99,27 +114,25 @@ func (s *WishlistService) AddToWishlist(
 
 	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		// 1. Validate product existence and publication status on tx
-		if s.productReader != nil {
-			prod, err := s.productReader.GetByID(ctx, tx, productID)
-			if err != nil {
-				if errors.Is(err, pgx.ErrNoRows) || errors.Is(database.MapError(err), database.ErrNotFound) {
-					return apierr.NotFoundError("Product not found").
-						WithCode(errcode.CodeProductNotFound)
-				}
-				var apiErr *apierr.APIError
-				if errors.As(err, &apiErr) {
-					return apiErr
-				}
-				return s.handleError(err, "Failed to verify product")
-			}
-			if prod == nil {
+		prod, err := s.productReader.GetByID(ctx, tx, productID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) || errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Product not found").
 					WithCode(errcode.CodeProductNotFound)
 			}
-			if prod.Status != model.PublicationStatusPublished {
-				return apierr.BadRequestError("Product is not available for wishlisting").
-					WithCode(apierr.CodeInvalidInput)
+			var apiErr *apierr.APIError
+			if errors.As(err, &apiErr) {
+				return apiErr
 			}
+			return s.handleError(err, "Failed to verify product")
+		}
+		if prod == nil {
+			return apierr.NotFoundError("Product not found").
+				WithCode(errcode.CodeProductNotFound)
+		}
+		if prod.Status != model.PublicationStatusPublished {
+			return apierr.BadRequestError("Product is not available for wishlisting").
+				WithCode(apierr.CodeInvalidInput)
 		}
 
 		// 2. Validate variant association on tx
@@ -317,7 +330,7 @@ func (s *WishlistService) ClearWishlist(
 
 // resolveThumbnail populates the public CDN URL using the injected storage provider.
 func (s *WishlistService) resolveThumbnail(item *model.WishlistItem) {
-	if item.ThumbnailBucket != nil && item.ThumbnailKey != nil && *item.ThumbnailBucket != "" && *item.ThumbnailKey != "" && s.storageProvider != nil {
+	if item.ThumbnailBucket != nil && item.ThumbnailKey != nil && *item.ThumbnailBucket != "" && *item.ThumbnailKey != "" {
 		url := s.storageProvider.GetPublicURL(*item.ThumbnailBucket, *item.ThumbnailKey)
 		item.ThumbnailURL = &url
 	}

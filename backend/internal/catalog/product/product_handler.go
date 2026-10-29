@@ -27,6 +27,9 @@ type ProductHandler struct {
 
 // NewHandler constructs a new ProductHandler instance with injected ProductService.
 func NewHandler(s *ProductService) *ProductHandler {
+	if s == nil {
+		panic("product: service is required")
+	}
 	return &ProductHandler{service: s}
 }
 

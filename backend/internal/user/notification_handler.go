@@ -24,6 +24,9 @@ type NotificationHandler struct {
 
 // NewNotificationHandler constructs a new NotificationHandler instance.
 func NewNotificationHandler(service *NotificationService) *NotificationHandler {
+	if service == nil {
+		panic("notification: service is required")
+	}
 	return &NotificationHandler{service: service}
 }
 

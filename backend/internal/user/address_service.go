@@ -55,6 +55,15 @@ func NewAddressService(
 	repo *AddressRepository,
 	logger log.Logger,
 ) *AddressService {
+	if dbRunner == nil {
+		panic("address: database runner is required")
+	}
+	if repo == nil {
+		panic("address: address repository is required")
+	}
+	if logger == nil {
+		panic("address: logger is required")
+	}
 	return &AddressService{
 		dbRunner: dbRunner,
 		repo:     repo,

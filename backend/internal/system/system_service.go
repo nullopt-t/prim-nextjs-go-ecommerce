@@ -98,6 +98,15 @@ type Service struct {
 
 // NewService constructs a health service over the supplied dependency clients.
 func NewService(db *database.DB, redisClient *redis.Client, minioClient *minio.Client, cfg Config) *Service {
+	if db == nil {
+		panic("system: database is required")
+	}
+	if redisClient == nil {
+		panic("system: redis client is required")
+	}
+	if minioClient == nil {
+		panic("system: minio client is required")
+	}
 	return &Service{
 		db:    db,
 		redis: redisClient,
@@ -140,11 +149,6 @@ func (s *Service) Check(ctx context.Context) *HealthReport {
 // on-disk size.
 func (s *Service) checkPostgres(ctx context.Context) ServiceHealth {
 	health := ServiceHealth{Key: "postgres", Status: StatusHealthy}
-	if s.db == nil {
-		health.Status = StatusUnhealthy
-		health.Error = "database client not configured"
-		return health
-	}
 
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
@@ -176,11 +180,6 @@ func (s *Service) checkPostgres(ctx context.Context) ServiceHealth {
 // key count, and connected clients.
 func (s *Service) checkRedis(ctx context.Context) ServiceHealth {
 	health := ServiceHealth{Key: "redis", Status: StatusHealthy}
-	if s.redis == nil {
-		health.Status = StatusUnhealthy
-		health.Error = "redis client not configured"
-		return health
-	}
 
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
@@ -321,11 +320,6 @@ func (s *Service) kafkaOffsets(ctx context.Context, partitions []kafka.Partition
 // media bucket's object count and total size.
 func (s *Service) checkMinio(ctx context.Context) ServiceHealth {
 	health := ServiceHealth{Key: "minio", Status: StatusHealthy}
-	if s.minio == nil {
-		health.Status = StatusUnhealthy
-		health.Error = "object storage client not configured"
-		return health
-	}
 
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
@@ -388,10 +382,6 @@ func (s *Service) postgresResources(ctx context.Context) []ResourceMetric {
 
 // redisResources reports cache memory, key count, and connected clients.
 func (s *Service) redisResources(ctx context.Context) []ResourceMetric {
-	if s.redis == nil {
-		return nil
-	}
-
 	resources := make([]ResourceMetric, 0, 4)
 	if info, err := s.redis.Info(ctx, "memory").Result(); err == nil {
 		if mem := parseInfoField(info, "used_memory_human"); mem != "" {
@@ -418,10 +408,6 @@ func (s *Service) redisResources(ctx context.Context) []ResourceMetric {
 
 // minioResources reports the media bucket's object count and total byte size.
 func (s *Service) minioResources(ctx context.Context) []ResourceMetric {
-	if s.minio == nil {
-		return nil
-	}
-
 	count, bytes, truncated := s.bucketUsage(ctx, s.cfg.Bucket)
 	objects := strconv.FormatInt(count, 10)
 	if truncated {

@@ -158,6 +158,9 @@ type OrderHandler struct {
 
 // NewHandler constructs a new OrderHandler with the specified OrderService.
 func NewHandler(orderService *OrderService) *OrderHandler {
+	if orderService == nil {
+		panic("order: service is required")
+	}
 	return &OrderHandler{orderService: orderService}
 }
 

@@ -26,6 +26,12 @@ type Router struct {
 
 // NewRouter constructs a new user management Router instance.
 func NewRouter(handler UserHandler, sessionStore middleware.SessionStore) *Router {
+	if handler == nil {
+		panic("user: handler is required")
+	}
+	if sessionStore == nil {
+		panic("user: session store is required")
+	}
 	return &Router{
 		handler:      handler,
 		sessionStore: sessionStore,

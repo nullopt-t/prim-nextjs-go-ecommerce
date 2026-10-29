@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -42,6 +43,12 @@ type AuthTestSuite struct {
 	redisClient    *redis.Client
 	router         *gin.Engine
 	notifier       *mockNotifier
+}
+
+type dummyCartMerger struct{}
+
+func (d *dummyCartMerger) MergeGuestCart(ctx context.Context, sessionID string, userID uuid.UUID) error {
+	return nil
 }
 
 func (s *AuthTestSuite) SetupSuite() {
@@ -135,10 +142,7 @@ func (s *AuthTestSuite) SetupSuite() {
 	s.router.Use(gin.Recovery())
 	s.router.Use(middleware.ErrorHandler(logger))
 
-	// Missing cartService for authHandler. We can pass nil since cart merging isn't used in these flows immediately,
-	// or create a dummy interface. Wait, let's pass nil and hope it doesn't panic on normal flows.
-	// Wait, VerifyChallenge might use CartMerger. Let's look at auth_handler.go.
-	authHandler := auth.NewAuthHandler(authService, sessionService, logger, false, nil, challengeTTL)
+	authHandler := auth.NewAuthHandler(authService, sessionService, logger, false, &dummyCartMerger{}, challengeTTL)
 	rateLimiter := security.NewRateLimiter(s.redisClient)
 	authRouter := auth.NewRouter(
 		authHandler,

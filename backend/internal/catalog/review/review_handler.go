@@ -18,6 +18,9 @@ type ReviewHandler struct {
 }
 
 func NewHandler(s *ReviewService) *ReviewHandler {
+	if s == nil {
+		panic("review: service is required")
+	}
 	return &ReviewHandler{service: s}
 }
 

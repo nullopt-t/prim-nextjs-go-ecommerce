@@ -12,6 +12,12 @@ type Router struct {
 }
 
 func NewRouter(handler *CouponHandler, sessionStore middleware.SessionStore) *Router {
+	if handler == nil {
+		panic("coupon: handler is required")
+	}
+	if sessionStore == nil {
+		panic("coupon: session store is required")
+	}
 	return &Router{
 		handler:      handler,
 		sessionStore: sessionStore,

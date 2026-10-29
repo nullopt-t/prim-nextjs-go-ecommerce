@@ -22,6 +22,12 @@ func NewService(
 	dr database.Runner,
 	repo *TagRepository,
 ) *TagService {
+	if dr == nil {
+		panic("tag: database runner is required")
+	}
+	if repo == nil {
+		panic("tag: tag repository is required")
+	}
 	return &TagService{
 		dr:   dr,
 		repo: repo,

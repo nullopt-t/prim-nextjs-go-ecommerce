@@ -113,6 +113,21 @@ func NewService(
 	inventoryReader InventoryReader,
 	inventoryWriter InventoryWriter,
 ) *OrderService {
+	if r == nil {
+		panic("order: database runner is required")
+	}
+	if orderRepo == nil {
+		panic("order: order repository is required")
+	}
+	if logger == nil {
+		panic("order: logger is required")
+	}
+	if inventoryReader == nil {
+		panic("order: inventory reader is required")
+	}
+	if inventoryWriter == nil {
+		panic("order: inventory writer is required")
+	}
 	return &OrderService{
 		qexecutor:       r,
 		orderRepo:       orderRepo,

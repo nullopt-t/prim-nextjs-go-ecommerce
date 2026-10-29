@@ -105,6 +105,15 @@ func NewHandler(
 	limiter *security.RateLimiter,
 	logger log.Logger,
 ) *Handler {
+	if userService == nil {
+		panic("user: user service is required")
+	}
+	if limiter == nil {
+		panic("user: rate limiter is required")
+	}
+	if logger == nil {
+		panic("user: logger is required")
+	}
 	return &Handler{
 		userService: userService,
 		limiter:     limiter,

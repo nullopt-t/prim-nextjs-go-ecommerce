@@ -20,6 +20,9 @@ type Handler struct {
 
 // NewHandler constructs a system health HTTP handler.
 func NewHandler(s *Service) *Handler {
+	if s == nil {
+		panic("system: service is required")
+	}
 	return &Handler{
 		service: s,
 	}

@@ -19,6 +19,9 @@ type BrandHandler struct {
 }
 
 func NewHandler(brandService *BrandService) *BrandHandler {
+	if brandService == nil {
+		panic("brand: service is required")
+	}
 	return &BrandHandler{
 		brandService: brandService,
 	}

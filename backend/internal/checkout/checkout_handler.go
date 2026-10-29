@@ -37,6 +37,9 @@ type CheckoutHandler struct {
 }
 
 func NewHandler(checkoutService *CheckoutService) *CheckoutHandler {
+	if checkoutService == nil {
+		panic("checkout: service is required")
+	}
 	return &CheckoutHandler{checkoutService: checkoutService}
 }
 

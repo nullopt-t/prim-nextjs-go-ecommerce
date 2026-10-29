@@ -19,6 +19,12 @@ type OrderRouter struct {
 
 // NewRouter constructs a new OrderRouter initialized with the provided handler and session store.
 func NewRouter(handler *OrderHandler, sessionStore middleware.SessionStore) *OrderRouter {
+	if handler == nil {
+		panic("order: handler is required")
+	}
+	if sessionStore == nil {
+		panic("order: session store is required")
+	}
 	return &OrderRouter{
 		handler:      handler,
 		sessionStore: sessionStore,

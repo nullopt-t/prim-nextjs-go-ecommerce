@@ -18,11 +18,13 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/storage"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -106,10 +108,10 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	logger := log.NewConsoleLogger()
 
 	s.inventoryRepo = inventory.NewRepository()
-	s.inventoryService = inventory.NewService(logger, s.txRunner, s.inventoryRepo, nil)
+	s.inventoryService = inventory.NewService(logger, s.txRunner, s.inventoryRepo, storage.NoopProvider{})
 
 	s.variantRepo = variant.NewRepository()
-	s.variantService = variant.NewService(logger, s.txRunner, nil, nil, s.variantRepo, s.inventoryRepo, s.inventoryService)
+	s.variantService = variant.NewService(logger, s.txRunner, object.NewRepository(), storage.NoopProvider{}, s.variantRepo, s.inventoryRepo, s.inventoryService)
 
 	s.categoryID = uuid.New()
 	_, err = s.db.Exec(ctx, `
@@ -135,7 +137,7 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	}
 
 	s.cartRepo = cart.NewRepository()
-	s.cartService = cart.NewService(s.txRunner, s.cartRepo, s.variantRepo, s.productService, s.inventoryRepo, nil, nil)
+	s.cartService = cart.NewService(s.txRunner, s.cartRepo, s.variantRepo, s.productService, s.inventoryRepo, object.NewRepository(), storage.NoopProvider{})
 	s.handler = cart.NewHandler(s.cartService)
 
 	// Start Redis Container

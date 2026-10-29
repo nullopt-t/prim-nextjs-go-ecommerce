@@ -164,7 +164,7 @@ func (f *fakeStorageProvider) GetPublicURL(bucket, key string) string {
 }
 
 func TestDeleteObjectByIDNotFoundMapsTo404(t *testing.T) {
-	svc := NewService(fakeRunner{row: fakeRow{err: pgx.ErrNoRows}}, NewRepository(), nil)
+	svc := NewService(fakeRunner{row: fakeRow{err: pgx.ErrNoRows}}, NewRepository(), &fakeStorageProvider{})
 
 	err := svc.DeleteObjectByID(context.Background(), uuid.New())
 	require.Error(t, err)
@@ -179,7 +179,7 @@ func TestDeleteObjectByIDAlreadyDeletedMapsTo404(t *testing.T) {
 	svc := NewService(
 		fakeRunner{row: fakeRow{status: model.ObjectStatusDeleted, deleted: true}},
 		NewRepository(),
-		nil,
+		&fakeStorageProvider{},
 	)
 
 	err := svc.DeleteObjectByID(context.Background(), uuid.New())
@@ -192,7 +192,7 @@ func TestDeleteObjectByIDAlreadyDeletedMapsTo404(t *testing.T) {
 }
 
 func TestObjectService_HandleError(t *testing.T) {
-	svc := NewService(fakeRunner{}, NewRepository(), nil)
+	svc := NewService(fakeRunner{}, NewRepository(), &fakeStorageProvider{})
 
 	tests := []struct {
 		name           string

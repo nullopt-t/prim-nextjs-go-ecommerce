@@ -15,6 +15,9 @@ type AttributeHandler struct {
 }
 
 func NewHandler(s *AttributeService) *AttributeHandler {
+	if s == nil {
+		panic("attribute: service is required")
+	}
 	return &AttributeHandler{
 		attributeService: s,
 	}

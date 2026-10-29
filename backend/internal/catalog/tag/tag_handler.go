@@ -18,6 +18,9 @@ type TagHandler struct {
 }
 
 func NewHandler(s *TagService) *TagHandler {
+	if s == nil {
+		panic("tag: service is required")
+	}
 	return &TagHandler{
 		tservice: s,
 	}

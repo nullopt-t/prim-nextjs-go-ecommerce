@@ -12,6 +12,12 @@ type AttributeRouter struct {
 }
 
 func NewRouter(h *AttributeHandler, sessionStore middleware.SessionStore) *AttributeRouter {
+	if h == nil {
+		panic("attribute: handler is required")
+	}
+	if sessionStore == nil {
+		panic("attribute: session store is required")
+	}
 	return &AttributeRouter{
 		handler:      h,
 		sessionStore: sessionStore,

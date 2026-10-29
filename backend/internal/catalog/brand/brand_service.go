@@ -38,6 +38,18 @@ func NewService(
 	objectRepo ObjectRepository,
 	storageProvider storage.StorageProvider,
 ) *BrandService {
+	if runner == nil {
+		panic("brand: database runner is required")
+	}
+	if brandRepo == nil {
+		panic("brand: brand repository is required")
+	}
+	if objectRepo == nil {
+		panic("brand: object repository is required")
+	}
+	if storageProvider == nil {
+		panic("brand: storage provider is required")
+	}
 	return &BrandService{
 		runner:          runner,
 		brandRepo:       brandRepo,
@@ -289,10 +301,6 @@ func (bs *BrandService) UploadBrandLogo(
 		).WithCode(apierr.CodeUnsupportedMediaType)
 	}
 
-	if bs.storageProvider == nil || bs.objectRepo == nil {
-		return nil, apierr.InternalServerError("Storage provider or repository unavailable")
-	}
-
 	key := uuid.New().String()
 	const bucket = "catalog"
 
@@ -366,7 +374,7 @@ func (bs *BrandService) populateLogoURLs(
 			objectIDs = append(objectIDs, *brand.LogoObjectID)
 		}
 	}
-	if len(objectIDs) == 0 || bs.objectRepo == nil {
+	if len(objectIDs) == 0 {
 		return nil
 	}
 

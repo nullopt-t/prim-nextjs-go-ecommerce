@@ -15,6 +15,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/storage"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
@@ -70,7 +71,7 @@ func (s *InventoryTestSuite) SetupSuite() {
 	txRunner := database.NewTxRunner(s.db)
 	logger := log.NewConsoleLogger()
 	s.repo = inventory.NewRepository()
-	s.service = inventory.NewService(logger, txRunner, s.repo, nil)
+	s.service = inventory.NewService(logger, txRunner, s.repo, storage.NoopProvider{})
 
 	// Create base Category and Product for Foreign Key relations
 	s.categoryID = uuid.New()

@@ -15,6 +15,12 @@ func NewRouter(
 	h *CategoryHandler,
 	sessionStore middleware.SessionStore,
 ) *CategoryRouter {
+	if h == nil {
+		panic("category: handler is required")
+	}
+	if sessionStore == nil {
+		panic("category: session store is required")
+	}
 	return &CategoryRouter{
 		chandler:     h,
 		sessionStore: sessionStore,

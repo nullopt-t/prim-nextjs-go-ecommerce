@@ -20,6 +20,9 @@ type CategoryHandler struct {
 func NewHandler(
 	s *CategoryService,
 ) *CategoryHandler {
+	if s == nil {
+		panic("category: service is required")
+	}
 	return &CategoryHandler{
 		categoryService: s,
 	}

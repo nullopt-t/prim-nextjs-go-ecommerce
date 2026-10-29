@@ -16,6 +16,12 @@ func NewNotificationRouter(
 	handler *NotificationHandler,
 	sessionStore middleware.SessionStore,
 ) *NotificationRouter {
+	if handler == nil {
+		panic("notification: handler is required")
+	}
+	if sessionStore == nil {
+		panic("notification: session store is required")
+	}
 	return &NotificationRouter{
 		handler:      handler,
 		sessionStore: sessionStore,

@@ -54,6 +54,18 @@ func NewAuthHandler(
 	cartMerger CartMerger,
 	challengeTTL time.Duration,
 ) *Handler {
+	if authService == nil {
+		panic("auth: auth service is required")
+	}
+	if sessionService == nil {
+		panic("auth: session service is required")
+	}
+	if logger == nil {
+		panic("auth: logger is required")
+	}
+	if cartMerger == nil {
+		panic("auth: cart merger is required")
+	}
 	return &Handler{
 		authService:    authService,
 		sessionService: sessionService,

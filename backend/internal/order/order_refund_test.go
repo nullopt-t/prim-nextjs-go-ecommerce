@@ -14,6 +14,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/database"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
 // refundRow implements pgx.Row for the payment status lookup.
@@ -99,7 +100,7 @@ func TestRefundPaymentStateValidation(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := order.NewService(refundRunner{row: tc.row}, order.NewRepository(), nil, nil, &fakeInventoryWriter{})
+			svc := order.NewService(refundRunner{row: tc.row}, order.NewRepository(), log.NewNoopLogger(), &fakeInventoryReader{}, &fakeInventoryWriter{})
 
 			err := svc.RefundPayment(context.Background(), uuid.New())
 			if !tc.wantErr {

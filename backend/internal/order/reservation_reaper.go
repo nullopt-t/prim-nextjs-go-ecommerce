@@ -29,6 +29,12 @@ type ReservationReaper struct {
 // NewReservationReaper builds a reaper. A non-positive interval defaults to one
 // minute.
 func NewReservationReaper(service *OrderService, logger log.Logger, interval time.Duration) *ReservationReaper {
+	if service == nil {
+		panic("order: service is required")
+	}
+	if logger == nil {
+		panic("order: logger is required")
+	}
 	if interval <= 0 {
 		interval = time.Minute
 	}

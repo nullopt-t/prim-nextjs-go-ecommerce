@@ -185,3 +185,22 @@ func (m *MinioStorageProvider) GetPublicURL(bucket, key string) string {
 	}
 	return fmt.Sprintf("%s/%s/%s", baseURL, bucket, escapedKey)
 }
+
+// NoopProvider implements StorageProvider with no-op operations, ideal for tests.
+type NoopProvider struct{}
+
+func (NoopProvider) Upload(ctx context.Context, bucket, key string, file io.Reader, size int64, contentType string) error {
+	return nil
+}
+
+func (NoopProvider) Delete(ctx context.Context, bucket, key string) error {
+	return nil
+}
+
+func (NoopProvider) GetPresignedURL(ctx context.Context, bucket, key string, expires time.Duration) (string, error) {
+	return fmt.Sprintf("http://localhost/%s/%s", bucket, key), nil
+}
+
+func (NoopProvider) GetPublicURL(bucket, key string) string {
+	return fmt.Sprintf("http://localhost/%s/%s", bucket, key)
+}

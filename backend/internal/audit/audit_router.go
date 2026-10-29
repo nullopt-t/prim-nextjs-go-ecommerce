@@ -14,6 +14,12 @@ type Router struct {
 
 // NewRouter constructs an audit router.
 func NewRouter(handler *Handler, sessionStore middleware.SessionStore) *Router {
+	if handler == nil {
+		panic("audit: handler is required")
+	}
+	if sessionStore == nil {
+		panic("audit: session store is required")
+	}
 	return &Router{handler: handler, sessionStore: sessionStore}
 }
 

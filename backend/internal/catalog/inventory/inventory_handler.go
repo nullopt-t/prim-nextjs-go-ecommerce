@@ -16,6 +16,9 @@ type InventoryHandler struct {
 }
 
 func NewHandler(service *InventoryService) *InventoryHandler {
+	if service == nil {
+		panic("inventory: service is required")
+	}
 	return &InventoryHandler{service: service}
 }
 

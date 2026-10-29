@@ -50,6 +50,12 @@ type KafkaNotifier struct {
 // NewKafkaNotifier returns a ready-to-use KafkaNotifier. The optional
 // emailFallback is used only when publishing an email event to Kafka fails.
 func NewKafkaNotifier(producer EventPublisher, logger log.Logger, emailFallback ...EmailFallbackQueue) *KafkaNotifier {
+	if producer == nil {
+		panic("notifier: producer is required")
+	}
+	if logger == nil {
+		panic("notifier: logger is required")
+	}
 	n := &KafkaNotifier{
 		producer: producer,
 		logger:   logger,
@@ -64,14 +70,11 @@ func NewKafkaNotifier(producer EventPublisher, logger log.Logger, emailFallback 
 // Kafka is unavailable or rejects the write. The fallback uses a detached
 // context so an already-cancelled HTTP request cannot drop the notification.
 func (n *KafkaNotifier) publishEmail(ctx context.Context, key string, event *job.NotificationEvent, payload []byte) error {
-	kafkaErr := fmt.Errorf("kafka producer is not configured")
-	if n.producer != nil {
-		pubCtx, cancel := context.WithTimeout(ctx, kafkaEmailPublishTimeout)
-		kafkaErr = n.producer.Publish(pubCtx, job.TopicNotificationsEmail, key, payload)
-		cancel()
-		if kafkaErr == nil {
-			return nil
-		}
+	pubCtx, cancel := context.WithTimeout(ctx, kafkaEmailPublishTimeout)
+	kafkaErr := n.producer.Publish(pubCtx, job.TopicNotificationsEmail, key, payload)
+	cancel()
+	if kafkaErr == nil {
+		return nil
 	}
 
 	if n.emailFallback == nil {

@@ -59,6 +59,15 @@ func NewService(
 	repo *UserRepository,
 	logger log.Logger,
 ) *UserService {
+	if dbExecutor == nil {
+		panic("user: database runner is required")
+	}
+	if repo == nil {
+		panic("user: user repository is required")
+	}
+	if logger == nil {
+		panic("user: logger is required")
+	}
 	return &UserService{
 		dbExecutor: dbExecutor,
 		repo:       repo,
@@ -69,6 +78,9 @@ func NewService(
 // SetSessionManager assigns the SessionManager dependency (typically session_service from auth package),
 // resolving circular package dependency through interface abstraction.
 func (s *UserService) SetSessionManager(sm SessionManager) {
+	if sm == nil {
+		panic("user: session manager is required")
+	}
 	s.sessions = sm
 }
 

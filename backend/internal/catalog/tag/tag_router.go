@@ -12,6 +12,12 @@ type TagRouter struct {
 }
 
 func NewRouter(h *TagHandler, sessionStore middleware.SessionStore) *TagRouter {
+	if h == nil {
+		panic("tag: handler is required")
+	}
+	if sessionStore == nil {
+		panic("tag: session store is required")
+	}
 	return &TagRouter{
 		th:           h,
 		sessionStore: sessionStore,

@@ -23,6 +23,15 @@ func NewRouter(
 	vh *variant.VariantHandler,
 	sessionStore middleware.SessionStore,
 ) *ProductRouter {
+	if ph == nil {
+		panic("product: product handler is required")
+	}
+	if vh == nil {
+		panic("product: variant handler is required")
+	}
+	if sessionStore == nil {
+		panic("product: session store is required")
+	}
 	return &ProductRouter{
 		ph:           ph,
 		vh:           vh,

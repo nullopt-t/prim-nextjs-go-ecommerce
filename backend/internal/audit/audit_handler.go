@@ -21,6 +21,9 @@ type Handler struct {
 
 // NewHandler constructs an audit HTTP handler.
 func NewHandler(s *Service) *Handler {
+	if s == nil {
+		panic("audit: service is required")
+	}
 	return &Handler{service: s}
 }
 

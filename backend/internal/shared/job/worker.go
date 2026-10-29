@@ -25,6 +25,15 @@ func NewNotifierWorker(
 	logger log.Logger,
 	clientCfg config.ClientConfig,
 ) *Worker {
+	if queue == nil {
+		panic("job: queue is required")
+	}
+	if dispatcher == nil {
+		panic("job: dispatcher is required")
+	}
+	if logger == nil {
+		panic("job: logger is required")
+	}
 	return &Worker{
 		queue:      queue,
 		dispatcher: dispatcher,

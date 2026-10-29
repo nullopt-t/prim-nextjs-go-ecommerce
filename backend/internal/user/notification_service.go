@@ -28,6 +28,15 @@ func NewNotificationService(
 	repo *NotificationRepository,
 	logger log.Logger,
 ) *NotificationService {
+	if dbRunner == nil {
+		panic("notification: database runner is required")
+	}
+	if repo == nil {
+		panic("notification: notification repository is required")
+	}
+	if logger == nil {
+		panic("notification: logger is required")
+	}
 	return &NotificationService{
 		dbRunner: dbRunner,
 		repo:     repo,

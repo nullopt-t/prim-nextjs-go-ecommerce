@@ -16,6 +16,12 @@ func NewAddressRouter(
 	handler *AddressHandler,
 	sessionStore middleware.SessionStore,
 ) *AddressRouter {
+	if handler == nil {
+		panic("address: handler is required")
+	}
+	if sessionStore == nil {
+		panic("address: session store is required")
+	}
 	return &AddressRouter{
 		handler:      handler,
 		sessionStore: sessionStore,

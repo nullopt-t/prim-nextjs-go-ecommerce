@@ -52,6 +52,15 @@ func NewChallengeService(
 	isProduction bool,
 	otpPepper string,
 ) *ChallengeService {
+	if rdc == nil {
+		panic("auth: redis client is required")
+	}
+	if notifier == nil {
+		panic("auth: notifier is required")
+	}
+	if logger == nil {
+		panic("auth: logger is required")
+	}
 	return &ChallengeService{
 		redisClient:  rdc,
 		notifier:     notifier,

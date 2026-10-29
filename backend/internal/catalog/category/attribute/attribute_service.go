@@ -17,6 +17,12 @@ type AttributeService struct {
 }
 
 func NewService(dr database.Runner, repo *AttributeRepository) *AttributeService {
+	if dr == nil {
+		panic("attribute: database runner is required")
+	}
+	if repo == nil {
+		panic("attribute: attribute repository is required")
+	}
 	return &AttributeService{
 		dr:   dr,
 		repo: repo,

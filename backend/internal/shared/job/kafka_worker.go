@@ -33,6 +33,21 @@ func NewKafkaWorker(
 	topic string,
 	workers int,
 ) *KafkaWorker {
+	if consumer == nil {
+		panic("job: consumer is required")
+	}
+	if producer == nil {
+		panic("job: producer is required")
+	}
+	if handler == nil {
+		panic("job: handler is required")
+	}
+	if logger == nil {
+		panic("job: logger is required")
+	}
+	if topic == "" {
+		panic("job: topic is required")
+	}
 	if workers <= 0 {
 		workers = 3
 	}

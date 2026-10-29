@@ -17,6 +17,12 @@ func NewEmailNotifier(
 	queue job.JobQueue,
 	logger log.Logger,
 ) *EmailNotifier {
+	if queue == nil {
+		panic("notifier: queue is required")
+	}
+	if logger == nil {
+		panic("notifier: logger is required")
+	}
 	return &EmailNotifier{
 		queue:  queue,
 		logger: logger,

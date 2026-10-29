@@ -23,6 +23,12 @@ type Service struct {
 
 // NewService constructs an audit service.
 func NewService(runner database.Runner, repo *Repository) *Service {
+	if runner == nil {
+		panic("audit: database runner is required")
+	}
+	if repo == nil {
+		panic("audit: repository is required")
+	}
 	return &Service{runner: runner, repo: repo}
 }
 

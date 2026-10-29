@@ -17,6 +17,9 @@ type Handler struct {
 
 // NewHandler constructs a report HTTP handler.
 func NewHandler(s *Service) *Handler {
+	if s == nil {
+		panic("report: service is required")
+	}
 	return &Handler{service: s}
 }
 

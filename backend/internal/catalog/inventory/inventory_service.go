@@ -35,6 +35,18 @@ func NewService(
 	repo *InventoryRepository,
 	storageProvider storage.StorageProvider,
 ) *InventoryService {
+	if logger == nil {
+		panic("inventory: logger is required")
+	}
+	if dr == nil {
+		panic("inventory: database runner is required")
+	}
+	if repo == nil {
+		panic("inventory: inventory repository is required")
+	}
+	if storageProvider == nil {
+		panic("inventory: storage provider is required")
+	}
 	return &InventoryService{
 		logger:          logger,
 		dr:              dr,
@@ -703,11 +715,9 @@ func (s *InventoryService) ListInventoryOverview(ctx context.Context, limit int,
 
 	// Build public image URLs outside the DB callback: URL construction is pure
 	// and must not hold a pooled connection.
-	if s.storageProvider != nil {
-		for i := range items {
-			if items[i].thumbBucket != "" && items[i].thumbKey != "" {
-				items[i].Thumbnail = s.storageProvider.GetPublicURL(items[i].thumbBucket, items[i].thumbKey)
-			}
+	for i := range items {
+		if items[i].thumbBucket != "" && items[i].thumbKey != "" {
+			items[i].Thumbnail = s.storageProvider.GetPublicURL(items[i].thumbBucket, items[i].thumbKey)
 		}
 	}
 

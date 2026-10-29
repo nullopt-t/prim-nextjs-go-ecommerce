@@ -55,6 +55,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
 // Business constants mirrored from the checkout service contract.
@@ -166,11 +167,11 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	s.txRunner = database.NewTxRunner(s.db)
 
 	inventoryRepo := inventory.NewRepository()
-	s.inventoryService = inventory.NewService(logger, s.txRunner, inventoryRepo, nil)
+	s.inventoryService = inventory.NewService(logger, s.txRunner, inventoryRepo, storage.NoopProvider{})
 	s.inventoryRepo = inventoryRepo
 
 	variantRepo := variant.NewRepository()
-	s.variantService = variant.NewService(logger, s.txRunner, nil, nil, variantRepo, inventoryRepo, s.inventoryService)
+	s.variantService = variant.NewService(logger, s.txRunner, object.NewRepository(), storage.NoopProvider{}, variantRepo, inventoryRepo, s.inventoryService)
 
 	cartRepo := cart.NewRepository()
 	s.cartService = cart.NewService(
@@ -179,8 +180,8 @@ func (s *CheckoutTestSuite) SetupSuite() {
 		variantRepo,
 		&dummyProductService{},
 		inventoryRepo,
-		nil,
-		nil,
+		object.NewRepository(),
+		storage.NoopProvider{},
 	)
 
 	s.orderRepo = order.NewRepository()
@@ -203,7 +204,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 		variantRepo,
 		product.NewProductRepository(),
 		object.NewRepository(),
-		nil,
+		storage.NoopProvider{},
 		setting.NewService(s.txRunner, setting.NewRepository()),
 		s.txRunner,
 	)

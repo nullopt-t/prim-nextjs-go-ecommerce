@@ -25,6 +25,15 @@ func NewService(
 	objectRepo *ObjectRepository,
 	storageProvider storage.StorageProvider,
 ) *ObjectService {
+	if dbRunner == nil {
+		panic("object: database runner is required")
+	}
+	if objectRepo == nil {
+		panic("object: object repository is required")
+	}
+	if storageProvider == nil {
+		panic("object: storage provider is required")
+	}
 	return &ObjectService{
 		dbRunner:        dbRunner,
 		objectRepo:      objectRepo,

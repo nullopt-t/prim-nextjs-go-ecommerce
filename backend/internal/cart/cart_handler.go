@@ -40,6 +40,9 @@ type CartHandler struct {
 }
 
 func NewHandler(cartService *CartService, settings ...StoreConfigProvider) *CartHandler {
+	if cartService == nil {
+		panic("cart: service is required")
+	}
 	h := &CartHandler{
 		cartService: cartService,
 	}
@@ -51,6 +54,9 @@ func NewHandler(cartService *CartService, settings ...StoreConfigProvider) *Cart
 
 // SetSessionCreator wires the session service used to mint guest sessions.
 func (h *CartHandler) SetSessionCreator(creator sessionCreator) {
+	if creator == nil {
+		panic("cart: session creator is required")
+	}
 	h.sessionCreator = creator
 }
 

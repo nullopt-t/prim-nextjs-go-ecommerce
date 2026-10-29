@@ -19,6 +19,9 @@ type CouponHandler struct {
 }
 
 func NewHandler(couponService *CouponService) *CouponHandler {
+	if couponService == nil {
+		panic("coupon: service is required")
+	}
 	return &CouponHandler{
 		couponService: couponService,
 	}

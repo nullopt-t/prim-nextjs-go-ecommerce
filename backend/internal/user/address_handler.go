@@ -20,6 +20,9 @@ type AddressHandler struct {
 
 // NewAddressHandler initializes an AddressHandler instance with the address domain service dependency.
 func NewAddressHandler(service *AddressService) *AddressHandler {
+	if service == nil {
+		panic("address: service is required")
+	}
 	return &AddressHandler{service: service}
 }
 

@@ -22,6 +22,12 @@ type Service struct {
 
 // NewService constructs a report service.
 func NewService(runner database.Runner, repo *Repository) *Service {
+	if runner == nil {
+		panic("report: database runner is required")
+	}
+	if repo == nil {
+		panic("report: repository is required")
+	}
 	return &Service{runner: runner, repo: repo}
 }
 

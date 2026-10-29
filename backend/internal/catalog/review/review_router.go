@@ -18,6 +18,12 @@ func NewRouter(
 	rh *ReviewHandler,
 	sessionStore middleware.SessionStore,
 ) *ReviewRouter {
+	if rh == nil {
+		panic("review: handler is required")
+	}
+	if sessionStore == nil {
+		panic("review: session store is required")
+	}
 	return &ReviewRouter{
 		rh:           rh,
 		sessionStore: sessionStore,

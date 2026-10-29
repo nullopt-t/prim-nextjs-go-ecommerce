@@ -31,6 +31,12 @@ type CartRouter struct {
 // If the provided sessionStore also implements sessionCreator, the handler is
 // wired automatically to mint guest sessions.
 func NewRouter(handler *CartHandler, sessionStore middleware.SessionStore) *CartRouter {
+	if handler == nil {
+		panic("cart: handler is required")
+	}
+	if sessionStore == nil {
+		panic("cart: session store is required")
+	}
 	if creator, ok := sessionStore.(sessionCreator); ok {
 		handler.SetSessionCreator(creator)
 	}

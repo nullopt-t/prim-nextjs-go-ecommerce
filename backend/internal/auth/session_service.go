@@ -45,6 +45,12 @@ func NewSessionService(
 	logger log.Logger,
 	sessionTTL time.Duration,
 ) *SessionService {
+	if redisClient == nil {
+		panic("auth: redis client is required")
+	}
+	if logger == nil {
+		panic("auth: logger is required")
+	}
 	return &SessionService{
 		redisClient: redisClient,
 		logger:      logger,

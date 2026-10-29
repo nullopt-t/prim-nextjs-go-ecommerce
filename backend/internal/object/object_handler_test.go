@@ -52,7 +52,7 @@ func TestUploadMedia_RejectsNonRasterPayloads(t *testing.T) {
 
 	router := gin.New()
 	router.Use(middleware.ErrorHandler(nopLogger{}))
-	router.POST("/media", object.NewHandler(nil).UploadMedia)
+	router.POST("/media", object.NewHandler(&object.ObjectService{}).UploadMedia)
 
 	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`)
 	w := httptest.NewRecorder()
@@ -70,7 +70,7 @@ func TestUploadMedia_RejectsEmptyFile(t *testing.T) {
 
 	router := gin.New()
 	router.Use(middleware.ErrorHandler(nopLogger{}))
-	router.POST("/media", object.NewHandler(nil).UploadMedia)
+	router.POST("/media", object.NewHandler(&object.ObjectService{}).UploadMedia)
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, uploadRequest(t, "empty.png", nil))

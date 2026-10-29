@@ -15,6 +15,9 @@ type Handler struct {
 
 // NewHandler constructs a settings HTTP handler.
 func NewHandler(s *Service) *Handler {
+	if s == nil {
+		panic("setting: service is required")
+	}
 	return &Handler{
 		service: s,
 	}

@@ -50,6 +50,27 @@ func NewService(
 	objectReader ObjectReader,
 	storageProvider storage.StorageProvider,
 ) *CartService {
+	if dr == nil {
+		panic("cart: database runner is required")
+	}
+	if cartRepo == nil {
+		panic("cart: cart repository is required")
+	}
+	if variantReader == nil {
+		panic("cart: variant reader is required")
+	}
+	if productReader == nil {
+		panic("cart: product reader is required")
+	}
+	if inventoryReader == nil {
+		panic("cart: inventory reader is required")
+	}
+	if objectReader == nil {
+		panic("cart: object reader is required")
+	}
+	if storageProvider == nil {
+		panic("cart: storage provider is required")
+	}
 	return &CartService{
 		dr:              dr,
 		cartRepo:        cartRepo,

@@ -127,6 +127,42 @@ func NewService(
 	storageProvider storage.StorageProvider,
 	variantReader VariantReader,
 ) *ProductService {
+	if r == nil {
+		panic("product: database runner is required")
+	}
+	if logger == nil {
+		panic("product: logger is required")
+	}
+	if productRepo == nil {
+		panic("product: product repository is required")
+	}
+	if brandReader == nil {
+		panic("product: brand reader is required")
+	}
+	if categoryReader == nil {
+		panic("product: category reader is required")
+	}
+	if tagReader == nil {
+		panic("product: tag reader is required")
+	}
+	if tagWriter == nil {
+		panic("product: tag writer is required")
+	}
+	if inventoryReader == nil {
+		panic("product: inventory reader is required")
+	}
+	if reviewReader == nil {
+		panic("product: review reader is required")
+	}
+	if objectRepo == nil {
+		panic("product: object repository is required")
+	}
+	if storageProvider == nil {
+		panic("product: storage provider is required")
+	}
+	if variantReader == nil {
+		panic("product: variant reader is required")
+	}
 	return &ProductService{
 		dbRunner:        r,
 		logger:          logger,
@@ -926,9 +962,6 @@ func (s *ProductService) ReplaceProductTags(
 	productID uuid.UUID,
 	tagIDs []uuid.UUID,
 ) error {
-	if s.tagWriter == nil {
-		return nil
-	}
 	return s.tagWriter.ReplaceProductTags(ctx, productID, tagIDs)
 }
 
@@ -942,10 +975,6 @@ func (ps *ProductService) UploadProductThumbnail(
 	if productID == uuid.Nil {
 		return nil, apierr.BadRequestError("Product ID is required").
 			WithCode(apierr.CodeInvalidInput)
-	}
-
-	if ps.storageProvider == nil || ps.objectRepo == nil {
-		return nil, apierr.InternalServerError("storage service is not configured")
 	}
 
 	file, err := fileHeader.Open()
@@ -1091,9 +1120,6 @@ func (s *ProductService) ListProductReviews(
 	productID uuid.UUID,
 	status *model.ReviewStatus,
 ) (*pagination.PagedResult[model.Review], error) {
-	if s.reviewReader == nil {
-		return &pagination.PagedResult[model.Review]{Items: []*model.Review{}}, nil
-	}
 	var items []model.Review
 	var total int
 	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
@@ -1118,9 +1144,6 @@ func (s *ProductService) GetProductRatingSummary(
 	ctx context.Context,
 	productID uuid.UUID,
 ) (*model.RatingSummary, error) {
-	if s.reviewReader == nil {
-		return &model.RatingSummary{}, nil
-	}
 	var summary *model.RatingSummary
 	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error

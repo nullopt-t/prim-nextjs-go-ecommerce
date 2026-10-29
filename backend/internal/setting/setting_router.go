@@ -14,6 +14,12 @@ type SettingRouter struct {
 
 // NewRouter constructs a settings router.
 func NewRouter(h *Handler, sessionStore middleware.SessionStore) *SettingRouter {
+	if h == nil {
+		panic("setting: handler is required")
+	}
+	if sessionStore == nil {
+		panic("setting: session store is required")
+	}
 	return &SettingRouter{
 		handler:      h,
 		sessionStore: sessionStore,

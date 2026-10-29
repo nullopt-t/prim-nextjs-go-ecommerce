@@ -282,6 +282,27 @@ func NewService(
 	inventoryReader InventoryReader,
 	inventoryWriter InventoryWriter,
 ) *VariantService {
+	if logger == nil {
+		panic("variant: logger is required")
+	}
+	if r == nil {
+		panic("variant: database runner is required")
+	}
+	if objectRepo == nil {
+		panic("variant: object repository is required")
+	}
+	if storageProvider == nil {
+		panic("variant: storage provider is required")
+	}
+	if vr == nil {
+		panic("variant: variant repository is required")
+	}
+	if inventoryReader == nil {
+		panic("variant: inventory reader is required")
+	}
+	if inventoryWriter == nil {
+		panic("variant: inventory writer is required")
+	}
 	return &VariantService{
 		logger:          logger,
 		dr:              r,
@@ -693,7 +714,7 @@ func (vs *VariantService) getVariantByID(
 		}
 	}
 
-	if variant.Thumbnail != nil && vs.storageProvider != nil {
+	if variant.Thumbnail != nil {
 		variant.Thumbnail.PublicURL = vs.storageProvider.GetPublicURL(
 			variant.Thumbnail.Bucket,
 			variant.Thumbnail.Key,
@@ -745,7 +766,7 @@ func (vs *VariantService) GetVariantBySKU(
 		}
 	}
 
-	if variant.Thumbnail != nil && vs.storageProvider != nil {
+	if variant.Thumbnail != nil {
 		variant.Thumbnail.PublicURL = vs.storageProvider.GetPublicURL(
 			variant.Thumbnail.Bucket,
 			variant.Thumbnail.Key,
@@ -1386,9 +1407,6 @@ func (vs *VariantService) GetStockByVariantID(
 	ctx context.Context,
 	variantID uuid.UUID,
 ) (*model.InventoryStock, error) {
-	if vs.inventoryReader == nil {
-		return nil, apierr.InternalServerError("inventory reader is not configured")
-	}
 	if variantID == uuid.Nil {
 		return nil, apierr.BadRequestError("Variant ID is required").
 			WithCode(apierr.CodeInvalidInput)
@@ -1412,9 +1430,6 @@ func (vs *VariantService) ListLedgers(
 	variantID uuid.UUID,
 	q *pagination.ListQuery,
 ) (*pagination.PagedResult[model.InventoryLedger], error) {
-	if vs.inventoryReader == nil {
-		return nil, apierr.InternalServerError("inventory reader is not configured")
-	}
 	if variantID == uuid.Nil {
 		return nil, apierr.BadRequestError("Variant ID is required").
 			WithCode(apierr.CodeInvalidInput)
@@ -1442,10 +1457,6 @@ func (vs *VariantService) UploadVariantThumbnail(
 	if variantID == uuid.Nil {
 		return nil, apierr.BadRequestError("Variant ID is required").
 			WithCode(apierr.CodeInvalidInput)
-	}
-
-	if vs.storageProvider == nil || vs.objectRepo == nil {
-		return nil, apierr.InternalServerError("storage service is not configured")
 	}
 
 	file, err := fileHeader.Open()
@@ -1594,10 +1605,6 @@ func (vs *VariantService) UploadVariantMedia(
 	if variantID == uuid.Nil {
 		return nil, apierr.BadRequestError("Variant ID is required").
 			WithCode(apierr.CodeInvalidInput)
-	}
-
-	if vs.storageProvider == nil || vs.objectRepo == nil {
-		return nil, apierr.InternalServerError("storage service is not configured")
 	}
 
 	file, err := fileHeader.Open()

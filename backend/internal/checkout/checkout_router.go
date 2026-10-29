@@ -11,6 +11,12 @@ type CheckoutRouter struct {
 }
 
 func NewRouter(handler *CheckoutHandler, sessionStore middleware.SessionStore) *CheckoutRouter {
+	if handler == nil {
+		panic("checkout: handler is required")
+	}
+	if sessionStore == nil {
+		panic("checkout: session store is required")
+	}
 	return &CheckoutRouter{
 		handler:      handler,
 		sessionStore: sessionStore,

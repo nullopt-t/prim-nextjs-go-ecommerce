@@ -26,6 +26,18 @@ func NewRouter(
 	sessionStore middleware.SessionStore,
 	rateLimitCfg config.RateLimitConfig,
 ) *Router {
+	if ah == nil {
+		panic("auth: handler is required")
+	}
+	if limiter == nil {
+		panic("auth: rate limiter is required")
+	}
+	if logger == nil {
+		panic("auth: logger is required")
+	}
+	if sessionStore == nil {
+		panic("auth: session store is required")
+	}
 	r := &Router{
 		authHandler:  ah,
 		limiter:      limiter,

@@ -23,6 +23,12 @@ func NewService(
 	dr database.Runner,
 	repo *CategoryRepository,
 ) *CategoryService {
+	if dr == nil {
+		panic("category: database runner is required")
+	}
+	if repo == nil {
+		panic("category: category repository is required")
+	}
 	return &CategoryService{
 		repo: repo,
 		dr:   dr,

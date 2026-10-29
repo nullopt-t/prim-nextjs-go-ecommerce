@@ -19,6 +19,9 @@ type WishlistHandler struct {
 }
 
 func NewHandler(s *WishlistService) *WishlistHandler {
+	if s == nil {
+		panic("wishlist: service is required")
+	}
 	return &WishlistHandler{service: s}
 }
 

@@ -25,6 +25,9 @@ type VariantHandler struct {
 
 // NewHandler constructs a new VariantHandler instance.
 func NewHandler(s *VariantService) *VariantHandler {
+	if s == nil {
+		panic("variant: service is required")
+	}
 	return &VariantHandler{
 		vservice: s,
 	}

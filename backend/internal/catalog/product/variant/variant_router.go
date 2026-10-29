@@ -17,6 +17,12 @@ type VariantRouter struct {
 
 // NewRouter constructs a new VariantRouter with the provided VariantHandler and session store.
 func NewRouter(vh *VariantHandler, sessionStore middleware.SessionStore) *VariantRouter {
+	if vh == nil {
+		panic("variant: handler is required")
+	}
+	if sessionStore == nil {
+		panic("variant: session store is required")
+	}
 	return &VariantRouter{
 		vh:           vh,
 		sessionStore: sessionStore,

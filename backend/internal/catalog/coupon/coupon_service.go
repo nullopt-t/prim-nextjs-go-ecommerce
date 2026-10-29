@@ -68,6 +68,12 @@ type CouponService struct {
 }
 
 func NewService(runner database.Runner, repo *CouponRepository) *CouponService {
+	if runner == nil {
+		panic("coupon: database runner is required")
+	}
+	if repo == nil {
+		panic("coupon: coupon repository is required")
+	}
 	return &CouponService{
 		runner: runner,
 		repo:   repo,

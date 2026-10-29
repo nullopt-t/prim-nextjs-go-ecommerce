@@ -28,6 +28,12 @@ type Service struct {
 
 // NewService constructs a settings service bound to a transaction runner and repository.
 func NewService(dr database.Runner, repo *Repository) *Service {
+	if dr == nil {
+		panic("setting: database runner is required")
+	}
+	if repo == nil {
+		panic("setting: repository is required")
+	}
 	return &Service{
 		dr:   dr,
 		repo: repo,

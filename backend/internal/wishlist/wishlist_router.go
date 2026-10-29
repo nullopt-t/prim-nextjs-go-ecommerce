@@ -17,6 +17,12 @@ func NewRouter(
 	handler *WishlistHandler,
 	sessionStore middleware.SessionStore,
 ) *WishlistRouter {
+	if handler == nil {
+		panic("wishlist: handler is required")
+	}
+	if sessionStore == nil {
+		panic("wishlist: session store is required")
+	}
 	return &WishlistRouter{
 		handler:      handler,
 		sessionStore: sessionStore,

@@ -14,6 +14,12 @@ type Router struct {
 
 // NewRouter constructs a system router.
 func NewRouter(h *Handler, sessionStore middleware.SessionStore) *Router {
+	if h == nil {
+		panic("system: handler is required")
+	}
+	if sessionStore == nil {
+		panic("system: session store is required")
+	}
 	return &Router{
 		handler:      h,
 		sessionStore: sessionStore,

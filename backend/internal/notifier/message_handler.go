@@ -50,6 +50,18 @@ func NewEventHandler(
 	logger log.Logger,
 	clientURL string,
 ) *EventHandler {
+	if renderer == nil {
+		panic("notifier: renderer is required")
+	}
+	if mailer == nil {
+		panic("notifier: mailer is required")
+	}
+	if store == nil {
+		panic("notifier: store is required")
+	}
+	if logger == nil {
+		panic("notifier: logger is required")
+	}
 	return &EventHandler{
 		renderer:  renderer,
 		mailer:    mailer,
@@ -133,10 +145,6 @@ func (h *EventHandler) HandleEmailEvent(ctx context.Context, event *job.Notifica
 
 // HandleInAppEvent stores localized alerts into PostgreSQL for the notification center.
 func (h *EventHandler) HandleInAppEvent(ctx context.Context, event *job.NotificationEvent) error {
-	if h.store == nil {
-		return fmt.Errorf("notification store is nil")
-	}
-
 	var in SendInAppInput
 	if err := json.Unmarshal(event.Data, &in); err != nil {
 		return fmt.Errorf("unmarshal In-App payload: %w", err)

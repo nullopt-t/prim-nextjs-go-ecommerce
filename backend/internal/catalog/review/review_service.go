@@ -21,6 +21,12 @@ func NewService(
 	dbRunner database.Runner,
 	repo *ReviewRepository,
 ) *ReviewService {
+	if dbRunner == nil {
+		panic("review: database runner is required")
+	}
+	if repo == nil {
+		panic("review: review repository is required")
+	}
 	return &ReviewService{
 		dbRunner: dbRunner,
 		repo:     repo,

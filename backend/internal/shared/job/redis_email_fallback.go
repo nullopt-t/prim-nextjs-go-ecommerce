@@ -38,6 +38,9 @@ type RedisEmailFallbackQueue struct {
 
 // NewRedisEmailFallbackQueue creates a Redis-backed email fallback queue.
 func NewRedisEmailFallbackQueue(client *redis.Client) *RedisEmailFallbackQueue {
+	if client == nil {
+		panic("job: redis client is required")
+	}
 	return &RedisEmailFallbackQueue{client: client}
 }
 
@@ -84,6 +87,15 @@ func NewRedisEmailFallbackWorker(
 	logger log.Logger,
 	workers int,
 ) *RedisEmailFallbackWorker {
+	if client == nil {
+		panic("job: redis client is required")
+	}
+	if handler == nil {
+		panic("job: handler is required")
+	}
+	if logger == nil {
+		panic("job: logger is required")
+	}
 	if workers <= 0 {
 		workers = 1
 	}

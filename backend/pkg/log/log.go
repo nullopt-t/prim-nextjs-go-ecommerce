@@ -133,3 +133,16 @@ func (l *ConsoleLogger) Warn(msg string, meta ...Meta) {
 func (l *ConsoleLogger) Debug(msg string, meta ...Meta) {
 	l.logger.Debug(msg, l.buildAttrs(meta)...)
 }
+
+// NoopLogger discards all logs, useful for unit tests.
+type NoopLogger struct{}
+
+func (NoopLogger) Info(msg string, meta ...Meta)  {}
+func (NoopLogger) Error(msg string, meta ...Meta) {}
+func (NoopLogger) Warn(msg string, meta ...Meta)  {}
+func (NoopLogger) Debug(msg string, meta ...Meta) {}
+
+// NewNoopLogger creates a Logger that discards all log messages.
+func NewNoopLogger() Logger {
+	return NoopLogger{}
+}

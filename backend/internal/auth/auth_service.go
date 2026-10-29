@@ -70,6 +70,21 @@ func NewAuthService(
 	sessionService *SessionService,
 	notifier Notifier,
 ) *AuthService {
+	if logger == nil {
+		panic("auth: logger is required")
+	}
+	if challengeService == nil {
+		panic("auth: challenge service is required")
+	}
+	if userService == nil {
+		panic("auth: user service is required")
+	}
+	if sessionService == nil {
+		panic("auth: session service is required")
+	}
+	if notifier == nil {
+		panic("auth: notifier is required")
+	}
 	return &AuthService{
 		challengeService: challengeService,
 		userService:      userService,

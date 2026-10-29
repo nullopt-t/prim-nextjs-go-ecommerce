@@ -14,7 +14,14 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/database"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 )
+
+type fakeInventoryReader struct{}
+
+func (f *fakeInventoryReader) ExpiredReservationOrderIDs(ctx context.Context, qe database.QueryExecutor) ([]uuid.UUID, error) {
+	return nil, nil
+}
 
 // paymentStatusExecutor returns a caller-controlled command tag so tests can
 // simulate both an updated row and a missing payment (UPDATE 0).
@@ -110,7 +117,7 @@ func TestUpdatePaymentStatusValidation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			writer := &fakeInventoryWriter{}
-			svc := order.NewService(paymentStatusRunner{tag: tc.tag}, order.NewRepository(), nil, nil, writer)
+			svc := order.NewService(paymentStatusRunner{tag: tc.tag}, order.NewRepository(), log.NewNoopLogger(), &fakeInventoryReader{}, writer)
 
 			err := svc.UpdatePaymentStatus(context.Background(), uuid.New(), tc.status)
 			if !tc.wantErr {

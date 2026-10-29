@@ -22,6 +22,9 @@ type ObjectHandler struct {
 }
 
 func NewHandler(service *ObjectService) *ObjectHandler {
+	if service == nil {
+		panic("object: service is required")
+	}
 	return &ObjectHandler{service: service}
 }
 
