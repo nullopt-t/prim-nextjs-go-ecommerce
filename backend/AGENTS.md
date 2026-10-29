@@ -79,6 +79,14 @@ database connection from entry to exit.
   entry point exists only for the handler-facing wrapper that acquires `WithTx`
   itself (for example `order.PlaceOrder` — participating — versus
   `order.CreateOrder`, which owns its transaction).
+- Complete Construction and Fail-Fast Constructor Invariants: Every constructor
+  (`NewService`, `NewHandler`, `NewRouter`, background workers, queues) must
+  validate all required dependencies up-front and panic immediately if any
+  required parameter is `nil` (e.g. `panic("domain: runner is required")`).
+  Domain methods must never contain defensive per-call runtime nil checks
+  (`if s.dep == nil`); objects are guaranteed to be completely constructed and
+  valid from inception. Unit tests must use explicit fakes/doubles (`storage.NoopProvider`,
+  `log.NewNoopLogger`, fake readers/runners) instead of passing `nil`.
 
 ## Storage and external effects
 
