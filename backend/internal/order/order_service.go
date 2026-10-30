@@ -8,11 +8,14 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/notifier"
+	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
@@ -56,6 +59,8 @@ type CreateOrderInput struct {
 	PaymentMethod string
 	// Currency is the 3-letter currency code (e.g., "USD").
 	Currency string
+	// Locale is the customer preferred language (e.g. "en", "ar") for communications.
+	Locale string
 	// Items is the non-empty list of line items included in the purchase.
 	Items []CreateOrderItemInput
 }
@@ -93,6 +98,25 @@ type InventoryWriter interface {
 	CommitReservationsForOrder(ctx context.Context, tx *database.Tx, orderID uuid.UUID) error
 }
 
+// OrderNotifier is the consumer-owned contract for post-commit lifecycle
+// notifications. A failure is logged and never reverts the committed status.
+type OrderNotifier interface {
+	NotifyOrderShipped(ctx context.Context, in notifier.OrderShippedPayload) error
+	NotifyOrderCancelled(ctx context.Context, in notifier.OrderCancelledPayload) error
+}
+
+// SettingsProvider exposes the effective store configuration used to gate
+// optional lifecycle notifications.
+type SettingsProvider interface {
+	GetConfig(ctx context.Context) (setting.Config, error)
+}
+
+// UserReader is the read-only projection of user profiles the order domain needs
+// for customer communications.
+type UserReader interface {
+	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.User, error)
+}
+
 // OrderService orchestrates database transactions, order status state machine validation,
 // and audit log tracking for order lifecycle events.
 type OrderService struct {
@@ -101,10 +125,13 @@ type OrderService struct {
 	logger          log.Logger
 	inventoryReader InventoryReader
 	inventory       InventoryWriter
+	userReader      UserReader
+	settings        SettingsProvider
+	orderNotifier   OrderNotifier
 }
 
 // NewService instantiates an OrderService with its database runner, order
-// repository, logger, inventory read repository, and the inventory writer that
+// repository, logger, inventory read repository, user reader, and the inventory writer that
 // owns stock mutation invariants.
 func NewService(
 	r database.Runner,
@@ -112,6 +139,9 @@ func NewService(
 	logger log.Logger,
 	inventoryReader InventoryReader,
 	inventoryWriter InventoryWriter,
+	userReader UserReader,
+	settings SettingsProvider,
+	orderNotifier OrderNotifier,
 ) *OrderService {
 	if r == nil {
 		panic("order: database runner is required")
@@ -128,12 +158,24 @@ func NewService(
 	if inventoryWriter == nil {
 		panic("order: inventory writer is required")
 	}
+	if userReader == nil {
+		panic("order: user reader is required")
+	}
+	if settings == nil {
+		panic("order: settings provider is required")
+	}
+	if orderNotifier == nil {
+		panic("order: order notifier is required")
+	}
 	return &OrderService{
 		qexecutor:       r,
 		orderRepo:       orderRepo,
 		logger:          logger,
 		inventoryReader: inventoryReader,
 		inventory:       inventoryWriter,
+		userReader:      userReader,
+		settings:        settings,
+		orderNotifier:   orderNotifier,
 	}
 }
 
@@ -190,6 +232,11 @@ func (s *OrderService) PlaceOrder(
 		finalTotal = 0
 	}
 
+	locale := in.Locale
+	if locale != "ar" && locale != "en" {
+		locale = "en"
+	}
+
 	newOrder := &model.Order{
 		ID:              orderID,
 		CustomerID:      in.CustomerID,
@@ -205,6 +252,7 @@ func (s *OrderService) PlaceOrder(
 		PaymentMethod:   in.PaymentMethod,
 		TotalAmount:     finalTotal,
 		Currency:        in.Currency,
+		Locale:          locale,
 		Items:           orderItems,
 	}
 
@@ -396,6 +444,89 @@ func (s *OrderService) handleError(err error, fallbackMsg string) error {
 	}
 }
 
+// resolveConfig returns the effective store configuration, falling back to the
+// built-in defaults if settings cannot be read. Notifications are best-effort
+// and must not fail an otherwise successful order action.
+func (s *OrderService) resolveConfig(ctx context.Context) setting.Config {
+	cfg, err := s.settings.GetConfig(ctx)
+	if err != nil {
+		return setting.DefaultConfig()
+	}
+	return cfg
+}
+
+// resolveCustomerName safely looks up the customer display name inside the active
+// transaction context, falling back to empty string when not found or guest checkout.
+func (s *OrderService) resolveCustomerName(ctx context.Context, qe database.QueryExecutor, ord *model.Order) string {
+	if ord == nil || ord.CustomerID == nil || *ord.CustomerID == uuid.Nil {
+		return ""
+	}
+	u, err := s.userReader.GetByID(ctx, qe, *ord.CustomerID)
+	if err != nil || u == nil {
+		return ""
+	}
+	return strings.TrimSpace(u.FullName)
+}
+
+func (s *OrderService) notifyOrderShipped(ctx context.Context, o *model.Order, customerName string) {
+	if o == nil || !s.resolveConfig(ctx).NotifyOrderShipped {
+		return
+	}
+
+	notifyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+
+	carrier := ""
+	if o.Carrier != nil {
+		carrier = *o.Carrier
+	}
+	trackingURL := ""
+	if o.TrackingURL != nil {
+		trackingURL = *o.TrackingURL
+	}
+
+	if err := s.orderNotifier.NotifyOrderShipped(notifyCtx, notifier.OrderShippedPayload{
+		OrderID:        o.ID,
+		OrderNumber:    notifier.OrderNumber(o.ID),
+		CustomerID:     o.CustomerID,
+		CustomerEmail:  o.CustomerEmail,
+		CustomerName:   customerName,
+		Carrier:        carrier,
+		TrackingNumber: o.TrackingNumber,
+		TrackingURL:    trackingURL,
+		Locale:         o.Locale,
+	}); err != nil {
+		s.logger.Warn("failed to publish order shipped notification", log.Meta{
+			"orderId": o.ID.String(),
+			"error":   err.Error(),
+		})
+	}
+}
+
+func (s *OrderService) notifyOrderCancelled(ctx context.Context, o *model.Order, reason string, customerName string) {
+	if o == nil {
+		return
+	}
+
+	notifyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+
+	if err := s.orderNotifier.NotifyOrderCancelled(notifyCtx, notifier.OrderCancelledPayload{
+		OrderID:       o.ID,
+		OrderNumber:   notifier.OrderNumber(o.ID),
+		CustomerID:    o.CustomerID,
+		CustomerEmail: o.CustomerEmail,
+		CustomerName:  customerName,
+		Reason:        reason,
+		Locale:        o.Locale,
+	}); err != nil {
+		s.logger.Warn("failed to publish order cancelled notification", log.Meta{
+			"orderId": o.ID.String(),
+			"error":   err.Error(),
+		})
+	}
+}
+
 // GetOrderByID loads an order by its UUID within a read-only database query execution block.
 func (s *OrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.Order, error) {
 	var order *model.Order
@@ -539,6 +670,11 @@ func CanTransitionOrderStatus(current, next model.OrderStatus) bool {
 // UpdateOrderStatus modifies an existing order's state after validating the state machine transition.
 // It executes within a transaction and inserts an audit log entry in order_status_history.
 func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, status model.OrderStatus, notes *string) error {
+	var changedOrder *model.Order
+	var statusChanged bool
+	var notificationReason string
+	var customerName string
+
 	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		// Acquire an exclusive FOR UPDATE row-level lock on the order to prevent concurrent race conditions
 		// during status transitions.
@@ -553,6 +689,7 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 			).WithCode(errcode.CodeInvalidOrderStatus)
 		}
 
+		statusChanged = ord.Status != status
 		cancelling := ord.Status != model.OrderStatusCancelled && status == model.OrderStatusCancelled
 
 		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, id, status); err != nil {
@@ -571,6 +708,12 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 			}
 		}
 
+		ord.Status = status
+		changedOrder = ord
+		if notes != nil {
+			notificationReason = *notes
+		}
+		customerName = s.resolveCustomerName(ctx, tx, ord)
 		return nil
 	})
 
@@ -591,12 +734,29 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 				WithStack()
 		}
 	}
+
+	if changedOrder != nil && statusChanged {
+		switch changedOrder.Status {
+		case model.OrderStatusShipped:
+			s.notifyOrderShipped(ctx, changedOrder, customerName)
+		case model.OrderStatusCancelled:
+			reason := notificationReason
+			if reason == "" {
+				reason = "Order cancelled"
+			}
+			s.notifyOrderCancelled(ctx, changedOrder, reason, customerName)
+		}
+	}
+
 	return nil
 }
 
 // CancelOrder handles customer-initiated cancellation for pending or confirmed orders.
 // Verifies customer authorization and valid transition before setting status to cancelled.
 func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID uuid.UUID) error {
+	var cancelledOrder *model.Order
+	var customerName string
+
 	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
 		if err != nil {
@@ -613,6 +773,7 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 		if !CanTransitionOrderStatus(ord.Status, model.OrderStatusCancelled) {
 			return apierr.BadRequestError("Order cannot be cancelled in its current state").WithCode(errcode.CodeInvalidOrderStatus)
 		}
+		wasAlreadyCancelled := ord.Status == model.OrderStatusCancelled
 
 		note := "Cancelled by customer"
 		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, id, model.OrderStatusCancelled); err != nil {
@@ -640,10 +801,20 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 			return s.handleError(err, "Failed to refund payment")
 		}
 
+		if !wasAlreadyCancelled {
+			ord.Status = model.OrderStatusCancelled
+			cancelledOrder = ord
+			customerName = s.resolveCustomerName(ctx, tx, ord)
+		}
+
 		return nil
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to cancel order")
+	}
+
+	if cancelledOrder != nil {
+		s.notifyOrderCancelled(ctx, cancelledOrder, "Cancelled by customer", customerName)
 	}
 	return nil
 }
@@ -685,6 +856,9 @@ func (s *OrderService) ReapExpiredReservations(ctx context.Context) (int, error)
 // single transaction, reporting whether a transition occurred.
 func (s *OrderService) expirePendingOrder(ctx context.Context, orderID uuid.UUID) (bool, error) {
 	didCancel := false
+	var cancelledOrder *model.Order
+	var customerName string
+
 	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
 		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, orderID)
 		if err != nil {
@@ -722,9 +896,16 @@ func (s *OrderService) expirePendingOrder(ctx context.Context, orderID uuid.UUID
 			return s.handleError(err, "Failed to fail stale payment")
 		}
 
+		ord.Status = model.OrderStatusCancelled
+		cancelledOrder = ord
+		customerName = s.resolveCustomerName(ctx, tx, ord)
 		didCancel = true
 		return nil
 	})
+
+	if didCancel && cancelledOrder != nil {
+		s.notifyOrderCancelled(ctx, cancelledOrder, "Order reservation expired", customerName)
+	}
 	return didCancel, err
 }
 
@@ -818,13 +999,60 @@ func (s *OrderService) RefundPayment(ctx context.Context, id uuid.UUID) error {
 	})
 }
 
-// UpdateOrderTracking updates the carrier tracking number for an order.
-func (s *OrderService) UpdateOrderTracking(ctx context.Context, id uuid.UUID, trackingNumber string) error {
+// UpdateOrderTrackingInput carries carrier tracking details for an order.
+type UpdateOrderTrackingInput struct {
+	TrackingNumber string
+	Carrier        *string
+	TrackingURL    *string
+}
+
+// UpdateOrderTracking updates the carrier tracking details for an order.
+// Lifecycle notifications are not resent here to avoid duplicate shipping emails.
+func (s *OrderService) UpdateOrderTracking(ctx context.Context, id uuid.UUID, in UpdateOrderTrackingInput) error {
+	trackingNumber := strings.TrimSpace(in.TrackingNumber)
+	if trackingNumber == "" {
+		return apierr.BadRequestError("Tracking number is required").WithCode(apierr.CodeInvalidInput)
+	}
+
+	var carrier *string
+	if in.Carrier != nil {
+		c := strings.TrimSpace(*in.Carrier)
+		if c != "" {
+			carrier = &c
+		}
+	}
+
+	var trackingURL *string
+	if in.TrackingURL != nil {
+		u := strings.TrimSpace(*in.TrackingURL)
+		if u != "" {
+			if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+				return apierr.BadRequestError("Tracking URL must start with http:// or https://").WithCode(apierr.CodeInvalidInput)
+			}
+			trackingURL = &u
+		}
+	}
+
 	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return s.orderRepo.UpdateOrderTracking(ctx, tx, id, trackingNumber)
+		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
+		if err != nil {
+			return err
+		}
+
+		if err := s.orderRepo.UpdateOrderTracking(ctx, tx, id, trackingNumber, carrier, trackingURL); err != nil {
+			return err
+		}
+
+		note := fmt.Sprintf("Tracking updated: %s", trackingNumber)
+		if carrier != nil {
+			note = fmt.Sprintf("Tracking updated: %s via %s", trackingNumber, *carrier)
+		}
+		_ = s.orderRepo.AddStatusHistory(ctx, tx, ord.ID, ord.Status, &note)
+		return nil
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to update order tracking")
 	}
+
 	return nil
 }

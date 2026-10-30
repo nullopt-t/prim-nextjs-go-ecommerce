@@ -114,7 +114,8 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	kafkaCfg := brokerkafka.DefaultConfig(app.config.KafkaCfg.Brokers, app.config.KafkaCfg.GroupID)
 	app.kafkaProducer = brokerkafka.NewProducer(kafkaCfg)
 	emailFallback := job.NewRedisEmailFallbackQueue(app.redisClient)
-	notifier := notifier.NewKafkaNotifier(app.kafkaProducer, app.logger, emailFallback)
+	inAppFallback := job.NewRedisInAppFallbackQueue(app.redisClient)
+	notifier := notifier.NewKafkaNotifier(app.kafkaProducer, app.logger, emailFallback, inAppFallback)
 
 	rateLimiter := security.NewRateLimiter(
 		app.redisClient,
@@ -330,7 +331,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 
 	// order
 	orderRepo := order.NewRepository()
-	orderService := order.NewService(txRunner, orderRepo, app.logger, inventoryRepo, inventoryService)
+	orderService := order.NewService(txRunner, orderRepo, app.logger, inventoryRepo, inventoryService, userRepo, settingService, notifier)
 	orderHandler := order.NewHandler(orderService)
 	orderRouter := order.NewRouter(orderHandler, sessionStore)
 	orderRouter.MapRoutes(v1)
@@ -357,6 +358,8 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		app.storageProvider,
 		settingService,
 		txRunner,
+		notifier,
+		app.logger,
 	)
 	checkoutHandler := checkout.NewHandler(checkoutService)
 	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionStore)

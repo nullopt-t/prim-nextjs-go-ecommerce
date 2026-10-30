@@ -22,9 +22,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -46,6 +48,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/checkout"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/notifier"
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/setting"
@@ -75,6 +78,40 @@ func (d *dummyProductService) GetByID(_ context.Context, _ database.QueryExecuto
 		Title: "Integration Test Product",
 		Slug:  "integration-test-product",
 	}, nil
+}
+
+type fakeOrderNotifier struct {
+	mu     sync.Mutex
+	placed []notifier.OrderPlacedPayload
+	err    error
+}
+
+func (f *fakeOrderNotifier) NotifyOrderPlaced(_ context.Context, in notifier.OrderPlacedPayload) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.placed = append(f.placed, in)
+	return f.err
+}
+
+func (f *fakeOrderNotifier) NotifyOrderShipped(context.Context, notifier.OrderShippedPayload) error {
+	return f.err
+}
+
+func (f *fakeOrderNotifier) NotifyOrderCancelled(context.Context, notifier.OrderCancelledPayload) error {
+	return f.err
+}
+
+func (f *fakeOrderNotifier) reset() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.placed = nil
+	f.err = nil
+}
+
+func (f *fakeOrderNotifier) placedNotifications() []notifier.OrderPlacedPayload {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]notifier.OrderPlacedPayload(nil), f.placed...)
 }
 
 // dataEnvelope is the strict success envelope: {"data": <T>}.
@@ -107,6 +144,7 @@ type CheckoutTestSuite struct {
 	orderRepo        *order.Repository
 	addressService   *user.AddressService
 	userService      *user.UserService
+	orderNotifier    *fakeOrderNotifier
 
 	categoryID uuid.UUID
 	productID  uuid.UUID
@@ -148,6 +186,11 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	_, err = db.Exec(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
+	metadataMigration, err := os.ReadFile("../../migrations/000003_order_notification_metadata.up.sql")
+	require.NoError(s.T(), err)
+	_, err = db.Exec(ctx, string(metadataMigration))
+	require.NoError(s.T(), err)
+
 	// ---- Redis (sessions) -------------------------------------------------
 	rContainer, err := redisContainer.Run(ctx, "redis:7-alpine")
 	require.NoError(s.T(), err)
@@ -185,10 +228,13 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	)
 
 	s.orderRepo = order.NewRepository()
-	orderService := order.NewService(s.txRunner, s.orderRepo, logger, s.inventoryRepo, s.inventoryService)
+	settingsService := setting.NewService(s.txRunner, setting.NewRepository())
+	s.orderNotifier = &fakeOrderNotifier{}
 
 	userRepo := user.NewPostgresRepository()
 	s.userService = user.NewService(s.txRunner, userRepo, logger)
+
+	orderService := order.NewService(s.txRunner, s.orderRepo, logger, s.inventoryRepo, s.inventoryService, userRepo, settingsService, s.orderNotifier)
 
 	addressRepo := user.NewAddressRepository()
 	s.addressService = user.NewAddressService(s.txRunner, addressRepo, logger)
@@ -205,8 +251,10 @@ func (s *CheckoutTestSuite) SetupSuite() {
 		product.NewProductRepository(),
 		object.NewRepository(),
 		storage.NoopProvider{},
-		setting.NewService(s.txRunner, setting.NewRepository()),
+		settingsService,
 		s.txRunner,
+		s.orderNotifier,
+		logger,
 	)
 
 	// ---- Seed catalog base ------------------------------------------------
@@ -255,6 +303,9 @@ func (s *CheckoutTestSuite) TearDownSuite() {
 func (s *CheckoutTestSuite) SetupTest() {
 	// Sessions are the only Redis-backed state; wipe between tests for isolation.
 	s.Require().NoError(s.redisClient.FlushAll(context.Background()).Err())
+	if s.orderNotifier != nil {
+		s.orderNotifier.reset()
+	}
 }
 
 // =============================================================================
@@ -648,6 +699,48 @@ func (s *CheckoutTestSuite) TestCheckout_Success_CreatesOrderPaymentAndReservesS
 
 	// Cart is cleared atomically with the order.
 	s.Equal(0, s.countActiveCartItems(userID))
+
+	// The notification is published only after the transaction commits and
+	// carries the committed order's money and line items.
+	notifications := s.orderNotifier.placedNotifications()
+	s.Require().Len(notifications, 1)
+	notification := notifications[0]
+	s.Equal(orderID, notification.OrderID)
+	s.Equal(userID, *notification.CustomerID)
+	s.Equal(o.CustomerEmail, notification.CustomerEmail)
+	s.Equal("Checkout Customer", notification.CustomerName)
+	s.Equal(int64(6997), notification.TotalAmount)
+	s.Equal(defaultCurrency, notification.Currency)
+	s.Require().Len(notification.Items, 1)
+	s.Equal(2, notification.Items[0].Quantity)
+	s.Equal(int64(2999), notification.Items[0].UnitPrice)
+	s.Equal(int64(5998), notification.Items[0].LineTotal)
+	s.Equal("Cairo", notification.ShippingAddress.City)
+}
+
+// TestCheckout_Success_NotificationFailureDoesNotRollback proves that a
+// post-commit notification failure is best-effort: the order, payment, stock,
+// and cart state remain committed and the customer still receives success.
+func (s *CheckoutTestSuite) TestCheckout_Success_NotificationFailureDoesNotRollback() {
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	variantID := s.seedPricedVariant(2999, 10)
+	s.addToCart(userID, variantID, 2)
+	s.orderNotifier.err = errors.New("kafka unavailable")
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{ShippingAddressID: addressID})
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var resp dataEnvelope[checkout.CheckoutResponse]
+	s.decodeSuccess(w, &resp)
+	orderID, err := uuid.Parse(resp.Data.OrderID)
+	s.Require().NoError(err)
+
+	s.Equal(1, s.countOrdersForUser(userID))
+	s.Equal(0, s.countActiveCartItems(userID))
+	s.Equal(8, s.fetchStock(variantID).OnHandQuantity)
+	s.Len(s.orderNotifier.placedNotifications(), 1)
+	s.Equal(orderID, s.orderNotifier.placedNotifications()[0].OrderID)
 }
 
 // TestCheckout_Success_FreeShippingAtThreshold verifies the shipping rule at the
@@ -835,6 +928,7 @@ func (s *CheckoutTestSuite) TestCheckout_Success_SecondCheckoutRejectedAsEmpty()
 	s.Equal("EMPTY_CART", env.Code)
 
 	s.Equal(1, s.countOrdersForUser(userID), "second checkout must not create another order")
+	s.Len(s.orderNotifier.placedNotifications(), 1, "a rolled-back checkout must not publish a notification")
 }
 
 // =============================================================================
@@ -874,6 +968,7 @@ func (s *CheckoutTestSuite) TestCheckout_Red_EmptyCart() {
 	s.Require().Equal(http.StatusBadRequest, w.Code)
 	env := s.decodeError(w)
 	s.Equal("EMPTY_CART", env.Code)
+	s.Empty(s.orderNotifier.placedNotifications())
 }
 
 func (s *CheckoutTestSuite) TestCheckout_Red_AddressNotFound() {

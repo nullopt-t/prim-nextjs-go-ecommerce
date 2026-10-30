@@ -558,15 +558,22 @@ func (h *OrderHandler) RefundPayment(c *gin.Context) {
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Payment marked as refunded"})
 }
 
+// UpdateOrderTrackingRequest represents the payload for updating logistics tracking.
+type UpdateOrderTrackingRequest struct {
+	TrackingNumber string  `json:"trackingNumber" binding:"required"`
+	Carrier        *string `json:"carrier"`
+	TrackingURL    *string `json:"trackingUrl"`
+}
+
 // UpdateOrderTracking godoc
 //
-//	@Summary		Update order tracking number (Admin)
-//	@Description	Updates the carrier tracking number for an order.
+//	@Summary		Update order tracking details (Admin)
+//	@Description	Updates the carrier, tracking number, and tracking URL for an order.
 //	@Tags			Admin Orders
 //	@Accept			json
 //	@Produce		json
-//	@Param			id		path		string				true	"Order UUID"	format(uuid)
-//	@Param			tracking	body		map[string]string		true	"Tracking number"
+//	@Param			id		path		string						true	"Order UUID"	format(uuid)
+//	@Param			tracking	body		UpdateOrderTrackingRequest	true	"Tracking details"
 //	@Success		200		{object}	api.MessageResponse
 //	@Router			/admin/orders/{id}/tracking [patch]
 func (h *OrderHandler) UpdateOrderTracking(c *gin.Context) {
@@ -579,19 +586,21 @@ func (h *OrderHandler) UpdateOrderTracking(c *gin.Context) {
 		return
 	}
 
-	var req struct {
-		TrackingNumber string `json:"trackingNumber" binding:"required"`
-	}
+	var req UpdateOrderTrackingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(apierr.BadRequestError("Invalid request body").Wrap(err))
 		return
 	}
 
-	if err := h.orderService.UpdateOrderTracking(c.Request.Context(), orderID, req.TrackingNumber); err != nil {
+	if err := h.orderService.UpdateOrderTracking(c.Request.Context(), orderID, UpdateOrderTrackingInput{
+		TrackingNumber: req.TrackingNumber,
+		Carrier:        req.Carrier,
+		TrackingURL:    req.TrackingURL,
+	}); err != nil {
 		_ = c.Error(err)
 		return
 	}
-	c.JSON(http.StatusOK, api.MessageResponse{Message: "Tracking number updated successfully"})
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Tracking details updated successfully"})
 }
 
 // parseDateRangeQuery reads optional dateFrom/dateTo query params into a time

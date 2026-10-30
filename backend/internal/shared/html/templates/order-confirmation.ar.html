@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تأكيد الطلب</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Tahoma,Arial,sans-serif;direction:rtl;text-align:right;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:40px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;padding:40px;">
+                    <tr>
+                        <td>
+                            <h2 style="margin:0;color:#111827;font-size:24px;">شكرًا لك، {{ .CustomerName }}!</h2>
+                            <p style="margin:20px 0;color:#4b5563;font-size:16px;line-height:1.6;">
+                                تم إنشاء طلبك <strong>#{{ .OrderNumber }}</strong> بنجاح.
+                            </p>
+
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:24px 0;">
+                                <thead>
+                                    <tr>
+                                        <th align="right" style="padding:8px 0;border-bottom:2px solid #e5e7eb;color:#111827;font-size:14px;">المنتج</th>
+                                        <th align="center" style="padding:8px 0;border-bottom:2px solid #e5e7eb;color:#111827;font-size:14px;">الكمية</th>
+                                        <th align="left" style="padding:8px 0;border-bottom:2px solid #e5e7eb;color:#111827;font-size:14px;">الإجمالي</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{ range .Items }}
+                                    <tr>
+                                        <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;color:#374151;font-size:14px;">{{ .Title }}</td>
+                                        <td align="center" style="padding:10px 0;border-bottom:1px solid #f3f4f6;color:#374151;font-size:14px;">{{ .Quantity }}</td>
+                                        <td align="left" style="padding:10px 0;border-bottom:1px solid #f3f4f6;color:#374151;font-size:14px;">{{ .LineTotal }}</td>
+                                    </tr>
+                                    {{ end }}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="2" align="left" style="padding:12px 0;color:#111827;font-size:16px;font-weight:bold;">الإجمالي</td>
+                                        <td align="left" style="padding:12px 0;color:#111827;font-size:16px;font-weight:bold;">{{ .Total }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+
+                            <p style="margin:12px 0;color:#4b5563;font-size:15px;line-height:1.6;">
+                                <strong>عنوان الشحن:</strong><br>
+                                {{ .ShippingAddress }}
+                            </p>
+                            {{ if .PaymentMethod }}
+                            <p style="margin:12px 0;color:#4b5563;font-size:15px;line-height:1.6;">
+                                <strong>طريقة الدفع:</strong> {{ .PaymentMethod }}
+                            </p>
+                            {{ end }}
+
+                            <p style="margin:24px 0;">
+                                <a href="{{ .OrderURL }}" style="display:inline-block;padding:12px 28px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;">
+                                    عرض طلبك
+                                </a>
+                            </p>
+
+                            <p style="margin-top:24px;color:#9ca3af;font-size:14px;line-height:1.6;">
+                                سنرسل لك إشعارًا آخر بمجرد شحن طلبك.
+                            </p>
+                            <hr style="margin:36px 0;border:none;border-top:1px solid #e5e7eb;">
+                            <p style="font-size:12px;color:#9ca3af;margin:0;">
+                                فريق عمل بريم
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

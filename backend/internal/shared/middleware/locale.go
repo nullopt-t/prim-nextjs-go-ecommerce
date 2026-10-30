@@ -136,6 +136,17 @@ func GetLocale(c *gin.Context) string {
 	return DefaultLocale
 }
 
+// WithLocale returns a child context carrying the normalized locale.
+func WithLocale(ctx context.Context, locale string) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if locale != LocaleAR && locale != LocaleEN {
+		locale = DefaultLocale
+	}
+	return context.WithValue(ctx, contextKey(ContextKeyLocale), locale)
+}
+
 // GetLocaleFromContext extracts the normalized locale from standard context.Context.
 // This is used by background jobs, repository layers, and email renderers where gin.Context is unavailable.
 func GetLocaleFromContext(ctx context.Context) string {

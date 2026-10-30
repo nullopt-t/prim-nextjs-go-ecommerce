@@ -11,6 +11,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/notifier"
 	"github.com/nullopt-t/prim-backend/internal/order"
+	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/shared/html"
 	"github.com/nullopt-t/prim-backend/internal/shared/job"
 	"github.com/nullopt-t/prim-backend/internal/user"
@@ -70,13 +71,27 @@ func main() {
 	// URLs, so the object URL resolver is intentionally nil here.
 	inventoryService := inventory.NewService(logger, txRunner, inventoryRepo, nil)
 	orderRepo := order.NewRepository()
-	orderService := order.NewService(txRunner, orderRepo, logger, inventoryRepo, inventoryService)
-	reservationReaper := order.NewReservationReaper(orderService, logger, time.Minute)
+	userRepo := user.NewPostgresRepository()
 
 	// 2. Initialize Kafka Consumer & Producer
 	kafkaCfg := brokerkafka.DefaultConfig(cfg.KafkaCfg.Brokers, cfg.KafkaCfg.GroupID)
 	dlqProducer := brokerkafka.NewProducer(kafkaCfg)
 	defer func() { _ = dlqProducer.Close() }()
+
+	emailFallback := job.NewRedisEmailFallbackQueue(redisClient)
+	inAppFallback := job.NewRedisInAppFallbackQueue(redisClient)
+	orderNotifier := notifier.NewKafkaNotifier(dlqProducer, logger, emailFallback, inAppFallback)
+	orderService := order.NewService(
+		txRunner,
+		orderRepo,
+		logger,
+		inventoryRepo,
+		inventoryService,
+		userRepo,
+		setting.NewService(txRunner, setting.NewRepository()),
+		orderNotifier,
+	)
+	reservationReaper := order.NewReservationReaper(orderService, logger, time.Minute)
 
 	emailConsumer := brokerkafka.NewConsumer(kafkaCfg, job.TopicNotificationsEmail)
 	defer func() { _ = emailConsumer.Close() }()
@@ -137,13 +152,22 @@ func main() {
 		2,
 	)
 
-	wg.Add(4)
+	// In-app events that the API could not publish to Kafka are consumed here.
+	redisInAppWorker := job.NewRedisInAppFallbackWorker(
+		redisClient,
+		eventHandler.HandleInAppEvent,
+		logger,
+		2,
+	)
+
+	wg.Add(5)
 	go emailWorker.Start(ctx, &wg)
 	go inappWorker.Start(ctx, &wg)
 	go redisEmailWorker.Start(ctx, &wg)
+	go redisInAppWorker.Start(ctx, &wg)
 	go reservationReaper.Start(ctx, &wg)
 
-	logger.Info("notification worker pools active (Kafka + Redis email fallback)...")
+	logger.Info("notification worker pools active (Kafka + Redis email/in-app fallbacks)...")
 
 	<-ctx.Done()
 

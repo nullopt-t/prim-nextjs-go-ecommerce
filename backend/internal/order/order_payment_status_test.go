@@ -17,10 +17,12 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
-type fakeInventoryReader struct{}
+type fakeInventoryReader struct {
+	orderIDs []uuid.UUID
+}
 
 func (f *fakeInventoryReader) ExpiredReservationOrderIDs(ctx context.Context, qe database.QueryExecutor) ([]uuid.UUID, error) {
-	return nil, nil
+	return f.orderIDs, nil
 }
 
 // paymentStatusExecutor returns a caller-controlled command tag so tests can
@@ -53,12 +55,16 @@ func (e paymentStatusExecutor) QueryRow(context.Context, string, ...interface{})
 }
 
 func (e paymentStatusExecutor) Begin(context.Context) (pgx.Tx, error) { return e, nil }
-func (e paymentStatusExecutor) Commit(context.Context) error { return nil }
-func (e paymentStatusExecutor) Rollback(context.Context) error { return nil }
-func (e paymentStatusExecutor) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) { return 0, nil }
+func (e paymentStatusExecutor) Commit(context.Context) error          { return nil }
+func (e paymentStatusExecutor) Rollback(context.Context) error        { return nil }
+func (e paymentStatusExecutor) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) {
+	return 0, nil
+}
 func (e paymentStatusExecutor) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { return nil }
-func (e paymentStatusExecutor) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) { return nil, nil }
-func (e paymentStatusExecutor) Conn() *pgx.Conn { return nil }
+func (e paymentStatusExecutor) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) {
+	return nil, nil
+}
+func (e paymentStatusExecutor) Conn() *pgx.Conn                { return nil }
 func (e paymentStatusExecutor) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
 
 type paymentStatusRunner struct{ tag pgconn.CommandTag }
@@ -117,7 +123,7 @@ func TestUpdatePaymentStatusValidation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			writer := &fakeInventoryWriter{}
-			svc := order.NewService(paymentStatusRunner{tag: tc.tag}, order.NewRepository(), log.NewNoopLogger(), &fakeInventoryReader{}, writer)
+			svc := order.NewService(paymentStatusRunner{tag: tc.tag}, order.NewRepository(), log.NewNoopLogger(), &fakeInventoryReader{}, writer, &fakeUserReader{}, &fakeSettingsProvider{}, &fakeOrderNotifier{})
 
 			err := svc.UpdatePaymentStatus(context.Background(), uuid.New(), tc.status)
 			if !tc.wantErr {

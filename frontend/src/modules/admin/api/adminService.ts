@@ -218,8 +218,12 @@ export const adminService = {
     return api.patch<ApiMessageResponse>(`/api/v1/admin/orders/${id}/status`, { status, notes });
   },
 
-  updateOrderTracking: async (id: string, trackingNumber: string): Promise<ApiMessageResponse> => {
-    return api.patch<ApiMessageResponse>(`/api/v1/admin/orders/${id}/tracking`, { trackingNumber });
+  updateOrderTracking: async (
+    id: string,
+    data: { trackingNumber: string; carrier?: string; trackingUrl?: string } | string
+  ): Promise<ApiMessageResponse> => {
+    const payload = typeof data === "string" ? { trackingNumber: data } : data;
+    return api.patch<ApiMessageResponse>(`/api/v1/admin/orders/${id}/tracking`, payload);
   },
 
   // Dashboard Overview

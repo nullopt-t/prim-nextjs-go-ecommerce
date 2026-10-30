@@ -44,12 +44,16 @@ func (e refundExecutor) Query(context.Context, string, ...interface{}) (pgx.Rows
 func (e refundExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Row { return e.row }
 
 func (e refundExecutor) Begin(context.Context) (pgx.Tx, error) { return e, nil }
-func (e refundExecutor) Commit(context.Context) error { return nil }
-func (e refundExecutor) Rollback(context.Context) error { return nil }
-func (e refundExecutor) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) { return 0, nil }
+func (e refundExecutor) Commit(context.Context) error          { return nil }
+func (e refundExecutor) Rollback(context.Context) error        { return nil }
+func (e refundExecutor) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) {
+	return 0, nil
+}
 func (e refundExecutor) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { return nil }
-func (e refundExecutor) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) { return nil, nil }
-func (e refundExecutor) Conn() *pgx.Conn { return nil }
+func (e refundExecutor) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) {
+	return nil, nil
+}
+func (e refundExecutor) Conn() *pgx.Conn                { return nil }
 func (e refundExecutor) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
 
 type refundRunner struct{ row pgx.Row }
@@ -100,7 +104,7 @@ func TestRefundPaymentStateValidation(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc := order.NewService(refundRunner{row: tc.row}, order.NewRepository(), log.NewNoopLogger(), &fakeInventoryReader{}, &fakeInventoryWriter{})
+			svc := order.NewService(refundRunner{row: tc.row}, order.NewRepository(), log.NewNoopLogger(), &fakeInventoryReader{}, &fakeInventoryWriter{}, &fakeUserReader{}, &fakeSettingsProvider{}, &fakeOrderNotifier{})
 
 			err := svc.RefundPayment(context.Background(), uuid.New())
 			if !tc.wantErr {

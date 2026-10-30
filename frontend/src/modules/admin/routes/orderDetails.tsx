@@ -37,6 +37,8 @@ interface OrderView {
   shippingAddress: string;
   paymentMethod: string;
   trackingNumber: string;
+  carrier: string;
+  trackingUrl: string;
   items: OrderViewItem[];
   history: OrderViewHistory[];
 }
@@ -50,6 +52,8 @@ export function AdminOrderDetails() {
   const [order, setOrder] = useState<OrderView | null>(null);
   const [loading, setLoading] = useState(true);
   const [trackingNumber, setTrackingNumber] = useState("");
+  const [carrier, setCarrier] = useState("");
+  const [trackingUrl, setTrackingUrl] = useState("");
   const [noteInput, setNoteInput] = useState("");
   const [loadError, setLoadError] = useState(false);
 
@@ -79,6 +83,8 @@ export function AdminOrderDetails() {
           shippingAddress: remoteOrder.shippingAddress ? `${remoteOrder.shippingAddress.street || ""}, ${remoteOrder.shippingAddress.city || ""}, ${remoteOrder.shippingAddress.state || ""} ${remoteOrder.shippingAddress.postalCode || ""}` : t("orderDetails.noShippingAddress"),
           paymentMethod: remoteOrder.paymentMethod || "—",
           trackingNumber: remoteOrder.trackingNumber || "",
+          carrier: remoteOrder.carrier || "",
+          trackingUrl: remoteOrder.trackingUrl || "",
           items: (Array.isArray(remoteOrder.items) ? remoteOrder.items : []).map((it: OrderItem) => {
             let itemName = t("orderDetails.orderItem");
             const snapshot: unknown = it.productSnapshot;
@@ -106,6 +112,8 @@ export function AdminOrderDetails() {
         };
         setOrder(formatted);
         setTrackingNumber(formatted.trackingNumber);
+        setCarrier(formatted.carrier);
+        setTrackingUrl(formatted.trackingUrl);
       }
     } catch {
       setLoadError(true);
@@ -142,13 +150,19 @@ export function AdminOrderDetails() {
   };
 
   const handleSaveTracking = async () => {
+    if (!order) return;
     if (!trackingNumber.trim()) {
       notify.error(t("orderDetails.toast.enterTracking"));
       return;
     }
     try {
-      await adminService.updateOrderTracking(order.id, trackingNumber);
+      await adminService.updateOrderTracking(order.id, {
+        trackingNumber: trackingNumber.trim(),
+        carrier: carrier.trim() || undefined,
+        trackingUrl: trackingUrl.trim() || undefined,
+      });
       notify.success(t("orderDetails.toast.trackingSaved"));
+      fetchOrderFromApi();
     } catch (err) {
       notify.error(apiErrorMessage(err, t("orderDetails.toast.trackingFailed")));
     }
@@ -275,20 +289,38 @@ export function AdminOrderDetails() {
               <Truck className="size-5 text-accent-brand" />
               <span>{t("orderDetails.shipmentTracking")}</span>
             </h3>
-            <div className="flex gap-3">
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  placeholder={t("orderDetails.carrierPlaceholder")}
+                  value={carrier}
+                  onChange={(e) => setCarrier(e.target.value)}
+                  className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                />
+                <input
+                  type="text"
+                  placeholder={t("orderDetails.trackingPlaceholder")}
+                  value={trackingNumber}
+                  onChange={(e) => setTrackingNumber(e.target.value)}
+                  className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                />
+              </div>
               <input
-                type="text"
-                placeholder={t("orderDetails.trackingPlaceholder")}
-                value={trackingNumber}
-                onChange={(e) => setTrackingNumber(e.target.value)}
-                className="flex-1 px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                type="url"
+                placeholder={t("orderDetails.trackingUrlPlaceholder")}
+                value={trackingUrl}
+                onChange={(e) => setTrackingUrl(e.target.value)}
+                className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
               />
-              <button
-                onClick={handleSaveTracking}
-                className="px-4 py-2 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90"
-              >
-                {t("orderDetails.saveTracking")}
-              </button>
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSaveTracking}
+                  className="px-4 py-2 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90"
+                >
+                  {t("orderDetails.saveTracking")}
+                </button>
+              </div>
             </div>
           </div>
 

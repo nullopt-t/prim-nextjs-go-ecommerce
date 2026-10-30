@@ -15,11 +15,14 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/notifier"
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/database"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
@@ -95,6 +98,13 @@ type SettingsProvider interface {
 	GetConfig(ctx context.Context) (setting.Config, error)
 }
 
+// OrderNotifier is the consumer-owned notification contract used after a
+// checkout commits. Notification failures are logged and never roll back an
+// already-committed order.
+type OrderNotifier interface {
+	NotifyOrderPlaced(ctx context.Context, in notifier.OrderPlacedPayload) error
+}
+
 type CheckoutService struct {
 	cartReader    CartReader
 	cartWriter    CartWriter
@@ -109,6 +119,8 @@ type CheckoutService struct {
 	storage       storage.StorageProvider
 	settings      SettingsProvider
 	runner        database.Runner
+	orderNotifier OrderNotifier
+	logger        log.Logger
 }
 
 func NewService(
@@ -125,6 +137,8 @@ func NewService(
 	storageProvider storage.StorageProvider,
 	settings SettingsProvider,
 	runner database.Runner,
+	orderNotifier OrderNotifier,
+	logger log.Logger,
 ) *CheckoutService {
 	if cartReader == nil {
 		panic("checkout: cart reader is required")
@@ -165,6 +179,12 @@ func NewService(
 	if runner == nil {
 		panic("checkout: database runner is required")
 	}
+	if orderNotifier == nil {
+		panic("checkout: order notifier is required")
+	}
+	if logger == nil {
+		panic("checkout: logger is required")
+	}
 	return &CheckoutService{
 		cartReader:    cartReader,
 		cartWriter:    cartWriter,
@@ -179,6 +199,8 @@ func NewService(
 		storage:       storageProvider,
 		settings:      settings,
 		runner:        runner,
+		orderNotifier: orderNotifier,
+		logger:        logger,
 	}
 }
 
@@ -248,6 +270,7 @@ type CheckoutInput struct {
 
 func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*model.Order, error) {
 	var createdOrder *model.Order
+	var customerName string
 
 	cfg := s.resolveConfig(ctx)
 
@@ -287,6 +310,10 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 				return apierr.NotFoundError("User not found").WithCode(apierr.CodeNotFound)
 			}
 			return s.handleError(err, "Failed to resolve user")
+		}
+		customerName = strings.TrimSpace(buyer.FullName)
+		if customerName == "" {
+			customerName = buyer.Identifier
 		}
 
 		shippingAddr, err := s.addressReader.GetByIDAndUser(ctx, tx, in.ShippingAddressID, in.CustomerID)
@@ -476,6 +503,11 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			addr.PostalCode = *shippingAddr.PostalCode
 		}
 
+		locale := middleware.GetLocaleFromContext(ctx)
+		if locale != "ar" && locale != "en" {
+			locale = "en"
+		}
+
 		orderIn := &order.CreateOrderInput{
 			CustomerID:      &in.CustomerID,
 			CustomerEmail:   buyer.Identifier,
@@ -488,6 +520,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			CODFee:          codFee,
 			PaymentMethod:   normalizedPaymentMethod,
 			Currency:        currency,
+			Locale:          locale,
 			Items:           orderItems,
 		}
 
@@ -581,7 +614,81 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		return nil, s.handleError(err, "Checkout failed")
 	}
 
+	// Notifications run only after the transaction commits. A Kafka/SMTP
+	// failure must never turn a successful order into an error response, so it
+	// is logged and the order is returned normally.
+	if cfg.NotifyOrderConfirmation {
+		notifyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+
+		if notifyErr := s.orderNotifier.NotifyOrderPlaced(
+			notifyCtx,
+			buildOrderPlacedPayload(createdOrder, customerName),
+		); notifyErr != nil {
+			s.logger.Warn("failed to publish order placed notification", log.Meta{
+				"orderId": createdOrder.ID.String(),
+				"error":   notifyErr.Error(),
+			})
+		}
+	}
+
 	return createdOrder, nil
+}
+
+// buildOrderPlacedPayload projects the committed order into the notification
+// contract. Snapshot parsing is best-effort: a malformed historical snapshot
+// must not block an already-committed order confirmation.
+func buildOrderPlacedPayload(o *model.Order, customerName string) notifier.OrderPlacedPayload {
+	orderNumber := notifier.OrderNumber(o.ID)
+
+	items := make([]notifier.OrderItemSummary, 0, len(o.Items))
+	for _, item := range o.Items {
+		title := "Item"
+		sku := ""
+		var snapshot struct {
+			Title string `json:"title"`
+			SKU   string `json:"sku"`
+		}
+		if err := json.Unmarshal([]byte(item.ProductSnapshot), &snapshot); err == nil {
+			if snapshot.Title != "" {
+				title = snapshot.Title
+			}
+			sku = snapshot.SKU
+		}
+
+		items = append(items, notifier.OrderItemSummary{
+			Title:     title,
+			SKU:       sku,
+			Quantity:  item.Quantity,
+			UnitPrice: item.PriceAtPurchase,
+			LineTotal: item.PriceAtPurchase * int64(item.Quantity),
+		})
+	}
+
+	var address notifier.OrderAddressSummary
+	if o.ShippingAddress != nil {
+		address = notifier.OrderAddressSummary{
+			Street:     o.ShippingAddress.Street,
+			City:       o.ShippingAddress.City,
+			State:      o.ShippingAddress.State,
+			PostalCode: o.ShippingAddress.PostalCode,
+			Country:    o.ShippingAddress.Country,
+		}
+	}
+
+	return notifier.OrderPlacedPayload{
+		OrderID:         o.ID,
+		OrderNumber:     orderNumber,
+		CustomerID:      o.CustomerID,
+		CustomerEmail:   o.CustomerEmail,
+		CustomerName:    customerName,
+		TotalAmount:     o.TotalAmount,
+		Currency:        o.Currency,
+		PaymentMethod:   o.PaymentMethod,
+		Locale:          o.Locale,
+		Items:           items,
+		ShippingAddress: address,
+	}
 }
 
 type CouponValidationResult struct {

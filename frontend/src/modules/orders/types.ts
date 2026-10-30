@@ -45,6 +45,8 @@ export interface Order {
   paymentMethod?: string;
   paymentStatus?: string;
   trackingNumber?: string;
+  carrier?: string | null;
+  trackingUrl?: string | null;
   items: OrderItem[];
   createdAt: string;
   updatedAt: string;
@@ -66,4 +68,6 @@ export interface UpdateOrderPayload {
   status?: OrderStatus | string;
   notes?: string;
   trackingNumber?: string;
+  carrier?: string;
+  trackingUrl?: string;
 }

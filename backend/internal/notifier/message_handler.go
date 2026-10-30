@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/html"
@@ -31,6 +32,18 @@ var emailSubjects = map[string]map[string]string{
 	"reset_password": {
 		"en": "Reset Your Password - Prim",
 		"ar": "إعادة تعيين كلمة المرور - متجر بريم",
+	},
+	"order_placed": {
+		"en": "Order Confirmation - PRIM",
+		"ar": "تأكيد طلبك - بريم",
+	},
+	"order_shipped": {
+		"en": "Your Order Has Shipped! - PRIM",
+		"ar": "تم شحن طلبك! - بريم",
+	},
+	"order_cancelled": {
+		"en": "Order Cancelled - PRIM",
+		"ar": "تم إلغاء الطلب - بريم",
 	},
 }
 
@@ -120,6 +133,30 @@ func (h *EventHandler) HandleEmailEvent(ctx context.Context, event *job.Notifica
 			"ResetURL": fmt.Sprintf("%s/auth/reset-password?token=%s", h.clientURL, payload.Token),
 		}
 
+	case "order_placed":
+		var payload OrderPlacedPayload
+		if err := json.Unmarshal(event.Data, &payload); err != nil {
+			return fmt.Errorf("unmarshal order placed payload: %w", err)
+		}
+		templateName = fmt.Sprintf("order-confirmation.%s", locale)
+		templateData = h.orderPlacedTemplateData(payload, locale)
+
+	case "order_shipped":
+		var payload OrderShippedPayload
+		if err := json.Unmarshal(event.Data, &payload); err != nil {
+			return fmt.Errorf("unmarshal order shipped payload: %w", err)
+		}
+		templateName = fmt.Sprintf("order-shipped.%s", locale)
+		templateData = h.orderShippedTemplateData(payload)
+
+	case "order_cancelled":
+		var payload OrderCancelledPayload
+		if err := json.Unmarshal(event.Data, &payload); err != nil {
+			return fmt.Errorf("unmarshal order cancelled payload: %w", err)
+		}
+		templateName = fmt.Sprintf("order-cancelled.%s", locale)
+		templateData = h.orderCancelledTemplateData(payload)
+
 	default:
 		// Generic or custom template
 		_ = json.Unmarshal(event.Data, &templateData)
@@ -141,6 +178,123 @@ func (h *EventHandler) HandleEmailEvent(ctx context.Context, event *job.Notifica
 		subject,
 		renderedHTML,
 	)
+}
+
+func (h *EventHandler) orderPlacedTemplateData(payload OrderPlacedPayload, locale string) map[string]any {
+	customerName := strings.TrimSpace(payload.CustomerName)
+	if customerName == "" {
+		customerName = payload.CustomerEmail
+	}
+
+	orderNumber := payload.OrderNumber
+	if orderNumber == "" {
+		orderNumber = payload.OrderID.String()
+	}
+
+	items := make([]map[string]any, 0, len(payload.Items))
+	for _, item := range payload.Items {
+		items = append(items, map[string]any{
+			"Title":     item.Title,
+			"SKU":       item.SKU,
+			"Quantity":  item.Quantity,
+			"UnitPrice": formatMinorUnits(item.UnitPrice, payload.Currency),
+			"LineTotal": formatMinorUnits(item.LineTotal, payload.Currency),
+		})
+	}
+
+	return map[string]any{
+		"CustomerName":    customerName,
+		"OrderNumber":     orderNumber,
+		"Items":           items,
+		"Total":           formatMinorUnits(payload.TotalAmount, payload.Currency),
+		"Currency":        payload.Currency,
+		"PaymentMethod":   paymentMethodLabel(payload.PaymentMethod, locale),
+		"ShippingAddress": formatOrderAddress(payload.ShippingAddress),
+		"OrderURL": fmt.Sprintf(
+			"%s/user/orders/%s",
+			strings.TrimRight(h.clientURL, "/"),
+			payload.OrderID.String(),
+		),
+	}
+}
+
+func (h *EventHandler) orderShippedTemplateData(payload OrderShippedPayload) map[string]any {
+	customerName := strings.TrimSpace(payload.CustomerName)
+	if customerName == "" {
+		customerName = payload.CustomerEmail
+	}
+
+	orderNumber := payload.OrderNumber
+	if orderNumber == "" {
+		orderNumber = payload.OrderID.String()
+	}
+
+	return map[string]any{
+		"CustomerName":   customerName,
+		"OrderNumber":    orderNumber,
+		"Carrier":        payload.Carrier,
+		"TrackingNumber": payload.TrackingNumber,
+		"TrackingURL":    payload.TrackingURL,
+		"OrderURL": fmt.Sprintf(
+			"%s/user/orders/%s",
+			strings.TrimRight(h.clientURL, "/"),
+			payload.OrderID.String(),
+		),
+	}
+}
+
+func (h *EventHandler) orderCancelledTemplateData(payload OrderCancelledPayload) map[string]any {
+	customerName := strings.TrimSpace(payload.CustomerName)
+	if customerName == "" {
+		customerName = payload.CustomerEmail
+	}
+
+	orderNumber := payload.OrderNumber
+	if orderNumber == "" {
+		orderNumber = payload.OrderID.String()
+	}
+
+	return map[string]any{
+		"CustomerName": customerName,
+		"OrderNumber":  orderNumber,
+		"Reason":       payload.Reason,
+		"OrderURL": fmt.Sprintf(
+			"%s/user/orders/%s",
+			strings.TrimRight(h.clientURL, "/"),
+			payload.OrderID.String(),
+		),
+	}
+}
+
+func formatMinorUnits(amount int64, currency string) string {
+	return fmt.Sprintf("%.2f %s", float64(amount)/100, currency)
+}
+
+func formatOrderAddress(address OrderAddressSummary) string {
+	parts := make([]string, 0, 5)
+	for _, part := range []string{address.Street, address.City, address.State, address.PostalCode, address.Country} {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			parts = append(parts, trimmed)
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+func paymentMethodLabel(method, locale string) string {
+	switch strings.ToLower(strings.TrimSpace(method)) {
+	case "cash_on_delivery", "cod":
+		if locale == "ar" {
+			return "الدفع عند الاستلام"
+		}
+		return "Cash on delivery"
+	case "card", "online", "credit_card":
+		if locale == "ar" {
+			return "الدفع بالبطاقة"
+		}
+		return "Card payment"
+	default:
+		return method
+	}
 }
 
 // HandleInAppEvent stores localized alerts into PostgreSQL for the notification center.

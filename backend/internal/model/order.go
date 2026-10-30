@@ -22,7 +22,6 @@ const (
 	OrderStatusDelivered OrderStatus = "delivered"
 	// OrderStatusCancelled indicates the customer or store cancelled the order prior to fulfillment.
 	OrderStatusCancelled OrderStatus = "cancelled"
-	OrderStatusCanceled  OrderStatus = "cancelled"
 	// OrderStatusRefunded indicates the purchase charge has been fully reversed to the customer.
 	OrderStatusRefunded OrderStatus = "refunded"
 )
@@ -89,6 +88,12 @@ type Order struct {
 	PaymentMethod string
 	// TrackingNumber is the carrier tracking number for shipped orders.
 	TrackingNumber string
+	// Locale is the customer preferred language (e.g. "en", "ar") for notifications.
+	Locale string
+	// Carrier is the logistics carrier name (e.g. "Aramex", "DHL", "FedEx").
+	Carrier *string
+	// TrackingURL is the direct tracking link provided by the carrier.
+	TrackingURL *string
 	// Items contains all purchased line items in this order.
 	Items []OrderItem
 	// CreatedAt is the timestamp when the order was placed.

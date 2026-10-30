@@ -36,12 +36,18 @@ func (r *Repository) CreateOrder(
 		return fmt.Errorf("marshal shipping address: %w", err)
 	}
 
+	locale := o.Locale
+	if locale != "ar" && locale != "en" {
+		locale = "en"
+	}
+	o.Locale = locale
+
 	query := `
 		INSERT INTO orders (
 			id, customer_id, customer_email, shipping_address,
 			status, coupon_id, discount_amount, shipping_amount, tax_amount, cod_fee, total_amount, currency,
-			payment_method, tracking_number, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now(), now())
+			payment_method, tracking_number, locale, carrier, tracking_url, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, now(), now())
 		RETURNING created_at, updated_at
 	`
 	err = tx.QueryRow(
@@ -61,6 +67,9 @@ func (r *Repository) CreateOrder(
 		o.Currency,
 		o.PaymentMethod,
 		o.TrackingNumber,
+		o.Locale,
+		o.Carrier,
+		o.TrackingURL,
 	).Scan(&o.CreatedAt, &o.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create order: %w", err)
@@ -126,6 +135,7 @@ func (r *Repository) GetOrderByID(
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
 		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
 		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
+		       o.locale, o.carrier, o.tracking_url,
 		       o.created_at, o.updated_at,
 		       c.code
 		FROM orders o
@@ -137,7 +147,7 @@ func (r *Repository) GetOrderByID(
 	var o model.Order
 	var shippingBytes []byte
 	var couponCode *string
-	var paymentMethod, trackingNumber *string
+	var paymentMethod, trackingNumber, locale, carrier, trackingURL *string
 
 	err := row.Scan(
 		&o.ID,
@@ -154,6 +164,9 @@ func (r *Repository) GetOrderByID(
 		&o.Currency,
 		&paymentMethod,
 		&trackingNumber,
+		&locale,
+		&carrier,
+		&trackingURL,
 		&o.CreatedAt,
 		&o.UpdatedAt,
 		&couponCode,
@@ -161,6 +174,12 @@ func (r *Repository) GetOrderByID(
 	o.CouponCode = couponCode
 	o.PaymentMethod = derefString(paymentMethod)
 	o.TrackingNumber = derefString(trackingNumber)
+	o.Locale = derefString(locale)
+	if o.Locale == "" {
+		o.Locale = "en"
+	}
+	o.Carrier = carrier
+	o.TrackingURL = trackingURL
 	if err != nil {
 		return nil, fmt.Errorf("get order by id: %w", err)
 	}
@@ -189,6 +208,7 @@ func (r *Repository) GetOrderByIDForUpdate(
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
 		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
 		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
+		       o.locale, o.carrier, o.tracking_url,
 		       o.created_at, o.updated_at,
 		       c.code
 		FROM orders o
@@ -201,7 +221,7 @@ func (r *Repository) GetOrderByIDForUpdate(
 	var o model.Order
 	var shippingBytes []byte
 	var couponCode *string
-	var paymentMethod, trackingNumber *string
+	var paymentMethod, trackingNumber, locale, carrier, trackingURL *string
 
 	err := row.Scan(
 		&o.ID,
@@ -218,6 +238,9 @@ func (r *Repository) GetOrderByIDForUpdate(
 		&o.Currency,
 		&paymentMethod,
 		&trackingNumber,
+		&locale,
+		&carrier,
+		&trackingURL,
 		&o.CreatedAt,
 		&o.UpdatedAt,
 		&couponCode,
@@ -225,6 +248,12 @@ func (r *Repository) GetOrderByIDForUpdate(
 	o.CouponCode = couponCode
 	o.PaymentMethod = derefString(paymentMethod)
 	o.TrackingNumber = derefString(trackingNumber)
+	o.Locale = derefString(locale)
+	if o.Locale == "" {
+		o.Locale = "en"
+	}
+	o.Carrier = carrier
+	o.TrackingURL = trackingURL
 	if err != nil {
 		return nil, fmt.Errorf("get order by id for update: %w", err)
 	}
@@ -253,6 +282,7 @@ func (r *Repository) GetOrdersByCustomerID(
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
 		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
 		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
+		       o.locale, o.carrier, o.tracking_url,
 		       o.created_at, o.updated_at,
 		       c.code
 		FROM orders o
@@ -271,7 +301,7 @@ func (r *Repository) GetOrdersByCustomerID(
 		var o model.Order
 		var shippingBytes []byte
 		var couponCode *string
-		var paymentMethod, trackingNumber *string
+		var paymentMethod, trackingNumber, locale, carrier, trackingURL *string
 
 		if err := rows.Scan(
 			&o.ID,
@@ -288,6 +318,9 @@ func (r *Repository) GetOrdersByCustomerID(
 			&o.Currency,
 			&paymentMethod,
 			&trackingNumber,
+			&locale,
+			&carrier,
+			&trackingURL,
 			&o.CreatedAt,
 			&o.UpdatedAt,
 			&couponCode,
@@ -297,6 +330,12 @@ func (r *Repository) GetOrdersByCustomerID(
 		o.CouponCode = couponCode
 		o.PaymentMethod = derefString(paymentMethod)
 		o.TrackingNumber = derefString(trackingNumber)
+		o.Locale = derefString(locale)
+		if o.Locale == "" {
+			o.Locale = "en"
+		}
+		o.Carrier = carrier
+		o.TrackingURL = trackingURL
 
 		if err := json.Unmarshal(shippingBytes, &o.ShippingAddress); err != nil {
 			return nil, fmt.Errorf("unmarshal shipping address: %w", err)
@@ -455,6 +494,7 @@ func (r *Repository) ListOrders(
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
 		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
 		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
+		       o.locale, o.carrier, o.tracking_url,
 		       o.created_at, o.updated_at,
 		       c.code
 		FROM orders o
@@ -510,7 +550,7 @@ func (r *Repository) ListOrders(
 		var o model.Order
 		var shippingBytes []byte
 		var couponCode *string
-		var paymentMethod, trackingNumber *string
+		var paymentMethod, trackingNumber, locale, carrier, trackingURL *string
 
 		if err := rows.Scan(
 			&o.ID,
@@ -527,6 +567,9 @@ func (r *Repository) ListOrders(
 			&o.Currency,
 			&paymentMethod,
 			&trackingNumber,
+			&locale,
+			&carrier,
+			&trackingURL,
 			&o.CreatedAt,
 			&o.UpdatedAt,
 			&couponCode,
@@ -536,6 +579,12 @@ func (r *Repository) ListOrders(
 		o.CouponCode = couponCode
 		o.PaymentMethod = derefString(paymentMethod)
 		o.TrackingNumber = derefString(trackingNumber)
+		o.Locale = derefString(locale)
+		if o.Locale == "" {
+			o.Locale = "en"
+		}
+		o.Carrier = carrier
+		o.TrackingURL = trackingURL
 
 		if err := json.Unmarshal(shippingBytes, &o.ShippingAddress); err != nil {
 			return nil, fmt.Errorf("unmarshal shipping address for order %s: %w", o.ID, err)
@@ -811,9 +860,16 @@ func (r *Repository) GetPaymentOrderIDForUpdate(ctx context.Context, qe database
 	return orderID, nil
 }
 
-func (r *Repository) UpdateOrderTracking(ctx context.Context, tx *database.Tx, orderID uuid.UUID, trackingNumber string) error {
-	query := `UPDATE orders SET tracking_number = $1, updated_at = NOW() WHERE id = $2`
-	tag, err := tx.Exec(ctx, query, trackingNumber, orderID)
+func (r *Repository) UpdateOrderTracking(
+	ctx context.Context,
+	tx *database.Tx,
+	orderID uuid.UUID,
+	trackingNumber string,
+	carrier *string,
+	trackingURL *string,
+) error {
+	query := `UPDATE orders SET tracking_number = $1, carrier = $2, tracking_url = $3, updated_at = NOW() WHERE id = $4`
+	tag, err := tx.Exec(ctx, query, trackingNumber, carrier, trackingURL, orderID)
 	if err != nil {
 		return fmt.Errorf("update order tracking: %w", err)
 	}
