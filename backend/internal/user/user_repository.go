@@ -50,12 +50,12 @@ func (r *UserRepository) Create(
 	user.FullName = fullName
 
 	query := `
-		INSERT INTO users (id, email, full_name, role, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, now(), now())
+		INSERT INTO users (id, email, full_name, phone, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, now(), now())
 		RETURNING id, created_at, updated_at
 	`
 	var createdUserID uuid.UUID
-	err := tx.QueryRow(ctx, query, user.ID, user.Identifier, fullName, role).Scan(&createdUserID, &user.CreatedAt, &user.UpdatedAt)
+	err := tx.QueryRow(ctx, query, user.ID, user.Identifier, fullName, user.Phone, role).Scan(&createdUserID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -105,7 +105,7 @@ func (r *UserRepository) get(
 	filter userFilter,
 ) (*model.User, error) {
 	query := `
-		SELECT id, email, full_name, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
+		SELECT id, email, full_name, phone, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
 		FROM users
 		WHERE deleted_at IS NULL
 	`
@@ -131,6 +131,7 @@ func (r *UserRepository) get(
 		&u.ID,
 		&u.Identifier,
 		&u.FullName,
+		&u.Phone,
 		&roleStr,
 		&u.IsEmailVerified,
 		&statusStr,
@@ -169,7 +170,7 @@ func (r *UserRepository) ListUsers(
 	filter UserListFilter,
 ) ([]model.User, error) {
 	query := `
-		SELECT id, email, full_name, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
+		SELECT id, email, full_name, phone, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
 		FROM users
 		WHERE deleted_at IS NULL
 	`
@@ -222,6 +223,7 @@ func (r *UserRepository) ListUsers(
 			&u.ID,
 			&u.Identifier,
 			&u.FullName,
+			&u.Phone,
 			&roleStr,
 			&u.IsEmailVerified,
 			&statusStr,
@@ -298,7 +300,7 @@ func (r *UserRepository) ListByRoles(
 	}
 
 	query := `
-		SELECT id, email, full_name, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
+		SELECT id, email, full_name, phone, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
 		FROM users
 		WHERE deleted_at IS NULL AND role::text = ANY($1)
 		ORDER BY created_at
@@ -320,6 +322,7 @@ func (r *UserRepository) ListByRoles(
 			&u.ID,
 			&u.Identifier,
 			&u.FullName,
+			&u.Phone,
 			&roleStr,
 			&u.IsEmailVerified,
 			&statusStr,
@@ -411,4 +414,67 @@ func (r *UserRepository) SoftDelete(
 		return database.ErrNotFound
 	}
 	return nil
+}
+
+// UpdateProfile updates the display name and/or phone number of a user.
+func (r *UserRepository) UpdateProfile(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	id uuid.UUID,
+	fullName *string,
+	phone *string,
+) (*model.User, error) {
+	setClauses := []string{"updated_at = now()"}
+	args := []any{id}
+	argIdx := 2
+
+	if fullName != nil {
+		setClauses = append(setClauses, fmt.Sprintf("full_name = $%d", argIdx))
+		args = append(args, strings.TrimSpace(*fullName))
+		argIdx++
+	}
+
+	if phone != nil {
+		setClauses = append(setClauses, fmt.Sprintf("phone = $%d", argIdx))
+		trimmed := strings.TrimSpace(*phone)
+		if trimmed == "" {
+			args = append(args, nil)
+		} else {
+			args = append(args, trimmed)
+		}
+		argIdx++
+	}
+
+	query := fmt.Sprintf(`
+		UPDATE users
+		SET %s
+		WHERE id = $1 AND deleted_at IS NULL
+		RETURNING id, email, full_name, phone, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
+	`, strings.Join(setClauses, ", "))
+
+	var u model.User
+	var roleStr string
+	var statusStr string
+
+	err := qe.QueryRow(ctx, query, args...).Scan(
+		&u.ID,
+		&u.Identifier,
+		&u.FullName,
+		&u.Phone,
+		&roleStr,
+		&u.IsEmailVerified,
+		&statusStr,
+		&u.SuspendedUntil,
+		&u.LockedUntil,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+		&u.DeletedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	u.Role = model.UserRole(roleStr)
+	u.Status = model.AccountStatus(statusStr)
+	return &u, nil
 }

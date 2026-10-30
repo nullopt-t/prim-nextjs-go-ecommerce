@@ -44,12 +44,20 @@ type UpdateUserStatusRequest struct {
 	SuspendedUntil *time.Time `json:"suspendedUntil,omitempty"`
 }
 
+// UpdateProfileRequest encapsulates the fields a user can update on their own profile.
+type UpdateProfileRequest struct {
+	FullName *string `json:"fullName" binding:"omitempty,max=100"`
+	Name     *string `json:"name" binding:"omitempty,max=100"`
+	Phone    *string `json:"phone" binding:"omitempty,max=30"`
+}
+
 // UserResponse represents the public administrative view of a user account entity,
 // including administrative roles, email verification status, account status, and timestamps.
 type UserResponse struct {
 	ID              uuid.UUID  `json:"id"`
 	Email           string     `json:"email"`
 	FullName        *string    `json:"fullName,omitempty"`
+	Phone           *string    `json:"phone,omitempty"`
 	Role            string     `json:"role"`
 	IsEmailVerified bool       `json:"isEmailVerified"`
 	Status          string     `json:"status"`
@@ -70,6 +78,7 @@ func ToUserResponse(user model.User) UserResponse {
 		ID:              user.ID,
 		Email:           user.Identifier,
 		FullName:        &user.FullName,
+		Phone:           user.Phone,
 		Role:            roleStr,
 		IsEmailVerified: user.IsEmailVerified,
 		Status:          string(user.Status),
@@ -400,4 +409,44 @@ func (h *Handler) RevokeStaffSession(c *gin.Context) {
 	c.JSON(http.StatusOK, api.MessageResponse{
 		Message: "Session revoked successfully",
 	})
+}
+
+// UpdateProfile godoc
+//
+//	@Summary		Update user profile
+//	@Description	Updates the display name and phone number for the authenticated user
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		UpdateProfileRequest	true	"Profile update details"
+//	@Success		200		{object}	api.DataResponse{data=UserResponse}
+//	@Failure		400		{object}	api.BadRequestErrorResponse
+//	@Failure		401		{object}	api.UnauthorizedErrorResponse
+//	@Failure		500		{object}	api.InternalServerErrorResponse
+//	@Router			/user/profile [patch]
+func (h *Handler) UpdateProfile(c *gin.Context) {
+	callerID, err := getUserIDFromContext(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	var req UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	fullName := req.FullName
+	if fullName == nil && req.Name != nil {
+		fullName = req.Name
+	}
+
+	updatedUser, err := h.userService.UpdateProfile(c.Request.Context(), callerID, fullName, req.Phone)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{Data: ToUserResponse(*updatedUser)})
 }

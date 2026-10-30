@@ -673,3 +673,33 @@ func (s *UserService) RevokeStaffSession(
 	})
 	return nil
 }
+
+// UpdateProfile updates the display name and/or phone number of an authenticated user.
+func (s *UserService) UpdateProfile(
+	ctx context.Context,
+	id uuid.UUID,
+	fullName *string,
+	phone *string,
+) (*model.User, error) {
+	if id == uuid.Nil {
+		return nil, apierr.BadRequestError("user id is required")
+	}
+
+	var updatedUser *model.User
+	err := s.dbExecutor.WithTx(ctx, func(txCtx context.Context, tx *database.Tx) error {
+		u, err := s.repo.UpdateProfile(txCtx, tx, id, fullName, phone)
+		if err != nil {
+			return err
+		}
+		updatedUser = u
+		return nil
+	})
+	if err != nil {
+		return nil, s.handleError(err, "failed to update user profile")
+	}
+
+	s.logger.Info("user profile updated", log.Meta{
+		"userId": id.String(),
+	})
+	return updatedUser, nil
+}

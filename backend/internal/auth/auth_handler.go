@@ -21,6 +21,9 @@ import (
 type MeResponse struct {
 	ID         uuid.UUID `json:"id,omitempty"`
 	Identifier string    `json:"identifier,omitempty"`
+	FullName   string    `json:"fullName,omitempty"`
+	Name       string    `json:"name,omitempty"`
+	Phone      *string   `json:"phone,omitempty"`
 	Role       string    `json:"role,omitempty"`
 	Status     string    `json:"status,omitempty"`
 	CreatedAt  time.Time `json:"createdAt,omitzero"`
@@ -338,6 +341,9 @@ func (h *Handler) GetMe(c *gin.Context) {
 			Data: MeResponse{
 				ID:         user.ID,
 				Identifier: user.Identifier,
+				FullName:   user.FullName,
+				Name:       user.FullName,
+				Phone:      user.Phone,
 				Status:     string(user.Status),
 				Role:       roleStr,
 				CreatedAt:  user.CreatedAt,

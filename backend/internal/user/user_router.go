@@ -16,6 +16,7 @@ type UserHandler interface {
 	RevokeUserSessions(c *gin.Context)
 	ListStaffSessions(c *gin.Context)
 	RevokeStaffSession(c *gin.Context)
+	UpdateProfile(c *gin.Context)
 }
 
 // Router configures routing and administrative authorization hierarchies for /admin/users endpoints.
@@ -77,5 +78,13 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		adminSessions.GET("", r.handler.ListStaffSessions)
 		// DELETE /api/v1/admin/sessions/:id - Revoke a single active session
 		adminSessions.DELETE("/:id", r.handler.RevokeStaffSession)
+	}
+
+	// Customer profile management
+	userGroup := vgroup.Group("/user")
+	userGroup.Use(middleware.Authenticate(r.sessionStore))
+	{
+		// PATCH /api/v1/user/profile - Update display name and/or phone number
+		userGroup.PATCH("/profile", r.handler.UpdateProfile)
 	}
 }

@@ -31,7 +31,7 @@ function formatUserData(rawData: any): User | null {
   if (!d || !d.id) return null;
 
   const email = d.identifier || d.email || "";
-  const name = d.name || (email ? email.split("@")[0] : "User");
+  const name = d.fullName || d.name || (email ? email.split("@")[0] : "User");
 
   return {
     id: String(d.id),

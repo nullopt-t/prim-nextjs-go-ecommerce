@@ -8,9 +8,8 @@ import type { Review } from "@/modules/catalog/types";
 export const userService = {
   // Profile — uses auth endpoints
   getProfile: () => api.get<ApiResponse<User>>("/api/v1/auth/me"),
-  /** @todo Not yet implemented on the backend */
-  updateProfile: (_payload: Record<string, unknown>) =>
-    Promise.reject(new Error("Profile update is not yet available.")),
+  updateProfile: (payload: { fullName?: string; name?: string; phone?: string }) =>
+    api.patch<ApiResponse<User>>("/api/v1/user/profile", payload),
 
   // Orders
   getOrders: () => api.get<ApiResponse<Order[]>>("/api/v1/orders"),
@@ -26,9 +25,8 @@ export const userService = {
     id: string,
     payload: { rating?: number; title?: string; body?: string }
   ) => api.patch<ApiResponse<Review>, { rating?: number; title?: string; body?: string }>(`/api/v1/reviews/${id}`, payload),
-  /** @todo Not yet implemented on the backend */
-  markReviewHelpful: (_id: string) =>
-    Promise.reject(new Error("Helpful votes are not yet available.")),
+  markReviewHelpful: (id: string) =>
+    api.post<ApiResponse<{ voted: boolean; helpfulCount: number }>>(`/api/v1/reviews/${id}/helpful`),
 
   // Sessions
   getSessions: () => api.get<ApiResponse<Session[]>>("/api/v1/auth/sessions"),

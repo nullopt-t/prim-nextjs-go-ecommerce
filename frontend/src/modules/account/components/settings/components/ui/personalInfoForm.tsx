@@ -1,20 +1,47 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useAuthContext } from "@/modules/auth/model/authContext";
+import { userService } from "@/modules/account/api/userService";
+import { notify } from "@/shared/lib/notify";
+import { apiErrorMessage } from "@/shared/lib/apiErrorMessage";
 import { useTranslations } from "next-intl";
 
 export default function PersonalInfoForm() {
-  const { user } = useAuthContext();
+  const { user, refreshUser } = useAuthContext();
   const t = useTranslations("settings.personalInfo");
+
+  const [name, setName] = useState(user?.name || "");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || "");
+      setPhone(user.phone || "");
+    }
+  }, [user]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await userService.updateProfile({
+        fullName: name.trim(),
+        phone: phone.trim() || undefined,
+      });
+      await refreshUser();
+      notify.success(t("saveChanges"));
+    } catch (err) {
+      notify.error(apiErrorMessage(err, "Failed to update profile"));
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8 w-full">
-      <form className="flex flex-col gap-5" onSubmit={(e) => e.preventDefault()}>
-        {/* Notice */}
-        <div className="rounded-xl border border-border/70 bg-secondary/30 px-4 py-3 text-xs text-muted-foreground leading-relaxed">
-          {t("notice")}
-        </div>
-
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
         {/* Display Name */}
         <div className="flex flex-col gap-1.5">
           <label htmlFor="display-name" className="text-xs font-medium text-foreground">
@@ -23,11 +50,10 @@ export default function PersonalInfoForm() {
           <input
             id="display-name"
             type="text"
-            defaultValue={user?.name || ""}
-            readOnly
-            disabled
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             placeholder={t("displayName")}
-            className="h-10 w-full rounded-xl border border-border bg-secondary/30 px-3.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground disabled:opacity-75 disabled:cursor-not-allowed focus:outline-none transition"
+            className="h-10 w-full rounded-xl border border-border bg-background px-3.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand transition"
           />
         </div>
 
@@ -57,15 +83,22 @@ export default function PersonalInfoForm() {
           <input
             id="phone"
             type="tel"
-            value={user?.phone || ""}
-            readOnly
-            disabled
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             placeholder={t("notSet")}
-            className="h-10 w-full rounded-xl border border-border bg-secondary/30 px-3.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground disabled:opacity-75 disabled:cursor-not-allowed focus:outline-none transition"
+            className="h-10 w-full rounded-xl border border-border bg-background px-3.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand transition"
           />
-          <p className="text-[11px] text-muted-foreground">
-            {t("phoneNotice")}
-          </p>
+        </div>
+
+        {/* Submit button */}
+        <div className="pt-2">
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="px-5 py-2.5 rounded-xl bg-accent-brand text-white text-xs sm:text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 cursor-pointer"
+          >
+            {isSaving ? "..." : t("saveChanges")}
+          </button>
         </div>
       </form>
     </div>

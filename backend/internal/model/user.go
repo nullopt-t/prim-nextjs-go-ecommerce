@@ -46,6 +46,8 @@ type User struct {
 	Identifier string
 	// FullName is the user's display name.
 	FullName string
+	// Phone is the optional contact phone number.
+	Phone *string
 	// Role is the administrative role tier, defaulting to CustomerRole.
 	Role UserRole
 	// IsEmailVerified indicates whether the user confirmed their email address.
