@@ -31,7 +31,7 @@ Shared concerns live outside the domains:
 
 - `internal/shared/middleware` — auth, RBAC, CORS, locale, rate limiting, error handling, caching, gzip response compression, security headers (nosniff, CSP, HSTS)
 - `pkg/config` — YAML + environment configuration
-- `pkg/database` — connection pool and the `TxRunner` used for transactions
+- `pkg/database` — connection pool and the `TxRunner` used for transactions (see [Transaction Runner Architecture](docs/transaction-runner-refactor.md) and [Connection Pool Starvation Prevention](docs/connection-pool-starvation.md))
 - `pkg/broker/kafka` — producer used by the API
 - `pkg/storage` — MinIO provider
 - `internal/notifier` — Kafka consumer + email delivery used by the worker
@@ -219,7 +219,7 @@ backend/
 ├── pkg/                      # config, database, log, storage, mail, broker, api helpers
 ├── configs/                  # Air configs
 ├── migrations/               # schema and seed SQL
-├── docs/                     # generated Swagger specs (public + admin)
+├── docs/                     # Swagger specs, architecture & refactor documentation
 ├── seed/                     # seed media for the catalog
 └── docker/                   # Dockerfiles and compose manifests
 ```
