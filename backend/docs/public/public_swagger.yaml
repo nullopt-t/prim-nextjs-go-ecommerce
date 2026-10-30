@@ -413,6 +413,15 @@ definitions:
         example: You do not have permission to access this resource
         type: string
     type: object
+  HelpfulVoteResponse:
+    properties:
+      helpfulCount:
+        example: 13
+        type: integer
+      voted:
+        example: true
+        type: boolean
+    type: object
   InternalServerErrorResponse:
     properties:
       code:
@@ -426,9 +435,15 @@ definitions:
     properties:
       createdAt:
         type: string
+      fullName:
+        type: string
       id:
         type: string
       identifier:
+        type: string
+      name:
+        type: string
+      phone:
         type: string
       role:
         type: string
@@ -573,7 +588,6 @@ definitions:
     - shipped
     - delivered
     - cancelled
-    - cancelled
     - refunded
     type: string
     x-enum-varnames:
@@ -583,7 +597,6 @@ definitions:
     - OrderStatusShipped
     - OrderStatusDelivered
     - OrderStatusCancelled
-    - OrderStatusCanceled
     - OrderStatusRefunded
   Page:
     properties:
@@ -1011,6 +1024,10 @@ definitions:
         description: Submission timestamp (RFC3339)
         example: "2026-08-13T07:56:17Z"
         type: string
+      helpfulCount:
+        description: Number of helpful votes
+        example: 12
+        type: integer
       id:
         description: Review UUID
         example: 92000000-0000-0000-0000-000000000001
@@ -1043,6 +1060,10 @@ definitions:
         description: Author Customer UUID
         example: 10000000-0000-0000-0000-000000000002
         type: string
+      userVoted:
+        description: Whether requesting user voted this review helpful
+        example: false
+        type: boolean
     type: object
   SessionType:
     enum:
@@ -1169,6 +1190,18 @@ definitions:
       state:
         type: string
     type: object
+  UpdateProfileRequest:
+    properties:
+      fullName:
+        maxLength: 100
+        type: string
+      name:
+        maxLength: 100
+        type: string
+      phone:
+        maxLength: 30
+        type: string
+    type: object
   UpdateQuantityRequest:
     properties:
       quantity:
@@ -1195,6 +1228,31 @@ definitions:
       title:
         description: Updated review headline title
         example: Updated review headline
+        type: string
+    type: object
+  UserResponse:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      fullName:
+        type: string
+      id:
+        type: string
+      isEmailVerified:
+        type: boolean
+      lockedUntil:
+        type: string
+      phone:
+        type: string
+      role:
+        type: string
+      status:
+        type: string
+      suspendedUntil:
+        type: string
+      updatedAt:
         type: string
     type: object
   UserRole:
@@ -2277,6 +2335,18 @@ paths:
         in: query
         name: keyset
         type: boolean
+      - description: Optional maximum price in minor units / cents (e.g. 50000 for
+          500.00 EGP)
+        example: 50000
+        in: query
+        name: max_price
+        type: integer
+      - description: Optional minimum price in minor units / cents (e.g. 1000 for
+          10.00 EGP)
+        example: 1000
+        in: query
+        name: min_price
+        type: integer
       - description: Page is the requested 1-based page number from query parameters.
         example: 1
         in: query
@@ -2808,6 +2878,49 @@ paths:
           schema:
             $ref: '#/definitions/InternalServerErrorResponse'
       summary: Update user's review
+      tags:
+      - Reviews
+  /reviews/{id}/helpful:
+    post:
+      consumes:
+      - application/json
+      description: Toggles a helpful vote on a product review for the authenticated
+        user
+      parameters:
+      - description: Review UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/HelpfulVoteResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Vote review helpful
       tags:
       - Reviews
   /reviews/eligibility:
@@ -3366,6 +3479,46 @@ paths:
       summary: Get unread notifications count
       tags:
       - Notifications
+  /user/profile:
+    patch:
+      consumes:
+      - application/json
+      description: Updates the display name and phone number for the authenticated
+        user
+      parameters:
+      - description: Profile update details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/UserResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Update user profile
+      tags:
+      - User
   /variants/{id}:
     get:
       description: Retrieves specific product variant (SKU) details by its UUID.

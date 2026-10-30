@@ -1073,7 +1073,7 @@ const docTemplateadmin = `{
         },
         "/admin/orders/{id}/tracking": {
             "patch": {
-                "description": "Updates the carrier tracking number for an order.",
+                "description": "Updates the carrier, tracking number, and tracking URL for an order.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1083,7 +1083,7 @@ const docTemplateadmin = `{
                 "tags": [
                     "Admin Orders"
                 ],
-                "summary": "Update order tracking number (Admin)",
+                "summary": "Update order tracking details (Admin)",
                 "parameters": [
                     {
                         "type": "string",
@@ -1094,15 +1094,12 @@ const docTemplateadmin = `{
                         "required": true
                     },
                     {
-                        "description": "Tracking number",
+                        "description": "Tracking details",
                         "name": "tracking",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/UpdateOrderTrackingRequest"
                         }
                     }
                 ],
@@ -1329,6 +1326,20 @@ const docTemplateadmin = `{
                         "example": true,
                         "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
                         "name": "keyset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 50000,
+                        "description": "Optional maximum price in minor units / cents (e.g. 50000 for 500.00 EGP)",
+                        "name": "max_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1000,
+                        "description": "Optional minimum price in minor units / cents (e.g. 1000 for 10.00 EGP)",
+                        "name": "min_price",
                         "in": "query"
                     },
                     {
@@ -5280,7 +5291,6 @@ const docTemplateadmin = `{
                 "shipped",
                 "delivered",
                 "cancelled",
-                "cancelled",
                 "refunded"
             ],
             "x-enum-varnames": [
@@ -5290,7 +5300,6 @@ const docTemplateadmin = `{
                 "OrderStatusShipped",
                 "OrderStatusDelivered",
                 "OrderStatusCancelled",
-                "OrderStatusCanceled",
                 "OrderStatusRefunded"
             ]
         },
@@ -5650,6 +5659,11 @@ const docTemplateadmin = `{
                     "type": "string",
                     "example": "2026-08-13T07:56:17Z"
                 },
+                "helpfulCount": {
+                    "description": "Number of helpful votes",
+                    "type": "integer",
+                    "example": 12
+                },
                 "id": {
                     "description": "Review UUID",
                     "type": "string",
@@ -5689,6 +5703,11 @@ const docTemplateadmin = `{
                     "description": "Author Customer UUID",
                     "type": "string",
                     "example": "10000000-0000-0000-0000-000000000002"
+                },
+                "userVoted": {
+                    "description": "Whether requesting user voted this review helpful",
+                    "type": "boolean",
+                    "example": false
                 }
             }
         },
@@ -5955,6 +5974,23 @@ const docTemplateadmin = `{
                             "$ref": "#/definitions/OrderStatus"
                         }
                     ]
+                }
+            }
+        },
+        "UpdateOrderTrackingRequest": {
+            "type": "object",
+            "required": [
+                "trackingNumber"
+            ],
+            "properties": {
+                "carrier": {
+                    "type": "string"
+                },
+                "trackingNumber": {
+                    "type": "string"
+                },
+                "trackingUrl": {
+                    "type": "string"
                 }
             }
         },

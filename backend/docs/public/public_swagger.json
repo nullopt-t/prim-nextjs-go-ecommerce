@@ -1234,6 +1234,20 @@
                     },
                     {
                         "type": "integer",
+                        "example": 50000,
+                        "description": "Optional maximum price in minor units / cents (e.g. 50000 for 500.00 EGP)",
+                        "name": "max_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 1000,
+                        "description": "Optional minimum price in minor units / cents (e.g. 1000 for 10.00 EGP)",
+                        "name": "min_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
                         "example": 1,
                         "description": "Page is the requested 1-based page number from query parameters.",
                         "name": "page",
@@ -2188,6 +2202,74 @@
                 }
             }
         },
+        "/reviews/{id}/helpful": {
+            "post": {
+                "description": "Toggles a helpful vote on a product review for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Vote review helpful",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Review UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/HelpfulVoteResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/settings/public": {
             "get": {
                 "description": "Returns the non-sensitive settings used by the storefront (identity, currency, announcement, shipping, maintenance state).",
@@ -2875,6 +2957,70 @@
                         "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/profile": {
+            "patch": {
+                "description": "Updates the display name and phone number for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update user profile",
+                "parameters": [
+                    {
+                        "description": "Profile update details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/UserResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
                         }
                     }
                 }
@@ -4143,6 +4289,19 @@
                 }
             }
         },
+        "HelpfulVoteResponse": {
+            "type": "object",
+            "properties": {
+                "helpfulCount": {
+                    "type": "integer",
+                    "example": 13
+                },
+                "voted": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
         "InternalServerErrorResponse": {
             "type": "object",
             "properties": {
@@ -4162,10 +4321,19 @@
                 "createdAt": {
                     "type": "string"
                 },
+                "fullName": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
                 "identifier": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
                     "type": "string"
                 },
                 "role": {
@@ -4361,7 +4529,6 @@
                 "shipped",
                 "delivered",
                 "cancelled",
-                "cancelled",
                 "refunded"
             ],
             "x-enum-varnames": [
@@ -4371,7 +4538,6 @@
                 "OrderStatusShipped",
                 "OrderStatusDelivered",
                 "OrderStatusCancelled",
-                "OrderStatusCanceled",
                 "OrderStatusRefunded"
             ]
         },
@@ -4956,6 +5122,11 @@
                     "type": "string",
                     "example": "2026-08-13T07:56:17Z"
                 },
+                "helpfulCount": {
+                    "description": "Number of helpful votes",
+                    "type": "integer",
+                    "example": 12
+                },
                 "id": {
                     "description": "Review UUID",
                     "type": "string",
@@ -4995,6 +5166,11 @@
                     "description": "Author Customer UUID",
                     "type": "string",
                     "example": "10000000-0000-0000-0000-000000000002"
+                },
+                "userVoted": {
+                    "description": "Whether requesting user voted this review helpful",
+                    "type": "boolean",
+                    "example": false
                 }
             }
         },
@@ -5177,6 +5353,23 @@
                 }
             }
         },
+        "UpdateProfileRequest": {
+            "type": "object",
+            "properties": {
+                "fullName": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "phone": {
+                    "type": "string",
+                    "maxLength": 30
+                }
+            }
+        },
         "UpdateQuantityRequest": {
             "type": "object",
             "required": [
@@ -5210,6 +5403,44 @@
                     "description": "Updated review headline title",
                     "type": "string",
                     "example": "Updated review headline"
+                }
+            }
+        },
+        "UserResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "fullName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isEmailVerified": {
+                    "type": "boolean"
+                },
+                "lockedUntil": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "suspendedUntil": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },

@@ -841,7 +841,6 @@ definitions:
     - shipped
     - delivered
     - cancelled
-    - cancelled
     - refunded
     type: string
     x-enum-varnames:
@@ -851,7 +850,6 @@ definitions:
     - OrderStatusShipped
     - OrderStatusDelivered
     - OrderStatusCancelled
-    - OrderStatusCanceled
     - OrderStatusRefunded
   Page:
     properties:
@@ -1114,6 +1112,10 @@ definitions:
         description: Submission timestamp (RFC3339)
         example: "2026-08-13T07:56:17Z"
         type: string
+      helpfulCount:
+        description: Number of helpful votes
+        example: 12
+        type: integer
       id:
         description: Review UUID
         example: 92000000-0000-0000-0000-000000000001
@@ -1146,6 +1148,10 @@ definitions:
         description: Author Customer UUID
         example: 10000000-0000-0000-0000-000000000002
         type: string
+      userVoted:
+        description: Whether requesting user voted this review helpful
+        example: false
+        type: boolean
     type: object
   SalesPoint:
     properties:
@@ -1334,6 +1340,17 @@ definitions:
           shipped, delivered, cancelled).
     required:
     - status
+    type: object
+  UpdateOrderTrackingRequest:
+    properties:
+      carrier:
+        type: string
+      trackingNumber:
+        type: string
+      trackingUrl:
+        type: string
+    required:
+    - trackingNumber
     type: object
   UpdateProductRequest:
     properties:
@@ -2288,7 +2305,7 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Updates the carrier tracking number for an order.
+      description: Updates the carrier, tracking number, and tracking URL for an order.
       parameters:
       - description: Order UUID
         format: uuid
@@ -2296,14 +2313,12 @@ paths:
         name: id
         required: true
         type: string
-      - description: Tracking number
+      - description: Tracking details
         in: body
         name: tracking
         required: true
         schema:
-          additionalProperties:
-            type: string
-          type: object
+          $ref: '#/definitions/UpdateOrderTrackingRequest'
       produces:
       - application/json
       responses:
@@ -2311,7 +2326,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/MessageResponse'
-      summary: Update order tracking number (Admin)
+      summary: Update order tracking details (Admin)
       tags:
       - Admin Orders
   /admin/payments:
@@ -2459,6 +2474,18 @@ paths:
         in: query
         name: keyset
         type: boolean
+      - description: Optional maximum price in minor units / cents (e.g. 50000 for
+          500.00 EGP)
+        example: 50000
+        in: query
+        name: max_price
+        type: integer
+      - description: Optional minimum price in minor units / cents (e.g. 1000 for
+          10.00 EGP)
+        example: 1000
+        in: query
+        name: min_price
+        type: integer
       - description: Page is the requested 1-based page number from query parameters.
         example: 1
         in: query
