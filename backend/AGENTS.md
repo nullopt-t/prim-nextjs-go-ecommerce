@@ -50,15 +50,32 @@ database connection from entry to exit.
 - Services own business rules, the transaction boundary, and error mapping.
   They must not contain SQL.
 - Repositories own SQL and row mapping. Every repository method takes
-  `(ctx context.Context, qe database.QueryExecutor, ...)`; repositories never
-  call `WithExecutor`/`WithTx` and never open their own connection.
-- Use exactly one `runner.WithExecutor` for reads or one `runner.WithTx` for writes
-  per exported service method, at the top. Helpers that need the database take
-  `qe` as a parameter instead of acquiring a connection.
+  `(ctx context.Context, ...)`; repositories never call `WithExecutor`/`WithTx`
+  and never open their own connection. Instead, they extract the active executor
+  at the execution boundary:
+  - Operations that may use either pool or transaction:
+    `executor, err := database.Executor(ctx)`
+  - Operations that mandate an active transaction (locks, holds, `FOR UPDATE`):
+    `tx, err := database.RequireTx(ctx)`
+- Services own business rules, transaction boundaries, and error mapping.
+  They use `s.runner.WithExecutor(ctx, func(ctx context.Context) error { ... })`
+  for reads and `s.runner.WithTx(ctx, func(ctx context.Context) error { ... })`
+  for writes. Services never extract the database connection or transaction
+  directly and never pass explicit transaction or executor parameters.
+- Context-Based Database Executor Propagation:
+  - A single context key carries the active database executor (either the
+    `*database.DB` connection pool or an active `*database.Tx`).
+  - `WithExecutor(ctx, pool)` binds the pool if absent, or returns `ctx` untouched
+    if an executor is already present.
+  - `WithTx(ctx, tx)` binds the transaction to `ctx` under the same key.
+  - Nested `WithTx` calls participate in the outer transaction without starting a
+    new database transaction, creating savepoints, or committing/rolling back early.
+    The outermost `WithTx` owns the transaction lifecycle.
 - Writes inside `WithTx`: validate → hierarchy/constraint checks → mutate →
-  reload, all on the same `tx`. Do not validate on the pool and mutate on `tx`.
-- Never run goroutines that share a held `qe`; a pgx connection is single-flight.
-  Scan or close rows before issuing another query.
+  reload, all on the derived transaction context. Do not validate on the pool
+  and mutate on `tx`.
+- Never run goroutines that share a held transaction or connection; a pgx
+  connection is single-flight. Scan or close rows before issuing another query.
 - Keep transactions short. No HTTP calls, uploads, email, Kafka publishes,
   sleeps, or other external I/O inside `WithTx`.
 - Cross-domain data access: use a consumer-owned `*Reader` interface for
@@ -69,16 +86,13 @@ database connection from entry to exit.
   enforce that domain's business rules (validation, state transitions, limits,
   locking order, owned side effects). Declare the narrow interface in the consuming
   package and wire the concrete implementation in `internal/app`.
-- A participating service method takes the caller's transaction explicitly
-  (`tx *database.Tx` or `qe database.QueryExecutor`) and must not call
-  `WithTx`/`WithExecutor` itself. The caller owns the unit of work. Keep a
-  single public wrapper that acquires `WithTx` for direct handler use.
-- Do not add dead `FooWithTx` twins just to mirror a public method, and do not
-  encode the connection in the name: the participating form is signalled by its
-  `database.QueryExecutor` parameter, not a `...WithTx` suffix. A second public
-  entry point exists only for the handler-facing wrapper that acquires `WithTx`
-  itself (for example `order.PlaceOrder` — participating — versus
-  `order.CreateOrder`, which owns its transaction).
+- All cross-domain reader and writer methods take `(ctx context.Context, ...)`.
+  No explicit `QueryExecutor` or `*database.Tx` parameters.
+- No dead `FooWithTx` twins: because transaction state propagates automatically
+  via `context.Context`, methods do not have duplicated `WithTx` variants. A service
+  method callable by both handlers and other services simply wraps its logic in
+  `s.runner.WithTx(ctx, ...)`. When invoked from within an existing transaction, it
+  transparently participates in the ambient transaction.
 - Complete Construction and Fail-Fast Constructor Invariants: Every constructor
   (`NewService`, `NewHandler`, `NewRouter`, background workers, queues) must
   validate all required dependencies up-front and panic immediately if any
