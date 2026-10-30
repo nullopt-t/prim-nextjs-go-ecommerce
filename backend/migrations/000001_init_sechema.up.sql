@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS users (
     id                   uuid NOT NULL,
     email                text NOT NULL,
     full_name            text NOT NULL,
+    phone                text NULL,
     role                 user_role NOT NULL DEFAULT 'customer',
     is_email_verified    boolean NOT NULL DEFAULT false,
     status               text NOT NULL DEFAULT 'active',
@@ -418,6 +419,9 @@ CREATE TABLE IF NOT EXISTS orders (
     currency            text NOT NULL DEFAULT 'EGP',
     payment_method      text NOT NULL DEFAULT 'pending',
     tracking_number     text NULL,
+    locale              text NOT NULL DEFAULT 'en',
+    carrier             text NULL,
+    tracking_url        text NULL,
     created_at          timestamptz NOT NULL DEFAULT now(),
     updated_at          timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (id),
@@ -525,6 +529,7 @@ CREATE TABLE IF NOT EXISTS reviews (
     title            text NULL,
     body             text NULL,
     status           review_status NOT NULL DEFAULT 'pending',
+    helpful_count    int NOT NULL DEFAULT 0,
     created_at       timestamptz NOT NULL DEFAULT now(),
     updated_at       timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (id),
@@ -536,6 +541,16 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 
 CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON reviews (product_id);
+
+CREATE TABLE IF NOT EXISTS review_votes (
+    review_id  uuid NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+    user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (review_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_review_votes_review_id ON review_votes (review_id);
+CREATE INDEX IF NOT EXISTS idx_review_votes_user_id ON review_votes (user_id);
 
 
 -- =====================================================================

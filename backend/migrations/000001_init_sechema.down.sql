@@ -4,6 +4,7 @@ BEGIN;
 DROP TABLE IF EXISTS audit_log CASCADE;
 
 -- Drop reviews & social
+DROP TABLE IF EXISTS review_votes CASCADE;
 DROP TABLE IF EXISTS reviews CASCADE;
 DROP TABLE IF EXISTS wishlist_items CASCADE;
 DROP TABLE IF EXISTS user_notifications CASCADE;
