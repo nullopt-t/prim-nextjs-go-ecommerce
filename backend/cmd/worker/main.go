@@ -21,6 +21,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/log"
 	"github.com/nullopt-t/prim-backend/pkg/mail"
 	"github.com/nullopt-t/prim-backend/pkg/redisclient"
+	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
 func main() {
@@ -69,8 +70,8 @@ func main() {
 	// process where payments are updated.
 	inventoryRepo := inventory.NewRepository()
 	// The worker only drives reservation expiry, which never resolves image
-	// URLs, so the object URL resolver is intentionally nil here.
-	inventoryService := inventory.NewService(logger, txRunner, inventoryRepo, nil)
+	// URLs, so a no-op storage provider satisfies the constructor invariant.
+	inventoryService := inventory.NewService(logger, txRunner, inventoryRepo, storage.NoopProvider{})
 	orderRepo := order.NewRepository()
 	userRepo := user.NewPostgresRepository()
 
