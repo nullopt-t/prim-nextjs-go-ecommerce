@@ -222,8 +222,12 @@ func NewMockRunner(maxConns ...int32) *MockRunner {
 	}
 }
 
-func (r *MockRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx *database.Tx) error) error {
+func (r *MockRunner) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	atomic.AddInt32(&r.withTxCount, 1)
+
+	if _, ok := database.TxFromContext(ctx); ok {
+		return fn(ctx)
+	}
 
 	// Single connection check: simulate connection acquisition.
 	current := atomic.AddInt32(&r.activeConns, 1)
@@ -243,6 +247,7 @@ func (r *MockRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx
 
 	fakeTx := &FakePgxTx{commitErr: r.commitErr}
 	tx := database.NewTx(fakeTx)
+	txCtx := database.WithTx(ctx, tx)
 
 	var panicOccurred bool
 	defer func() {
@@ -254,7 +259,7 @@ func (r *MockRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx
 		}
 	}()
 
-	err := fn(ctx, tx)
+	err := fn(txCtx)
 	if err != nil {
 		atomic.AddInt32(&r.rollbackCount, 1)
 		_ = fakeTx.Rollback(context.Background())
@@ -271,8 +276,15 @@ func (r *MockRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx
 	return nil
 }
 
-func (r *MockRunner) WithExecutor(ctx context.Context, fn func(exec database.QueryExecutor) error) error {
+func (r *MockRunner) WithExecutor(ctx context.Context, fn func(ctx context.Context) error) error {
 	atomic.AddInt32(&r.withDBCount, 1)
+
+	if _, ok := database.TxFromContext(ctx); ok {
+		return fn(ctx)
+	}
+	if _, err := database.Executor(ctx); err == nil {
+		return fn(ctx)
+	}
 
 	current := atomic.AddInt32(&r.activeConns, 1)
 	defer atomic.AddInt32(&r.activeConns, -1)
@@ -288,7 +300,8 @@ func (r *MockRunner) WithExecutor(ctx context.Context, fn func(exec database.Que
 		return r.dbErr
 	}
 
-	return fn(r.executor)
+	ctx = database.WithExecutor(ctx, r.executor)
+	return fn(ctx)
 }
 
 func (r *MockRunner) SetTxError(err error) {
@@ -502,14 +515,14 @@ func (m *MockInventoryRepository) SetStock(variantID uuid.UUID, onHand, reserved
 	}
 }
 
-func (m *MockInventoryRepository) LockVariantForUpdate(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) error {
+func (m *MockInventoryRepository) LockVariantForUpdate(ctx context.Context, variantID uuid.UUID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.lockedIDs[variantID] = true
 	return nil
 }
 
-func (m *MockInventoryRepository) GetStock(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) (*model.InventoryStock, error) {
+func (m *MockInventoryRepository) GetStock(ctx context.Context, variantID uuid.UUID) (*model.InventoryStock, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.stockErr != nil {
@@ -522,7 +535,7 @@ func (m *MockInventoryRepository) GetStock(ctx context.Context, qe database.Quer
 	return s, nil
 }
 
-func (m *MockInventoryRepository) GetStockForVariants(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error) {
+func (m *MockInventoryRepository) GetStockForVariants(ctx context.Context, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	res := make(map[uuid.UUID]*model.InventoryStock)
@@ -534,14 +547,14 @@ func (m *MockInventoryRepository) GetStockForVariants(ctx context.Context, qe da
 	return res, nil
 }
 
-func (m *MockInventoryRepository) CreateReservation(ctx context.Context, qe database.QueryExecutor, res *model.InventoryReservation) error {
+func (m *MockInventoryRepository) CreateReservation(ctx context.Context, res *model.InventoryReservation) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.reservations[res.ID] = *res
 	return nil
 }
 
-func (m *MockInventoryRepository) GetUnreleasedReservationsForOrder(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID) ([]model.InventoryReservation, error) {
+func (m *MockInventoryRepository) GetUnreleasedReservationsForOrder(ctx context.Context, orderID uuid.UUID) ([]model.InventoryReservation, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	var list []model.InventoryReservation
@@ -553,7 +566,7 @@ func (m *MockInventoryRepository) GetUnreleasedReservationsForOrder(ctx context.
 	return list, nil
 }
 
-func (m *MockInventoryRepository) ReleaseReservation(ctx context.Context, qe database.QueryExecutor, reservationID uuid.UUID) error {
+func (m *MockInventoryRepository) ReleaseReservation(ctx context.Context, reservationID uuid.UUID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if r, ok := m.reservations[reservationID]; ok {
@@ -564,7 +577,7 @@ func (m *MockInventoryRepository) ReleaseReservation(ctx context.Context, qe dat
 	return nil
 }
 
-func (m *MockInventoryRepository) ReleaseReservationsForOrder(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID) (int64, error) {
+func (m *MockInventoryRepository) ReleaseReservationsForOrder(ctx context.Context, orderID uuid.UUID) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.releaseErr != nil {
@@ -582,7 +595,7 @@ func (m *MockInventoryRepository) ReleaseReservationsForOrder(ctx context.Contex
 	return count, nil
 }
 
-func (m *MockInventoryRepository) ExpiredReservationOrderIDs(ctx context.Context, qe database.QueryExecutor) ([]uuid.UUID, error) {
+func (m *MockInventoryRepository) ExpiredReservationOrderIDs(ctx context.Context) ([]uuid.UUID, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	now := time.Now()
@@ -597,7 +610,7 @@ func (m *MockInventoryRepository) ExpiredReservationOrderIDs(ctx context.Context
 	return expired, nil
 }
 
-func (m *MockInventoryRepository) CreateLedger(ctx context.Context, qe database.QueryExecutor, ledger *model.InventoryLedger) error {
+func (m *MockInventoryRepository) CreateLedger(ctx context.Context, ledger *model.InventoryLedger) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.ledgers = append(m.ledgers, *ledger)
@@ -635,7 +648,7 @@ func (m *MockCouponRepository) AddCoupon(c *model.Coupon) {
 	m.codeIndex[c.Code] = c.ID
 }
 
-func (m *MockCouponRepository) GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Coupon, error) {
+func (m *MockCouponRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Coupon, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	c, ok := m.coupons[id]
@@ -645,7 +658,7 @@ func (m *MockCouponRepository) GetByID(ctx context.Context, qe database.QueryExe
 	return c, nil
 }
 
-func (m *MockCouponRepository) GetByCode(ctx context.Context, qe database.QueryExecutor, code string) (*model.Coupon, error) {
+func (m *MockCouponRepository) GetByCode(ctx context.Context, code string) (*model.Coupon, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	id, ok := m.codeIndex[code]
@@ -655,7 +668,7 @@ func (m *MockCouponRepository) GetByCode(ctx context.Context, qe database.QueryE
 	return m.coupons[id], nil
 }
 
-func (m *MockCouponRepository) GetRedemptionCount(ctx context.Context, qe database.QueryExecutor, couponID uuid.UUID) (int, error) {
+func (m *MockCouponRepository) GetRedemptionCount(ctx context.Context, couponID uuid.UUID) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	count := 0
@@ -667,7 +680,7 @@ func (m *MockCouponRepository) GetRedemptionCount(ctx context.Context, qe databa
 	return count, nil
 }
 
-func (m *MockCouponRepository) GetUserRedemptionCount(ctx context.Context, qe database.QueryExecutor, couponID uuid.UUID, userID uuid.UUID) (int, error) {
+func (m *MockCouponRepository) GetUserRedemptionCount(ctx context.Context, couponID uuid.UUID, userID uuid.UUID) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	count := 0
@@ -679,7 +692,7 @@ func (m *MockCouponRepository) GetUserRedemptionCount(ctx context.Context, qe da
 	return count, nil
 }
 
-func (m *MockCouponRepository) RecordRedemption(ctx context.Context, qe database.QueryExecutor, red *model.CouponRedemption) error {
+func (m *MockCouponRepository) RecordRedemption(ctx context.Context, red *model.CouponRedemption) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.redemptions = append(m.redemptions, *red)
@@ -702,7 +715,7 @@ func (m *MockUserRepository) AddUser(u *model.User) {
 	m.users[u.ID] = u
 }
 
-func (m *MockUserRepository) GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.User, error) {
+func (m *MockUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.User, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	u, ok := m.users[id]
@@ -727,7 +740,7 @@ func (m *MockAddressRepository) AddAddress(a *model.UserAddress) {
 	m.addresses[a.ID] = a
 }
 
-func (m *MockAddressRepository) GetByIDAndUser(ctx context.Context, qe database.QueryExecutor, id uuid.UUID, userID uuid.UUID) (*model.UserAddress, error) {
+func (m *MockAddressRepository) GetByIDAndUser(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*model.UserAddress, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	a, ok := m.addresses[id]
@@ -760,7 +773,7 @@ func (m *MockCartRepository) SetCart(c *model.Cart) {
 	}
 }
 
-func (m *MockCartRepository) GetCartByUserID(ctx context.Context, qe database.QueryExecutor, userID uuid.UUID) (*model.Cart, error) {
+func (m *MockCartRepository) GetCartByUserID(ctx context.Context, userID uuid.UUID) (*model.Cart, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	cartID, ok := m.userCarts[userID]
@@ -770,7 +783,7 @@ func (m *MockCartRepository) GetCartByUserID(ctx context.Context, qe database.Qu
 	return m.carts[cartID], nil
 }
 
-func (m *MockCartRepository) GetCartBySessionID(ctx context.Context, qe database.QueryExecutor, sessionID string) (*model.Cart, error) {
+func (m *MockCartRepository) GetCartBySessionID(ctx context.Context, sessionID string) (*model.Cart, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, c := range m.carts {
@@ -781,7 +794,7 @@ func (m *MockCartRepository) GetCartBySessionID(ctx context.Context, qe database
 	return nil, database.ErrNotFound
 }
 
-func (m *MockCartRepository) ClearCart(ctx context.Context, qe database.QueryExecutor, cartID uuid.UUID) error {
+func (m *MockCartRepository) ClearCart(ctx context.Context, cartID uuid.UUID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if c, ok := m.carts[cartID]; ok {
@@ -812,7 +825,7 @@ func (m *MockVariantRepository) AddVariant(v *model.ProductVariant) {
 	m.byProd[v.ProductID] = append(m.byProd[v.ProductID], v.ID)
 }
 
-func (m *MockVariantRepository) GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductVariant, error) {
+func (m *MockVariantRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.ProductVariant, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	v, ok := m.variants[id]
@@ -822,7 +835,7 @@ func (m *MockVariantRepository) GetByID(ctx context.Context, qe database.QueryEx
 	return v, nil
 }
 
-func (m *MockVariantRepository) CountByProductID(ctx context.Context, qe database.QueryExecutor, productID uuid.UUID) (int, error) {
+func (m *MockVariantRepository) CountByProductID(ctx context.Context, productID uuid.UUID) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return len(m.byProd[productID]), nil
@@ -844,7 +857,7 @@ func (m *MockProductRepository) AddProduct(p *model.Product) {
 	m.products[p.ID] = p
 }
 
-func (m *MockProductRepository) GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Product, error) {
+func (m *MockProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	p, ok := m.products[id]
@@ -854,7 +867,7 @@ func (m *MockProductRepository) GetByID(ctx context.Context, qe database.QueryEx
 	return p, nil
 }
 
-func (m *MockProductRepository) UpdateStatus(ctx context.Context, qe database.QueryExecutor, id uuid.UUID, status model.PublicationStatus) error {
+func (m *MockProductRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status model.PublicationStatus) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	p, ok := m.products[id]
@@ -879,7 +892,7 @@ func NewMockObjectRepository() *MockObjectRepository {
 	}
 }
 
-func (m *MockObjectRepository) Create(ctx context.Context, qe database.QueryExecutor, obj *model.Object) error {
+func (m *MockObjectRepository) Create(ctx context.Context, obj *model.Object) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.objects[obj.ID] = obj
@@ -888,7 +901,7 @@ func (m *MockObjectRepository) Create(ctx context.Context, qe database.QueryExec
 	return nil
 }
 
-func (m *MockObjectRepository) GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error) {
+func (m *MockObjectRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Object, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	obj, ok := m.objects[id]
@@ -898,7 +911,7 @@ func (m *MockObjectRepository) GetByID(ctx context.Context, qe database.QueryExe
 	return obj, nil
 }
 
-func (m *MockObjectRepository) GetByIDs(ctx context.Context, qe database.QueryExecutor, ids []uuid.UUID) ([]*model.Object, error) {
+func (m *MockObjectRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*model.Object, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	var list []*model.Object
@@ -910,7 +923,7 @@ func (m *MockObjectRepository) GetByIDs(ctx context.Context, qe database.QueryEx
 	return list, nil
 }
 
-func (m *MockObjectRepository) MarkDeletingByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error {
+func (m *MockObjectRepository) MarkDeletingByKey(ctx context.Context, bucket, key string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	fullKey := fmt.Sprintf("%s/%s", bucket, key)
@@ -922,7 +935,7 @@ func (m *MockObjectRepository) MarkDeletingByKey(ctx context.Context, qe databas
 	return nil
 }
 
-func (m *MockObjectRepository) MarkDeletedByKey(ctx context.Context, qe database.QueryExecutor, bucket, key string) error {
+func (m *MockObjectRepository) MarkDeletedByKey(ctx context.Context, bucket, key string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	fullKey := fmt.Sprintf("%s/%s", bucket, key)
@@ -946,14 +959,14 @@ func NewMockOrderRepository() *MockOrderRepository {
 	return &MockOrderRepository{orders: make(map[uuid.UUID]*model.Order)}
 }
 
-func (m *MockOrderRepository) CreateOrder(ctx context.Context, qe database.QueryExecutor, o *model.Order) error {
+func (m *MockOrderRepository) CreateOrder(ctx context.Context, o *model.Order) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.orders[o.ID] = o
 	return nil
 }
 
-func (m *MockOrderRepository) GetOrderByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Order, error) {
+func (m *MockOrderRepository) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.Order, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	o, ok := m.orders[id]
@@ -963,7 +976,7 @@ func (m *MockOrderRepository) GetOrderByID(ctx context.Context, qe database.Quer
 	return o, nil
 }
 
-func (m *MockOrderRepository) UpdateOrderStatus(ctx context.Context, qe database.QueryExecutor, id uuid.UUID, status model.OrderStatus) error {
+func (m *MockOrderRepository) UpdateOrderStatus(ctx context.Context, id uuid.UUID, status model.OrderStatus) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	o, ok := m.orders[id]
@@ -984,7 +997,7 @@ func NewMockAuditRepository() *MockAuditRepository {
 	return &MockAuditRepository{entries: make([]*model.AuditLog, 0)}
 }
 
-func (m *MockAuditRepository) Insert(ctx context.Context, qe database.QueryExecutor, entry *model.AuditLog) error {
+func (m *MockAuditRepository) Insert(ctx context.Context, entry *model.AuditLog) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.entries = append(m.entries, entry)

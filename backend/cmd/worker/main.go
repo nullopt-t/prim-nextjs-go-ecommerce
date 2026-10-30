@@ -44,6 +44,7 @@ func main() {
 		return
 	}
 	defer db.Close()
+	ctx = database.WithExecutor(ctx, db)
 
 	// Redis is also the fallback transport for email notifications when Kafka
 	// is unavailable. The client is lazy, so a temporary Redis outage does not

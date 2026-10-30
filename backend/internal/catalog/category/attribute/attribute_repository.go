@@ -32,7 +32,11 @@ func NewRepository() *AttributeRepository {
 	return &AttributeRepository{}
 }
 
-func (r *AttributeRepository) ListAttributes(ctx context.Context, qe database.QueryExecutor) ([]AttributeItem, error) {
+func (r *AttributeRepository) ListAttributes(ctx context.Context) ([]AttributeItem, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
 		SELECT ca.id, ca.category_id, COALESCE(pc.name, 'Global'), ca.key, ca.label, ca.value_type,
 		       ca.allowed_values, ca.is_filterable, ca.sort_order, ca.created_at, ca.updated_at
@@ -40,7 +44,7 @@ func (r *AttributeRepository) ListAttributes(ctx context.Context, qe database.Qu
 		LEFT JOIN product_categories pc ON ca.category_id = pc.id
 		ORDER BY ca.created_at DESC
 	`
-	rows, err := qe.Query(ctx, query)
+	rows, err := executor.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("list attributes: %w", err)
 	}
@@ -60,7 +64,11 @@ func (r *AttributeRepository) ListAttributes(ctx context.Context, qe database.Qu
 	return list, nil
 }
 
-func (r *AttributeRepository) GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*AttributeItem, error) {
+func (r *AttributeRepository) GetByID(ctx context.Context, id uuid.UUID) (*AttributeItem, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
 		SELECT ca.id, ca.category_id, COALESCE(pc.name, 'Global'), ca.key, ca.label, ca.value_type,
 		       ca.allowed_values, ca.is_filterable, ca.sort_order, ca.created_at, ca.updated_at
@@ -69,7 +77,7 @@ func (r *AttributeRepository) GetByID(ctx context.Context, qe database.QueryExec
 		WHERE ca.id = $1
 	`
 	var ai AttributeItem
-	err := qe.QueryRow(ctx, query, id).Scan(
+	err = executor.QueryRow(ctx, query, id).Scan(
 		&ai.ID, &ai.CategoryID, &ai.CategoryName, &ai.Key, &ai.Label, &ai.ValueType,
 		&ai.AllowedValues, &ai.IsFilterable, &ai.SortOrder, &ai.CreatedAt, &ai.UpdatedAt,
 	)
@@ -81,7 +89,11 @@ func (r *AttributeRepository) GetByID(ctx context.Context, qe database.QueryExec
 
 // ListByCategory returns the attribute definitions that belong to a category.
 // It is used to validate product variation axes and their allowed values.
-func (r *AttributeRepository) ListByCategory(ctx context.Context, qe database.QueryExecutor, categoryID uuid.UUID) ([]AttributeItem, error) {
+func (r *AttributeRepository) ListByCategory(ctx context.Context, categoryID uuid.UUID) ([]AttributeItem, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
 		SELECT ca.id, ca.category_id, COALESCE(pc.name, 'Global'), ca.key, ca.label, ca.value_type,
 		       ca.allowed_values, ca.is_filterable, ca.sort_order, ca.created_at, ca.updated_at
@@ -90,7 +102,7 @@ func (r *AttributeRepository) ListByCategory(ctx context.Context, qe database.Qu
 		WHERE ca.category_id = $1
 		ORDER BY ca.sort_order ASC, ca.key ASC
 	`
-	rows, err := qe.Query(ctx, query, categoryID)
+	rows, err := executor.Query(ctx, query, categoryID)
 	if err != nil {
 		return nil, fmt.Errorf("list category attributes: %w", err)
 	}
@@ -110,7 +122,11 @@ func (r *AttributeRepository) ListByCategory(ctx context.Context, qe database.Qu
 	return list, rows.Err()
 }
 
-func (r *AttributeRepository) CreateAttribute(ctx context.Context, tx *database.Tx, ai *AttributeItem) error {
+func (r *AttributeRepository) CreateAttribute(ctx context.Context, ai *AttributeItem) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	query := `
 		INSERT INTO category_attributes (id, category_id, key, label, value_type, allowed_values, is_filterable, sort_order, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5::attribute_value_type, $6, $7, $8, NOW(), NOW())
@@ -135,12 +151,16 @@ type UpdateAttributeFields struct {
 // the attribute does not exist.
 func (r *AttributeRepository) UpdateAttribute(
 	ctx context.Context,
-	tx *database.Tx,
 	id uuid.UUID,
 	fields UpdateAttributeFields,
 ) error {
 	if id == uuid.Nil {
 		panic("update attribute: id is required")
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	setClauses := make([]string, 0, 5)
@@ -197,15 +217,16 @@ func (r *AttributeRepository) UpdateAttribute(
 	return nil
 }
 
-func (r *AttributeRepository) DeleteAttribute(ctx context.Context, tx *database.Tx, id uuid.UUID) error {
+func (r *AttributeRepository) DeleteAttribute(ctx context.Context, id uuid.UUID) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	query := `DELETE FROM category_attributes WHERE id = $1`
 	cmd, err := tx.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("delete attribute: %w", err)
 	}
-	// A DELETE that matched no row means the attribute does not exist (or was
-	// already removed). Surfacing pgx.ErrNoRows lets the service layer map this
-	// to a 404 instead of returning a misleading 200 success.
 	if cmd.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}

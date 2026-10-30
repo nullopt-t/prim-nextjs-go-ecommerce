@@ -45,9 +45,13 @@ func NewRepository() *TagRepository {
 // Create inserts a new product tag.
 func (tr *TagRepository) Create(
 	ctx context.Context,
-	tx *database.Tx,
 	tag *model.ProductTag,
 ) error {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO product_tags (
 			id,
@@ -59,7 +63,7 @@ func (tr *TagRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err := tx.QueryRow(
+	err = executor.QueryRow(
 		ctx,
 		query,
 		tag.ID,
@@ -75,28 +79,30 @@ func (tr *TagRepository) Create(
 // GetByID fetches a single tag by ID.
 func (tr *TagRepository) GetByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (*model.ProductTag, error) {
-	return tr.get(ctx, qe, &tagFilter{ID: &id})
+	return tr.get(ctx, &tagFilter{ID: &id})
 }
 
 // GetByName fetches a single tag by Name.
 func (tr *TagRepository) GetByName(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	name string,
 ) (*model.ProductTag, error) {
-	return tr.get(ctx, qe, &tagFilter{Name: &name})
+	return tr.get(ctx, &tagFilter{Name: &name})
 }
 
 func (tr *TagRepository) get(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	filter *tagFilter,
 ) (*model.ProductTag, error) {
 	if filter == nil || (filter.ID == nil && filter.Name == nil) {
 		return nil, errors.New("get tag: filter ID or Name is required")
+	}
+
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	whereClauses := make([]string, 0, 3)
@@ -129,7 +135,7 @@ func (tr *TagRepository) get(
 		WHERE %s
 	`, strings.Join(whereClauses, " AND "))
 
-	rows, err := qe.Query(ctx, query, args...)
+	rows, err := executor.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("get tag query: %w", err)
 	}
@@ -145,7 +151,6 @@ func (tr *TagRepository) get(
 // Update dynamically modifies an active tag.
 func (tr *TagRepository) Update(
 	ctx context.Context,
-	tx *database.Tx,
 	tagID uuid.UUID,
 	fields UpdateTagFields,
 ) error {
@@ -155,6 +160,11 @@ func (tr *TagRepository) Update(
 
 	if fields.Name == nil {
 		return nil // Nothing to update
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	query := `
@@ -178,9 +188,13 @@ func (tr *TagRepository) Update(
 // List handles unified paginated tag retrieval for public and admin contexts.
 func (tr *TagRepository) List(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	opts ListTagOptions,
 ) (*pagination.PagedResult[model.ProductTag], error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	q := opts.Query
 	if q == nil {
 		q = &pagination.ListQuery{}
@@ -207,7 +221,7 @@ func (tr *TagRepository) List(
 	// 1. Total Count
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM product_tags WHERE %s", whereStmt)
 	var total int
-	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := executor.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, fmt.Errorf("list tags count: %w", err)
 	}
 
@@ -251,7 +265,7 @@ func (tr *TagRepository) List(
 
 	queryArgs := append(slices.Clone(args), q.PageSize, q.Offset)
 
-	rows, err := qe.Query(ctx, selectQuery, queryArgs...)
+	rows, err := executor.Query(ctx, selectQuery, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("list tags select: %w", err)
 	}
@@ -267,11 +281,15 @@ func (tr *TagRepository) List(
 // Delete performs a soft-delete on an active tag by ID.
 func (tr *TagRepository) Delete(
 	ctx context.Context,
-	tx *database.Tx,
 	tagID uuid.UUID,
 ) error {
 	if tagID == uuid.Nil {
 		return errors.New("delete tag: tagID is required")
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	query := `
@@ -296,7 +314,6 @@ func (tr *TagRepository) Delete(
 // Pass an empty slice to remove all tags.
 func (tr *TagRepository) ReplaceTagsForProduct(
 	ctx context.Context,
-	tx *database.Tx,
 	productID uuid.UUID,
 	tagIDs []uuid.UUID,
 ) error {
@@ -304,8 +321,13 @@ func (tr *TagRepository) ReplaceTagsForProduct(
 		return errors.New("replace product tags: productID is required")
 	}
 
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Delete all existing assignments
-	_, err := tx.Exec(ctx,
+	_, err = tx.Exec(ctx,
 		`DELETE FROM product_tag_assignments WHERE product_id = $1`,
 		productID,
 	)
@@ -341,11 +363,15 @@ func (tr *TagRepository) ReplaceTagsForProduct(
 // GetTagsByProductID fetches all active tags assigned to a product.
 func (tr *TagRepository) GetTagsByProductID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	productID uuid.UUID,
 ) ([]*model.ProductTag, error) {
 	if productID == uuid.Nil {
 		return nil, errors.New("get product tags: productID is required")
+	}
+
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	query := `
@@ -356,7 +382,7 @@ func (tr *TagRepository) GetTagsByProductID(
 		ORDER BY t.name ASC
 	`
 
-	rows, err := qe.Query(ctx, query, productID)
+	rows, err := executor.Query(ctx, query, productID)
 	if err != nil {
 		return nil, fmt.Errorf("get product tags query: %w", err)
 	}

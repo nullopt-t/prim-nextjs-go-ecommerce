@@ -72,7 +72,7 @@ const (
 // can resolve product metadata without pulling in the full catalog graph.
 type dummyProductService struct{}
 
-func (d *dummyProductService) GetByID(_ context.Context, _ database.QueryExecutor, id uuid.UUID) (*model.Product, error) {
+func (d *dummyProductService) GetByID(_ context.Context, id uuid.UUID) (*model.Product, error) {
 	return &model.Product{
 		ID:    id,
 		Title: "Integration Test Product",

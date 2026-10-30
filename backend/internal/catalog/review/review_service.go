@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
@@ -96,11 +96,11 @@ func (s *ReviewService) CreateReview(
 	var targetOrderItemID uuid.UUID
 	var createdReview *model.Review
 
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
 		if in.OrderItemID != nil && *in.OrderItemID != uuid.Nil {
 			targetOrderItemID = *in.OrderItemID
 			// 1. Verify specific purchase
-			pv, err := s.repo.VerifyPurchase(ctx, tx, targetOrderItemID)
+			pv, err := s.repo.VerifyPurchase(ctx, targetOrderItemID)
 			if err != nil {
 				return err
 			}
@@ -121,7 +121,7 @@ func (s *ReviewService) CreateReview(
 			}
 		} else {
 			// Auto-resolve eligible delivered purchase for this user and product
-			eligibleID, err := s.repo.FindEligibleOrderItem(ctx, tx, in.UserID, in.ProductID)
+			eligibleID, err := s.repo.FindEligibleOrderItem(ctx, in.UserID, in.ProductID)
 			if err != nil {
 				return err
 			}
@@ -133,7 +133,7 @@ func (s *ReviewService) CreateReview(
 		}
 
 		// 2. Check if already reviewed
-		existing, err := s.repo.GetByOrderItemID(ctx, tx, targetOrderItemID)
+		existing, err := s.repo.GetByOrderItemID(ctx, targetOrderItemID)
 		if err != nil {
 			return err
 		}
@@ -155,7 +155,7 @@ func (s *ReviewService) CreateReview(
 			Status:      model.ReviewStatusPending,
 		}
 
-		if err := s.repo.Create(ctx, tx, rv); err != nil {
+		if err := s.repo.Create(ctx, rv); err != nil {
 			return err
 		}
 
@@ -177,9 +177,9 @@ func (s *ReviewService) GetReviewByID(ctx context.Context, id uuid.UUID) (*model
 	}
 
 	var rv *model.Review
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		rv, err = s.repo.GetByID(ctx, exec, id)
+		rv, err = s.repo.GetByID(ctx, id)
 		return err
 	})
 	if err != nil {
@@ -200,9 +200,9 @@ func (s *ReviewService) GetRatingSummary(ctx context.Context, productID uuid.UUI
 	}
 
 	var summary *model.RatingSummary
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		summary, err = s.repo.GetRatingSummaryByProductID(ctx, exec, productID)
+		summary, err = s.repo.GetRatingSummaryByProductID(ctx, productID)
 		return err
 	})
 	if err != nil {
@@ -220,9 +220,9 @@ func (s *ReviewService) GetRatingSummariesByProductIDs(
 	}
 
 	var summaries map[uuid.UUID]*model.RatingSummary
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		summaries, err = s.repo.GetRatingSummariesByProductIDs(ctx, exec, productIDs)
+		summaries, err = s.repo.GetRatingSummariesByProductIDs(ctx, productIDs)
 		return err
 	})
 	if err != nil {
@@ -248,8 +248,8 @@ func (s *ReviewService) UpdateUserReview(
 	}
 
 	var updatedReview *model.Review
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		rv, err := s.repo.GetByID(ctx, tx, id)
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		rv, err := s.repo.GetByID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -282,7 +282,7 @@ func (s *ReviewService) UpdateUserReview(
 		}
 
 		rv.Status = model.ReviewStatusPending
-		if err := s.repo.Update(ctx, tx, rv); err != nil {
+		if err := s.repo.Update(ctx, rv); err != nil {
 			return err
 		}
 
@@ -303,8 +303,8 @@ func (s *ReviewService) DeleteReview(ctx context.Context, id uuid.UUID, userID u
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		rv, err := s.repo.GetByID(ctx, tx, id)
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		rv, err := s.repo.GetByID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -317,7 +317,7 @@ func (s *ReviewService) DeleteReview(ctx context.Context, id uuid.UUID, userID u
 				WithCode(apierr.CodeForbidden)
 		}
 
-		return s.repo.Delete(ctx, tx, id)
+		return s.repo.Delete(ctx, id)
 	})
 
 	if err != nil {
@@ -337,8 +337,8 @@ func (s *ReviewService) UpdateReviewStatus(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		rv, err := s.repo.GetByID(ctx, tx, id)
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		rv, err := s.repo.GetByID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -347,7 +347,7 @@ func (s *ReviewService) UpdateReviewStatus(
 				WithCode(errcode.CodeReviewNotFound)
 		}
 
-		return s.repo.UpdateStatus(ctx, tx, id, status)
+		return s.repo.UpdateStatus(ctx, id, status)
 	})
 
 	if err != nil {
@@ -367,9 +367,9 @@ func (s *ReviewService) ListReviews(
 ) (*pagination.PagedResult[model.Review], error) {
 	var reviews []model.Review
 	var total int
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		reviews, total, err = s.repo.ListWithVoter(ctx, exec, q, productID, userID, status, voterID)
+		reviews, total, err = s.repo.ListWithVoter(ctx, q, productID, userID, status, voterID)
 		return err
 	})
 
@@ -400,9 +400,9 @@ func (s *ReviewService) ToggleHelpful(
 
 	var voted bool
 	var count int
-	err := s.dbRunner.WithTx(ctx, func(txCtx context.Context, tx *database.Tx) error {
+	err := s.dbRunner.WithTx(ctx, func(txCtx context.Context) error {
 		var err error
-		voted, count, err = s.repo.ToggleVote(txCtx, tx, reviewID, userID)
+		voted, count, err = s.repo.ToggleVote(txCtx, reviewID, userID)
 		return err
 	})
 	if err != nil {
@@ -424,9 +424,9 @@ func (s *ReviewService) CheckReviewEligibility(
 	}
 
 	var eligibleID uuid.UUID
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		eligibleID, err = s.repo.FindEligibleOrderItem(ctx, exec, userID, productID)
+		eligibleID, err = s.repo.FindEligibleOrderItem(ctx, userID, productID)
 		return err
 	})
 
@@ -436,4 +436,3 @@ func (s *ReviewService) CheckReviewEligibility(
 
 	return eligibleID != uuid.Nil, nil
 }
-

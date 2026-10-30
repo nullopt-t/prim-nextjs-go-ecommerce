@@ -87,8 +87,8 @@ func (s *Service) handleError(err error, fallbackMsg string) error {
 func (s *Service) GetSettings(ctx context.Context) (map[string]interface{}, error) {
 	settings := make(map[string]interface{})
 
-	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
-		list, err := s.repo.GetAll(ctx, exec)
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
+		list, err := s.repo.GetAll(ctx)
 		if err != nil {
 			return err
 		}
@@ -132,9 +132,9 @@ func (s *Service) GetPublicConfig(ctx context.Context) (PublicConfig, error) {
 
 // UpdateSettings upserts the provided key/value pairs within a single transaction.
 func (s *Service) UpdateSettings(ctx context.Context, items map[string]interface{}) error {
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
 		for key, value := range items {
-			if err := s.repo.Upsert(ctx, tx, key, value); err != nil {
+			if err := s.repo.Upsert(ctx, key, value); err != nil {
 				return err
 			}
 		}

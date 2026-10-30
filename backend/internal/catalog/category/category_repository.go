@@ -21,9 +21,12 @@ func NewRepository() *CategoryRepository {
 
 func (cr *CategoryRepository) Create(
 	ctx context.Context,
-	tx *database.Tx,
 	category *model.ProductCategory,
 ) error {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return err
+	}
 	const query = `
 		INSERT INTO product_categories (
 			id,
@@ -36,7 +39,7 @@ func (cr *CategoryRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err := tx.QueryRow(
+	err = executor.QueryRow(
 		ctx,
 		query,
 		category.ID,
@@ -52,10 +55,13 @@ func (cr *CategoryRepository) Create(
 
 func (cr *CategoryRepository) get(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	whereClause string,
 	args ...any,
 ) (*model.ProductCategory, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := fmt.Sprintf(`
 		SELECT
 			id,
@@ -69,7 +75,7 @@ func (cr *CategoryRepository) get(
 	`, whereClause)
 
 	category := new(model.ProductCategory)
-	err := qe.QueryRow(ctx, query, args...).Scan(
+	err = executor.QueryRow(ctx, query, args...).Scan(
 		&category.ID,
 		&category.ParentID,
 		&category.Name,
@@ -83,7 +89,7 @@ func (cr *CategoryRepository) get(
 
 	// Resolve the parent's display name for callers that expose the parent
 	// (notably the admin category detail endpoint).
-	if err := cr.attachParentNames(ctx, qe, []*model.ProductCategory{category}); err != nil {
+	if err := cr.attachParentNames(ctx, []*model.ProductCategory{category}); err != nil {
 		return nil, err
 	}
 	return category, nil
@@ -91,18 +97,16 @@ func (cr *CategoryRepository) get(
 
 func (cr *CategoryRepository) GetByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (*model.ProductCategory, error) {
-	return cr.get(ctx, qe, "deleted_at IS NULL AND id = $1", id)
+	return cr.get(ctx, "deleted_at IS NULL AND id = $1", id)
 }
 
 func (cr *CategoryRepository) GetByName(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	name string,
 ) (*model.ProductCategory, error) {
-	return cr.get(ctx, qe, "deleted_at IS NULL AND name = $1", name)
+	return cr.get(ctx, "deleted_at IS NULL AND name = $1", name)
 }
 
 type UpdateCategoryFields struct {
@@ -112,10 +116,14 @@ type UpdateCategoryFields struct {
 
 func (cr *CategoryRepository) Update(
 	ctx context.Context,
-	tx *database.Tx,
 	categoryID uuid.UUID,
 	fields UpdateCategoryFields,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	setClauses := make([]string, 0, 3)
 	args := make([]any, 0, 3)
 	argIdx := 1
@@ -170,9 +178,13 @@ func (cr *CategoryRepository) Update(
 
 func (cr *CategoryRepository) GetProductCategory(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	productID uuid.UUID,
 ) (*model.ProductCategory, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT
 			c.id,
@@ -188,7 +200,7 @@ func (cr *CategoryRepository) GetProductCategory(
 	`
 
 	category := new(model.ProductCategory)
-	err := qe.QueryRow(ctx, query, productID).Scan(
+	err = executor.QueryRow(ctx, query, productID).Scan(
 		&category.ID,
 		&category.ParentID,
 		&category.Name,
@@ -229,9 +241,13 @@ type ListCategoryOptions struct {
 // nothing beyond this check.
 func (cr *CategoryRepository) attachParentNames(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	categories []*model.ProductCategory,
 ) error {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return err
+	}
+
 	parentIDs := make([]uuid.UUID, 0, len(categories))
 	seen := make(map[uuid.UUID]struct{}, len(categories))
 	for _, category := range categories {
@@ -249,7 +265,7 @@ func (cr *CategoryRepository) attachParentNames(
 		return nil
 	}
 
-	rows, err := qe.Query(ctx, `SELECT id, name FROM product_categories WHERE id = ANY($1)`, parentIDs)
+	rows, err := executor.Query(ctx, `SELECT id, name FROM product_categories WHERE id = ANY($1)`, parentIDs)
 	if err != nil {
 		return fmt.Errorf("resolve category parent names: %w", err)
 	}
@@ -278,9 +294,13 @@ func (cr *CategoryRepository) attachParentNames(
 
 func (cr *CategoryRepository) List(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	opts ListCategoryOptions,
 ) (*pagination.PagedResult[model.ProductCategory], error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if opts.ListQuery == nil {
 		panic("list categories: ListQuery is required and cannot be nil")
 	}
@@ -341,7 +361,7 @@ func (cr *CategoryRepository) List(
 
 		args = append(args, q.PageSize+1)
 
-		rows, err := qe.Query(ctx, selectQuery, args...)
+		rows, err := executor.Query(ctx, selectQuery, args...)
 		if err != nil {
 			return nil, fmt.Errorf("list product categories query: %w", err)
 		}
@@ -368,7 +388,7 @@ func (cr *CategoryRepository) List(
 		}
 
 		if opts.WithParentName {
-			if err := cr.attachParentNames(ctx, qe, categories); err != nil {
+			if err := cr.attachParentNames(ctx, categories); err != nil {
 				return nil, err
 			}
 		}
@@ -382,7 +402,7 @@ func (cr *CategoryRepository) List(
 	// 1. Total matching count
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM product_categories WHERE %s", whereStmt)
 	var total int
-	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := executor.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, fmt.Errorf("list product categories count: %w", err)
 	}
 
@@ -428,7 +448,7 @@ func (cr *CategoryRepository) List(
 
 	args = append(args, q.PageSize, q.Offset)
 
-	rows, err := qe.Query(ctx, selectQuery, args...)
+	rows, err := executor.Query(ctx, selectQuery, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list product categories query: %w", err)
 	}
@@ -456,7 +476,7 @@ func (cr *CategoryRepository) List(
 	}
 
 	if opts.WithParentName {
-		if err := cr.attachParentNames(ctx, qe, categories); err != nil {
+		if err := cr.attachParentNames(ctx, categories); err != nil {
 			return nil, err
 		}
 	}
@@ -465,7 +485,11 @@ func (cr *CategoryRepository) List(
 	return pagination.NewPagedResult(categories, page), nil
 }
 
-func (cr *CategoryRepository) SoftDeleteCategory(ctx context.Context, tx *database.Tx, id uuid.UUID) error {
+func (cr *CategoryRepository) SoftDeleteCategory(ctx context.Context, id uuid.UUID) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	query := `UPDATE product_categories SET deleted_at = now(), updated_at = now() WHERE id = $1 AND deleted_at IS NULL`
 	tag, err := tx.Exec(ctx, query, id)
 	if err != nil {

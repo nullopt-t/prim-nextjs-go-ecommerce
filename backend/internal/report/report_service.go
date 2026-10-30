@@ -1,6 +1,3 @@
-// Package report provides date-ranged sales reporting and CSV export of the
-// operational datasets (orders, payments, customers, inventory) for the admin
-// back office.
 package report
 
 import (
@@ -14,7 +11,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
-// Service builds reports and export payloads.
+// Service coordinates report aggregates and CSV rendering.
 type Service struct {
 	runner database.Runner
 	repo   *Repository
@@ -31,7 +28,6 @@ func NewService(runner database.Runner, repo *Repository) *Service {
 	return &Service{runner: runner, repo: repo}
 }
 
-// handleError maps database, driver, and context errors into typed domain APIErrors.
 func (s *Service) handleError(err error, fallbackMsg string) error {
 	if err == nil {
 		return nil
@@ -90,9 +86,9 @@ func (s *Service) GetSalesReport(ctx context.Context, f ReportFilter, groupBy st
 	}
 
 	var rep *SalesReport
-	err := s.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		rep, err = s.repo.Sales(ctx, exec, f, groupBy)
+		rep, err = s.repo.Sales(ctx, f, groupBy)
 		return err
 	})
 	if err != nil {
@@ -105,9 +101,9 @@ func (s *Service) GetSalesReport(ctx context.Context, f ReportFilter, groupBy st
 func (s *Service) BuildCSV(ctx context.Context, t ExportType, f ReportFilter) ([]byte, error) {
 	var header []string
 	var rows [][]string
-	err := s.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		header, rows, err = s.repo.ExportDataset(ctx, exec, t, f)
+		header, rows, err = s.repo.ExportDataset(ctx, t, f)
 		return err
 	})
 	if err != nil {
@@ -128,5 +124,6 @@ func (s *Service) BuildCSV(ctx context.Context, t ExportType, f ReportFilter) ([
 	if err := w.Error(); err != nil {
 		return nil, s.handleError(err, "Failed to flush CSV output")
 	}
+
 	return []byte(sb.String()), nil
 }

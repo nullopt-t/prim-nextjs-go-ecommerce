@@ -8,19 +8,18 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
-	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type fakeRunner struct{}
 
-func (f *fakeRunner) WithTx(ctx context.Context, fn func(context.Context, *database.Tx) error) error {
-	return nil
+func (f *fakeRunner) WithTx(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
 }
 
-func (f *fakeRunner) WithExecutor(ctx context.Context, fn func(database.QueryExecutor) error) error {
-	return nil
+func (f *fakeRunner) WithExecutor(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
 }
 
 func TestCreateCouponValidation(t *testing.T) {

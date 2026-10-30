@@ -1,4 +1,3 @@
-// Package cart manages persistent storage and retrieval for shopping carts and cart line items.
 package cart
 
 import (
@@ -11,11 +10,11 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
-// CartRepository handles database operations against the 'carts' and 'cart_items' tables.
-// It accepts a database.QueryExecutor to support execution within or outside database transactions.
+// CartRepository provides PostgreSQL data access methods for managing customer shopping carts and line items.
+// All transactional operations accept a database.QueryExecutor to participate in an outer atomic transaction.
 type CartRepository struct{}
 
-// NewRepository constructs and returns a new CartRepository instance.
+// NewRepository initializes and returns a new CartRepository instance.
 func NewRepository() *CartRepository {
 	return &CartRepository{}
 }
@@ -25,9 +24,12 @@ func NewRepository() *CartRepository {
 // The created_at and updated_at timestamps are populated by PostgreSQL now() and scanned back into the model.
 func (r *CartRepository) CreateCart(
 	ctx context.Context,
-	tx *database.Tx,
 	cart *model.Cart,
 ) error {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return err
+	}
 	// SQL query to persist the base cart entity.
 	query := `
 		INSERT INTO carts (id, user_id, session_id, created_at, updated_at)
@@ -35,23 +37,25 @@ func (r *CartRepository) CreateCart(
 		RETURNING created_at, updated_at
 	`
 	// Execute insertion and assign returned database timestamps to the passed cart pointer.
-	err := tx.QueryRow(ctx, query, cart.ID, cart.UserID, cart.SessionID).Scan(&cart.CreatedAt, &cart.UpdatedAt)
-	return err
+	return executor.QueryRow(ctx, query, cart.ID, cart.UserID, cart.SessionID).Scan(&cart.CreatedAt, &cart.UpdatedAt)
 }
 
 // getCartItems retrieves all items belonging to a cart ordered by carted_at ascending.
 func (r *CartRepository) getCartItems(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	cartID uuid.UUID,
 ) ([]model.CartItem, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
 		SELECT id, variant_id, quantity, price_at_purchase, currency, carted_at
 		FROM cart_items
 		WHERE cart_id = $1
 		ORDER BY carted_at ASC
 	`
-	rows, err := qe.Query(ctx, query, cartID)
+	rows, err := executor.Query(ctx, query, cartID)
 	if err != nil {
 		return nil, err
 	}
@@ -83,16 +87,19 @@ func (r *CartRepository) getCartItems(
 // GetCartByID retrieves a cart record by its primary key UUID along with its items.
 func (r *CartRepository) GetCartByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (*model.Cart, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
 		SELECT id, user_id, session_id, created_at, updated_at
 		FROM carts
 		WHERE id = $1
 	`
 	cart := &model.Cart{Items: make([]model.CartItem, 0)}
-	err := qe.QueryRow(ctx, query, id).Scan(
+	err = executor.QueryRow(ctx, query, id).Scan(
 		&cart.ID,
 		&cart.UserID,
 		&cart.SessionID,
@@ -106,7 +113,7 @@ func (r *CartRepository) GetCartByID(
 		return nil, err
 	}
 
-	items, err := r.getCartItems(ctx, qe, cart.ID)
+	items, err := r.getCartItems(ctx, cart.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -121,9 +128,12 @@ func (r *CartRepository) GetCartByID(
 // database.ErrNotFound when the customer has no cart.
 func (r *CartRepository) LockCartByUserID(
 	ctx context.Context,
-	tx *database.Tx,
 	userID uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	query := `
 		SELECT id
 		FROM carts
@@ -133,7 +143,7 @@ func (r *CartRepository) LockCartByUserID(
 		FOR UPDATE
 	`
 	var id uuid.UUID
-	err := tx.QueryRow(ctx, query, userID).Scan(&id)
+	err = tx.QueryRow(ctx, query, userID).Scan(&id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return database.ErrNotFound
@@ -149,11 +159,14 @@ func (r *CartRepository) LockCartByUserID(
 // waiting for a cart_items row that the mutation already locked.
 func (r *CartRepository) LockCartByID(
 	ctx context.Context,
-	tx *database.Tx,
 	cartID uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	var id uuid.UUID
-	err := tx.QueryRow(ctx, `SELECT id FROM carts WHERE id = $1 FOR UPDATE`, cartID).Scan(&id)
+	err = tx.QueryRow(ctx, `SELECT id FROM carts WHERE id = $1 FOR UPDATE`, cartID).Scan(&id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return database.ErrNotFound
@@ -166,9 +179,12 @@ func (r *CartRepository) LockCartByID(
 // GetCartByUserID retrieves the most recently created cart for a registered customer along with all items.
 func (r *CartRepository) GetCartByUserID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	userID uuid.UUID,
 ) (*model.Cart, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
 		SELECT id, user_id, session_id, created_at, updated_at
 		FROM carts
@@ -177,7 +193,7 @@ func (r *CartRepository) GetCartByUserID(
 		LIMIT 1
 	`
 	cart := &model.Cart{Items: make([]model.CartItem, 0)}
-	err := qe.QueryRow(ctx, query, userID).Scan(
+	err = executor.QueryRow(ctx, query, userID).Scan(
 		&cart.ID,
 		&cart.UserID,
 		&cart.SessionID,
@@ -191,7 +207,7 @@ func (r *CartRepository) GetCartByUserID(
 		return nil, err
 	}
 
-	items, err := r.getCartItems(ctx, qe, cart.ID)
+	items, err := r.getCartItems(ctx, cart.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -203,9 +219,12 @@ func (r *CartRepository) GetCartByUserID(
 // GetCartBySessionID retrieves the most recently created anonymous guest cart for a session ID.
 func (r *CartRepository) GetCartBySessionID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	sessionID string,
 ) (*model.Cart, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
 		SELECT id, user_id, session_id, created_at, updated_at
 		FROM carts
@@ -214,7 +233,7 @@ func (r *CartRepository) GetCartBySessionID(
 		LIMIT 1
 	`
 	cart := &model.Cart{Items: make([]model.CartItem, 0)}
-	err := qe.QueryRow(ctx, query, sessionID).Scan(
+	err = executor.QueryRow(ctx, query, sessionID).Scan(
 		&cart.ID,
 		&cart.UserID,
 		&cart.SessionID,
@@ -228,7 +247,7 @@ func (r *CartRepository) GetCartBySessionID(
 		return nil, err
 	}
 
-	items, err := r.getCartItems(ctx, qe, cart.ID)
+	items, err := r.getCartItems(ctx, cart.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -239,12 +258,16 @@ func (r *CartRepository) GetCartBySessionID(
 
 func (r *CartRepository) AddItem(
 	ctx context.Context,
-	tx *database.Tx,
 	item *model.CartItem,
 ) error {
 	// Take the cart -> items lock order shared with checkout before touching
 	// cart_items; otherwise the child-first upsert can deadlock with checkout.
-	if err := r.LockCartByID(ctx, tx, item.CartID); err != nil {
+	if err := r.LockCartByID(ctx, item.CartID); err != nil {
+		return err
+	}
+
+	executor, err := database.Executor(ctx)
+	if err != nil {
 		return err
 	}
 
@@ -259,7 +282,7 @@ func (r *CartRepository) AddItem(
 			carted_at = now()
 		RETURNING id, quantity, carted_at
 	`
-	err := tx.QueryRow(
+	err = executor.QueryRow(
 		ctx,
 		query,
 		item.CartID,
@@ -273,18 +296,22 @@ func (r *CartRepository) AddItem(
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = tx.Exec(ctx, updateCartQuery, item.CartID)
+	_, _ = executor.Exec(ctx, updateCartQuery, item.CartID)
 	return nil
 }
 
 func (r *CartRepository) UpdateItemQuantity(
 	ctx context.Context,
-	tx *database.Tx,
 	cartID uuid.UUID,
 	itemID int64,
 	quantity int,
 ) error {
-	if err := r.LockCartByID(ctx, tx, cartID); err != nil {
+	if err := r.LockCartByID(ctx, cartID); err != nil {
+		return err
+	}
+
+	executor, err := database.Executor(ctx)
+	if err != nil {
 		return err
 	}
 
@@ -293,7 +320,7 @@ func (r *CartRepository) UpdateItemQuantity(
 		SET quantity = $1
 		WHERE id = $2 AND cart_id = $3
 	`
-	tag, err := tx.Exec(ctx, query, quantity, itemID, cartID)
+	tag, err := executor.Exec(ctx, query, quantity, itemID, cartID)
 	if err != nil {
 		return err
 	}
@@ -303,17 +330,21 @@ func (r *CartRepository) UpdateItemQuantity(
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = tx.Exec(ctx, updateCartQuery, cartID)
+	_, _ = executor.Exec(ctx, updateCartQuery, cartID)
 	return nil
 }
 
 func (r *CartRepository) RemoveItem(
 	ctx context.Context,
-	tx *database.Tx,
 	cartID uuid.UUID,
 	itemID int64,
 ) error {
-	if err := r.LockCartByID(ctx, tx, cartID); err != nil {
+	if err := r.LockCartByID(ctx, cartID); err != nil {
+		return err
+	}
+
+	executor, err := database.Executor(ctx)
+	if err != nil {
 		return err
 	}
 
@@ -321,7 +352,7 @@ func (r *CartRepository) RemoveItem(
 		DELETE FROM cart_items
 		WHERE id = $1 AND cart_id = $2
 	`
-	tag, err := tx.Exec(ctx, query, itemID, cartID)
+	tag, err := executor.Exec(ctx, query, itemID, cartID)
 	if err != nil {
 		return err
 	}
@@ -330,36 +361,43 @@ func (r *CartRepository) RemoveItem(
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = tx.Exec(ctx, updateCartQuery, cartID)
+	_, _ = executor.Exec(ctx, updateCartQuery, cartID)
 	return nil
 }
 
 func (r *CartRepository) ClearCart(
 	ctx context.Context,
-	tx *database.Tx,
 	cartID uuid.UUID,
 ) error {
-	if err := r.LockCartByID(ctx, tx, cartID); err != nil {
+	if err := r.LockCartByID(ctx, cartID); err != nil {
+		return err
+	}
+
+	executor, err := database.Executor(ctx)
+	if err != nil {
 		return err
 	}
 
 	query := `DELETE FROM cart_items WHERE cart_id = $1`
-	_, err := tx.Exec(ctx, query, cartID)
+	_, err = executor.Exec(ctx, query, cartID)
 	if err != nil {
 		return err
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = tx.Exec(ctx, updateCartQuery, cartID)
+	_, _ = executor.Exec(ctx, updateCartQuery, cartID)
 	return nil
 }
 
 func (r *CartRepository) DeleteCart(
 	ctx context.Context,
-	tx *database.Tx,
 	cartID uuid.UUID,
 ) error {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return err
+	}
 	query := `DELETE FROM carts WHERE id = $1`
-	_, err := tx.Exec(ctx, query, cartID)
+	_, err = executor.Exec(ctx, query, cartID)
 	return err
 }

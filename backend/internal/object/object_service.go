@@ -106,10 +106,9 @@ func (os *ObjectService) CreateObject(
 
 	err := os.dbRunner.WithTx(
 		ctx,
-		func(ctx context.Context, tx *database.Tx) error {
+		func(ctx context.Context) error {
 			return os.objectRepo.Create(
 				ctx,
-				tx,
 				object,
 			)
 		},
@@ -149,8 +148,8 @@ func (os *ObjectService) DeleteObject(
 	bucket, key string,
 ) error {
 	// First mark as deleting in DB within a transaction
-	err := os.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return os.objectRepo.MarkDeletingByKey(ctx, tx, bucket, key)
+	err := os.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		return os.objectRepo.MarkDeletingByKey(ctx, bucket, key)
 	})
 	if err != nil {
 		return os.handleError(err, "Failed to mark object as deleting")
@@ -163,8 +162,8 @@ func (os *ObjectService) DeleteObject(
 	}
 
 	// Finally mark as deleted in DB within a transaction
-	err = os.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return os.objectRepo.MarkDeletedByKey(ctx, tx, bucket, key)
+	err = os.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		return os.objectRepo.MarkDeletedByKey(ctx, bucket, key)
 	})
 	if err != nil {
 		return os.handleError(err, "Failed to mark object as deleted")
@@ -175,9 +174,9 @@ func (os *ObjectService) DeleteObject(
 
 func (os *ObjectService) DeleteObjectByID(ctx context.Context, id uuid.UUID) error {
 	var obj *model.Object
-	err := os.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := os.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		obj, err = os.objectRepo.GetByID(ctx, exec, id)
+		obj, err = os.objectRepo.GetByID(ctx, id)
 		return err
 	})
 	if err != nil {
@@ -192,9 +191,9 @@ func (os *ObjectService) DeleteObjectByID(ctx context.Context, id uuid.UUID) err
 
 func (os *ObjectService) GetObjectByID(ctx context.Context, id uuid.UUID) (*model.Object, error) {
 	var obj *model.Object
-	err := os.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := os.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		obj, err = os.objectRepo.GetByID(ctx, exec, id)
+		obj, err = os.objectRepo.GetByID(ctx, id)
 		return err
 	})
 	if err != nil {
@@ -208,9 +207,9 @@ func (os *ObjectService) GetObjectsByIDs(ctx context.Context, ids []uuid.UUID) (
 		return nil, nil
 	}
 	var objects []*model.Object
-	err := os.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := os.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		objects, err = os.objectRepo.GetByIDs(ctx, exec, ids)
+		objects, err = os.objectRepo.GetByIDs(ctx, ids)
 		return err
 	})
 	if err != nil {
@@ -240,8 +239,8 @@ type MediaItem struct {
 func (os *ObjectService) ListMedia(ctx context.Context, limit int, cursor *pagination.Keyset) ([]MediaItem, *pagination.CursorPage, error) {
 	var list []MediaItem
 	var page *pagination.CursorPage
-	err := os.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
-		objects, p, err := os.objectRepo.ListMedia(ctx, exec, limit, cursor)
+	err := os.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
+		objects, p, err := os.objectRepo.ListMedia(ctx, limit, cursor)
 		if err != nil {
 			return err
 		}

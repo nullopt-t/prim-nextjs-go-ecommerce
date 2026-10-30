@@ -14,21 +14,21 @@ import (
 )
 
 type VariantReader interface {
-	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductVariant, error)
-	ListMediaByVariantIDs(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID][]*model.VariantMedia, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*model.ProductVariant, error)
+	ListMediaByVariantIDs(ctx context.Context, variantIDs []uuid.UUID) (map[uuid.UUID][]*model.VariantMedia, error)
 }
 
 type ProductReader interface {
-	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Product, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error)
 }
 
 type InventoryReader interface {
-	GetStock(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) (*model.InventoryStock, error)
-	GetStockForVariants(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
+	GetStock(ctx context.Context, variantID uuid.UUID) (*model.InventoryStock, error)
+	GetStockForVariants(ctx context.Context, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
 }
 
 type ObjectReader interface {
-	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
 }
 
 type CartService struct {
@@ -84,7 +84,6 @@ func NewService(
 
 func (s *CartService) populateCartDetails(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	cart *model.Cart,
 ) error {
 	if cart == nil || len(cart.Items) == 0 {
@@ -97,12 +96,12 @@ func (s *CartService) populateCartDetails(
 		variantIDs = append(variantIDs, item.VariantID)
 
 		if s.variantReader != nil {
-			v, err := s.variantReader.GetByID(ctx, qe, item.VariantID)
+			v, err := s.variantReader.GetByID(ctx, item.VariantID)
 			if err == nil && v != nil {
 				item.Variant = v
 
 				if s.objectReader != nil && v.ThumbnailObjectID != nil && *v.ThumbnailObjectID != uuid.Nil {
-					obj, oErr := s.objectReader.GetByID(ctx, qe, *v.ThumbnailObjectID)
+					obj, oErr := s.objectReader.GetByID(ctx, *v.ThumbnailObjectID)
 					if oErr == nil && obj != nil {
 						v.Thumbnail = obj
 						if s.storageProvider != nil {
@@ -122,13 +121,13 @@ func (s *CartService) populateCartDetails(
 				}
 
 				if s.productReader != nil && v.ProductID != uuid.Nil {
-					p, pErr := s.productReader.GetByID(ctx, qe, v.ProductID)
+					p, pErr := s.productReader.GetByID(ctx, v.ProductID)
 					if pErr == nil && p != nil {
 						item.Product = p
 
 						if item.ThumbnailURL == "" {
 							if s.objectReader != nil && p.ThumbnailObjectID != nil && *p.ThumbnailObjectID != uuid.Nil {
-								obj, oErr := s.objectReader.GetByID(ctx, qe, *p.ThumbnailObjectID)
+								obj, oErr := s.objectReader.GetByID(ctx, *p.ThumbnailObjectID)
 								if oErr == nil && obj != nil {
 									p.Thumbnail = obj
 									if s.storageProvider != nil {
@@ -161,13 +160,13 @@ func (s *CartService) populateCartDetails(
 			}
 		}
 		if len(needsMedia) > 0 {
-			mediaMap, mErr := s.variantReader.ListMediaByVariantIDs(ctx, qe, needsMedia)
+			mediaMap, mErr := s.variantReader.ListMediaByVariantIDs(ctx, needsMedia)
 			if mErr == nil && mediaMap != nil {
 				for i := range cart.Items {
 					if cart.Items[i].ThumbnailURL == "" {
 						if list, ok := mediaMap[cart.Items[i].VariantID]; ok && len(list) > 0 {
 							if list[0].ObjectID != uuid.Nil && s.objectReader != nil {
-								obj, oErr := s.objectReader.GetByID(ctx, qe, list[0].ObjectID)
+								obj, oErr := s.objectReader.GetByID(ctx, list[0].ObjectID)
 								if oErr == nil && obj != nil {
 									list[0].Object = obj
 									if s.storageProvider != nil {
@@ -192,7 +191,7 @@ func (s *CartService) populateCartDetails(
 	}
 
 	if s.inventoryReader != nil && len(variantIDs) > 0 {
-		stocks, err := s.inventoryReader.GetStockForVariants(ctx, qe, variantIDs)
+		stocks, err := s.inventoryReader.GetStockForVariants(ctx, variantIDs)
 		if err == nil && stocks != nil {
 			for i := range cart.Items {
 				if st, ok := stocks[cart.Items[i].VariantID]; ok && st != nil {
@@ -212,15 +211,15 @@ func (s *CartService) GetOrCreateCart(
 	sessionID *string,
 ) (*model.Cart, error) {
 	var cart *model.Cart
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
 		var err error
 		if userID != nil {
-			cart, err = s.cartRepo.GetCartByUserID(ctx, tx, *userID)
+			cart, err = s.cartRepo.GetCartByUserID(ctx, *userID)
 			if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
 				return err
 			}
 		} else if sessionID != nil {
-			cart, err = s.cartRepo.GetCartBySessionID(ctx, tx, *sessionID)
+			cart, err = s.cartRepo.GetCartBySessionID(ctx, *sessionID)
 			if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
 				return err
 			}
@@ -232,11 +231,11 @@ func (s *CartService) GetOrCreateCart(
 				UserID:    userID,
 				SessionID: sessionID,
 			}
-			if err := s.cartRepo.CreateCart(ctx, tx, cart); err != nil {
+			if err := s.cartRepo.CreateCart(ctx, cart); err != nil {
 				return err
 			}
 		}
-		return s.populateCartDetails(ctx, tx, cart)
+		return s.populateCartDetails(ctx, cart)
 	})
 	if err != nil {
 		return nil, err
@@ -246,13 +245,13 @@ func (s *CartService) GetOrCreateCart(
 
 func (s *CartService) GetCartByID(ctx context.Context, id uuid.UUID) (*model.Cart, error) {
 	var cart *model.Cart
-	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		cart, err = s.cartRepo.GetCartByID(ctx, exec, id)
+		cart, err = s.cartRepo.GetCartByID(ctx, id)
 		if err != nil {
 			return err
 		}
-		return s.populateCartDetails(ctx, exec, cart)
+		return s.populateCartDetails(ctx, cart)
 	})
 	if err != nil {
 		return nil, err
@@ -262,13 +261,13 @@ func (s *CartService) GetCartByID(ctx context.Context, id uuid.UUID) (*model.Car
 
 func (s *CartService) GetCartByUserID(ctx context.Context, userID uuid.UUID) (*model.Cart, error) {
 	var cart *model.Cart
-	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		cart, err = s.cartRepo.GetCartByUserID(ctx, exec, userID)
+		cart, err = s.cartRepo.GetCartByUserID(ctx, userID)
 		if err != nil {
 			return err
 		}
-		return s.populateCartDetails(ctx, exec, cart)
+		return s.populateCartDetails(ctx, cart)
 	})
 	if err != nil {
 		return nil, err
@@ -278,13 +277,13 @@ func (s *CartService) GetCartByUserID(ctx context.Context, userID uuid.UUID) (*m
 
 func (s *CartService) GetCartBySessionID(ctx context.Context, sessionID string) (*model.Cart, error) {
 	var cart *model.Cart
-	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		cart, err = s.cartRepo.GetCartBySessionID(ctx, exec, sessionID)
+		cart, err = s.cartRepo.GetCartBySessionID(ctx, sessionID)
 		if err != nil {
 			return err
 		}
-		return s.populateCartDetails(ctx, exec, cart)
+		return s.populateCartDetails(ctx, cart)
 	})
 	if err != nil {
 		return nil, err
@@ -304,8 +303,8 @@ func (s *CartService) AddItem(
 	}
 
 	var cart *model.Cart
-	txErr := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		v, getErr := s.variantReader.GetByID(ctx, tx, variantID)
+	txErr := s.dr.WithTx(ctx, func(ctx context.Context) error {
+		v, getErr := s.variantReader.GetByID(ctx, variantID)
 		if getErr != nil {
 			return apierr.NotFoundError("Variant not found").
 				WithCode(errcode.CodeVariantNotFound).
@@ -313,7 +312,7 @@ func (s *CartService) AddItem(
 		}
 
 		if s.inventoryReader != nil {
-			stock, stockErr := s.inventoryReader.GetStock(ctx, tx, v.ID)
+			stock, stockErr := s.inventoryReader.GetStock(ctx, v.ID)
 			if stockErr != nil {
 				var apiErr *apierr.APIError
 				if errors.As(stockErr, &apiErr) {
@@ -336,7 +335,7 @@ func (s *CartService) AddItem(
 			currency = *v.Currency
 		}
 
-		if err := s.cartRepo.AddItem(ctx, tx, &model.CartItem{
+		if err := s.cartRepo.AddItem(ctx, &model.CartItem{
 			CartID:          cartID,
 			VariantID:       v.ID,
 			Quantity:        quantity,
@@ -347,11 +346,11 @@ func (s *CartService) AddItem(
 		}
 
 		var err error
-		cart, err = s.cartRepo.GetCartByID(ctx, tx, cartID)
+		cart, err = s.cartRepo.GetCartByID(ctx, cartID)
 		if err != nil {
 			return err
 		}
-		return s.populateCartDetails(ctx, tx, cart)
+		return s.populateCartDetails(ctx, cart)
 	})
 	if txErr != nil {
 		var apiErr *apierr.APIError
@@ -379,11 +378,11 @@ func (s *CartService) UpdateCartItemQuantity(
 	}
 
 	var cart *model.Cart
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
 		// Validate the target item and the requested quantity against stock on
 		// the same transaction before mutating, so an over-limit update is
 		// rejected (INSUFFICIENT_INVENTORY) instead of silently persisted.
-		current, err := s.cartRepo.GetCartByID(ctx, tx, cartID)
+		current, err := s.cartRepo.GetCartByID(ctx, cartID)
 		if err != nil {
 			return err
 		}
@@ -400,7 +399,7 @@ func (s *CartService) UpdateCartItemQuantity(
 		}
 
 		if s.inventoryReader != nil {
-			stock, stockErr := s.inventoryReader.GetStock(ctx, tx, variantID)
+			stock, stockErr := s.inventoryReader.GetStock(ctx, variantID)
 			if stockErr != nil {
 				var apiErr *apierr.APIError
 				if errors.As(stockErr, &apiErr) {
@@ -414,15 +413,15 @@ func (s *CartService) UpdateCartItemQuantity(
 			}
 		}
 
-		if err := s.cartRepo.UpdateItemQuantity(ctx, tx, cartID, itemID, quantity); err != nil {
+		if err := s.cartRepo.UpdateItemQuantity(ctx, cartID, itemID, quantity); err != nil {
 			return err
 		}
 
-		cart, err = s.cartRepo.GetCartByID(ctx, tx, cartID)
+		cart, err = s.cartRepo.GetCartByID(ctx, cartID)
 		if err != nil {
 			return err
 		}
-		return s.populateCartDetails(ctx, tx, cart)
+		return s.populateCartDetails(ctx, cart)
 	})
 
 	if err != nil {
@@ -450,17 +449,17 @@ func (s *CartService) RemoveCartItem(
 	itemID int64,
 ) (*model.Cart, error) {
 	var cart *model.Cart
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		if err := s.cartRepo.RemoveItem(ctx, tx, cartID, itemID); err != nil {
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.cartRepo.RemoveItem(ctx, cartID, itemID); err != nil {
 			return err
 		}
 
 		var err error
-		cart, err = s.cartRepo.GetCartByID(ctx, tx, cartID)
+		cart, err = s.cartRepo.GetCartByID(ctx, cartID)
 		if err != nil {
 			return err
 		}
-		return s.populateCartDetails(ctx, tx, cart)
+		return s.populateCartDetails(ctx, cart)
 	})
 	if err != nil {
 		if errors.Is(database.MapError(err), database.ErrNotFound) {
@@ -477,24 +476,22 @@ func (s *CartService) RemoveCartItem(
 	return cart, nil
 }
 
-// ClearItems empties the cart's line items on the caller's executor. Checkout
-// calls this inside its own transaction so cart clearance commits with order
-// creation instead of opening a second connection.
+// ClearItems empties the cart's line items within the active transaction
+// (or begins a new one if called standalone).
 func (s *CartService) ClearItems(
 	ctx context.Context,
-	tx *database.Tx,
 	cartID uuid.UUID,
 ) error {
-	return s.cartRepo.ClearCart(ctx, tx, cartID)
+	return s.dr.WithTx(ctx, func(ctx context.Context) error {
+		return s.cartRepo.ClearCart(ctx, cartID)
+	})
 }
 
 func (s *CartService) ClearCart(
 	ctx context.Context,
 	cartID uuid.UUID,
 ) error {
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return s.ClearItems(ctx, tx, cartID)
-	})
+	err := s.ClearItems(ctx, cartID)
 	if err != nil {
 		return apierr.InternalServerError("Failed to clear cart").
 			WithCode(apierr.CodeInternalError).
@@ -510,8 +507,8 @@ func (s *CartService) MergeGuestCart(
 	sessionID string,
 	userID uuid.UUID,
 ) error {
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		guestCart, gErr := s.cartRepo.GetCartBySessionID(ctx, tx, sessionID)
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
+		guestCart, gErr := s.cartRepo.GetCartBySessionID(ctx, sessionID)
 		if gErr != nil {
 			if errors.Is(database.MapError(gErr), database.ErrNotFound) {
 				return nil
@@ -519,7 +516,7 @@ func (s *CartService) MergeGuestCart(
 			return gErr
 		}
 
-		userCart, err := s.cartRepo.GetCartByUserID(ctx, tx, userID)
+		userCart, err := s.cartRepo.GetCartByUserID(ctx, userID)
 		if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
 			return err
 		}
@@ -530,7 +527,7 @@ func (s *CartService) MergeGuestCart(
 				SessionID: nil,
 				Items:     slices.Clone(guestCart.Items),
 			}
-			uErr := s.cartRepo.CreateCart(ctx, tx, userCart)
+			uErr := s.cartRepo.CreateCart(ctx, userCart)
 			if uErr != nil {
 				return uErr
 			}
@@ -539,13 +536,13 @@ func (s *CartService) MergeGuestCart(
 
 		for _, guestItem := range slices.Clone(guestCart.Items) {
 			guestItem.CartID = userCart.ID
-			aErr := s.cartRepo.AddItem(ctx, tx, &guestItem)
+			aErr := s.cartRepo.AddItem(ctx, &guestItem)
 			if aErr != nil {
 				return aErr
 			}
 		}
 
-		return s.cartRepo.DeleteCart(ctx, tx, guestCart.ID)
+		return s.cartRepo.DeleteCart(ctx, guestCart.ID)
 	})
 
 	if err != nil {

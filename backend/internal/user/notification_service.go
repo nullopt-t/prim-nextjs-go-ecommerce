@@ -69,8 +69,8 @@ func (s *NotificationService) CreateNotification(
 	ctx context.Context,
 	n *model.UserNotification,
 ) error {
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-		return s.repo.Create(ctx, exec, n)
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.Create(ctx, n)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to create notification")
@@ -89,9 +89,9 @@ func (s *NotificationService) GetMyNotifications(
 	var items []*model.UserNotification
 	var total int
 
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		items, total, err = s.repo.ListByUser(ctx, exec, userID, unreadOnly, q)
+		items, total, err = s.repo.ListByUser(ctx, userID, unreadOnly, q)
 		return err
 	})
 	if err != nil {
@@ -108,9 +108,9 @@ func (s *NotificationService) GetUnreadCount(
 	userID uuid.UUID,
 ) (int, error) {
 	var count int
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		count, err = s.repo.CountUnreadByUser(ctx, exec, userID)
+		count, err = s.repo.CountUnreadByUser(ctx, userID)
 		return err
 	})
 	if err != nil {
@@ -122,10 +122,11 @@ func (s *NotificationService) GetUnreadCount(
 // MarkAsRead marks a single notification as read.
 func (s *NotificationService) MarkAsRead(
 	ctx context.Context,
-	id int64, userID uuid.UUID,
+	id int64,
+	userID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-		return s.repo.MarkAsRead(ctx, exec, id, userID)
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.MarkAsRead(ctx, id, userID)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to mark notification as read")
@@ -139,9 +140,9 @@ func (s *NotificationService) MarkAllAsRead(
 	userID uuid.UUID,
 ) (int64, error) {
 	var count int64
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
 		var err error
-		count, err = s.repo.MarkAllAsRead(ctx, exec, userID)
+		count, err = s.repo.MarkAllAsRead(ctx, userID)
 		return err
 	})
 	if err != nil {
@@ -153,10 +154,11 @@ func (s *NotificationService) MarkAllAsRead(
 // DeleteNotification removes a notification belonging to the specified user.
 func (s *NotificationService) DeleteNotification(
 	ctx context.Context,
-	id int64, userID uuid.UUID,
+	id int64,
+	userID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-		return s.repo.Delete(ctx, exec, id, userID)
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.Delete(ctx, id, userID)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to delete notification")

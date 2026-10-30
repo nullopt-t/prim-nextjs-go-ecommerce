@@ -4,6 +4,8 @@ package database
 
 import (
 	"context"
+	"fmt"
+	"time"
 )
 
 // Runner defines the contract for executing units of work.
@@ -19,46 +21,92 @@ import (
 // expected to be backed by one database pool; a transaction created by one
 // runner must not be shared with a runner for a different pool.
 //
-// WithTx hands out *Tx rather than QueryExecutor so that write paths - services
-// that participate in a unit of work and repository methods that mutate - can
-// require a transaction by type. Passing the pool where a *Tx is expected does
-// not compile.
+// WithTx hands out the transaction via ctx so that repository methods that
+// need a *Tx can call RequireTx(ctx) to obtain it at the execution boundary.
 type Runner interface {
 	// WithTx runs the provided callback inside a database transaction.
 	// It automatically commits on success or rolls back on error/panic.
-	WithTx(ctx context.Context, fn func(ctx context.Context, tx *Tx) error) error
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 
 	// WithExecutor runs the provided callback without starting a transaction,
-	// reusing the ambient one when the context already carries it.
-	WithExecutor(ctx context.Context, fn func(exec QueryExecutor) error) error
+	// reusing the ambient one when the context already carries it, or binding
+	// the database pool to the context.
+	WithExecutor(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
-// Executor implements the Runner interface by managing transactions and pool access
+// crunner implements the Runner interface by managing transactions and pool access
 // against a target DB instance.
-type Executor struct {
+type crunner struct {
 	// db points to the active database connection pool.
 	db *DB
 }
 
-// txContextKey keys the in-flight transaction stored on a request context.
-type txContextKey struct{}
+// executorKey keys the active QueryExecutor (pool or *Tx) stored on a context.
+type executorKey struct{}
 
-// TxFromContext returns the transaction bound to ctx by an enclosing WithTx.
-//
-// Code that runs inside a transaction can use this to stay on the caller's
-// connection; callers that just issue queries can call WithExecutor, which
-// performs the same lookup for them.
+// WithExecutor binds the provided QueryExecutor to ctx using the single executor key
+// if no executor is already present in ctx. If an executor already exists on ctx,
+// ctx is returned unchanged.
+func WithExecutor(ctx context.Context, executor QueryExecutor) context.Context {
+	if _, err := Executor(ctx); err == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, executorKey{}, executor)
+}
+
+// WithTx binds the active transaction to ctx using the single executor key,
+// replacing any non-transaction executor previously bound.
+func WithTx(ctx context.Context, tx *Tx) context.Context {
+	if _, ok := TxFromContext(ctx); ok {
+		return ctx
+	}
+	return context.WithValue(ctx, executorKey{}, tx)
+}
+
+// Executor retrieves the active QueryExecutor from ctx.
+// It returns ErrNoExecutor if no executor is found in ctx.
+func Executor(ctx context.Context) (QueryExecutor, error) {
+	exec, ok := ctx.Value(executorKey{}).(QueryExecutor)
+	if !ok || exec == nil {
+		return nil, ErrNoExecutor
+	}
+	return exec, nil
+}
+
+// RequireTx retrieves the active *Tx from ctx.
+// It rejects missing executors, pool executors, and non-transaction types.
+func RequireTx(ctx context.Context) (*Tx, error) {
+	exec, err := Executor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrNoActiveTx, err)
+	}
+	tx, ok := exec.(*Tx)
+	if !ok || tx == nil {
+		return nil, ErrNoActiveTx
+	}
+	return tx, nil
+}
+
+// TxFromContext returns the transaction bound to ctx by an enclosing WithTx, if present.
 func TxFromContext(ctx context.Context) (*Tx, bool) {
-	tx, ok := ctx.Value(txContextKey{}).(*Tx)
-	return tx, ok
+	tx, err := RequireTx(ctx)
+	return tx, err == nil
+}
+
+// ExecutorFromContext returns the active executor from ctx, or fallback if absent.
+func ExecutorFromContext(ctx context.Context, fallback QueryExecutor) QueryExecutor {
+	if exec, err := Executor(ctx); err == nil {
+		return exec
+	}
+	return fallback
 }
 
 // NewTxRunner constructs a new transaction runner backed by the provided DB.
-func NewTxRunner(db *DB) *Executor {
-	return &Executor{db: db}
+func NewTxRunner(db *DB) *crunner {
+	return &crunner{db: db}
 }
 
-// WithTx begins a new PostgreSQL transaction, passes the wrapped transaction to the
+// WithTx begins a new PostgreSQL transaction, passes the wrapped transaction on ctx to the
 // callback fn, and manages commit or rollback.
 //
 // Concurrency and Transaction Safety:
@@ -72,7 +120,7 @@ func NewTxRunner(db *DB) *Executor {
 // rolls back on its own - the outermost transaction decides, so every error
 // that invalidates the unit of work must be propagated to the outermost
 // callback.
-func (t *Executor) WithTx(ctx context.Context, fn func(ctx context.Context, tx *Tx) error) error {
+func (t *crunner) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	if t == nil || t.db == nil {
 		return ErrConnectionFailure
 	}
@@ -80,7 +128,11 @@ func (t *Executor) WithTx(ctx context.Context, fn func(ctx context.Context, tx *
 	// Join the transaction already in flight for this context, if any. The
 	// ambient transaction owns the connection, so the pool is not consulted.
 	if currentTx, ok := TxFromContext(ctx); ok {
-		return fn(ctx, currentTx)
+		// Verify database instance ownership
+		if currentTx.db != nil && t.db != nil && currentTx.db != t.db {
+			return ErrMismatchedDatabase
+		}
+		return fn(ctx)
 	}
 
 	if t.db.Pool == nil {
@@ -92,27 +144,31 @@ func (t *Executor) WithTx(ctx context.Context, fn func(ctx context.Context, tx *
 		return MapError(err)
 	}
 
-	// Defer rollback using context.Background() to ensure the transaction is aborted
-	// even if the request context was cancelled or timed out.
+	// Defer rollback using a bounded context to ensure rollback is attempted
+	// even if the request context was canceled or timed out.
 	// If tx.Commit has already succeeded, tx.Rollback is a harmless no-op returning pgx.ErrTxClosed.
 	defer func() {
-		_ = tx.Rollback(context.Background())
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = tx.Rollback(cleanupCtx)
 	}()
 
 	defer func() {
 		if p := recover(); p != nil {
-			_ = tx.Rollback(context.Background())
+			cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = tx.Rollback(cleanupCtx)
 			panic(p) // re-panic after ensuring rollback completed
 		}
 	}()
 
-	// Publish the transaction on the context so that every WithExecutor call made
-	// below - nested service calls included - reuses this connection instead of
+	// Publish the transaction on the context using the unified executorKey so that
+	// downstream services and repositories reuse this connection instead of
 	// acquiring another one from the pool.
-	wrappedTx := &Tx{tx}
-	boundCtx := context.WithValue(ctx, txContextKey{}, wrappedTx)
+	wrappedTx := &Tx{tx: tx, db: t.db}
+	boundCtx := WithTx(ctx, wrappedTx)
 
-	if err := fn(boundCtx, wrappedTx); err != nil {
+	if err := fn(boundCtx); err != nil {
 		return MapError(err)
 	}
 
@@ -125,24 +181,28 @@ func (t *Executor) WithTx(ctx context.Context, fn func(ctx context.Context, tx *
 
 // WithExecutor executes the provided callback without starting a transaction.
 //
-// If ctx already carries a transaction (that is, the caller is inside WithTx),
-// the callback runs on that transaction instead of the pool. Checking a second
-// connection out while the first is still held is what starves the pool and
-// stalls every other request.
-func (t *Executor) WithExecutor(ctx context.Context, fn func(exec QueryExecutor) error) error {
+// If ctx already carries an active executor (ambient transaction or pool),
+// the callback runs with that context. Otherwise, it binds the runner's DB
+// to the context.
+func (t *crunner) WithExecutor(ctx context.Context, fn func(ctx context.Context) error) error {
 	if t == nil || t.db == nil {
 		return ErrConnectionFailure
 	}
 
-	// Reuse the ambient transaction before touching the pool: it owns the
-	// connection, so a runner without a usable pool can still join.
+	// Reuse the ambient executor (tx or pool) before touching the pool directly.
 	if currentTx, ok := TxFromContext(ctx); ok {
-		return fn(currentTx)
+		if currentTx.db != nil && t.db != nil && currentTx.db != t.db {
+			return ErrMismatchedDatabase
+		}
+		return fn(ctx)
+	}
+	if _, err := Executor(ctx); err == nil {
+		return fn(ctx)
 	}
 
 	if t.db.Pool == nil {
 		return ErrConnectionFailure
 	}
 
-	return fn(t.db)
+	return fn(WithExecutor(ctx, t.db))
 }

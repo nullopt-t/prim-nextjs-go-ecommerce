@@ -16,6 +16,33 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
+type CreateCouponInput struct {
+	Code          string
+	DiscountType  model.CouponDiscountType
+	DiscountValue int64
+	Currency      string
+	MinCartAmount *int64
+	UsageLimit    *int
+	PerUserLimit  *int
+	StartsAt      *time.Time
+	ExpiresAt     *time.Time
+	Status        model.CouponStatus
+}
+
+// AppliedCoupon is the result of applying a coupon to a cart.
+type AppliedCoupon struct {
+	ID              uuid.UUID `json:"id"`
+	Code            string    `json:"code"`
+	DiscountType    string    `json:"discountType"`
+	DiscountValue   int64     `json:"discountValue"`
+	DiscountAmount  int64     `json:"discountAmount"`
+	Currency        string    `json:"currency"`
+	DiscountPercent *int      `json:"discountPercent,omitempty"`
+	FixedDiscount   *float64  `json:"fixedDiscount,omitempty"`
+	MinCartAmount   *int64    `json:"minCartAmount,omitempty"`
+}
+
+// ValidationResult summarizes the financial impact of applying a coupon.
 type ValidationResult struct {
 	ID              uuid.UUID `json:"id"`
 	Code            string    `json:"code"`
@@ -31,37 +58,6 @@ type ValidationResult struct {
 	MinCartAmount   *int64    `json:"minCartAmount,omitempty"`
 }
 
-// AppliedCoupon is the authoritative coupon eligibility and discount result for
-// a given gross amount. It intentionally excludes shipping and tax: those are
-// the caller's pricing rules, not the coupon domain's. Consumers that only need
-// to enforce coupon rules (checkout, cart previews) should use this instead of
-// reimplementing them against the coupon tables.
-type AppliedCoupon struct {
-	ID              uuid.UUID
-	Code            string
-	DiscountType    string
-	DiscountValue   int64
-	DiscountAmount  int64
-	Currency        string
-	DiscountPercent *int
-	FixedDiscount   *float64
-	MinCartAmount   *int64
-}
-
-
-type CreateCouponInput struct {
-	Code          string
-	DiscountType  model.CouponDiscountType
-	DiscountValue int64
-	Currency      string
-	MinCartAmount *int64
-	UsageLimit    *int
-	PerUserLimit  *int
-	StartsAt      *time.Time
-	ExpiresAt     *time.Time
-	Status        model.CouponStatus
-}
-
 type CouponService struct {
 	runner database.Runner
 	repo   *CouponRepository
@@ -69,10 +65,10 @@ type CouponService struct {
 
 func NewService(runner database.Runner, repo *CouponRepository) *CouponService {
 	if runner == nil {
-		panic("coupon: database runner is required")
+		panic("coupon: runner is required")
 	}
 	if repo == nil {
-		panic("coupon: coupon repository is required")
+		panic("coupon: repo is required")
 	}
 	return &CouponService{
 		runner: runner,
@@ -80,23 +76,18 @@ func NewService(runner database.Runner, repo *CouponRepository) *CouponService {
 	}
 }
 
-// handleError maps repository errors to standard API errors.
+// handleError maps a repository error to a standard API error.
 func (s *CouponService) handleError(err error, fallbackMsg string) error {
 	if err == nil {
 		return nil
 	}
-	var apiErr *apierr.APIError
-	if errors.As(err, &apiErr) {
-		return apiErr
-	}
-	mapped := database.MapError(err)
+
+	mappedErr := database.MapError(err)
 	switch {
-	case errors.Is(mapped, database.ErrNotFound):
-		return apierr.NotFoundError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
-	case errors.Is(mapped, database.ErrConflict):
-		return apierr.ConflictError("A coupon with this code already exists").WithCode(errcode.CodeCouponAlreadyExists)
-	case errors.Is(mapped, database.ErrForeignKeyViolation):
-		return apierr.BadRequestError("Referenced record does not exist").WithCode(apierr.CodeInvalidInput)
+	case errors.Is(mappedErr, database.ErrNotFound):
+		return apierr.NotFoundError("Coupon not found").WithCode(errcode.CodeCouponNotFound).Wrap(err)
+	case errors.Is(mappedErr, database.ErrConflict):
+		return apierr.ConflictError("A coupon with this code already exists").WithCode(errcode.CodeCouponAlreadyExists).Wrap(err)
 	default:
 		return apierr.InternalServerError(fallbackMsg).WithCode(apierr.CodeInternalError).Wrap(err).WithStack()
 	}
@@ -105,9 +96,9 @@ func (s *CouponService) handleError(err error, fallbackMsg string) error {
 // GetByID finds a coupon by its UUID identifier.
 func (s *CouponService) GetByID(ctx context.Context, id uuid.UUID) (*model.Coupon, error) {
 	var c *model.Coupon
-	err := s.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		c, err = s.repo.GetByID(ctx, exec, id)
+		c, err = s.repo.GetByID(ctx, id)
 		return err
 	})
 	if err != nil {
@@ -116,9 +107,9 @@ func (s *CouponService) GetByID(ctx context.Context, id uuid.UUID) (*model.Coupo
 	return c, nil
 }
 
-// GetCodeByID resolves a coupon's code by its UUID identifier on the provided executor.
-func (s *CouponService) GetCodeByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (string, error) {
-	c, err := s.repo.GetByID(ctx, qe, id)
+// GetCodeByID resolves a coupon's code by its UUID identifier.
+func (s *CouponService) GetCodeByID(ctx context.Context, id uuid.UUID) (string, error) {
+	c, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return "", err
 	}
@@ -128,9 +119,9 @@ func (s *CouponService) GetCodeByID(ctx context.Context, qe database.QueryExecut
 // GetByCode finds a coupon by code string.
 func (s *CouponService) GetByCode(ctx context.Context, code string) (*model.Coupon, error) {
 	var c *model.Coupon
-	err := s.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		c, err = s.repo.GetByCode(ctx, exec, code)
+		c, err = s.repo.GetByCode(ctx, code)
 		return err
 	})
 	if err != nil {
@@ -145,9 +136,9 @@ func (s *CouponService) ListCoupons(ctx context.Context, filter ListCouponFilter
 	var page *pagination.CursorPage
 	filter.Limit = limit
 	filter.Cursor = cursor
-	err := s.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		list, page, err = s.repo.List(ctx, exec, filter)
+		list, page, err = s.repo.List(ctx, filter)
 		return err
 	})
 	if err != nil {
@@ -207,8 +198,8 @@ func (s *CouponService) CreateCoupon(ctx context.Context, in CreateCouponInput) 
 		Status:        status,
 	}
 
-	err := s.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return s.repo.Create(ctx, tx, c)
+	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.Create(ctx, c)
 	})
 	if err != nil {
 		return nil, s.handleError(err, "Failed to create coupon")
@@ -226,8 +217,8 @@ func (s *CouponService) UpdateStatus(ctx context.Context, id uuid.UUID, status m
 			WithCode(apierr.CodeValidationFailed)
 	}
 
-	err := s.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return s.repo.UpdateStatus(ctx, tx, id, status)
+	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.UpdateStatus(ctx, id, status)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to update coupon status")
@@ -237,8 +228,8 @@ func (s *CouponService) UpdateStatus(ctx context.Context, id uuid.UUID, status m
 
 // Delete permanently removes a coupon.
 func (s *CouponService) Delete(ctx context.Context, id uuid.UUID) error {
-	err := s.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return s.repo.Delete(ctx, tx, id)
+	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.Delete(ctx, id)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to delete coupon")
@@ -255,12 +246,12 @@ func (s *CouponService) ListRedemptions(ctx context.Context, couponID uuid.UUID,
 
 	var list []*RedemptionEntry
 	var page *pagination.CursorPage
-	err := s.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
-		if _, err := s.repo.GetByID(ctx, exec, couponID); err != nil {
+	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
+		if _, err := s.repo.GetByID(ctx, couponID); err != nil {
 			return err
 		}
 		var err error
-		list, page, err = s.repo.ListRedemptions(ctx, exec, couponID, limit, cursor)
+		list, page, err = s.repo.ListRedemptions(ctx, couponID, limit, cursor)
 		return err
 	})
 	if err != nil {
@@ -269,13 +260,11 @@ func (s *CouponService) ListRedemptions(ctx context.Context, couponID uuid.UUID,
 	return list, page, nil
 }
 
-
-
-// ApplyByCode validates and prices a coupon by code on the caller's executor.
+// ApplyByCode validates and prices a coupon by code within the active transaction
+// (or begins a new one if called standalone).
 // It locks the coupon row so concurrent redemptions are serialized in transactions.
 func (s *CouponService) ApplyByCode(
 	ctx context.Context,
-	tx *database.Tx,
 	code string,
 	grossTotal int64,
 	userID *uuid.UUID,
@@ -286,15 +275,23 @@ func (s *CouponService) ApplyByCode(
 			WithCode(apierr.CodeValidationFailed)
 	}
 
-	c, err := s.repo.GetByCodeAndLock(ctx, tx, trimmedCode)
+	var applied *AppliedCoupon
+	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
+		c, err := s.repo.GetByCodeAndLock(ctx, trimmedCode)
+		if err != nil {
+			return err
+		}
+
+		if err := s.validateCoupon(ctx, c, grossTotal, userID); err != nil {
+			return err
+		}
+		applied = s.computeDiscount(c, grossTotal)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	
-	if err := s.validateCoupon(ctx, tx, c, grossTotal, userID); err != nil {
-		return nil, err
-	}
-	return s.computeDiscount(c, grossTotal), nil
+	return applied, nil
 }
 
 // validateCoupon enforces the coupon invariants and computes the discount on the
@@ -302,7 +299,6 @@ func (s *CouponService) ApplyByCode(
 // their own presentation; rule violations are typed APIErrors.
 func (s *CouponService) validateCoupon(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	c *model.Coupon,
 	grossTotal int64,
 	userID *uuid.UUID,
@@ -313,10 +309,10 @@ func (s *CouponService) validateCoupon(
 	if err := s.validateMinCartAmount(c, grossTotal); err != nil {
 		return err
 	}
-	if err := s.validateGlobalUsageLimit(ctx, qe, c); err != nil {
+	if err := s.validateGlobalUsageLimit(ctx, c); err != nil {
 		return err
 	}
-	if err := s.validateUserUsageLimit(ctx, qe, c, userID); err != nil {
+	if err := s.validateUserUsageLimit(ctx, c, userID); err != nil {
 		return err
 	}
 	return nil
@@ -351,12 +347,12 @@ func (s *CouponService) validateMinCartAmount(c *model.Coupon, grossTotal int64)
 	return nil
 }
 
-func (s *CouponService) validateGlobalUsageLimit(ctx context.Context, qe database.QueryExecutor, c *model.Coupon) error {
+func (s *CouponService) validateGlobalUsageLimit(ctx context.Context, c *model.Coupon) error {
 	if c.UsageLimit == nil || *c.UsageLimit <= 0 {
 		return nil
 	}
 
-	usedCount, err := s.repo.GetRedemptionCount(ctx, qe, c.ID)
+	usedCount, err := s.repo.GetRedemptionCount(ctx, c.ID)
 	if err != nil {
 		return err
 	}
@@ -367,7 +363,7 @@ func (s *CouponService) validateGlobalUsageLimit(ctx context.Context, qe databas
 	return nil
 }
 
-func (s *CouponService) validateUserUsageLimit(ctx context.Context, qe database.QueryExecutor, c *model.Coupon, userID *uuid.UUID) error {
+func (s *CouponService) validateUserUsageLimit(ctx context.Context, c *model.Coupon, userID *uuid.UUID) error {
 	if userID == nil {
 		return nil
 	}
@@ -376,7 +372,7 @@ func (s *CouponService) validateUserUsageLimit(ctx context.Context, qe database.
 	if c.PerUserLimit != nil && *c.PerUserLimit > 0 {
 		userLimit = *c.PerUserLimit
 	}
-	userUsedCount, err := s.repo.GetUserRedemptionCount(ctx, qe, c.ID, *userID)
+	userUsedCount, err := s.repo.GetUserRedemptionCount(ctx, c.ID, *userID)
 	if err != nil {
 		return err
 	}
@@ -422,15 +418,14 @@ func (s *CouponService) computeDiscount(c *model.Coupon, grossTotal int64) *Appl
 	return applied
 }
 
-// calculateDiscount evaluates coupon constraints and calculates discount and totals on the provided connection.
+// calculateDiscount evaluates coupon constraints and calculates discount and totals.
 func (s *CouponService) calculateDiscount(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	c *model.Coupon,
 	grossTotal int64,
 	userID *uuid.UUID,
 ) (*ValidationResult, error) {
-	if err := s.validateCoupon(ctx, qe, c, grossTotal, userID); err != nil {
+	if err := s.validateCoupon(ctx, c, grossTotal, userID); err != nil {
 		return nil, err
 	}
 
@@ -478,13 +473,13 @@ func (s *CouponService) ValidateAndCalculate(
 	}
 
 	var result *ValidationResult
-	err := s.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
-		c, err := s.repo.GetByCode(ctx, exec, trimmedCode)
+	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
+		c, err := s.repo.GetByCode(ctx, trimmedCode)
 		if err != nil {
 			return err
 		}
 		var calcErr error
-		result, calcErr = s.calculateDiscount(ctx, exec, c, grossTotal, userID)
+		result, calcErr = s.calculateDiscount(ctx, c, grossTotal, userID)
 		return calcErr
 	})
 	if err != nil {
@@ -496,7 +491,6 @@ func (s *CouponService) ValidateAndCalculate(
 
 func (s *CouponService) RecordRedemption(
 	ctx context.Context,
-	tx *database.Tx,
 	couponID uuid.UUID,
 	userID uuid.UUID,
 	orderID uuid.UUID,
@@ -507,11 +501,13 @@ func (s *CouponService) RecordRedemption(
 		return apierr.BadRequestError("Coupon ID, User ID, and Order ID are required").
 			WithCode(apierr.CodeInvalidInput)
 	}
-	return s.repo.RecordRedemption(ctx, tx, &model.CouponRedemption{
-		CouponID:       couponID,
-		UserID:         userID,
-		OrderID:        orderID,
-		DiscountAmount: discountAmount,
-		Currency:       currency,
+	return s.runner.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.RecordRedemption(ctx, &model.CouponRedemption{
+			CouponID:       couponID,
+			UserID:         userID,
+			OrderID:        orderID,
+			DiscountAmount: discountAmount,
+			Currency:       currency,
+		})
 	})
 }

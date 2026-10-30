@@ -24,9 +24,13 @@ func NewNotificationRepository() *NotificationRepository {
 // Create inserts a new notification record into PostgreSQL and scans the generated created_at timestamp.
 func (r *NotificationRepository) Create(
 	ctx context.Context,
-	tx *database.Tx,
 	n *model.UserNotification,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO user_notifications (
 			user_id,
@@ -58,11 +62,15 @@ func (r *NotificationRepository) Create(
 // sorted newest-first (created_at DESC).
 func (r *NotificationRepository) ListByUser(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	userID uuid.UUID,
 	unreadOnly bool,
 	q *pagination.ListQuery,
 ) ([]*model.UserNotification, int, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	var countQuery string
 	if unreadOnly {
 		countQuery = `SELECT COUNT(*) FROM user_notifications WHERE user_id = $1 AND read_at IS NULL`
@@ -71,7 +79,7 @@ func (r *NotificationRepository) ListByUser(
 	}
 
 	var total int
-	if err := qe.QueryRow(ctx, countQuery, userID).Scan(&total); err != nil {
+	if err := executor.QueryRow(ctx, countQuery, userID).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count user notifications: %w", err)
 	}
 
@@ -98,7 +106,7 @@ func (r *NotificationRepository) ListByUser(
 		`
 	}
 
-	rows, err := qe.Query(ctx, selectQuery, userID, q.PageSize, q.Offset)
+	rows, err := executor.Query(ctx, selectQuery, userID, q.PageSize, q.Offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list user notifications: %w", err)
 	}
@@ -129,12 +137,16 @@ func (r *NotificationRepository) ListByUser(
 // CountUnreadByUser queries the index on unread notifications (read_at IS NULL) for the given user.
 func (r *NotificationRepository) CountUnreadByUser(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	userID uuid.UUID,
 ) (int, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	query := `SELECT COUNT(*) FROM user_notifications WHERE user_id = $1 AND read_at IS NULL`
 	var count int
-	if err := qe.QueryRow(ctx, query, userID).Scan(&count); err != nil {
+	if err := executor.QueryRow(ctx, query, userID).Scan(&count); err != nil {
 		return 0, fmt.Errorf("count unread user notifications: %w", err)
 	}
 	return count, nil
@@ -144,9 +156,14 @@ func (r *NotificationRepository) CountUnreadByUser(
 // Uses COALESCE(read_at, now()) to be idempotent: if already read, it leaves read_at intact and succeeds.
 func (r *NotificationRepository) MarkAsRead(
 	ctx context.Context,
-	tx *database.Tx,
-	id int64, userID uuid.UUID,
+	id int64,
+	userID uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE user_notifications
 		SET read_at = COALESCE(read_at, now())
@@ -165,9 +182,13 @@ func (r *NotificationRepository) MarkAsRead(
 // MarkAllAsRead marks all unread notifications for a user as read, returning the count of modified rows.
 func (r *NotificationRepository) MarkAllAsRead(
 	ctx context.Context,
-	tx *database.Tx,
 	userID uuid.UUID,
 ) (int64, error) {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	query := `
 		UPDATE user_notifications
 		SET read_at = now()
@@ -183,9 +204,14 @@ func (r *NotificationRepository) MarkAllAsRead(
 // Delete removes a notification by id, scoped strictly to the authenticated user ID.
 func (r *NotificationRepository) Delete(
 	ctx context.Context,
-	tx *database.Tx,
-	id int64, userID uuid.UUID,
+	id int64,
+	userID uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `DELETE FROM user_notifications WHERE id = $1 AND user_id = $2`
 	cmd, err := tx.Exec(ctx, query, id, userID)
 	if err != nil {

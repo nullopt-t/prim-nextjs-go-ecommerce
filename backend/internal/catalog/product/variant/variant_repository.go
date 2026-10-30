@@ -72,9 +72,13 @@ func NewRepository() *VariantRepository {
 // Create inserts a new product variant record into the database.
 func (vr *VariantRepository) Create(
 	ctx context.Context,
-	tx *database.Tx,
 	variant *model.ProductVariant,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	if variant.Attributes == nil {
 		variant.Attributes = make(map[string]any)
 	}
@@ -97,7 +101,7 @@ func (vr *VariantRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err := tx.QueryRow(
+	err = tx.QueryRow(
 		ctx,
 		query,
 		variant.ID,
@@ -120,28 +124,30 @@ func (vr *VariantRepository) Create(
 // GetByID fetches a single variant by ID.
 func (vr *VariantRepository) GetByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (*model.ProductVariant, error) {
-	return vr.get(ctx, qe, &variantFilter{ID: &id})
+	return vr.get(ctx, &variantFilter{ID: &id})
 }
 
 // GetBySKU fetches a single variant by its SKU.
 func (vr *VariantRepository) GetBySKU(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	sku string,
 ) (*model.ProductVariant, error) {
-	return vr.get(ctx, qe, &variantFilter{SKU: &sku})
+	return vr.get(ctx, &variantFilter{SKU: &sku})
 }
 
 func (vr *VariantRepository) get(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	filter *variantFilter,
 ) (*model.ProductVariant, error) {
 	if filter == nil || (filter.ID == nil && filter.SKU == nil && filter.ProductID == nil) {
 		return nil, errors.New("get variant: filter requires at least one condition")
+	}
+
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	whereClauses := make([]string, 0, 3)
@@ -196,7 +202,7 @@ func (vr *VariantRepository) get(
 		LIMIT 1
 	`, strings.Join(whereClauses, " AND "))
 
-	rows, err := qe.Query(ctx, query, args...)
+	rows, err := executor.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("get variant query: %w", err)
 	}
@@ -252,12 +258,16 @@ func (vr *VariantRepository) get(
 // Update applies partial updates to variant fields and refreshes the updated_at timestamp.
 func (vr *VariantRepository) Update(
 	ctx context.Context,
-	tx *database.Tx,
 	variantID uuid.UUID,
 	fields UpdateVariantFields,
 ) error {
 	if variantID == uuid.Nil {
 		return errors.New("update variant: variantID is required")
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	setClauses := make([]string, 0, 8)
@@ -339,11 +349,15 @@ func (vr *VariantRepository) Update(
 // ClearDefaultFlags unsets default_variant_id on the specified product.
 func (vr *VariantRepository) ClearDefaultFlags(
 	ctx context.Context,
-	tx *database.Tx,
 	productID uuid.UUID,
 ) error {
 	if productID == uuid.Nil {
 		return errors.New("clear default flags: productID is required")
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	query := `
@@ -352,7 +366,7 @@ func (vr *VariantRepository) ClearDefaultFlags(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	_, err := tx.Exec(ctx, query, productID)
+	_, err = tx.Exec(ctx, query, productID)
 	if err != nil {
 		return fmt.Errorf("clear default flags: %w", err)
 	}
@@ -363,12 +377,16 @@ func (vr *VariantRepository) ClearDefaultFlags(
 // SetDefaultVariant sets default_variant_id on the specified product to the given variantID.
 func (vr *VariantRepository) SetDefaultVariant(
 	ctx context.Context,
-	tx *database.Tx,
 	productID uuid.UUID,
 	variantID uuid.UUID,
 ) error {
 	if productID == uuid.Nil || variantID == uuid.Nil {
 		return errors.New("set default variant: productID and variantID are required")
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	query := `
@@ -377,7 +395,7 @@ func (vr *VariantRepository) SetDefaultVariant(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	_, err := tx.Exec(ctx, query, productID, variantID)
+	_, err = tx.Exec(ctx, query, productID, variantID)
 	if err != nil {
 		return fmt.Errorf("set default variant: %w", err)
 	}
@@ -389,11 +407,15 @@ func (vr *VariantRepository) SetDefaultVariant(
 // Supports full-text title search and dynamic sorting.
 func (vr *VariantRepository) ListByProductID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	opts ListVariantOptions,
 ) (*pagination.PagedResult[model.ProductVariant], error) {
 	if opts.ProductID == uuid.Nil {
 		return nil, errors.New("list variants: productID is required")
+	}
+
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	q := opts.Query
@@ -421,7 +443,7 @@ func (vr *VariantRepository) ListByProductID(
 
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM product_variants pv WHERE %s", whereStmt)
 	var total int
-	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := executor.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, fmt.Errorf("list variants count: %w", err)
 	}
 
@@ -478,7 +500,7 @@ func (vr *VariantRepository) ListByProductID(
 
 	queryArgs := append(slices.Clone(args), q.PageSize, q.Offset)
 
-	rows, err := qe.Query(ctx, selectQuery, queryArgs...)
+	rows, err := executor.Query(ctx, selectQuery, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("list variants select: %w", err)
 	}
@@ -549,12 +571,22 @@ type ProductVariationContext struct {
 // concurrent variant writes.
 func (vr *VariantRepository) GetVariationContext(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	productID uuid.UUID,
 	forUpdate bool,
 ) (*ProductVariationContext, error) {
 	if productID == uuid.Nil {
 		return nil, errors.New("get variation context: productID is required")
+	}
+
+	var qe database.QueryExecutor
+	var err error
+	if forUpdate {
+		qe, err = database.RequireTx(ctx)
+	} else {
+		qe, err = database.Executor(ctx)
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	query := `
@@ -583,11 +615,15 @@ func (vr *VariantRepository) GetVariationContext(
 // exact same attribute combination. attributes is compared as canonical jsonb.
 func (vr *VariantRepository) CombinationExists(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	productID uuid.UUID,
 	attributes map[string]any,
 	excludeVariantID *uuid.UUID,
 ) (bool, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return false, err
+	}
+
 	query := `
 		SELECT EXISTS(
 			SELECT 1 FROM product_variants
@@ -598,7 +634,7 @@ func (vr *VariantRepository) CombinationExists(
 		)
 	`
 	var exists bool
-	if err := qe.QueryRow(ctx, query, productID, attributes, excludeVariantID).Scan(&exists); err != nil {
+	if err := executor.QueryRow(ctx, query, productID, attributes, excludeVariantID).Scan(&exists); err != nil {
 		return false, fmt.Errorf("check variant combination: %w", err)
 	}
 	return exists, nil
@@ -607,16 +643,20 @@ func (vr *VariantRepository) CombinationExists(
 // CountByProductID returns the count of active (non-deleted) variants for a given product.
 func (vr *VariantRepository) CountByProductID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	productID uuid.UUID,
 ) (int, error) {
 	if productID == uuid.Nil {
 		return 0, errors.New("count variants: productID is required")
 	}
 
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	query := `SELECT COUNT(*) FROM product_variants WHERE product_id = $1 AND deleted_at IS NULL`
 	var count int
-	err := qe.QueryRow(ctx, query, productID).Scan(&count)
+	err = executor.QueryRow(ctx, query, productID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("count variants: %w", err)
 	}
@@ -627,15 +667,19 @@ func (vr *VariantRepository) CountByProductID(
 // GetProductType returns the classification (simple or variable) of a product.
 func (vr *VariantRepository) GetProductType(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	productID uuid.UUID,
 ) (model.ProductType, error) {
 	if productID == uuid.Nil {
 		return "", errors.New("get product type: productID is required")
 	}
 
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	var productType model.ProductType
-	err := qe.QueryRow(ctx,
+	err = executor.QueryRow(ctx,
 		`SELECT product_type FROM products WHERE id = $1 AND deleted_at IS NULL`,
 		productID,
 	).Scan(&productType)
@@ -649,11 +693,15 @@ func (vr *VariantRepository) GetProductType(
 // Delete marks a variant as soft-deleted by setting deleted_at = now().
 func (vr *VariantRepository) Delete(
 	ctx context.Context,
-	tx *database.Tx,
 	variantID uuid.UUID,
 ) error {
 	if variantID == uuid.Nil {
 		return errors.New("delete variant: variantID is required")
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	query := `
@@ -687,11 +735,15 @@ func (vr *VariantRepository) Delete(
 // SetFirstAvailableAsDefault sets the oldest active variant of a product as the new default.
 func (vr *VariantRepository) SetFirstAvailableAsDefault(
 	ctx context.Context,
-	tx *database.Tx,
 	productID uuid.UUID,
 ) error {
 	if productID == uuid.Nil {
 		return errors.New("set first available as default: productID is required")
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	query := `
@@ -706,7 +758,7 @@ func (vr *VariantRepository) SetFirstAvailableAsDefault(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	_, err := tx.Exec(ctx, query, productID)
+	_, err = tx.Exec(ctx, query, productID)
 	if err != nil {
 		return fmt.Errorf("set first available as default: %w", err)
 	}
@@ -714,14 +766,56 @@ func (vr *VariantRepository) SetFirstAvailableAsDefault(
 	return nil
 }
 
+// GetDeletedVariantInfo retrieves product_id and default_variant_id for a deleted variant.
+func (vr *VariantRepository) GetDeletedVariantInfo(
+	ctx context.Context,
+	variantID uuid.UUID,
+) (uuid.UUID, *uuid.UUID, error) {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return uuid.Nil, nil, err
+	}
+
+	var (
+		productID        uuid.UUID
+		defaultVariantID *uuid.UUID
+	)
+	err = tx.QueryRow(ctx,
+		`SELECT pv.product_id, p.default_variant_id
+		 FROM product_variants pv
+		 JOIN products p ON pv.product_id = p.id
+		 WHERE pv.id = $1 AND pv.deleted_at IS NOT NULL`,
+		variantID,
+	).Scan(&productID, &defaultVariantID)
+	return productID, defaultVariantID, err
+}
+
+// LockProduct locks the product row for update.
+func (vr *VariantRepository) LockProduct(
+	ctx context.Context,
+	productID uuid.UUID,
+) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
+	var pID uuid.UUID
+	return tx.QueryRow(ctx, `SELECT id FROM products WHERE id = $1 FOR UPDATE`, productID).Scan(&pID)
+}
+
 // Restore un-deletes a variant by resetting deleted_at to NULL.
 func (vr *VariantRepository) Restore(
 	ctx context.Context,
-	tx *database.Tx,
 	variantID uuid.UUID,
 ) error {
 	if variantID == uuid.Nil {
 		return errors.New("restore variant: variantID is required")
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	query := `
@@ -749,9 +843,13 @@ func (vr *VariantRepository) Restore(
 // If in.SortOrder is negative, it appends to the end with MAX(sort_order) + 1.
 func (vr *VariantRepository) AddMedia(
 	ctx context.Context,
-	tx *database.Tx,
 	in CreateVariantMediaInput,
 ) (*model.VariantMedia, error) {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	var (
 		mediaID   int64
 		sortOrder int
@@ -828,11 +926,15 @@ func (vr *VariantRepository) AddMedia(
 // ListMediaByVariantID retrieves all media attachments for a single variant ordered by sort_order.
 func (vr *VariantRepository) ListMediaByVariantID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	variantID uuid.UUID,
 ) ([]*model.VariantMedia, error) {
 	if variantID == uuid.Nil {
 		return nil, errors.New("list variant media: variantID is required")
+	}
+
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	query := `
@@ -854,7 +956,7 @@ func (vr *VariantRepository) ListMediaByVariantID(
 		ORDER BY m.sort_order ASC
 	`
 
-	rows, err := qe.Query(ctx, query, variantID)
+	rows, err := executor.Query(ctx, query, variantID)
 	if err != nil {
 		return nil, fmt.Errorf("list variant media query: %w", err)
 	}
@@ -893,12 +995,16 @@ func (vr *VariantRepository) ListMediaByVariantID(
 // ListMediaByVariantIDs executes a batch query retrieving media items for multiple variants.
 func (vr *VariantRepository) ListMediaByVariantIDs(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	variantIDs []uuid.UUID,
 ) (map[uuid.UUID][]*model.VariantMedia, error) {
 	result := make(map[uuid.UUID][]*model.VariantMedia, len(variantIDs))
 	if len(variantIDs) == 0 {
 		return result, nil
+	}
+
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	query := `
@@ -920,7 +1026,7 @@ func (vr *VariantRepository) ListMediaByVariantIDs(
 		ORDER BY m.sort_order ASC
 	`
 
-	rows, err := qe.Query(ctx, query, variantIDs)
+	rows, err := executor.Query(ctx, query, variantIDs)
 	if err != nil {
 		return nil, fmt.Errorf("list media by variant IDs: %w", err)
 	}
@@ -958,12 +1064,16 @@ func (vr *VariantRepository) ListMediaByVariantIDs(
 // RemoveMedia deletes a media attachment and resequences remaining media to keep sort_order contiguous 0..N-1.
 func (vr *VariantRepository) RemoveMedia(
 	ctx context.Context,
-	tx *database.Tx,
 	variantID uuid.UUID,
 	mediaID int64,
 ) error {
 	if variantID == uuid.Nil || mediaID == 0 {
 		return errors.New("remove variant media: variantID and mediaID are required")
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	query := `
@@ -999,12 +1109,16 @@ func (vr *VariantRepository) RemoveMedia(
 // ReorderMedia applies a batch update of sort_order values for a variant's media attachments.
 func (vr *VariantRepository) ReorderMedia(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	variantID uuid.UUID,
 	orderedMediaIDs []int64,
 ) error {
 	if variantID == uuid.Nil || len(orderedMediaIDs) == 0 {
 		return nil
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	orders := make([]int, len(orderedMediaIDs))
@@ -1021,7 +1135,7 @@ func (vr *VariantRepository) ReorderMedia(
 		WHERE vm.id = batch.id AND vm.variant_id = $3
 	`
 
-	_, err := qe.Exec(ctx, query, orderedMediaIDs, orders, variantID)
+	_, err = tx.Exec(ctx, query, orderedMediaIDs, orders, variantID)
 	if err != nil {
 		return fmt.Errorf("reorder variant media: %w", err)
 	}
@@ -1032,14 +1146,18 @@ func (vr *VariantRepository) ReorderMedia(
 // ClearThumbnail unlinks the thumbnail storage object from a product variant.
 func (r *VariantRepository) ClearThumbnail(
 	ctx context.Context,
-	tx *database.Tx,
 	variantID uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE product_variants
 		SET thumbnail_object_id = NULL, updated_at = now()
 		WHERE id = $1 AND deleted_at IS NULL
 	`
-	_, err := tx.Exec(ctx, query, variantID)
+	_, err = tx.Exec(ctx, query, variantID)
 	return err
 }

@@ -26,10 +26,14 @@ func NewRepository() *Repository {
 }
 
 // GetAll returns every stored setting ordered by key.
-func (r *Repository) GetAll(ctx context.Context, qe database.QueryExecutor) ([]Item, error) {
+func (r *Repository) GetAll(ctx context.Context) ([]Item, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	const query = `SELECT key, value, updated_at FROM admin_settings ORDER BY key`
 
-	rows, err := qe.Query(ctx, query)
+	rows, err := executor.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("list settings: %w", err)
 	}
@@ -50,7 +54,11 @@ func (r *Repository) GetAll(ctx context.Context, qe database.QueryExecutor) ([]I
 }
 
 // Upsert inserts or updates a single setting by key.
-func (r *Repository) Upsert(ctx context.Context, qe database.QueryExecutor, key string, value interface{}) error {
+func (r *Repository) Upsert(ctx context.Context, key string, value interface{}) error {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return err
+	}
 	const query = `
 		INSERT INTO admin_settings (key, value, updated_at)
 		VALUES ($1, $2, now())
@@ -63,7 +71,7 @@ func (r *Repository) Upsert(ctx context.Context, qe database.QueryExecutor, key 
 		return fmt.Errorf("encode setting %s: %w", key, err)
 	}
 
-	if _, err := qe.Exec(ctx, query, key, payload); err != nil {
+	if _, err := executor.Exec(ctx, query, key, payload); err != nil {
 		return fmt.Errorf("upsert setting %s: %w", key, err)
 	}
 	return nil

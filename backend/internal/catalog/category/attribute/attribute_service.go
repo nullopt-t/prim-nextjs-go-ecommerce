@@ -31,9 +31,9 @@ func NewService(dr database.Runner, repo *AttributeRepository) *AttributeService
 
 func (s *AttributeService) ListAttributes(ctx context.Context) ([]AttributeItem, error) {
 	var list []AttributeItem
-	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		list, err = s.repo.ListAttributes(ctx, exec)
+		list, err = s.repo.ListAttributes(ctx)
 		return err
 	})
 	if err != nil {
@@ -44,9 +44,9 @@ func (s *AttributeService) ListAttributes(ctx context.Context) ([]AttributeItem,
 
 func (s *AttributeService) GetAttributeByID(ctx context.Context, id uuid.UUID) (*AttributeItem, error) {
 	var item *AttributeItem
-	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		item, err = s.repo.GetByID(ctx, exec, id)
+		item, err = s.repo.GetByID(ctx, id)
 		return err
 	})
 	if err != nil {
@@ -56,14 +56,14 @@ func (s *AttributeService) GetAttributeByID(ctx context.Context, id uuid.UUID) (
 }
 
 func (s *AttributeService) CreateAttribute(ctx context.Context, ai *AttributeItem) error {
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
 		if ai.ID == uuid.Nil {
 			ai.ID = uuid.New()
 		}
 		if ai.ValueType == "" {
 			ai.ValueType = "text"
 		}
-		return s.repo.CreateAttribute(ctx, tx, ai)
+		return s.repo.CreateAttribute(ctx, ai)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to create attribute")
@@ -81,8 +81,8 @@ type UpdateAttributeInput struct {
 }
 
 func (s *AttributeService) UpdateAttribute(ctx context.Context, id uuid.UUID, in UpdateAttributeInput) error {
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return s.repo.UpdateAttribute(ctx, tx, id, UpdateAttributeFields(in))
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.UpdateAttribute(ctx, id, UpdateAttributeFields(in))
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to update attribute")
@@ -91,8 +91,8 @@ func (s *AttributeService) UpdateAttribute(ctx context.Context, id uuid.UUID, in
 }
 
 func (s *AttributeService) DeleteAttribute(ctx context.Context, id uuid.UUID) error {
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return s.repo.DeleteAttribute(ctx, tx, id)
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.DeleteAttribute(ctx, id)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to delete attribute")

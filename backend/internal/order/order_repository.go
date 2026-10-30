@@ -24,13 +24,16 @@ func NewRepository() *Repository {
 
 // --- Order CRUD ---
 
-// CreateOrder inserts a new order record into the orders table within the provided QueryExecutor transaction.
+// CreateOrder inserts a new order record into the orders table within the active transaction.
 // It serializes the structured ShippingAddress value to JSONB and scans the server-assigned timestamps.
 func (r *Repository) CreateOrder(
 	ctx context.Context,
-	tx *database.Tx,
 	o *model.Order,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	shippingJSON, err := json.Marshal(o.ShippingAddress)
 	if err != nil {
 		return fmt.Errorf("marshal shipping address: %w", err)
@@ -81,14 +84,17 @@ func (r *Repository) CreateOrder(
 // It records the variant ID, quantity, purchase price, and the immutable product snapshot.
 func (r *Repository) AddOrderItem(
 	ctx context.Context,
-	tx *database.Tx,
 	item *model.OrderItem,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	query := `
 		INSERT INTO order_items (id, order_id, variant_id, quantity, price_at_purchase, product_snapshot)
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`
-	_, err := tx.Exec(
+	_, err = tx.Exec(
 		ctx,
 		query,
 		item.ID,
@@ -108,16 +114,19 @@ func (r *Repository) AddOrderItem(
 // recording state transitions, optional operational notes, and timestamps.
 func (r *Repository) AddStatusHistory(
 	ctx context.Context,
-	tx *database.Tx,
 	orderID uuid.UUID,
 	status model.OrderStatus,
 	notes *string,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	query := `
 		INSERT INTO order_status_history (order_id, status, notes, created_at)
 		VALUES ($1, $2, $3, now())
 	`
-	_, err := tx.Exec(ctx, query, orderID, status, notes)
+	_, err = tx.Exec(ctx, query, orderID, status, notes)
 	if err != nil {
 		return fmt.Errorf("add status history: %w", err)
 	}
@@ -128,9 +137,12 @@ func (r *Repository) AddStatusHistory(
 // It also queries and hydrates the associated order line items via GetOrderItems.
 func (r *Repository) GetOrderByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (*model.Order, error) {
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
 		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
@@ -149,7 +161,7 @@ func (r *Repository) GetOrderByID(
 	var couponCode *string
 	var paymentMethod, trackingNumber, locale, carrier, trackingURL *string
 
-	err := row.Scan(
+	err = row.Scan(
 		&o.ID,
 		&o.CustomerID,
 		&o.CustomerEmail,
@@ -188,7 +200,7 @@ func (r *Repository) GetOrderByID(
 		return nil, fmt.Errorf("unmarshal shipping address: %w", err)
 	}
 
-	items, err := r.GetOrderItems(ctx, qe, o.ID)
+	items, err := r.GetOrderItems(ctx, o.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get order items: %w", err)
 	}
@@ -201,9 +213,12 @@ func (r *Repository) GetOrderByID(
 // an exclusive row-level lock (FOR UPDATE) within an active transaction.
 func (r *Repository) GetOrderByIDForUpdate(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (*model.Order, error) {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
 		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
@@ -216,14 +231,14 @@ func (r *Repository) GetOrderByIDForUpdate(
 		WHERE o.id = $1
 		FOR UPDATE OF o
 	`
-	row := qe.QueryRow(ctx, query, id)
+	row := tx.QueryRow(ctx, query, id)
 
 	var o model.Order
 	var shippingBytes []byte
 	var couponCode *string
 	var paymentMethod, trackingNumber, locale, carrier, trackingURL *string
 
-	err := row.Scan(
+	err = row.Scan(
 		&o.ID,
 		&o.CustomerID,
 		&o.CustomerEmail,
@@ -262,7 +277,7 @@ func (r *Repository) GetOrderByIDForUpdate(
 		return nil, fmt.Errorf("unmarshal shipping address: %w", err)
 	}
 
-	items, err := r.GetOrderItems(ctx, qe, o.ID)
+	items, err := r.GetOrderItems(ctx, o.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get order items: %w", err)
 	}
@@ -275,9 +290,12 @@ func (r *Repository) GetOrderByIDForUpdate(
 // It performs N+1 queries by calling GetOrderItems for each returned order.
 func (r *Repository) GetOrdersByCustomerID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	customerID uuid.UUID,
 ) ([]model.Order, error) {
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
 		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
@@ -354,7 +372,7 @@ func (r *Repository) GetOrdersByCustomerID(
 			orderIDs[i] = orders[i].ID
 		}
 
-		itemsMap, err := r.GetOrderItemsByOrderIDs(ctx, qe, orderIDs)
+		itemsMap, err := r.GetOrderItemsByOrderIDs(ctx, orderIDs)
 		if err != nil {
 			return nil, fmt.Errorf("batch get order items: %w", err)
 		}
@@ -370,9 +388,12 @@ func (r *Repository) GetOrdersByCustomerID(
 // GetOrderItems fetches all line item rows associated with a given order ID.
 func (r *Repository) GetOrderItems(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	orderID uuid.UUID,
 ) ([]model.OrderItem, error) {
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
 		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot
 		FROM order_items
@@ -406,7 +427,6 @@ func (r *Repository) GetOrderItems(
 // GetOrderItemsByOrderIDs fetches line items for multiple order IDs in a single query.
 func (r *Repository) GetOrderItemsByOrderIDs(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	orderIDs []uuid.UUID,
 ) (map[uuid.UUID][]model.OrderItem, error) {
 	result := make(map[uuid.UUID][]model.OrderItem, len(orderIDs))
@@ -414,6 +434,10 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 		return result, nil
 	}
 
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
 		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot
 		FROM order_items
@@ -447,10 +471,13 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 // Returns pgx.ErrNoRows if the target order ID was not found.
 func (r *Repository) UpdateOrderStatus(
 	ctx context.Context,
-	tx *database.Tx,
 	orderID uuid.UUID,
 	status model.OrderStatus,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	query := `
 		UPDATE orders
 		SET status = $1, updated_at = NOW()
@@ -487,9 +514,12 @@ type OrderListFilter struct {
 // ListOrders fetches a filtered, paginated slice of orders from the database.
 func (r *Repository) ListOrders(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	filter OrderListFilter,
 ) ([]model.Order, error) {
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
 		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
@@ -603,7 +633,7 @@ func (r *Repository) ListOrders(
 			orderIDs[i] = orders[i].ID
 		}
 
-		itemsMap, err := r.GetOrderItemsByOrderIDs(ctx, qe, orderIDs)
+		itemsMap, err := r.GetOrderItemsByOrderIDs(ctx, orderIDs)
 		if err != nil {
 			return nil, fmt.Errorf("batch get order items: %w", err)
 		}
@@ -619,9 +649,12 @@ func (r *Repository) ListOrders(
 // CountOrders returns the total number of orders matching the specified filter criteria.
 func (r *Repository) CountOrders(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	filter OrderListFilter,
 ) (int, error) {
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return 0, err
+	}
 	query := `SELECT COUNT(*) FROM orders WHERE 1=1`
 	args := []any{}
 	i := 1
@@ -680,7 +713,11 @@ type PaymentItem struct {
 	UpdatedAt             time.Time `json:"updatedAt"`
 }
 
-func (r *Repository) GetDashboardStats(ctx context.Context, qe database.QueryExecutor) (*DashboardStats, error) {
+func (r *Repository) GetDashboardStats(ctx context.Context) (*DashboardStats, error) {
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	stats := &DashboardStats{}
 
 	query := `
@@ -696,7 +733,7 @@ func (r *Repository) GetDashboardStats(ctx context.Context, qe database.QueryExe
 			COUNT(*) FILTER (WHERE status = 'cancelled')
 		FROM orders
 	`
-	err := qe.QueryRow(ctx, query).Scan(
+	err = qe.QueryRow(ctx, query).Scan(
 		&stats.TotalRevenue,
 		&stats.TotalOrders,
 		&stats.TotalCustomers,
@@ -762,7 +799,11 @@ type PaymentListFilter struct {
 	Cursor *pagination.Keyset
 }
 
-func (r *Repository) ListPayments(ctx context.Context, qe database.QueryExecutor, filter PaymentListFilter) ([]PaymentItem, *pagination.CursorPage, error) {
+func (r *Repository) ListPayments(ctx context.Context, filter PaymentListFilter) ([]PaymentItem, *pagination.CursorPage, error) {
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
 	query := `
 		SELECT p.id, p.order_id, p.amount, p.currency, p.status, p.provider, p.provider_transaction_id,
 		       COALESCE(o.customer_email, 'customer@example.com'), p.created_at, p.updated_at
@@ -824,7 +865,11 @@ func (r *Repository) ListPayments(ctx context.Context, qe database.QueryExecutor
 	return payments, page, nil
 }
 
-func (r *Repository) UpdatePaymentStatus(ctx context.Context, tx *database.Tx, id uuid.UUID, status string) error {
+func (r *Repository) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, status string) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	query := `UPDATE payments SET status = $1::payment_status, updated_at = NOW() WHERE id = $2`
 	tag, err := tx.Exec(ctx, query, status, id)
 	if err != nil {
@@ -839,9 +884,13 @@ func (r *Repository) UpdatePaymentStatus(ctx context.Context, tx *database.Tx, i
 // GetPaymentStatusForUpdate locks a payment row and returns its current status.
 // Callers use it to validate state transitions (e.g. only captured payments may
 // be refunded) while serializing concurrent updates on the same payment.
-func (r *Repository) GetPaymentStatusForUpdate(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (string, error) {
+func (r *Repository) GetPaymentStatusForUpdate(ctx context.Context, id uuid.UUID) (string, error) {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return "", err
+	}
 	var status string
-	err := qe.QueryRow(ctx, `SELECT status FROM payments WHERE id = $1 FOR UPDATE`, id).Scan(&status)
+	err = tx.QueryRow(ctx, `SELECT status FROM payments WHERE id = $1 FOR UPDATE`, id).Scan(&status)
 	if err != nil {
 		return "", fmt.Errorf("get payment status for update: %w", err)
 	}
@@ -851,9 +900,13 @@ func (r *Repository) GetPaymentStatusForUpdate(ctx context.Context, qe database.
 // GetPaymentOrderIDForUpdate locks a payment row and returns its owning order
 // id, so a status transition (e.g. capture) can act on the order's inventory
 // reservations within the same transaction.
-func (r *Repository) GetPaymentOrderIDForUpdate(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (uuid.UUID, error) {
+func (r *Repository) GetPaymentOrderIDForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return uuid.Nil, err
+	}
 	var orderID uuid.UUID
-	err := qe.QueryRow(ctx, `SELECT order_id FROM payments WHERE id = $1 FOR UPDATE`, id).Scan(&orderID)
+	err = tx.QueryRow(ctx, `SELECT order_id FROM payments WHERE id = $1 FOR UPDATE`, id).Scan(&orderID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("get payment order id for update: %w", err)
 	}
@@ -862,12 +915,15 @@ func (r *Repository) GetPaymentOrderIDForUpdate(ctx context.Context, qe database
 
 func (r *Repository) UpdateOrderTracking(
 	ctx context.Context,
-	tx *database.Tx,
 	orderID uuid.UUID,
 	trackingNumber string,
 	carrier *string,
 	trackingURL *string,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	query := `UPDATE orders SET tracking_number = $1, carrier = $2, tracking_url = $3, updated_at = NOW() WHERE id = $4`
 	tag, err := tx.Exec(ctx, query, trackingNumber, carrier, trackingURL, orderID)
 	if err != nil {
@@ -879,10 +935,12 @@ func (r *Repository) UpdateOrderTracking(
 	return nil
 }
 
-// CreatePayment records a payment transaction for an order on the caller's
-// query executor. The order domain owns the payments table, so other domains
-// persist payment records through this method rather than raw SQL.
-func (r *Repository) CreatePayment(ctx context.Context, tx *database.Tx, p *model.Payment) error {
+// CreatePayment records a payment transaction for an order on the active transaction.
+func (r *Repository) CreatePayment(ctx context.Context, p *model.Payment) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	query := `
 		INSERT INTO payments (id, order_id, amount, currency, status, provider, provider_transaction_id, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
@@ -904,9 +962,12 @@ func (r *Repository) CreatePayment(ctx context.Context, tx *database.Tx, p *mode
 }
 
 // RefundOrFailPaymentsForOrder closes every still-open payment of a cancelled
-// order: captured funds become refunded, anything else becomes failed. The
-// order domain owns the payments table, so this lives with the repository.
-func (r *Repository) RefundOrFailPaymentsForOrder(ctx context.Context, qe database.QueryExecutor, orderID uuid.UUID) error {
+// order: captured funds become refunded, anything else becomes failed.
+func (r *Repository) RefundOrFailPaymentsForOrder(ctx context.Context, orderID uuid.UUID) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	query := `
 		UPDATE payments
 		SET status = CASE
@@ -916,7 +977,7 @@ func (r *Repository) RefundOrFailPaymentsForOrder(ctx context.Context, qe databa
 		updated_at = now()
 		WHERE order_id = $1 AND status NOT IN ('refunded'::payment_status, 'failed'::payment_status)
 	`
-	if _, err := qe.Exec(ctx, query, orderID); err != nil {
+	if _, err := tx.Exec(ctx, query, orderID); err != nil {
 		return fmt.Errorf("refund or fail payments for order: %w", err)
 	}
 	return nil
@@ -925,7 +986,11 @@ func (r *Repository) RefundOrFailPaymentsForOrder(ctx context.Context, qe databa
 // FailPendingPaymentsForOrder marks never-captured payments as failed. It is
 // used when an unpaid order's stock hold lapses, so stale payments no longer
 // look receivable.
-func (r *Repository) FailPendingPaymentsForOrder(ctx context.Context, tx *database.Tx, orderID uuid.UUID) error {
+func (r *Repository) FailPendingPaymentsForOrder(ctx context.Context, orderID uuid.UUID) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 	query := `
 		UPDATE payments
 		SET status = 'failed'::payment_status, updated_at = now()

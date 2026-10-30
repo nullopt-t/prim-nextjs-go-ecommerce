@@ -26,19 +26,19 @@ import (
 
 // ObjectRepository defines database persistence methods for media storage records.
 type ObjectRepository interface {
-	Create(ctx context.Context, tx *database.Tx, object *model.Object) error
-	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error)
-	GetByIDs(ctx context.Context, qe database.QueryExecutor, ids []uuid.UUID) ([]*model.Object, error)
-	MarkDeletingByKey(ctx context.Context, tx *database.Tx, bucket, key string) error
-	MarkDeletedByKey(ctx context.Context, tx *database.Tx, bucket, key string) error
+	Create(ctx context.Context, object *model.Object) error
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
+	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*model.Object, error)
+	MarkDeletingByKey(ctx context.Context, bucket, key string) error
+	MarkDeletedByKey(ctx context.Context, bucket, key string) error
 }
 
 // InventoryReader is the read-only subset of inventory persistence the
 // variant domain needs for stock projections and ledger history.
 type InventoryReader interface {
-	GetStock(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID) (*model.InventoryStock, error)
-	GetStockForVariants(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
-	ListVariantLedgers(ctx context.Context, qe database.QueryExecutor, variantID uuid.UUID, q *pagination.ListQuery) (*pagination.PagedResult[model.InventoryLedger], error)
+	GetStock(ctx context.Context, variantID uuid.UUID) (*model.InventoryStock, error)
+	GetStockForVariants(ctx context.Context, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
+	ListVariantLedgers(ctx context.Context, variantID uuid.UUID, q *pagination.ListQuery) (*pagination.PagedResult[model.InventoryLedger], error)
 }
 
 // InventoryWriter owns stock mutation. ApplyStockAdjustment participates in the
@@ -46,7 +46,7 @@ type InventoryReader interface {
 // owns it; AdjustStock is the standalone entry point and owns its transaction.
 type InventoryWriter interface {
 	AdjustStock(ctx context.Context, in inventory.AdjustStockInput) (*model.InventoryStock, error)
-	ApplyStockAdjustment(ctx context.Context, tx *database.Tx, in inventory.AdjustStockInput) error
+	ApplyStockAdjustment(ctx context.Context, in inventory.AdjustStockInput) error
 }
 
 // errSimpleProductLocked signals that a lifecycle change was rejected because the
@@ -142,13 +142,12 @@ func canonicalAllowedValues(raw json.RawMessage) []string {
 // resulting combination is unique among the product's active children.
 func (vs *VariantService) validateVariantAttributes(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	productID uuid.UUID,
 	attrs map[string]any,
 	forUpdate bool,
 	excludeVariantID *uuid.UUID,
 ) (map[string]any, *ProductVariationContext, error) {
-	context, err := vs.vr.GetVariationContext(ctx, qe, productID, forUpdate)
+	context, err := vs.vr.GetVariationContext(ctx, productID, forUpdate)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -159,7 +158,7 @@ func (vs *VariantService) validateVariantAttributes(
 		return attrs, context, nil
 	}
 
-	defs, err := attribute.NewRepository().ListByCategory(ctx, qe, context.CategoryID)
+	defs, err := attribute.NewRepository().ListByCategory(ctx, context.CategoryID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -225,7 +224,7 @@ func (vs *VariantService) validateVariantAttributes(
 		}
 	}
 
-	exists, err := vs.vr.CombinationExists(ctx, qe, productID, normalized, excludeVariantID)
+	exists, err := vs.vr.CombinationExists(ctx, productID, normalized, excludeVariantID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -451,12 +450,12 @@ func (vs *VariantService) CreateVariant(
 		ThumbnailObjectID: in.ThumbnailObjectID,
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context) error {
 		// Validate against the parent's chosen variation axes while holding an
 		// exclusive row lock, so two concurrent requests cannot create the same
 		// combination.
 		normalizedAttrs, productCtx, err := vs.validateVariantAttributes(
-			ctx, tx, variant.ProductID, in.Attributes, true, nil,
+			ctx, variant.ProductID, in.Attributes, true, nil,
 		)
 		if err != nil {
 			return err
@@ -467,7 +466,7 @@ func (vs *VariantService) CreateVariant(
 		}
 
 		// If this is the first variant of the product, make it default automatically
-		count, err := vs.vr.CountByProductID(ctx, tx, variant.ProductID)
+		count, err := vs.vr.CountByProductID(ctx, variant.ProductID)
 		if err != nil {
 			return err
 		}
@@ -482,12 +481,12 @@ func (vs *VariantService) CreateVariant(
 			variant.IsDefault = true
 		}
 
-		if err := vs.vr.Create(ctx, tx, variant); err != nil {
+		if err := vs.vr.Create(ctx, variant); err != nil {
 			return err
 		}
 
 		if variant.IsDefault {
-			if err := vs.vr.SetDefaultVariant(ctx, tx, variant.ProductID, variant.ID); err != nil {
+			if err := vs.vr.SetDefaultVariant(ctx, variant.ProductID, variant.ID); err != nil {
 				return err
 			}
 		}
@@ -559,20 +558,20 @@ func (vs *VariantService) CreateVariantsBatch(
 
 	created := make([]*model.ProductVariant, 0, len(inputs))
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		productCtx, err := vs.vr.GetVariationContext(ctx, tx, productID, true)
+	err := vs.dr.WithTx(ctx, func(ctx context.Context) error {
+		productCtx, err := vs.vr.GetVariationContext(ctx, productID, true)
 		if err != nil {
 			return err
 		}
 
-		count, err := vs.vr.CountByProductID(ctx, tx, productID)
+		count, err := vs.vr.CountByProductID(ctx, productID)
 		if err != nil {
 			return err
 		}
 
 		for i, in := range inputs {
 			normalized, _, err := vs.validateVariantAttributes(
-				ctx, tx, productID, in.Attributes, true, nil,
+				ctx, productID, in.Attributes, true, nil,
 			)
 			if err != nil {
 				return err
@@ -617,12 +616,12 @@ func (vs *VariantService) CreateVariantsBatch(
 				IsDefault:       isDefault,
 			}
 
-			if err := vs.vr.Create(ctx, tx, variant); err != nil {
+			if err := vs.vr.Create(ctx, variant); err != nil {
 				return err
 			}
 
 			if isDefault {
-				if err := vs.vr.SetDefaultVariant(ctx, tx, productID, variant.ID); err != nil {
+				if err := vs.vr.SetDefaultVariant(ctx, productID, variant.ID); err != nil {
 					return err
 				}
 			}
@@ -633,7 +632,7 @@ func (vs *VariantService) CreateVariantsBatch(
 					Quantity:  *in.InitialStock,
 					Reason:    string(model.InventoryReasonRestock),
 				}
-				if err := vs.inventory.ApplyStockAdjustment(ctx, tx, adjustment); err != nil {
+				if err := vs.inventory.ApplyStockAdjustment(ctx, adjustment); err != nil {
 					return err
 				}
 			}
@@ -680,9 +679,9 @@ func (vs *VariantService) GetVariantByID(
 	variantID uuid.UUID,
 ) (*model.ProductVariant, error) {
 	var variant *model.ProductVariant
-	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		variant, repoErr = vs.getVariantByID(ctx, exec, variantID)
+		variant, repoErr = vs.getVariantByID(ctx, variantID)
 		return repoErr
 	})
 	if err != nil {
@@ -694,10 +693,9 @@ func (vs *VariantService) GetVariantByID(
 
 func (vs *VariantService) getVariantByID(
 	ctx context.Context,
-	exec database.QueryExecutor,
 	variantID uuid.UUID,
 ) (*model.ProductVariant, error) {
-	variant, err := vs.vr.GetByID(ctx, exec, variantID)
+	variant, err := vs.vr.GetByID(ctx, variantID)
 	if err != nil {
 		mappedErr := database.MapError(err)
 		switch {
@@ -721,7 +719,7 @@ func (vs *VariantService) getVariantByID(
 		)
 	}
 
-	mediaList, mediaErr := vs.listVariantMedia(ctx, exec, variantID)
+	mediaList, mediaErr := vs.listVariantMedia(ctx, variantID)
 	if mediaErr == nil {
 		variant.Media = mediaList
 	}
@@ -741,8 +739,8 @@ func (vs *VariantService) GetVariantBySKU(
 	}
 
 	var variant *model.ProductVariant
-	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
-		v, err := vs.vr.GetBySKU(ctx, exec, cleanSKU)
+	err := vs.dr.WithExecutor(ctx, func(ctx context.Context) error {
+		v, err := vs.vr.GetBySKU(ctx, cleanSKU)
 		if err != nil {
 			return err
 		}
@@ -823,20 +821,20 @@ func (vs *VariantService) UpdateVariant(
 		fields.Title = &title
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		existing, err := vs.vr.GetByID(ctx, tx, variantID)
+	err := vs.dr.WithTx(ctx, func(ctx context.Context) error {
+		existing, err := vs.vr.GetByID(ctx, variantID)
 		if err != nil {
 			return err
 		}
 
-		productCtx, err := vs.vr.GetVariationContext(ctx, tx, existing.ProductID, true)
+		productCtx, err := vs.vr.GetVariationContext(ctx, existing.ProductID, true)
 		if err != nil {
 			return err
 		}
 
 		if in.Attributes != nil {
 			normalized, _, err := vs.validateVariantAttributes(
-				ctx, tx, existing.ProductID, in.Attributes, true, &variantID,
+				ctx, existing.ProductID, in.Attributes, true, &variantID,
 			)
 			if err != nil {
 				return err
@@ -852,18 +850,18 @@ func (vs *VariantService) UpdateVariant(
 			}
 		}
 
-		if err := vs.vr.Update(ctx, tx, variantID, fields); err != nil {
+		if err := vs.vr.Update(ctx, variantID, fields); err != nil {
 			return err
 		}
 
 		if in.IsDefault != nil {
 			if *in.IsDefault {
-				if err := vs.vr.SetDefaultVariant(ctx, tx, existing.ProductID, variantID); err != nil {
+				if err := vs.vr.SetDefaultVariant(ctx, existing.ProductID, variantID); err != nil {
 					return err
 				}
 			} else if existing.IsDefault {
 				// If this variant was default and is now unset, ensure another variant is designated as default
-				if err := vs.vr.SetFirstAvailableAsDefault(ctx, tx, existing.ProductID); err != nil {
+				if err := vs.vr.SetFirstAvailableAsDefault(ctx, existing.ProductID); err != nil {
 					return err
 				}
 			}
@@ -924,9 +922,9 @@ func (vs *VariantService) ListVariantsByProductID(
 	var result *pagination.PagedResult[model.ProductVariant]
 	var mediaMap map[uuid.UUID][]*model.VariantMedia
 
-	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		result, repoErr = vs.vr.ListByProductID(ctx, exec, ListVariantOptions{
+		result, repoErr = vs.vr.ListByProductID(ctx, ListVariantOptions{
 			ProductID:      productID,
 			Query:          q,
 			IncludeDeleted: includeDeleted,
@@ -942,7 +940,7 @@ func (vs *VariantService) ListVariantsByProductID(
 					variantIDs = append(variantIDs, item.ID)
 				}
 			}
-			mediaMap, repoErr = vs.vr.ListMediaByVariantIDs(ctx, exec, variantIDs)
+			mediaMap, repoErr = vs.vr.ListMediaByVariantIDs(ctx, variantIDs)
 			if repoErr != nil {
 				return repoErr
 			}
@@ -999,13 +997,13 @@ func (vs *VariantService) DeleteVariantByID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		variant, err := vs.vr.GetByID(ctx, tx, variantID)
+	err := vs.dr.WithTx(ctx, func(ctx context.Context) error {
+		variant, err := vs.vr.GetByID(ctx, variantID)
 		if err != nil {
 			return err
 		}
 
-		productType, err := vs.vr.GetProductType(ctx, tx, variant.ProductID)
+		productType, err := vs.vr.GetProductType(ctx, variant.ProductID)
 		if err != nil {
 			return err
 		}
@@ -1014,12 +1012,12 @@ func (vs *VariantService) DeleteVariantByID(
 			return errSimpleProductLocked
 		}
 
-		if err := vs.vr.Delete(ctx, tx, variantID); err != nil {
+		if err := vs.vr.Delete(ctx, variantID); err != nil {
 			return err
 		}
 
 		if variant.IsDefault {
-			if err := vs.vr.SetFirstAvailableAsDefault(ctx, tx, variant.ProductID); err != nil {
+			if err := vs.vr.SetFirstAvailableAsDefault(ctx, variant.ProductID); err != nil {
 				return err
 			}
 		}
@@ -1062,35 +1060,23 @@ func (vs *VariantService) RestoreVariantByID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		// Fetch the variant including deleted records to inspect its product and default variant pointer
-		var (
-			productID        uuid.UUID
-			defaultVariantID *uuid.UUID
-		)
-		err := tx.QueryRow(ctx,
-			`SELECT pv.product_id, p.default_variant_id
-			 FROM product_variants pv
-			 JOIN products p ON pv.product_id = p.id
-			 WHERE pv.id = $1 AND pv.deleted_at IS NOT NULL`,
-			variantID,
-		).Scan(&productID, &defaultVariantID)
+	err := vs.dr.WithTx(ctx, func(ctx context.Context) error {
+		productID, defaultVariantID, err := vs.vr.GetDeletedVariantInfo(ctx, variantID)
 		if err != nil {
 			return err
 		}
 
 		// Lock parent product
-		var pID uuid.UUID
-		if err := tx.QueryRow(ctx, `SELECT id FROM products WHERE id = $1 FOR UPDATE`, productID).Scan(&pID); err != nil {
+		if err := vs.vr.LockProduct(ctx, productID); err != nil {
 			return err
 		}
 
-		productType, err := vs.vr.GetProductType(ctx, tx, productID)
+		productType, err := vs.vr.GetProductType(ctx, productID)
 		if err != nil {
 			return err
 		}
 		if productType == model.ProductTypeSimple {
-			count, err := vs.vr.CountByProductID(ctx, tx, productID)
+			count, err := vs.vr.CountByProductID(ctx, productID)
 			if err != nil {
 				return err
 			}
@@ -1099,17 +1085,17 @@ func (vs *VariantService) RestoreVariantByID(
 			if count > 0 {
 				return errSimpleProductLocked
 			}
-			if err := vs.vr.SetDefaultVariant(ctx, tx, productID, variantID); err != nil {
+			if err := vs.vr.SetDefaultVariant(ctx, productID, variantID); err != nil {
 				return err
 			}
 		} else if defaultVariantID == nil {
 			// If no default variant is currently designated, make the restored variant default
-			if err := vs.vr.SetDefaultVariant(ctx, tx, productID, variantID); err != nil {
+			if err := vs.vr.SetDefaultVariant(ctx, productID, variantID); err != nil {
 				return err
 			}
 		}
 
-		return vs.vr.Restore(ctx, tx, variantID)
+		return vs.vr.Restore(ctx, variantID)
 	})
 
 	if err != nil {
@@ -1152,9 +1138,9 @@ func (vs *VariantService) AttachMedia(
 
 	var createdMedia *model.VariantMedia
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err := vs.dr.WithTx(ctx, func(ctx context.Context) error {
 		var repoErr error
-		createdMedia, repoErr = vs.vr.AddMedia(ctx, tx, CreateVariantMediaInput{
+		createdMedia, repoErr = vs.vr.AddMedia(ctx, CreateVariantMediaInput{
 			VariantID: in.VariantID,
 			ObjectID:  in.StorageObjectID,
 			MediaType: in.MediaType,
@@ -1193,8 +1179,8 @@ func (vs *VariantService) RemoveMedia(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return vs.vr.RemoveMedia(ctx, tx, variantID, mediaID)
+	err := vs.dr.WithTx(ctx, func(ctx context.Context) error {
+		return vs.vr.RemoveMedia(ctx, variantID, mediaID)
 	})
 
 	if err != nil {
@@ -1241,8 +1227,8 @@ func (vs *VariantService) ReorderMedia(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		existingMedia, err := vs.vr.ListMediaByVariantID(ctx, tx, variantID)
+	err := vs.dr.WithTx(ctx, func(ctx context.Context) error {
+		existingMedia, err := vs.vr.ListMediaByVariantID(ctx, variantID)
 		if err != nil {
 			return err
 		}
@@ -1264,7 +1250,7 @@ func (vs *VariantService) ReorderMedia(
 			}
 		}
 
-		return vs.vr.ReorderMedia(ctx, tx, variantID, orderedMediaIDs)
+		return vs.vr.ReorderMedia(ctx, variantID, orderedMediaIDs)
 	})
 
 	if err != nil {
@@ -1290,9 +1276,9 @@ func (vs *VariantService) ListVariantMedia(
 	variantID uuid.UUID,
 ) ([]*model.VariantMedia, error) {
 	var mediaList []*model.VariantMedia
-	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		mediaList, repoErr = vs.listVariantMedia(ctx, exec, variantID)
+		mediaList, repoErr = vs.listVariantMedia(ctx, variantID)
 		return repoErr
 	})
 	if err != nil {
@@ -1304,7 +1290,6 @@ func (vs *VariantService) ListVariantMedia(
 
 func (vs *VariantService) listVariantMedia(
 	ctx context.Context,
-	exec database.QueryExecutor,
 	variantID uuid.UUID,
 ) ([]*model.VariantMedia, error) {
 	if variantID == uuid.Nil {
@@ -1312,7 +1297,7 @@ func (vs *VariantService) listVariantMedia(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	mediaList, err := vs.vr.ListMediaByVariantID(ctx, exec, variantID)
+	mediaList, err := vs.vr.ListMediaByVariantID(ctx, variantID)
 	if err != nil {
 		return nil, apierr.InternalServerError("Failed to list variant media").
 			WithCode(apierr.CodeInternalError).
@@ -1351,8 +1336,8 @@ func (vs *VariantService) SetDefaultVariant(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		v, err := vs.vr.GetByID(ctx, tx, variantID)
+	err := vs.dr.WithTx(ctx, func(ctx context.Context) error {
+		v, err := vs.vr.GetByID(ctx, variantID)
 		if err != nil {
 			return err
 		}
@@ -1361,7 +1346,7 @@ func (vs *VariantService) SetDefaultVariant(
 				WithCode(errcode.CodeVariantProductMismatch)
 		}
 
-		productType, err := vs.vr.GetProductType(ctx, tx, productID)
+		productType, err := vs.vr.GetProductType(ctx, productID)
 		if err != nil {
 			return err
 		}
@@ -1370,7 +1355,7 @@ func (vs *VariantService) SetDefaultVariant(
 			return errSimpleProductLocked
 		}
 
-		return vs.vr.SetDefaultVariant(ctx, tx, productID, variantID)
+		return vs.vr.SetDefaultVariant(ctx, productID, variantID)
 	})
 
 	if err != nil {
@@ -1413,9 +1398,9 @@ func (vs *VariantService) GetStockByVariantID(
 	}
 
 	var stock *model.InventoryStock
-	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		stock, err = vs.inventoryReader.GetStock(ctx, exec, variantID)
+		stock, err = vs.inventoryReader.GetStock(ctx, variantID)
 		return err
 	})
 	if err != nil {
@@ -1436,9 +1421,9 @@ func (vs *VariantService) ListLedgers(
 	}
 
 	var result *pagination.PagedResult[model.InventoryLedger]
-	err := vs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := vs.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		result, err = vs.inventoryReader.ListVariantLedgers(ctx, exec, variantID, q)
+		result, err = vs.inventoryReader.ListVariantLedgers(ctx, variantID, q)
 		return err
 	})
 	if err != nil {
@@ -1518,25 +1503,25 @@ func (vs *VariantService) UploadVariantThumbnail(
 
 	var oldThumbnailObjectID *uuid.UUID
 	var oldObj *model.Object
-	txErr := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		variant, err := vs.vr.GetByID(ctx, tx, variantID)
+	txErr := vs.dr.WithTx(ctx, func(ctx context.Context) error {
+		variant, err := vs.vr.GetByID(ctx, variantID)
 		if err != nil {
 			return err
 		}
 		oldThumbnailObjectID = variant.ThumbnailObjectID
 
-		if err := vs.objectRepo.Create(ctx, tx, obj); err != nil {
+		if err := vs.objectRepo.Create(ctx, obj); err != nil {
 			return err
 		}
 
 		if oldThumbnailObjectID != nil && *oldThumbnailObjectID != obj.ID {
-			oldObj, _ = vs.objectRepo.GetByID(ctx, tx, *oldThumbnailObjectID)
+			oldObj, _ = vs.objectRepo.GetByID(ctx, *oldThumbnailObjectID)
 			if oldObj != nil {
-				_ = vs.objectRepo.MarkDeletingByKey(ctx, tx, oldObj.Bucket, oldObj.Key)
+				_ = vs.objectRepo.MarkDeletingByKey(ctx, oldObj.Bucket, oldObj.Key)
 			}
 		}
 
-		return vs.vr.Update(ctx, tx, variantID, UpdateVariantFields{
+		return vs.vr.Update(ctx, variantID, UpdateVariantFields{
 			ThumbnailObjectID: &obj.ID,
 		})
 	})
@@ -1548,8 +1533,8 @@ func (vs *VariantService) UploadVariantThumbnail(
 
 	if oldObj != nil && vs.storageProvider != nil {
 		if delErr := vs.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = vs.dr.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-				return vs.objectRepo.MarkDeletedByKey(ctx, exec, oldObj.Bucket, oldObj.Key)
+			_ = vs.dr.WithTx(ctx, func(ctx context.Context) error {
+				return vs.objectRepo.MarkDeletedByKey(ctx, oldObj.Bucket, oldObj.Key)
 			})
 		}
 	}
@@ -1569,18 +1554,18 @@ func (vs *VariantService) DeleteVariantThumbnail(
 	}
 
 	var oldObj *model.Object
-	txErr := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		variant, err := vs.vr.GetByID(ctx, tx, variantID)
+	txErr := vs.dr.WithTx(ctx, func(ctx context.Context) error {
+		variant, err := vs.vr.GetByID(ctx, variantID)
 		if err != nil {
 			return err
 		}
 		if variant.ThumbnailObjectID != nil && vs.objectRepo != nil {
-			oldObj, _ = vs.objectRepo.GetByID(ctx, tx, *variant.ThumbnailObjectID)
+			oldObj, _ = vs.objectRepo.GetByID(ctx, *variant.ThumbnailObjectID)
 			if oldObj != nil {
-				_ = vs.objectRepo.MarkDeletingByKey(ctx, tx, oldObj.Bucket, oldObj.Key)
+				_ = vs.objectRepo.MarkDeletingByKey(ctx, oldObj.Bucket, oldObj.Key)
 			}
 		}
-		return vs.vr.ClearThumbnail(ctx, tx, variantID)
+		return vs.vr.ClearThumbnail(ctx, variantID)
 	})
 	if txErr != nil {
 		return vs.handleError(txErr, "Failed to remove variant thumbnail")
@@ -1588,8 +1573,8 @@ func (vs *VariantService) DeleteVariantThumbnail(
 
 	if oldObj != nil && vs.storageProvider != nil {
 		if delErr := vs.storageProvider.Delete(ctx, oldObj.Bucket, oldObj.Key); delErr == nil {
-			_ = vs.dr.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-				return vs.objectRepo.MarkDeletedByKey(ctx, exec, oldObj.Bucket, oldObj.Key)
+			_ = vs.dr.WithTx(ctx, func(ctx context.Context) error {
+				return vs.objectRepo.MarkDeletedByKey(ctx, oldObj.Bucket, oldObj.Key)
 			})
 		}
 	}
@@ -1665,15 +1650,15 @@ func (vs *VariantService) UploadVariantMedia(
 	}
 
 	var createdMedia *model.VariantMedia
-	txErr := vs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		if _, err := vs.vr.GetByID(ctx, tx, variantID); err != nil {
+	txErr := vs.dr.WithTx(ctx, func(ctx context.Context) error {
+		if _, err := vs.vr.GetByID(ctx, variantID); err != nil {
 			return err
 		}
-		if err := vs.objectRepo.Create(ctx, tx, obj); err != nil {
+		if err := vs.objectRepo.Create(ctx, obj); err != nil {
 			return err
 		}
 		var repoErr error
-		createdMedia, repoErr = vs.vr.AddMedia(ctx, tx, CreateVariantMediaInput{
+		createdMedia, repoErr = vs.vr.AddMedia(ctx, CreateVariantMediaInput{
 			VariantID: variantID,
 			ObjectID:  obj.ID,
 			MediaType: detectedContentType,

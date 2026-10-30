@@ -24,7 +24,7 @@ type mockReportRunner struct {
 	tx           *database.Tx
 }
 
-func (m *mockReportRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx *database.Tx) error) error {
+func (m *mockReportRunner) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	m.withTxCalled = true
 	if m.withTxErr != nil {
 		return m.withTxErr
@@ -33,10 +33,11 @@ func (m *mockReportRunner) WithTx(ctx context.Context, fn func(ctx context.Conte
 	if tx == nil {
 		tx = database.NewTx(&fakeReportTx{})
 	}
-	return fn(ctx, tx)
+	ctx = database.WithTx(ctx, tx)
+	return fn(ctx)
 }
 
-func (m *mockReportRunner) WithExecutor(ctx context.Context, fn func(exec database.QueryExecutor) error) error {
+func (m *mockReportRunner) WithExecutor(ctx context.Context, fn func(ctx context.Context) error) error {
 	m.withDBCalled = true
 	if m.withDBErr != nil {
 		return m.withDBErr
@@ -45,7 +46,8 @@ func (m *mockReportRunner) WithExecutor(ctx context.Context, fn func(exec databa
 	if qe == nil {
 		qe = &fakeReportExecutor{}
 	}
-	return fn(qe)
+	ctx = database.WithExecutor(ctx, qe)
+	return fn(ctx)
 }
 
 type fakeReportTx struct {

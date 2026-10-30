@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,7 +71,7 @@ func TestProductList_PriceFilterAndSortSQL(t *testing.T) {
 	}
 	q.RawSort = []string{"price"}
 
-	_, err := repo.List(context.Background(), qe, q, false)
+	_, err := repo.List(database.WithExecutor(context.Background(), qe), q, false)
 	require.NoError(t, err)
 
 	require.GreaterOrEqual(t, len(qe.queries), 2)
@@ -101,7 +102,7 @@ func TestProductList_PriceSortDesc(t *testing.T) {
 	q := &ListProductsQuery{}
 	q.RawSort = []string{"-price"}
 
-	_, err := repo.List(context.Background(), qe, q, false)
+	_, err := repo.List(database.WithExecutor(context.Background(), qe), q, false)
 	require.NoError(t, err)
 
 	require.GreaterOrEqual(t, len(qe.queries), 2)

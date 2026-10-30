@@ -6,13 +6,14 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
+
 type TagService struct {
 	dr   database.Runner
 	repo *TagRepository
@@ -57,8 +58,8 @@ func (ts *TagService) CreateTag(
 		Name: name,
 	}
 
-	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return ts.repo.Create(ctx, tx, tag)
+	err := ts.dr.WithTx(ctx, func(ctx context.Context) error {
+		return ts.repo.Create(ctx, tag)
 	})
 
 	if err != nil {
@@ -73,9 +74,9 @@ func (ts *TagService) GetTagByID(
 	tagID uuid.UUID,
 ) (*model.ProductTag, error) {
 	var tag *model.ProductTag
-	err := ts.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := ts.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		tag, repoErr = ts.repo.GetByID(ctx, exec, tagID)
+		tag, repoErr = ts.repo.GetByID(ctx, tagID)
 		return repoErr
 	})
 
@@ -110,8 +111,8 @@ func (ts *TagService) UpdateTag(
 		fields.Name = &name
 	}
 
-	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return ts.repo.Update(ctx, tx, tagID, fields)
+	err := ts.dr.WithTx(ctx, func(ctx context.Context) error {
+		return ts.repo.Update(ctx, tagID, fields)
 	})
 
 	if err != nil {
@@ -134,9 +135,9 @@ func (ts *TagService) ListTags(
 
 	var result *pagination.PagedResult[model.ProductTag]
 
-	err := ts.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := ts.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		result, repoErr = ts.repo.List(ctx, exec, ListTagOptions{
+		result, repoErr = ts.repo.List(ctx, ListTagOptions{
 			Query:          &q,
 			IncludeDeleted: in.IncludeDeleted,
 		})
@@ -172,8 +173,8 @@ func (ts *TagService) DeleteTagByID(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return ts.repo.Delete(ctx, tx, tagID)
+	err := ts.dr.WithTx(ctx, func(ctx context.Context) error {
+		return ts.repo.Delete(ctx, tagID)
 	})
 
 	if err != nil {
@@ -193,8 +194,8 @@ func (ts *TagService) ReplaceProductTags(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := ts.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return ts.repo.ReplaceTagsForProduct(ctx, tx, productID, tagIDs)
+	err := ts.dr.WithTx(ctx, func(ctx context.Context) error {
+		return ts.repo.ReplaceTagsForProduct(ctx, productID, tagIDs)
 	})
 
 	if err != nil {
@@ -214,9 +215,9 @@ func (ts *TagService) GetTagsByProductID(
 	}
 
 	var tags []*model.ProductTag
-	err := ts.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := ts.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		tags, err = ts.repo.GetTagsByProductID(ctx, exec, productID)
+		tags, err = ts.repo.GetTagsByProductID(ctx, productID)
 		return err
 	})
 

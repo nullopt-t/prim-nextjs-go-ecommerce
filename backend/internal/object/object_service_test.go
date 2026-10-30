@@ -122,18 +122,20 @@ type fakeRunner struct {
 	execErr error
 }
 
-func (f fakeRunner) WithTx(ctx context.Context, fn func(context.Context, *database.Tx) error) error {
+func (f fakeRunner) WithTx(ctx context.Context, fn func(context.Context) error) error {
 	if f.txErr != nil {
 		return f.txErr
 	}
-	return fn(ctx, database.NewTx(&fakeTx{fakeExecutor: fakeExecutor{row: f.row, execErr: f.execErr}}))
+	tx := database.NewTx(&fakeTx{fakeExecutor: fakeExecutor{row: f.row, execErr: f.execErr}})
+	return fn(database.WithTx(ctx, tx))
 }
 
-func (f fakeRunner) WithExecutor(_ context.Context, fn func(database.QueryExecutor) error) error {
+func (f fakeRunner) WithExecutor(ctx context.Context, fn func(context.Context) error) error {
 	if f.dbErr != nil {
 		return f.dbErr
 	}
-	return fn(fakeExecutor{row: f.row, execErr: f.execErr})
+	exec := fakeExecutor{row: f.row, execErr: f.execErr}
+	return fn(database.WithExecutor(ctx, exec))
 }
 
 type fakeStorageProvider struct {

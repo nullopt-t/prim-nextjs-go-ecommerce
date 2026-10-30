@@ -38,7 +38,7 @@ type dummyProductService struct {
 	products map[uuid.UUID]*model.Product
 }
 
-func (d *dummyProductService) GetByID(ctx context.Context, _ database.QueryExecutor, id uuid.UUID) (*model.Product, error) {
+func (d *dummyProductService) GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error) {
 	if p, ok := d.products[id]; ok {
 		return p, nil
 	}

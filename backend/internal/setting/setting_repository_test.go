@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
 type captureExecutor struct {
@@ -30,7 +31,8 @@ func TestRepositoryUpsertEncodesValueAsJSON(t *testing.T) {
 	exec := &captureExecutor{}
 	repo := NewRepository()
 
-	if err := repo.Upsert(context.Background(), exec, "storeName", "PRIM Superstore"); err != nil {
+	ctx := database.WithExecutor(context.Background(), exec)
+	if err := repo.Upsert(ctx, "storeName", "PRIM Superstore"); err != nil {
 		t.Fatalf("Upsert() error = %v", err)
 	}
 	if len(exec.args) != 2 {

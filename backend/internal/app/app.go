@@ -71,6 +71,12 @@ type App struct {
 }
 
 func (app *App) setupRoutes(router *gin.Engine) {
+	// databaseContext binds the database pool as the default executor into every request context.
+	router.Use(func(c *gin.Context) {
+		c.Request = c.Request.WithContext(database.WithExecutor(c.Request.Context(), app.db))
+		c.Next()
+	})
+
 	txRunner := database.NewTxRunner(app.db)
 
 	// compression negotiates gzip for the (text-heavy) JSON/CSV responses. It is

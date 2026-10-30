@@ -13,7 +13,6 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
-
 var allowedReviewSortFields = map[string]string{
 	"id":         "r.id",
 	"rating":     "r.rating",
@@ -41,9 +40,13 @@ type PurchaseVerification struct {
 // parent product ID, and parent order status.
 func (r *ReviewRepository) VerifyPurchase(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	orderItemID uuid.UUID,
 ) (*PurchaseVerification, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT
 			o.customer_id,
@@ -55,7 +58,7 @@ func (r *ReviewRepository) VerifyPurchase(
 		WHERE oi.id = $1
 	`
 	var pv PurchaseVerification
-	err := qe.QueryRow(ctx, query, orderItemID).Scan(&pv.CustomerID, &pv.ProductID, &pv.OrderStatus)
+	err = executor.QueryRow(ctx, query, orderItemID).Scan(&pv.CustomerID, &pv.ProductID, &pv.OrderStatus)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
@@ -69,10 +72,14 @@ func (r *ReviewRepository) VerifyPurchase(
 // locking the order item row (FOR UPDATE) to prevent concurrency races on review creation.
 func (r *ReviewRepository) FindEligibleOrderItem(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	userID uuid.UUID,
 	productID uuid.UUID,
 ) (uuid.UUID, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
 	query := `
 		SELECT oi.id
 		FROM order_items oi
@@ -88,7 +95,7 @@ func (r *ReviewRepository) FindEligibleOrderItem(
 		FOR UPDATE OF oi
 	`
 	var orderItemID uuid.UUID
-	err := qe.QueryRow(ctx, query, userID, productID).Scan(&orderItemID)
+	err = executor.QueryRow(ctx, query, userID, productID).Scan(&orderItemID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return uuid.Nil, nil
@@ -98,8 +105,12 @@ func (r *ReviewRepository) FindEligibleOrderItem(
 	return orderItemID, nil
 }
 
+func (r *ReviewRepository) Create(ctx context.Context, rv *model.Review) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
 
-func (r *ReviewRepository) Create(ctx context.Context, tx *database.Tx, rv *model.Review) error {
 	query := `
 		INSERT INTO reviews (
 			id,
@@ -117,7 +128,7 @@ func (r *ReviewRepository) Create(ctx context.Context, tx *database.Tx, rv *mode
 		RETURNING created_at, updated_at
 	`
 
-	err := tx.QueryRow(
+	return tx.QueryRow(
 		ctx,
 		query,
 		rv.ID,
@@ -129,11 +140,14 @@ func (r *ReviewRepository) Create(ctx context.Context, tx *database.Tx, rv *mode
 		rv.Body,
 		rv.Status,
 	).Scan(&rv.CreatedAt, &rv.UpdatedAt)
-
-	return err
 }
 
-func (r *ReviewRepository) GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Review, error) {
+func (r *ReviewRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Review, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT
 			id,
@@ -151,7 +165,7 @@ func (r *ReviewRepository) GetByID(ctx context.Context, qe database.QueryExecuto
 		WHERE id = $1
 	`
 	rv := &model.Review{}
-	err := qe.QueryRow(ctx, query, id).Scan(
+	err = executor.QueryRow(ctx, query, id).Scan(
 		&rv.ID,
 		&rv.ProductID,
 		&rv.UserID,
@@ -173,7 +187,12 @@ func (r *ReviewRepository) GetByID(ctx context.Context, qe database.QueryExecuto
 	return rv, nil
 }
 
-func (r *ReviewRepository) GetByOrderItemID(ctx context.Context, qe database.QueryExecutor, orderItemID uuid.UUID) (*model.Review, error) {
+func (r *ReviewRepository) GetByOrderItemID(ctx context.Context, orderItemID uuid.UUID) (*model.Review, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT
 			id,
@@ -191,7 +210,7 @@ func (r *ReviewRepository) GetByOrderItemID(ctx context.Context, qe database.Que
 		WHERE order_item_id = $1
 	`
 	rv := &model.Review{}
-	err := qe.QueryRow(ctx, query, orderItemID).Scan(
+	err = executor.QueryRow(ctx, query, orderItemID).Scan(
 		&rv.ID,
 		&rv.ProductID,
 		&rv.UserID,
@@ -213,7 +232,12 @@ func (r *ReviewRepository) GetByOrderItemID(ctx context.Context, qe database.Que
 	return rv, nil
 }
 
-func (r *ReviewRepository) Update(ctx context.Context, tx *database.Tx, rv *model.Review) error {
+func (r *ReviewRepository) Update(ctx context.Context, rv *model.Review) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE reviews
 		SET
@@ -230,10 +254,14 @@ func (r *ReviewRepository) Update(ctx context.Context, tx *database.Tx, rv *mode
 
 func (r *ReviewRepository) UpdateStatus(
 	ctx context.Context,
-	tx *database.Tx,
 	id uuid.UUID,
 	status model.ReviewStatus,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE reviews
 		SET
@@ -241,25 +269,33 @@ func (r *ReviewRepository) UpdateStatus(
 			updated_at = now()
 		WHERE id = $2
 	`
-	_, err := tx.Exec(ctx, query, status, id)
+	_, err = tx.Exec(ctx, query, status, id)
 	return err
 }
 
 func (r *ReviewRepository) Delete(
 	ctx context.Context,
-	tx *database.Tx,
 	id uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `DELETE FROM reviews WHERE id = $1`
-	_, err := tx.Exec(ctx, query, id)
+	_, err = tx.Exec(ctx, query, id)
 	return err
 }
 
 func (r *ReviewRepository) GetRatingSummaryByProductID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	productID uuid.UUID,
 ) (*model.RatingSummary, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	summary := &model.RatingSummary{
 		Distribution: map[int16]int{
 			1: 0,
@@ -279,7 +315,7 @@ func (r *ReviewRepository) GetRatingSummaryByProductID(
 	`
 	var avg float64
 	var count int
-	if err := qe.QueryRow(ctx, query, productID).Scan(&avg, &count); err != nil {
+	if err := executor.QueryRow(ctx, query, productID).Scan(&avg, &count); err != nil {
 		return nil, err
 	}
 	summary.AverageRating = math.Round(avg*10) / 10
@@ -292,7 +328,7 @@ func (r *ReviewRepository) GetRatingSummaryByProductID(
 			WHERE product_id = $1 AND status = 'approved'
 			GROUP BY rating
 		`
-		rows, err := qe.Query(ctx, distQuery, productID)
+		rows, err := executor.Query(ctx, distQuery, productID)
 		if err != nil {
 			return nil, err
 		}
@@ -316,12 +352,16 @@ func (r *ReviewRepository) GetRatingSummaryByProductID(
 
 func (r *ReviewRepository) GetRatingSummariesByProductIDs(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	productIDs []uuid.UUID,
 ) (map[uuid.UUID]*model.RatingSummary, error) {
 	result := make(map[uuid.UUID]*model.RatingSummary, len(productIDs))
 	if len(productIDs) == 0 {
 		return result, nil
+	}
+
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	for _, pid := range productIDs {
@@ -345,7 +385,7 @@ func (r *ReviewRepository) GetRatingSummariesByProductIDs(
 		WHERE product_id = ANY($1) AND status = 'approved'
 		GROUP BY product_id
 	`
-	rows, err := qe.Query(ctx, query, productIDs)
+	rows, err := executor.Query(ctx, query, productIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +416,7 @@ func (r *ReviewRepository) GetRatingSummariesByProductIDs(
 		WHERE product_id = ANY($1) AND status = 'approved'
 		GROUP BY product_id, rating
 	`
-	distRows, err := qe.Query(ctx, distQuery, productIDs)
+	distRows, err := executor.Query(ctx, distQuery, productIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -402,24 +442,27 @@ func (r *ReviewRepository) GetRatingSummariesByProductIDs(
 
 func (r *ReviewRepository) List(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	q *pagination.ListQuery,
 	productID *uuid.UUID,
 	userID *uuid.UUID,
 	status *model.ReviewStatus,
 ) ([]model.Review, int, error) {
-	return r.ListWithVoter(ctx, qe, q, productID, userID, status, nil)
+	return r.ListWithVoter(ctx, q, productID, userID, status, nil)
 }
 
 func (r *ReviewRepository) ListWithVoter(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	q *pagination.ListQuery,
 	productID *uuid.UUID,
 	userID *uuid.UUID,
 	status *model.ReviewStatus,
 	voterID *uuid.UUID,
 ) ([]model.Review, int, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	var filters []string
 	var args []any
 	argID := 1
@@ -450,7 +493,7 @@ func (r *ReviewRepository) ListWithVoter(
 	// Count query
 	countQuery := fmt.Sprintf(`SELECT COUNT(1) FROM reviews r %s`, whereClause)
 	var total int
-	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := executor.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
@@ -481,7 +524,7 @@ func (r *ReviewRepository) ListWithVoter(
 	var voteSelect string
 	var voteJoin string
 	if voterID != nil {
-		voteSelect = fmt.Sprintf(", COALESCE(rv_vote.user_id IS NOT NULL, false) AS user_voted")
+		voteSelect = ", COALESCE(rv_vote.user_id IS NOT NULL, false) AS user_voted"
 		voteJoin = fmt.Sprintf("LEFT JOIN review_votes rv_vote ON rv_vote.review_id = r.id AND rv_vote.user_id = $%d", argID)
 		args = append(args, *voterID)
 		argID++
@@ -511,7 +554,7 @@ func (r *ReviewRepository) ListWithVoter(
 
 	args = append(args, q.PageSize, q.Offset)
 
-	rows, err := qe.Query(ctx, listQuery, args...)
+	rows, err := executor.Query(ctx, listQuery, args...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -550,11 +593,15 @@ func (r *ReviewRepository) ListWithVoter(
 // the updated helpful count, or an error.
 func (r *ReviewRepository) ToggleVote(
 	ctx context.Context,
-	tx *database.Tx,
 	reviewID, userID uuid.UUID,
 ) (bool, int, error) {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return false, 0, err
+	}
+
 	var currentCount int
-	err := tx.QueryRow(ctx, "SELECT helpful_count FROM reviews WHERE id = $1 FOR UPDATE", reviewID).Scan(&currentCount)
+	err = tx.QueryRow(ctx, "SELECT helpful_count FROM reviews WHERE id = $1 FOR UPDATE", reviewID).Scan(&currentCount)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return false, 0, database.ErrNotFound
@@ -599,4 +646,3 @@ func (r *ReviewRepository) ToggleVote(
 
 	return true, newCount, nil
 }
-

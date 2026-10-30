@@ -131,12 +131,15 @@ type lifecycleRunner struct {
 	expiredOrders []uuid.UUID
 }
 
-func (r lifecycleRunner) WithTx(_ context.Context, fn func(context.Context, *database.Tx) error) error {
-	return fn(context.Background(), database.NewTx(lifecycleExecutor{order: r.order, execErr: r.execErr}))
+func (r lifecycleRunner) WithTx(ctx context.Context, fn func(context.Context) error) error {
+	tx := database.NewTx(lifecycleExecutor{order: r.order, execErr: r.execErr})
+	ctx = database.WithTx(ctx, tx)
+	return fn(ctx)
 }
 
-func (r lifecycleRunner) WithExecutor(_ context.Context, fn func(database.QueryExecutor) error) error {
-	return fn(lifecycleExecutor{order: r.order, execErr: r.execErr})
+func (r lifecycleRunner) WithExecutor(ctx context.Context, fn func(context.Context) error) error {
+	exec := lifecycleExecutor{order: r.order, execErr: r.execErr}
+	return fn(database.WithExecutor(ctx, exec))
 }
 
 func lifecycleService(r lifecycleRunner, settings *fakeSettingsProvider, notifier *fakeOrderNotifier, userReader ...*fakeUserReader) *order.OrderService {

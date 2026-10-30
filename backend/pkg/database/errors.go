@@ -72,6 +72,15 @@ var (
 
 	// ErrInternal is a fallback error indicating unclassified internal database failures.
 	ErrInternal = errors.New("internal database error")
+
+	// ErrNoExecutor indicates that no database executor was found in the context.
+	ErrNoExecutor = errors.New("database executor not found in context")
+
+	// ErrNoActiveTx is returned by RequireTx when ctx does not carry an active transaction.
+	ErrNoActiveTx = errors.New("operation requires an active database transaction")
+
+	// ErrMismatchedDatabase indicates that a transaction belongs to a different database instance.
+	ErrMismatchedDatabase = errors.New("transaction belongs to a different database instance")
 )
 
 // wrapPgError wraps the domain sentinel error with detailed PostgreSQL server error metadata

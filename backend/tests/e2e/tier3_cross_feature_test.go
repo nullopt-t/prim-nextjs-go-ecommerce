@@ -13,7 +13,6 @@ import (
 
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
-	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
 // =============================================================================
@@ -64,18 +63,18 @@ func TestTier3_Product_Variant_Storage_MediaResolution(t *testing.T) {
 	var result *ProductDTO
 
 	// Single connection (WithExecutor) reads across Product, Variant, Inventory, Storage
-	err := runner.WithExecutor(context.Background(), func(exec database.QueryExecutor) error {
-		p, err := prodRepo.GetByID(context.Background(), exec, prodID)
+	err := runner.WithExecutor(context.Background(), func(ctx context.Context) error {
+		p, err := prodRepo.GetByID(ctx, prodID)
 		if err != nil {
 			return CanonicalHandleError(err, "product")
 		}
 
-		v, err := varRepo.GetByID(context.Background(), exec, varID)
+		v, err := varRepo.GetByID(ctx, varID)
 		if err != nil {
 			return CanonicalHandleError(err, "variant")
 		}
 
-		stock, err := invRepo.GetStock(context.Background(), exec, varID)
+		stock, err := invRepo.GetStock(ctx, varID)
 		if err != nil {
 			return CanonicalHandleError(err, "inventory")
 		}
@@ -120,8 +119,8 @@ func TestTier3_Order_Inventory_StateTransition_CommitAndRestock(t *testing.T) {
 	invRepo.SetStock(varID, 20, 0)
 
 	// Step 1: Create Order & Hold Reservation on Tx
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
-		if err := orderRepo.CreateOrder(ctx, tx, &model.Order{
+	err := runner.WithTx(context.Background(), func(ctx context.Context) error {
+		if err := orderRepo.CreateOrder(ctx, &model.Order{
 			ID:          orderID,
 			TotalAmount: 5000,
 			Status:      model.OrderStatusPending,
@@ -129,7 +128,7 @@ func TestTier3_Order_Inventory_StateTransition_CommitAndRestock(t *testing.T) {
 			return err
 		}
 
-		return invRepo.CreateReservation(ctx, tx, &model.InventoryReservation{
+		return invRepo.CreateReservation(ctx, &model.InventoryReservation{
 			ID:        uuid.New(),
 			VariantID: varID,
 			OrderID:   &orderID,
@@ -139,20 +138,20 @@ func TestTier3_Order_Inventory_StateTransition_CommitAndRestock(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	unreleased, _ := invRepo.GetUnreleasedReservationsForOrder(context.Background(), nil, orderID)
+	unreleased, _ := invRepo.GetUnreleasedReservationsForOrder(context.Background(), orderID)
 	require.Len(t, unreleased, 1)
 
 	// Step 2: Payment Confirmed -> Commit reservation to finalized sale
-	err = runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
+	err = runner.WithTx(context.Background(), func(ctx context.Context) error {
 		// Update status to processing
-		if err := orderRepo.UpdateOrderStatus(ctx, tx, orderID, model.OrderStatusProcessing); err != nil {
+		if err := orderRepo.UpdateOrderStatus(ctx, orderID, model.OrderStatusProcessing); err != nil {
 			return err
 		}
 		// Release reservation hold and record sale ledger
-		if _, err := invRepo.ReleaseReservationsForOrder(ctx, tx, orderID); err != nil {
+		if _, err := invRepo.ReleaseReservationsForOrder(ctx, orderID); err != nil {
 			return err
 		}
-		return invRepo.CreateLedger(ctx, tx, &model.InventoryLedger{
+		return invRepo.CreateLedger(ctx, &model.InventoryLedger{
 			VariantID: varID,
 			Quantity:  -2,
 			Reason:    model.InventoryReasonSale,
@@ -160,16 +159,16 @@ func TestTier3_Order_Inventory_StateTransition_CommitAndRestock(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	unreleasedAfterCommit, _ := invRepo.GetUnreleasedReservationsForOrder(context.Background(), nil, orderID)
+	unreleasedAfterCommit, _ := invRepo.GetUnreleasedReservationsForOrder(context.Background(), orderID)
 	assert.Empty(t, unreleasedAfterCommit, "Reservation holds must be cleared upon sale commitment")
 
 	// Step 3: Order Cancelled -> Compensating return ledger restores stock
-	err = runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
-		if err := orderRepo.UpdateOrderStatus(ctx, tx, orderID, model.OrderStatusCancelled); err != nil {
+	err = runner.WithTx(context.Background(), func(ctx context.Context) error {
+		if err := orderRepo.UpdateOrderStatus(ctx, orderID, model.OrderStatusCancelled); err != nil {
 			return err
 		}
 		// Write compensating return ledger
-		return invRepo.CreateLedger(ctx, tx, &model.InventoryLedger{
+		return invRepo.CreateLedger(ctx, &model.InventoryLedger{
 			VariantID: varID,
 			Quantity:  2,
 			Reason:    model.InventoryReasonReturn,
@@ -233,9 +232,9 @@ func TestTier3_Checkout_Cart_Coupon_Inventory_AtomicOrchestration(t *testing.T) 
 	})
 
 	// Execute complete checkout transaction within a single WithTx
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context) error {
 		// 1. Fetch Cart
-		c, err := cartRepo.GetCartByUserID(ctx, tx, userID)
+		c, err := cartRepo.GetCartByUserID(ctx, userID)
 		if err != nil {
 			return CanonicalHandleError(err, "cart")
 		}
@@ -244,10 +243,10 @@ func TestTier3_Checkout_Cart_Coupon_Inventory_AtomicOrchestration(t *testing.T) 
 		}
 
 		// 2. Lock variant & check stock
-		if err := invRepo.LockVariantForUpdate(ctx, tx, varID); err != nil {
+		if err := invRepo.LockVariantForUpdate(ctx, varID); err != nil {
 			return CanonicalHandleError(err, "variant lock")
 		}
-		stock, err := invRepo.GetStock(ctx, tx, varID)
+		stock, err := invRepo.GetStock(ctx, varID)
 		if err != nil {
 			return CanonicalHandleError(err, "stock")
 		}
@@ -256,7 +255,7 @@ func TestTier3_Checkout_Cart_Coupon_Inventory_AtomicOrchestration(t *testing.T) 
 		}
 
 		// 3. Validate coupon
-		coupon, err := couponRepo.GetByID(ctx, tx, couponID)
+		coupon, err := couponRepo.GetByID(ctx, couponID)
 		if err != nil {
 			return CanonicalHandleError(err, "coupon")
 		}
@@ -268,7 +267,7 @@ func TestTier3_Checkout_Cart_Coupon_Inventory_AtomicOrchestration(t *testing.T) 
 		netTotal := gross - discount                   // 16000
 
 		// 4. Place stock reservation
-		if err := invRepo.CreateReservation(ctx, tx, &model.InventoryReservation{
+		if err := invRepo.CreateReservation(ctx, &model.InventoryReservation{
 			ID:        uuid.New(),
 			VariantID: varID,
 			OrderID:   &orderID,
@@ -279,7 +278,7 @@ func TestTier3_Checkout_Cart_Coupon_Inventory_AtomicOrchestration(t *testing.T) 
 		}
 
 		// 5. Record coupon redemption
-		if err := couponRepo.RecordRedemption(ctx, tx, &model.CouponRedemption{
+		if err := couponRepo.RecordRedemption(ctx, &model.CouponRedemption{
 			CouponID:       couponID,
 			UserID:         userID,
 			OrderID:        orderID,
@@ -290,7 +289,7 @@ func TestTier3_Checkout_Cart_Coupon_Inventory_AtomicOrchestration(t *testing.T) 
 		}
 
 		// 6. Create order
-		if err := orderRepo.CreateOrder(ctx, tx, &model.Order{
+		if err := orderRepo.CreateOrder(ctx, &model.Order{
 			ID:             orderID,
 			CustomerID:     &userID,
 			CouponID:       &couponID,
@@ -302,21 +301,21 @@ func TestTier3_Checkout_Cart_Coupon_Inventory_AtomicOrchestration(t *testing.T) 
 		}
 
 		// 7. Clear cart
-		return cartRepo.ClearCart(ctx, tx, cartID)
+		return cartRepo.ClearCart(ctx, cartID)
 	})
 
 	require.NoError(t, err)
 
 	// Invariants verification
-	savedOrder, err := orderRepo.GetOrderByID(context.Background(), nil, orderID)
+	savedOrder, err := orderRepo.GetOrderByID(context.Background(), orderID)
 	require.NoError(t, err)
 	assert.Equal(t, int64(16000), savedOrder.TotalAmount)
 	assert.Equal(t, int64(4000), savedOrder.DiscountAmount)
 
-	clearedCart, _ := cartRepo.GetCartByUserID(context.Background(), nil, userID)
+	clearedCart, _ := cartRepo.GetCartByUserID(context.Background(), userID)
 	assert.Empty(t, clearedCart.Items, "Cart must be cleared atomically")
 
-	redemptions, _ := couponRepo.GetRedemptionCount(context.Background(), nil, couponID)
+	redemptions, _ := couponRepo.GetRedemptionCount(context.Background(), couponID)
 	assert.Equal(t, 1, redemptions)
 
 	assert.False(t, runner.ConnectionHopDetected())
@@ -350,9 +349,9 @@ func TestTier3_Checkout_User_Address_OwnershipEnforcement(t *testing.T) {
 		FullName: "Other Customer",
 	})
 
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context) error {
 		// Verify customer
-		u, err := userRepo.GetByID(ctx, tx, validUser)
+		u, err := userRepo.GetByID(ctx, validUser)
 		if err != nil {
 			return CanonicalHandleError(err, "customer")
 		}
@@ -361,7 +360,7 @@ func TestTier3_Checkout_User_Address_OwnershipEnforcement(t *testing.T) {
 		}
 
 		// Verify address ownership
-		_, err = addrRepo.GetByIDAndUser(ctx, tx, stolenAddrID, validUser)
+		_, err = addrRepo.GetByIDAndUser(ctx, stolenAddrID, validUser)
 		if err != nil {
 			return CanonicalHandleError(err, "shipping address")
 		}
@@ -385,12 +384,12 @@ func TestTier3_Settings_Audit_ConfigurationCacheInvalidation(t *testing.T) {
 	actorID := uuid.New()
 
 	updateSettingAndAudit := func(ctx context.Context, newThreshold int64) error {
-		return runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+		return runner.WithTx(ctx, func(ctx context.Context) error {
 			// Update in memory or DB
 			cachedValue = newThreshold
 
 			// Record audit log entry
-			return auditRepo.Insert(ctx, tx, &model.AuditLog{
+			return auditRepo.Insert(ctx, &model.AuditLog{
 				ID:         1,
 				ActorID:    &actorID,
 				Action:     "setting.free_shipping_threshold.update",

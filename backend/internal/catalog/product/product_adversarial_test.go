@@ -57,14 +57,16 @@ type mockConnectionTrackingRunner struct {
 	qe          *mockQE
 }
 
-func (m *mockConnectionTrackingRunner) WithExecutor(ctx context.Context, fn func(database.QueryExecutor) error) error {
+func (m *mockConnectionTrackingRunner) WithExecutor(ctx context.Context, fn func(context.Context) error) error {
 	m.withDBCalls++
-	return fn(m.qe)
+	ctx = database.WithExecutor(ctx, m.qe)
+	return fn(ctx)
 }
 
-func (m *mockConnectionTrackingRunner) WithTx(ctx context.Context, fn func(context.Context, *database.Tx) error) error {
+func (m *mockConnectionTrackingRunner) WithTx(ctx context.Context, fn func(context.Context) error) error {
 	m.withTxCalls++
-	return fn(ctx, database.NewTx(&mockQETx{mockQE: m.qe}))
+	ctx = database.WithTx(ctx, database.NewTx(&mockQETx{mockQE: m.qe}))
+	return fn(ctx)
 }
 
 type fakeVariantRepoForInvariants struct {
@@ -72,25 +74,25 @@ type fakeVariantRepoForInvariants struct {
 	getFunc   func(id uuid.UUID) (*model.ProductVariant, error)
 }
 
-func (f *fakeVariantRepoForInvariants) CountByProductID(ctx context.Context, qe database.QueryExecutor, productID uuid.UUID) (int, error) {
+func (f *fakeVariantRepoForInvariants) CountByProductID(ctx context.Context, productID uuid.UUID) (int, error) {
 	if f.countFunc != nil {
 		return f.countFunc()
 	}
 	return 1, nil
 }
 
-func (f *fakeVariantRepoForInvariants) GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductVariant, error) {
+func (f *fakeVariantRepoForInvariants) GetByID(ctx context.Context, id uuid.UUID) (*model.ProductVariant, error) {
 	if f.getFunc != nil {
 		return f.getFunc(id)
 	}
 	return nil, nil
 }
 
-func (f *fakeVariantRepoForInvariants) ListByProductID(ctx context.Context, qe database.QueryExecutor, opts variant.ListVariantOptions) (*pagination.PagedResult[model.ProductVariant], error) {
+func (f *fakeVariantRepoForInvariants) ListByProductID(ctx context.Context, opts variant.ListVariantOptions) (*pagination.PagedResult[model.ProductVariant], error) {
 	return nil, nil
 }
 
-func (f *fakeVariantRepoForInvariants) ListMediaByVariantIDs(ctx context.Context, qe database.QueryExecutor, variantIDs []uuid.UUID) (map[uuid.UUID][]*model.VariantMedia, error) {
+func (f *fakeVariantRepoForInvariants) ListMediaByVariantIDs(ctx context.Context, variantIDs []uuid.UUID) (map[uuid.UUID][]*model.VariantMedia, error) {
 	return nil, nil
 }
 

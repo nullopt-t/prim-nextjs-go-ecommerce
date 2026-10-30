@@ -86,9 +86,13 @@ func NewProductRepository() *ProductRepository {
 // Create inserts a new product record in draft state.
 func (r *ProductRepository) Create(
 	ctx context.Context,
-	tx *database.Tx,
 	p *model.Product,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO products (
 			id,
@@ -106,7 +110,7 @@ func (r *ProductRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err := tx.QueryRow(
+	err = tx.QueryRow(
 		ctx,
 		query,
 		p.ID,
@@ -128,43 +132,44 @@ func (r *ProductRepository) Create(
 // GetByID retrieves a single non-deleted product by its UUID.
 func (r *ProductRepository) GetByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (*model.Product, error) {
-	return r.get(ctx, qe, "id = $1 AND deleted_at IS NULL", id)
+	return r.get(ctx, "id = $1 AND deleted_at IS NULL", id)
 }
 
 // GetByIDWithDeleted retrieves a product by UUID even if it has been soft-deleted (for administrative audit).
 func (r *ProductRepository) GetByIDWithDeleted(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (*model.Product, error) {
-	return r.get(ctx, qe, "id = $1", id)
+	return r.get(ctx, "id = $1", id)
 }
 
 // GetBySlug retrieves a single published, non-deleted product by its public SEO slug or UUID.
 // Unpublished (draft/archived) products must not be reachable through public storefront lookups.
 func (r *ProductRepository) GetBySlug(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	slug string,
 ) (*model.Product, error) {
 	if parsedUUID, err := uuid.Parse(slug); err == nil && parsedUUID != uuid.Nil {
-		return r.get(ctx, qe, "(slug = $1 OR id = $2) AND deleted_at IS NULL AND status = $3", slug, parsedUUID, model.PublicationStatusPublished)
+		return r.get(ctx, "(slug = $1 OR id = $2) AND deleted_at IS NULL AND status = $3", slug, parsedUUID, model.PublicationStatusPublished)
 	}
-	return r.get(ctx, qe, "slug = $1 AND deleted_at IS NULL AND status = $2", slug, model.PublicationStatusPublished)
+	return r.get(ctx, "slug = $1 AND deleted_at IS NULL AND status = $2", slug, model.PublicationStatusPublished)
 }
 
 // SlugExists checks whether any product (including soft-deleted) has the specified slug.
 func (r *ProductRepository) SlugExists(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	slug string,
 ) (bool, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return false, err
+	}
+
 	var exists bool
 	query := "SELECT EXISTS(SELECT 1 FROM products WHERE slug = $1)"
-	err := qe.QueryRow(ctx, query, slug).Scan(&exists)
+	err = executor.QueryRow(ctx, query, slug).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("check slug exists: %w", err)
 	}
@@ -173,12 +178,16 @@ func (r *ProductRepository) SlugExists(
 
 func (r *ProductRepository) get(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	whereClause string,
 	args ...any,
 ) (*model.Product, error) {
 	if whereClause == "" {
 		return nil, errors.New("get product: whereClause is required")
+	}
+
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	query := fmt.Sprintf(`
@@ -203,7 +212,7 @@ func (r *ProductRepository) get(
 		LIMIT 1
 	`, whereClause)
 
-	rows, err := qe.Query(ctx, query, args...)
+	rows, err := executor.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query product: %w", err)
 	}
@@ -216,14 +225,34 @@ func (r *ProductRepository) get(
 	return product, nil
 }
 
+// LockForUpdate locks the product row for update within an active transaction.
+func (r *ProductRepository) LockForUpdate(
+	ctx context.Context,
+	id uuid.UUID,
+) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+	var lockedID uuid.UUID
+	return tx.QueryRow(ctx,
+		`SELECT id FROM products WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`,
+		id,
+	).Scan(&lockedID)
+}
+
 // Update modifies mutable product columns including taxonomy, title, description, and thumbnail.
 func (r *ProductRepository) Update(
 	ctx context.Context,
-	tx *database.Tx,
 	p *model.Product,
 ) error {
 	if p.ID == uuid.Nil {
 		return errors.New("update product: product ID is required")
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	query := `
@@ -278,10 +307,13 @@ func (r *ProductRepository) Update(
 // (ledger on-hand quantity minus unreleased active reservations, clamped to 0).
 func (r *ProductRepository) List(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	q *ListProductsQuery,
 	includeDeleted bool,
 ) (*pagination.PagedResult[ProductCardReadModel], error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	if q == nil {
 		q = &ListProductsQuery{}
 	}
@@ -403,7 +435,7 @@ func (r *ProductRepository) List(
 		// in the count while the select (which nulls those joins out) excludes the
 		// row, otherwise the reported total disagrees with the returned rows.
 		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL LEFT JOIN product_variants pv ON p.default_variant_id = pv.id AND pv.deleted_at IS NULL %s", whereStmt)
-		if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		if err := executor.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 			return nil, fmt.Errorf("count products: %w", err)
 		}
 
@@ -483,7 +515,7 @@ func (r *ProductRepository) List(
 		%s
 	`, whereStmt, orderBy, tail)
 
-	rows, err := qe.Query(ctx, selectQuery, queryArgs...)
+	rows, err := executor.Query(ctx, selectQuery, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("list products select: %w", err)
 	}
@@ -575,20 +607,41 @@ func (r *ProductRepository) List(
 // SoftDeleteByID soft-deletes a product by its UUID (setting deleted_at = now()).
 func (r *ProductRepository) SoftDeleteByID(
 	ctx context.Context,
-	tx *database.Tx,
 	id uuid.UUID,
 ) error {
-	return r.softDelete(ctx, tx, "id = $1", id)
+	return r.softDelete(ctx, "id = $1", id)
+}
+
+// CascadeSoftDeleteVariants soft-deletes all variants of a product.
+func (r *ProductRepository) CascadeSoftDeleteVariants(
+	ctx context.Context,
+	productID uuid.UUID,
+) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+	query := `
+		UPDATE product_variants
+		SET deleted_at = now(), updated_at = now()
+		WHERE product_id = $1 AND deleted_at IS NULL
+	`
+	_, err = tx.Exec(ctx, query, productID)
+	return err
 }
 
 func (r *ProductRepository) softDelete(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	whereClause string,
 	args ...any,
 ) error {
 	if whereClause == "" {
 		return errors.New("soft delete product: whereClause is required")
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	query := fmt.Sprintf(`
@@ -597,7 +650,7 @@ func (r *ProductRepository) softDelete(
 		WHERE %s
 	`, whereClause)
 
-	cmd, err := qe.Exec(ctx, query, args...)
+	cmd, err := tx.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("soft delete product: %w", err)
 	}
@@ -612,12 +665,16 @@ func (r *ProductRepository) softDelete(
 // UpdateStatus changes the publication lifecycle status (draft, published, archived) of a product.
 func (r *ProductRepository) UpdateStatus(
 	ctx context.Context,
-	tx *database.Tx,
 	productID uuid.UUID,
 	status model.PublicationStatus,
 ) error {
 	if productID == uuid.Nil {
 		return errors.New("update product status: productID is required")
+	}
+
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
 	}
 
 	query := `
@@ -641,10 +698,14 @@ func (r *ProductRepository) UpdateStatus(
 // SetDefaultVariant updates the default_variant_id for a product.
 func (r *ProductRepository) SetDefaultVariant(
 	ctx context.Context,
-	tx *database.Tx,
 	productID uuid.UUID,
 	variantID *uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE products
 		SET default_variant_id = $2, updated_at = now()

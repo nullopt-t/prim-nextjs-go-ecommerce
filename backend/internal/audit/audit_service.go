@@ -81,8 +81,8 @@ func (s *Service) handleError(err error, fallbackMsg string) error {
 // failure here must never break the originating request: callers are expected
 // to log it and continue.
 func (s *Service) Record(ctx context.Context, entry *model.AuditLog) error {
-	err := s.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return s.repo.Insert(ctx, tx, entry)
+	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.Insert(ctx, entry)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to record audit log")
@@ -99,9 +99,9 @@ func (s *Service) List(
 ) ([]*model.AuditLog, *pagination.CursorPage, error) {
 	var entries []*model.AuditLog
 	var page *pagination.CursorPage
-	err := s.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		entries, page, err = s.repo.List(ctx, exec, f, limit, cursor)
+		entries, page, err = s.repo.List(ctx, f, limit, cursor)
 		return err
 	})
 	if err != nil {

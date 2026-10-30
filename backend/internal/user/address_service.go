@@ -98,9 +98,9 @@ func (s *AddressService) handleError(err error, fallbackMsg string) error {
 // ListAddresses returns all non-deleted saved addresses for the authenticated user, ordered default-first.
 func (s *AddressService) ListAddresses(ctx context.Context, userID uuid.UUID) ([]model.UserAddress, error) {
 	var addresses []model.UserAddress
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		addresses, err = s.repo.ListByUser(ctx, exec, userID)
+		addresses, err = s.repo.ListByUser(ctx, userID)
 		return err
 	})
 	if err != nil {
@@ -113,9 +113,9 @@ func (s *AddressService) ListAddresses(ctx context.Context, userID uuid.UUID) ([
 // GetAddress retrieves a single address by its UUID, verifying it belongs to the authenticated user.
 func (s *AddressService) GetAddress(ctx context.Context, id, userID uuid.UUID) (*model.UserAddress, error) {
 	var address *model.UserAddress
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		address, repoErr = s.getAddress(ctx, exec, id, userID)
+		address, repoErr = s.getAddress(ctx, id, userID)
 		return repoErr
 	})
 	if err != nil {
@@ -124,8 +124,8 @@ func (s *AddressService) GetAddress(ctx context.Context, id, userID uuid.UUID) (
 	return address, nil
 }
 
-func (s *AddressService) getAddress(ctx context.Context, exec database.QueryExecutor, id, userID uuid.UUID) (*model.UserAddress, error) {
-	address, err := s.repo.GetByIDAndUser(ctx, exec, id, userID)
+func (s *AddressService) getAddress(ctx context.Context, id, userID uuid.UUID) (*model.UserAddress, error) {
+	address, err := s.repo.GetByIDAndUser(ctx, id, userID)
 	if err != nil {
 		s.logger.Error("failed to get user address", log.Meta{"id": id, "userId": userID, "error": err.Error()})
 		return nil, s.handleError(err, "Failed to retrieve address")
@@ -170,13 +170,17 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 	// A per-user advisory transaction lock serializes concurrent creations so
 	// only one "first address" wins the default flag (the partial unique index
 	// on addresses(user_id) WHERE is_default is the backstop).
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		tx, err := database.RequireTx(ctx)
+		if err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock((hashtext($1::text))::bigint)`, userID.String()); err != nil {
 			return err
 		}
 
 		// Check existing active address count
-		count, err := s.repo.CountByUser(ctx, tx, userID)
+		count, err := s.repo.CountByUser(ctx, userID)
 		if err != nil {
 			return err
 		}
@@ -186,12 +190,12 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 			address.IsDefault = true
 		} else if address.IsDefault {
 			// Atomically clear any existing default address
-			if err := s.repo.ClearDefault(ctx, tx, userID); err != nil {
+			if err := s.repo.ClearDefault(ctx, userID); err != nil {
 				return err
 			}
 		}
 
-		return s.repo.Create(ctx, tx, address)
+		return s.repo.Create(ctx, address)
 	})
 
 	if err != nil {
@@ -219,8 +223,8 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 	}
 
 	var updated *model.UserAddress
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		current, err := s.repo.GetByIDAndUser(ctx, tx, id, userID)
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		current, err := s.repo.GetByIDAndUser(ctx, id, userID)
 		if err != nil {
 			return err
 		}
@@ -237,13 +241,13 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 
 		// Transitioning address to default: clear existing default and set this address
 		if in.IsDefault && !current.IsDefault {
-			if err := s.repo.ClearDefault(ctx, tx, userID); err != nil {
+			if err := s.repo.ClearDefault(ctx, userID); err != nil {
 				return err
 			}
 			current.IsDefault = true
 		} else if !in.IsDefault && current.IsDefault {
 			// Prevent unsetting isDefault if it leaves zero default addresses
-			count, err := s.repo.CountByUser(ctx, tx, userID)
+			count, err := s.repo.CountByUser(ctx, userID)
 			if err != nil {
 				return err
 			}
@@ -254,22 +258,22 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 			// the current one. Promoting after the update re-selects the
 			// just-updated current address (latest updated_at), leaving the
 			// user with no default address at all.
-			next, err := s.repo.FindMostRecentActiveExcluding(ctx, tx, userID, current.ID)
+			next, err := s.repo.FindMostRecentActiveExcluding(ctx, userID, current.ID)
 			if err != nil && !errors.Is(err, ErrAddressNotFound) {
 				return err
 			}
 			current.IsDefault = false
-			if err := s.repo.Update(ctx, tx, current); err != nil {
+			if err := s.repo.Update(ctx, current); err != nil {
 				return err
 			}
 			if next != nil {
-				if err := s.repo.SetDefault(ctx, tx, next.ID, userID); err != nil {
+				if err := s.repo.SetDefault(ctx, next.ID, userID); err != nil {
 					return err
 				}
 			}
 		}
 
-		if err := s.repo.Update(ctx, tx, current); err != nil {
+		if err := s.repo.Update(ctx, current); err != nil {
 			return err
 		}
 		updated = current
@@ -287,8 +291,8 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 // SetDefaultAddress marks the specified address as the default address within an atomic transaction.
 func (s *AddressService) SetDefaultAddress(ctx context.Context, id, userID uuid.UUID) (*model.UserAddress, error) {
 	var address *model.UserAddress
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		curr, err := s.repo.GetByIDAndUser(ctx, tx, id, userID)
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		curr, err := s.repo.GetByIDAndUser(ctx, id, userID)
 		if err != nil {
 			return err
 		}
@@ -299,10 +303,10 @@ func (s *AddressService) SetDefaultAddress(ctx context.Context, id, userID uuid.
 		}
 
 		// Atomically unset previous default and set new default
-		if err := s.repo.ClearDefault(ctx, tx, userID); err != nil {
+		if err := s.repo.ClearDefault(ctx, userID); err != nil {
 			return err
 		}
-		if err := s.repo.SetDefault(ctx, tx, id, userID); err != nil {
+		if err := s.repo.SetDefault(ctx, id, userID); err != nil {
 			return err
 		}
 		curr.IsDefault = true
@@ -322,8 +326,8 @@ func (s *AddressService) SetDefaultAddress(ctx context.Context, id, userID uuid.
 // If the deleted address was designated as the default address, it queries the most recently updated
 // active address and automatically promotes it as the new default address.
 func (s *AddressService) DeleteAddress(ctx context.Context, id, userID uuid.UUID) error {
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		current, err := s.repo.GetByIDAndUser(ctx, tx, id, userID)
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		current, err := s.repo.GetByIDAndUser(ctx, id, userID)
 		if err != nil {
 			return err
 		}
@@ -331,15 +335,15 @@ func (s *AddressService) DeleteAddress(ctx context.Context, id, userID uuid.UUID
 		wasDefault := current.IsDefault
 
 		// Soft-delete the address
-		if err := s.repo.SoftDelete(ctx, tx, id, userID); err != nil {
+		if err := s.repo.SoftDelete(ctx, id, userID); err != nil {
 			return err
 		}
 
 		// If the deleted address was default, promote the next most recent active address
 		if wasDefault {
-			next, err := s.repo.FindMostRecentActive(ctx, tx, userID)
+			next, err := s.repo.FindMostRecentActive(ctx, userID)
 			if err == nil && next != nil {
-				if err := s.repo.SetDefault(ctx, tx, next.ID, userID); err != nil {
+				if err := s.repo.SetDefault(ctx, next.ID, userID); err != nil {
 					return err
 				}
 			}

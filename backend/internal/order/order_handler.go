@@ -592,11 +592,7 @@ func (h *OrderHandler) UpdateOrderTracking(c *gin.Context) {
 		return
 	}
 
-	if err := h.orderService.UpdateOrderTracking(c.Request.Context(), orderID, UpdateOrderTrackingInput{
-		TrackingNumber: req.TrackingNumber,
-		Carrier:        req.Carrier,
-		TrackingURL:    req.TrackingURL,
-	}); err != nil {
+	if err := h.orderService.UpdateOrderTracking(c.Request.Context(), orderID, UpdateOrderTrackingInput(req)); err != nil {
 		_ = c.Error(err)
 		return
 	}

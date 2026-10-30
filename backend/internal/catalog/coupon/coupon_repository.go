@@ -42,26 +42,37 @@ func NewRepository() *CouponRepository {
 }
 
 // GetByID finds a coupon by its UUID identifier.
-func (r *CouponRepository) GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Coupon, error) {
-	return r.get(ctx, qe, `WHERE id = $1`, id)
+func (r *CouponRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Coupon, error) {
+	return r.get(ctx, `WHERE id = $1`, id)
 }
 
 // GetByIDAndLock finds a coupon by UUID and takes an exclusive row lock, so
 // callers can validate usage limits and redeem atomically within their tx.
-func (r *CouponRepository) GetByIDAndLock(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Coupon, error) {
-	return r.get(ctx, qe, `WHERE id = $1 FOR UPDATE`, id)
+func (r *CouponRepository) GetByIDAndLock(ctx context.Context, id uuid.UUID) (*model.Coupon, error) {
+	if _, err := database.RequireTx(ctx); err != nil {
+		return nil, err
+	}
+	return r.get(ctx, `WHERE id = $1 FOR UPDATE`, id)
 }
 
 // GetByCodeAndLock finds a coupon by its case-insensitive code.
-func (r *CouponRepository) GetByCodeAndLock(ctx context.Context, qe database.QueryExecutor, code string) (*model.Coupon, error) {
-	return r.get(ctx, qe, `WHERE LOWER(code) = LOWER($1) FOR UPDATE`, strings.TrimSpace(code))
+func (r *CouponRepository) GetByCodeAndLock(ctx context.Context, code string) (*model.Coupon, error) {
+	if _, err := database.RequireTx(ctx); err != nil {
+		return nil, err
+	}
+	return r.get(ctx, `WHERE LOWER(code) = LOWER($1) FOR UPDATE`, strings.TrimSpace(code))
 }
 
-func (r *CouponRepository) GetByCode(ctx context.Context, qe database.QueryExecutor, code string) (*model.Coupon, error) {
-	return r.get(ctx, qe, `WHERE LOWER(code) = LOWER($1)`, strings.TrimSpace(code))
+func (r *CouponRepository) GetByCode(ctx context.Context, code string) (*model.Coupon, error) {
+	return r.get(ctx, `WHERE LOWER(code) = LOWER($1)`, strings.TrimSpace(code))
 }
 
-func (r *CouponRepository) get(ctx context.Context, qe database.QueryExecutor, where string, args ...any) (*model.Coupon, error) {
+func (r *CouponRepository) get(ctx context.Context, where string, args ...any) (*model.Coupon, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT 
 			id, 
@@ -88,7 +99,7 @@ func (r *CouponRepository) get(ctx context.Context, qe database.QueryExecutor, w
 		perUserLimit  sql.NullInt32
 	)
 
-	err := qe.QueryRow(ctx, query, args...).Scan(
+	err = executor.QueryRow(ctx, query, args...).Scan(
 		&c.ID,
 		&c.Code,
 		&c.DiscountType,
@@ -125,7 +136,12 @@ func (r *CouponRepository) get(ctx context.Context, qe database.QueryExecutor, w
 // List returns coupons matching optional filters, ordered newest first. The
 // secondary id sort breaks ties (e.g. rows seeded with identical created_at)
 // so the order stays stable across updates instead of following heap layout.
-func (r *CouponRepository) List(ctx context.Context, qe database.QueryExecutor, filter ListCouponFilter) ([]*model.Coupon, *pagination.CursorPage, error) {
+func (r *CouponRepository) List(ctx context.Context, filter ListCouponFilter) ([]*model.Coupon, *pagination.CursorPage, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	var (
 		sb   strings.Builder
 		args []interface{}
@@ -167,7 +183,7 @@ func (r *CouponRepository) List(ctx context.Context, qe database.QueryExecutor, 
 	fmt.Fprintf(&sb, " LIMIT $%d", idx)
 	args = append(args, filter.Limit+1)
 
-	rows, err := qe.Query(ctx, sb.String(), args...)
+	rows, err := executor.Query(ctx, sb.String(), args...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list coupons: %w", err)
 	}
@@ -227,7 +243,12 @@ func (r *CouponRepository) List(ctx context.Context, qe database.QueryExecutor, 
 }
 
 // Create inserts a new coupon into the database.
-func (r *CouponRepository) Create(ctx context.Context, tx *database.Tx, c *model.Coupon) error {
+func (r *CouponRepository) Create(ctx context.Context, c *model.Coupon) error {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO coupons (
 			id,
@@ -265,7 +286,7 @@ func (r *CouponRepository) Create(ctx context.Context, tx *database.Tx, c *model
 		status = model.CouponStatusActive
 	}
 
-	return tx.QueryRow(ctx, query,
+	return executor.QueryRow(ctx, query,
 		c.ID,
 		c.Code,
 		c.DiscountType,
@@ -281,9 +302,14 @@ func (r *CouponRepository) Create(ctx context.Context, tx *database.Tx, c *model
 }
 
 // UpdateStatus changes the coupon status.
-func (r *CouponRepository) UpdateStatus(ctx context.Context, tx *database.Tx, id uuid.UUID, status model.CouponStatus) error {
+func (r *CouponRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status model.CouponStatus) error {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `UPDATE coupons SET status = $1::coupon_status, updated_at = NOW() WHERE id = $2`
-	ct, err := tx.Exec(ctx, query, string(status), id)
+	ct, err := executor.Exec(ctx, query, string(status), id)
 	if err != nil {
 		return fmt.Errorf("update coupon status: %w", err)
 	}
@@ -294,9 +320,14 @@ func (r *CouponRepository) UpdateStatus(ctx context.Context, tx *database.Tx, id
 }
 
 // Delete permanently removes a coupon by its UUID.
-func (r *CouponRepository) Delete(ctx context.Context, tx *database.Tx, id uuid.UUID) error {
+func (r *CouponRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `DELETE FROM coupons WHERE id = $1`
-	ct, err := tx.Exec(ctx, query, id)
+	ct, err := executor.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("delete coupon: %w", err)
 	}
@@ -307,10 +338,15 @@ func (r *CouponRepository) Delete(ctx context.Context, tx *database.Tx, id uuid.
 }
 
 // GetRedemptionCount returns total times a coupon has been redeemed globally.
-func (r *CouponRepository) GetRedemptionCount(ctx context.Context, qe database.QueryExecutor, couponID uuid.UUID) (int, error) {
+func (r *CouponRepository) GetRedemptionCount(ctx context.Context, couponID uuid.UUID) (int, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	query := `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1`
 	var count int
-	err := qe.QueryRow(ctx, query, couponID).Scan(&count)
+	err = executor.QueryRow(ctx, query, couponID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("get redemption count: %w", err)
 	}
@@ -318,10 +354,15 @@ func (r *CouponRepository) GetRedemptionCount(ctx context.Context, qe database.Q
 }
 
 // GetUserRedemptionCount returns times a coupon has been redeemed by a specific user.
-func (r *CouponRepository) GetUserRedemptionCount(ctx context.Context, qe database.QueryExecutor, couponID uuid.UUID, userID uuid.UUID) (int, error) {
+func (r *CouponRepository) GetUserRedemptionCount(ctx context.Context, couponID uuid.UUID, userID uuid.UUID) (int, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	query := `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1 AND user_id = $2`
 	var count int
-	err := qe.QueryRow(ctx, query, couponID, userID).Scan(&count)
+	err = executor.QueryRow(ctx, query, couponID, userID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("get user redemption count: %w", err)
 	}
@@ -329,7 +370,12 @@ func (r *CouponRepository) GetUserRedemptionCount(ctx context.Context, qe databa
 }
 
 // RecordRedemption logs a coupon usage against an order.
-func (r *CouponRepository) RecordRedemption(ctx context.Context, tx *database.Tx, red *model.CouponRedemption) error {
+func (r *CouponRepository) RecordRedemption(ctx context.Context, red *model.CouponRedemption) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO coupon_redemptions (coupon_id, user_id, order_id, discount_amount, currency, created_at)
 		VALUES ($1, $2, $3, $4, $5, NOW())
@@ -346,7 +392,12 @@ func (r *CouponRepository) RecordRedemption(ctx context.Context, tx *database.Tx
 
 // ListRedemptions returns every redemption of a coupon, newest first, joined
 // with the redeeming user's name and email for the admin usage log.
-func (r *CouponRepository) ListRedemptions(ctx context.Context, qe database.QueryExecutor, couponID uuid.UUID, limit int, cursor *pagination.Keyset) ([]*RedemptionEntry, *pagination.CursorPage, error) {
+func (r *CouponRepository) ListRedemptions(ctx context.Context, couponID uuid.UUID, limit int, cursor *pagination.Keyset) ([]*RedemptionEntry, *pagination.CursorPage, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	query := `
 		SELECT 
 			r.id,
@@ -373,7 +424,7 @@ func (r *CouponRepository) ListRedemptions(ctx context.Context, qe database.Quer
 	query += fmt.Sprintf(" LIMIT $%d", i)
 	args = append(args, limit+1)
 
-	rows, err := qe.Query(ctx, query, args...)
+	rows, err := executor.Query(ctx, query, args...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list coupon redemptions: %w", err)
 	}

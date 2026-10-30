@@ -81,7 +81,7 @@ type CreatePaymentInput struct {
 // order independent of the inventory service for lookups.
 type InventoryReader interface {
 	// ExpiredReservationOrderIDs lists orders whose reservation TTL has elapsed.
-	ExpiredReservationOrderIDs(ctx context.Context, qe database.QueryExecutor) ([]uuid.UUID, error)
+	ExpiredReservationOrderIDs(ctx context.Context) ([]uuid.UUID, error)
 }
 
 // InventoryWriter owns the stock invariants the order lifecycle depends on:
@@ -90,12 +90,12 @@ type InventoryReader interface {
 // executor the order use case already holds, so stock and order state commit
 // atomically.
 type InventoryWriter interface {
-	// ApplyStockAdjustment appends a signed ledger entry within the caller's tx.
-	ApplyStockAdjustment(ctx context.Context, tx *database.Tx, in inventory.AdjustStockInput) error
+	// ApplyStockAdjustment appends a signed ledger entry within the active tx.
+	ApplyStockAdjustment(ctx context.Context, in inventory.AdjustStockInput) error
 	// ReleaseReservationsForOrder releases live holds and reports how many.
-	ReleaseReservationsForOrder(ctx context.Context, tx *database.Tx, orderID uuid.UUID) (int64, error)
+	ReleaseReservationsForOrder(ctx context.Context, orderID uuid.UUID) (int64, error)
 	// CommitReservationsForOrder turns holds into deductions on payment capture.
-	CommitReservationsForOrder(ctx context.Context, tx *database.Tx, orderID uuid.UUID) error
+	CommitReservationsForOrder(ctx context.Context, orderID uuid.UUID) error
 }
 
 // OrderNotifier is the consumer-owned contract for post-commit lifecycle
@@ -114,7 +114,7 @@ type SettingsProvider interface {
 // UserReader is the read-only projection of user profiles the order domain needs
 // for customer communications.
 type UserReader interface {
-	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.User, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 }
 
 // OrderService orchestrates database transactions, order status state machine validation,
@@ -179,12 +179,12 @@ func NewService(
 	}
 }
 
-// PlaceOrder creates an order and its associated line items inside the
-// caller's database transaction, so checkout can atomically bundle stock
-// reservation, coupon redemption, and payment recording with order creation.
+// PlaceOrder creates an order and its associated line items within the
+// active database transaction (creating one if none exists), so checkout
+// can atomically bundle stock reservation, coupon redemption, and payment
+// recording with order creation.
 func (s *OrderService) PlaceOrder(
 	ctx context.Context,
-	tx *database.Tx,
 	in *CreateOrderInput,
 ) (*model.Order, error) {
 	// Validate that at least one line item is provided.
@@ -256,29 +256,47 @@ func (s *OrderService) PlaceOrder(
 		Items:           orderItems,
 	}
 
-	// Persist the root order record.
-	if err := s.orderRepo.CreateOrder(ctx, tx, newOrder); err != nil {
-		return nil, err
-	}
-
-	// Persist each line item associated with the order.
-	for i := range orderItems {
-		if err := s.orderRepo.AddOrderItem(ctx, tx, &orderItems[i]); err != nil {
-			return nil, err
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
+		// Persist the root order record.
+		if err := s.orderRepo.CreateOrder(ctx, newOrder); err != nil {
+			return err
 		}
-	}
 
-	// Insert initial audit history entry.
-	note := "Order created with status pending"
-	if err := s.orderRepo.AddStatusHistory(ctx, tx, orderID, model.OrderStatusPending, &note); err != nil {
-		return nil, err
+		// Persist each line item associated with the order.
+		for i := range orderItems {
+			if err := s.orderRepo.AddOrderItem(ctx, &orderItems[i]); err != nil {
+				return err
+			}
+		}
+
+		// Insert initial audit history entry.
+		note := "Order created with status pending"
+		if err := s.orderRepo.AddStatusHistory(ctx, orderID, model.OrderStatusPending, &note); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrConflict):
+			return nil, apierr.ConflictError("Order conflict").
+				WithCode(errcode.CodeOrderAlreadyExists).
+				Wrap(err)
+		default:
+			return nil, apierr.InternalServerError("Failed to create order").
+				WithCode(apierr.CodeInternalError).
+				Wrap(err).
+				WithStack()
+		}
 	}
 
 	return newOrder, nil
 }
 
-// RecordPayment records a payment transaction for an order within the caller's transaction.
-func (s *OrderService) RecordPayment(ctx context.Context, tx *database.Tx, in *CreatePaymentInput) (*model.Payment, error) {
+// RecordPayment records a payment transaction for an order within the active transaction.
+func (s *OrderService) RecordPayment(ctx context.Context, in *CreatePaymentInput) (*model.Payment, error) {
 	if in.OrderID == uuid.Nil {
 		return nil, apierr.BadRequestError("Order ID is required")
 	}
@@ -297,8 +315,14 @@ func (s *OrderService) RecordPayment(ctx context.Context, tx *database.Tx, in *C
 		ProviderTransactionID: in.ProviderTransactionID,
 	}
 
-	if err := s.orderRepo.CreatePayment(ctx, tx, p); err != nil {
-		return nil, s.handleError(err, "Failed to record payment transaction")
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.orderRepo.CreatePayment(ctx, p); err != nil {
+			return s.handleError(err, "Failed to record payment transaction")
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return p, nil
 }
@@ -307,40 +331,15 @@ func (s *OrderService) RecordPayment(ctx context.Context, tx *database.Tx, in *C
 // It computes the gross total, applies discount deductions, persists the initial 'pending' status,
 // and creates the initial status history audit trail.
 func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*model.Order, error) {
-	var createdOrder *model.Order
-
-	// Execute within an atomic transaction.
-	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		var err error
-		createdOrder, err = s.PlaceOrder(ctx, tx, in)
-		return err
-	})
-
-	if err != nil {
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(mappedErr, database.ErrConflict):
-			return nil, apierr.ConflictError("Order conflict").
-				WithCode(errcode.CodeOrderAlreadyExists).
-				Wrap(err)
-		default:
-			return nil, apierr.InternalServerError("Failed to create order").
-				WithCode(apierr.CodeInternalError).
-				Wrap(err).
-				WithStack()
-		}
-	}
-
-	return createdOrder, nil
+	return s.PlaceOrder(ctx, in)
 }
 
 // restockItems asks the inventory domain to append a compensating 'return'
 // ledger entry for each line item, restoring previously deducted units to
 // salable stock. On-hand stock is derived from the ledger sum, so the entry is
-// the restock. The inventory writer runs it on the caller's transaction.
+// the restock. The inventory writer runs it on the active transaction.
 func (s *OrderService) restockItems(
 	ctx context.Context,
-	tx *database.Tx,
 	items []model.OrderItem,
 ) error {
 	for _, item := range items {
@@ -349,7 +348,7 @@ func (s *OrderService) restockItems(
 			Quantity:  item.Quantity,
 			Reason:    string(model.InventoryReasonReturn),
 		}
-		if err := s.inventory.ApplyStockAdjustment(ctx, tx, in); err != nil {
+		if err := s.inventory.ApplyStockAdjustment(ctx, in); err != nil {
 			return fmt.Errorf("restore inventory for order item %s: %w", item.ID, err)
 		}
 	}
@@ -361,14 +360,13 @@ func (s *OrderService) restockItems(
 // inventory for a cancelled order (see releaseOrRestockCancelItems).
 func (s *OrderService) releaseOrRestockOnCancel(
 	ctx context.Context,
-	tx *database.Tx,
 	orderID uuid.UUID,
 ) error {
-	items, err := s.orderRepo.GetOrderItems(ctx, tx, orderID)
+	items, err := s.orderRepo.GetOrderItems(ctx, orderID)
 	if err != nil {
 		return fmt.Errorf("fetch order items for cancellation: %w", err)
 	}
-	return s.releaseOrRestockCancelItems(ctx, tx, orderID, items)
+	return s.releaseOrRestockCancelItems(ctx, orderID, items)
 }
 
 // releaseOrRestockCancelItems resolves inventory when an order is cancelled.
@@ -385,18 +383,17 @@ func (s *OrderService) releaseOrRestockOnCancel(
 // unpaid order added stock that had never been removed.
 func (s *OrderService) releaseOrRestockCancelItems(
 	ctx context.Context,
-	tx *database.Tx,
 	orderID uuid.UUID,
 	items []model.OrderItem,
 ) error {
-	released, err := s.inventory.ReleaseReservationsForOrder(ctx, tx, orderID)
+	released, err := s.inventory.ReleaseReservationsForOrder(ctx, orderID)
 	if err != nil {
 		return fmt.Errorf("release reservations for cancelled order %s: %w", orderID, err)
 	}
 	if released > 0 {
 		return nil
 	}
-	return s.restockItems(ctx, tx, items)
+	return s.restockItems(ctx, items)
 }
 
 // handleError translates repository and driver errors into typed APIErrors so
@@ -457,11 +454,11 @@ func (s *OrderService) resolveConfig(ctx context.Context) setting.Config {
 
 // resolveCustomerName safely looks up the customer display name inside the active
 // transaction context, falling back to empty string when not found or guest checkout.
-func (s *OrderService) resolveCustomerName(ctx context.Context, qe database.QueryExecutor, ord *model.Order) string {
+func (s *OrderService) resolveCustomerName(ctx context.Context, ord *model.Order) string {
 	if ord == nil || ord.CustomerID == nil || *ord.CustomerID == uuid.Nil {
 		return ""
 	}
-	u, err := s.userReader.GetByID(ctx, qe, *ord.CustomerID)
+	u, err := s.userReader.GetByID(ctx, *ord.CustomerID)
 	if err != nil || u == nil {
 		return ""
 	}
@@ -530,8 +527,8 @@ func (s *OrderService) notifyOrderCancelled(ctx context.Context, o *model.Order,
 // GetOrderByID loads an order by its UUID within a read-only database query execution block.
 func (s *OrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.Order, error) {
 	var order *model.Order
-	err := s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
-		res, err := s.orderRepo.GetOrderByID(ctx, exec, id)
+	err := s.qexecutor.WithExecutor(ctx, func(ctx context.Context) error {
+		res, err := s.orderRepo.GetOrderByID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -558,8 +555,8 @@ func (s *OrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.O
 // GetCustomerOrders fetches all orders belonging to the specified customer UUID.
 func (s *OrderService) GetCustomerOrders(ctx context.Context, customerID uuid.UUID) ([]model.Order, error) {
 	var orders []model.Order
-	err := s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
-		res, err := s.orderRepo.GetOrdersByCustomerID(ctx, exec, customerID)
+	err := s.qexecutor.WithExecutor(ctx, func(ctx context.Context) error {
+		res, err := s.orderRepo.GetOrdersByCustomerID(ctx, customerID)
 		if err != nil {
 			return err
 		}
@@ -592,7 +589,7 @@ func (s *OrderService) ListOrders(
 		return nil, nil, apierr.BadRequestError("Invalid pagination cursor").Wrap(err)
 	}
 
-	err = s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err = s.qexecutor.WithExecutor(ctx, func(ctx context.Context) error {
 		pageSize := q.PageSize
 		if pageSize <= 0 {
 			pageSize = 10
@@ -607,7 +604,7 @@ func (s *OrderService) ListOrders(
 			Cursor:     cursor,
 		}
 
-		res, err := s.orderRepo.ListOrders(ctx, exec, filter)
+		res, err := s.orderRepo.ListOrders(ctx, filter)
 		if err != nil {
 			return err
 		}
@@ -675,10 +672,10 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 	var notificationReason string
 	var customerName string
 
-	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
 		// Acquire an exclusive FOR UPDATE row-level lock on the order to prevent concurrent race conditions
 		// during status transitions.
-		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
+		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -692,10 +689,10 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 		statusChanged = ord.Status != status
 		cancelling := ord.Status != model.OrderStatusCancelled && status == model.OrderStatusCancelled
 
-		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, id, status); err != nil {
+		if err := s.orderRepo.UpdateOrderStatus(ctx, id, status); err != nil {
 			return err
 		}
-		if err := s.orderRepo.AddStatusHistory(ctx, tx, id, status, notes); err != nil {
+		if err := s.orderRepo.AddStatusHistory(ctx, id, status, notes); err != nil {
 			return err
 		}
 
@@ -703,7 +700,7 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 		// (unpaid order) or restock a committed sale (paid order), in the same
 		// transaction as the status change.
 		if cancelling {
-			if err := s.releaseOrRestockOnCancel(ctx, tx, id); err != nil {
+			if err := s.releaseOrRestockOnCancel(ctx, id); err != nil {
 				return err
 			}
 		}
@@ -713,7 +710,7 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 		if notes != nil {
 			notificationReason = *notes
 		}
-		customerName = s.resolveCustomerName(ctx, tx, ord)
+		customerName = s.resolveCustomerName(ctx, ord)
 		return nil
 	})
 
@@ -757,8 +754,8 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 	var cancelledOrder *model.Order
 	var customerName string
 
-	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
+		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, id)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Order not found").WithCode(errcode.CodeOrderNotFound)
@@ -776,35 +773,35 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 		wasAlreadyCancelled := ord.Status == model.OrderStatusCancelled
 
 		note := "Cancelled by customer"
-		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, id, model.OrderStatusCancelled); err != nil {
+		if err := s.orderRepo.UpdateOrderStatus(ctx, id, model.OrderStatusCancelled); err != nil {
 			return s.handleError(err, "Failed to cancel order")
 		}
 
-		if err := s.orderRepo.AddStatusHistory(ctx, tx, id, model.OrderStatusCancelled, &note); err != nil {
+		if err := s.orderRepo.AddStatusHistory(ctx, id, model.OrderStatusCancelled, &note); err != nil {
 			return s.handleError(err, "Failed to cancel order")
 		}
 
 		// Fetch order items to restore stock
-		items, err := s.orderRepo.GetOrderItems(ctx, tx, id)
+		items, err := s.orderRepo.GetOrderItems(ctx, id)
 		if err != nil {
 			return s.handleError(err, "Failed to fetch order items")
 		}
 
 		// Resolve inventory: release the still-held reservation (unpaid order) or
 		// restock the committed sale (paid order) within the same transaction.
-		if err := s.releaseOrRestockCancelItems(ctx, tx, id, items); err != nil {
+		if err := s.releaseOrRestockCancelItems(ctx, id, items); err != nil {
 			return s.handleError(err, "Failed to restore inventory")
 		}
 
 		// Update any associated captured or pending payment records to refunded / failed.
-		if err := s.orderRepo.RefundOrFailPaymentsForOrder(ctx, tx, id); err != nil {
+		if err := s.orderRepo.RefundOrFailPaymentsForOrder(ctx, id); err != nil {
 			return s.handleError(err, "Failed to refund payment")
 		}
 
 		if !wasAlreadyCancelled {
 			ord.Status = model.OrderStatusCancelled
 			cancelledOrder = ord
-			customerName = s.resolveCustomerName(ctx, tx, ord)
+			customerName = s.resolveCustomerName(ctx, ord)
 		}
 
 		return nil
@@ -826,9 +823,9 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 // idempotent (the loser observes a non-pending status and does nothing).
 func (s *OrderService) ReapExpiredReservations(ctx context.Context) (int, error) {
 	var orderIDs []uuid.UUID
-	if err := s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	if err := s.qexecutor.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		orderIDs, err = s.inventoryReader.ExpiredReservationOrderIDs(ctx, exec)
+		orderIDs, err = s.inventoryReader.ExpiredReservationOrderIDs(ctx)
 		return err
 	}); err != nil {
 		return 0, s.handleError(err, "Failed to list expired reservation orders")
@@ -859,8 +856,8 @@ func (s *OrderService) expirePendingOrder(ctx context.Context, orderID uuid.UUID
 	var cancelledOrder *model.Order
 	var customerName string
 
-	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, orderID)
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
+		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, orderID)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return nil // order already removed; nothing to do
@@ -877,28 +874,28 @@ func (s *OrderService) expirePendingOrder(ctx context.Context, orderID uuid.UUID
 			return nil
 		}
 
-		if err := s.orderRepo.UpdateOrderStatus(ctx, tx, orderID, model.OrderStatusCancelled); err != nil {
+		if err := s.orderRepo.UpdateOrderStatus(ctx, orderID, model.OrderStatusCancelled); err != nil {
 			return err
 		}
 		note := "Auto-cancelled: checkout reservation expired"
-		if err := s.orderRepo.AddStatusHistory(ctx, tx, orderID, model.OrderStatusCancelled, &note); err != nil {
+		if err := s.orderRepo.AddStatusHistory(ctx, orderID, model.OrderStatusCancelled, &note); err != nil {
 			return err
 		}
 
 		// The hold lapsed without ever being committed, so there is no stock to
 		// restock — releasing the reservation is the complete reversal.
-		if _, err := s.inventory.ReleaseReservationsForOrder(ctx, tx, orderID); err != nil {
+		if _, err := s.inventory.ReleaseReservationsForOrder(ctx, orderID); err != nil {
 			return err
 		}
 
 		// Fail the never-captured payment so it no longer looks receivable.
-		if err := s.orderRepo.FailPendingPaymentsForOrder(ctx, tx, orderID); err != nil {
+		if err := s.orderRepo.FailPendingPaymentsForOrder(ctx, orderID); err != nil {
 			return s.handleError(err, "Failed to fail stale payment")
 		}
 
 		ord.Status = model.OrderStatusCancelled
 		cancelledOrder = ord
-		customerName = s.resolveCustomerName(ctx, tx, ord)
+		customerName = s.resolveCustomerName(ctx, ord)
 		didCancel = true
 		return nil
 	})
@@ -912,9 +909,9 @@ func (s *OrderService) expirePendingOrder(ctx context.Context, orderID uuid.UUID
 // GetDashboardStats aggregates live metrics for administrative reporting.
 func (s *OrderService) GetDashboardStats(ctx context.Context) (*DashboardStats, error) {
 	var stats *DashboardStats
-	err := s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.qexecutor.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		stats, err = s.orderRepo.GetDashboardStats(ctx, exec)
+		stats, err = s.orderRepo.GetDashboardStats(ctx)
 		return err
 	})
 	if err != nil {
@@ -927,9 +924,9 @@ func (s *OrderService) GetDashboardStats(ctx context.Context) (*DashboardStats, 
 func (s *OrderService) ListPayments(ctx context.Context, filter PaymentListFilter) ([]PaymentItem, *pagination.CursorPage, error) {
 	var payments []PaymentItem
 	var page *pagination.CursorPage
-	err := s.qexecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.qexecutor.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		payments, page, err = s.orderRepo.ListPayments(ctx, exec, filter)
+		payments, page, err = s.orderRepo.ListPayments(ctx, filter)
 		return err
 	})
 	if err != nil {
@@ -945,9 +942,9 @@ func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, st
 	if !model.PaymentStatus(status).IsValid() {
 		return apierr.BadRequestError(fmt.Sprintf("Invalid payment status '%s'", status)).WithCode(apierr.CodeInvalidInput)
 	}
-	return s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	return s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
 		// Lock the payment row and resolve its order up front.
-		orderID, err := s.orderRepo.GetPaymentOrderIDForUpdate(ctx, tx, id)
+		orderID, err := s.orderRepo.GetPaymentOrderIDForUpdate(ctx, id)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Payment not found").WithCode(apierr.CodeNotFound)
@@ -955,7 +952,7 @@ func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, st
 			return s.handleError(err, "Failed to update payment status")
 		}
 
-		if err := s.orderRepo.UpdatePaymentStatus(ctx, tx, id, status); err != nil {
+		if err := s.orderRepo.UpdatePaymentStatus(ctx, id, status); err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Payment not found").WithCode(apierr.CodeNotFound)
 			}
@@ -966,7 +963,7 @@ func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, st
 		// operation is idempotent, so re-capturing cannot double-deduct. The
 		// inventory service owns the insufficient-stock error mapping.
 		if status == string(model.StatusCaptured) {
-			if err := s.inventory.CommitReservationsForOrder(ctx, tx, orderID); err != nil {
+			if err := s.inventory.CommitReservationsForOrder(ctx, orderID); err != nil {
 				return s.handleError(err, "Failed to update payment status")
 			}
 		}
@@ -976,8 +973,8 @@ func (s *OrderService) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, st
 
 // RefundPayment sets the payment status to refunded.
 func (s *OrderService) RefundPayment(ctx context.Context, id uuid.UUID) error {
-	return s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		status, err := s.orderRepo.GetPaymentStatusForUpdate(ctx, tx, id)
+	return s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
+		status, err := s.orderRepo.GetPaymentStatusForUpdate(ctx, id)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Payment not found").WithCode(apierr.CodeNotFound)
@@ -990,7 +987,7 @@ func (s *OrderService) RefundPayment(ctx context.Context, id uuid.UUID) error {
 		// refund of an already-refunded payment would double-count it.
 		switch status {
 		case "captured":
-			return s.orderRepo.UpdatePaymentStatus(ctx, tx, id, "refunded")
+			return s.orderRepo.UpdatePaymentStatus(ctx, id, "refunded")
 		case "refunded":
 			return apierr.ConflictError("Payment has already been refunded")
 		default:
@@ -1033,13 +1030,13 @@ func (s *OrderService) UpdateOrderTracking(ctx context.Context, id uuid.UUID, in
 		}
 	}
 
-	err := s.qexecutor.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, tx, id)
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
+		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, id)
 		if err != nil {
 			return err
 		}
 
-		if err := s.orderRepo.UpdateOrderTracking(ctx, tx, id, trackingNumber, carrier, trackingURL); err != nil {
+		if err := s.orderRepo.UpdateOrderTracking(ctx, id, trackingNumber, carrier, trackingURL); err != nil {
 			return err
 		}
 
@@ -1047,7 +1044,7 @@ func (s *OrderService) UpdateOrderTracking(ctx context.Context, id uuid.UUID, in
 		if carrier != nil {
 			note = fmt.Sprintf("Tracking updated: %s via %s", trackingNumber, *carrier)
 		}
-		_ = s.orderRepo.AddStatusHistory(ctx, tx, ord.ID, ord.Status, &note)
+		_ = s.orderRepo.AddStatusHistory(ctx, ord.ID, ord.Status, &note)
 		return nil
 	})
 	if err != nil {

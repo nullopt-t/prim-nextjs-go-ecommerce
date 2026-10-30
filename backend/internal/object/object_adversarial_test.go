@@ -173,14 +173,14 @@ type mockObjectRunner struct {
 	qe          *mockObjQE
 }
 
-func (m *mockObjectRunner) WithExecutor(ctx context.Context, fn func(database.QueryExecutor) error) error {
+func (m *mockObjectRunner) WithExecutor(ctx context.Context, fn func(ctx context.Context) error) error {
 	m.withDBCalls++
-	return fn(m.qe)
+	return fn(database.WithExecutor(ctx, m.qe))
 }
 
-func (m *mockObjectRunner) WithTx(ctx context.Context, fn func(context.Context, *database.Tx) error) error {
+func (m *mockObjectRunner) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	m.withTxCalls++
-	return fn(ctx, database.NewTx(&mockObjTx{mockObjQE: m.qe}))
+	return fn(database.WithTx(ctx, database.NewTx(&mockObjTx{mockObjQE: m.qe})))
 }
 
 type mockObjStorageForInvariants struct{}

@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/user"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
-	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,12 +14,12 @@ import (
 
 type fakeRunner struct{}
 
-func (fakeRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx *database.Tx) error) error {
-	return fn(ctx, nil)
+func (fakeRunner) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
 }
 
-func (fakeRunner) WithExecutor(ctx context.Context, fn func(qe database.QueryExecutor) error) error {
-	return fn(nil)
+func (fakeRunner) WithExecutor(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
 }
 
 func TestUserService_ConstructorsFailFast(t *testing.T) {

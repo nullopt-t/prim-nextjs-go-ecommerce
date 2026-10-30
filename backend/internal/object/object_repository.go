@@ -10,8 +10,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
-type ObjectRepository struct {
-}
+type ObjectRepository struct{}
 
 func NewRepository() *ObjectRepository {
 	return &ObjectRepository{}
@@ -19,10 +18,13 @@ func NewRepository() *ObjectRepository {
 
 func (or *ObjectRepository) Create(
 	ctx context.Context,
-	tx *database.Tx,
 	object *model.Object,
 ) error {
-	err := tx.QueryRow(
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+	err = tx.QueryRow(
 		ctx,
 		`
 		INSERT INTO storage_objects (
@@ -53,11 +55,14 @@ func (or *ObjectRepository) Create(
 
 func (or *ObjectRepository) UpdateStatus(
 	ctx context.Context,
-	tx *database.Tx,
 	objectID uuid.UUID,
 	status model.ObjectStatus,
 ) error {
-	_, err := tx.Exec(
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(
 		ctx,
 		`
 		UPDATE storage_objects
@@ -76,10 +81,13 @@ func (or *ObjectRepository) UpdateStatus(
 // MarkDeletingByKey sets the status of a storage_objects row to 'deleting' by bucket+key.
 func (or *ObjectRepository) MarkDeletingByKey(
 	ctx context.Context,
-	tx *database.Tx,
 	bucket, key string,
 ) error {
-	_, err := tx.Exec(ctx,
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx,
 		`UPDATE storage_objects SET status = 'deleting', updated_at = now() WHERE bucket = $1 AND object_key = $2`,
 		bucket, key,
 	)
@@ -92,10 +100,13 @@ func (or *ObjectRepository) MarkDeletingByKey(
 // MarkDeletedByKey sets the status of a storage_objects row to 'deleted' by bucket+key.
 func (or *ObjectRepository) MarkDeletedByKey(
 	ctx context.Context,
-	tx *database.Tx,
 	bucket, key string,
 ) error {
-	_, err := tx.Exec(ctx,
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx,
 		`UPDATE storage_objects SET status = 'deleted', deleted_at = now(), updated_at = now() WHERE bucket = $1 AND object_key = $2`,
 		bucket, key,
 	)
@@ -107,11 +118,14 @@ func (or *ObjectRepository) MarkDeletedByKey(
 
 func (or *ObjectRepository) GetByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (*model.Object, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
 	obj := &model.Object{}
-	err := qe.QueryRow(ctx, `
+	err = executor.QueryRow(ctx, `
 		SELECT id, bucket, object_key, content_type, file_size, status, created_at, updated_at, deleted_at
 		FROM storage_objects
 		WHERE id = $1
@@ -127,11 +141,15 @@ func (or *ObjectRepository) GetByID(
 
 func (or *ObjectRepository) GetByIDs(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	ids []uuid.UUID,
 ) ([]*model.Object, error) {
 	if len(ids) == 0 {
 		return nil, nil
+	}
+
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	query := `
@@ -139,7 +157,7 @@ func (or *ObjectRepository) GetByIDs(
 		FROM storage_objects
 		WHERE id = ANY($1)
 	`
-	rows, err := qe.Query(ctx, query, ids)
+	rows, err := executor.Query(ctx, query, ids)
 	if err != nil {
 		return nil, fmt.Errorf("get objects by ids query: %w", err)
 	}
@@ -162,10 +180,13 @@ func (or *ObjectRepository) GetByIDs(
 
 func (or *ObjectRepository) ListMedia(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	limit int,
 	cursor *pagination.Keyset,
 ) ([]*model.Object, *pagination.CursorPage, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
 	query := `
 		SELECT id, bucket, object_key, content_type, file_size, status, created_at, updated_at, deleted_at
 		FROM storage_objects
@@ -183,7 +204,7 @@ func (or *ObjectRepository) ListMedia(
 	query += fmt.Sprintf(" LIMIT $%d", i)
 	args = append(args, limit+1)
 
-	rows, err := qe.Query(ctx, query, args...)
+	rows, err := executor.Query(ctx, query, args...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list media: %w", err)
 	}

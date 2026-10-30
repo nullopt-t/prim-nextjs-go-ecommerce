@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
-	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
 // fakeInventoryWriter is the in-memory stand-in for the inventory domain's
@@ -22,7 +21,6 @@ type fakeInventoryWriter struct {
 
 func (f *fakeInventoryWriter) ApplyStockAdjustment(
 	_ context.Context,
-	_ *database.Tx,
 	in inventory.AdjustStockInput,
 ) error {
 	f.adjustments = append(f.adjustments, in)
@@ -31,7 +29,6 @@ func (f *fakeInventoryWriter) ApplyStockAdjustment(
 
 func (f *fakeInventoryWriter) ReleaseReservationsForOrder(
 	_ context.Context,
-	_ *database.Tx,
 	_ uuid.UUID,
 ) (int64, error) {
 	f.releaseCalls++
@@ -40,7 +37,6 @@ func (f *fakeInventoryWriter) ReleaseReservationsForOrder(
 
 func (f *fakeInventoryWriter) CommitReservationsForOrder(
 	_ context.Context,
-	_ *database.Tx,
 	_ uuid.UUID,
 ) error {
 	f.commitCalls++

@@ -100,7 +100,7 @@ func (s *UserService) handleError(err error, fallbackMsg string) error {
 	case errors.Is(mappedErr, database.ErrNotFound):
 		return apierr.NotFoundError("User not found").Wrap(err)
 	case errors.Is(mappedErr, database.ErrConflict):
-		return apierr.ConflictError("User already exists").Wrap(err)
+		return apierr.ConflictError("User identifier already exists").Wrap(err)
 	case errors.Is(mappedErr, database.ErrForeignKeyViolation):
 		return apierr.BadRequestError("Referenced entity does not exist").Wrap(err)
 	default:
@@ -125,8 +125,8 @@ func (s *UserService) CreateUser(
 		FullName:   fullName,
 	}
 
-	err := s.dbExecutor.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-		id, err := s.repo.Create(ctx, exec, u)
+	err := s.dbExecutor.WithTx(ctx, func(ctx context.Context) error {
+		id, err := s.repo.Create(ctx, u)
 		if err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrConflict) {
@@ -152,9 +152,9 @@ func (s *UserService) GetUserByID(
 	userID uuid.UUID,
 ) (*model.User, error) {
 	var user *model.User
-	err := s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbExecutor.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		user, repoErr = s.getUserByID(ctx, exec, userID)
+		user, repoErr = s.getUserByID(ctx, userID)
 		return repoErr
 	})
 	if err != nil {
@@ -173,9 +173,9 @@ func (s *UserService) UserExists(ctx context.Context, userID uuid.UUID) (bool, e
 	}
 
 	var exists bool
-	err := s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbExecutor.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		exists, repoErr = s.repo.ExistsByID(ctx, exec, userID)
+		exists, repoErr = s.repo.ExistsByID(ctx, userID)
 		return repoErr
 	})
 	if err != nil {
@@ -186,10 +186,9 @@ func (s *UserService) UserExists(ctx context.Context, userID uuid.UUID) (bool, e
 
 func (s *UserService) getUserByID(
 	ctx context.Context,
-	exec database.QueryExecutor,
 	userID uuid.UUID,
 ) (*model.User, error) {
-	u, err := s.repo.GetByID(ctx, exec, userID)
+	u, err := s.repo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, s.handleError(err, "Failed to fetch user")
 	}
@@ -203,9 +202,9 @@ func (s *UserService) GetUserByIdentifier(
 	identifier string,
 ) (*model.User, error) {
 	var user *model.User
-	err := s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbExecutor.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		user, repoErr = s.repo.GetByIdentifier(ctx, exec, identifier)
+		user, repoErr = s.repo.GetByIdentifier(ctx, identifier)
 		return repoErr
 	})
 	if err != nil {
@@ -229,7 +228,7 @@ func (s *UserService) GetAllUsers(
 		return nil, nil, apierr.BadRequestError("Invalid pagination cursor").Wrap(err)
 	}
 
-	err = s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err = s.dbExecutor.WithExecutor(ctx, func(ctx context.Context) error {
 		// PageSize is already clamped and overflow-safe from ListQuery.Process
 		limit := q.PageSize
 
@@ -246,20 +245,26 @@ func (s *UserService) GetAllUsers(
 			Cursor: cursor,
 		}
 
-		uList, err := s.repo.ListUsers(ctx, exec, filter)
+		uList, err := s.repo.ListUsers(ctx, filter)
 		if err != nil {
-			return err
+			return s.handleError(err, "Failed to list users")
 		}
 
-		users, page = pagination.NewCursorPageFrom(uList, limit, func(u model.User) pagination.Keyset {
-			return pagination.Keyset{CreatedAt: u.CreatedAt, ID: u.ID}
+		// Calculate cursor page from the over-fetched (limit+1) slice.
+		items, cursorPage := pagination.NewCursorPageFrom(uList, limit, func(u model.User) pagination.Keyset {
+			return pagination.Keyset{
+				CreatedAt: u.CreatedAt,
+				ID:        u.ID,
+			}
 		})
+
+		users = items
+		page = cursorPage
 		return nil
 	})
 
 	if err != nil {
-		s.logger.Error("failed to list users", log.Meta{"error": err.Error()})
-		return nil, nil, s.handleError(err, "Failed to list users")
+		return nil, nil, err
 	}
 
 	return users, page, nil
@@ -302,8 +307,8 @@ func (s *UserService) DeleteUserByID(
 		}
 	}
 
-	err = s.dbExecutor.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-		return s.repo.SoftDelete(ctx, exec, userID)
+	err = s.dbExecutor.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.SoftDelete(ctx, userID)
 	})
 	if err != nil {
 		s.logger.Error("failed to delete user", log.Meta{"userId": userID, "error": err.Error()})
@@ -395,8 +400,8 @@ func (s *UserService) UpdateUserRole(
 	}
 
 	// Update role in database
-	err = s.dbExecutor.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-		return s.repo.UpdateRole(ctx, exec, targetUserID, newRole)
+	err = s.dbExecutor.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.UpdateRole(ctx, targetUserID, newRole)
 	})
 
 	if err != nil {
@@ -475,11 +480,11 @@ func (s *UserService) UpdateAccountStatus(
 	// Update status in PostgreSQL. A deleted status is a real soft delete:
 	// status and deleted_at are set atomically so the account disappears from
 	// listings.
-	err = s.dbExecutor.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
+	err = s.dbExecutor.WithTx(ctx, func(ctx context.Context) error {
 		if newStatus == model.StatusDeleted {
-			return s.repo.SoftDelete(ctx, exec, targetUserID)
+			return s.repo.SoftDelete(ctx, targetUserID)
 		}
-		return s.repo.UpdateStatus(ctx, exec, targetUserID, newStatus, suspendedUntil)
+		return s.repo.UpdateStatus(ctx, targetUserID, newStatus, suspendedUntil)
 	})
 
 	if err != nil {
@@ -576,9 +581,9 @@ func (s *UserService) ListStaffSessions(
 	}
 
 	var users []model.User
-	if err := s.dbExecutor.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	if err := s.dbExecutor.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		users, repoErr = s.repo.ListByRoles(ctx, exec, roles)
+		users, repoErr = s.repo.ListByRoles(ctx, roles)
 		return repoErr
 	}); err != nil {
 		return nil, s.handleError(err, "Failed to list staff accounts")
@@ -686,8 +691,8 @@ func (s *UserService) UpdateProfile(
 	}
 
 	var updatedUser *model.User
-	err := s.dbExecutor.WithTx(ctx, func(txCtx context.Context, tx *database.Tx) error {
-		u, err := s.repo.UpdateProfile(txCtx, tx, id, fullName, phone)
+	err := s.dbExecutor.WithTx(ctx, func(txCtx context.Context) error {
+		u, err := s.repo.UpdateProfile(txCtx, id, fullName, phone)
 		if err != nil {
 			return err
 		}

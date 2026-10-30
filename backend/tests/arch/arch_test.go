@@ -141,33 +141,32 @@ func TestArch_RepositorySignatures(t *testing.T) {
 				continue
 			}
 
-			// Method parameter check: param 0 = context.Context, param 1 = database.QueryExecutor
+			// Method parameter check: param 0 must be context.Context
 			params := fn.Type.Params.List
-			if len(params) < 2 {
-				nonCompliantMethods = append(nonCompliantMethods, path+": "+fn.Name.Name+" has < 2 params")
+			if len(params) == 0 {
+				nonCompliantMethods = append(nonCompliantMethods, path+": "+fn.Name.Name+" has no params")
 				continue
 			}
 
-			// Param 1 check: context.Context
+			// Param 0 check: context.Context
 			param0Type := typeToString(params[0].Type)
 			if !strings.Contains(param0Type, "context.Context") && !strings.Contains(param0Type, "Context") {
 				nonCompliantMethods = append(nonCompliantMethods, path+": "+fn.Name.Name+" 1st param is not context.Context ("+param0Type+")")
 			}
 
-			// Param 2 check: database.QueryExecutor or *database.Tx
-			param1Type := typeToString(params[1].Type)
-			if !strings.Contains(param1Type, "QueryExecutor") &&
-				!strings.Contains(param1Type, "database.QueryExecutor") &&
-				!strings.Contains(param1Type, "database.Tx") &&
-				!strings.Contains(param1Type, "Tx") {
-				nonCompliantMethods = append(nonCompliantMethods, path+": "+fn.Name.Name+" 2nd param is not database.QueryExecutor or *database.Tx ("+param1Type+")")
+			// In context-based executor architecture, repository methods must never take explicit *database.Tx parameters
+			for _, p := range params {
+				pType := typeToString(p.Type)
+				if strings.Contains(pType, "database.Tx") || (strings.Contains(pType, "Tx") && !strings.Contains(pType, "Text")) {
+					nonCompliantMethods = append(nonCompliantMethods, path+": "+fn.Name.Name+" has forbidden Tx parameter ("+pType+")")
+				}
 			}
 		}
 		return nil
 	})
 
 	require.NoError(t, err)
-	assert.Empty(t, nonCompliantMethods, "Repository methods must strictly begin with (ctx context.Context, qe database.QueryExecutor, ...):\n"+strings.Join(nonCompliantMethods, "\n"))
+	assert.Empty(t, nonCompliantMethods, "Repository methods must strictly begin with ctx context.Context and forbid explicit *database.Tx parameters:\n"+strings.Join(nonCompliantMethods, "\n"))
 }
 
 // =============================================================================

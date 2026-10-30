@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/nullopt-t/prim-backend/internal/model"
-	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
 // =============================================================================
@@ -72,27 +71,27 @@ func TestTier4_RealWorld_CompleteCashOnDeliveryCheckout(t *testing.T) {
 	})
 
 	// Execute COD Checkout in single transaction (Rule 2)
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context) error {
 		// 1. Validate Customer
-		user, err := userRepo.GetByID(ctx, tx, userID)
+		user, err := userRepo.GetByID(ctx, userID)
 		if err != nil || user.Status != model.StatusActive {
 			return errors.New("invalid customer")
 		}
 
 		// 2. Validate Address
-		if _, err := addrRepo.GetByIDAndUser(ctx, tx, addrID, userID); err != nil {
+		if _, err := addrRepo.GetByIDAndUser(ctx, addrID, userID); err != nil {
 			return errors.New("invalid address")
 		}
 
 		// 3. Lock & Deduct Inventory (COD commits sale immediately)
-		if err := invRepo.CreateLedger(ctx, tx, &model.InventoryLedger{
+		if err := invRepo.CreateLedger(ctx, &model.InventoryLedger{
 			VariantID: var1,
 			Quantity:  -1,
 			Reason:    model.InventoryReasonSale,
 		}); err != nil {
 			return err
 		}
-		if err := invRepo.CreateLedger(ctx, tx, &model.InventoryLedger{
+		if err := invRepo.CreateLedger(ctx, &model.InventoryLedger{
 			VariantID: var2,
 			Quantity:  -2,
 			Reason:    model.InventoryReasonSale,
@@ -106,7 +105,7 @@ func TestTier4_RealWorld_CompleteCashOnDeliveryCheckout(t *testing.T) {
 		codFee := int64(500)
 		total := gross + shipping + codFee
 
-		if err := orderRepo.CreateOrder(ctx, tx, &model.Order{
+		if err := orderRepo.CreateOrder(ctx, &model.Order{
 			ID:             orderID,
 			CustomerID:     &userID,
 			ShippingAmount: shipping,
@@ -119,18 +118,18 @@ func TestTier4_RealWorld_CompleteCashOnDeliveryCheckout(t *testing.T) {
 		}
 
 		// 5. Clear Cart
-		return cartRepo.ClearCart(ctx, tx, cartID)
+		return cartRepo.ClearCart(ctx, cartID)
 	})
 
 	require.NoError(t, err)
 
 	// Post-condition assertions
-	order, err := orderRepo.GetOrderByID(context.Background(), nil, orderID)
+	order, err := orderRepo.GetOrderByID(context.Background(), orderID)
 	require.NoError(t, err)
 	assert.Equal(t, int64(12499), order.TotalAmount)
 	assert.Equal(t, "cash_on_delivery", order.PaymentMethod)
 
-	c, _ := cartRepo.GetCartByUserID(context.Background(), nil, userID)
+	c, _ := cartRepo.GetCartByUserID(context.Background(), userID)
 	assert.Empty(t, c.Items, "Cart must be emptied")
 
 	ledgers := invRepo.Ledgers()
@@ -139,7 +138,7 @@ func TestTier4_RealWorld_CompleteCashOnDeliveryCheckout(t *testing.T) {
 	assert.Equal(t, -2, ledgers[1].Quantity)
 
 	// COD orders leave zero active reservations
-	unreleased, _ := invRepo.GetUnreleasedReservationsForOrder(context.Background(), nil, orderID)
+	unreleased, _ := invRepo.GetUnreleasedReservationsForOrder(context.Background(), orderID)
 	assert.Empty(t, unreleased)
 	assert.False(t, runner.ConnectionHopDetected())
 }
@@ -156,8 +155,8 @@ func TestTier4_RealWorld_CompleteOnlineCardPaymentCheckout(t *testing.T) {
 	invRepo.SetStock(varID, 10, 0)
 
 	// Stage 1: Checkout places order and stock hold
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
-		if err := orderRepo.CreateOrder(ctx, tx, &model.Order{
+	err := runner.WithTx(context.Background(), func(ctx context.Context) error {
+		if err := orderRepo.CreateOrder(ctx, &model.Order{
 			ID:            orderID,
 			TotalAmount:   7500,
 			PaymentMethod: "credit_card",
@@ -166,7 +165,7 @@ func TestTier4_RealWorld_CompleteOnlineCardPaymentCheckout(t *testing.T) {
 			return err
 		}
 
-		return invRepo.CreateReservation(ctx, tx, &model.InventoryReservation{
+		return invRepo.CreateReservation(ctx, &model.InventoryReservation{
 			ID:        uuid.New(),
 			VariantID: varID,
 			OrderID:   &orderID,
@@ -176,18 +175,18 @@ func TestTier4_RealWorld_CompleteOnlineCardPaymentCheckout(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	unreleased, _ := invRepo.GetUnreleasedReservationsForOrder(context.Background(), nil, orderID)
+	unreleased, _ := invRepo.GetUnreleasedReservationsForOrder(context.Background(), orderID)
 	require.Len(t, unreleased, 1)
 
 	// Stage 2: Payment Webhook arrives (payment captured) -> commit hold to sale
-	err = runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
-		if err := orderRepo.UpdateOrderStatus(ctx, tx, orderID, model.OrderStatusProcessing); err != nil {
+	err = runner.WithTx(context.Background(), func(ctx context.Context) error {
+		if err := orderRepo.UpdateOrderStatus(ctx, orderID, model.OrderStatusProcessing); err != nil {
 			return err
 		}
-		if _, err := invRepo.ReleaseReservationsForOrder(ctx, tx, orderID); err != nil {
+		if _, err := invRepo.ReleaseReservationsForOrder(ctx, orderID); err != nil {
 			return err
 		}
-		return invRepo.CreateLedger(ctx, tx, &model.InventoryLedger{
+		return invRepo.CreateLedger(ctx, &model.InventoryLedger{
 			VariantID: varID,
 			Quantity:  -1,
 			Reason:    model.InventoryReasonSale,
@@ -195,10 +194,10 @@ func TestTier4_RealWorld_CompleteOnlineCardPaymentCheckout(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	order, _ := orderRepo.GetOrderByID(context.Background(), nil, orderID)
+	order, _ := orderRepo.GetOrderByID(context.Background(), orderID)
 	assert.Equal(t, model.OrderStatusProcessing, order.Status)
 
-	unreleasedAfterCapture, _ := invRepo.GetUnreleasedReservationsForOrder(context.Background(), nil, orderID)
+	unreleasedAfterCapture, _ := invRepo.GetUnreleasedReservationsForOrder(context.Background(), orderID)
 	assert.Empty(t, unreleasedAfterCapture)
 
 	ledgers := invRepo.Ledgers()
@@ -219,7 +218,7 @@ func TestTier4_RealWorld_OrderCancellationAndInventoryRestockFlow(t *testing.T) 
 	varID := uuid.New()
 	customerID := uuid.New()
 
-	require.NoError(t, orderRepo.CreateOrder(context.Background(), nil, &model.Order{
+	require.NoError(t, orderRepo.CreateOrder(context.Background(), &model.Order{
 		ID:          orderID,
 		CustomerID:  &customerID,
 		TotalAmount: 9000,
@@ -227,9 +226,9 @@ func TestTier4_RealWorld_OrderCancellationAndInventoryRestockFlow(t *testing.T) 
 	}))
 
 	// Cancel Order & Restock inside single transaction
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context) error {
 		// Verify current order state
-		o, err := orderRepo.GetOrderByID(ctx, tx, orderID)
+		o, err := orderRepo.GetOrderByID(ctx, orderID)
 		if err != nil {
 			return err
 		}
@@ -238,12 +237,12 @@ func TestTier4_RealWorld_OrderCancellationAndInventoryRestockFlow(t *testing.T) 
 		}
 
 		// Transition status
-		if err := orderRepo.UpdateOrderStatus(ctx, tx, orderID, model.OrderStatusCancelled); err != nil {
+		if err := orderRepo.UpdateOrderStatus(ctx, orderID, model.OrderStatusCancelled); err != nil {
 			return err
 		}
 
 		// Restock units
-		if err := invRepo.CreateLedger(ctx, tx, &model.InventoryLedger{
+		if err := invRepo.CreateLedger(ctx, &model.InventoryLedger{
 			VariantID: varID,
 			Quantity:  2,
 			Reason:    model.InventoryReasonReturn,
@@ -252,7 +251,7 @@ func TestTier4_RealWorld_OrderCancellationAndInventoryRestockFlow(t *testing.T) 
 		}
 
 		// Record audit
-		return auditRepo.Insert(ctx, tx, &model.AuditLog{
+		return auditRepo.Insert(ctx, &model.AuditLog{
 			ID:         1,
 			ActorID:    &customerID,
 			Action:     "order.cancel",
@@ -262,7 +261,7 @@ func TestTier4_RealWorld_OrderCancellationAndInventoryRestockFlow(t *testing.T) 
 
 	require.NoError(t, err)
 
-	order, _ := orderRepo.GetOrderByID(context.Background(), nil, orderID)
+	order, _ := orderRepo.GetOrderByID(context.Background(), orderID)
 	assert.Equal(t, model.OrderStatusCancelled, order.Status)
 
 	ledgers := invRepo.Ledgers()
@@ -291,8 +290,8 @@ func TestTier4_RealWorld_MediaUploadWithCompensatingCleanupOnDBFailure(t *testin
 	assert.True(t, storageProvider.HasObject(bucket, key), "Blob must exist after upload")
 
 	// Step 2: Attempt DB transaction that fails (e.g. unique constraint conflict)
-	dbErr := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
-		_ = objRepo.Create(ctx, tx, &model.Object{
+	dbErr := runner.WithTx(context.Background(), func(ctx context.Context) error {
+		_ = objRepo.Create(ctx, &model.Object{
 			ID:     uuid.New(),
 			Bucket: bucket,
 			Key:    key,
@@ -328,8 +327,8 @@ func TestTier4_RealWorld_MediaUploadAndURLResolutionSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	// 2. Persist in DB
-	err = runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
-		return objRepo.Create(ctx, tx, &model.Object{
+	err = runner.WithTx(context.Background(), func(ctx context.Context) error {
+		return objRepo.Create(ctx, &model.Object{
 			ID:          objID,
 			Bucket:      bucket,
 			Key:         key,
@@ -355,9 +354,9 @@ func TestTier4_RealWorld_AdminPrivilegedActionAuditTrail(t *testing.T) {
 	settingKey := "store.maintenance_mode"
 	settingValue := "true"
 
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context) error {
 		// Perform mutation and audit log insertion together
-		return auditRepo.Insert(ctx, tx, &model.AuditLog{
+		return auditRepo.Insert(ctx, &model.AuditLog{
 			ID:         101,
 			ActorID:    &superadminID,
 			ActorRole:  string(model.SuperRole),

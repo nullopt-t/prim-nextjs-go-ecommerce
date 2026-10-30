@@ -17,7 +17,7 @@ import (
 
 // ProductReader defines the subset of product catalog queries required by WishlistService.
 type ProductReader interface {
-	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Product, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error)
 }
 
 // WishlistService encapsulates use-case orchestration and business invariants for user wishlists.
@@ -112,9 +112,9 @@ func (s *WishlistService) AddToWishlist(
 
 	var createdItem *model.WishlistItem
 
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
 		// 1. Validate product existence and publication status on tx
-		prod, err := s.productReader.GetByID(ctx, tx, productID)
+		prod, err := s.productReader.GetByID(ctx, productID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) || errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Product not found").
@@ -137,7 +137,7 @@ func (s *WishlistService) AddToWishlist(
 
 		// 2. Validate variant association on tx
 		if variantID != nil {
-			variantProdID, err := s.repo.GetVariantProductID(ctx, tx, *variantID)
+			variantProdID, err := s.repo.GetVariantProductID(ctx, *variantID)
 			if err != nil {
 				if errors.Is(err, pgx.ErrNoRows) || errors.Is(database.MapError(err), database.ErrNotFound) {
 					return apierr.NotFoundError("Variant not found").
@@ -152,7 +152,7 @@ func (s *WishlistService) AddToWishlist(
 		}
 
 		// 3. Mutate (insert wishlist item)
-		if err := s.repo.Create(ctx, tx, newItem); err != nil {
+		if err := s.repo.Create(ctx, newItem); err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrConflict) {
 				return apierr.ConflictError("Product already in wishlist").
@@ -166,7 +166,7 @@ func (s *WishlistService) AddToWishlist(
 		}
 
 		// 4. Reload post-mutation state on same tx
-		item, err := s.repo.GetByID(ctx, tx, newItem.ID, userID)
+		item, err := s.repo.GetByID(ctx, newItem.ID, userID)
 		if err != nil {
 			return s.handleError(err, "Failed to retrieve created wishlist item")
 		}
@@ -196,9 +196,9 @@ func (s *WishlistService) GetMyWishlist(
 	var items []model.WishlistItem
 	var total int
 
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		items, total, err = s.repo.ListByUser(ctx, exec, userID, q)
+		items, total, err = s.repo.ListByUser(ctx, userID, q)
 		return err
 	})
 
@@ -223,9 +223,9 @@ func (s *WishlistService) GetWishlistCount(
 ) (int, error) {
 	var count int
 
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		count, err = s.repo.CountByUser(ctx, exec, userID)
+		count, err = s.repo.CountByUser(ctx, userID)
 		return err
 	})
 
@@ -246,9 +246,9 @@ func (s *WishlistService) CheckInWishlist(
 	var exists bool
 	var itemID *uuid.UUID
 
-	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		exists, itemID, err = s.repo.Exists(ctx, exec, userID, productID, variantID)
+		exists, itemID, err = s.repo.Exists(ctx, userID, productID, variantID)
 		return err
 	})
 
@@ -265,8 +265,8 @@ func (s *WishlistService) RemoveItem(
 	userID uuid.UUID,
 	itemID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		err := s.repo.DeleteByID(ctx, tx, itemID, userID)
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		err := s.repo.DeleteByID(ctx, itemID, userID)
 		if err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrNotFound) {
@@ -292,8 +292,8 @@ func (s *WishlistService) RemoveByProductID(
 	productID uuid.UUID,
 	variantID *uuid.UUID,
 ) error {
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		err := s.repo.DeleteByProduct(ctx, tx, userID, productID, variantID)
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		err := s.repo.DeleteByProduct(ctx, userID, productID, variantID)
 		if err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrNotFound) {
@@ -317,8 +317,8 @@ func (s *WishlistService) ClearWishlist(
 	ctx context.Context,
 	userID uuid.UUID,
 ) error {
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-		return s.repo.ClearByUser(ctx, exec, userID)
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.ClearByUser(ctx, userID)
 	})
 
 	if err != nil {

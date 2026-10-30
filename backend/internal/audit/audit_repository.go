@@ -22,10 +22,13 @@ func NewRepository() *Repository {
 // Insert appends a single audit entry.
 func (r *Repository) Insert(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	entry *model.AuditLog,
 ) error {
-	err := qe.QueryRow(ctx, `
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return err
+	}
+	err = executor.QueryRow(ctx, `
 		INSERT INTO audit_log (
 			actor_id, actor_role, action, entity_type, entity_id,
 			method, path, status_code, ip_address, user_agent,
@@ -68,11 +71,14 @@ type Filter struct {
 // List returns a keyset-paginated slice of audit entries, newest first.
 func (r *Repository) List(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	f Filter,
 	limit int,
 	cursor *pagination.Keyset,
 ) ([]*model.AuditLog, *pagination.CursorPage, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
 	query := `
 		SELECT id, actor_id, actor_role, action, entity_type, entity_id,
 		       method, path, status_code, ip_address, user_agent,
@@ -123,7 +129,7 @@ func (r *Repository) List(
 	query += fmt.Sprintf(" LIMIT $%d", i)
 	args = append(args, limit+1)
 
-	rows, err := qe.Query(ctx, query, args...)
+	rows, err := executor.Query(ctx, query, args...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list audit log: %w", err)
 	}

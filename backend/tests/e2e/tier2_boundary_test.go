@@ -177,12 +177,12 @@ func TestTier2_Boundary_MaxConnsOne_ExecutesReadFlowWithoutPoolStarvation(t *tes
 	})
 
 	// Rule 2: Execute multi-entity read on the held qe without acquiring second connection
-	err := runner.WithExecutor(context.Background(), func(exec database.QueryExecutor) error {
-		p, err := repo.GetByID(context.Background(), exec, prodID)
+	err := runner.WithExecutor(context.Background(), func(ctx context.Context) error {
+		p, err := repo.GetByID(ctx, prodID)
 		if err != nil {
 			return err
 		}
-		count, err := variantRepo.CountByProductID(context.Background(), exec, p.ID)
+		count, err := variantRepo.CountByProductID(ctx, p.ID)
 		if err != nil {
 			return err
 		}
@@ -203,17 +203,17 @@ func TestTier2_Boundary_MaxConnsOne_ExecutesWriteFlowWithoutPoolStarvation(t *te
 	orderID := uuid.New()
 
 	// Validate + mutate + reload strictly on the same tx
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context) error {
 		// Step 1: Validate / insert
-		if err := orderRepo.CreateOrder(ctx, tx, &model.Order{ID: orderID, Status: model.OrderStatusPending}); err != nil {
+		if err := orderRepo.CreateOrder(ctx, &model.Order{ID: orderID, Status: model.OrderStatusPending}); err != nil {
 			return err
 		}
 		// Step 2: Mutate status
-		if err := orderRepo.UpdateOrderStatus(ctx, tx, orderID, model.OrderStatusProcessing); err != nil {
+		if err := orderRepo.UpdateOrderStatus(ctx, orderID, model.OrderStatusProcessing); err != nil {
 			return err
 		}
 		// Step 3: Reload on same tx
-		reloaded, err := orderRepo.GetOrderByID(ctx, tx, orderID)
+		reloaded, err := orderRepo.GetOrderByID(ctx, orderID)
 		if err != nil {
 			return err
 		}
@@ -232,10 +232,10 @@ func TestTier2_Boundary_MaxConnsOne_ExecutesWriteFlowWithoutPoolStarvation(t *te
 func TestTier2_Boundary_ConnectionHopDetection_TriggersPoolExhaustion(t *testing.T) {
 	runner := NewMockRunner(1) // Pool limit = 1
 
-	// Simulate an anti-pattern: inner helper calls WithExecutor while WithTx holds a connection
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
-		// Anti-pattern: inner WithExecutor without passing held connection
-		return runner.WithExecutor(ctx, func(nestedExec database.QueryExecutor) error {
+	// Simulate an anti-pattern: inner helper calls WithExecutor without passing held connection
+	err := runner.WithTx(context.Background(), func(ctx context.Context) error {
+		// Anti-pattern: inner WithExecutor without passing held connection (creates fresh context)
+		return runner.WithExecutor(context.Background(), func(nestedCtx context.Context) error {
 			return nil
 		})
 	})
@@ -250,8 +250,8 @@ func TestTier2_Boundary_TxRollbackOnCallbackError(t *testing.T) {
 	orderRepo := NewMockOrderRepository()
 	orderID := uuid.New()
 
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
-		_ = orderRepo.CreateOrder(ctx, tx, &model.Order{ID: orderID, TotalAmount: 500})
+	err := runner.WithTx(context.Background(), func(ctx context.Context) error {
+		_ = orderRepo.CreateOrder(ctx, &model.Order{ID: orderID, TotalAmount: 500})
 		// Fail deliberately inside transaction
 		return errors.New("simulated business rule rejection")
 	})
@@ -276,7 +276,7 @@ func TestTier2_Boundary_TxRollbackOnPanic_AndPropagatesPanic(t *testing.T) {
 		assert.Equal(t, 1, rollbacks, "Rollback must execute during panic recovery")
 	}()
 
-	_ = runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
+	_ = runner.WithTx(context.Background(), func(ctx context.Context) error {
 		panic("unexpected panic during tx execution")
 	})
 }
@@ -290,12 +290,12 @@ func TestTier2_Boundary_OptionalLookup_IgnoresErrNoRows_WithoutAbortingTx(t *tes
 	missingLogoID := uuid.New()
 
 	// Optional lookup pattern from SKILL.md: treat ErrNoRows as "absent" and continue
-	err := runner.WithTx(context.Background(), func(ctx context.Context, tx *database.Tx) error {
+	err := runner.WithTx(context.Background(), func(ctx context.Context) error {
 		prod := &model.Product{ID: prodID, Title: "Logo-less Product"}
 		prodRepo.AddProduct(prod)
 
 		// Optional logo lookup
-		logo, err := objRepo.GetByID(ctx, tx, missingLogoID)
+		logo, err := objRepo.GetByID(ctx, missingLogoID)
 		if err != nil && !errors.Is(err, database.ErrNotFound) {
 			return CanonicalHandleError(err, "logo")
 		}

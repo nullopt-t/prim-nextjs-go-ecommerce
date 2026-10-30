@@ -120,11 +120,22 @@ func (db *DB) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, err
 // Tx wraps an active pgx.Tx transaction, implementing QueryExecutor.
 type Tx struct {
 	tx pgx.Tx
+	db *DB
 }
 
 // NewTx creates a new Tx wrapper around an active pgx.Tx.
 func NewTx(tx pgx.Tx) *Tx {
 	return &Tx{tx: tx}
+}
+
+// NewTxWithDB creates a new Tx wrapper around an active pgx.Tx associated with a DB instance.
+func NewTxWithDB(tx pgx.Tx, db *DB) *Tx {
+	return &Tx{tx: tx, db: db}
+}
+
+// DB returns the DB instance associated with this transaction, if any.
+func (t *Tx) DB() *DB {
+	return t.db
 }
 
 // Exec executes a query within the active transaction.

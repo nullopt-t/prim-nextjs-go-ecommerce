@@ -7,19 +7,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/catalog/review"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
-	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type fakeReviewRunner struct{}
 
-func (fakeReviewRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx *database.Tx) error) error {
-	return fn(ctx, nil)
+func (fakeReviewRunner) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
 }
 
-func (fakeReviewRunner) WithExecutor(ctx context.Context, fn func(qe database.QueryExecutor) error) error {
-	return fn(nil)
+func (fakeReviewRunner) WithExecutor(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(ctx)
 }
 
 func TestReviewService_ConstructorsFailFast(t *testing.T) {

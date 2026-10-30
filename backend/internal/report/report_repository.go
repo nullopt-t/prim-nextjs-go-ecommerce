@@ -76,10 +76,14 @@ func NewRepository() *Repository { return &Repository{} }
 // Sales computes totals and a day/month time series for the given period.
 func (r *Repository) Sales(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	f ReportFilter,
 	groupBy string,
 ) (*SalesReport, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	rep := &SalesReport{From: f.From, To: f.To, GroupBy: groupBy, Series: []SalesPoint{}}
 
 	totalsQuery := `
@@ -92,7 +96,7 @@ func (r *Repository) Sales(
 		WHERE ($1::timestamptz IS NULL OR created_at >= $1)
 		  AND ($2::timestamptz IS NULL OR created_at <= $2)
 	`
-	if err := qe.QueryRow(ctx, totalsQuery, f.From, f.To).Scan(
+	if err := executor.QueryRow(ctx, totalsQuery, f.From, f.To).Scan(
 		&rep.Totals.Revenue,
 		&rep.Totals.Orders,
 		&rep.Totals.AverageOrderValue,
@@ -111,7 +115,7 @@ func (r *Repository) Sales(
 		GROUP BY 1
 		ORDER BY 1
 	`
-	rows, err := qe.Query(ctx, seriesQuery, f.From, f.To, groupBy)
+	rows, err := executor.Query(ctx, seriesQuery, f.From, f.To, groupBy)
 	if err != nil {
 		return nil, fmt.Errorf("sales series: %w", err)
 	}
@@ -134,19 +138,23 @@ func (r *Repository) Sales(
 // ExportDataset returns the CSV header and rows for the requested dataset.
 func (r *Repository) ExportDataset(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	t ExportType,
 	f ReportFilter,
 ) ([]string, [][]string, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	switch t {
 	case ExportOrders:
-		return r.exportOrders(ctx, qe, f)
+		return r.exportOrders(ctx, executor, f)
 	case ExportPayments:
-		return r.exportPayments(ctx, qe, f)
+		return r.exportPayments(ctx, executor, f)
 	case ExportCustomers:
-		return r.exportCustomers(ctx, qe, f)
+		return r.exportCustomers(ctx, executor, f)
 	case ExportInventory:
-		return r.exportInventory(ctx, qe, f)
+		return r.exportInventory(ctx, executor, f)
 	default:
 		return nil, nil, fmt.Errorf("unknown export type %q", t)
 	}

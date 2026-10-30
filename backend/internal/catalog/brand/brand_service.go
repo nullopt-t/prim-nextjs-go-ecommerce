@@ -18,11 +18,11 @@ import (
 )
 
 type ObjectRepository interface {
-	Create(ctx context.Context, tx *database.Tx, object *model.Object) error
-	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error)
-	GetByIDs(ctx context.Context, qe database.QueryExecutor, ids []uuid.UUID) ([]*model.Object, error)
-	MarkDeletingByKey(ctx context.Context, tx *database.Tx, bucket, key string) error
-	MarkDeletedByKey(ctx context.Context, tx *database.Tx, bucket, key string) error
+	Create(ctx context.Context, object *model.Object) error
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
+	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*model.Object, error)
+	MarkDeletingByKey(ctx context.Context, bucket, key string) error
+	MarkDeletedByKey(ctx context.Context, bucket, key string) error
 }
 
 type BrandService struct {
@@ -112,8 +112,8 @@ func (bs *BrandService) CreateBrand(
 		Link: in.Link,
 	}
 
-	err := bs.runner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-		return bs.brandRepo.Create(ctx, exec, brand)
+	err := bs.runner.WithTx(ctx, func(ctx context.Context) error {
+		return bs.brandRepo.Create(ctx, brand)
 	})
 
 	if err != nil {
@@ -128,13 +128,13 @@ func (bs *BrandService) GetBrandByID(
 	id uuid.UUID,
 ) (*model.ProductBrand, error) {
 	var brand *model.ProductBrand
-	err := bs.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := bs.runner.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		brand, repoErr = bs.brandRepo.GetByID(ctx, exec, id)
+		brand, repoErr = bs.brandRepo.GetByID(ctx, id)
 		if repoErr != nil {
 			return repoErr
 		}
-		return bs.populateLogoURLs(ctx, exec, []*model.ProductBrand{brand})
+		return bs.populateLogoURLs(ctx, []*model.ProductBrand{brand})
 	})
 
 	if err != nil {
@@ -164,8 +164,8 @@ func (bs *BrandService) UpdateBrand(
 		fields.Name = &name
 	}
 
-	err := bs.runner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-		return bs.brandRepo.Update(ctx, exec, brandID, fields)
+	err := bs.runner.WithTx(ctx, func(ctx context.Context) error {
+		return bs.brandRepo.Update(ctx, brandID, fields)
 	})
 
 	if err != nil {
@@ -196,9 +196,9 @@ func (bs *BrandService) listBrands(
 	}
 
 	var result *pagination.PagedResult[model.ProductBrand]
-	err = bs.runner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err = bs.runner.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		result, repoErr = bs.brandRepo.List(ctx, exec, ListBrandOptions{
+		result, repoErr = bs.brandRepo.List(ctx, ListBrandOptions{
 			Query:          q,
 			IncludeDeleted: opts.includeDeleted,
 			Cursor:         cursor,
@@ -207,7 +207,7 @@ func (bs *BrandService) listBrands(
 			return repoErr
 		}
 		if opts.populateURL {
-			return bs.populateLogoURLs(ctx, exec, result.Items)
+			return bs.populateLogoURLs(ctx, result.Items)
 		}
 		return nil
 	})
@@ -251,8 +251,8 @@ func (bs *BrandService) DeleteBrandByID(
 	}
 
 	// Execute within a transaction so brand check and soft-delete are atomic
-	err := bs.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return bs.brandRepo.DeleteByID(ctx, tx, id)
+	err := bs.runner.WithTx(ctx, func(ctx context.Context) error {
+		return bs.brandRepo.DeleteByID(ctx, id)
 	})
 
 	if err != nil {
@@ -319,28 +319,28 @@ func (bs *BrandService) UploadBrandLogo(
 
 	var oldLogoObj *model.Object
 
-	txErr := bs.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		brand, bErr := bs.brandRepo.GetByID(ctx, tx, brandID)
+	txErr := bs.runner.WithTx(ctx, func(ctx context.Context) error {
+		brand, bErr := bs.brandRepo.GetByID(ctx, brandID)
 		if bErr != nil {
 			return bErr
 		}
 
 		if brand.LogoObjectID != nil {
-			oldLogoObj, _ = bs.objectRepo.GetByID(ctx, tx, *brand.LogoObjectID)
+			oldLogoObj, _ = bs.objectRepo.GetByID(ctx, *brand.LogoObjectID)
 		}
 
-		if err := bs.objectRepo.Create(ctx, tx, newObj); err != nil {
+		if err := bs.objectRepo.Create(ctx, newObj); err != nil {
 			return err
 		}
 
-		if err := bs.brandRepo.Update(ctx, tx, brandID, UpdateBrandFields{
+		if err := bs.brandRepo.Update(ctx, brandID, UpdateBrandFields{
 			LogoObjectID: &newObj.ID,
 		}); err != nil {
 			return err
 		}
 
 		if oldLogoObj != nil {
-			_ = bs.objectRepo.MarkDeletingByKey(ctx, tx, oldLogoObj.Bucket, oldLogoObj.Key)
+			_ = bs.objectRepo.MarkDeletingByKey(ctx, oldLogoObj.Bucket, oldLogoObj.Key)
 		}
 
 		return nil
@@ -353,8 +353,8 @@ func (bs *BrandService) UploadBrandLogo(
 
 	if oldLogoObj != nil {
 		if delErr := bs.storageProvider.Delete(ctx, oldLogoObj.Bucket, oldLogoObj.Key); delErr == nil {
-			_ = bs.runner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-				return bs.objectRepo.MarkDeletedByKey(ctx, exec, oldLogoObj.Bucket, oldLogoObj.Key)
+			_ = bs.runner.WithTx(ctx, func(ctx context.Context) error {
+				return bs.objectRepo.MarkDeletedByKey(ctx, oldLogoObj.Bucket, oldLogoObj.Key)
 			})
 		}
 	}
@@ -365,7 +365,6 @@ func (bs *BrandService) UploadBrandLogo(
 
 func (bs *BrandService) populateLogoURLs(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	brands []*model.ProductBrand,
 ) error {
 	var objectIDs []uuid.UUID
@@ -378,7 +377,7 @@ func (bs *BrandService) populateLogoURLs(
 		return nil
 	}
 
-	objects, err := bs.objectRepo.GetByIDs(ctx, qe, objectIDs)
+	objects, err := bs.objectRepo.GetByIDs(ctx, objectIDs)
 	if err != nil {
 		return err
 	}

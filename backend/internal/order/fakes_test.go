@@ -7,7 +7,6 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/notifier"
 	"github.com/nullopt-t/prim-backend/internal/setting"
-	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
 type fakeUserReader struct {
@@ -15,7 +14,7 @@ type fakeUserReader struct {
 	err   error
 }
 
-func (f *fakeUserReader) GetByID(_ context.Context, _ database.QueryExecutor, id uuid.UUID) (*model.User, error) {
+func (f *fakeUserReader) GetByID(_ context.Context, id uuid.UUID) (*model.User, error) {
 	if f.err != nil {
 		return nil, f.err
 	}

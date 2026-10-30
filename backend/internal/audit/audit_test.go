@@ -25,7 +25,7 @@ type mockRunner struct {
 	tx           *database.Tx
 }
 
-func (m *mockRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx *database.Tx) error) error {
+func (m *mockRunner) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
 	m.withTxCalled = true
 	if m.withTxErr != nil {
 		return m.withTxErr
@@ -34,10 +34,10 @@ func (m *mockRunner) WithTx(ctx context.Context, fn func(ctx context.Context, tx
 	if tx == nil {
 		tx = database.NewTx(&fakeAuditTx{})
 	}
-	return fn(ctx, tx)
+	return fn(database.WithTx(ctx, tx))
 }
 
-func (m *mockRunner) WithExecutor(ctx context.Context, fn func(exec database.QueryExecutor) error) error {
+func (m *mockRunner) WithExecutor(ctx context.Context, fn func(ctx context.Context) error) error {
 	m.withDBCalled = true
 	if m.withDBErr != nil {
 		return m.withDBErr
@@ -46,7 +46,7 @@ func (m *mockRunner) WithExecutor(ctx context.Context, fn func(exec database.Que
 	if qe == nil {
 		qe = &fakeAuditExecutor{}
 	}
-	return fn(qe)
+	return fn(database.WithExecutor(ctx, qe))
 }
 
 type fakeAuditTx struct {

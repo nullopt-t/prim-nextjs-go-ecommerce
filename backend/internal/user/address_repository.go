@@ -30,12 +30,16 @@ func NewAddressRepository() *AddressRepository {
 // Used during creation to determine if the new address should automatically become the default address.
 func (r *AddressRepository) CountByUser(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	userID uuid.UUID,
 ) (int, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	query := `SELECT COUNT(*) FROM addresses WHERE user_id = $1 AND deleted_at IS NULL`
 	var count int
-	err := qe.QueryRow(ctx, query, userID).Scan(&count)
+	err = executor.QueryRow(ctx, query, userID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("count addresses by user: %w", err)
 	}
@@ -45,9 +49,13 @@ func (r *AddressRepository) CountByUser(
 // ListByUser retrieves all non-deleted addresses for a user, sorted with default first, then newest updated.
 func (r *AddressRepository) ListByUser(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	userID uuid.UUID,
 ) ([]model.UserAddress, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT 
 			id, user_id, label, full_name, phone, line1, line2,
@@ -57,7 +65,7 @@ func (r *AddressRepository) ListByUser(
 		WHERE user_id = $1 AND deleted_at IS NULL
 		ORDER BY is_default DESC, updated_at DESC, created_at DESC
 	`
-	rows, err := qe.Query(ctx, query, userID)
+	rows, err := executor.Query(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list addresses by user: %w", err)
 	}
@@ -97,10 +105,14 @@ func (r *AddressRepository) ListByUser(
 // Scoping by user_id ensures that users cannot view addresses belonging to other customers.
 func (r *AddressRepository) GetByIDAndUser(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 	userID uuid.UUID,
 ) (*model.UserAddress, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT 
 			id, user_id, label, full_name, phone, line1, line2,
@@ -110,7 +122,7 @@ func (r *AddressRepository) GetByIDAndUser(
 		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
 	`
 	var a model.UserAddress
-	err := qe.QueryRow(ctx, query, id, userID).Scan(
+	err = executor.QueryRow(ctx, query, id, userID).Scan(
 		&a.ID,
 		&a.UserID,
 		&a.Label,
@@ -142,15 +154,19 @@ func (r *AddressRepository) GetByIDAndUser(
 // Executed inside database transactions prior to setting a new default address.
 func (r *AddressRepository) ClearDefault(
 	ctx context.Context,
-	tx *database.Tx,
 	userID uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE addresses
 		SET is_default = false, updated_at = now()
 		WHERE user_id = $1 AND is_default = true AND deleted_at IS NULL
 	`
-	_, err := tx.Exec(ctx, query, userID)
+	_, err = tx.Exec(ctx, query, userID)
 	if err != nil {
 		return fmt.Errorf("clear default address: %w", err)
 	}
@@ -160,10 +176,14 @@ func (r *AddressRepository) ClearDefault(
 // SetDefault marks a specific address as default for the user.
 func (r *AddressRepository) SetDefault(
 	ctx context.Context,
-	tx *database.Tx,
 	id uuid.UUID,
 	userID uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE addresses
 		SET is_default = true, updated_at = now()
@@ -184,9 +204,13 @@ func (r *AddressRepository) SetDefault(
 // idx_addresses_user_default ON addresses (user_id) WHERE is_default = true AND deleted_at IS NULL.
 func (r *AddressRepository) Create(
 	ctx context.Context,
-	tx *database.Tx,
 	a *model.UserAddress,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO addresses (
 			id, user_id, label, full_name, phone, line1, line2,
@@ -220,9 +244,13 @@ func (r *AddressRepository) Create(
 // Update updates fields of an existing address.
 func (r *AddressRepository) Update(
 	ctx context.Context,
-	tx *database.Tx,
 	a *model.UserAddress,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE addresses
 		SET 
@@ -240,7 +268,7 @@ func (r *AddressRepository) Update(
 		WHERE id = $11 AND user_id = $12 AND deleted_at IS NULL
 		RETURNING updated_at
 	`
-	err := tx.QueryRow(
+	err = tx.QueryRow(
 		ctx,
 		query,
 		a.Label,
@@ -268,10 +296,14 @@ func (r *AddressRepository) Update(
 // SoftDelete marks an address as deleted and unsets is_default to prevent deleted addresses from acting as defaults.
 func (r *AddressRepository) SoftDelete(
 	ctx context.Context,
-	tx *database.Tx,
 	id uuid.UUID,
 	userID uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE addresses
 		SET deleted_at = now(), is_default = false, updated_at = now()
@@ -291,29 +323,31 @@ func (r *AddressRepository) SoftDelete(
 // Invoked when the user's current default address is deleted, promoting the next active address to default.
 func (r *AddressRepository) FindMostRecentActive(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	userID uuid.UUID,
 ) (*model.UserAddress, error) {
-	return r.findMostRecentActive(ctx, qe, userID, uuid.Nil)
+	return r.findMostRecentActive(ctx, userID, uuid.Nil)
 }
 
 // FindMostRecentActiveExcluding is like FindMostRecentActive but skips the
 // given address ID, so demoting the current default cannot re-select it.
 func (r *AddressRepository) FindMostRecentActiveExcluding(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	userID uuid.UUID,
 	excludeID uuid.UUID,
 ) (*model.UserAddress, error) {
-	return r.findMostRecentActive(ctx, qe, userID, excludeID)
+	return r.findMostRecentActive(ctx, userID, excludeID)
 }
 
 func (r *AddressRepository) findMostRecentActive(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	userID uuid.UUID,
 	excludeID uuid.UUID,
 ) (*model.UserAddress, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT 
 			id, user_id, label, full_name, phone, line1, line2,
@@ -329,7 +363,7 @@ func (r *AddressRepository) findMostRecentActive(
 	}
 	query += ` ORDER BY updated_at DESC, created_at DESC LIMIT 1`
 	var a model.UserAddress
-	err := qe.QueryRow(ctx, query, args...).Scan(
+	err = executor.QueryRow(ctx, query, args...).Scan(
 		&a.ID,
 		&a.UserID,
 		&a.Label,

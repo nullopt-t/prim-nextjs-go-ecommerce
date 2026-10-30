@@ -21,7 +21,7 @@ type fakeInventoryReader struct {
 	orderIDs []uuid.UUID
 }
 
-func (f *fakeInventoryReader) ExpiredReservationOrderIDs(ctx context.Context, qe database.QueryExecutor) ([]uuid.UUID, error) {
+func (f *fakeInventoryReader) ExpiredReservationOrderIDs(ctx context.Context) ([]uuid.UUID, error) {
 	return f.orderIDs, nil
 }
 
@@ -69,12 +69,15 @@ func (e paymentStatusExecutor) LargeObjects() pgx.LargeObjects { return pgx.Larg
 
 type paymentStatusRunner struct{ tag pgconn.CommandTag }
 
-func (r paymentStatusRunner) WithTx(_ context.Context, fn func(context.Context, *database.Tx) error) error {
-	return fn(context.Background(), database.NewTx(paymentStatusExecutor(r)))
+func (r paymentStatusRunner) WithTx(ctx context.Context, fn func(context.Context) error) error {
+	tx := database.NewTx(paymentStatusExecutor(r))
+	ctx = database.WithTx(ctx, tx)
+	return fn(ctx)
 }
 
-func (r paymentStatusRunner) WithExecutor(_ context.Context, fn func(database.QueryExecutor) error) error {
-	return fn(paymentStatusExecutor(r))
+func (r paymentStatusRunner) WithExecutor(ctx context.Context, fn func(context.Context) error) error {
+	exec := paymentStatusExecutor(r)
+	return fn(database.WithExecutor(ctx, exec))
 }
 
 func TestUpdatePaymentStatusValidation(t *testing.T) {

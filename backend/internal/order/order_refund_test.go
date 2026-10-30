@@ -58,12 +58,15 @@ func (e refundExecutor) LargeObjects() pgx.LargeObjects { return pgx.LargeObject
 
 type refundRunner struct{ row pgx.Row }
 
-func (r refundRunner) WithTx(_ context.Context, fn func(context.Context, *database.Tx) error) error {
-	return fn(context.Background(), database.NewTx(refundExecutor(r)))
+func (r refundRunner) WithTx(ctx context.Context, fn func(context.Context) error) error {
+	tx := database.NewTx(refundExecutor(r))
+	ctx = database.WithTx(ctx, tx)
+	return fn(ctx)
 }
 
-func (r refundRunner) WithExecutor(_ context.Context, fn func(database.QueryExecutor) error) error {
-	return fn(refundExecutor(r))
+func (r refundRunner) WithExecutor(ctx context.Context, fn func(context.Context) error) error {
+	exec := refundExecutor(r)
+	return fn(database.WithExecutor(ctx, exec))
 }
 
 func TestRefundPaymentStateValidation(t *testing.T) {

@@ -28,68 +28,66 @@ import (
 
 // CartReader is the subset of cart persistence checkout needs for reading and locking.
 type CartReader interface {
-	LockCartByUserID(ctx context.Context, tx *database.Tx, userID uuid.UUID) error
-	GetCartByUserID(ctx context.Context, qe database.QueryExecutor, userID uuid.UUID) (*model.Cart, error)
-	GetCartBySessionID(ctx context.Context, qe database.QueryExecutor, sessionID string) (*model.Cart, error)
+	LockCartByUserID(ctx context.Context, userID uuid.UUID) error
+	GetCartByUserID(ctx context.Context, userID uuid.UUID) (*model.Cart, error)
+	GetCartBySessionID(ctx context.Context, sessionID string) (*model.Cart, error)
 }
 
-// CartWriter owns cart mutation. Checkout hands it the executor it already
-// holds, so clearing the cart commits atomically with the order instead of
-// writing the cart domain's table directly.
+// CartWriter owns cart mutation.
 type CartWriter interface {
-	ClearItems(ctx context.Context, tx *database.Tx, cartID uuid.UUID) error
+	ClearItems(ctx context.Context, cartID uuid.UUID) error
 }
 
 // OrderWriter owns order creation and payment recording because it enforces order invariants
 // (line-item validation, totals, status history, payment recording). It participates in the
 // caller's transaction without opening a second connection.
 type OrderWriter interface {
-	PlaceOrder(ctx context.Context, tx *database.Tx, in *order.CreateOrderInput) (*model.Order, error)
-	RecordPayment(ctx context.Context, tx *database.Tx, in *order.CreatePaymentInput) (*model.Payment, error)
+	PlaceOrder(ctx context.Context, in *order.CreateOrderInput) (*model.Order, error)
+	RecordPayment(ctx context.Context, in *order.CreatePaymentInput) (*model.Payment, error)
 }
 
 // StockWriter owns stock reservation/commitment invariants and participates in
 // the caller's transaction without opening a second connection.
 type StockWriter interface {
-	HoldStock(ctx context.Context, tx *database.Tx, in inventory.ReserveStockInput) (*model.InventoryReservation, error)
-	CommitReservationsForOrder(ctx context.Context, tx *database.Tx, orderID uuid.UUID) error
+	HoldStock(ctx context.Context, in inventory.ReserveStockInput) (*model.InventoryReservation, error)
+	CommitReservationsForOrder(ctx context.Context, orderID uuid.UUID) error
 }
 
 // UserReader is the subset of user persistence checkout needs.
 type UserReader interface {
-	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.User, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 }
 
 // AddressReader is the subset of address persistence checkout needs.
 type AddressReader interface {
-	GetByIDAndUser(ctx context.Context, qe database.QueryExecutor, id uuid.UUID, userID uuid.UUID) (*model.UserAddress, error)
+	GetByIDAndUser(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*model.UserAddress, error)
 }
 
 // CouponService owns coupon eligibility and discount rules. Checkout supplies
 // the authoritative gross total and the executor it already holds, so the
 // rules live in one place without opening a second connection.
 type CouponService interface {
-	GetCodeByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (string, error)
-	ApplyByCode(ctx context.Context, tx *database.Tx, code string, grossTotal int64, userID *uuid.UUID) (*coupon.AppliedCoupon, error)
-	RecordRedemption(ctx context.Context, tx *database.Tx, couponID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, discountAmount int64, currency string) error
+	GetCodeByID(ctx context.Context, id uuid.UUID) (string, error)
+	ApplyByCode(ctx context.Context, code string, grossTotal int64, userID *uuid.UUID) (*coupon.AppliedCoupon, error)
+	RecordRedemption(ctx context.Context, couponID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, discountAmount int64, currency string) error
 }
 
 // VariantReader is the subset of variant persistence checkout needs for
 // authoritative pricing and order snapshots.
 type VariantReader interface {
-	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.ProductVariant, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*model.ProductVariant, error)
 }
 
 // ProductReader is the subset of product persistence checkout needs for
 // order snapshots.
 type ProductReader interface {
-	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Product, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error)
 }
 
 // ObjectReader is the subset of storage-object persistence checkout needs
 // to resolve thumbnail public URLs.
 type ObjectReader interface {
-	GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Object, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
 }
 
 // SettingsProvider exposes the effective store configuration used to price
@@ -278,19 +276,19 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 	// and redemption, stock reservation, order creation, payment recording, and
 	// cart clearance. Any failure rolls everything back (including reservations),
 	// so there is no deducted-but-no-order or order-without-payment outcome.
-	err := s.runner.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
 		// 1. Lock the customer's cart FOR UPDATE so concurrent checkouts serialize.
 		//    Without the lock two requests can both read the same items, acquire
 		//    variant locks in different orders, and deadlock (or create duplicate
 		//    orders) before either clears the cart.
-		if err := s.cartReader.LockCartByUserID(ctx, tx, in.CustomerID); err != nil {
+		if err := s.cartReader.LockCartByUserID(ctx, in.CustomerID); err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
 			}
 			return s.handleError(err, "Failed to lock cart")
 		}
 
-		cart, err := s.cartReader.GetCartByUserID(ctx, tx, in.CustomerID)
+		cart, err := s.cartReader.GetCartByUserID(ctx, in.CustomerID)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
@@ -304,7 +302,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 
 		// 2. Resolve the user and shipping address (read-only lookups on the
 		//    same connection, through consumer repository interfaces).
-		buyer, err := s.userReader.GetByID(ctx, tx, in.CustomerID)
+		buyer, err := s.userReader.GetByID(ctx, in.CustomerID)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("User not found").WithCode(apierr.CodeNotFound)
@@ -316,7 +314,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			customerName = buyer.Identifier
 		}
 
-		shippingAddr, err := s.addressReader.GetByIDAndUser(ctx, tx, in.ShippingAddressID, in.CustomerID)
+		shippingAddr, err := s.addressReader.GetByIDAndUser(ctx, in.ShippingAddressID, in.CustomerID)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Shipping address not found").WithCode(apierr.CodeNotFound)
@@ -331,7 +329,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		var grossTotal int64
 		currency := "EGP"
 		for _, item := range cart.Items {
-			v, err := s.variantReader.GetByID(ctx, tx, item.VariantID)
+			v, err := s.variantReader.GetByID(ctx, item.VariantID)
 			if err != nil {
 				if errors.Is(database.MapError(err), database.ErrNotFound) {
 					return apierr.BadRequestError(
@@ -350,7 +348,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 				currency = *v.Currency
 			}
 
-			prod, err := s.productReader.GetByID(ctx, tx, v.ProductID)
+			prod, err := s.productReader.GetByID(ctx, v.ProductID)
 			if err != nil {
 				if errors.Is(database.MapError(err), database.ErrNotFound) {
 					return apierr.BadRequestError(
@@ -366,7 +364,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 				thumbnailID = prod.ThumbnailObjectID
 			}
 			if thumbnailID != nil {
-				obj, err := s.objectReader.GetByID(ctx, tx, *thumbnailID)
+				obj, err := s.objectReader.GetByID(ctx, *thumbnailID)
 				if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
 					return s.handleError(err, "Failed to resolve thumbnail")
 				}
@@ -423,7 +421,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		if in.CouponCode != nil && strings.TrimSpace(*in.CouponCode) != "" {
 			targetCode = strings.TrimSpace(*in.CouponCode)
 		} else if in.CouponID != nil && *in.CouponID != uuid.Nil {
-			resolvedCode, err := s.couponService.GetCodeByID(ctx, tx, *in.CouponID)
+			resolvedCode, err := s.couponService.GetCodeByID(ctx, *in.CouponID)
 			if err != nil {
 				if errors.Is(database.MapError(err), database.ErrNotFound) {
 					return apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
@@ -434,7 +432,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		}
 
 		if targetCode != "" {
-			applied, err := s.couponService.ApplyByCode(ctx, tx, targetCode, grossTotal, &in.CustomerID)
+			applied, err := s.couponService.ApplyByCode(ctx, targetCode, grossTotal, &in.CustomerID)
 			if err != nil {
 				if errors.Is(database.MapError(err), database.ErrNotFound) {
 					return apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
@@ -525,7 +523,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		}
 
 		var createErr error
-		createdOrder, createErr = s.orderWriter.PlaceOrder(ctx, tx, orderIn)
+		createdOrder, createErr = s.orderWriter.PlaceOrder(ctx, orderIn)
 		if createErr != nil {
 			return createErr
 		}
@@ -545,7 +543,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		})
 
 		for _, item := range sortedItems {
-			if _, err := s.stockWriter.HoldStock(ctx, tx, inventory.ReserveStockInput{
+			if _, err := s.stockWriter.HoldStock(ctx, inventory.ReserveStockInput{
 				VariantID: item.VariantID,
 				CartID:    &cart.ID,
 				OrderID:   &createdOrder.ID,
@@ -563,7 +561,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		// legitimate COD order. Card orders keep their hold until the
 		// payment is captured.
 		if isCOD {
-			if err := s.stockWriter.CommitReservationsForOrder(ctx, tx, createdOrder.ID); err != nil {
+			if err := s.stockWriter.CommitReservationsForOrder(ctx, createdOrder.ID); err != nil {
 				return err
 			}
 		}
@@ -575,7 +573,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 				redemptionCurrency = createdOrder.Currency
 			}
 			if err := s.couponService.RecordRedemption(
-				ctx, tx, *appliedCouponID, in.CustomerID, createdOrder.ID, totalDiscount, redemptionCurrency,
+				ctx, *appliedCouponID, in.CustomerID, createdOrder.ID, totalDiscount, redemptionCurrency,
 			); err != nil {
 				return s.handleError(err, "Failed to record coupon redemption")
 			}
@@ -597,13 +595,13 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			Provider:              provider,
 			ProviderTransactionID: &providerTxID,
 		}
-		if _, err := s.orderWriter.RecordPayment(ctx, tx, paymentIn); err != nil {
+		if _, err := s.orderWriter.RecordPayment(ctx, paymentIn); err != nil {
 			return s.handleError(err, "Failed to record payment")
 		}
 
 		// 10. Clear the cart inside the same transaction so checkout and cart
 		//     clearance commit atomically (no duplicate orders from a failed clear).
-		if err := s.cartWriter.ClearItems(ctx, tx, cart.ID); err != nil {
+		if err := s.cartWriter.ClearItems(ctx, cart.ID); err != nil {
 			return s.handleError(err, "Failed to clear cart")
 		}
 
@@ -714,16 +712,16 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 
 	// One read connection for the whole use case: cart pricing, coupon lookup and
 	// redemption counts all run on the same QueryExecutor (no connection hopping).
-	err := s.runner.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
+	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
 		if userID != nil || sessionID != nil {
 			var (
 				cartData *model.Cart
 				err      error
 			)
 			if userID != nil {
-				cartData, err = s.cartReader.GetCartByUserID(ctx, exec, *userID)
+				cartData, err = s.cartReader.GetCartByUserID(ctx, *userID)
 			} else {
-				cartData, err = s.cartReader.GetCartBySessionID(ctx, exec, *sessionID)
+				cartData, err = s.cartReader.GetCartBySessionID(ctx, *sessionID)
 			}
 			if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
 				return s.handleError(err, "Failed to load cart")
@@ -733,7 +731,7 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 					// grossTotal is computed from the authoritative live variant
 					// price; the snapshot price is only a fallback when the variant
 					// has no live price left.
-					v, vErr := s.variantReader.GetByID(ctx, exec, item.VariantID)
+					v, vErr := s.variantReader.GetByID(ctx, item.VariantID)
 					if vErr == nil && v.Price != nil {
 						grossTotal += int64(item.Quantity) * *v.Price
 						continue
@@ -747,7 +745,7 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 		}
 
 		// Client-supplied subtotals are never trusted for pricing decisions.
-		applied, err := s.couponService.ApplyByCode(ctx, exec, code, grossTotal, userID)
+		applied, err := s.couponService.ApplyByCode(ctx, code, grossTotal, userID)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' not found", code)).WithCode(errcode.CodeCouponNotFound)

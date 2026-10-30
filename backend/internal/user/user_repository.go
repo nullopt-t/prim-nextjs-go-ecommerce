@@ -32,9 +32,13 @@ func NewPostgresRepository() *UserRepository {
 // and returns the newly assigned user UUID and database-generated timestamps.
 func (r *UserRepository) Create(
 	ctx context.Context,
-	tx *database.Tx,
 	user *model.User,
 ) (uuid.UUID, error) {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
 	role := "customer"
 	if user.Role != "" {
 		role = string(user.Role)
@@ -55,7 +59,7 @@ func (r *UserRepository) Create(
 		RETURNING id, created_at, updated_at
 	`
 	var createdUserID uuid.UUID
-	err := tx.QueryRow(ctx, query, user.ID, user.Identifier, fullName, user.Phone, role).Scan(&createdUserID, &user.CreatedAt, &user.UpdatedAt)
+	err = tx.QueryRow(ctx, query, user.ID, user.Identifier, fullName, user.Phone, role).Scan(&createdUserID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -65,19 +69,17 @@ func (r *UserRepository) Create(
 // GetByID retrieves an active (non-deleted) user record by primary UUID key.
 func (r *UserRepository) GetByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (*model.User, error) {
-	return r.get(ctx, qe, userFilter{ID: &id})
+	return r.get(ctx, userFilter{ID: &id})
 }
 
 // GetByIdentifier retrieves an active (non-deleted) user record by their email address using case-insensitive comparison.
 func (r *UserRepository) GetByIdentifier(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	identifier string,
 ) (*model.User, error) {
-	return r.get(ctx, qe, userFilter{Identifier: &identifier})
+	return r.get(ctx, userFilter{Identifier: &identifier})
 }
 
 // ExistsByID reports whether a non-deleted user with the given UUID exists.
@@ -85,13 +87,17 @@ func (r *UserRepository) GetByIdentifier(
 // validation on the request path does not pay the cost of a full user fetch.
 func (r *UserRepository) ExistsByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 ) (bool, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return false, err
+	}
+
 	query := `SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND deleted_at IS NULL)`
 
 	var exists bool
-	if err := qe.QueryRow(ctx, query, id).Scan(&exists); err != nil {
+	if err := executor.QueryRow(ctx, query, id).Scan(&exists); err != nil {
 		return false, fmt.Errorf("check user existence: %w", err)
 	}
 	return exists, nil
@@ -101,9 +107,13 @@ func (r *UserRepository) ExistsByID(
 // scanning account status, suspension/lockout windows, and timestamps into the model.User struct.
 func (r *UserRepository) get(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	filter userFilter,
 ) (*model.User, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT id, email, full_name, phone, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
 		FROM users
@@ -127,7 +137,7 @@ func (r *UserRepository) get(
 	var roleStr string
 	var statusStr string
 
-	err := qe.QueryRow(ctx, query, args...).Scan(
+	err = executor.QueryRow(ctx, query, args...).Scan(
 		&u.ID,
 		&u.Identifier,
 		&u.FullName,
@@ -166,9 +176,13 @@ type UserListFilter struct {
 // a paginated list of non-deleted users matching role, status, or name/email substring searches.
 func (r *UserRepository) ListUsers(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	filter UserListFilter,
 ) ([]model.User, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT id, email, full_name, phone, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
 		FROM users
@@ -207,7 +221,7 @@ func (r *UserRepository) ListUsers(
 	query += fmt.Sprintf(" LIMIT $%d", i)
 	args = append(args, filter.Limit+1)
 
-	rows, err := qe.Query(ctx, query, args...)
+	rows, err := executor.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list users query: %w", err)
 	}
@@ -253,9 +267,13 @@ func (r *UserRepository) ListUsers(
 // utilized to construct pagination metadata (total pages, total records).
 func (r *UserRepository) CountUsers(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	filter UserListFilter,
 ) (int, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	query := `SELECT COUNT(*) FROM users WHERE deleted_at IS NULL`
 	args := []any{}
 	i := 1
@@ -279,7 +297,7 @@ func (r *UserRepository) CountUsers(
 	}
 
 	var count int
-	if err := qe.QueryRow(ctx, query, args...).Scan(&count); err != nil {
+	if err := executor.QueryRow(ctx, query, args...).Scan(&count); err != nil {
 		return 0, fmt.Errorf("count users query: %w", err)
 	}
 
@@ -291,9 +309,13 @@ func (r *UserRepository) CountUsers(
 // population of staff accounts, never the full customer table.
 func (r *UserRepository) ListByRoles(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	roles []model.UserRole,
 ) ([]model.User, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	names := make([]string, len(roles))
 	for i, role := range roles {
 		names[i] = string(role)
@@ -306,7 +328,7 @@ func (r *UserRepository) ListByRoles(
 		ORDER BY created_at
 	`
 
-	rows, err := qe.Query(ctx, query, names)
+	rows, err := executor.Query(ctx, query, names)
 	if err != nil {
 		return nil, fmt.Errorf("list users by roles query: %w", err)
 	}
@@ -351,10 +373,14 @@ func (r *UserRepository) ListByRoles(
 // Returns database.ErrNotFound if the user does not exist or has been soft-deleted.
 func (r *UserRepository) UpdateRole(
 	ctx context.Context,
-	tx *database.Tx,
 	userID uuid.UUID,
 	role model.UserRole,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE users
 		SET role = $1::user_role, updated_at = now()
@@ -374,11 +400,15 @@ func (r *UserRepository) UpdateRole(
 // Returns database.ErrNotFound if the user does not exist or has been soft-deleted.
 func (r *UserRepository) UpdateStatus(
 	ctx context.Context,
-	tx *database.Tx,
 	userID uuid.UUID,
 	status model.AccountStatus,
 	suspendedUntil *time.Time,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE users
 		SET status = $1, suspended_until = $2, updated_at = now()
@@ -398,9 +428,13 @@ func (r *UserRepository) UpdateStatus(
 // Returns database.ErrNotFound if the user does not exist or has already been soft-deleted.
 func (r *UserRepository) SoftDelete(
 	ctx context.Context,
-	tx *database.Tx,
 	userID uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE users
 		SET status = 'deleted', deleted_at = now(), updated_at = now()
@@ -419,11 +453,15 @@ func (r *UserRepository) SoftDelete(
 // UpdateProfile updates the display name and/or phone number of a user.
 func (r *UserRepository) UpdateProfile(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 	fullName *string,
 	phone *string,
 ) (*model.User, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	setClauses := []string{"updated_at = now()"}
 	args := []any{id}
 	argIdx := 2
@@ -442,7 +480,6 @@ func (r *UserRepository) UpdateProfile(
 		} else {
 			args = append(args, trimmed)
 		}
-		argIdx++
 	}
 
 	query := fmt.Sprintf(`
@@ -456,7 +493,7 @@ func (r *UserRepository) UpdateProfile(
 	var roleStr string
 	var statusStr string
 
-	err := qe.QueryRow(ctx, query, args...).Scan(
+	err = executor.QueryRow(ctx, query, args...).Scan(
 		&u.ID,
 		&u.Identifier,
 		&u.FullName,

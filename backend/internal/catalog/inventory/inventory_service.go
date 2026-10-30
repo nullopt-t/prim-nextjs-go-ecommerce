@@ -122,9 +122,9 @@ func (s *InventoryService) AdjustStock(
 ) (*model.InventoryStock, error) {
 	var updatedStock *model.InventoryStock
 
-	txErr := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	txErr := s.dr.WithTx(ctx, func(ctx context.Context) error {
 		var err error
-		updatedStock, err = s.applyAdjustment(ctx, tx, in)
+		updatedStock, err = s.applyAdjustment(ctx, in)
 		return err
 	})
 
@@ -147,40 +147,30 @@ func (s *InventoryService) AdjustStock(
 	return updatedStock, nil
 }
 
-// ApplyStockAdjustment applies a stock adjustment inside the caller's transaction.
-//
-// This is the participating form of AdjustStock: the caller (order cancellation,
-// refund restock, variant bootstrap) already owns the unit of work, so this
-// method must not begin another transaction. It joins the executor it is handed,
-// so the ledger append, the row lock and the order status change either commit
-// together or roll back together.
+// ApplyStockAdjustment applies a stock adjustment within the active transaction
+// (or begins a new one if called standalone).
 func (s *InventoryService) ApplyStockAdjustment(
 	ctx context.Context,
-	tx *database.Tx,
 	in AdjustStockInput,
 ) error {
-	if tx == nil {
-		return apierr.InternalServerError("Stock adjustment requires a transaction").
-			WithCode(apierr.CodeInternalError)
-	}
-
-	if _, err := s.applyAdjustment(ctx, tx, in); err != nil {
-		var apiErr *apierr.APIError
-		if errors.As(err, &apiErr) {
-			return apiErr
+	return s.dr.WithTx(ctx, func(ctx context.Context) error {
+		if _, err := s.applyAdjustment(ctx, in); err != nil {
+			var apiErr *apierr.APIError
+			if errors.As(err, &apiErr) {
+				return apiErr
+			}
+			mappedErr := database.MapError(err)
+			switch {
+			case errors.Is(mappedErr, database.ErrForeignKeyViolation), errors.Is(mappedErr, database.ErrNotFound):
+				return apierr.BadRequestError("Referenced variant does not exist").
+					WithCode(errcode.CodeVariantNotFound).
+					Wrap(err)
+			default:
+				return s.handleError(err, "Failed to adjust inventory")
+			}
 		}
-		mappedErr := database.MapError(err)
-		switch {
-		case errors.Is(mappedErr, database.ErrForeignKeyViolation), errors.Is(mappedErr, database.ErrNotFound):
-			return apierr.BadRequestError("Referenced variant does not exist").
-				WithCode(errcode.CodeVariantNotFound).
-				Wrap(err)
-		default:
-			return s.handleError(err, "Failed to adjust inventory")
-		}
-	}
-
-	return nil
+		return nil
+	})
 }
 
 // validateAdjustStockInput checks shared preconditions for stock adjustments and
@@ -211,7 +201,6 @@ func validateAdjustStockInput(in AdjustStockInput) (model.InventoryReason, error
 // stock below active reservations, and appends a ledger entry.
 func (s *InventoryService) applyAdjustment(
 	ctx context.Context,
-	tx *database.Tx,
 	in AdjustStockInput,
 ) (*model.InventoryStock, error) {
 	reason, err := validateAdjustStockInput(in)
@@ -219,11 +208,11 @@ func (s *InventoryService) applyAdjustment(
 		return nil, err
 	}
 
-	if err := s.repo.LockVariantForUpdate(ctx, tx, in.VariantID); err != nil {
+	if err := s.repo.LockVariantForUpdate(ctx, in.VariantID); err != nil {
 		return nil, err
 	}
 
-	currentStock, err := s.repo.GetStock(ctx, tx, in.VariantID)
+	currentStock, err := s.repo.GetStock(ctx, in.VariantID)
 	if err != nil {
 		return nil, err
 	}
@@ -241,11 +230,11 @@ func (s *InventoryService) applyAdjustment(
 		Reason:    reason,
 	}
 
-	if err := s.repo.CreateLedger(ctx, tx, ledger); err != nil {
+	if err := s.repo.CreateLedger(ctx, ledger); err != nil {
 		return nil, err
 	}
 
-	return s.repo.GetStock(ctx, tx, in.VariantID)
+	return s.repo.GetStock(ctx, in.VariantID)
 }
 
 // GetStockByVariantID calculates and returns current stock levels (on-hand, reserved, available) for a variant.
@@ -259,9 +248,9 @@ func (s *InventoryService) GetStockByVariantID(
 	}
 
 	var stock *model.InventoryStock
-	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		stock, repoErr = s.repo.GetStock(ctx, exec, variantID)
+		stock, repoErr = s.repo.GetStock(ctx, variantID)
 		return repoErr
 	})
 	if err != nil {
@@ -291,9 +280,9 @@ func (s *InventoryService) GetStockForVariants(
 	}
 
 	var stocks map[uuid.UUID]*model.InventoryStock
-	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		stocks, repoErr = s.repo.GetStockForVariants(ctx, exec, variantIDs)
+		stocks, repoErr = s.repo.GetStockForVariants(ctx, variantIDs)
 		return repoErr
 	})
 	if err != nil {
@@ -315,9 +304,9 @@ func (s *InventoryService) ListVariantLedgers(
 	}
 
 	var result *pagination.PagedResult[model.InventoryLedger]
-	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		result, repoErr = s.repo.ListVariantLedgers(ctx, exec, variantID, q)
+		result, repoErr = s.repo.ListVariantLedgers(ctx, variantID, q)
 		return repoErr
 	})
 
@@ -361,9 +350,9 @@ func (s *InventoryService) ReserveStock(
 
 	var resultReservation *model.InventoryReservation
 
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
 		var err error
-		resultReservation, err = s.placeReservation(ctx, tx, in, ttl)
+		resultReservation, err = s.placeReservation(ctx, in, ttl)
 		return err
 	})
 
@@ -386,12 +375,10 @@ func (s *InventoryService) ReserveStock(
 	return resultReservation, nil
 }
 
-// HoldStock places a temporary stock hold within the caller's database
-// transaction, allowing checkout to reserve, order, and commit/release stock
-// atomically instead of across independent transactions.
+// HoldStock places a temporary stock hold within the active database transaction
+// (or begins a new one if called standalone).
 func (s *InventoryService) HoldStock(
 	ctx context.Context,
-	tx *database.Tx,
 	in ReserveStockInput,
 ) (*model.InventoryReservation, error) {
 	if err := validateReserveStockInput(in); err != nil {
@@ -403,7 +390,16 @@ func (s *InventoryService) HoldStock(
 		ttl = 15 * time.Minute
 	}
 
-	return s.placeReservation(ctx, tx, in, ttl)
+	var res *model.InventoryReservation
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
+		var err error
+		res, err = s.placeReservation(ctx, in, ttl)
+		return err
+	})
+	if err != nil {
+		return nil, s.handleError(err, "Failed to hold stock")
+	}
+	return res, nil
 }
 
 // validateReserveStockInput checks shared preconditions for stock reservations.
@@ -426,16 +422,15 @@ func validateReserveStockInput(in ReserveStockInput) error {
 // and otherwise inserts a new reservation after checking salable stock.
 func (s *InventoryService) placeReservation(
 	ctx context.Context,
-	tx *database.Tx,
 	in ReserveStockInput,
 	ttl time.Duration,
 ) (*model.InventoryReservation, error) {
 	// Row-level lock to prevent concurrency overselling
-	if err := s.repo.LockVariantForUpdate(ctx, tx, in.VariantID); err != nil {
+	if err := s.repo.LockVariantForUpdate(ctx, in.VariantID); err != nil {
 		return nil, err
 	}
 
-	stock, err := s.repo.GetStock(ctx, tx, in.VariantID)
+	stock, err := s.repo.GetStock(ctx, in.VariantID)
 	if err != nil {
 		return nil, err
 	}
@@ -444,7 +439,7 @@ func (s *InventoryService) placeReservation(
 	// This path is only for plain cart holds (no order yet); an order-linked
 	// hold is always a fresh row so its lifecycle stays deterministic.
 	if in.CartID != nil && in.OrderID == nil {
-		existing, err := s.repo.GetActiveCartReservation(ctx, tx, *in.CartID, in.VariantID)
+		existing, err := s.repo.GetActiveCartReservation(ctx, *in.CartID, in.VariantID)
 		if err == nil && existing != nil {
 			// stock.AvailableQuantity already subtracts existing.Quantity; account for existing hold
 			effectiveAvailable := stock.AvailableQuantity + existing.Quantity
@@ -456,7 +451,7 @@ func (s *InventoryService) placeReservation(
 			}
 
 			newExpiry := time.Now().Add(ttl)
-			if err := s.repo.UpdateReservationQuantityAndExpiry(ctx, tx, existing.ID, newQty, newExpiry); err != nil {
+			if err := s.repo.UpdateReservationQuantityAndExpiry(ctx, existing.ID, newQty, newExpiry); err != nil {
 				return nil, err
 			}
 			existing.Quantity = newQty
@@ -480,7 +475,7 @@ func (s *InventoryService) placeReservation(
 		ExpiresAt: time.Now().Add(ttl),
 	}
 
-	if err := s.repo.CreateReservation(ctx, tx, newRes); err != nil {
+	if err := s.repo.CreateReservation(ctx, newRes); err != nil {
 		return nil, err
 	}
 
@@ -497,8 +492,8 @@ func (s *InventoryService) ReleaseReservation(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := s.dr.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-		return s.repo.ReleaseReservation(ctx, exec, reservationID)
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.ReleaseReservation(ctx, reservationID)
 	})
 
 	if err != nil {
@@ -526,8 +521,8 @@ func (s *InventoryService) ReleaseCartReservations(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := s.dr.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
-		return s.repo.ReleaseCartReservations(ctx, exec, cartID)
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.ReleaseCartReservations(ctx, cartID)
 	})
 
 	if err != nil {
@@ -543,9 +538,9 @@ func (s *InventoryService) ReleaseExpiredReservations(
 	ctx context.Context,
 ) (int64, error) {
 	var count int64
-	err := s.dr.WithTx(ctx, func(ctx context.Context, exec *database.Tx) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
 		var repoErr error
-		count, repoErr = s.repo.ReleaseExpiredReservations(ctx, exec)
+		count, repoErr = s.repo.ReleaseExpiredReservations(ctx)
 		return repoErr
 	})
 
@@ -568,8 +563,8 @@ func (s *InventoryService) CommitReservation(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	err := s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		res, err := s.repo.GetReservationByID(ctx, tx, reservationID)
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
+		res, err := s.repo.GetReservationByID(ctx, reservationID)
 		if err != nil {
 			return err
 		}
@@ -585,12 +580,12 @@ func (s *InventoryService) CommitReservation(
 		}
 
 		// Acquire row-level lock on the variant to serialize stock deductions
-		if err := s.repo.LockVariantForUpdate(ctx, tx, res.VariantID); err != nil {
+		if err := s.repo.LockVariantForUpdate(ctx, res.VariantID); err != nil {
 			return err
 		}
 
 		// Verify sufficient physical on-hand stock is available before writing a negative sale ledger entry
-		stock, err := s.repo.GetStock(ctx, tx, res.VariantID)
+		stock, err := s.repo.GetStock(ctx, res.VariantID)
 		if err != nil {
 			return err
 		}
@@ -600,7 +595,7 @@ func (s *InventoryService) CommitReservation(
 			).WithCode(errcode.CodeInsufficientInventory)
 		}
 
-		if err := s.repo.ReleaseReservation(ctx, tx, reservationID); err != nil {
+		if err := s.repo.ReleaseReservation(ctx, reservationID); err != nil {
 			return err
 		}
 
@@ -610,7 +605,7 @@ func (s *InventoryService) CommitReservation(
 			Reason:    model.InventoryReasonSale,
 		}
 
-		return s.repo.CreateLedger(ctx, tx, ledger)
+		return s.repo.CreateLedger(ctx, ledger)
 	})
 
 	if err != nil {
@@ -629,7 +624,6 @@ func (s *InventoryService) CommitReservation(
 // idempotent — a second call finds no unreleased holds and does nothing.
 func (s *InventoryService) CommitReservationsForOrder(
 	ctx context.Context,
-	tx *database.Tx,
 	orderID uuid.UUID,
 ) error {
 	if orderID == uuid.Nil {
@@ -637,16 +631,17 @@ func (s *InventoryService) CommitReservationsForOrder(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	if err := s.repo.CommitReservationsForOrder(ctx, tx, orderID); err != nil {
-		if errors.Is(err, ErrInsufficientStock) {
-			return apierr.BadRequestError(
-				fmt.Sprintf("Insufficient physical on-hand stock to commit reservation (%s)", orderID),
-			).WithCode(errcode.CodeInsufficientInventory)
+	return s.dr.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.repo.CommitReservationsForOrder(ctx, orderID); err != nil {
+			if errors.Is(err, ErrInsufficientStock) {
+				return apierr.BadRequestError(
+					fmt.Sprintf("Insufficient physical on-hand stock to commit reservation (%s)", orderID),
+				).WithCode(errcode.CodeInsufficientInventory)
+			}
+			return s.handleError(err, "Failed to commit reservation")
 		}
-		return s.handleError(err, "Failed to commit reservation")
-	}
-
-	return nil
+		return nil
+	})
 }
 
 // ReleaseReservationsForOrder releases every unreleased hold for an order
@@ -655,7 +650,6 @@ func (s *InventoryService) CommitReservationsForOrder(
 // use to decide whether stock needs restoring on cancellation.
 func (s *InventoryService) ReleaseReservationsForOrder(
 	ctx context.Context,
-	tx *database.Tx,
 	orderID uuid.UUID,
 ) (int64, error) {
 	if orderID == uuid.Nil {
@@ -663,9 +657,17 @@ func (s *InventoryService) ReleaseReservationsForOrder(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	count, err := s.repo.ReleaseReservationsForOrder(ctx, tx, orderID)
+	var count int64
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
+		var err error
+		count, err = s.repo.ReleaseReservationsForOrder(ctx, orderID)
+		if err != nil {
+			return s.handleError(err, "Failed to release reservations for order")
+		}
+		return nil
+	})
 	if err != nil {
-		return 0, s.handleError(err, "Failed to release reservations for order")
+		return 0, err
 	}
 	return count, nil
 }
@@ -675,9 +677,9 @@ func (s *InventoryService) ReleaseReservationsForOrder(
 // this to cancel stale pending orders and return their held stock to salable.
 func (s *InventoryService) ExpiredReservationOrderIDs(ctx context.Context) ([]uuid.UUID, error) {
 	var ids []uuid.UUID
-	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var e error
-		ids, e = s.repo.ExpiredReservationOrderIDs(ctx, exec)
+		ids, e = s.repo.ExpiredReservationOrderIDs(ctx)
 		return e
 	})
 	if err != nil {
@@ -704,9 +706,9 @@ func (s *InventoryService) CheckAvailability(
 func (s *InventoryService) ListInventoryOverview(ctx context.Context, limit int, cursor *pagination.Keyset) ([]InventoryStockItem, *pagination.CursorPage, error) {
 	var items []InventoryStockItem
 	var page *pagination.CursorPage
-	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		items, page, err = s.repo.ListInventoryOverview(ctx, exec, limit, cursor)
+		items, page, err = s.repo.ListInventoryOverview(ctx, limit, cursor)
 		return err
 	})
 	if err != nil {
@@ -728,9 +730,9 @@ func (s *InventoryService) ListInventoryOverview(ctx context.Context, limit int,
 func (s *InventoryService) ListRecentLedgers(ctx context.Context, limit int, cursor *pagination.Keyset, variantID *uuid.UUID, productID *uuid.UUID) ([]InventoryLedgerItem, *pagination.CursorPage, error) {
 	var list []InventoryLedgerItem
 	var page *pagination.CursorPage
-	err := s.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		list, page, err = s.repo.ListRecentLedgers(ctx, exec, limit, cursor, variantID, productID)
+		list, page, err = s.repo.ListRecentLedgers(ctx, limit, cursor, variantID, productID)
 		return err
 	})
 	if err != nil {
@@ -756,13 +758,13 @@ func (s *InventoryService) AdjustInventory(ctx context.Context, variantID uuid.U
 			Wrap(err)
 	}
 
-	err = s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err = s.dr.WithTx(ctx, func(ctx context.Context) error {
 		ledger := &model.InventoryLedger{
 			VariantID: variantID,
 			Quantity:  delta,
 			Reason:    parsedReason,
 		}
-		return s.repo.CreateLedger(ctx, tx, ledger)
+		return s.repo.CreateLedger(ctx, ledger)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to adjust inventory")
@@ -787,8 +789,8 @@ func (s *InventoryService) AdjustProductInventory(ctx context.Context, productID
 			Wrap(err)
 	}
 
-	err = s.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		variantID, err := s.repo.GetPrimaryVariantIDByProductID(ctx, tx, productID)
+	err = s.dr.WithTx(ctx, func(ctx context.Context) error {
+		variantID, err := s.repo.GetPrimaryVariantIDByProductID(ctx, productID)
 		if err != nil {
 			return err
 		}
@@ -798,7 +800,7 @@ func (s *InventoryService) AdjustProductInventory(ctx context.Context, productID
 			Quantity:  delta,
 			Reason:    parsedReason,
 		}
-		return s.repo.CreateLedger(ctx, tx, ledger)
+		return s.repo.CreateLedger(ctx, ledger)
 	})
 	if err != nil {
 		return s.handleError(err, "Failed to adjust product inventory")

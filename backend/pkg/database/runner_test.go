@@ -30,13 +30,56 @@ func (f *fakeExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Row
 }
 
 func contextWithTx(tx *Tx) context.Context {
-	return context.WithValue(context.Background(), txContextKey{}, tx)
+	return WithTx(context.Background(), tx)
+}
+
+func TestWithExecutor_StoresPoolAndWithTxReplacesSameKey(t *testing.T) {
+	pool := &fakeExecutor{name: "pool"}
+	ctx := WithExecutor(context.Background(), pool)
+
+	exec, err := Executor(ctx)
+	require.NoError(t, err)
+	require.Same(t, pool, exec)
+
+	// RequireTx should reject the pool
+	_, err = RequireTx(ctx)
+	require.ErrorIs(t, err, ErrNoActiveTx)
+
+	// WithTx replaces the executor under the same key
+	tx := &Tx{}
+	txCtx := WithTx(ctx, tx)
+
+	gotExec, err := Executor(txCtx)
+	require.NoError(t, err)
+	require.Same(t, tx, gotExec)
+
+	gotTx, err := RequireTx(txCtx)
+	require.NoError(t, err)
+	require.Same(t, tx, gotTx)
+}
+
+func TestExecutor_ReturnsErrorWhenMissing(t *testing.T) {
+	_, err := Executor(context.Background())
+	require.ErrorIs(t, err, ErrNoExecutor)
+}
+
+func TestWithTx_RejectsMismatchedDatabase(t *testing.T) {
+	db1 := &DB{}
+	db2 := &DB{}
+	tx := NewTxWithDB(nil, db1)
+	ctx := WithTx(context.Background(), tx)
+
+	runner2 := NewTxRunner(db2)
+	err := runner2.WithTx(ctx, func(ctx context.Context) error {
+		return nil
+	})
+	require.ErrorIs(t, err, ErrMismatchedDatabase)
 }
 
 func TestWithExecutor_ReturnsConnectionFailureWhenPoolMissing(t *testing.T) {
 	called := false
 
-	err := (&Executor{db: &DB{}}).WithExecutor(context.Background(), func(QueryExecutor) error {
+	err := (&crunner{db: &DB{}}).WithExecutor(context.Background(), func(context.Context) error {
 		called = true
 		return nil
 	})
@@ -46,23 +89,23 @@ func TestWithExecutor_ReturnsConnectionFailureWhenPoolMissing(t *testing.T) {
 }
 
 func TestWithExecutor_RejectsNilExecutor(t *testing.T) {
-	var runner *Executor
+	var runner *crunner
 
-	err := runner.WithExecutor(context.Background(), func(QueryExecutor) error { return nil })
+	err := runner.WithExecutor(context.Background(), func(context.Context) error { return nil })
 
 	require.ErrorIs(t, err, ErrConnectionFailure)
 }
 
 func TestWithExecutor_RejectsNilDB(t *testing.T) {
-	err := (&Executor{}).WithExecutor(context.Background(), func(QueryExecutor) error { return nil })
+	err := (&crunner{}).WithExecutor(context.Background(), func(context.Context) error { return nil })
 
 	require.ErrorIs(t, err, ErrConnectionFailure)
 }
 
 func TestWithTx_RejectsNilExecutor(t *testing.T) {
-	var runner *Executor
+	var runner *crunner
 
-	err := runner.WithTx(context.Background(), func(context.Context, *Tx) error { return nil })
+	err := runner.WithTx(context.Background(), func(context.Context) error { return nil })
 
 	require.ErrorIs(t, err, ErrConnectionFailure)
 }
@@ -73,7 +116,9 @@ func TestWithExecutor_JoinsAmbientTransaction(t *testing.T) {
 
 	// Joining must not require the runner's own pool: the ambient transaction
 	// already owns the connection.
-	err := (&Executor{db: &DB{}}).WithExecutor(ctx, func(exec QueryExecutor) error {
+	err := (&crunner{db: &DB{}}).WithExecutor(ctx, func(ctx context.Context) error {
+		exec, err := Executor(ctx)
+		require.NoError(t, err)
 		require.Same(t, ambient, exec, "callback must receive the ambient transaction")
 		return nil
 	})
@@ -86,9 +131,11 @@ func TestWithTx_JoinsAmbientTransaction(t *testing.T) {
 	ctx := contextWithTx(ambient)
 	joined := false
 
-	err := (&Executor{db: &DB{}}).WithTx(ctx, func(_ context.Context, tx *Tx) error {
+	err := (&crunner{db: &DB{}}).WithTx(ctx, func(ctx context.Context) error {
 		joined = true
-		require.Same(t, ambient, tx, "inner call must reuse the ambient transaction")
+		got, ok := TxFromContext(ctx)
+		require.True(t, ok, "tx must be present in context")
+		require.Same(t, ambient, got, "inner call must reuse the ambient transaction")
 		return nil
 	})
 
@@ -100,9 +147,36 @@ func TestWithExecutor_JoinReturnsCallbackErrorUnchanged(t *testing.T) {
 	sentinel := errors.New("business rule violated")
 	ctx := contextWithTx(&Tx{})
 
-	err := (&Executor{db: &DB{}}).WithExecutor(ctx, func(QueryExecutor) error {
+	err := (&crunner{db: &DB{}}).WithExecutor(ctx, func(context.Context) error {
 		return sentinel
 	})
 
 	require.ErrorIs(t, err, sentinel)
+}
+
+func TestRequireTx_ReturnsErrorWhenNoTx(t *testing.T) {
+	_, err := RequireTx(context.Background())
+	require.ErrorIs(t, err, ErrNoActiveTx)
+}
+
+func TestRequireTx_ReturnsTxWhenPresent(t *testing.T) {
+	ambient := &Tx{}
+	ctx := contextWithTx(ambient)
+	got, err := RequireTx(ctx)
+	require.NoError(t, err)
+	require.Same(t, ambient, got)
+}
+
+func TestExecutorFromContext_ReturnsPoolWhenNoTx(t *testing.T) {
+	pool := &fakeExecutor{name: "pool"}
+	got := ExecutorFromContext(context.Background(), pool)
+	require.Same(t, pool, got)
+}
+
+func TestExecutorFromContext_ReturnsTxWhenPresent(t *testing.T) {
+	ambient := &Tx{}
+	ctx := contextWithTx(ambient)
+	pool := &fakeExecutor{name: "pool"}
+	got := ExecutorFromContext(ctx, pool)
+	require.Same(t, ambient, got)
 }

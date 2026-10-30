@@ -36,7 +36,7 @@ type mockProductRepository struct {
 	products map[uuid.UUID]*model.Product
 }
 
-func (m *mockProductRepository) GetByID(ctx context.Context, qe database.QueryExecutor, id uuid.UUID) (*model.Product, error) {
+func (m *mockProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error) {
 	if p, ok := m.products[id]; ok {
 		return p, nil
 	}

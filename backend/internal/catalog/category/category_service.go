@@ -60,8 +60,8 @@ func (cs *CategoryService) CreateCategory(
 		Name:     name,
 	}
 
-	err := cs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		return cs.repo.Create(ctx, tx, category)
+	err := cs.dr.WithTx(ctx, func(ctx context.Context) error {
+		return cs.repo.Create(ctx, category)
 	})
 
 	if err != nil {
@@ -76,9 +76,9 @@ func (cs *CategoryService) GetCategoryByID(
 	categoryID uuid.UUID,
 ) (*model.ProductCategory, error) {
 	var category *model.ProductCategory
-	err := cs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err := cs.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		category, repoErr = cs.repo.GetByID(ctx, exec, categoryID)
+		category, repoErr = cs.repo.GetByID(ctx, categoryID)
 		return repoErr
 	})
 
@@ -91,7 +91,6 @@ func (cs *CategoryService) GetCategoryByID(
 
 func (cs *CategoryService) isDescendant(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	categoryID uuid.UUID,
 	newParentID uuid.UUID,
 ) (bool, error) {
@@ -107,7 +106,7 @@ func (cs *CategoryService) isDescendant(
 		}
 		visited[*currentParent] = struct{}{}
 
-		parentCategory, err := cs.repo.GetByID(ctx, qe, *currentParent)
+		parentCategory, err := cs.repo.GetByID(ctx, *currentParent)
 		if err != nil {
 			mappedErr := database.MapError(err)
 			if errors.Is(mappedErr, database.ErrNotFound) {
@@ -171,9 +170,9 @@ func (cs *CategoryService) UpdateCategory(
 		}
 	}
 
-	err := cs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
+	err := cs.dr.WithTx(ctx, func(ctx context.Context) error {
 		if input.ParentID != nil && *input.ParentID != uuid.Nil {
-			isDescendant, descErr := cs.isDescendant(ctx, tx, categoryID, *input.ParentID)
+			isDescendant, descErr := cs.isDescendant(ctx, categoryID, *input.ParentID)
 			if descErr != nil {
 				return apierr.InternalServerError("Failed to validate category hierarchy").
 					WithCode(apierr.CodeInternalError).
@@ -190,7 +189,7 @@ func (cs *CategoryService) UpdateCategory(
 			}
 		}
 
-		return cs.repo.Update(ctx, tx, categoryID, fields)
+		return cs.repo.Update(ctx, categoryID, fields)
 	})
 
 	if err != nil {
@@ -228,9 +227,9 @@ func (cs *CategoryService) ListCategories(
 
 	var result *pagination.PagedResult[model.ProductCategory]
 
-	err = cs.dr.WithExecutor(ctx, func(exec database.QueryExecutor) error {
+	err = cs.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		result, repoErr = cs.repo.List(ctx, exec, ListCategoryOptions{
+		result, repoErr = cs.repo.List(ctx, ListCategoryOptions{
 			ListQuery:        q,
 			IncludeDeleted:   in.IncludeDeleted,
 			OnlyWithProducts: in.OnlyWithProducts,
@@ -275,8 +274,8 @@ func (cs *CategoryService) AdminList(
 }
 
 func (cs *CategoryService) DeleteCategory(ctx context.Context, id uuid.UUID) error {
-	return cs.dr.WithTx(ctx, func(ctx context.Context, tx *database.Tx) error {
-		if err := cs.repo.SoftDeleteCategory(ctx, tx, id); err != nil {
+	return cs.dr.WithTx(ctx, func(ctx context.Context) error {
+		if err := cs.repo.SoftDeleteCategory(ctx, id); err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return apierr.NotFoundError("Category not found").WithCode(apierr.CodeNotFound)
 			}
@@ -319,4 +318,3 @@ func (cs *CategoryService) handleError(err error, defaultMsg string) error {
 			WithStack()
 	}
 }
-

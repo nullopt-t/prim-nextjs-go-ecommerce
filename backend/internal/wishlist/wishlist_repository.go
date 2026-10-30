@@ -26,9 +26,13 @@ func NewWishlistRepository() *WishlistRepository {
 
 func (r *WishlistRepository) Create(
 	ctx context.Context,
-	tx *database.Tx,
 	item *model.WishlistItem,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO wishlist_items (id, user_id, product_id, variant_id, created_at)
 		VALUES ($1, $2, $3, $4, now())
@@ -39,10 +43,14 @@ func (r *WishlistRepository) Create(
 
 func (r *WishlistRepository) GetByID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	id uuid.UUID,
 	userID uuid.UUID,
 ) (*model.WishlistItem, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT
 			wi.id,
@@ -88,7 +96,7 @@ func (r *WishlistRepository) GetByID(
 		LEFT JOIN storage_objects vso ON pv.thumbnail_object_id = vso.id
 		WHERE wi.id = $1 AND wi.user_id = $2
 	`
-	row := qe.QueryRow(ctx, query, id, userID)
+	row := executor.QueryRow(ctx, query, id, userID)
 	item, err := scanWishlistItem(row)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -102,10 +110,14 @@ func (r *WishlistRepository) GetByID(
 // GetByUserAndProduct retrieves the most recent wishlist item for a given customer and catalog product.
 func (r *WishlistRepository) GetByUserAndProduct(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	userID uuid.UUID,
 	productID uuid.UUID,
 ) (*model.WishlistItem, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT
 			wi.id,
@@ -153,7 +165,7 @@ func (r *WishlistRepository) GetByUserAndProduct(
 		ORDER BY wi.created_at DESC
 		LIMIT 1
 	`
-	row := qe.QueryRow(ctx, query, userID, productID)
+	row := executor.QueryRow(ctx, query, userID, productID)
 	item, err := scanWishlistItem(row)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -166,10 +178,14 @@ func (r *WishlistRepository) GetByUserAndProduct(
 
 func (r *WishlistRepository) ListByUser(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	userID uuid.UUID,
 	q *pagination.ListQuery,
 ) ([]model.WishlistItem, int, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	countQuery := `
 		SELECT COUNT(1)
 		FROM wishlist_items wi
@@ -177,7 +193,7 @@ func (r *WishlistRepository) ListByUser(
 		WHERE wi.user_id = $1
 	`
 	var total int
-	if err := qe.QueryRow(ctx, countQuery, userID).Scan(&total); err != nil {
+	if err := executor.QueryRow(ctx, countQuery, userID).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
@@ -252,7 +268,7 @@ func (r *WishlistRepository) ListByUser(
 		LIMIT $2 OFFSET $3
 	`, orderBy)
 
-	rows, err := qe.Query(ctx, selectQuery, userID, q.PageSize, q.Offset)
+	rows, err := executor.Query(ctx, selectQuery, userID, q.PageSize, q.Offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -275,9 +291,13 @@ func (r *WishlistRepository) ListByUser(
 
 func (r *WishlistRepository) CountByUser(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	userID uuid.UUID,
 ) (int, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	query := `
 		SELECT COUNT(1)
 		FROM wishlist_items wi
@@ -285,16 +305,20 @@ func (r *WishlistRepository) CountByUser(
 		WHERE wi.user_id = $1
 	`
 	var count int
-	err := qe.QueryRow(ctx, query, userID).Scan(&count)
+	err = executor.QueryRow(ctx, query, userID).Scan(&count)
 	return count, err
 }
 
 func (r *WishlistRepository) DeleteByID(
 	ctx context.Context,
-	tx *database.Tx,
 	id uuid.UUID,
 	userID uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `DELETE FROM wishlist_items WHERE id = $1 AND user_id = $2`
 	tag, err := tx.Exec(ctx, query, id, userID)
 	if err != nil {
@@ -309,12 +333,16 @@ func (r *WishlistRepository) DeleteByID(
 // GetVariantProductID queries the database to find the product ID associated with a product variant.
 func (r *WishlistRepository) GetVariantProductID(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	variantID uuid.UUID,
 ) (uuid.UUID, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
 	query := `SELECT product_id FROM product_variants WHERE id = $1 AND deleted_at IS NULL`
 	var prodID uuid.UUID
-	err := qe.QueryRow(ctx, query, variantID).Scan(&prodID)
+	err = executor.QueryRow(ctx, query, variantID).Scan(&prodID)
 	return prodID, err
 }
 
@@ -323,11 +351,15 @@ func (r *WishlistRepository) GetVariantProductID(
 // If variantID is nil, removes only the generic product bookmark where variant_id IS NULL.
 func (r *WishlistRepository) DeleteByProduct(
 	ctx context.Context,
-	tx *database.Tx,
 	userID uuid.UUID,
 	productID uuid.UUID,
 	variantID *uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	if variantID != nil {
 		query := `DELETE FROM wishlist_items WHERE user_id = $1 AND product_id = $2 AND variant_id = $3`
 		tag, err := tx.Exec(ctx, query, userID, productID, *variantID)
@@ -353,31 +385,38 @@ func (r *WishlistRepository) DeleteByProduct(
 
 func (r *WishlistRepository) ClearByUser(
 	ctx context.Context,
-	tx *database.Tx,
 	userID uuid.UUID,
 ) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
 	query := `DELETE FROM wishlist_items WHERE user_id = $1`
-	_, err := tx.Exec(ctx, query, userID)
+	_, err = tx.Exec(ctx, query, userID)
 	return err
 }
 
 func (r *WishlistRepository) Exists(
 	ctx context.Context,
-	qe database.QueryExecutor,
 	userID uuid.UUID,
 	productID uuid.UUID,
 	variantID *uuid.UUID,
 ) (bool, *uuid.UUID, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return false, nil, err
+	}
+
 	var query string
 	var id uuid.UUID
-	var err error
 
 	if variantID != nil {
 		query = `SELECT id FROM wishlist_items WHERE user_id = $1 AND product_id = $2 AND variant_id = $3`
-		err = qe.QueryRow(ctx, query, userID, productID, *variantID).Scan(&id)
+		err = executor.QueryRow(ctx, query, userID, productID, *variantID).Scan(&id)
 	} else {
 		query = `SELECT id FROM wishlist_items WHERE user_id = $1 AND product_id = $2 LIMIT 1`
-		err = qe.QueryRow(ctx, query, userID, productID).Scan(&id)
+		err = executor.QueryRow(ctx, query, userID, productID).Scan(&id)
 	}
 	if err != nil {
 		if err == pgx.ErrNoRows {
