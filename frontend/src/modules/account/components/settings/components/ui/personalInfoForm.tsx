@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import { userService } from "@/modules/account/api/userService";
-import { notify } from "@/shared/lib/notify";
-import { apiErrorMessage } from "@/shared/lib/apiErrorMessage";
+import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
 
 export default function PersonalInfoForm() {

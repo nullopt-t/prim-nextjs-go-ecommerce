@@ -225,8 +225,8 @@ export function useUserProfile() {
   const updateProfile = async (payload: Record<string, unknown>) => {
     try {
       const updated = await userService.updateProfile(payload);
-      setProfile(updated);
-      return { success: true, data: updated };
+      setProfile(updated?.data ?? null);
+      return { success: true, data: updated?.data ?? null };
     } catch (err) {
       return { success: false, error: (err as { message?: string })?.message };
     }
