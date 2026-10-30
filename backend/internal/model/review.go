@@ -59,6 +59,10 @@ type Review struct {
 	Body *string
 	// Status is the moderation state (pending, approved, rejected).
 	Status ReviewStatus
+	// HelpfulCount is the number of users who found this review helpful.
+	HelpfulCount int
+	// UserVoted indicates whether the requesting user voted this review helpful.
+	UserVoted bool
 	// CreatedAt is the timestamp when the review was submitted.
 	CreatedAt time.Time
 	// UpdatedAt is the timestamp when the review was last modified.

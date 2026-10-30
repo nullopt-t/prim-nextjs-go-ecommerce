@@ -141,6 +141,8 @@ export interface Review {
   title?: string;
   body?: string;
   status?: string;
+  helpfulCount?: number;
+  userVoted?: boolean;
   createdAt: string;
   updatedAt: string;
 }

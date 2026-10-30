@@ -363,12 +363,13 @@ func (s *ReviewService) ListReviews(
 	productID *uuid.UUID,
 	userID *uuid.UUID,
 	status *model.ReviewStatus,
+	voterID *uuid.UUID,
 ) (*pagination.PagedResult[model.Review], error) {
 	var reviews []model.Review
 	var total int
 	err := s.dbRunner.WithExecutor(ctx, func(exec database.QueryExecutor) error {
 		var err error
-		reviews, total, err = s.repo.List(ctx, exec, q, productID, userID, status)
+		reviews, total, err = s.repo.ListWithVoter(ctx, exec, q, productID, userID, status, voterID)
 		return err
 	})
 
@@ -383,6 +384,32 @@ func (s *ReviewService) ListReviews(
 
 	page := pagination.NewPage(q.Page, q.PageSize, total)
 	return pagination.NewPagedResult(reviewPtrs, page), nil
+}
+
+// ToggleHelpful toggles a helpful vote on a review by the given user.
+func (s *ReviewService) ToggleHelpful(
+	ctx context.Context,
+	reviewID, userID uuid.UUID,
+) (bool, int, error) {
+	if reviewID == uuid.Nil {
+		return false, 0, apierr.BadRequestError("Review ID is required")
+	}
+	if userID == uuid.Nil {
+		return false, 0, apierr.UnauthorizedError()
+	}
+
+	var voted bool
+	var count int
+	err := s.dbRunner.WithTx(ctx, func(txCtx context.Context, tx *database.Tx) error {
+		var err error
+		voted, count, err = s.repo.ToggleVote(txCtx, tx, reviewID, userID)
+		return err
+	})
+	if err != nil {
+		return false, 0, s.handleError(err, "Failed to toggle helpful vote")
+	}
+
+	return voted, count, nil
 }
 
 // CheckReviewEligibility verifies if a customer has a delivered, unreviewed order item for a product.

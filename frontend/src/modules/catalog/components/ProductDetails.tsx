@@ -121,8 +121,9 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
               : tProducts("details.recently"),
             title: r.title || tProducts("details.customerReview"),
             content: r.body || "",
-            helpful: 0,
+            helpful: r.helpfulCount ?? 0,
             verified: true,
+            userVoted: r.userVoted ?? false,
           };
         });
 
@@ -414,20 +415,55 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
     }
   };
 
-  const handleVoteHelpful = (reviewId: string | number) => {
+  const handleVoteHelpful = async (reviewId: string | number) => {
+    if (!user) {
+      notify.error(tReviews("errors.unauthorized"));
+      return;
+    }
+
+    // Optimistic toggle
     setReviews((prev) =>
       prev.map((r) => {
         if (r.id === reviewId) {
           const isVoted = r.userVoted;
           return {
             ...r,
-            helpful: isVoted ? r.helpful - 1 : r.helpful + 1,
+            helpful: isVoted ? Math.max(0, r.helpful - 1) : r.helpful + 1,
             userVoted: !isVoted,
           };
         }
         return r;
       })
     );
+
+    try {
+      const res = await catalogService.voteReviewHelpful(String(reviewId));
+      if (res?.data) {
+        setReviews((prev) =>
+          prev.map((r) =>
+            r.id === reviewId
+              ? { ...r, helpful: res.data.helpfulCount, userVoted: res.data.voted }
+              : r
+          )
+        );
+      }
+    } catch (err) {
+      // Revert optimistic update on error
+      setReviews((prev) =>
+        prev.map((r) => {
+          if (r.id === reviewId) {
+            const isVoted = r.userVoted;
+            return {
+              ...r,
+              helpful: isVoted ? Math.max(0, r.helpful - 1) : r.helpful + 1,
+              userVoted: !isVoted,
+            };
+          }
+          return r;
+        })
+      );
+      notify.error(apiErrorMessage(err, "Failed to submit vote"));
+    }
   };
 
   return (

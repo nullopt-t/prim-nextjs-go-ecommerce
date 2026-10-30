@@ -18,6 +18,7 @@ var allowedReviewSortFields = map[string]string{
 	"id":         "r.id",
 	"rating":     "r.rating",
 	"status":     "r.status",
+	"helpful":    "r.helpful_count",
 	"created_at": "r.created_at",
 	"updated_at": "r.updated_at",
 }
@@ -143,6 +144,7 @@ func (r *ReviewRepository) GetByID(ctx context.Context, qe database.QueryExecuto
 			title,
 			body,
 			status,
+			helpful_count,
 			created_at,
 			updated_at
 		FROM reviews
@@ -158,6 +160,7 @@ func (r *ReviewRepository) GetByID(ctx context.Context, qe database.QueryExecuto
 		&rv.Title,
 		&rv.Body,
 		&rv.Status,
+		&rv.HelpfulCount,
 		&rv.CreatedAt,
 		&rv.UpdatedAt,
 	)
@@ -181,6 +184,7 @@ func (r *ReviewRepository) GetByOrderItemID(ctx context.Context, qe database.Que
 			title,
 			body,
 			status,
+			helpful_count,
 			created_at,
 			updated_at
 		FROM reviews
@@ -196,6 +200,7 @@ func (r *ReviewRepository) GetByOrderItemID(ctx context.Context, qe database.Que
 		&rv.Title,
 		&rv.Body,
 		&rv.Status,
+		&rv.HelpfulCount,
 		&rv.CreatedAt,
 		&rv.UpdatedAt,
 	)
@@ -403,6 +408,18 @@ func (r *ReviewRepository) List(
 	userID *uuid.UUID,
 	status *model.ReviewStatus,
 ) ([]model.Review, int, error) {
+	return r.ListWithVoter(ctx, qe, q, productID, userID, status, nil)
+}
+
+func (r *ReviewRepository) ListWithVoter(
+	ctx context.Context,
+	qe database.QueryExecutor,
+	q *pagination.ListQuery,
+	productID *uuid.UUID,
+	userID *uuid.UUID,
+	status *model.ReviewStatus,
+	voterID *uuid.UUID,
+) ([]model.Review, int, error) {
 	var filters []string
 	var args []any
 	argID := 1
@@ -461,6 +478,17 @@ func (r *ReviewRepository) List(
 		}
 	}
 
+	var voteSelect string
+	var voteJoin string
+	if voterID != nil {
+		voteSelect = fmt.Sprintf(", COALESCE(rv_vote.user_id IS NOT NULL, false) AS user_voted")
+		voteJoin = fmt.Sprintf("LEFT JOIN review_votes rv_vote ON rv_vote.review_id = r.id AND rv_vote.user_id = $%d", argID)
+		args = append(args, *voterID)
+		argID++
+	} else {
+		voteSelect = ", false AS user_voted"
+	}
+
 	listQuery := fmt.Sprintf(`
 		SELECT
 			r.id,
@@ -471,13 +499,15 @@ func (r *ReviewRepository) List(
 			r.title,
 			r.body,
 			r.status,
+			r.helpful_count,
 			r.created_at,
-			r.updated_at
+			r.updated_at%s
 		FROM reviews r
 		%s
 		%s
+		%s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, orderBy, argID, argID+1)
+	`, voteSelect, voteJoin, whereClause, orderBy, argID, argID+1)
 
 	args = append(args, q.PageSize, q.Offset)
 
@@ -499,8 +529,10 @@ func (r *ReviewRepository) List(
 			&rv.Title,
 			&rv.Body,
 			&rv.Status,
+			&rv.HelpfulCount,
 			&rv.CreatedAt,
 			&rv.UpdatedAt,
+			&rv.UserVoted,
 		); err != nil {
 			return nil, 0, err
 		}
@@ -511,5 +543,60 @@ func (r *ReviewRepository) List(
 	}
 
 	return reviews, total, nil
+}
+
+// ToggleVote toggles a helpful vote on a review by the given user.
+// Returns whether the user's vote is active (true if voted, false if unvoted),
+// the updated helpful count, or an error.
+func (r *ReviewRepository) ToggleVote(
+	ctx context.Context,
+	tx *database.Tx,
+	reviewID, userID uuid.UUID,
+) (bool, int, error) {
+	var currentCount int
+	err := tx.QueryRow(ctx, "SELECT helpful_count FROM reviews WHERE id = $1 FOR UPDATE", reviewID).Scan(&currentCount)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return false, 0, database.ErrNotFound
+		}
+		return false, 0, err
+	}
+
+	tag, err := tx.Exec(ctx, "DELETE FROM review_votes WHERE review_id = $1 AND user_id = $2", reviewID, userID)
+	if err != nil {
+		return false, 0, err
+	}
+
+	if tag.RowsAffected() > 0 {
+		var newCount int
+		err := tx.QueryRow(ctx, `
+			UPDATE reviews
+			SET helpful_count = GREATEST(helpful_count - 1, 0), updated_at = now()
+			WHERE id = $1
+			RETURNING helpful_count
+		`, reviewID).Scan(&newCount)
+		if err != nil {
+			return false, 0, err
+		}
+		return false, newCount, nil
+	}
+
+	_, err = tx.Exec(ctx, "INSERT INTO review_votes (review_id, user_id, created_at) VALUES ($1, $2, now())", reviewID, userID)
+	if err != nil {
+		return false, 0, err
+	}
+
+	var newCount int
+	err = tx.QueryRow(ctx, `
+		UPDATE reviews
+		SET helpful_count = helpful_count + 1, updated_at = now()
+		WHERE id = $1
+		RETURNING helpful_count
+	`, reviewID).Scan(&newCount)
+	if err != nil {
+		return false, 0, err
+	}
+
+	return true, newCount, nil
 }
 

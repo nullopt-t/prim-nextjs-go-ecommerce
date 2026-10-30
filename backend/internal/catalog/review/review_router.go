@@ -49,6 +49,7 @@ func (r *ReviewRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		user.GET("/eligibility", r.rh.CheckEligibility)
 		user.PATCH("/:id", r.rh.UpdateReview)
 		user.DELETE("/:id", r.rh.DeleteReview)
+		user.POST("/:id/helpful", r.rh.VoteHelpful)
 	}
 
 	// Admin endpoints (Moderation) - protected with Administrator role check

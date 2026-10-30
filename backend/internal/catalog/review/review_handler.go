@@ -68,10 +68,19 @@ type ReviewResponse struct {
 	Body *string `json:"body,omitempty" example:"The M3 Pro chip handles heavy 4K rendering and compiles code effortlessly."`
 	// Moderation status: pending, approved, rejected
 	Status string `json:"status" example:"approved"`
+	// Number of helpful votes
+	HelpfulCount int `json:"helpfulCount" example:"12"`
+	// Whether requesting user voted this review helpful
+	UserVoted bool `json:"userVoted" example:"false"`
 	// Submission timestamp (RFC3339)
 	CreatedAt string `json:"createdAt" example:"2026-08-13T07:56:17Z"`
 	// Last updated timestamp (RFC3339)
 	UpdatedAt string `json:"updatedAt" example:"2026-08-13T07:56:17Z"`
+}
+
+type HelpfulVoteResponse struct {
+	Voted        bool `json:"voted" example:"true"`
+	HelpfulCount int  `json:"helpfulCount" example:"13"`
 }
 
 type RatingSummaryResponse struct {
@@ -85,16 +94,18 @@ type RatingSummaryResponse struct {
 
 func mapReviewToResponse(r *model.Review) ReviewResponse {
 	return ReviewResponse{
-		ID:          r.ID.String(),
-		ProductID:   r.ProductID.String(),
-		UserID:      r.UserID.String(),
-		OrderItemID: r.OrderItemID.String(),
-		Rating:      r.Rating,
-		Title:       r.Title,
-		Body:        r.Body,
-		Status:      r.Status.String(),
-		CreatedAt:   r.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:   r.UpdatedAt.Format(time.RFC3339),
+		ID:           r.ID.String(),
+		ProductID:    r.ProductID.String(),
+		UserID:       r.UserID.String(),
+		OrderItemID:  r.OrderItemID.String(),
+		Rating:       r.Rating,
+		Title:        r.Title,
+		Body:         r.Body,
+		Status:       r.Status.String(),
+		HelpfulCount: r.HelpfulCount,
+		UserVoted:    r.UserVoted,
+		CreatedAt:    r.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:    r.UpdatedAt.Format(time.RFC3339),
 	}
 }
 
@@ -191,7 +202,7 @@ func (h *ReviewHandler) GetMyReviews(c *gin.Context) {
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
-	result, err := h.service.ListReviews(c.Request.Context(), q, nil, &userID, nil)
+	result, err := h.service.ListReviews(c.Request.Context(), q, nil, &userID, nil, &userID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -287,8 +298,13 @@ func (h *ReviewHandler) ListPublicReviews(c *gin.Context) {
 		productIDPtr = &pid
 	}
 
+	var voterID *uuid.UUID
+	if uid, ok := middleware.GetUserID(c); ok {
+		voterID = &uid
+	}
+
 	approvedStatus := model.ReviewStatusApproved
-	result, err := h.service.ListReviews(c.Request.Context(), q, productIDPtr, nil, &approvedStatus)
+	result, err := h.service.ListReviews(c.Request.Context(), q, productIDPtr, nil, &approvedStatus, voterID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -485,7 +501,7 @@ func (h *ReviewHandler) AdminListReviews(c *gin.Context) {
 		statusPtr = &s
 	}
 
-	result, err := h.service.ListReviews(c.Request.Context(), q, productIDPtr, userIDPtr, statusPtr)
+	result, err := h.service.ListReviews(c.Request.Context(), q, productIDPtr, userIDPtr, statusPtr, nil)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -607,4 +623,46 @@ func (h *ReviewHandler) AdminDeleteReview(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "review deleted successfully"})
+}
+
+// VoteHelpful godoc
+//
+//	@Summary		Vote review helpful
+//	@Description	Toggles a helpful vote on a product review for the authenticated user
+//	@Tags			Reviews
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		string	true	"Review UUID"
+//	@Success		200	{object}	api.DataResponse{data=HelpfulVoteResponse}
+//	@Failure		400	{object}	api.BadRequestErrorResponse
+//	@Failure		401	{object}	api.UnauthorizedResponse
+//	@Failure		404	{object}	api.NotFoundErrorResponse
+//	@Failure		500	{object}	api.InternalServerErrorResponse
+//	@Router			/reviews/{id}/helpful [post]
+func (h *ReviewHandler) VoteHelpful(c *gin.Context) {
+	reviewIDStr := c.Param("id")
+	reviewID, err := uuid.Parse(reviewIDStr)
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid review ID"))
+		return
+	}
+
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	voted, count, err := h.service.ToggleHelpful(c.Request.Context(), reviewID, userID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{
+		Data: HelpfulVoteResponse{
+			Voted:        voted,
+			HelpfulCount: count,
+		},
+	})
 }
