@@ -8,6 +8,7 @@ import { LazyImage } from "@/shared/ui/lazyImage";
 import { normalizeMediaUrl } from "@/shared/lib/media";
 import { useTranslations, useLocale } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
+import { Check, Clock, Truck, Package, ExternalLink, XCircle } from "lucide-react";
 
 interface OrderItem {
   id: string;
@@ -35,6 +36,9 @@ interface Order {
   couponCode?: string | null;
   couponId?: string | null;
   currency: string;
+  carrier?: string | null;
+  trackingNumber?: string | null;
+  trackingUrl?: string | null;
   items: OrderItem[];
   createdAt: string;
   updatedAt: string;
@@ -194,6 +198,22 @@ export default function OrderDetailsContent() {
   const totalPaid = (order.totalAmount / 100).toFixed(2);
   const formattedAddress = formatAddress(order.shippingAddress);
 
+  const statusStepMap: Record<Order["status"], number> = {
+    pending: 0,
+    processing: 1,
+    shipped: 2,
+    delivered: 3,
+    cancelled: -1,
+  };
+  const currentStep = statusStepMap[order.status] ?? 0;
+
+  const steps = [
+    { key: "placed", label: t("timeline.placed"), icon: Clock },
+    { key: "processing", label: t("timeline.processing"), icon: Package },
+    { key: "shipped", label: t("timeline.shipped"), icon: Truck },
+    { key: "delivered", label: t("timeline.delivered"), icon: Check },
+  ];
+
   return (
     <div className="w-full flex flex-col gap-6 pb-12">
       {/* ── Top Bar ── */}
@@ -238,6 +258,85 @@ export default function OrderDetailsContent() {
           </Link>
         </div>
       </div>
+
+      {/* ── Status Progress Stepper & Tracking ── */}
+      {order.status === "cancelled" ? (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400">
+          <XCircle className="size-5 shrink-0" />
+          <div className="text-xs">
+            <span className="font-bold">{t("timeline.cancelled")}</span>
+          </div>
+        </div>
+      ) : (
+        <div className="p-5 rounded-2xl bg-card border border-border/70 shadow-2xs">
+          <div className="relative flex items-center justify-between">
+            <div className="absolute top-1/2 -translate-y-1/2 left-6 right-6 h-1 bg-secondary rounded-full -z-0" />
+            <div
+              className="absolute top-1/2 -translate-y-1/2 left-6 h-1 bg-accent-brand rounded-full transition-all duration-500 -z-0"
+              style={{ width: `${Math.min(100, Math.max(0, (currentStep / (steps.length - 1)) * 100))}%` }}
+            />
+            {steps.map((st, idx) => {
+              const Icon = st.icon;
+              const isDone = idx < currentStep;
+              const isCurrent = idx === currentStep;
+              return (
+                <div key={st.key} className="flex flex-col items-center gap-2 z-10">
+                  <div
+                    className={`size-9 rounded-full flex items-center justify-center transition-colors text-xs font-bold ${
+                      isDone
+                        ? "bg-accent-brand text-white shadow-xs"
+                        : isCurrent
+                        ? "bg-accent-brand text-white ring-4 ring-accent-brand/20 shadow-xs"
+                        : "bg-secondary text-muted-foreground border border-border"
+                    }`}
+                  >
+                    {isDone ? <Check className="size-4" /> : <Icon className="size-4" />}
+                  </div>
+                  <span
+                    className={`text-[11px] sm:text-xs font-medium text-center ${
+                      isDone || isCurrent ? "text-foreground font-semibold" : "text-muted-foreground"
+                    }`}
+                  >
+                    {st.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {(order.carrier || order.trackingNumber || order.trackingUrl) && (
+            <div className="mt-5 pt-4 border-t border-border/70 flex flex-wrap items-center justify-between gap-3 text-xs bg-secondary/30 -mx-5 -mb-5 p-4 rounded-b-2xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Truck className="size-4 text-accent-brand" />
+                  <span className="font-semibold text-foreground">{t("tracking")}:</span>
+                </div>
+                {order.carrier && (
+                  <span className="px-2 py-0.5 rounded-md bg-secondary text-foreground font-medium text-[11px] border border-border">
+                    {order.carrier}
+                  </span>
+                )}
+                {order.trackingNumber && (
+                  <span className="font-mono text-muted-foreground text-[11px]">
+                    {order.trackingNumber}
+                  </span>
+                )}
+              </div>
+              {order.trackingUrl && (
+                <a
+                  href={order.trackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent-brand text-white font-medium hover:opacity-90 transition-opacity text-xs"
+                >
+                  <span>{t("trackShipment")}</span>
+                  <ExternalLink className="size-3.5" />
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Two-Column Details Layout ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
