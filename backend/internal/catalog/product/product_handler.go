@@ -726,6 +726,10 @@ type ListProductsQuery struct {
 	Tag *string `form:"tag" example:"featured,sale"`
 	// Optional publication status filter for admin listings: draft, published, or archived
 	Status *string `form:"status" swaggerignore:"true" example:"draft"`
+	// Optional minimum price in minor units / cents (e.g. 1000 for 10.00 EGP)
+	MinPrice *int64 `form:"min_price" example:"1000"`
+	// Optional maximum price in minor units / cents (e.g. 50000 for 500.00 EGP)
+	MaxPrice *int64 `form:"max_price" example:"50000"`
 
 	BrandUUIDs    []uuid.UUID `form:"-"`
 	BrandNames    []string    `form:"-"`

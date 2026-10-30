@@ -23,6 +23,9 @@ export interface GetProductsParams {
   search?: string;
   inStock?: boolean;
   status?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sort?: string;
 }
 
 type CatalogListParams = number | { pageSize?: number; cursor?: string; search?: string; keyset?: boolean };
@@ -55,6 +58,9 @@ export const catalogService = {
     if (params?.brand) query.append("brand", params.brand);
     if (params?.search) query.append("search", params.search);
     if (params?.inStock !== undefined) query.append("inStock", String(params.inStock));
+    if (params?.minPrice !== undefined) query.append("min_price", String(params.minPrice));
+    if (params?.maxPrice !== undefined) query.append("max_price", String(params.maxPrice));
+    if (params?.sort) query.append("sort", params.sort);
 
     const qs = query.toString();
     return api.get<ApiPaginatedResponse<Product>>(`/api/v1/products${qs ? `?${qs}` : ""}`);
@@ -98,6 +104,9 @@ export const catalogService = {
 
   checkReviewEligibility: (productId: string) =>
     api.get<ApiResponse<ReviewEligibility>>(`/api/v1/reviews/eligibility?productId=${productId}`),
+
+  voteReviewHelpful: (reviewId: string) =>
+    api.post<ApiResponse<{ voted: boolean; helpfulCount: number }>>(`/api/v1/reviews/${reviewId}/helpful`),
 
   createProduct: (payload: Record<string, unknown>) =>
     api.post<ApiResponse<ProductDetails>>("/api/v1/admin/products", payload),

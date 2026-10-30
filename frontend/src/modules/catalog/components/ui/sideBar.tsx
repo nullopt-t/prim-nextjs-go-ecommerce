@@ -1,6 +1,7 @@
 "use client";
 
 import SideBarCategories from "@/modules/catalog/components/ui/sideBarCategories";
+import SideBarPrice from "@/modules/catalog/components/ui/sideBarPrice";
 import SideBarDiscount from "@/modules/catalog/components/ui/sideBarDiscount";
 import SideBarRatings from "@/modules/catalog/components/ui/sideBarRatings";
 import SideBarFilters from "@/modules/catalog/components/ui/sideBarFilters";
@@ -31,6 +32,7 @@ export default function SideBar() {
   const filterContent = (
     <div className="flex flex-col gap-5">
       <SideBarFilters />
+      <SideBarPrice />
       <SideBarCategories />
       <SideBarBrands />
       <SideBarRatings />

@@ -13,6 +13,9 @@ interface CatalogFilters {
   inStockOnly: boolean;
   rating: number | null;
   discount: number | null;
+  minPrice: number | null;
+  maxPrice: number | null;
+  sort: string | null;
 }
 
 interface CatalogContextType {
@@ -57,6 +60,9 @@ export function CatalogProvider({
     inStockOnly: false,
     rating: null,
     discount: null,
+    minPrice: null,
+    maxPrice: null,
+    sort: null,
   });
 
   const setFilter = (
@@ -72,6 +78,9 @@ export function CatalogProvider({
       inStockOnly: false,
       rating: null,
       discount: null,
+      minPrice: null,
+      maxPrice: null,
+      sort: null,
     });
   };
 

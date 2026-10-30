@@ -25,6 +25,7 @@ var allowedProductSortFields = map[string]string{
 	"status":     "p.status",
 	"created_at": "p.created_at",
 	"updated_at": "p.updated_at",
+	"price":      "COALESCE(pv.price, 0)",
 }
 
 // PublicProductBrandReadModel represents brand summary information projected onto a product card.
@@ -358,6 +359,18 @@ func (r *ProductRepository) List(
 		}
 	}
 
+	if q.MinPrice != nil && *q.MinPrice >= 0 {
+		whereClauses = append(whereClauses, fmt.Sprintf("COALESCE(pv.price, 0) >= $%d", argIdx))
+		args = append(args, *q.MinPrice)
+		argIdx++
+	}
+
+	if q.MaxPrice != nil && *q.MaxPrice >= 0 {
+		whereClauses = append(whereClauses, fmt.Sprintf("COALESCE(pv.price, 0) <= $%d", argIdx))
+		args = append(args, *q.MaxPrice)
+		argIdx++
+	}
+
 	search := strings.TrimSpace(q.Search)
 	if search != "" {
 		whereClauses = append(whereClauses, fmt.Sprintf("(p.title ILIKE $%d OR p.slug ILIKE $%d OR b.name ILIKE $%d OR c.name ILIKE $%d)", argIdx, argIdx, argIdx, argIdx))
@@ -389,7 +402,7 @@ func (r *ProductRepository) List(
 		// a soft-deleted brand/category must not satisfy a `b.name`/`c.name` search
 		// in the count while the select (which nulls those joins out) excludes the
 		// row, otherwise the reported total disagrees with the returned rows.
-		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL %s", whereStmt)
+		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL LEFT JOIN product_variants pv ON p.default_variant_id = pv.id AND pv.deleted_at IS NULL %s", whereStmt)
 		if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 			return nil, fmt.Errorf("count products: %w", err)
 		}

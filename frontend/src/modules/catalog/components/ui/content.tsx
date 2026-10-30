@@ -96,8 +96,34 @@ export default function Content({ products, category }: ContentProps) {
       if (disc < filters.discount) return false;
     }
 
+    // Min price filter
+    if (filters.minPrice !== null) {
+      const priceVal = typeof p.price === "number" ? p.price : (p.extractedPrice ?? 0);
+      if (priceVal < filters.minPrice) return false;
+    }
+
+    // Max price filter
+    if (filters.maxPrice !== null) {
+      const priceVal = typeof p.price === "number" ? p.price : (p.extractedPrice ?? 0);
+      if (priceVal > filters.maxPrice) return false;
+    }
+
     return true;
   });
+
+  if (filters.sort) {
+    filtered.sort((a, b) => {
+      const priceA = typeof a.price === "number" ? a.price : (a.extractedPrice ?? 0);
+      const priceB = typeof b.price === "number" ? b.price : (b.extractedPrice ?? 0);
+      if (filters.sort === "price:asc" || filters.sort === "price") {
+        return priceA - priceB;
+      }
+      if (filters.sort === "price:desc" || filters.sort === "-price") {
+        return priceB - priceA;
+      }
+      return 0;
+    });
+  }
 
   if (loading && filtered.length === 0) {
     return (

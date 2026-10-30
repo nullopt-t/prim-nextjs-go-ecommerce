@@ -1,0 +1,70 @@
+"use client";
+
+import SideBarTitle from "@/modules/catalog/components/ui/sideBarTitle";
+import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
+import { useTranslations } from "next-intl";
+
+export default function SideBarPrice() {
+  const { filters, setFilter } = useCatalogContext();
+  const t = useTranslations("common.filters");
+
+  const sortOptions = [
+    { value: "", label: t("sortDefault") },
+    { value: "price:asc", label: t("sortPriceAsc") },
+    { value: "price:desc", label: t("sortPriceDesc") },
+  ];
+
+  return (
+    <div className="border-b border-border pb-5">
+      <SideBarTitle title={t("price")} />
+      
+      {/* Min & Max inputs */}
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1">{t("minPrice")}</label>
+          <input
+            type="number"
+            min={0}
+            placeholder="0"
+            value={filters.minPrice ?? ""}
+            onChange={(e) => {
+              const val = e.target.value.trim();
+              setFilter("minPrice", val === "" ? null : Math.max(0, Number(val)));
+            }}
+            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-muted-foreground mb-1">{t("maxPrice")}</label>
+          <input
+            type="number"
+            min={0}
+            placeholder="∞"
+            value={filters.maxPrice ?? ""}
+            onChange={(e) => {
+              const val = e.target.value.trim();
+              setFilter("maxPrice", val === "" ? null : Math.max(0, Number(val)));
+            }}
+            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand"
+          />
+        </div>
+      </div>
+
+      {/* Sort selection */}
+      <div className="mt-3">
+        <label className="block text-xs text-muted-foreground mb-1">{t("sort")}</label>
+        <select
+          value={filters.sort ?? ""}
+          onChange={(e) => setFilter("sort", e.target.value || null)}
+          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand cursor-pointer"
+        >
+          {sortOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
