@@ -186,11 +186,6 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	_, err = db.Exec(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
-	metadataMigration, err := os.ReadFile("../../migrations/000003_order_notification_metadata.up.sql")
-	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, string(metadataMigration))
-	require.NoError(s.T(), err)
-
 	// ---- Redis (sessions) -------------------------------------------------
 	rContainer, err := redisContainer.Run(ctx, "redis:7-alpine")
 	require.NoError(s.T(), err)
