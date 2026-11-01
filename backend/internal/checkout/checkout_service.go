@@ -258,6 +258,8 @@ func (s *CheckoutService) resolveConfig(ctx context.Context) setting.Config {
 	return cfg
 }
 
+// CheckoutInput carries everything a single checkout use case needs from the
+// caller; all business rules live inside Checkout.
 type CheckoutInput struct {
 	CustomerID        uuid.UUID
 	ShippingAddressID uuid.UUID
@@ -266,292 +268,109 @@ type CheckoutInput struct {
 	PaymentMethod     string
 }
 
+// pricedCart is the authoritative result of re-pricing a cart against live
+// catalog data: order-ready line items and the server-computed gross total.
+type pricedCart struct {
+	items      []order.CreateOrderItemInput
+	grossTotal int64
+	currency   string
+}
+
+// appliedCoupon captures the resolved coupon state checkout needs while the
+// order is being composed and redeemed.
+type appliedCoupon struct {
+	id       *uuid.UUID
+	code     *string
+	currency string
+	discount int64
+}
+
+// resolvedPayment is the normalized payment-method decision derived from the
+// request and the admin-configured availability.
+type resolvedPayment struct {
+	normalizedName string
+	isCOD          bool
+	codFee         int64
+}
+
+// Checkout places the customer's order end-to-end.
+//
+// One transaction covers cart lock, authoritative pricing, coupon validation
+// and redemption, stock reservation, order creation, payment recording, and
+// cart clearance. Any failure rolls everything back (including reservations),
+// so there is no deducted-but-no-order or order-without-payment outcome.
+// Each numbered responsibility below lives in its own named helper.
 func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*model.Order, error) {
+	cfg := s.resolveConfig(ctx)
+
 	var createdOrder *model.Order
 	var customerName string
 
-	cfg := s.resolveConfig(ctx)
-
-	// One transaction covers cart lock, authoritative pricing, coupon validation
-	// and redemption, stock reservation, order creation, payment recording, and
-	// cart clearance. Any failure rolls everything back (including reservations),
-	// so there is no deducted-but-no-order or order-without-payment outcome.
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
-		// 1. Lock the customer's cart FOR UPDATE so concurrent checkouts serialize.
-		//    Without the lock two requests can both read the same items, acquire
-		//    variant locks in different orders, and deadlock (or create duplicate
-		//    orders) before either clears the cart.
-		if err := s.cartReader.LockCartByUserID(ctx, in.CustomerID); err != nil {
-			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				return apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
-			}
-			return s.handleError(err, "Failed to lock cart")
-		}
-
-		cart, err := s.cartReader.GetCartByUserID(ctx, in.CustomerID)
+		// 1. Lock and load the cart so concurrent checkouts serialize.
+		cart, err := s.lockAndLoadCart(ctx, in.CustomerID)
 		if err != nil {
-			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				return apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
-			}
 			return err
 		}
 
-		if cart == nil || cart.ID == uuid.Nil || len(cart.Items) == 0 {
-			return apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
-		}
-
-		// 2. Resolve the user and shipping address (read-only lookups on the
-		//    same connection, through consumer repository interfaces).
-		buyer, err := s.userReader.GetByID(ctx, in.CustomerID)
+		// 2. Resolve the buyer and shipping address that identify the order.
+		buyer, err := s.resolveBuyer(ctx, in.CustomerID)
 		if err != nil {
-			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				return apierr.NotFoundError("User not found").WithCode(apierr.CodeNotFound)
-			}
-			return s.handleError(err, "Failed to resolve user")
+			return err
 		}
-		customerName = strings.TrimSpace(buyer.FullName)
-		if customerName == "" {
-			customerName = buyer.Identifier
-		}
+		customerName = buyer.displayName
 
-		shippingAddr, err := s.addressReader.GetByIDAndUser(ctx, in.ShippingAddressID, in.CustomerID)
+		shippingAddr, err := s.resolveShippingAddress(ctx, in.CustomerID, in.ShippingAddressID)
 		if err != nil {
-			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				return apierr.NotFoundError("Shipping address not found").WithCode(apierr.CodeNotFound)
-			}
-			return s.handleError(err, "Failed to resolve shipping address")
+			return err
 		}
 
-		// 3. Authoritative pricing: re-read live variant prices, reject items with
-		//    a missing price, and compute the gross total server-side. Thumbnails
-		//    are resolved directly from storage (bucket/key), never from SQL.
-		var orderItems []order.CreateOrderItemInput
-		var grossTotal int64
-		currency := "EGP"
-		for _, item := range cart.Items {
-			v, err := s.variantReader.GetByID(ctx, item.VariantID)
-			if err != nil {
-				if errors.Is(database.MapError(err), database.ErrNotFound) {
-					return apierr.BadRequestError(
-						fmt.Sprintf("Variant %s is no longer available", item.VariantID),
-					).WithCode(apierr.CodeInvalidInput)
-				}
-				return s.handleError(err, "Failed to load variant")
-			}
-			if v.Price == nil {
-				return apierr.BadRequestError(
-					fmt.Sprintf("Variant %s has no defined price", item.VariantID),
-				).WithCode(apierr.CodeInvalidInput)
-			}
-			unitPrice := *v.Price
-			if v.Currency != nil && *v.Currency != "" {
-				currency = *v.Currency
-			}
-
-			prod, err := s.productReader.GetByID(ctx, v.ProductID)
-			if err != nil {
-				if errors.Is(database.MapError(err), database.ErrNotFound) {
-					return apierr.BadRequestError(
-						fmt.Sprintf("Product for variant %s is no longer available", item.VariantID),
-					).WithCode(apierr.CodeInvalidInput)
-				}
-				return s.handleError(err, "Failed to load product")
-			}
-
-			var thumbnailURL string
-			thumbnailID := v.ThumbnailObjectID
-			if thumbnailID == nil {
-				thumbnailID = prod.ThumbnailObjectID
-			}
-			if thumbnailID != nil {
-				obj, err := s.objectReader.GetByID(ctx, *thumbnailID)
-				if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
-					return s.handleError(err, "Failed to resolve thumbnail")
-				}
-				if obj != nil {
-					thumbnailURL = s.storage.GetPublicURL(obj.Bucket, obj.Key)
-				}
-			}
-
-			qty := int64(item.Quantity)
-			if unitPrice > 0 && qty > math.MaxInt64/unitPrice {
-				return apierr.BadRequestError("Order total exceeds maximum allowable limit")
-			}
-			itemTotal := unitPrice * qty
-			if itemTotal > math.MaxInt64-grossTotal {
-				return apierr.BadRequestError("Order total exceeds maximum allowable limit")
-			}
-			grossTotal += itemTotal
-
-			snapshotMap := make(map[string]any)
-			snapshotMap["variantId"] = item.VariantID.String()
-			snapshotMap["sku"] = v.SKU
-			snapshotMap["title"] = v.Title
-			if prod.Title != "" {
-				snapshotMap["title"] = prod.Title + " - " + v.Title
-			}
-			snapshotMap["price"] = unitPrice
-			if thumbnailURL != "" {
-				snapshotMap["thumbnailUrl"] = thumbnailURL
-				snapshotMap["image"] = thumbnailURL
-			}
-			snapshotMap["productId"] = prod.ID.String()
-			snapshotMap["productTitle"] = prod.Title
-			snapshotMap["slug"] = prod.Slug
-
-			snapshotBytes, _ := json.Marshal(snapshotMap)
-
-			orderItems = append(orderItems, order.CreateOrderItemInput{
-				VariantID:       item.VariantID,
-				Quantity:        item.Quantity,
-				PriceAtPurchase: unitPrice,
-				ProductSnapshot: string(snapshotBytes),
-			})
+		// 3. Authoritative pricing from live variant/product data.
+		priced, err := s.priceCart(ctx, cart)
+		if err != nil {
+			return err
 		}
 
-		// 4. Validate and apply the coupon inside the same transaction, locking the coupon row
-		//    so concurrent redemptions are serialized; the unique index on
-		//    coupon_redemptions(coupon_id, user_id) backstops the per-user limit.
-		var appliedCouponID *uuid.UUID
-		var appliedCouponCode *string
-		var appliedCouponCurrency string
-		var totalDiscount int64
-
-		targetCode := ""
-		if in.CouponCode != nil && strings.TrimSpace(*in.CouponCode) != "" {
-			targetCode = strings.TrimSpace(*in.CouponCode)
-		} else if in.CouponID != nil && *in.CouponID != uuid.Nil {
-			resolvedCode, err := s.couponService.GetCodeByID(ctx, *in.CouponID)
-			if err != nil {
-				if errors.Is(database.MapError(err), database.ErrNotFound) {
-					return apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
-				}
-				return s.handleError(err, "Failed to resolve coupon")
-			}
-			targetCode = resolvedCode
+		// 4. Validate and resolve the requested coupon before it is redeemed.
+		coupon, err := s.resolveCoupon(ctx, in, priced.grossTotal)
+		if err != nil {
+			return err
 		}
 
-		if targetCode != "" {
-			applied, err := s.couponService.ApplyByCode(ctx, targetCode, grossTotal, &in.CustomerID)
-			if err != nil {
-				if errors.Is(database.MapError(err), database.ErrNotFound) {
-					return apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
-				}
-				return s.handleError(err, "Failed to validate coupon")
-			}
-			appliedCouponID = &applied.ID
-			code := applied.Code
-			appliedCouponCode = &code
-			appliedCouponCurrency = applied.Currency
-			totalDiscount = applied.DiscountAmount
+		// 5. Derive shipping, payment, and tax from the effective store config.
+		shippingCost := s.shippingCost(cfg, priced.grossTotal)
+		payment, err := s.resolvePaymentMethod(cfg, in.PaymentMethod)
+		if err != nil {
+			return err
 		}
+		taxAmount := s.taxAmount(cfg, priced.grossTotal, coupon.discount)
 
-		// 5. Apply the admin-configured shipping rule: free at/above the
-		//    configured threshold, otherwise the configured flat rate.
-		var shippingCost int64
-		if threshold := cfg.FreeShippingThresholdMinorUnits(); grossTotal > 0 && grossTotal < threshold {
-			shippingCost = cfg.ShippingMinorUnits()
-		}
-
-		// 5b. Resolve and validate the requested payment method against the
-		//     admin-configured payment availability, then apply any COD fee.
-		paymentMethod := strings.ToLower(strings.TrimSpace(in.PaymentMethod))
-		isCOD := paymentMethod == "" || paymentMethod == "cod" || paymentMethod == "cash_on_delivery"
-		if isCOD && !cfg.AllowCOD {
-			return apierr.BadRequestError("Cash on delivery is currently unavailable").
-				WithCode("PAYMENT_METHOD_UNAVAILABLE")
-		}
-		if !isCOD && !cfg.AllowCards {
-			return apierr.BadRequestError("Online card payments are currently unavailable").
-				WithCode("PAYMENT_METHOD_UNAVAILABLE")
-		}
-		normalizedPaymentMethod := "cash_on_delivery"
-		if !isCOD {
-			normalizedPaymentMethod = paymentMethod
-		}
-		var codFee int64
-		if isCOD {
-			codFee = cfg.CODFeeMinorUnits()
-		}
-
-		// 5c. Apply tax unless prices are already tax-inclusive. Tax is computed
-		//     on the discounted subtotal so it is never charged on discounts.
-		var taxAmount int64
-		if !cfg.PricesIncludeTax && cfg.TaxRatePercent > 0 {
-			taxable := grossTotal - totalDiscount
-			if taxable < 0 {
-				taxable = 0
-			}
-			taxAmount = int64(math.Round(float64(taxable) * cfg.TaxRatePercent / 100.0))
-		}
-
-		// 6. Create the order inside this transaction. It is created before the
-		//    stock holds so each reservation can be linked to the order id and
-		//    later committed (on payment) or released (on cancellation/expiry)
-		//    deterministically.
-		addr := &model.Address{
-			Street:  shippingAddr.Line1,
-			City:    shippingAddr.City,
-			Country: shippingAddr.Country,
-		}
-		if shippingAddr.State != nil {
-			addr.State = *shippingAddr.State
-		}
-		if shippingAddr.PostalCode != nil {
-			addr.PostalCode = *shippingAddr.PostalCode
-		}
-
-		locale := middleware.GetLocaleFromContext(ctx)
-		if locale != "ar" && locale != "en" {
-			locale = "en"
-		}
-
+		// 6. Create the order, then 7. reserve stock against it, so each
+		//    reservation is linked to the order id and can be committed (on
+		//    payment) or released (on cancellation/expiry) deterministically.
 		orderIn := &order.CreateOrderInput{
 			CustomerID:      &in.CustomerID,
-			CustomerEmail:   buyer.Identifier,
-			ShippingAddress: addr,
-			CouponID:        appliedCouponID,
-			CouponCode:      appliedCouponCode,
-			DiscountAmount:  totalDiscount,
+			CustomerEmail:   buyer.email,
+			ShippingAddress: buildShippingAddress(shippingAddr),
+			CouponID:        coupon.id,
+			CouponCode:      coupon.code,
+			DiscountAmount:  coupon.discount,
 			ShippingAmount:  shippingCost,
 			TaxAmount:       taxAmount,
-			CODFee:          codFee,
-			PaymentMethod:   normalizedPaymentMethod,
-			Currency:        currency,
-			Locale:          locale,
-			Items:           orderItems,
+			CODFee:          payment.codFee,
+			PaymentMethod:   payment.normalizedName,
+			Currency:        priced.currency,
+			Locale:          localeFromContext(ctx),
+			Items:           priced.items,
 		}
 
-		var createErr error
-		createdOrder, createErr = s.orderWriter.PlaceOrder(ctx, orderIn)
-		if createErr != nil {
-			return createErr
+		createdOrder, err = s.orderWriter.PlaceOrder(ctx, orderIn)
+		if err != nil {
+			return err
 		}
 
-		// 7. Reserve stock for every item, linked to the order. The hold is
-		//    committed into a sale when payment is captured and released if the
-		//    order is cancelled or the hold expires. All reservations live in
-		//    this transaction and roll back with it on any failure.
-		//
-		//    Reserve variants in a deterministic order so two concurrent
-		//    checkouts that share variants cannot deadlock by acquiring the same
-		//    row locks in opposite orders (mirrors CommitReservationsForOrder).
-		sortedItems := make([]order.CreateOrderItemInput, len(orderItems))
-		copy(sortedItems, orderItems)
-		sort.Slice(sortedItems, func(i, j int) bool {
-			return sortedItems[i].VariantID.String() < sortedItems[j].VariantID.String()
-		})
-
-		for _, item := range sortedItems {
-			if _, err := s.stockWriter.HoldStock(ctx, inventory.ReserveStockInput{
-				VariantID: item.VariantID,
-				CartID:    &cart.ID,
-				OrderID:   &createdOrder.ID,
-				Quantity:  item.Quantity,
-				Duration:  time.Duration(cfg.ReservationTTLMinutes()) * time.Minute,
-			}); err != nil {
-				return err
-			}
+		if err := s.reserveOrderStock(ctx, cart, createdOrder, priced.items, cfg); err != nil {
+			return err
 		}
 
 		// Cash-on-delivery orders are confirmed the moment they are placed:
@@ -560,47 +379,24 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		// units leave salable stock and the expiry reaper never cancels a
 		// legitimate COD order. Card orders keep their hold until the
 		// payment is captured.
-		if isCOD {
+		if payment.isCOD {
 			if err := s.stockWriter.CommitReservationsForOrder(ctx, createdOrder.ID); err != nil {
 				return err
 			}
 		}
 
-		// 8. Record the coupon redemption; surface errors so the transaction rolls back.
-		if appliedCouponID != nil && totalDiscount > 0 {
-			redemptionCurrency := appliedCouponCurrency
-			if redemptionCurrency == "" {
-				redemptionCurrency = createdOrder.Currency
-			}
-			if err := s.couponService.RecordRedemption(
-				ctx, *appliedCouponID, in.CustomerID, createdOrder.ID, totalDiscount, redemptionCurrency,
-			); err != nil {
-				return s.handleError(err, "Failed to record coupon redemption")
-			}
+		// 8. Record the coupon redemption so the transaction rolls back on failure.
+		if err := s.recordCouponRedemption(ctx, coupon, in.CustomerID, createdOrder); err != nil {
+			return err
 		}
 
-		// 9. Record the payment transaction; surface errors so the transaction rolls back.
-		provider := normalizedPaymentMethod
-		providerTxID := fmt.Sprintf("COD-%s", createdOrder.ID.String()[:8])
-		if provider != "cash_on_delivery" {
-			providerTxID = fmt.Sprintf("PAY-%s", createdOrder.ID.String()[:8])
-		}
-
-		paymentIn := &order.CreatePaymentInput{
-			OrderID:               createdOrder.ID,
-			Amount:                createdOrder.TotalAmount,
-			Currency:              createdOrder.Currency,
-			Status:                model.StatusPending,
-			Type:                  normalizedPaymentMethod,
-			Provider:              provider,
-			ProviderTransactionID: &providerTxID,
-		}
-		if _, err := s.orderWriter.RecordPayment(ctx, paymentIn); err != nil {
-			return s.handleError(err, "Failed to record payment")
+		// 9. Record the payment transaction against the created order.
+		if err := s.recordOrderPayment(ctx, createdOrder, payment.normalizedName); err != nil {
+			return err
 		}
 
 		// 10. Clear the cart inside the same transaction so checkout and cart
-		//     clearance commit atomically (no duplicate orders from a failed clear).
+		//     clearance commit atomically.
 		if err := s.cartWriter.ClearItems(ctx, cart.ID); err != nil {
 			return s.handleError(err, "Failed to clear cart")
 		}
@@ -612,25 +408,389 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		return nil, s.handleError(err, "Checkout failed")
 	}
 
-	// Notifications run only after the transaction commits. A Kafka/SMTP
-	// failure must never turn a successful order into an error response, so it
-	// is logged and the order is returned normally.
-	if cfg.NotifyOrderConfirmation {
-		notifyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer cancel()
-
-		if notifyErr := s.orderNotifier.NotifyOrderPlaced(
-			notifyCtx,
-			buildOrderPlacedPayload(createdOrder, customerName),
-		); notifyErr != nil {
-			s.logger.Warn("failed to publish order placed notification", log.Meta{
-				"orderId": createdOrder.ID.String(),
-				"error":   notifyErr.Error(),
-			})
-		}
-	}
+	// Notifications run only after the transaction commits: a Kafka/SMTP
+	// failure must never turn a successful order into an error response.
+	s.notifyOrderPlaced(ctx, cfg, createdOrder, customerName)
 
 	return createdOrder, nil
+}
+
+// buyerContact is the customer identity checkout needs to own an order.
+type buyerContact struct {
+	email       string
+	displayName string
+}
+
+// resolveBuyer loads the purchasing user and a display name that degrades
+// gracefully when no full name is on file.
+func (s *CheckoutService) resolveBuyer(ctx context.Context, userID uuid.UUID) (*buyerContact, error) {
+	buyer, err := s.userReader.GetByID(ctx, userID)
+	if err != nil {
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			return nil, apierr.NotFoundError("User not found").WithCode(apierr.CodeNotFound)
+		}
+		return nil, s.handleError(err, "Failed to resolve user")
+	}
+
+	name := strings.TrimSpace(buyer.FullName)
+	if name == "" {
+		name = buyer.Identifier
+	}
+	return &buyerContact{email: buyer.Identifier, displayName: name}, nil
+}
+
+// lockAndLoadCart acquires the row lock and the cart in one place. Locking
+// first serializes concurrent checkouts so two requests cannot both read the
+// same items, acquire variant locks in opposite orders, and deadlock (or
+// create duplicate orders) before either clears the cart. Any not-found
+// outcome is an empty cart to the caller.
+func (s *CheckoutService) lockAndLoadCart(ctx context.Context, userID uuid.UUID) (*model.Cart, error) {
+	if err := s.cartReader.LockCartByUserID(ctx, userID); err != nil {
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			return nil, apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
+		}
+		return nil, s.handleError(err, "Failed to lock cart")
+	}
+
+	cart, err := s.cartReader.GetCartByUserID(ctx, userID)
+	if err != nil {
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			return nil, apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
+		}
+		return nil, err
+	}
+	if cart == nil || cart.ID == uuid.Nil || len(cart.Items) == 0 {
+		return nil, apierr.BadRequestError("Cart is empty").WithCode("EMPTY_CART")
+	}
+	return cart, nil
+}
+
+// resolveShippingAddress loads an address owned by the customer; a missing
+// address is a failure, not a fallback, so orders never ship to a
+// guessed location.
+func (s *CheckoutService) resolveShippingAddress(ctx context.Context, userID uuid.UUID, addressID uuid.UUID) (*model.UserAddress, error) {
+	addr, err := s.addressReader.GetByIDAndUser(ctx, addressID, userID)
+	if err != nil {
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			return nil, apierr.NotFoundError("Shipping address not found").WithCode(apierr.CodeNotFound)
+		}
+		return nil, s.handleError(err, "Failed to resolve shipping address")
+	}
+	return addr, nil
+}
+
+// priceCart re-prices every cart item against live variant/product data and
+// builds the order-line snapshots. Pricing decisions are never taken from the
+// client subtotal: the gross total is computed here and thumbnails resolve
+// directly from storage (bucket/key), never from SQL.
+func (s *CheckoutService) priceCart(ctx context.Context, cart *model.Cart) (*pricedCart, error) {
+	result := &pricedCart{currency: "EGP"}
+
+	for _, item := range cart.Items {
+		variant, err := s.variantReader.GetByID(ctx, item.VariantID)
+		if err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return nil, apierr.BadRequestError(
+					fmt.Sprintf("Variant %s is no longer available", item.VariantID),
+				).WithCode(apierr.CodeInvalidInput)
+			}
+			return nil, s.handleError(err, "Failed to load variant")
+		}
+		if variant.Price == nil {
+			return nil, apierr.BadRequestError(
+				fmt.Sprintf("Variant %s has no defined price", item.VariantID),
+			).WithCode(apierr.CodeInvalidInput)
+		}
+		unitPrice := *variant.Price
+		if variant.Currency != nil && *variant.Currency != "" {
+			result.currency = *variant.Currency
+		}
+
+		product, err := s.productReader.GetByID(ctx, variant.ProductID)
+		if err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return nil, apierr.BadRequestError(
+					fmt.Sprintf("Product for variant %s is no longer available", item.VariantID),
+				).WithCode(apierr.CodeInvalidInput)
+			}
+			return nil, s.handleError(err, "Failed to load product")
+		}
+
+		thumbnailURL, err := s.resolveThumbnailURL(ctx, variant.ThumbnailObjectID, product.ThumbnailObjectID)
+		if err != nil {
+			return nil, err
+		}
+
+		qty := int64(item.Quantity)
+		if unitPrice > 0 && qty > math.MaxInt64/unitPrice {
+			return nil, apierr.BadRequestError("Order total exceeds maximum allowable limit")
+		}
+		itemTotal := unitPrice * qty
+		if itemTotal > math.MaxInt64-result.grossTotal {
+			return nil, apierr.BadRequestError("Order total exceeds maximum allowable limit")
+		}
+		result.grossTotal += itemTotal
+
+		result.items = append(result.items, order.CreateOrderItemInput{
+			VariantID:       item.VariantID,
+			Quantity:        item.Quantity,
+			PriceAtPurchase: unitPrice,
+			ProductSnapshot: buildProductSnapshot(item, variant, product, unitPrice, thumbnailURL),
+		})
+	}
+
+	return result, nil
+}
+
+// resolveThumbnailURL turns the variant's (or product's fallback) thumbnail
+// object into its public URL. A missing thumbnail object is treated as absent
+// and never fails the item.
+func (s *CheckoutService) resolveThumbnailURL(ctx context.Context, variantThumbnailID, productThumbnailID *uuid.UUID) (string, error) {
+	thumbnailID := variantThumbnailID
+	if thumbnailID == nil {
+		thumbnailID = productThumbnailID
+	}
+	if thumbnailID == nil {
+		return "", nil
+	}
+
+	obj, err := s.objectReader.GetByID(ctx, *thumbnailID)
+	if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
+		return "", s.handleError(err, "Failed to resolve thumbnail")
+	}
+	if obj == nil {
+		return "", nil
+	}
+	return s.storage.GetPublicURL(obj.Bucket, obj.Key), nil
+}
+
+// buildProductSnapshot freezes the live catalog state into the JSON blob stored
+// on the order line, so the order keeps what the customer saw even if the
+// variant changes or disappears later.
+func buildProductSnapshot(item model.CartItem, variant *model.ProductVariant, product *model.Product, unitPrice int64, thumbnailURL string) string {
+	snapshotMap := make(map[string]any)
+	snapshotMap["variantId"] = item.VariantID.String()
+	snapshotMap["sku"] = variant.SKU
+	snapshotMap["title"] = variant.Title
+	if product.Title != "" {
+		snapshotMap["title"] = product.Title + " - " + variant.Title
+	}
+	snapshotMap["price"] = unitPrice
+	if thumbnailURL != "" {
+		snapshotMap["thumbnailUrl"] = thumbnailURL
+		snapshotMap["image"] = thumbnailURL
+	}
+	snapshotMap["productId"] = product.ID.String()
+	snapshotMap["productTitle"] = product.Title
+	snapshotMap["slug"] = product.Slug
+
+	snapshotBytes, _ := json.Marshal(snapshotMap)
+	return string(snapshotBytes)
+}
+
+// resolveCoupon resolves the requested coupon (by direct code or by coupon id)
+// and validates/prices it against the authoritative gross total. An empty
+// result with no coupon id means "no coupon requested".
+func (s *CheckoutService) resolveCoupon(ctx context.Context, in *CheckoutInput, grossTotal int64) (*appliedCoupon, error) {
+	targetCode := ""
+	if in.CouponCode != nil && strings.TrimSpace(*in.CouponCode) != "" {
+		targetCode = strings.TrimSpace(*in.CouponCode)
+	} else if in.CouponID != nil && *in.CouponID != uuid.Nil {
+		resolvedCode, err := s.couponService.GetCodeByID(ctx, *in.CouponID)
+		if err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return nil, apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
+			}
+			return nil, s.handleError(err, "Failed to resolve coupon")
+		}
+		targetCode = resolvedCode
+	}
+
+	if targetCode == "" {
+		return &appliedCoupon{}, nil
+	}
+
+	applied, err := s.couponService.ApplyByCode(ctx, targetCode, grossTotal, &in.CustomerID)
+	if err != nil {
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			return nil, apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
+		}
+		return nil, s.handleError(err, "Failed to validate coupon")
+	}
+
+	return &appliedCoupon{
+		id:       &applied.ID,
+		code:     &applied.Code,
+		currency: applied.Currency,
+		discount: applied.DiscountAmount,
+	}, nil
+}
+
+// shippingCost applies the admin-configured shipping rule: free at/above the
+// configured threshold, otherwise the configured flat rate.
+func (s *CheckoutService) shippingCost(cfg setting.Config, grossTotal int64) int64 {
+	if threshold := cfg.FreeShippingThresholdMinorUnits(); grossTotal > 0 && grossTotal < threshold {
+		return cfg.ShippingMinorUnits()
+	}
+	return 0
+}
+
+// resolvePaymentMethod validates the requested payment method against the
+// admin-configured payment availability and applies the COD fee where it
+// applies. An empty method means cash on delivery.
+func (s *CheckoutService) resolvePaymentMethod(cfg setting.Config, requestedMethod string) (*resolvedPayment, error) {
+	paymentMethod := strings.ToLower(strings.TrimSpace(requestedMethod))
+	isCOD := paymentMethod == "" || paymentMethod == "cod" || paymentMethod == "cash_on_delivery"
+
+	if isCOD && !cfg.AllowCOD {
+		return nil, apierr.BadRequestError("Cash on delivery is currently unavailable").
+			WithCode("PAYMENT_METHOD_UNAVAILABLE")
+	}
+	if !isCOD && !cfg.AllowCards {
+		return nil, apierr.BadRequestError("Online card payments are currently unavailable").
+			WithCode("PAYMENT_METHOD_UNAVAILABLE")
+	}
+
+	normalizedName := "cash_on_delivery"
+	if !isCOD {
+		normalizedName = paymentMethod
+	}
+
+	codFee := int64(0)
+	if isCOD {
+		codFee = cfg.CODFeeMinorUnits()
+	}
+	return &resolvedPayment{normalizedName: normalizedName, isCOD: isCOD, codFee: codFee}, nil
+}
+
+// taxAmount applies tax unless prices are already tax-inclusive. Tax is
+// computed on the discounted subtotal so it is never charged on discounts.
+func (s *CheckoutService) taxAmount(cfg setting.Config, grossTotal, totalDiscount int64) int64 {
+	if cfg.PricesIncludeTax || cfg.TaxRatePercent <= 0 {
+		return 0
+	}
+	taxable := grossTotal - totalDiscount
+	if taxable < 0 {
+		taxable = 0
+	}
+	return int64(math.Round(float64(taxable) * cfg.TaxRatePercent / 100.0))
+}
+
+// buildShippingAddress projects the customer's stored address onto the order
+// address shape, filling optional fields only when present.
+func buildShippingAddress(shippingAddr *model.UserAddress) *model.Address {
+	addr := &model.Address{
+		Street:  shippingAddr.Line1,
+		City:    shippingAddr.City,
+		Country: shippingAddr.Country,
+	}
+	if shippingAddr.State != nil {
+		addr.State = *shippingAddr.State
+	}
+	if shippingAddr.PostalCode != nil {
+		addr.PostalCode = *shippingAddr.PostalCode
+	}
+	return addr
+}
+
+// localeFromContext returns the request locale, normalized to one of the two
+// supported notification locales.
+func localeFromContext(ctx context.Context) string {
+	locale := middleware.GetLocaleFromContext(ctx)
+	if locale != "ar" && locale != "en" {
+		locale = "en"
+	}
+	return locale
+}
+
+// reserveOrderStock holds stock for every order line, linked to the order. The
+// hold is committed into a sale when payment is captured and released if the
+// order is cancelled or the hold expires. All reservations live in the caller's
+// transaction and roll back with it on any failure.
+//
+// Reservations happen in a deterministic (sorted) order so two concurrent
+// checkouts that share variants cannot deadlock by acquiring the same row
+// locks in opposite orders (mirrors CommitReservationsForOrder).
+func (s *CheckoutService) reserveOrderStock(ctx context.Context, cart *model.Cart, createdOrder *model.Order, orderItems []order.CreateOrderItemInput, cfg setting.Config) error {
+	sortedItems := make([]order.CreateOrderItemInput, len(orderItems))
+	copy(sortedItems, orderItems)
+	sort.Slice(sortedItems, func(i, j int) bool {
+		return sortedItems[i].VariantID.String() < sortedItems[j].VariantID.String()
+	})
+
+	for _, item := range sortedItems {
+		if _, err := s.stockWriter.HoldStock(ctx, inventory.ReserveStockInput{
+			VariantID: item.VariantID,
+			CartID:    &cart.ID,
+			OrderID:   &createdOrder.ID,
+			Quantity:  item.Quantity,
+			Duration:  time.Duration(cfg.ReservationTTLMinutes()) * time.Minute,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// recordCouponRedemption persists the coupon redemption against the created
+// order. Errors propagate so the transaction rolls back.
+func (s *CheckoutService) recordCouponRedemption(ctx context.Context, coupon *appliedCoupon, userID uuid.UUID, createdOrder *model.Order) error {
+	if coupon.id == nil || coupon.discount <= 0 {
+		return nil
+	}
+
+	redemptionCurrency := coupon.currency
+	if redemptionCurrency == "" {
+		redemptionCurrency = createdOrder.Currency
+	}
+	return s.couponService.RecordRedemption(
+		ctx, *coupon.id, userID, createdOrder.ID, coupon.discount, redemptionCurrency,
+	)
+}
+
+// recordOrderPayment records the pending payment transaction tied to the order
+// before checkout commits. Errors propagate so the transaction rolls back.
+func (s *CheckoutService) recordOrderPayment(ctx context.Context, createdOrder *model.Order, paymentMethod string) error {
+	providerTxID := fmt.Sprintf("COD-%s", createdOrder.ID.String()[:8])
+	if paymentMethod != "cash_on_delivery" {
+		providerTxID = fmt.Sprintf("PAY-%s", createdOrder.ID.String()[:8])
+	}
+
+	_, err := s.orderWriter.RecordPayment(ctx, &order.CreatePaymentInput{
+		OrderID:               createdOrder.ID,
+		Amount:                createdOrder.TotalAmount,
+		Currency:              createdOrder.Currency,
+		Status:                model.StatusPending,
+		Type:                  paymentMethod,
+		Provider:              paymentMethod,
+		ProviderTransactionID: &providerTxID,
+	})
+	if err != nil {
+		return s.handleError(err, "Failed to record payment")
+	}
+	return nil
+}
+
+// notifyOrderPlaced publishes the order confirmation after the transaction
+// commits. A Kafka/SMTP failure is logged and never turns a successful order
+// into an error response.
+func (s *CheckoutService) notifyOrderPlaced(ctx context.Context, cfg setting.Config, createdOrder *model.Order, customerName string) {
+	if !cfg.NotifyOrderConfirmation {
+		return
+	}
+
+	notifyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+
+	if notifyErr := s.orderNotifier.NotifyOrderPlaced(
+		notifyCtx,
+		buildOrderPlacedPayload(createdOrder, customerName),
+	); notifyErr != nil {
+		s.logger.Warn("failed to publish order placed notification", log.Meta{
+			"orderId": createdOrder.ID.String(),
+			"error":   notifyErr.Error(),
+		})
+	}
 }
 
 // buildOrderPlacedPayload projects the committed order into the notification
