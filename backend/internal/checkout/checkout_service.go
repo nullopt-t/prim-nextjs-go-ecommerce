@@ -867,40 +867,22 @@ type CouponValidationResult struct {
 func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userID *uuid.UUID, sessionID *string) (*CouponValidationResult, error) {
 	cfg := s.resolveConfig(ctx)
 
-	var grossTotal int64
 	var result *CouponValidationResult
 
 	// One read connection for the whole use case: cart pricing, coupon lookup and
 	// redemption counts all run on the same QueryExecutor (no connection hopping).
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
+		// The cart is optional here: validating a coupon without a cart still
+		// works and prices against a zero subtotal.
+		var grossTotal int64
 		if userID != nil || sessionID != nil {
-			var (
-				cartData *model.Cart
-				err      error
-			)
-			if userID != nil {
-				cartData, err = s.cartReader.GetCartByUserID(ctx, *userID)
-			} else {
-				cartData, err = s.cartReader.GetCartBySessionID(ctx, *sessionID)
+			cartData, err := s.loadCartForOwner(ctx, userID, sessionID)
+			if err != nil {
+				return err
 			}
-			if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
-				return s.handleError(err, "Failed to load cart")
-			}
-			if err == nil && cartData != nil && cartData.ID != uuid.Nil {
-				for _, item := range cartData.Items {
-					// grossTotal is computed from the authoritative live variant
-					// price; the snapshot price is only a fallback when the variant
-					// has no live price left.
-					v, vErr := s.variantReader.GetByID(ctx, item.VariantID)
-					if vErr == nil && v.Price != nil {
-						grossTotal += int64(item.Quantity) * *v.Price
-						continue
-					}
-					if vErr != nil && !errors.Is(database.MapError(vErr), database.ErrNotFound) {
-						return s.handleError(vErr, "Failed to load variant price")
-					}
-					grossTotal += int64(item.Quantity) * item.PriceAtPurchase
-				}
+			grossTotal, err = s.lenientCartTotal(ctx, cartData)
+			if err != nil {
+				return err
 			}
 		}
 
@@ -913,14 +895,9 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 			return s.handleError(err, "Failed to validate coupon")
 		}
 
-		// Shipping follows the admin-configured rule: free at/above the configured
-		// threshold, otherwise the configured flat rate.
-		var shippingCost int64
-		if threshold := cfg.FreeShippingThresholdMinorUnits(); grossTotal > 0 && grossTotal < threshold {
-			shippingCost = cfg.ShippingMinorUnits()
-		}
+		shipping := s.shippingCost(cfg, grossTotal)
 
-		finalTotal := grossTotal - applied.DiscountAmount + shippingCost
+		finalTotal := grossTotal - applied.DiscountAmount + shipping
 		if finalTotal < 0 {
 			finalTotal = 0
 		}
@@ -936,7 +913,7 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 			MinCartAmount:   applied.MinCartAmount,
 			DiscountAmount:  applied.DiscountAmount,
 			Subtotal:        grossTotal,
-			Shipping:        shippingCost,
+			Shipping:        shipping,
 			Total:           finalTotal,
 		}
 		return nil
@@ -947,4 +924,50 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 	}
 
 	return result, nil
+}
+
+// loadCartForOwner loads the cart belonging to the logged-in user or the guest
+// session. A missing cart is treated as absent (nil) because coupon validation
+// still works against a zero subtotal.
+func (s *CheckoutService) loadCartForOwner(ctx context.Context, userID *uuid.UUID, sessionID *string) (*model.Cart, error) {
+	var (
+		cartData *model.Cart
+		err      error
+	)
+	if userID != nil {
+		cartData, err = s.cartReader.GetCartByUserID(ctx, *userID)
+	} else {
+		cartData, err = s.cartReader.GetCartBySessionID(ctx, *sessionID)
+	}
+	if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
+		return nil, s.handleError(err, "Failed to load cart")
+	}
+	if err != nil || cartData == nil || cartData.ID == uuid.Nil {
+		return nil, nil
+	}
+	return cartData, nil
+}
+
+// lenientCartTotal prices the cart for display purposes (coupon preview).
+// Unlike priceCart it does not hard-fail: the snapshot price is a fallback
+// when a variant has no live price left, and missing variants are skipped,
+// so stale carts still get their coupon preview.
+func (s *CheckoutService) lenientCartTotal(ctx context.Context, cart *model.Cart) (int64, error) {
+	if cart == nil {
+		return 0, nil
+	}
+
+	var grossTotal int64
+	for _, item := range cart.Items {
+		v, vErr := s.variantReader.GetByID(ctx, item.VariantID)
+		if vErr == nil && v.Price != nil {
+			grossTotal += int64(item.Quantity) * *v.Price
+			continue
+		}
+		if vErr != nil && !errors.Is(database.MapError(vErr), database.ErrNotFound) {
+			return 0, s.handleError(vErr, "Failed to load variant price")
+		}
+		grossTotal += int64(item.Quantity) * item.PriceAtPurchase
+	}
+	return grossTotal, nil
 }
