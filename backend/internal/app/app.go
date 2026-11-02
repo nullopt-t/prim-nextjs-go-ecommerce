@@ -274,6 +274,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	productRouter := product.NewRouter(productHandler, variantHandler, sessionStore)
 	productRouter.MapRoutes(v1)
 
+
 	// cart
 	cartRepo := cart.NewRepository()
 	cartService := cart.NewService(
@@ -350,28 +351,6 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	couponRouter := coupon.NewRouter(couponHandler, sessionStore)
 	couponRouter.MapRoutes(v1)
 
-	// checkout
-	checkoutService := checkout.NewService(
-		cartRepo,
-		cartService,
-		orderService,
-		inventoryService,
-		userRepo,
-		addressRepo,
-		couponService,
-		variantRepository,
-		productRepo,
-		objectRepository,
-		app.storageProvider,
-		settingService,
-		txRunner,
-		notifier,
-		app.logger,
-	)
-	checkoutHandler := checkout.NewHandler(checkoutService)
-	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionStore)
-	checkoutRouter.MapRoutes(v1)
-
 	// vendor
 	vendorRepo := vendor.NewRepository()
 	settlementReader := orderRepo
@@ -388,6 +367,28 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	vendorHandler := vendor.NewHandler(vendorService)
 	vendorRouter := vendor.NewRouter(vendorHandler, sessionStore)
 	vendorRouter.MapRoutes(v1)
+	// checkout
+	checkoutService := checkout.NewService(
+		cartRepo,
+		cartService,
+		orderService,
+		inventoryService,
+		userRepo,
+		addressRepo,
+		couponService,
+		variantRepository,
+		productRepo,
+		vendorRepo,
+		objectRepository,
+		app.storageProvider,
+		settingService,
+		txRunner,
+		notifier,
+		app.logger,
+	)
+	checkoutHandler := checkout.NewHandler(checkoutService)
+	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionStore)
+	checkoutRouter.MapRoutes(v1)
 
 	// settings
 	settingHandler := setting.NewHandler(settingService)

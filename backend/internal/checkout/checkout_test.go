@@ -50,6 +50,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/notifier"
 	"github.com/nullopt-t/prim-backend/internal/object"
+	"github.com/nullopt-t/prim-backend/internal/vendor"
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
@@ -186,6 +187,11 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	_, err = db.Exec(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
+	vendorSchemaBytes, err := os.ReadFile("../../migrations/000003_vendor_domain.up.sql")
+	require.NoError(s.T(), err)
+	_, err = db.Exec(ctx, string(vendorSchemaBytes))
+	require.NoError(s.T(), err)
+
 	// ---- Redis (sessions) -------------------------------------------------
 	rContainer, err := redisContainer.Run(ctx, "redis:7-alpine")
 	require.NoError(s.T(), err)
@@ -244,6 +250,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 		coupon.NewService(s.txRunner, coupon.NewRepository()),
 		variantRepo,
 		product.NewProductRepository(),
+		vendor.NewRepository(),
 		object.NewRepository(),
 		storage.NoopProvider{},
 		settingsService,

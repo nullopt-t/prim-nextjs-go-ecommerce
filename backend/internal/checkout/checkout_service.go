@@ -84,6 +84,13 @@ type ProductReader interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error)
 }
 
+// VendorReader is the subset of vendor data checkout needs: standing and
+// commission terms for the line's seller. Implemented by the vendor
+// repository; inactive vendors make their items unpurchasable.
+type VendorReader interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Vendor, error)
+}
+
 // ObjectReader is the subset of storage-object persistence checkout needs
 // to resolve thumbnail public URLs.
 type ObjectReader interface {
@@ -113,6 +120,7 @@ type CheckoutService struct {
 	couponService CouponService
 	variantReader VariantReader
 	productReader ProductReader
+	vendorReader  VendorReader
 	objectReader  ObjectReader
 	storage       storage.StorageProvider
 	settings      SettingsProvider
@@ -131,6 +139,7 @@ func NewService(
 	couponService CouponService,
 	variantReader VariantReader,
 	productReader ProductReader,
+	vendorReader VendorReader,
 	objectReader ObjectReader,
 	storageProvider storage.StorageProvider,
 	settings SettingsProvider,
@@ -165,6 +174,9 @@ func NewService(
 	if productReader == nil {
 		panic("checkout: product reader is required")
 	}
+	if vendorReader == nil {
+		panic("checkout: vendor reader is required")
+	}
 	if objectReader == nil {
 		panic("checkout: object reader is required")
 	}
@@ -193,6 +205,7 @@ func NewService(
 		couponService: couponService,
 		variantReader: variantReader,
 		productReader: productReader,
+		vendorReader:  vendorReader,
 		objectReader:  objectReader,
 		storage:       storageProvider,
 		settings:      settings,
@@ -485,6 +498,7 @@ func (s *CheckoutService) resolveShippingAddress(ctx context.Context, userID uui
 // directly from storage (bucket/key), never from SQL.
 func (s *CheckoutService) priceCart(ctx context.Context, cart *model.Cart) (*pricedCart, error) {
 	result := &pricedCart{currency: "EGP"}
+	vendors := make(map[uuid.UUID]*model.Vendor)
 
 	for _, item := range cart.Items {
 		variant, err := s.variantReader.GetByID(ctx, item.VariantID)
@@ -531,15 +545,81 @@ func (s *CheckoutService) priceCart(ctx context.Context, cart *model.Cart) (*pri
 		}
 		result.grossTotal += itemTotal
 
+		// Seller attribution: platform products (nil vendor) are unattributed.
+		// A vendor-owned product is only purchasable while its vendor is
+		// active; a suspended vendor (or soft-deleted profile) blocks checkout
+		// so orders cannot be attributed to a merchant unable to fulfill.
+		vendorID, vendorName, commissionBps, err := s.resolveVendorTerms(
+			ctx, vendors, product.VendorID,
+		)
+		if err != nil {
+			return nil, err
+		}
+
 		result.items = append(result.items, order.CreateOrderItemInput{
 			VariantID:       item.VariantID,
 			Quantity:        item.Quantity,
 			PriceAtPurchase: unitPrice,
-			ProductSnapshot: buildProductSnapshot(item, variant, product, unitPrice, thumbnailURL),
+			ProductSnapshot: buildProductSnapshot(item, variant, product, unitPrice, thumbnailURL, vendorName),
+			VendorID:        vendorID,
+			VendorEarning:   computeVendorEarning(itemTotal, vendorID, commissionBps),
 		})
 	}
 
 	return result, nil
+}
+
+// resolveVendorTerms resolves the seller's standing and commission for an
+// item, memoizing vendor lookups within one cart pricing pass. A
+// vendor-owned product is only purchasable while its vendor exists and is
+// active; anything else is a checkout failure (unfulfillable order).
+// Returns (vendorID, storeName, commissionBps) for attributed lines.
+func (s *CheckoutService) resolveVendorTerms(
+	ctx context.Context,
+	vendors map[uuid.UUID]*model.Vendor,
+	productVendorID *uuid.UUID,
+) (*uuid.UUID, string, int, error) {
+	if productVendorID == nil {
+		return nil, "", 0, nil
+	}
+
+	vendor, ok := vendors[*productVendorID]
+	if !ok {
+		var err error
+		vendor, err = s.vendorReader.GetByID(ctx, *productVendorID)
+		if err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return nil, "", 0, apierr.BadRequestError(
+					fmt.Sprintf("Product seller %s is no longer available", *productVendorID),
+				).WithCode(apierr.CodeInvalidInput)
+			}
+			return nil, "", 0, s.handleError(err, "Failed to load vendor")
+		}
+		vendors[*productVendorID] = vendor
+	}
+
+	if vendor.Status != model.VendorStatusActive {
+		return nil, "", 0, apierr.BadRequestError(
+			fmt.Sprintf("Product seller '%s' is currently unavailable", vendor.StoreName),
+		).WithCode(apierr.CodeInvalidInput)
+	}
+
+	return productVendorID, vendor.StoreName, vendor.CommissionRateBps, nil
+}
+
+// computeVendorEarning freezes the vendor share of a line item: total minus
+// the platform commission (basis points). Platform lines earn zero by
+// definition; the vendor id distinguishes the two cases.
+func computeVendorEarning(itemTotal int64, vendorID *uuid.UUID, commissionBps int) int64 {
+	if vendorID == nil {
+		return 0
+	}
+	commission := itemTotal * int64(commissionBps) / 10000
+	earning := itemTotal - commission
+	if earning < 0 {
+		return 0
+	}
+	return earning
 }
 
 // resolveThumbnailURL turns the variant's (or product's fallback) thumbnail
@@ -566,8 +646,9 @@ func (s *CheckoutService) resolveThumbnailURL(ctx context.Context, variantThumbn
 
 // buildProductSnapshot freezes the live catalog state into the JSON blob stored
 // on the order line, so the order keeps what the customer saw even if the
-// variant changes or disappears later.
-func buildProductSnapshot(item model.CartItem, variant *model.ProductVariant, product *model.Product, unitPrice int64, thumbnailURL string) string {
+// variant changes or disappears later. Seller identity (when attributed) is
+// frozen alongside product data.
+func buildProductSnapshot(item model.CartItem, variant *model.ProductVariant, product *model.Product, unitPrice int64, thumbnailURL, vendorName string) string {
 	snapshotMap := make(map[string]any)
 	snapshotMap["variantId"] = item.VariantID.String()
 	snapshotMap["sku"] = variant.SKU
@@ -583,6 +664,9 @@ func buildProductSnapshot(item model.CartItem, variant *model.ProductVariant, pr
 	snapshotMap["productId"] = product.ID.String()
 	snapshotMap["productTitle"] = product.Title
 	snapshotMap["slug"] = product.Slug
+	if vendorName != "" {
+		snapshotMap["vendorName"] = vendorName
+	}
 
 	snapshotBytes, _ := json.Marshal(snapshotMap)
 	return string(snapshotBytes)
