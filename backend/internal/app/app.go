@@ -25,6 +25,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/system"
 	"github.com/nullopt-t/prim-backend/internal/user"
+	"github.com/nullopt-t/prim-backend/internal/vendor"
 	"github.com/nullopt-t/prim-backend/internal/wishlist"
 
 	"context"
@@ -370,6 +371,23 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	checkoutHandler := checkout.NewHandler(checkoutService)
 	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionStore)
 	checkoutRouter.MapRoutes(v1)
+
+	// vendor
+	vendorRepo := vendor.NewRepository()
+	settlementReader := orderRepo
+	vendorService := vendor.NewService(
+		vendorRepo,
+		userRepo,
+		objectRepository,
+		settlementReader,
+		vendor.NewStaticCommissionDefaults(),
+		app.storageProvider,
+		txRunner,
+		app.logger,
+	)
+	vendorHandler := vendor.NewHandler(vendorService)
+	vendorRouter := vendor.NewRouter(vendorHandler, sessionStore)
+	vendorRouter.MapRoutes(v1)
 
 	// settings
 	settingHandler := setting.NewHandler(settingService)

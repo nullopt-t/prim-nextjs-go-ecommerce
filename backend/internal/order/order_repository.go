@@ -91,8 +91,8 @@ func (r *Repository) AddOrderItem(
 		return err
 	}
 	query := `
-		INSERT INTO order_items (id, order_id, variant_id, quantity, price_at_purchase, product_snapshot)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO order_items (id, order_id, variant_id, quantity, price_at_purchase, product_snapshot, vendor_id, vendor_earning)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 	_, err = tx.Exec(
 		ctx,
@@ -103,6 +103,8 @@ func (r *Repository) AddOrderItem(
 		item.Quantity,
 		item.PriceAtPurchase,
 		item.ProductSnapshot,
+		item.VendorID,
+		item.VendorEarning,
 	)
 	if err != nil {
 		return fmt.Errorf("add order item: %w", err)
@@ -395,7 +397,7 @@ func (r *Repository) GetOrderItems(
 		return nil, err
 	}
 	query := `
-		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot
+		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot, vendor_id, vendor_earning
 		FROM order_items
 		WHERE order_id = $1
 	`
@@ -415,6 +417,8 @@ func (r *Repository) GetOrderItems(
 			&item.Quantity,
 			&item.PriceAtPurchase,
 			&item.ProductSnapshot,
+			&item.VendorID,
+			&item.VendorEarning,
 		); err != nil {
 			return nil, fmt.Errorf("scan order item: %w", err)
 		}
@@ -458,6 +462,8 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 			&item.Quantity,
 			&item.PriceAtPurchase,
 			&item.ProductSnapshot,
+			&item.VendorID,
+			&item.VendorEarning,
 		); err != nil {
 			return nil, fmt.Errorf("scan order item: %w", err)
 		}
@@ -465,6 +471,33 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 	}
 
 	return result, rows.Err()
+}
+
+// GetVendorSettledEarnings sums vendor earnings and derived sales counters for
+// orders that reached a settled lifecycle state (delivered). Cancelled and
+// refunded orders drop out automatically. The method is a read-only
+// projection owned by the order domain and consumed by vendor via an
+// interface, so the vendor package never issues SQL against order tables.
+func (r *Repository) GetVendorSettledEarnings(
+	ctx context.Context,
+	vendorID uuid.UUID,
+) (int64, error) {
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	var total int64
+	err = qe.QueryRow(ctx, `
+		SELECT COALESCE(SUM(oi.vendor_earning), 0)
+		FROM order_items oi
+		JOIN orders o ON o.id = oi.order_id
+		WHERE oi.vendor_id = $1 AND o.status = 'delivered'
+	`, vendorID).Scan(&total)
+	if err != nil {
+		return 0, fmt.Errorf("sum settled vendor earnings: %w", err)
+	}
+	return total, nil
 }
 
 // UpdateOrderStatus updates the status enum and updated_at timestamp of an order.
