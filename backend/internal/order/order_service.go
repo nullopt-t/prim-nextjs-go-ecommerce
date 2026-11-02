@@ -33,6 +33,10 @@ type CreateOrderItemInput struct {
 	PriceAtPurchase int64
 	// ProductSnapshot contains serialized JSON capturing product name, variant title, SKU, and image URL at checkout time.
 	ProductSnapshot string
+	// VendorID is the selling vendor for this line (nil = platform-owned; resolved from the product at checkout).
+	VendorID *uuid.UUID
+	// VendorEarning is the vendor share (item total minus commission, minor units), frozen at checkout.
+	VendorEarning int64
 }
 
 // CreateOrderInput encapsulates all parameters required to generate a brand new customer order.

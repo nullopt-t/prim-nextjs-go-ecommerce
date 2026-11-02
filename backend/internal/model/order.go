@@ -40,6 +40,10 @@ type OrderItem struct {
 	PriceAtPurchase int64
 	// ProductSnapshot contains a JSON snapshot of the product and variant title, attributes, and media.
 	ProductSnapshot string
+	// VendorID is the selling vendor at purchase time (nil = platform-owned line).
+	VendorID *uuid.UUID
+	// VendorEarning is the vendor share in minor units: item total minus platform commission, frozen at checkout.
+	VendorEarning int64
 }
 
 // Address represents a physical postal mailing address used for billing or shipping.
