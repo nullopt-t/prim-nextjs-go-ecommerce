@@ -3369,6 +3369,372 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "/vendor/products": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated vendor's catalog, drafts included. Ownership is enforced server-side.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "List my products",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (max 100)",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                        ],
+                        "type": "string",
+                        "description": "Publication status filter",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Category name(s) or UUID(s), comma-separated",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Brand name(s) or UUID(s), comma-separated",
+                        "name": "brand",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/VendorProductSummary"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Creates a draft product owned by the authenticated vendor. Requires an active vendor profile.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Create a product",
+                "parameters": [
+                    {
+                        "description": "Product draft payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/VendorCreateProductRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/VendorProductResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vendor/products/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Soft-deletes a product owned by the authenticated vendor.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Delete a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product or vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Edits a product owned by the authenticated vendor. Foreign or platform products return 404.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Update a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Product edit payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/VendorUpdateProductRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product or vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vendor/products/{id}/archive": {
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Archives a product owned by the authenticated vendor, removing it from the storefront.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Archive a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product or vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vendor/products/{id}/publish": {
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Publishes a product owned by the authenticated vendor. Product-domain preconditions (e.g. at least one variant) still apply.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Publish a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Publishing preconditions not met",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product or vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/vendor/profile": {
             "get": {
                 "security": [
@@ -5240,6 +5606,17 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "ProductType": {
+            "type": "string",
+            "enum": [
+                "simple",
+                "variable"
+            ],
+            "x-enum-varnames": [
+                "ProductTypeSimple",
+                "ProductTypeVariable"
+            ]
+        },
         "ProductVariantResponse": {
             "type": "object",
             "properties": {
@@ -6056,6 +6433,161 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "VendorCreateProductRequest": {
+            "type": "object",
+            "required": [
+                "categoryId",
+                "slug",
+                "title"
+            ],
+            "properties": {
+                "brandId": {
+                    "description": "Optional brand UUID.",
+                    "type": "string",
+                    "example": "30000000-0000-0000-0000-000000000001"
+                },
+                "categoryId": {
+                    "description": "Required category UUID.",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
+                },
+                "description": {
+                    "description": "Full product description.",
+                    "type": "string"
+                },
+                "productType": {
+                    "description": "Product classification: simple or variable.",
+                    "type": "string",
+                    "enum": [
+                        "simple",
+                        "variable"
+                    ],
+                    "example": "simple"
+                },
+                "slug": {
+                    "description": "URL-friendly product identifier.",
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "wireless-headphones"
+                },
+                "title": {
+                    "description": "Product display title.",
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "Wireless Headphones"
+                },
+                "variationAxes": {
+                    "description": "Ordered variation axis keys for variable products.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "color",
+                        "storage"
+                    ]
+                }
+            }
+        },
+        "VendorProductResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "Created timestamp (RFC3339).",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Product UUID.",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
+                },
+                "productType": {
+                    "description": "Product classification.",
+                    "enum": [
+                        "simple",
+                        "variable"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductType"
+                        }
+                    ]
+                },
+                "slug": {
+                    "description": "URL-friendly slug.",
+                    "type": "string",
+                    "example": "wireless-headphones"
+                },
+                "status": {
+                    "description": "Lifecycle status.",
+                    "enum": [
+                        "draft",
+                        "published",
+                        "archived"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/PublicationStatus"
+                        }
+                    ]
+                },
+                "title": {
+                    "description": "Display title.",
+                    "type": "string",
+                    "example": "Wireless Headphones"
+                },
+                "updatedAt": {
+                    "description": "Updated timestamp (RFC3339).",
+                    "type": "string"
+                },
+                "vendorId": {
+                    "description": "Owning vendor UUID.",
+                    "type": "string",
+                    "example": "50000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "VendorProductSummary": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "productType": {
+                    "$ref": "#/definitions/ProductType"
+                },
+                "sku": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/PublicationStatus"
+                },
+                "stock": {
+                    "type": "integer"
+                },
+                "thumbnailUrl": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
         "VendorResponse": {
             "type": "object",
             "properties": {
@@ -6137,6 +6669,50 @@ const docTemplatepublic = `{
                 "VendorStatusSuspended",
                 "VendorStatusRejected"
             ]
+        },
+        "VendorUpdateProductRequest": {
+            "type": "object",
+            "properties": {
+                "brandId": {
+                    "description": "Optional brand UUID.",
+                    "type": "string"
+                },
+                "categoryId": {
+                    "description": "Optional category UUID.",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Updated product description.",
+                    "type": "string"
+                },
+                "highlights": {
+                    "description": "Updated highlight bullets.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "productType": {
+                    "description": "Product classification: simple or variable.",
+                    "type": "string",
+                    "enum": [
+                        "simple",
+                        "variable"
+                    ]
+                },
+                "title": {
+                    "description": "Updated product title.",
+                    "type": "string",
+                    "maxLength": 200
+                },
+                "variationAxes": {
+                    "description": "Variation axes; omit to leave unchanged, [] to make the product simple.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "VerifyChallengeRequest": {
             "type": "object",

@@ -45,6 +45,7 @@ type Service struct {
 	userReader UserReader
 	objects    ObjectReader
 	settlement SettlementReader
+	products   ProductCatalog
 	settings   CommissionDefaults
 	storage    storage.StorageProvider
 	runner     database.Runner
@@ -62,6 +63,7 @@ func NewService(
 	userReader UserReader,
 	objects ObjectReader,
 	settlement SettlementReader,
+	products ProductCatalog,
 	settings CommissionDefaults,
 	storageProvider storage.StorageProvider,
 	runner database.Runner,
@@ -78,6 +80,9 @@ func NewService(
 	}
 	if settlement == nil {
 		panic("vendor: settlement reader is required")
+	}
+	if products == nil {
+		panic("vendor: product catalog is required")
 	}
 	if settings == nil {
 		panic("vendor: commission defaults provider is required")
@@ -96,6 +101,7 @@ func NewService(
 		userReader: userReader,
 		objects:    objects,
 		settlement: settlement,
+		products:   products,
 		settings:   settings,
 		storage:    storageProvider,
 		runner:     runner,

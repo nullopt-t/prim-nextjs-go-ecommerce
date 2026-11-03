@@ -925,6 +925,14 @@ definitions:
         example: Featured
         type: string
     type: object
+  ProductType:
+    enum:
+    - simple
+    - variable
+    type: string
+    x-enum-varnames:
+    - ProductTypeSimple
+    - ProductTypeVariable
   ProductVariantResponse:
     properties:
       attributes:
@@ -1519,6 +1527,116 @@ definitions:
         example: Space Black, 18GB RAM, 512GB SSD
         type: string
     type: object
+  VendorCreateProductRequest:
+    properties:
+      brandId:
+        description: Optional brand UUID.
+        example: 30000000-0000-0000-0000-000000000001
+        type: string
+      categoryId:
+        description: Required category UUID.
+        example: 40000000-0000-0000-0000-000000000002
+        type: string
+      description:
+        description: Full product description.
+        type: string
+      productType:
+        description: 'Product classification: simple or variable.'
+        enum:
+        - simple
+        - variable
+        example: simple
+        type: string
+      slug:
+        description: URL-friendly product identifier.
+        example: wireless-headphones
+        maxLength: 200
+        type: string
+      title:
+        description: Product display title.
+        example: Wireless Headphones
+        maxLength: 200
+        type: string
+      variationAxes:
+        description: Ordered variation axis keys for variable products.
+        example:
+        - color
+        - storage
+        items:
+          type: string
+        type: array
+    required:
+    - categoryId
+    - slug
+    - title
+    type: object
+  VendorProductResponse:
+    properties:
+      createdAt:
+        description: Created timestamp (RFC3339).
+        type: string
+      id:
+        description: Product UUID.
+        example: 70000000-0000-0000-0000-000000000001
+        type: string
+      productType:
+        allOf:
+        - $ref: '#/definitions/ProductType'
+        description: Product classification.
+        enum:
+        - simple
+        - variable
+      slug:
+        description: URL-friendly slug.
+        example: wireless-headphones
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/PublicationStatus'
+        description: Lifecycle status.
+        enum:
+        - draft
+        - published
+        - archived
+      title:
+        description: Display title.
+        example: Wireless Headphones
+        type: string
+      updatedAt:
+        description: Updated timestamp (RFC3339).
+        type: string
+      vendorId:
+        description: Owning vendor UUID.
+        example: 50000000-0000-0000-0000-000000000001
+        type: string
+    type: object
+  VendorProductSummary:
+    properties:
+      createdAt:
+        type: string
+      currency:
+        type: string
+      id:
+        type: string
+      price:
+        type: integer
+      productType:
+        $ref: '#/definitions/ProductType'
+      sku:
+        type: string
+      slug:
+        type: string
+      status:
+        $ref: '#/definitions/PublicationStatus'
+      stock:
+        type: integer
+      thumbnailUrl:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   VendorResponse:
     properties:
       bannerUrl:
@@ -1581,6 +1699,39 @@ definitions:
     - VendorStatusActive
     - VendorStatusSuspended
     - VendorStatusRejected
+  VendorUpdateProductRequest:
+    properties:
+      brandId:
+        description: Optional brand UUID.
+        type: string
+      categoryId:
+        description: Optional category UUID.
+        type: string
+      description:
+        description: Updated product description.
+        type: string
+      highlights:
+        description: Updated highlight bullets.
+        items:
+          type: string
+        type: array
+      productType:
+        description: 'Product classification: simple or variable.'
+        enum:
+        - simple
+        - variable
+        type: string
+      title:
+        description: Updated product title.
+        maxLength: 200
+        type: string
+      variationAxes:
+        description: Variation axes; omit to leave unchanged, [] to make the product
+          simple.
+        items:
+          type: string
+        type: array
+    type: object
   VerifyChallengeRequest:
     properties:
       code:
@@ -3905,6 +4056,241 @@ paths:
       security:
       - SessionAuth: []
       summary: Request a payout
+      tags:
+      - Vendor
+  /vendor/products:
+    get:
+      description: Returns the authenticated vendor's catalog, drafts included. Ownership
+        is enforced server-side.
+      parameters:
+      - description: Page number (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (max 100)
+        in: query
+        name: pageSize
+        type: integer
+      - description: Publication status filter
+        enum:
+        - draft
+        - published
+        - archived
+        in: query
+        name: status
+        type: string
+      - description: Category name(s) or UUID(s), comma-separated
+        in: query
+        name: category
+        type: string
+      - description: Brand name(s) or UUID(s), comma-separated
+        in: query
+        name: brand
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/VendorProductSummary'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List my products
+      tags:
+      - Vendor
+    post:
+      consumes:
+      - application/json
+      description: Creates a draft product owned by the authenticated vendor. Requires
+        an active vendor profile.
+      parameters:
+      - description: Product draft payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/VendorCreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/VendorProductResponse'
+              type: object
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Create a product
+      tags:
+      - Vendor
+  /vendor/products/{id}:
+    delete:
+      description: Soft-deletes a product owned by the authenticated vendor.
+      parameters:
+      - description: Product UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Product or vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete a product
+      tags:
+      - Vendor
+    patch:
+      consumes:
+      - application/json
+      description: Edits a product owned by the authenticated vendor. Foreign or platform
+        products return 404.
+      parameters:
+      - description: Product UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Product edit payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/VendorUpdateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Product or vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Update a product
+      tags:
+      - Vendor
+  /vendor/products/{id}/archive:
+    post:
+      description: Archives a product owned by the authenticated vendor, removing
+        it from the storefront.
+      parameters:
+      - description: Product UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Product or vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Archive a product
+      tags:
+      - Vendor
+  /vendor/products/{id}/publish:
+    post:
+      description: Publishes a product owned by the authenticated vendor. Product-domain
+        preconditions (e.g. at least one variant) still apply.
+      parameters:
+      - description: Product UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Publishing preconditions not met
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Product or vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Publish a product
       tags:
       - Vendor
   /vendor/profile:

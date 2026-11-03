@@ -6,11 +6,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nullopt-t/prim-backend/internal/catalog/product"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/shared/validation"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 )
 
 // Handler exposes vendor portal and admin endpoints over HTTP.
@@ -533,4 +535,329 @@ func toPayoutList(payouts []*model.VendorPayout) []PayoutResponse {
 		list = append(list, toPayoutResponse(p))
 	}
 	return list
+}
+
+// ---- Vendor product catalog ---------------------------------------------
+
+// VendorCreateProductRequest is the merchant product creation payload.
+type VendorCreateProductRequest struct {
+	// Optional brand UUID.
+	BrandID *string `json:"brandId" binding:"omitempty,uuid" example:"30000000-0000-0000-0000-000000000001"`
+	// Required category UUID.
+	CategoryID string `json:"categoryId" binding:"required,uuid" example:"40000000-0000-0000-0000-000000000002"`
+	// URL-friendly product identifier.
+	Slug string `json:"slug" binding:"required,max=200" example:"wireless-headphones"`
+	// Product display title.
+	Title string `json:"title" binding:"required,max=200" example:"Wireless Headphones"`
+	// Full product description.
+	Description *string `json:"description,omitempty"`
+	// Product classification: simple or variable.
+	ProductType string `json:"productType" binding:"omitempty,oneof=simple variable" example:"simple"`
+	// Ordered variation axis keys for variable products.
+	VariationAxes []string `json:"variationAxes,omitempty" example:"color,storage"`
+}
+
+// VendorUpdateProductRequest is the merchant product edit payload; omitted
+// fields are unchanged.
+type VendorUpdateProductRequest struct {
+	// Optional brand UUID.
+	BrandID *string `json:"brandId" binding:"omitempty,uuid"`
+	// Optional category UUID.
+	CategoryID *string `json:"categoryId" binding:"omitempty,uuid"`
+	// Updated product title.
+	Title *string `json:"title,omitempty" binding:"omitempty,max=200"`
+	// Updated product description.
+	Description *string `json:"description,omitempty"`
+	// Updated highlight bullets.
+	Highlights []string `json:"highlights,omitempty"`
+	// Product classification: simple or variable.
+	ProductType *string `json:"productType,omitempty" binding:"omitempty,oneof=simple variable"`
+	// Variation axes; omit to leave unchanged, [] to make the product simple.
+	VariationAxes *[]string `json:"variationAxes,omitempty"`
+}
+
+// VendorProductResponse is the merchant-facing product payload.
+type VendorProductResponse struct {
+	// Product UUID.
+	ID uuid.UUID `json:"id" example:"70000000-0000-0000-0000-000000000001"`
+	// Owning vendor UUID.
+	VendorID uuid.UUID `json:"vendorId" example:"50000000-0000-0000-0000-000000000001"`
+	// URL-friendly slug.
+	Slug string `json:"slug" example:"wireless-headphones"`
+	// Display title.
+	Title string `json:"title" example:"Wireless Headphones"`
+	// Lifecycle status.
+	Status model.PublicationStatus `json:"status" enums:"draft,published,archived"`
+	// Product classification.
+	ProductType model.ProductType `json:"productType" enums:"simple,variable"`
+	// Created timestamp (RFC3339).
+	CreatedAt string `json:"createdAt"`
+	// Updated timestamp (RFC3339).
+	UpdatedAt string `json:"updatedAt"`
+}
+
+func toVendorProductResponse(p *model.Product) VendorProductResponse {
+	res := VendorProductResponse{
+		ID:          p.ID,
+		Slug:        p.Slug,
+		Title:       p.Title,
+		Status:      p.Status,
+		ProductType: p.ProductType,
+		CreatedAt:   p.CreatedAt.Format(timeLayout),
+		UpdatedAt:   p.UpdatedAt.Format(timeLayout),
+	}
+	if p.VendorID != nil {
+		res.VendorID = *p.VendorID
+	}
+	return res
+}
+
+// ListMyProducts godoc
+// @Summary      List my products
+// @Description  Returns the authenticated vendor's catalog, drafts included. Ownership is enforced server-side.
+// @Tags         Vendor
+// @Produce      json
+// @Param        page      query int    false "Page number (1-based)"
+// @Param        pageSize  query int    false "Page size (max 100)"
+// @Param        status    query string false "Publication status filter" Enums(draft, published, archived)
+// @Param        category  query string false "Category name(s) or UUID(s), comma-separated"
+// @Param        brand     query string false "Brand name(s) or UUID(s), comma-separated"
+// @Success      200 {object} api.PaginatedResponse{data=[]VendorProductSummary}
+// @Failure      401 {object} api.UnauthorizedErrorResponse
+// @Failure      404 {object} api.NotFoundErrorResponse "Vendor not found"
+// @Router       /vendor/products [get]
+// @Security     SessionAuth
+func (h *Handler) ListMyProducts(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	var q product.ListProductsQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
+	if _, err := q.Keyset(); err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
+	result, err := h.service.ListOwnProducts(c.Request.Context(), userID, &q)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.PaginatedResponse{
+		Data: result.Items,
+		Meta: result.Meta(),
+	})
+}
+
+// CreateProduct godoc
+// @Summary      Create a product
+// @Description  Creates a draft product owned by the authenticated vendor. Requires an active vendor profile.
+// @Tags         Vendor
+// @Accept       json
+// @Produce      json
+// @Param        request body VendorCreateProductRequest true "Product draft payload"
+// @Success      201 {object} api.DataResponse{data=VendorProductResponse}
+// @Failure      400 {object} api.BadReqResponse "Validation failed"
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Failure      404 {object} api.NotFoundErrorResponse "Vendor not found"
+// @Router       /vendor/products [post]
+// @Security     SessionAuth
+func (h *Handler) CreateProduct(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	var req VendorCreateProductRequest
+	if !bindVendorJSON(c, &req) {
+		return
+	}
+
+	categoryID, err := uuid.Parse(req.CategoryID)
+	if err != nil {
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
+			Field: "categoryId", Constraint: "uuid", Message: "categoryId must be a UUID",
+		}))
+		return
+	}
+
+	var brandID *uuid.UUID
+	if req.BrandID != nil {
+		brandID = parseOptionalUUID(*req.BrandID)
+	}
+
+	created, err := h.service.CreateProduct(c.Request.Context(), userID, product.CreateProductInput{
+		BrandID:       brandID,
+		CategoryID:    categoryID,
+		Slug:          &req.Slug,
+		Title:         req.Title,
+		Description:   req.Description,
+		ProductType:   req.ProductType,
+		VariationAxes: req.VariationAxes,
+	})
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, api.DataResponse{Data: toVendorProductResponse(created)})
+}
+
+// UpdateProduct godoc
+// @Summary      Update a product
+// @Description  Edits a product owned by the authenticated vendor. Foreign or platform products return 404.
+// @Tags         Vendor
+// @Accept       json
+// @Produce      json
+// @Param        id      path string                     true "Product UUID" format(uuid)
+// @Param        request body VendorUpdateProductRequest true "Product edit payload"
+// @Success      200 {object} api.MessageResponse
+// @Failure      400 {object} api.BadReqResponse "Validation failed"
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Failure      404 {object} api.NotFoundErrorResponse "Product or vendor not found"
+// @Router       /vendor/products/{id} [patch]
+// @Security     SessionAuth
+func (h *Handler) UpdateProduct(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	productID, ok := bindVendorID(c)
+	if !ok {
+		return
+	}
+
+	var req VendorUpdateProductRequest
+	if !bindVendorJSON(c, &req) {
+		return
+	}
+
+	var brandID *uuid.UUID
+	if req.BrandID != nil {
+		brandID = parseOptionalUUID(*req.BrandID)
+	}
+	var categoryID *uuid.UUID
+	if req.CategoryID != nil {
+		categoryID = parseOptionalUUID(*req.CategoryID)
+	}
+
+	if err := h.service.UpdateProduct(c.Request.Context(), userID, productID, product.UpdateProductInput{
+		BrandID:       brandID,
+		CategoryID:    categoryID,
+		Title:         req.Title,
+		Description:   req.Description,
+		Highlights:    req.Highlights,
+		ProductType:   req.ProductType,
+		VariationAxes: req.VariationAxes,
+	}); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Product updated"})
+}
+
+// DeleteProduct godoc
+// @Summary      Delete a product
+// @Description  Soft-deletes a product owned by the authenticated vendor.
+// @Tags         Vendor
+// @Produce      json
+// @Param        id path string true "Product UUID" format(uuid)
+// @Success      200 {object} api.MessageResponse
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Failure      404 {object} api.NotFoundErrorResponse "Product or vendor not found"
+// @Router       /vendor/products/{id} [delete]
+// @Security     SessionAuth
+func (h *Handler) DeleteProduct(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	productID, ok := bindVendorID(c)
+	if !ok {
+		return
+	}
+
+	if err := h.service.DeleteProduct(c.Request.Context(), userID, productID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Product deleted"})
+}
+
+// PublishProduct godoc
+// @Summary      Publish a product
+// @Description  Publishes a product owned by the authenticated vendor. Product-domain preconditions (e.g. at least one variant) still apply.
+// @Tags         Vendor
+// @Produce      json
+// @Param        id path string true "Product UUID" format(uuid)
+// @Success      200 {object} api.MessageResponse
+// @Failure      400 {object} api.BadReqResponse "Publishing preconditions not met"
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Failure      404 {object} api.NotFoundErrorResponse "Product or vendor not found"
+// @Router       /vendor/products/{id}/publish [post]
+// @Security     SessionAuth
+func (h *Handler) PublishProduct(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	productID, ok := bindVendorID(c)
+	if !ok {
+		return
+	}
+
+	if err := h.service.PublishProduct(c.Request.Context(), userID, productID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Product published"})
+}
+
+// ArchiveProduct godoc
+// @Summary      Archive a product
+// @Description  Archives a product owned by the authenticated vendor, removing it from the storefront.
+// @Tags         Vendor
+// @Produce      json
+// @Param        id path string true "Product UUID" format(uuid)
+// @Success      200 {object} api.MessageResponse
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Failure      404 {object} api.NotFoundErrorResponse "Product or vendor not found"
+// @Router       /vendor/products/{id}/archive [post]
+// @Security     SessionAuth
+func (h *Handler) ArchiveProduct(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	productID, ok := bindVendorID(c)
+	if !ok {
+		return
+	}
+
+	if err := h.service.ArchiveProduct(c.Request.Context(), userID, productID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Product archived"})
 }

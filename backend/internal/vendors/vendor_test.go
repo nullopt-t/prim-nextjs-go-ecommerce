@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,12 +13,14 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/nullopt-t/prim-backend/internal/catalog/product"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/user"
 	"github.com/nullopt-t/prim-backend/internal/vendors"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
@@ -38,6 +41,127 @@ type VendorServiceSuite struct {
 	vendorID   uuid.UUID
 	vendorUID  uuid.UUID
 	categoryID uuid.UUID
+	catalog    *fakeProductCatalog
+}
+
+// fakeProductCatalog is an in-memory ProductCatalog double. Catalog rules are
+// covered by the product domain; this fake exists to prove vendor ownership,
+// merchant-standing, and delegation behavior.
+type fakeProductCatalog struct {
+	mu       sync.Mutex
+	products map[uuid.UUID]*model.Product
+}
+
+func newFakeProductCatalog() *fakeProductCatalog {
+	return &fakeProductCatalog{products: map[uuid.UUID]*model.Product{}}
+}
+
+func (f *fakeProductCatalog) CreateProductAsDraft(_ context.Context, input product.CreateProductInput) (*model.Product, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	slug := "product"
+	if input.Slug != nil && *input.Slug != "" {
+		slug = *input.Slug
+	}
+	now := time.Now()
+	p := &model.Product{
+		ID:          uuid.New(),
+		VendorID:    input.VendorID,
+		Slug:        slug,
+		Title:       input.Title,
+		Status:      model.PublicationStatusDraft,
+		ProductType: model.ProductTypeSimple,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	f.products[p.ID] = p
+	return p, nil
+}
+
+func (f *fakeProductCatalog) UpdateProduct(_ context.Context, productID uuid.UUID, input product.UpdateProductInput) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p, ok := f.products[productID]
+	if !ok || p.DeletedAt != nil {
+		return database.ErrNotFound
+	}
+	if input.Title != nil {
+		p.Title = *input.Title
+	}
+	return nil
+}
+
+func (f *fakeProductCatalog) SoftDeleteProduct(_ context.Context, productID uuid.UUID) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.products[productID]; !ok {
+		return database.ErrNotFound
+	}
+	delete(f.products, productID)
+	return nil
+}
+
+func (f *fakeProductCatalog) PublishProduct(_ context.Context, productID uuid.UUID) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p, ok := f.products[productID]
+	if !ok {
+		return database.ErrNotFound
+	}
+	p.Status = model.PublicationStatusPublished
+	return nil
+}
+
+func (f *fakeProductCatalog) ArchiveProduct(_ context.Context, productID uuid.UUID) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p, ok := f.products[productID]
+	if !ok {
+		return database.ErrNotFound
+	}
+	p.Status = model.PublicationStatusArchived
+	return nil
+}
+
+func (f *fakeProductCatalog) GetByID(_ context.Context, productID uuid.UUID) (*model.Product, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	p, ok := f.products[productID]
+	if !ok {
+		return nil, database.ErrNotFound
+	}
+	return p, nil
+}
+
+func (f *fakeProductCatalog) List(_ context.Context, q *product.ListProductsQuery, _ bool) (*pagination.PagedResult[product.ProductCardReadModel], error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	owned := map[uuid.UUID]bool{}
+	for _, id := range q.VendorUUIDs {
+		owned[id] = true
+	}
+
+	items := make([]*product.ProductCardReadModel, 0, len(f.products))
+	for _, p := range f.products {
+		if p.VendorID == nil || !owned[*p.VendorID] {
+			continue
+		}
+		if !q.IncludeUnpublished && p.Status != model.PublicationStatusPublished {
+			continue
+		}
+		items = append(items, &product.ProductCardReadModel{
+			ID:          p.ID,
+			Slug:        p.Slug,
+			Title:       p.Title,
+			Status:      p.Status,
+			ProductType: p.ProductType,
+			CreatedAt:   p.CreatedAt,
+			UpdatedAt:   p.UpdatedAt,
+		})
+	}
+
+	return &pagination.PagedResult[product.ProductCardReadModel]{Items: items}, nil
 }
 
 func TestVendorServiceSuite(t *testing.T) {
@@ -101,11 +225,14 @@ func (s *VendorServiceSuite) SetupSuite() {
 	`, s.vendorUID)
 	require.NoError(err)
 
+	s.catalog = newFakeProductCatalog()
+
 	s.service = vendors.NewService(
 		vendors.NewRepository(),
 		user.NewPostgresRepository(),
 		object.NewRepository(),
 		order.NewRepository(),
+		s.catalog,
 		vendors.NewStaticCommissionDefaults(),
 		storage.NoopProvider{},
 		runner,
@@ -330,4 +457,94 @@ func (s *VendorServiceSuite) assertAPIError(err error) *apierr.APIError {
 	var apiErr *apierr.APIError
 	s.Require().ErrorAs(err, &apiErr)
 	return apiErr
+}
+
+// ---- Merchant-owned catalog -------------------------------------------------
+
+func (s *VendorServiceSuite) TestVendorCreatesOwnedDraftAndListsIt() {
+	slug := "vendor-headphones"
+	created, err := s.service.CreateProduct(s.ctx, s.vendorUID, product.CreateProductInput{
+		CategoryID: s.categoryID,
+		Slug:       &slug,
+		Title:      "Vendor Headphones",
+	})
+	s.Require().NoError(err)
+	s.Require().NotNil(created.VendorID)
+	s.Equal(s.vendorID, *created.VendorID)
+	s.Equal(model.PublicationStatusDraft, created.Status)
+
+	page, err := s.service.ListOwnProducts(s.ctx, s.vendorUID, nil)
+	s.Require().NoError(err)
+
+	found := false
+	for _, item := range page.Items {
+		if item.ID == created.ID {
+			found = true
+		}
+	}
+	s.True(found, "the vendor's own draft must appear in their listing")
+}
+
+func (s *VendorServiceSuite) TestVendorListingExcludesForeignAndPlatformProducts() {
+	foreignVendor := uuid.New()
+	foreign := &model.Product{ID: uuid.New(), VendorID: &foreignVendor, Title: "Foreign"}
+	platform := &model.Product{ID: uuid.New(), Title: "Platform"}
+	s.catalog.mu.Lock()
+	s.catalog.products[foreign.ID] = foreign
+	s.catalog.products[platform.ID] = platform
+	s.catalog.mu.Unlock()
+
+	page, err := s.service.ListOwnProducts(s.ctx, s.vendorUID, nil)
+	s.Require().NoError(err)
+	for _, item := range page.Items {
+		s.NotEqual(foreign.ID, item.ID)
+		s.NotEqual(platform.ID, item.ID)
+	}
+}
+
+func (s *VendorServiceSuite) TestVendorCannotMutateForeignProduct() {
+	foreignVendor := uuid.New()
+	foreign := &model.Product{ID: uuid.New(), VendorID: &foreignVendor, Title: "Foreign"}
+	s.catalog.mu.Lock()
+	s.catalog.products[foreign.ID] = foreign
+	s.catalog.mu.Unlock()
+
+	title := "Hijacked"
+	err := s.service.UpdateProduct(s.ctx, s.vendorUID, foreign.ID, product.UpdateProductInput{Title: &title})
+	apiErr := s.assertAPIError(err)
+	s.Equal(http.StatusNotFound, apiErr.Status)
+
+	err = s.service.DeleteProduct(s.ctx, s.vendorUID, foreign.ID)
+	apiErr = s.assertAPIError(err)
+	s.Equal(http.StatusNotFound, apiErr.Status)
+
+	s.Equal("Foreign", foreign.Title)
+}
+
+func (s *VendorServiceSuite) TestPlatformProductIsInvisibleToVendor() {
+	platform := &model.Product{ID: uuid.New(), Title: "Platform"}
+	s.catalog.mu.Lock()
+	s.catalog.products[platform.ID] = platform
+	s.catalog.mu.Unlock()
+
+	err := s.service.PublishProduct(s.ctx, s.vendorUID, platform.ID)
+	apiErr := s.assertAPIError(err)
+	s.Equal(http.StatusNotFound, apiErr.Status)
+}
+
+func (s *VendorServiceSuite) TestSuspendedVendorCannotCreateProduct() {
+	_, err := s.service.AdminChangeVendorStatus(s.ctx, s.vendorID, model.VendorStatusSuspended)
+	s.Require().NoError(err)
+
+	slug := "suspended-listing"
+	_, err = s.service.CreateProduct(s.ctx, s.vendorUID, product.CreateProductInput{
+		CategoryID: s.categoryID,
+		Slug:       &slug,
+		Title:      "Suspended Listing",
+	})
+	apiErr := s.assertAPIError(err)
+	s.Equal(http.StatusForbidden, apiErr.Status)
+
+	_, err = s.service.AdminChangeVendorStatus(s.ctx, s.vendorID, model.VendorStatusActive)
+	s.Require().NoError(err)
 }

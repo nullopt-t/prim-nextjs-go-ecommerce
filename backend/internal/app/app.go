@@ -359,6 +359,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		userRepo,
 		objectRepository,
 		settlementReader,
+		productService,
 		vendors.NewStaticCommissionDefaults(),
 		app.storageProvider,
 		txRunner,

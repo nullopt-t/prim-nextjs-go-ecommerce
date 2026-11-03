@@ -738,6 +738,10 @@ type ListProductsQuery struct {
 	TagUUIDs      []uuid.UUID `form:"-"`
 	TagNames      []string    `form:"-"`
 
+	// VendorUUIDs restricts the listing to products owned by these vendors.
+	// Set by the vendor portal; never bound from the query string.
+	VendorUUIDs []uuid.UUID `form:"-" swaggerignore:"true"`
+
 	// IncludeUnpublished disables the storefront's published-only filter. It is
 	// set by admin handlers and is never bound from the query string.
 	IncludeUnpublished bool `form:"-" swaggerignore:"true"`
@@ -1411,7 +1415,6 @@ func (h *ProductHandler) DeleteProductThumbnail(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
-
 
 // SetDefaultVariant godoc
 //

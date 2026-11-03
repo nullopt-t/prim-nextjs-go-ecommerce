@@ -42,6 +42,15 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		portal.PATCH("/profile", r.handler.UpdateMyVendor)
 		portal.POST("/payouts", r.handler.RequestPayout)
 		portal.GET("/payouts", r.handler.ListMyPayouts)
+
+		// Merchant-owned catalog. Ownership is enforced per product; platform
+		// (admin) products are not reachable through these routes.
+		portal.GET("/products", r.handler.ListMyProducts)
+		portal.POST("/products", r.handler.CreateProduct)
+		portal.PATCH("/products/:id", r.handler.UpdateProduct)
+		portal.DELETE("/products/:id", r.handler.DeleteProduct)
+		portal.POST("/products/:id/publish", r.handler.PublishProduct)
+		portal.POST("/products/:id/archive", r.handler.ArchiveProduct)
 	}
 
 	admin := vgroup.Group("/admin/vendors")

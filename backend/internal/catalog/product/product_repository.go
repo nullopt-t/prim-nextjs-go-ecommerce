@@ -58,6 +58,7 @@ type ProductCardReadModel struct {
 	Currency         *string
 	SKU              *string
 	DefaultVariantID *uuid.UUID
+	VendorID         *uuid.UUID
 	StockQuantity    int
 	Rating           *model.RatingSummary
 	TagsRaw          []byte
@@ -103,10 +104,11 @@ func (r *ProductRepository) Create(
 			status,
 			product_type,
 			variation_axes,
+			vendor_id,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
 		RETURNING created_at, updated_at
 	`
 
@@ -121,6 +123,7 @@ func (r *ProductRepository) Create(
 		p.Status,
 		p.ProductType,
 		p.VariationAxes,
+		p.VendorID,
 	).Scan(&p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create product: %w", err)
@@ -204,6 +207,7 @@ func (r *ProductRepository) get(
 			variation_axes,
 			thumbnail_object_id,
 			default_variant_id,
+			vendor_id,
 			created_at,
 			updated_at,
 			deleted_at
@@ -325,6 +329,12 @@ func (r *ProductRepository) List(
 
 	if !includeDeleted {
 		whereClauses = append(whereClauses, "p.deleted_at IS NULL")
+	}
+
+	if len(q.VendorUUIDs) > 0 {
+		whereClauses = append(whereClauses, fmt.Sprintf("p.vendor_id = ANY($%d)", argIdx))
+		args = append(args, q.VendorUUIDs)
+		argIdx++
 	}
 
 	if q.IncludeUnpublished {
@@ -493,6 +503,7 @@ func (r *ProductRepository) List(
 			so.content_type as so_content_type,
 			so.file_size as so_file_size,
 			pv.id AS default_variant_id,
+			p.vendor_id,
 			pv.sku AS sku,
 			GREATEST(
 				COALESCE((SELECT SUM(il.quantity) FROM product_variants pv_all JOIN inventory_ledgers il ON il.variant_id = pv_all.id WHERE pv_all.product_id = p.id AND pv_all.deleted_at IS NULL), 0) -
@@ -549,6 +560,7 @@ func (r *ProductRepository) List(
 			&soContentType,
 			&soFileSize,
 			&item.DefaultVariantID,
+			&item.VendorID,
 			&item.SKU,
 			&item.StockQuantity,
 			&item.Price,

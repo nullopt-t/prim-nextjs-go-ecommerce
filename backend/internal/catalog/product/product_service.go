@@ -181,6 +181,9 @@ func NewService(
 
 // CreateProductInput defines the creation parameters for a new draft product.
 type CreateProductInput struct {
+	// VendorID marks the listing as merchant-owned. Nil creates a
+	// platform-owned product (admin catalog).
+	VendorID      *uuid.UUID
 	BrandID       *uuid.UUID
 	CategoryID    uuid.UUID
 	Slug          *string
@@ -200,7 +203,6 @@ type UpdateProductInput struct {
 	ProductType   *string
 	VariationAxes *[]string
 }
-
 
 // ProductDetails aggregates full details of a product, its brand, category, variants, inventory stock, and tags.
 type ProductDetails struct {
@@ -365,6 +367,7 @@ func (s *ProductService) CreateProductAsDraft(
 
 		product = &model.Product{
 			ID:            uuid.New(),
+			VendorID:      input.VendorID,
 			Slug:          finalSlug,
 			BrandID:       input.BrandID,
 			CategoryID:    input.CategoryID,
