@@ -635,6 +635,67 @@ definitions:
         description: Meta contains the pagination metadata (page, pageSize, totalItems,
           totalPages).
     type: object
+  PayoutResponse:
+    properties:
+      amount:
+        description: Amount in minor units.
+        example: 125000
+        type: integer
+      createdAt:
+        description: Created timestamp (RFC3339).
+        example: "2026-11-02T10:00:00Z"
+        type: string
+      currency:
+        description: ISO currency.
+        example: EGP
+        type: string
+      id:
+        description: Payout record id.
+        example: 60000000-0000-0000-0000-000000000001
+        type: string
+      notes:
+        description: Optional admin notes (rejection reasons, transfer remarks).
+        type: string
+      processedAt:
+        description: Terminal timestamp (RFC3339), when reached.
+        example: "2026-11-03T10:00:00Z"
+        type: string
+      referenceNumber:
+        description: External transfer reference when available.
+        type: string
+      snapshotAvailableBalance:
+        description: Available balance stamped at request time.
+        example: 300000
+        type: integer
+      status:
+        allOf:
+        - $ref: '#/definitions/PayoutStatus'
+        description: Lifecycle status.
+        enum:
+        - requested
+        - approved
+        - processing
+        - paid
+        - rejected
+      vendorId:
+        description: Vendor id.
+        example: 50000000-0000-0000-0000-000000000001
+        type: string
+    type: object
+  PayoutStatus:
+    enum:
+    - requested
+    - approved
+    - processing
+    - paid
+    - rejected
+    type: string
+    x-enum-varnames:
+    - PayoutStatusRequested
+    - PayoutStatusApproved
+    - PayoutStatusProcessing
+    - PayoutStatusPaid
+    - PayoutStatusRejected
   ProductBrandSummary:
     properties:
       link:
@@ -1002,6 +1063,42 @@ definitions:
     - PublicationStatusDraft
     - PublicationStatusPublished
     - PublicationStatusArchived
+  RegisterVendorRequest:
+    properties:
+      bannerObjectId:
+        example: 10000000-0000-0000-0000-00000000000e
+        type: string
+      description:
+        example: Electronics and accessories
+        maxLength: 2000
+        type: string
+      logoObjectId:
+        example: 10000000-0000-0000-0000-00000000000f
+        type: string
+      slug:
+        example: amrs-gadgets
+        maxLength: 150
+        type: string
+      storeName:
+        example: Amr's Gadgets
+        maxLength: 150
+        minLength: 2
+        type: string
+    required:
+    - slug
+    - storeName
+    type: object
+  RequestPayoutRequest:
+    properties:
+      amount:
+        description: Amount in minor currency units; must not exceed the available
+          balance.
+        example: 125000
+        minimum: 1
+        type: integer
+    required:
+    - amount
+    type: object
   ResendChallengeRequest:
     properties:
       email:
@@ -1188,6 +1285,25 @@ definitions:
       postalCode:
         type: string
       state:
+        type: string
+    type: object
+  UpdateMyVendorRequest:
+    properties:
+      bankAccountInfo:
+        additionalProperties: {}
+        type: object
+      bannerObjectId:
+        type: string
+      description:
+        example: Electronics and accessories
+        maxLength: 2000
+        type: string
+      logoObjectId:
+        type: string
+      storeName:
+        example: Amr's Gadgets
+        maxLength: 150
+        minLength: 2
         type: string
     type: object
   UpdateProfileRequest:
@@ -1403,6 +1519,68 @@ definitions:
         example: Space Black, 18GB RAM, 512GB SSD
         type: string
     type: object
+  VendorResponse:
+    properties:
+      bannerUrl:
+        description: Public banner URL, when set.
+        type: string
+      commissionRateBps:
+        description: Platform commission in basis points.
+        example: 1000
+        type: integer
+      createdAt:
+        description: Created timestamp (RFC3339).
+        example: "2026-11-02T10:00:00Z"
+        type: string
+      description:
+        description: Optional storefront description.
+        example: Electronics and accessories
+        type: string
+      id:
+        description: Vendor profile id.
+        example: 50000000-0000-0000-0000-000000000001
+        type: string
+      logoUrl:
+        description: Public logo URL, when set.
+        type: string
+      slug:
+        description: URL-safe unique store identifier.
+        example: amrs-gadgets
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/VendorStatus'
+        description: Lifecycle status.
+        enum:
+        - pending
+        - active
+        - suspended
+        - rejected
+      storeName:
+        description: Customer-facing store display name.
+        example: Amr's Gadgets
+        type: string
+      updatedAt:
+        description: Updated timestamp (RFC3339).
+        example: "2026-11-02T10:00:00Z"
+        type: string
+      userId:
+        description: Owning account id.
+        example: 10000000-0000-0000-0000-000000000001
+        type: string
+    type: object
+  VendorStatus:
+    enum:
+    - pending
+    - active
+    - suspended
+    - rejected
+    type: string
+    x-enum-varnames:
+    - VendorStatusPending
+    - VendorStatusActive
+    - VendorStatusSuspended
+    - VendorStatusRejected
   VerifyChallengeRequest:
     properties:
       code:
@@ -3662,6 +3840,169 @@ paths:
       summary: Get variant details by SKU
       tags:
       - Product Variants
+  /vendor/payouts:
+    get:
+      description: Returns the caller's payout ledger including rejected records (full
+        audit trail).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/PayoutResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List my payouts
+      tags:
+      - Vendor
+    post:
+      consumes:
+      - application/json
+      description: Registers a payout request against settled earnings, validating
+        the available balance under the vendor row lock.
+      parameters:
+      - description: Payout request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/RequestPayoutRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/PayoutResponse'
+        "400":
+          description: Validation failed or insufficient balance
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Request a payout
+      tags:
+      - Vendor
+  /vendor/profile:
+    get:
+      description: Returns the vendor profile belonging to the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/VendorResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Vendor not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get my vendor profile
+      tags:
+      - Vendor
+    patch:
+      consumes:
+      - application/json
+      description: Edits the vendor profile. Only store/slug-independent fields; commission
+        and status are admin-controlled.
+      parameters:
+      - description: Profile update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateMyVendorRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/VendorResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Vendor not authorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Vendor not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Update my vendor profile
+      tags:
+      - Vendor
+  /vendor/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a pending vendor application for the authenticated user.
+        One profile per account.
+      parameters:
+      - description: Vendor registration payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/RegisterVendorRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/VendorResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "409":
+          description: Already registered or slug taken
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Register as vendor
+      tags:
+      - Vendor
   /wishlist:
     delete:
       description: Clears all items from the authenticated user's wishlist. If productId

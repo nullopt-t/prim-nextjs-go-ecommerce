@@ -1,4 +1,4 @@
-package vendor
+package vendors
 
 import (
 	"github.com/gin-gonic/gin"

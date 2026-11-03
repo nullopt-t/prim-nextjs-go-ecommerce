@@ -2,7 +2,7 @@
 // payout ledger (docs/adr-vendor-domain.md). Catalog, orders, and stock stay
 // in their own domains; this package reads them only through
 // consumer-defined interfaces.
-package vendor
+package vendors
 
 import (
 	"context"
@@ -257,12 +257,12 @@ func (r *VendorRepository) GetOutstandingPayoutTotal(ctx context.Context, vendor
 		SELECT COALESCE(SUM(amount), 0)
 		FROM vendor_payouts
 		WHERE vendor_id = $1
-		  AND status = ANY($2)
-	`, vendorID, []model.PayoutStatus{
-		model.PayoutStatusRequested,
-		model.PayoutStatusApproved,
-		model.PayoutStatusProcessing,
-		model.PayoutStatusPaid,
+		  AND status = ANY($2::payout_status[])
+	`, vendorID, []string{
+		string(model.PayoutStatusRequested),
+		string(model.PayoutStatusApproved),
+		string(model.PayoutStatusProcessing),
+		string(model.PayoutStatusPaid),
 	}).Scan(&total)
 	if err != nil {
 		return 0, fmt.Errorf("sum outstanding payouts: %w", err)
@@ -307,7 +307,7 @@ func (r *VendorRepository) CreatePayout(ctx context.Context, vendorID uuid.UUID,
 		VALUES ($1, $2, $3, 'EGP', $4, $5, now(), now())
 		RETURNING
 			id, vendor_id, amount, currency, status,
-			reference_number, notes, snapshot_available_balance,
+			reference_number, COALESCE(notes, ''), snapshot_available_balance,
 			created_at, updated_at, processed_at
 	`,
 		uuid.New(), vendorID, amount, model.PayoutStatusRequested, snapshotBalance,
@@ -326,7 +326,7 @@ func (r *VendorRepository) ListPayoutsByVendor(ctx context.Context, vendorID uui
 	rows, err := executor.Query(ctx, `
 		SELECT
 			id, vendor_id, amount, currency, status,
-			reference_number, notes, snapshot_available_balance,
+			reference_number, COALESCE(notes, ''), snapshot_available_balance,
 			created_at, updated_at, processed_at
 		FROM vendor_payouts
 		WHERE vendor_id = $1
@@ -370,12 +370,12 @@ func (r *VendorRepository) UpdatePayoutStatus(
 
 	cmd, err := executor.Exec(ctx, `
 		UPDATE vendor_payouts SET
-			status = $3,
-			reference_number = COALESCE($4, reference_number),
-			notes            = COALESCE($5, notes),
-			processed_at     = CASE WHEN $3 IN ('paid', 'rejected') THEN now() ELSE processed_at END,
+			status = $3::payout_status,
+			reference_number = COALESCE($4::text, reference_number),
+			notes            = COALESCE($5::text, notes),
+			processed_at     = CASE WHEN $3::payout_status IN ('paid', 'rejected') THEN now() ELSE processed_at END,
 			updated_at       = now()
-		WHERE id = $1 AND status = $2
+		WHERE id = $1 AND status = $2::payout_status
 	`, payoutID, fromStatus, toStatus, referenceNumber, notes)
 	if err != nil {
 		return fmt.Errorf("update payout status: %w", err)
@@ -396,7 +396,7 @@ func (r *VendorRepository) GetPayoutByID(ctx context.Context, payoutID uuid.UUID
 	row := executor.QueryRow(ctx, `
 		SELECT
 			id, vendor_id, amount, currency, status,
-			reference_number, notes, snapshot_available_balance,
+			reference_number, COALESCE(notes, ''), snapshot_available_balance,
 			created_at, updated_at, processed_at
 		FROM vendor_payouts
 		WHERE id = $1
@@ -414,7 +414,7 @@ func (r *VendorRepository) ListPayouts(ctx context.Context) ([]*model.VendorPayo
 	rows, err := executor.Query(ctx, `
 		SELECT
 			id, vendor_id, amount, currency, status,
-			reference_number, notes, snapshot_available_balance,
+			reference_number, COALESCE(notes, ''), snapshot_available_balance,
 			created_at, updated_at, processed_at
 		FROM vendor_payouts
 		ORDER BY created_at DESC, id DESC

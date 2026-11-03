@@ -50,7 +50,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/notifier"
 	"github.com/nullopt-t/prim-backend/internal/object"
-	"github.com/nullopt-t/prim-backend/internal/vendor"
+	"github.com/nullopt-t/prim-backend/internal/vendors"
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
@@ -250,7 +250,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 		coupon.NewService(s.txRunner, coupon.NewRepository()),
 		variantRepo,
 		product.NewProductRepository(),
-		vendor.NewRepository(),
+		vendors.NewRepository(),
 		object.NewRepository(),
 		storage.NoopProvider{},
 		settingsService,

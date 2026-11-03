@@ -1,4 +1,4 @@
-package vendor
+package vendors
 
 // CommissionDefaultBps is the platform-wide default commission (10.00%).
 // It is written into the vendor row at registration so the rate is frozen

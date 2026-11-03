@@ -3262,6 +3262,262 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "/vendor/payouts": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the caller's payout ledger including rejected records (full audit trail).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "List my payouts",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/PayoutResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Registers a payout request against settled earnings, validating the available balance under the vendor row lock.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Request a payout",
+                "parameters": [
+                    {
+                        "description": "Payout request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RequestPayoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/PayoutResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed or insufficient balance",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vendor/profile": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the vendor profile belonging to the authenticated user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Get my vendor profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/VendorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Edits the vendor profile. Only store/slug-independent fields; commission and status are admin-controlled.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Update my vendor profile",
+                "parameters": [
+                    {
+                        "description": "Profile update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateMyVendorRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/VendorResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vendor/register": {
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Creates a pending vendor application for the authenticated user. One profile per account.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Register as vendor",
+                "parameters": [
+                    {
+                        "description": "Vendor registration payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RegisterVendorRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/VendorResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Already registered or slug taken",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/wishlist": {
             "get": {
                 "description": "Returns a paginated list of products saved in the authenticated user's wishlist.",
@@ -4593,6 +4849,86 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "PayoutResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "description": "Amount in minor units.",
+                    "type": "integer",
+                    "example": 125000
+                },
+                "createdAt": {
+                    "description": "Created timestamp (RFC3339).",
+                    "type": "string",
+                    "example": "2026-11-02T10:00:00Z"
+                },
+                "currency": {
+                    "description": "ISO currency.",
+                    "type": "string",
+                    "example": "EGP"
+                },
+                "id": {
+                    "description": "Payout record id.",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "notes": {
+                    "description": "Optional admin notes (rejection reasons, transfer remarks).",
+                    "type": "string"
+                },
+                "processedAt": {
+                    "description": "Terminal timestamp (RFC3339), when reached.",
+                    "type": "string",
+                    "example": "2026-11-03T10:00:00Z"
+                },
+                "referenceNumber": {
+                    "description": "External transfer reference when available.",
+                    "type": "string"
+                },
+                "snapshotAvailableBalance": {
+                    "description": "Available balance stamped at request time.",
+                    "type": "integer",
+                    "example": 300000
+                },
+                "status": {
+                    "description": "Lifecycle status.",
+                    "enum": [
+                        "requested",
+                        "approved",
+                        "processing",
+                        "paid",
+                        "rejected"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/PayoutStatus"
+                        }
+                    ]
+                },
+                "vendorId": {
+                    "description": "Vendor id.",
+                    "type": "string",
+                    "example": "50000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "PayoutStatus": {
+            "type": "string",
+            "enum": [
+                "requested",
+                "approved",
+                "processing",
+                "paid",
+                "rejected"
+            ],
+            "x-enum-varnames": [
+                "PayoutStatusRequested",
+                "PayoutStatusApproved",
+                "PayoutStatusProcessing",
+                "PayoutStatusPaid",
+                "PayoutStatusRejected"
+            ]
+        },
         "ProductBrandSummary": {
             "type": "object",
             "properties": {
@@ -5096,6 +5432,53 @@ const docTemplatepublic = `{
                 "PublicationStatusArchived"
             ]
         },
+        "RegisterVendorRequest": {
+            "type": "object",
+            "required": [
+                "slug",
+                "storeName"
+            ],
+            "properties": {
+                "bannerObjectId": {
+                    "type": "string",
+                    "example": "10000000-0000-0000-0000-00000000000e"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "example": "Electronics and accessories"
+                },
+                "logoObjectId": {
+                    "type": "string",
+                    "example": "10000000-0000-0000-0000-00000000000f"
+                },
+                "slug": {
+                    "type": "string",
+                    "maxLength": 150,
+                    "example": "amrs-gadgets"
+                },
+                "storeName": {
+                    "type": "string",
+                    "maxLength": 150,
+                    "minLength": 2,
+                    "example": "Amr's Gadgets"
+                }
+            }
+        },
+        "RequestPayoutRequest": {
+            "type": "object",
+            "required": [
+                "amount"
+            ],
+            "properties": {
+                "amount": {
+                    "description": "Amount in minor currency units; must not exceed the available balance.",
+                    "type": "integer",
+                    "minimum": 1,
+                    "example": 125000
+                }
+            }
+        },
         "ResendChallengeRequest": {
             "type": "object",
             "required": [
@@ -5356,6 +5739,32 @@ const docTemplatepublic = `{
                 },
                 "state": {
                     "type": "string"
+                }
+            }
+        },
+        "UpdateMyVendorRequest": {
+            "type": "object",
+            "properties": {
+                "bankAccountInfo": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "bannerObjectId": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "example": "Electronics and accessories"
+                },
+                "logoObjectId": {
+                    "type": "string"
+                },
+                "storeName": {
+                    "type": "string",
+                    "maxLength": 150,
+                    "minLength": 2,
+                    "example": "Amr's Gadgets"
                 }
             }
         },
@@ -5646,6 +6055,88 @@ const docTemplatepublic = `{
                     "example": "Space Black, 18GB RAM, 512GB SSD"
                 }
             }
+        },
+        "VendorResponse": {
+            "type": "object",
+            "properties": {
+                "bannerUrl": {
+                    "description": "Public banner URL, when set.",
+                    "type": "string"
+                },
+                "commissionRateBps": {
+                    "description": "Platform commission in basis points.",
+                    "type": "integer",
+                    "example": 1000
+                },
+                "createdAt": {
+                    "description": "Created timestamp (RFC3339).",
+                    "type": "string",
+                    "example": "2026-11-02T10:00:00Z"
+                },
+                "description": {
+                    "description": "Optional storefront description.",
+                    "type": "string",
+                    "example": "Electronics and accessories"
+                },
+                "id": {
+                    "description": "Vendor profile id.",
+                    "type": "string",
+                    "example": "50000000-0000-0000-0000-000000000001"
+                },
+                "logoUrl": {
+                    "description": "Public logo URL, when set.",
+                    "type": "string"
+                },
+                "slug": {
+                    "description": "URL-safe unique store identifier.",
+                    "type": "string",
+                    "example": "amrs-gadgets"
+                },
+                "status": {
+                    "description": "Lifecycle status.",
+                    "enum": [
+                        "pending",
+                        "active",
+                        "suspended",
+                        "rejected"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/VendorStatus"
+                        }
+                    ]
+                },
+                "storeName": {
+                    "description": "Customer-facing store display name.",
+                    "type": "string",
+                    "example": "Amr's Gadgets"
+                },
+                "updatedAt": {
+                    "description": "Updated timestamp (RFC3339).",
+                    "type": "string",
+                    "example": "2026-11-02T10:00:00Z"
+                },
+                "userId": {
+                    "description": "Owning account id.",
+                    "type": "string",
+                    "example": "10000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "VendorStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "active",
+                "suspended",
+                "rejected"
+            ],
+            "x-enum-varnames": [
+                "VendorStatusPending",
+                "VendorStatusActive",
+                "VendorStatusSuspended",
+                "VendorStatusRejected"
+            ]
         },
         "VerifyChallengeRequest": {
             "type": "object",
