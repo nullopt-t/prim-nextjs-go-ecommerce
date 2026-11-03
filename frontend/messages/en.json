@@ -741,6 +741,7 @@
     "writeReview": "Write review",
     "quantity": "Qty: {count}",
     "unitPrice": "Unit Price: {price}",
+    "soldBy": "Sold by: {vendor}",
     "customer": "Customer Contact",
     "loading": "Loading order details...",
     "notFound": "Order not found",
@@ -967,6 +968,9 @@
       "stockAlertsSub": "Products reaching critical inventory threshold.",
       "inventory": "Inventory",
       "inventoryHealthy": "All catalog inventory levels healthy. Check Inventory tab for audit ledgers.",
+      "unitsLeft": "{count} left",
+      "outOfStock": "Out of stock",
+      "adjustStock": "Adjust",
       "manageStockAdjustments": "Manage Stock Adjustments"
     },
     "inventory": {
@@ -1003,7 +1007,9 @@
         "adjusted": "Inventory adjusted for {name}",
         "adjustFailed": "Failed to adjust inventory",
         "noId": "No variant or product ID available for adjustment",
-        "auditFailed": "Failed to load product audit trail"
+        "auditFailed": "Failed to load product audit trail",
+        "lowStockAlert": "Warning: {name} (SKU: {sku}) stock is low ({count} remaining)!",
+        "viewInventoryAction": "View Stock"
       },
       "adjust": "Adjust",
       "adjustTitle": "Adjust Stock: {name}",
@@ -1087,7 +1093,9 @@
       "toast": {
         "loadFailed": "Failed to load orders from server",
         "statusUpdated": "Order status updated to {status}",
-        "statusUpdateFailed": "Failed to update order status"
+        "statusUpdateFailed": "Failed to update order status",
+        "newOrderNotification": "New order placed ({orderNumber}) by {customer} for {amount}",
+        "viewOrderAction": "View Order"
       }
     },
     "payments": {
@@ -1571,7 +1579,7 @@
       },
       "badges": {
         "lowStock": "Low Stock",
-        "newOrders": "4 New"
+        "newOrders": "{count} New"
       }
     },
     "system": {

@@ -2,7 +2,19 @@ import { normalizeProduct, type RawProductPayload } from "@/modules/catalog/mode
 import type { Brand, Category, ProductDetailsEntity } from "@/modules/catalog/types";
 import { getServerApiBaseUrl } from "@/shared/lib/server/apiBaseUrl";
 
-export const CATALOG_REVALIDATE_SECONDS = 300;
+// Server-side catalog revalidation window. Caching is on by default; set
+// CATALOG_REVALIDATE_SECONDS=0 locally to always read fresh data while
+// developing (Next.js ISR treats 0 as "no cache").
+function resolveRevalidateSeconds(): number {
+	const raw = process.env.CATALOG_REVALIDATE_SECONDS?.trim();
+	if (!raw) {
+		return 300;
+	}
+	const parsed = Number(raw);
+	return Number.isFinite(parsed) && parsed >= 0 ? parsed : 300;
+}
+
+export const CATALOG_REVALIDATE_SECONDS = resolveRevalidateSeconds();
 export const PRODUCTS_TAG = "catalog:products";
 export const CATEGORIES_TAG = "catalog:categories";
 export const BRANDS_TAG = "catalog:brands";

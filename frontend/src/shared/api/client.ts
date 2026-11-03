@@ -1,4 +1,4 @@
-const getBaseUrl = () => {
+export const getBaseUrl = () => {
   // One env variable for the API base URL: NEXT_PUBLIC_API_URL. It is available
   // on both the server and the browser, so client and server API calls use the
   // same value. The browser calls the API on its own origin, with credentialed

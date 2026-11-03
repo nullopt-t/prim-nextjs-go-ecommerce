@@ -1,10 +1,11 @@
 import { ResponsiveTable } from "@/shared/ui/responsiveTable";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "@/shared/i18n/navigation";
 import { useTranslations } from "next-intl";
 import {
   ArrowUpRight,
-  Eye
+  Eye,
+  AlertTriangle
 } from "lucide-react";
 import {
   AreaChart,
@@ -19,45 +20,117 @@ import {
 } from "recharts";
 import { adminService } from "@/modules/admin/api/adminService";
 
+interface LowStockItem {
+  variantId: string;
+  productId: string;
+  name: string;
+  sku: string;
+  stock: number;
+  available: number;
+}
+
 export function AdminDashboard() {
   const navigate = useRouter();
   const t = useTranslations("admin");
   const [timeframe, setTimeframe] = useState("monthly");
   const [stats, setStats] = useState<any>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [lowStockItems, setLowStockItems] = useState<LowStockItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let isMounted = true;
-    const loadDashboardData = async () => {
-      try {
-        const [dashRes, ordersRes] = await Promise.all([
-          adminService.getDashboard(),
-          adminService.getOrders({ pageSize: 5 })
-        ]);
+  const loadLowStockData = useCallback(async () => {
+    try {
+      const invRes = await adminService.getInventory({ pageSize: 100 });
+      const items: any[] = invRes?.data ?? [];
+      const lowItems: LowStockItem[] = items
+        .filter((it) => (it.onHandQuantity !== undefined ? it.onHandQuantity : 0) <= 10)
+        .map((it) => ({
+          variantId: it.variantId,
+          productId: it.productId,
+          name: `${it.productName}${it.variantTitle && it.variantTitle !== "Default" && it.variantTitle !== "Standard" ? ` (${it.variantTitle})` : ""}`,
+          sku: it.sku,
+          stock: it.onHandQuantity ?? 0,
+          available: it.availableQuantity ?? 0,
+        }))
+        .slice(0, 6);
+      setLowStockItems(lowItems);
+    } catch {
+      // Handled silently
+    }
+  }, []);
 
-        if (!isMounted) return;
+  const loadDashboardData = useCallback(async () => {
+    try {
+      const [dashRes, ordersRes] = await Promise.all([
+        adminService.getDashboard(),
+        adminService.getOrders({ pageSize: 5 }),
+        loadLowStockData()
+      ]);
 
-        if (dashRes?.data) {
-          setStats(dashRes.data);
-        }
-        const ords = Array.isArray(ordersRes?.data) ? ordersRes.data : (Array.isArray(ordersRes) ? ordersRes : []);
-        setRecentOrders(ords.map((o: any) => ({
-          id: o.id,
-          customer: o.customerEmail ? o.customerEmail.split("@")[0] : "Customer",
-          status: o.status ? o.status.charAt(0).toUpperCase() + o.status.slice(1) : "Pending",
-          total: `EGP ${((o.totalAmount || 0) / 100).toFixed(2)}`
-        })));
-      } catch {
-        // Handled silently
-      } finally {
-        if (isMounted) setLoading(false);
+      if (dashRes?.data) {
+        setStats(dashRes.data);
       }
+      const ords = Array.isArray(ordersRes?.data) ? ordersRes.data : (Array.isArray(ordersRes) ? ordersRes : []);
+      setRecentOrders(ords.map((o: any) => ({
+        id: o.id,
+        customer: o.customerEmail ? o.customerEmail.split("@")[0] : "Customer",
+        status: o.status ? o.status.charAt(0).toUpperCase() + o.status.slice(1) : "Pending",
+        total: `EGP ${((o.totalAmount || 0) / 100).toFixed(2)}`
+      })));
+    } catch {
+      // Handled silently
+    } finally {
+      setLoading(false);
+    }
+  }, [loadLowStockData]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  // Real-time stock update listener for Dashboard alerts
+  useEffect(() => {
+    const handleStockUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const detail = customEvent.detail;
+      if (detail && detail.variantId) {
+        setLowStockItems((prev) => {
+          const currentStock = detail.currentStock;
+          const exists = prev.some((item) => item.variantId === detail.variantId);
+          if (currentStock <= 10) {
+            const displayName = `${detail.productName}${detail.variantTitle && detail.variantTitle !== "Default" && detail.variantTitle !== "Standard" ? ` (${detail.variantTitle})` : ""}`;
+            if (exists) {
+              return prev.map((item) =>
+                item.variantId === detail.variantId
+                  ? { ...item, stock: currentStock, available: Math.max(0, currentStock) }
+                  : item
+              );
+            }
+            return [
+              {
+                variantId: detail.variantId,
+                productId: detail.productId,
+                name: displayName,
+                sku: detail.sku,
+                stock: currentStock,
+                available: Math.max(0, currentStock),
+              },
+              ...prev,
+            ].slice(0, 6);
+          } else if (exists) {
+            return prev.filter((item) => item.variantId !== detail.variantId);
+          }
+          return prev;
+        });
+      }
+      loadLowStockData();
     };
 
-    loadDashboardData();
-    return () => { isMounted = false; };
-  }, []);
+    window.addEventListener("admin-stock-updated", handleStockUpdate);
+    return () => {
+      window.removeEventListener("admin-stock-updated", handleStockUpdate);
+    };
+  }, [loadLowStockData]);
 
   const totalRev = stats ? stats.totalRevenue / 100 : 0;
   const totalOrds = stats?.totalOrders || 0;
@@ -264,9 +337,45 @@ export function AdminDashboard() {
             </div>
 
             <div className="space-y-3">
-              <div className="text-center text-xs text-muted-foreground py-6">
-                {t("dashboard.inventoryHealthy")}
-              </div>
+              {lowStockItems.length === 0 ? (
+                <div className="text-center text-xs text-muted-foreground py-6">
+                  {t("dashboard.inventoryHealthy")}
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {lowStockItems.map((item) => (
+                    <div
+                      key={item.variantId}
+                      className="py-2.5 flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground truncate">{item.name}</p>
+                        <p className="text-[11px] text-muted-foreground font-mono">{item.sku}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span
+                          className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-md text-[11px] ${
+                            item.stock <= 0
+                              ? "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400"
+                              : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400"
+                          }`}
+                        >
+                          <AlertTriangle className="w-3 h-3" />
+                          {item.stock <= 0
+                            ? t("dashboard.outOfStock")
+                            : t("dashboard.unitsLeft", { count: item.stock })}
+                        </span>
+                        <button
+                          onClick={() => navigate.push("/admin/inventory")}
+                          className="px-2 py-1 rounded bg-secondary hover:bg-secondary/80 text-foreground text-[11px] font-medium transition-colors"
+                        >
+                          {t("dashboard.adjustStock")}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

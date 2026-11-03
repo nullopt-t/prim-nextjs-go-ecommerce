@@ -178,11 +178,25 @@ export interface AdminPayment {
   createdAt: string;
 }
 
+export interface DailySales {
+  date: string;
+  sales: number;
+  orders: number;
+}
+
 export interface AdminDashboardOverview {
   totalRevenue: number;
   totalOrders: number;
   totalCustomers: number;
-  activeProducts: number;
+  totalProducts?: number;
+  averageOrderValue?: number;
+  pendingOrders?: number;
+  processingOrders?: number;
+  shippedOrders?: number;
+  deliveredOrders?: number;
+  canceledOrders?: number;
+  recentSales?: DailySales[];
+  activeProducts?: number;
   recentOrders?: any[];
   topProducts?: any[];
 }

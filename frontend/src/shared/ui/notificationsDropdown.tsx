@@ -12,8 +12,9 @@ import {
 } from "lucide-react";
 import { useNotifications } from "@/modules/notifications/model/notificationContext";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "@/shared/i18n/navigation";
+import { useRouter, usePathname } from "@/shared/i18n/navigation";
 import { formatDateTime } from "@/shared/lib/datetime";
+import { useAuthContext } from "@/modules/auth/model/authContext";
 
 export function NotificationsDropdown() {
   const {
@@ -30,6 +31,8 @@ export function NotificationsDropdown() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const locale = useLocale();
   const router = useRouter();
+  const pathname = usePathname();
+  const { user } = useAuthContext();
   const t = useTranslations("common.header");
 
   const handleToggle = () => {
@@ -78,7 +81,17 @@ export function NotificationsDropdown() {
     }
     if (item.actionUrl) {
       setIsOpen(false);
-      router.push(item.actionUrl);
+      let targetUrl = item.actionUrl;
+
+      // When the admin is in the admin panel (or is an admin/superadmin),
+      // order notification URLs pointing to /user/orders/:id route to /admin/orders/:id
+      const isAdminContext = pathname.startsWith("/admin") || user?.role === "admin" || user?.role === "superadmin";
+      if (isAdminContext && targetUrl.startsWith("/user/orders/")) {
+        const orderId = targetUrl.replace("/user/orders/", "");
+        targetUrl = `/admin/orders/${orderId}`;
+      }
+
+      router.push(targetUrl);
     }
   };
 

@@ -54,6 +54,37 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [canReview, setCanReview] = useState(false);
 
+  // Listen for real-time stock updates to immediately update availableStock & isVariantInStock
+  useEffect(() => {
+    const handleStockUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const detail = customEvent.detail;
+      if (!detail?.variantId || !product?.variants) return;
+
+      const variantIndex = product.variants.findIndex((v: ProductVariant) => v.id === detail.variantId);
+      if (variantIndex !== -1) {
+        const updatedVariants = [...product.variants];
+        const v = updatedVariants[variantIndex];
+        updatedVariants[variantIndex] = {
+          ...v,
+          stock: {
+            ...v.stock,
+            availableQuantity: detail.currentStock,
+            isInStock: detail.currentStock > 0,
+          },
+        };
+        product.variants = updatedVariants;
+        // Trigger re-render by syncing state
+        setSelectedValues((prev) => ({ ...prev }));
+      }
+    };
+
+    window.addEventListener("admin-stock-updated", handleStockUpdate);
+    return () => {
+      window.removeEventListener("admin-stock-updated", handleStockUpdate);
+    };
+  }, [product]);
+
   // Initialize the matrix selection from a URL-pinned variant (or the default
   // child) whenever the product changes.
   useEffect(() => {
@@ -96,11 +127,11 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
 
   useEffect(() => {
     let isMounted = true;
-    const cleanSlug = Array.isArray(id) ? id[0] : id;
-    if (!cleanSlug) return;
+    const targetProductId = product?.id || (Array.isArray(id) ? id[0] : id);
+    if (!targetProductId) return;
 
     catalogService
-      .getProductReviews(cleanSlug)
+      .getProductReviews(String(targetProductId))
       .then((publicRes) => {
         if (!isMounted) return;
         const publicList = publicRes?.data ?? [];

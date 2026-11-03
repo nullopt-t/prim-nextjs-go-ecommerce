@@ -130,12 +130,12 @@ export default async function RootLayout({
                       {children}
                       <CartSidebar />
                     </CartProvider>
+                    <ResponsiveToaster richColors />
                   </NotificationProvider>
                 </WishlistProvider>
               </AuthProvider>
             </ThemeProvider>
           </PublicSettingsProvider>
-          <ResponsiveToaster richColors />
         </NextIntlClientProvider>
       </body>
     </html>

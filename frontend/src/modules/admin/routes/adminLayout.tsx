@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useRouter, usePathname } from "@/shared/i18n/navigation";
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import {
@@ -25,11 +25,16 @@ import {
   Sun,
   Moon,
   Languages,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 import { useTheme } from "@/shared/theme";
 import { useLocale, useTranslations } from "next-intl";
 import { rememberLocaleChoice } from "@/shared/lib/localePreference";
+import { adminService } from "@/modules/admin/api/adminService";
+import { notify } from "@/shared/lib/notify";
+import { NotificationsDropdown } from "@/shared/ui/notificationsDropdown";
+import { getBaseUrl } from "@/shared/api/client";
 
 export function AdminLayout({ children }: { children?: React.ReactNode }) {
   const { user, logout } = useAuthContext();
@@ -43,11 +48,141 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
   const pathname = usePathname();
   const location = { pathname };
 
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number | null>(null);
+
   const toggleLanguage = () => {
     const nextLocale = locale === "en" ? "ar" : "en";
     rememberLocaleChoice(nextLocale);
     navigate.replace(pathname, { locale: nextLocale });
   };
+
+  // Play subtle audible chime on new incoming order
+  const playAlertSound = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch {
+      // Audio autoplay policy quiet bypass
+    }
+  }, []);
+
+  // Initial load & refresher of dashboard aggregates (pending count)
+  const refreshStats = useCallback(() => {
+    adminService.getDashboard().then((res) => {
+      if (res?.data) {
+        setPendingOrdersCount(res.data.pendingOrders ?? 0);
+      }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refreshStats();
+
+    const handleRefresh = () => {
+      refreshStats();
+    };
+
+    window.addEventListener("refresh-admin-stats", handleRefresh);
+    return () => {
+      window.removeEventListener("refresh-admin-stats", handleRefresh);
+    };
+  }, [refreshStats]);
+
+  // Realtime Server-Sent Events (SSE) listener for instantaneous on-spot order push
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const streamUrl = `${getBaseUrl()}/api/v1/admin/events`;
+    const eventSource = new EventSource(streamUrl, { withCredentials: true });
+
+    eventSource.addEventListener("order.created", (e: MessageEvent) => {
+      try {
+        const orderData = JSON.parse(e.data);
+        const orderId = orderData.id;
+        const orderNum = orderData.orderNumber || `PRIM-${String(orderId).slice(0, 8).toUpperCase()}`;
+        const customerName = orderData.customerName || (orderData.customerEmail ? orderData.customerEmail.split("@")[0] : "Customer");
+        const formattedAmount = `EGP ${((orderData.totalAmount || 0) / 100).toFixed(2)}`;
+
+        // Increment dynamic pending count
+        setPendingOrdersCount((prev) => (prev !== null ? prev + 1 : 1));
+
+        // Dispatch local event for orders view and notifications bell
+        window.dispatchEvent(new CustomEvent("admin-order-placed", { detail: orderData }));
+        window.dispatchEvent(new CustomEvent("refresh-notifications"));
+
+        // Trigger audible ping
+        playAlertSound();
+
+        // Show immediate on-spot notification with direct link to the order
+        notify.info(
+          t("orders.toast.newOrderNotification", {
+            orderNumber: orderNum,
+            customer: customerName,
+            amount: formattedAmount,
+          }),
+          {
+            duration: 9000,
+            action: {
+              label: t("orders.toast.viewOrderAction"),
+              onClick: () => navigate.push(`/admin/orders/${orderId}`),
+            },
+          }
+        );
+      } catch {
+        // Ignore unparseable frames
+      }
+    });
+
+    eventSource.addEventListener("stock.updated", (e: MessageEvent) => {
+      try {
+        const stockData = JSON.parse(e.data);
+
+        // Dispatch local event for inventory table & audit log refresh
+        window.dispatchEvent(new CustomEvent("admin-stock-updated", { detail: stockData }));
+
+        // If the item reached low stock threshold (<= 10), trigger warning toast & audible alert
+        if (stockData.isLowStock) {
+          playAlertSound();
+          const displayName = stockData.variantTitle && stockData.variantTitle !== "Default"
+            ? `${stockData.productName} (${stockData.variantTitle})`
+            : stockData.productName;
+
+          notify.error(
+            t("inventory.toast.lowStockAlert", {
+              name: displayName,
+              sku: stockData.sku || "—",
+              count: stockData.currentStock,
+            }),
+            {
+              duration: 9000,
+              action: {
+                label: t("inventory.toast.viewInventoryAction"),
+                onClick: () => navigate.push("/admin/inventory"),
+              },
+            }
+          );
+        }
+      } catch {
+        // Ignore unparseable frames
+      }
+    });
+
+    return () => {
+      eventSource.close();
+    };
+  }, [navigate, playAlertSound, t]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -79,7 +214,13 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
     superadminOnly?: boolean;
   }[] = [
     { nameKey: "layout.nav.dashboard", path: "/admin", icon: LayoutDashboard, exact: true },
-    { nameKey: "layout.nav.orders", path: "/admin/orders", icon: ShoppingBag, badge: "4 New", badgeKey: "layout.badges.newOrders" },
+    {
+      nameKey: "layout.nav.orders",
+      path: "/admin/orders",
+      icon: ShoppingBag,
+      badge: pendingOrdersCount !== null && pendingOrdersCount > 0 ? `${pendingOrdersCount} New` : undefined,
+      badgeKey: pendingOrdersCount !== null && pendingOrdersCount > 0 ? "layout.badges.newOrders" : undefined,
+    },
     { nameKey: "layout.nav.products", path: "/admin/products", icon: Package },
     { nameKey: "layout.nav.categories", path: "/admin/categories", icon: FolderTree },
     { nameKey: "layout.nav.brands", path: "/admin/brands", icon: Tag },
@@ -124,6 +265,8 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
         </div>
 
         <div className="flex items-center gap-3">
+          <NotificationsDropdown />
+
           {/* Account Dropdown */}
           <div className="relative" ref={userMenuRef}>
             <button
@@ -275,7 +418,11 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                           : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300"
                       }`}
                     >
-                      {item.badgeKey && t(item.badgeKey)}
+                      {item.badgeKey
+                        ? item.badgeKey === "layout.badges.newOrders" && pendingOrdersCount !== null
+                          ? t(item.badgeKey, { count: pendingOrdersCount })
+                          : t(item.badgeKey)
+                        : item.badge}
                     </span>
                   )}
                 </Link>

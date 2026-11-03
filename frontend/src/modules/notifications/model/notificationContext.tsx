@@ -76,14 +76,23 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     refresh();
 
-    // Poll less aggressively, and pause while the tab is hidden.
+    // Listen for real-time notification refresh events
+    const handleNotificationPing = () => {
+      refresh();
+    };
+    window.addEventListener("refresh-notifications", handleNotificationPing);
+
+    // Poll periodically, and pause while the tab is hidden.
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") {
         fetchUnreadCount();
       }
-    }, 60000);
+    }, 20000);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener("refresh-notifications", handleNotificationPing);
+      clearInterval(interval);
+    };
   }, [isAuthenticated, refresh, fetchUnreadCount]);
 
   const markAsRead = async (id: string) => {

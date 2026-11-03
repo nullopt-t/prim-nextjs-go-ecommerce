@@ -87,10 +87,23 @@ export function AdminOrders() {
     loadOrders();
   }, [loadOrders]);
 
+  // On-spot refresh when a new order event is received in the admin console
+  useEffect(() => {
+    const handleNewOrder = () => {
+      loadOrders();
+    };
+
+    window.addEventListener("admin-order-placed", handleNewOrder);
+    return () => {
+      window.removeEventListener("admin-order-placed", handleNewOrder);
+    };
+  }, [loadOrders]);
+
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
       await adminService.updateOrderStatus(id, newStatus.toLowerCase());
       notify.success(t("orders.toast.statusUpdated", { status: newStatus }));
+      window.dispatchEvent(new CustomEvent("refresh-admin-stats"));
       loadOrders();
     } catch (err) {
       notify.error(apiErrorMessage(err, t("orders.toast.statusUpdateFailed")));

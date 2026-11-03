@@ -1239,7 +1239,6 @@ export function Checkout() {
 								</div>
 							</div>
 
-							{/* Context-aware primary button */}
 							{!hasStartedCheckout && (
 								<div className="flex flex-col gap-3">
 									<button
@@ -1259,40 +1258,6 @@ export function Checkout() {
 										<span>{t("actions.returnToCart")}</span>
 									</button>
 								</div>
-							)}
-
-							{hasStartedCheckout && currentStep === 1 && (
-								<button
-									type="button"
-									onClick={handleGoToShipping}
-									className="w-full py-3.5 px-6 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2"
-								>
-									<span>{t("actions.continueToDelivery")}</span>
-									<ArrowRight className="size-4" />
-								</button>
-							)}
-
-							{hasStartedCheckout && currentStep === 2 && (
-								<button
-									type="button"
-									onClick={handleGoToPayment}
-									className="w-full py-3.5 px-6 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2"
-								>
-									<span>{t("actions.continueToPayment")}</span>
-									<ArrowRight className="size-4" />
-								</button>
-							)}
-
-							{hasStartedCheckout && currentStep === 3 && (
-								<button
-									type="button"
-									onClick={handlePlaceOrder}
-									disabled={placingOrder || !cartItems || cartItems.length === 0 || !canPlaceOrder}
-									className="w-full py-3.5 px-6 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-bold text-base shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-								>
-									<span>{placingOrder ? t("actions.processingOrder") : t("actions.placeOrder", { total: finalTotal.toFixed(2) })}</span>
-									<CheckCircle2 className="size-4" />
-								</button>
 							)}
 
 							<div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">

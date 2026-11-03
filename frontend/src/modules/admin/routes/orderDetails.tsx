@@ -14,6 +14,7 @@ interface OrderViewItem {
   name: string;
   price: string;
   quantity: number;
+  vendorName?: string;
 }
 
 interface OrderViewHistory {
@@ -87,21 +88,25 @@ export function AdminOrderDetails() {
           trackingUrl: remoteOrder.trackingUrl || "",
           items: (Array.isArray(remoteOrder.items) ? remoteOrder.items : []).map((it: OrderItem) => {
             let itemName = t("orderDetails.orderItem");
+            let vendorName: string | undefined;
             const snapshot: unknown = it.productSnapshot;
             if (typeof snapshot === "string") {
               try {
                 const parsed = JSON.parse(snapshot);
                 itemName = parsed.title || parsed.name || itemName;
+                vendorName = parsed.vendorName;
               } catch {
                 itemName = snapshot;
               }
             } else if (snapshot && typeof snapshot === "object") {
-              const snap = snapshot as { title?: string; name?: string };
+              const snap = snapshot as { title?: string; name?: string; vendorName?: string };
               itemName = snap.title || snap.name || itemName;
+              vendorName = snap.vendorName;
             }
             return {
               id: it.id,
               name: itemName,
+              vendorName,
               price: `EGP ${((it.priceAtPurchase || 0) / 100).toFixed(2)}`,
               quantity: it.quantity || 1
             };
@@ -142,6 +147,7 @@ export function AdminOrderDetails() {
     try {
       await adminService.updateOrderStatus(order.id, newStatus.toLowerCase());
       notify.success(t("orderDetails.toast.statusUpdated", { status: newStatus }));
+      window.dispatchEvent(new CustomEvent("refresh-admin-stats"));
       fetchOrderFromApi();
     } catch (err) {
       notify.error(apiErrorMessage(err, t("orderDetails.toast.statusFailed")));
@@ -254,7 +260,14 @@ export function AdminOrderDetails() {
               {order.items.map((item: OrderViewItem) => (
                 <div key={item.id} className="py-3 flex items-center justify-between text-xs">
                   <div>
-                    <div className="font-semibold text-foreground">{item.name}</div>
+                    <div className="font-semibold text-foreground flex items-center gap-2">
+                      <span>{item.name}</span>
+                      {item.vendorName && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-secondary text-muted-foreground border border-border">
+                          {item.vendorName}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-muted-foreground">{t("orderDetails.qty", { count: item.quantity })}</div>
                   </div>
                   <div className="font-bold text-foreground">{item.price}</div>

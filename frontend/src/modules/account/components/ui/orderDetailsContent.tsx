@@ -55,6 +55,7 @@ interface ParsedSnapshot {
   thumbnail?: string;
   thumbnailUrl?: string;
   price?: number;
+  vendorName?: string;
   attributes?: Record<string, any>;
 }
 
@@ -401,6 +402,14 @@ export default function OrderDetailsContent() {
                         <span>{t("quantity", { count: item.quantity })}</span>
                         <span>•</span>
                         <span className="font-bold text-foreground text-xs">{itemPrice}</span>
+                        {snap.vendorName && (
+                          <>
+                            <span>•</span>
+                            <span className="font-medium text-accent-brand">
+                              {t("soldBy", { vendor: snap.vendorName })}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

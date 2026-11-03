@@ -131,6 +131,38 @@ export function AdminInventory() {
     loadInventoryData();
   }, [loadInventoryData]);
 
+  // Real-time listener for live inventory adjustments and audit log events
+  useEffect(() => {
+    const handleStockUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const detail = customEvent.detail;
+
+      // Optimistically update stock count in table if present
+      if (detail && detail.variantId) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.variantId === detail.variantId
+              ? { ...p, stock: detail.currentStock, available: Math.max(0, detail.currentStock) }
+              : p
+          )
+        );
+      }
+
+      // Refresh inventory list and audit trail
+      loadInventoryData();
+
+      // If audit modal is currently open for this variant, refresh it too
+      if (auditProduct && detail && auditProduct.variantId === detail.variantId) {
+        handleViewAudit(auditProduct);
+      }
+    };
+
+    window.addEventListener("admin-stock-updated", handleStockUpdate);
+    return () => {
+      window.removeEventListener("admin-stock-updated", handleStockUpdate);
+    };
+  }, [loadInventoryData, auditProduct]);
+
   const handleAdjustStock = (prod: InventoryProduct) => {
     setSelectedProduct(prod);
     setAdjustAmount(0);

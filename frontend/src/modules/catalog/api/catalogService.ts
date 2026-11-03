@@ -91,7 +91,7 @@ export const catalogService = {
     api.get<ApiResponse<ProductVariant>>(`/api/v1/variants/${id}`),
 
   getProductReviews: (slug: string, query?: string) =>
-    api.get<ApiPaginatedResponse<Review>>(`/api/v1/products/${slug}/reviews${query ? `?${query}` : ""}`),
+    api.get<ApiPaginatedResponse<Review>>(`/api/v1/reviews?productId=${slug}${query ? `&${query}` : ""}`),
 
   getProductRatingSummary: (slug: string) =>
     api.get<ApiResponse<ProductRatingSummary>>(`/api/v1/products/${slug}/reviews/summary`),

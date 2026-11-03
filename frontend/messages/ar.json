@@ -741,6 +741,7 @@
     "writeReview": "كتابة مراجعة",
     "quantity": "الكمية: {count}",
     "unitPrice": "سعر القطعة: {price}",
+    "soldBy": "البائع: {vendor}",
     "customer": "بيانات العميل",
     "loading": "جاري تحميل تفاصيل الطلب...",
     "notFound": "الطلب غير موجود",
@@ -967,6 +968,9 @@
       "stockAlertsSub": "منتجات تقترب من حد المخزون الحرج.",
       "inventory": "المخزون",
       "inventoryHealthy": "جميع مستويات مخزون الكتالوج جيدة. تحقق من تبويب المخزون لسجلات التدقيق.",
+      "unitsLeft": "متبقي {count}",
+      "outOfStock": "نفد المخزون",
+      "adjustStock": "تعديل",
       "manageStockAdjustments": "إدارة تعديلات المخزون"
     },
     "inventory": {
@@ -1003,7 +1007,9 @@
         "adjusted": "تم تعديل المخزون لـ {name}",
         "adjustFailed": "تعذّر تعديل المخزون",
         "noId": "لا يتوفر معرّف متغير أو منتج لإجراء التعديل",
-        "auditFailed": "تعذّر تحميل سجل تدقيق المنتج"
+        "auditFailed": "تعذّر تحميل سجل تدقيق المنتج",
+        "lowStockAlert": "تنبيه: مخزون {name} (SKU: {sku}) منخفض (المتبقي: {count})!",
+        "viewInventoryAction": "عرض المخزون"
       },
       "adjust": "تعديل",
       "adjustTitle": "تعديل المخزون: {name}",
@@ -1087,7 +1093,9 @@
       "toast": {
         "loadFailed": "تعذّر تحميل الطلبات من الخادم",
         "statusUpdated": "تم تحديث حالة الطلب إلى {status}",
-        "statusUpdateFailed": "تعذّر تحديث حالة الطلب"
+        "statusUpdateFailed": "تعذّر تحديث حالة الطلب",
+        "newOrderNotification": "تم استلام طلب جديد ({orderNumber}) من {customer} بقيمة {amount}",
+        "viewOrderAction": "عرض الطلب"
       }
     },
     "payments": {
@@ -1571,7 +1579,7 @@
       },
       "badges": {
         "lowStock": "مخزون منخفض",
-        "newOrders": "4 جديدة"
+        "newOrders": "{count} جديدة"
       }
     },
     "system": {
