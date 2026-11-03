@@ -107,6 +107,20 @@ definitions:
         example: "2026-06-30T15:47:19Z"
         type: string
     type: object
+  AdminChangeVendorStatusRequest:
+    properties:
+      status:
+        allOf:
+        - $ref: '#/definitions/VendorStatus'
+        description: New vendor lifecycle state.
+        enum:
+        - pending
+        - active
+        - suspended
+        - rejected
+    required:
+    - status
+    type: object
   AdminProductDetailsResponse:
     properties:
       brand:
@@ -243,6 +257,17 @@ definitions:
         example: Space Black, 18GB RAM, 512GB SSD
         type: string
     type: object
+  AdminSetCommissionRequest:
+    properties:
+      rateBps:
+        description: Commission as basis points (0..10000).
+        example: 1000
+        maximum: 10000
+        minimum: 0
+        type: integer
+    required:
+    - rateBps
+    type: object
   AdminStockSummary:
     properties:
       availableQuantity:
@@ -284,6 +309,29 @@ definitions:
         description: Timestamp when tag was last updated (RFC3339)
         example: "2026-06-30T15:47:19Z"
         type: string
+    type: object
+  AdminTransitionPayoutRequest:
+    properties:
+      notes:
+        description: Admin notes, required for rejection reasons.
+        maxLength: 2000
+        type: string
+      referenceNumber:
+        description: External transfer reference (for processing/paid).
+        example: PAY-2026-0001
+        maxLength: 100
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/PayoutStatus'
+        description: Target payout state; validated against the lifecycle by the service.
+        enum:
+        - approved
+        - processing
+        - paid
+        - rejected
+    required:
+    - status
     type: object
   AdminVariantResponse:
     properties:
@@ -370,6 +418,22 @@ definitions:
     required:
     - mediaType
     - storageObjectId
+    type: object
+  BadReqResponse:
+    properties:
+      code:
+        description: Code is the machine-readable error token ("VALIDATION_FAILED").
+        example: VALIDATION_FAILED
+        type: string
+      details:
+        description: Details contains individual field-level validation errors.
+        items:
+          $ref: '#/definitions/FieldError'
+        type: array
+      message:
+        description: Message describes the validation failure summary.
+        example: Invalid request input or malformed payload
+        type: string
     type: object
   BadRequestErrorResponse:
     properties:
@@ -911,6 +975,67 @@ definitions:
       updatedAt:
         type: string
     type: object
+  PayoutResponse:
+    properties:
+      amount:
+        description: Amount in minor units.
+        example: 125000
+        type: integer
+      createdAt:
+        description: Created timestamp (RFC3339).
+        example: "2026-11-02T10:00:00Z"
+        type: string
+      currency:
+        description: ISO currency.
+        example: EGP
+        type: string
+      id:
+        description: Payout record id.
+        example: 60000000-0000-0000-0000-000000000001
+        type: string
+      notes:
+        description: Optional admin notes (rejection reasons, transfer remarks).
+        type: string
+      processedAt:
+        description: Terminal timestamp (RFC3339), when reached.
+        example: "2026-11-03T10:00:00Z"
+        type: string
+      referenceNumber:
+        description: External transfer reference when available.
+        type: string
+      snapshotAvailableBalance:
+        description: Available balance stamped at request time.
+        example: 300000
+        type: integer
+      status:
+        allOf:
+        - $ref: '#/definitions/PayoutStatus'
+        description: Lifecycle status.
+        enum:
+        - requested
+        - approved
+        - processing
+        - paid
+        - rejected
+      vendorId:
+        description: Vendor id.
+        example: 50000000-0000-0000-0000-000000000001
+        type: string
+    type: object
+  PayoutStatus:
+    enum:
+    - requested
+    - approved
+    - processing
+    - paid
+    - rejected
+    type: string
+    x-enum-varnames:
+    - PayoutStatusRequested
+    - PayoutStatusApproved
+    - PayoutStatusProcessing
+    - PayoutStatusPaid
+    - PayoutStatusRejected
   ProductBrandSummary:
     properties:
       link:
@@ -1560,6 +1685,68 @@ definitions:
         example: Space Black, 18GB RAM, 512GB SSD
         type: string
     type: object
+  VendorResponse:
+    properties:
+      bannerUrl:
+        description: Public banner URL, when set.
+        type: string
+      commissionRateBps:
+        description: Platform commission in basis points.
+        example: 1000
+        type: integer
+      createdAt:
+        description: Created timestamp (RFC3339).
+        example: "2026-11-02T10:00:00Z"
+        type: string
+      description:
+        description: Optional storefront description.
+        example: Electronics and accessories
+        type: string
+      id:
+        description: Vendor profile id.
+        example: 50000000-0000-0000-0000-000000000001
+        type: string
+      logoUrl:
+        description: Public logo URL, when set.
+        type: string
+      slug:
+        description: URL-safe unique store identifier.
+        example: amrs-gadgets
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/VendorStatus'
+        description: Lifecycle status.
+        enum:
+        - pending
+        - active
+        - suspended
+        - rejected
+      storeName:
+        description: Customer-facing store display name.
+        example: Amr's Gadgets
+        type: string
+      updatedAt:
+        description: Updated timestamp (RFC3339).
+        example: "2026-11-02T10:00:00Z"
+        type: string
+      userId:
+        description: Owning account id.
+        example: 10000000-0000-0000-0000-000000000001
+        type: string
+    type: object
+  VendorStatus:
+    enum:
+    - pending
+    - active
+    - suspended
+    - rejected
+    type: string
+    x-enum-varnames:
+    - VendorStatusPending
+    - VendorStatusActive
+    - VendorStatusSuspended
+    - VendorStatusRejected
   auditEntryResponse:
     properties:
       action:
@@ -2193,6 +2380,20 @@ paths:
       summary: Get administrative dashboard metrics
       tags:
       - Admin Dashboard
+  /admin/events:
+    get:
+      description: Establishes a long-lived Server-Sent Events (SSE) channel for real-time
+        notifications of new orders.
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: text/event-stream
+          schema:
+            type: string
+      summary: Stream administrative real-time events (SSE)
+      tags:
+      - Admin Orders
   /admin/orders:
     get:
       description: Returns a paginated list of orders across the platform with optional
@@ -4364,4 +4565,173 @@ paths:
       summary: Upload thumbnail image for a variant
       tags:
       - Admin Product Variants
+  /admin/vendors/{id}:
+    get:
+      description: Returns any vendor profile for administration.
+      parameters:
+      - description: Vendor UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/VendorResponse'
+        "404":
+          description: Vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get vendor by ID (admin)
+      tags:
+      - Admin Vendors
+  /admin/vendors/{id}/commission:
+    patch:
+      consumes:
+      - application/json
+      description: Overrides the per-vendor commission in basis points. Future orders
+        use the new rate; already-placed orders keep their frozen earning.
+      parameters:
+      - description: Vendor UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rate in bps
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/AdminSetCommissionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/VendorResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "404":
+          description: Vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Set vendor commission rate (admin)
+      tags:
+      - Admin Vendors
+  /admin/vendors/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Applies a guarded lifecycle transition (pending->active/rejected,
+        active<->suspended).
+      parameters:
+      - description: Vendor UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/AdminChangeVendorStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/VendorResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "404":
+          description: Vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "409":
+          description: Transition not permitted
+          schema:
+            $ref: '#/definitions/ConflictErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Change vendor status (admin)
+      tags:
+      - Admin Vendors
+  /admin/vendors/payouts:
+    get:
+      description: Returns every payout across all vendors for administration.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/PayoutResponse'
+                  type: array
+              type: object
+      security:
+      - SessionAuth: []
+      summary: List all payouts (admin)
+      tags:
+      - Admin Vendors
+  /admin/vendors/payouts/{id}/transition:
+    patch:
+      consumes:
+      - application/json
+      description: Moves a payout through its lifecycle (conditional on prior state).
+        State conflicts return 409.
+      parameters:
+      - description: Payout UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Transition payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/AdminTransitionPayoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PayoutResponse'
+        "404":
+          description: Payout not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "409":
+          description: Transition not permitted
+          schema:
+            $ref: '#/definitions/ConflictErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Transition a payout (admin)
+      tags:
+      - Admin Vendors
 swagger: "2.0"

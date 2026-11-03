@@ -2,6 +2,8 @@
 package order
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -154,14 +156,88 @@ func mapOrderResponse(o *model.Order) OrderResponse {
 // OrderHandler encapsulates HTTP controllers processing customer and administrative order actions.
 type OrderHandler struct {
 	orderService *OrderService
+	broadcaster  Broadcaster
 }
 
-// NewHandler constructs a new OrderHandler with the specified OrderService.
-func NewHandler(orderService *OrderService) *OrderHandler {
+// NewHandler constructs a new OrderHandler with the required OrderService and Broadcaster dependencies.
+func NewHandler(orderService *OrderService, broadcaster Broadcaster) *OrderHandler {
 	if orderService == nil {
 		panic("order: service is required")
 	}
-	return &OrderHandler{orderService: orderService}
+	if broadcaster == nil {
+		panic("order: broadcaster is required")
+	}
+	return &OrderHandler{
+		orderService: orderService,
+		broadcaster:  broadcaster,
+	}
+}
+
+// StreamEvents godoc
+//
+//	@Summary		Stream administrative real-time events (SSE)
+//	@Description	Establishes a long-lived Server-Sent Events (SSE) channel for real-time notifications of new orders.
+//	@Tags			Admin Orders
+//	@Produce		text/event-stream
+//	@Success		200	{string}	string	"text/event-stream"
+//	@Router			/admin/events [get]
+func (h *OrderHandler) StreamEvents(c *gin.Context) {
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache, no-transform")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+	c.Writer.Flush()
+
+	ch := h.broadcaster.Subscribe()
+	defer h.broadcaster.Unsubscribe(ch)
+
+	// Send initial connected handshake event
+	_, _ = fmt.Fprintf(c.Writer, "event: connected\ndata: {}\n\n")
+	c.Writer.Flush()
+
+	notifyDone := c.Request.Context().Done()
+	ticker := time.NewTicker(25 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-notifyDone:
+			return
+		case <-ticker.C:
+			// Heartbeat comment to keep intermediate proxies/NAT from timing out
+			_, err := fmt.Fprintf(c.Writer, ": keepalive\n\n")
+			if err != nil {
+				return
+			}
+			c.Writer.Flush()
+		case msg, ok := <-ch:
+			if !ok {
+				return
+			}
+			eventType := msg.Type
+			if eventType == "" {
+				eventType = "order.created"
+			}
+			var payload any
+			if msg.Type == "stock.updated" && msg.Stock != nil {
+				payload = msg.Stock
+			} else if msg.Order != nil {
+				payload = msg.Order
+			} else {
+				payload = msg
+			}
+
+			data, err := json.Marshal(payload)
+			if err != nil {
+				continue
+			}
+			_, err = fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", eventType, data)
+			if err != nil {
+				return
+			}
+			c.Writer.Flush()
+		}
+	}
 }
 
 // GetOrders godoc

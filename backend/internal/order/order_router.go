@@ -59,6 +59,8 @@ func (r *OrderRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		middleware.Authorize(model.AdminRole, model.SuperRole),
 	)
 	{
+		// GET /admin/events - real-time Server-Sent Events (SSE) stream for admin dashboard
+		adminRoot.GET("/events", r.handler.StreamEvents)
 		adminRoot.GET("/dashboard", r.handler.GetDashboard)
 		adminRoot.GET("/payments", r.handler.ListPayments)
 		// Payment mutations move money and are irreversible: Superadmin only.

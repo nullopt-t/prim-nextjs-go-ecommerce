@@ -115,6 +115,19 @@ func (f *fakeOrderNotifier) placedNotifications() []notifier.OrderPlacedPayload 
 	return append([]notifier.OrderPlacedPayload(nil), f.placed...)
 }
 
+type fakeAdminNotifier struct {
+	mu     sync.Mutex
+	events []notifier.AdminOrderEvent
+	err    error
+}
+
+func (f *fakeAdminNotifier) Publish(_ context.Context, ev notifier.AdminOrderEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.events = append(f.events, ev)
+	return f.err
+}
+
 // dataEnvelope is the strict success envelope: {"data": <T>}.
 type dataEnvelope[T any] struct {
 	Data T `json:"data"`
@@ -146,6 +159,7 @@ type CheckoutTestSuite struct {
 	addressService   *user.AddressService
 	userService      *user.UserService
 	orderNotifier    *fakeOrderNotifier
+	adminNotifier    *fakeAdminNotifier
 
 	categoryID uuid.UUID
 	productID  uuid.UUID
@@ -211,7 +225,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	s.txRunner = database.NewTxRunner(s.db)
 
 	inventoryRepo := inventory.NewRepository()
-	s.inventoryService = inventory.NewService(logger, s.txRunner, inventoryRepo, storage.NoopProvider{})
+	s.inventoryService = inventory.NewService(logger, s.txRunner, inventoryRepo, storage.NoopProvider{}, nil)
 	s.inventoryRepo = inventoryRepo
 
 	variantRepo := variant.NewRepository()
@@ -231,6 +245,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	s.orderRepo = order.NewRepository()
 	settingsService := setting.NewService(s.txRunner, setting.NewRepository())
 	s.orderNotifier = &fakeOrderNotifier{}
+	s.adminNotifier = &fakeAdminNotifier{}
 
 	userRepo := user.NewPostgresRepository()
 	s.userService = user.NewService(s.txRunner, userRepo, logger)
@@ -256,6 +271,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 		settingsService,
 		s.txRunner,
 		s.orderNotifier,
+		s.adminNotifier,
 		logger,
 	)
 

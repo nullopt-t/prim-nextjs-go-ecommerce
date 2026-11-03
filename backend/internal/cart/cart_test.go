@@ -108,7 +108,7 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	logger := log.NewConsoleLogger()
 
 	s.inventoryRepo = inventory.NewRepository()
-	s.inventoryService = inventory.NewService(logger, s.txRunner, s.inventoryRepo, storage.NoopProvider{})
+	s.inventoryService = inventory.NewService(logger, s.txRunner, s.inventoryRepo, storage.NoopProvider{}, nil)
 
 	s.variantRepo = variant.NewRepository()
 	s.variantService = variant.NewService(logger, s.txRunner, object.NewRepository(), storage.NoopProvider{}, s.variantRepo, s.inventoryRepo, s.inventoryService)

@@ -71,7 +71,8 @@ func main() {
 	inventoryRepo := inventory.NewRepository()
 	// The worker only drives reservation expiry, which never resolves image
 	// URLs, so a no-op storage provider satisfies the constructor invariant.
-	inventoryService := inventory.NewService(logger, txRunner, inventoryRepo, storage.NoopProvider{})
+	adminBroadcaster := order.NewAdminBroadcaster(redisClient, logger)
+	inventoryService := inventory.NewService(logger, txRunner, inventoryRepo, storage.NoopProvider{}, adminBroadcaster)
 	orderRepo := order.NewRepository()
 	userRepo := user.NewPostgresRepository()
 

@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/notifier"
 	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
@@ -18,6 +19,11 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
+// AdminStockNotifier defines the broadcast contract for real-time stock mutations.
+type AdminStockNotifier interface {
+	PublishStock(ctx context.Context, ev notifier.AdminStockEvent) error
+}
+
 // InventoryService provides domain logic and transaction orchestration for inventory ledgers,
 // stock reservations, and inventory balance calculations.
 type InventoryService struct {
@@ -25,15 +31,17 @@ type InventoryService struct {
 	dr              database.Runner
 	repo            *InventoryRepository
 	storageProvider storage.StorageProvider
+	broadcaster     AdminStockNotifier
 }
 
 // NewService constructs a new InventoryService instance with the given logger,
-// database runner, repository, and storage provider.
+// database runner, repository, storage provider, and admin broadcaster.
 func NewService(
 	logger log.Logger,
 	dr database.Runner,
 	repo *InventoryRepository,
 	storageProvider storage.StorageProvider,
+	broadcaster AdminStockNotifier,
 ) *InventoryService {
 	if logger == nil {
 		panic("inventory: logger is required")
@@ -52,6 +60,7 @@ func NewService(
 		dr:              dr,
 		repo:            repo,
 		storageProvider: storageProvider,
+		broadcaster:     broadcaster,
 	}
 }
 
@@ -144,6 +153,7 @@ func (s *InventoryService) AdjustStock(
 		}
 	}
 
+	s.broadcastStockUpdate(ctx, in.VariantID, in.Quantity, in.Reason)
 	return updatedStock, nil
 }
 
@@ -153,7 +163,7 @@ func (s *InventoryService) ApplyStockAdjustment(
 	ctx context.Context,
 	in AdjustStockInput,
 ) error {
-	return s.dr.WithTx(ctx, func(ctx context.Context) error {
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
 		if _, err := s.applyAdjustment(ctx, in); err != nil {
 			var apiErr *apierr.APIError
 			if errors.As(err, &apiErr) {
@@ -171,6 +181,12 @@ func (s *InventoryService) ApplyStockAdjustment(
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	s.broadcastStockUpdate(ctx, in.VariantID, in.Quantity, in.Reason)
+	return nil
 }
 
 // validateAdjustStockInput checks shared preconditions for stock adjustments and
@@ -631,8 +647,11 @@ func (s *InventoryService) CommitReservationsForOrder(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	return s.dr.WithTx(ctx, func(ctx context.Context) error {
-		if err := s.repo.CommitReservationsForOrder(ctx, orderID); err != nil {
+	var deducted map[uuid.UUID]int
+	err := s.dr.WithTx(ctx, func(ctx context.Context) error {
+		var err error
+		deducted, err = s.repo.CommitReservationsForOrder(ctx, orderID)
+		if err != nil {
 			if errors.Is(err, ErrInsufficientStock) {
 				return apierr.BadRequestError(
 					fmt.Sprintf("Insufficient physical on-hand stock to commit reservation (%s)", orderID),
@@ -642,6 +661,15 @@ func (s *InventoryService) CommitReservationsForOrder(
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	for variantID, qty := range deducted {
+		s.broadcastStockUpdate(ctx, variantID, -qty, string(model.InventoryReasonSale))
+	}
+
+	return nil
 }
 
 // ReleaseReservationsForOrder releases every unreleased hold for an order
@@ -769,6 +797,8 @@ func (s *InventoryService) AdjustInventory(ctx context.Context, variantID uuid.U
 	if err != nil {
 		return s.handleError(err, "Failed to adjust inventory")
 	}
+
+	s.broadcastStockUpdate(ctx, variantID, delta, reason)
 	return nil
 }
 
@@ -789,11 +819,13 @@ func (s *InventoryService) AdjustProductInventory(ctx context.Context, productID
 			Wrap(err)
 	}
 
+	var targetVariantID uuid.UUID
 	err = s.dr.WithTx(ctx, func(ctx context.Context) error {
 		variantID, err := s.repo.GetPrimaryVariantIDByProductID(ctx, productID)
 		if err != nil {
 			return err
 		}
+		targetVariantID = variantID
 
 		ledger := &model.InventoryLedger{
 			VariantID: variantID,
@@ -805,5 +837,57 @@ func (s *InventoryService) AdjustProductInventory(ctx context.Context, productID
 	if err != nil {
 		return s.handleError(err, "Failed to adjust product inventory")
 	}
+
+	s.broadcastStockUpdate(ctx, targetVariantID, delta, reason)
 	return nil
+}
+
+func (s *InventoryService) broadcastStockUpdate(ctx context.Context, variantID uuid.UUID, delta int, reason string) {
+	if s.broadcaster == nil || variantID == uuid.Nil {
+		return
+	}
+
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		var variantInfo *VariantInfoSummary
+		var stock *model.InventoryStock
+
+		err := s.dr.WithExecutor(bgCtx, func(execCtx context.Context) error {
+			var err error
+			variantInfo, err = s.repo.GetVariantInfo(execCtx, variantID)
+			if err != nil {
+				return err
+			}
+
+			stock, err = s.repo.GetStock(execCtx, variantID)
+			return err
+		})
+
+		if err != nil {
+			s.logger.Warn("failed to fetch variant info for stock broadcast", log.Meta{"variantId": variantID, "error": err})
+			return
+		}
+
+		currentStock := stock.OnHandQuantity
+		isLow := currentStock <= 10
+
+		ev := notifier.AdminStockEvent{
+			VariantID:    variantID,
+			ProductID:    variantInfo.ProductID,
+			ProductName:  variantInfo.ProductName,
+			VariantTitle: variantInfo.VariantTitle,
+			SKU:          variantInfo.SKU,
+			Quantity:     delta,
+			CurrentStock: currentStock,
+			Reason:       reason,
+			IsLowStock:   isLow,
+			Timestamp:    time.Now(),
+		}
+
+		if err := s.broadcaster.PublishStock(bgCtx, ev); err != nil {
+			s.logger.Warn("failed to broadcast stock event", log.Meta{"variantId": variantID, "error": err})
+		}
+	}()
 }

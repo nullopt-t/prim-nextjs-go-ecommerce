@@ -110,6 +110,11 @@ type OrderNotifier interface {
 	NotifyOrderPlaced(ctx context.Context, in notifier.OrderPlacedPayload) error
 }
 
+// AdminOrderNotifier broadcasts committed order events to the admin live stream.
+type AdminOrderNotifier interface {
+	Publish(ctx context.Context, ev notifier.AdminOrderEvent) error
+}
+
 type CheckoutService struct {
 	cartReader    CartReader
 	cartWriter    CartWriter
@@ -126,6 +131,7 @@ type CheckoutService struct {
 	settings      SettingsProvider
 	runner        database.Runner
 	orderNotifier OrderNotifier
+	adminNotifier AdminOrderNotifier
 	logger        log.Logger
 }
 
@@ -145,6 +151,7 @@ func NewService(
 	settings SettingsProvider,
 	runner database.Runner,
 	orderNotifier OrderNotifier,
+	adminNotifier AdminOrderNotifier,
 	logger log.Logger,
 ) *CheckoutService {
 	if cartReader == nil {
@@ -192,6 +199,9 @@ func NewService(
 	if orderNotifier == nil {
 		panic("checkout: order notifier is required")
 	}
+	if adminNotifier == nil {
+		panic("checkout: admin notifier is required")
+	}
 	if logger == nil {
 		panic("checkout: logger is required")
 	}
@@ -211,6 +221,7 @@ func NewService(
 		settings:      settings,
 		runner:        runner,
 		orderNotifier: orderNotifier,
+		adminNotifier: adminNotifier,
 		logger:        logger,
 	}
 }
@@ -873,6 +884,23 @@ func (s *CheckoutService) notifyOrderPlaced(ctx context.Context, cfg setting.Con
 		s.logger.Warn("failed to publish order placed notification", log.Meta{
 			"orderId": createdOrder.ID.String(),
 			"error":   notifyErr.Error(),
+		})
+	}
+
+	orderNum := notifier.OrderNumber(createdOrder.ID)
+	if err := s.adminNotifier.Publish(notifyCtx, notifier.AdminOrderEvent{
+		ID:            createdOrder.ID,
+		OrderNumber:   orderNum,
+		CustomerEmail: createdOrder.CustomerEmail,
+		CustomerName:  customerName,
+		TotalAmount:   createdOrder.TotalAmount,
+		Currency:      createdOrder.Currency,
+		Status:        string(createdOrder.Status),
+		CreatedAt:     createdOrder.CreatedAt,
+	}); err != nil {
+		s.logger.Warn("failed to broadcast order to admin stream", log.Meta{
+			"orderId": createdOrder.ID.String(),
+			"error":   err.Error(),
 		})
 	}
 }

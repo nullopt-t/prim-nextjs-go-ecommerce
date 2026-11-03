@@ -71,7 +71,7 @@ func (s *InventoryTestSuite) SetupSuite() {
 	txRunner := database.NewTxRunner(s.db)
 	logger := log.NewConsoleLogger()
 	s.repo = inventory.NewRepository()
-	s.service = inventory.NewService(logger, txRunner, s.repo, storage.NoopProvider{})
+	s.service = inventory.NewService(logger, txRunner, s.repo, storage.NoopProvider{}, nil)
 
 	// Create base Category and Product for Foreign Key relations
 	s.categoryID = uuid.New()

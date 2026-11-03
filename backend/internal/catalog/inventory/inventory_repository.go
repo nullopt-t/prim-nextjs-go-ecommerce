@@ -39,16 +39,17 @@ var ErrInsufficientStock = errors.New("insufficient physical on-hand stock to co
 // so truly unavailable units fail closed with ErrInsufficientStock, which
 // rolls the whole operation back). The operation is idempotent — a second call
 // finds no unreleased holds and does nothing.
+// It returns a map of variantID -> deducted quantity so callers can broadcast stock updates.
 func (r *InventoryRepository) CommitReservationsForOrder(
 	ctx context.Context,
 	orderID uuid.UUID,
-) error {
+) (map[uuid.UUID]int, error) {
 	if _, err := database.RequireTx(ctx); err != nil {
-		return err
+		return nil, err
 	}
 	reservations, err := r.GetUnreleasedReservationsForOrder(ctx, orderID)
 	if err != nil {
-		return fmt.Errorf("fetch reservations for order %s: %w", orderID, err)
+		return nil, fmt.Errorf("fetch reservations for order %s: %w", orderID, err)
 	}
 
 	// Lock variants in a deterministic order so two concurrent commits that
@@ -60,22 +61,23 @@ func (r *InventoryRepository) CommitReservationsForOrder(
 		return reservations[i].ID.String() < reservations[j].ID.String()
 	})
 
+	deducted := make(map[uuid.UUID]int)
 	for _, res := range reservations {
 		// Serialize stock deductions per variant across concurrent commits.
 		if err := r.LockVariantForUpdate(ctx, res.VariantID); err != nil {
-			return fmt.Errorf("lock variant %s for commit: %w", res.VariantID, err)
+			return nil, fmt.Errorf("lock variant %s for commit: %w", res.VariantID, err)
 		}
 
 		stock, err := r.GetStock(ctx, res.VariantID)
 		if err != nil {
-			return fmt.Errorf("get stock for variant %s: %w", res.VariantID, err)
+			return nil, fmt.Errorf("get stock for variant %s: %w", res.VariantID, err)
 		}
 		if stock.OnHandQuantity < res.Quantity {
-			return fmt.Errorf("commit reservation %s (variant %s): %w", res.ID, res.VariantID, ErrInsufficientStock)
+			return nil, fmt.Errorf("commit reservation %s (variant %s): %w", res.ID, res.VariantID, ErrInsufficientStock)
 		}
 
 		if err := r.ReleaseReservation(ctx, res.ID); err != nil {
-			return fmt.Errorf("release reservation %s: %w", res.ID, err)
+			return nil, fmt.Errorf("release reservation %s: %w", res.ID, err)
 		}
 
 		ledger := &model.InventoryLedger{
@@ -84,17 +86,18 @@ func (r *InventoryRepository) CommitReservationsForOrder(
 			Reason:    model.InventoryReasonSale,
 		}
 		if err := r.CreateLedger(ctx, ledger); err != nil {
-			return fmt.Errorf("create sale ledger for variant %s: %w", res.VariantID, err)
+			return nil, fmt.Errorf("create sale ledger for variant %s: %w", res.VariantID, err)
 		}
+		deducted[res.VariantID] += res.Quantity
 	}
 
 	// Defensive: release anything still unreleased for this order (e.g. a hold
 	// inserted concurrently) so it cannot linger and be committed twice.
 	if _, err := r.ReleaseReservationsForOrder(ctx, orderID); err != nil {
-		return fmt.Errorf("release lingering reservations for order %s: %w", orderID, err)
+		return nil, fmt.Errorf("release lingering reservations for order %s: %w", orderID, err)
 	}
 
-	return nil
+	return deducted, nil
 }
 
 // LockVariantForUpdate acquires an exclusive row-level write lock (SELECT ... FOR UPDATE) on the specified variant.
@@ -846,4 +849,42 @@ func (r *InventoryRepository) GetPrimaryVariantIDByProductID(
 		return uuid.Nil, fmt.Errorf("get primary variant for product: %w", err)
 	}
 	return variantID, nil
+}
+
+// VariantInfoSummary holds minimal variant and product metadata for notifications and auditing.
+type VariantInfoSummary struct {
+	VariantID    uuid.UUID
+	ProductID    uuid.UUID
+	ProductName  string
+	VariantTitle string
+	SKU          string
+}
+
+// GetVariantInfo returns metadata for a specific variant.
+func (r *InventoryRepository) GetVariantInfo(
+	ctx context.Context,
+	variantID uuid.UUID,
+) (*VariantInfoSummary, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var info VariantInfoSummary
+	query := `
+		SELECT pv.id, pv.product_id, p.title, pv.title, pv.sku
+		FROM product_variants pv
+		JOIN products p ON pv.product_id = p.id
+		WHERE pv.id = $1
+	`
+	err = executor.QueryRow(ctx, query, variantID).Scan(
+		&info.VariantID,
+		&info.ProductID,
+		&info.ProductName,
+		&info.VariantTitle,
+		&info.SKU,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get variant info: %w", err)
+	}
+	return &info, nil
 }

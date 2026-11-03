@@ -220,6 +220,9 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	attributeRouter := attribute.NewRouter(attributeHandler, sessionStore)
 	attributeRouter.MapRoutes(v1)
 
+	// admin real-time broadcaster
+	adminBroadcaster := order.NewAdminBroadcaster(app.redisClient, app.logger)
+
 	// inventory
 	inventoryRepo := inventory.NewRepository()
 	inventoryService := inventory.NewService(
@@ -227,6 +230,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		txRunner,
 		inventoryRepo,
 		app.storageProvider,
+		adminBroadcaster,
 	)
 	inventoryHandler := inventory.NewHandler(inventoryService)
 	inventoryRouter := inventory.NewRouter(inventoryHandler, sessionStore)
@@ -273,7 +277,6 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	productHandler := product.NewHandler(productService)
 	productRouter := product.NewRouter(productHandler, variantHandler, sessionStore)
 	productRouter.MapRoutes(v1)
-
 
 	// cart
 	cartRepo := cart.NewRepository()
@@ -340,7 +343,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	// order
 	orderRepo := order.NewRepository()
 	orderService := order.NewService(txRunner, orderRepo, app.logger, inventoryRepo, inventoryService, userRepo, settingService, notifier)
-	orderHandler := order.NewHandler(orderService)
+	orderHandler := order.NewHandler(orderService, adminBroadcaster)
 	orderRouter := order.NewRouter(orderHandler, sessionStore)
 	orderRouter.MapRoutes(v1)
 
@@ -387,6 +390,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		settingService,
 		txRunner,
 		notifier,
+		adminBroadcaster,
 		app.logger,
 	)
 	checkoutHandler := checkout.NewHandler(checkoutService)

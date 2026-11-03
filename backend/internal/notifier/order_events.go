@@ -2,6 +2,7 @@ package notifier
 
 import (
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -46,6 +47,39 @@ type OrderPlacedPayload struct {
 	Locale          string              `json:"locale,omitempty"`
 	Items           []OrderItemSummary  `json:"items"`
 	ShippingAddress OrderAddressSummary `json:"shippingAddress"`
+}
+
+// AdminOrderEvent represents the real-time payload sent across SSE to administrative dashboards.
+type AdminOrderEvent struct {
+	ID            uuid.UUID `json:"id"`
+	OrderNumber   string    `json:"orderNumber"`
+	CustomerEmail string    `json:"customerEmail"`
+	CustomerName  string    `json:"customerName"`
+	TotalAmount   int64     `json:"totalAmount"`
+	Currency      string    `json:"currency"`
+	Status        string    `json:"status"`
+	CreatedAt     time.Time `json:"createdAt"`
+}
+
+// AdminStockEvent represents a real-time inventory ledger update sent across SSE to administrative dashboards.
+type AdminStockEvent struct {
+	VariantID    uuid.UUID `json:"variantId"`
+	ProductID    uuid.UUID `json:"productId"`
+	ProductName  string    `json:"productName"`
+	VariantTitle string    `json:"variantTitle,omitempty"`
+	SKU          string    `json:"sku"`
+	Quantity     int       `json:"quantity"`     // Delta (+/-)
+	CurrentStock int       `json:"currentStock"` // On-hand balance after change
+	Reason       string    `json:"reason"`
+	IsLowStock   bool      `json:"isLowStock"`
+	Timestamp    time.Time `json:"timestamp"`
+}
+
+// AdminRealtimeMessage wraps multiple administrative event types over the single admin SSE connection.
+type AdminRealtimeMessage struct {
+	Type  string           `json:"type"` // "order.created" | "stock.updated"
+	Order *AdminOrderEvent `json:"order,omitempty"`
+	Stock *AdminStockEvent `json:"stock,omitempty"`
 }
 
 // OrderShippedPayload is the data contract for dispatch notifications.
