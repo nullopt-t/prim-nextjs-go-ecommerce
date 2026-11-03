@@ -51,6 +51,13 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		portal.DELETE("/products/:id", r.handler.DeleteProduct)
 		portal.POST("/products/:id/publish", r.handler.PublishProduct)
 		portal.POST("/products/:id/archive", r.handler.ArchiveProduct)
+
+		// Variants and stock movements for merchant-owned products.
+		portal.GET("/products/:id/variants", r.handler.ListProductVariants)
+		portal.POST("/products/:id/variants", r.handler.CreateVariant)
+		portal.PATCH("/variants/:id", r.handler.UpdateVariant)
+		portal.DELETE("/variants/:id", r.handler.DeleteVariant)
+		portal.POST("/variants/:id/stock", r.handler.AdjustStock)
 	}
 
 	admin := vgroup.Group("/admin/vendors")

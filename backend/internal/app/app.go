@@ -360,6 +360,8 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		objectRepository,
 		settlementReader,
 		productService,
+		variantService,
+		inventoryService,
 		vendors.NewStaticCommissionDefaults(),
 		app.storageProvider,
 		txRunner,

@@ -46,6 +46,8 @@ type Service struct {
 	objects    ObjectReader
 	settlement SettlementReader
 	products   ProductCatalog
+	variants   VariantCatalog
+	stock      StockAdjuster
 	settings   CommissionDefaults
 	storage    storage.StorageProvider
 	runner     database.Runner
@@ -64,6 +66,8 @@ func NewService(
 	objects ObjectReader,
 	settlement SettlementReader,
 	products ProductCatalog,
+	variants VariantCatalog,
+	stock StockAdjuster,
 	settings CommissionDefaults,
 	storageProvider storage.StorageProvider,
 	runner database.Runner,
@@ -84,6 +88,12 @@ func NewService(
 	if products == nil {
 		panic("vendor: product catalog is required")
 	}
+	if variants == nil {
+		panic("vendor: variant catalog is required")
+	}
+	if stock == nil {
+		panic("vendor: stock adjuster is required")
+	}
 	if settings == nil {
 		panic("vendor: commission defaults provider is required")
 	}
@@ -102,6 +112,8 @@ func NewService(
 		objects:    objects,
 		settlement: settlement,
 		products:   products,
+		variants:   variants,
+		stock:      stock,
 		settings:   settings,
 		storage:    storageProvider,
 		runner:     runner,

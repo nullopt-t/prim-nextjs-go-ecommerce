@@ -13,7 +13,9 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
+	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/order"
@@ -42,6 +44,96 @@ type VendorServiceSuite struct {
 	vendorUID  uuid.UUID
 	categoryID uuid.UUID
 	catalog    *fakeProductCatalog
+	variants   *fakeVariantCatalog
+	stock      *fakeStockAdjuster
+}
+
+// fakeVariantCatalog is an in-memory VariantCatalog double used to prove the
+// ownership gate before delegation.
+type fakeVariantCatalog struct {
+	mu       sync.Mutex
+	variants map[uuid.UUID]*model.ProductVariant
+}
+
+func newFakeVariantCatalog() *fakeVariantCatalog {
+	return &fakeVariantCatalog{variants: map[uuid.UUID]*model.ProductVariant{}}
+}
+
+func (f *fakeVariantCatalog) CreateVariant(_ context.Context, in *variant.CreateVariantInput) (*model.ProductVariant, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	v := &model.ProductVariant{
+		ID:         uuid.New(),
+		SKU:        uuid.New().String()[:8],
+		ProductID:  in.ProductID,
+		Title:      in.Title,
+		Price:      in.Price,
+		Attributes: in.Attributes,
+		IsDefault:  in.IsDefault,
+	}
+	if in.SKU != nil {
+		v.SKU = *in.SKU
+	}
+	f.variants[v.ID] = v
+	return v, nil
+}
+
+func (f *fakeVariantCatalog) UpdateVariant(_ context.Context, variantID uuid.UUID, in variant.UpdateVariantInput) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	v, ok := f.variants[variantID]
+	if !ok {
+		return database.ErrNotFound
+	}
+	if in.Title != nil {
+		v.Title = *in.Title
+	}
+	return nil
+}
+
+func (f *fakeVariantCatalog) DeleteVariantByID(_ context.Context, variantID uuid.UUID) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.variants[variantID]; !ok {
+		return database.ErrNotFound
+	}
+	delete(f.variants, variantID)
+	return nil
+}
+
+func (f *fakeVariantCatalog) ListVariantsByProductID(_ context.Context, productID uuid.UUID, _ *pagination.ListQuery, _ bool) (*pagination.PagedResult[model.ProductVariant], error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	items := make([]*model.ProductVariant, 0)
+	for _, v := range f.variants {
+		if v.ProductID == productID {
+			items = append(items, v)
+		}
+	}
+	return &pagination.PagedResult[model.ProductVariant]{Items: items}, nil
+}
+
+func (f *fakeVariantCatalog) GetVariantByID(_ context.Context, variantID uuid.UUID) (*model.ProductVariant, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	v, ok := f.variants[variantID]
+	if !ok {
+		return nil, database.ErrNotFound
+	}
+	return v, nil
+}
+
+// fakeStockAdjuster records the delegated stock movement.
+type fakeStockAdjuster struct {
+	mu      sync.Mutex
+	adjusts []inventory.AdjustStockInput
+}
+
+func (f *fakeStockAdjuster) AdjustStock(_ context.Context, in inventory.AdjustStockInput) (*model.InventoryStock, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.adjusts = append(f.adjusts, in)
+	return &model.InventoryStock{VariantID: in.VariantID, OnHandQuantity: in.Quantity, AvailableQuantity: in.Quantity, IsInStock: in.Quantity > 0}, nil
 }
 
 // fakeProductCatalog is an in-memory ProductCatalog double. Catalog rules are
@@ -226,6 +318,8 @@ func (s *VendorServiceSuite) SetupSuite() {
 	require.NoError(err)
 
 	s.catalog = newFakeProductCatalog()
+	s.variants = newFakeVariantCatalog()
+	s.stock = &fakeStockAdjuster{}
 
 	s.service = vendors.NewService(
 		vendors.NewRepository(),
@@ -233,6 +327,8 @@ func (s *VendorServiceSuite) SetupSuite() {
 		object.NewRepository(),
 		order.NewRepository(),
 		s.catalog,
+		s.variants,
+		s.stock,
 		vendors.NewStaticCommissionDefaults(),
 		storage.NoopProvider{},
 		runner,
@@ -547,4 +643,67 @@ func (s *VendorServiceSuite) TestSuspendedVendorCannotCreateProduct() {
 
 	_, err = s.service.AdminChangeVendorStatus(s.ctx, s.vendorID, model.VendorStatusActive)
 	s.Require().NoError(err)
+}
+
+func (s *VendorServiceSuite) TestVendorCreatesVariantUnderOwnedProduct() {
+	slug := "variant-owner-product"
+	created, err := s.service.CreateProduct(s.ctx, s.vendorUID, product.CreateProductInput{
+		CategoryID: s.categoryID,
+		Slug:       &slug,
+		Title:      "Variant Owner",
+	})
+	s.Require().NoError(err)
+
+	price := int64(12500)
+	v, err := s.service.CreateVariant(s.ctx, s.vendorUID, created.ID, &variant.CreateVariantInput{
+		Title: "Black",
+		Price: &price,
+	})
+	s.Require().NoError(err)
+	s.Equal(created.ID, v.ProductID)
+
+	page, err := s.service.ListProductVariants(s.ctx, s.vendorUID, created.ID, nil)
+	s.Require().NoError(err)
+	s.Len(page.Items, 1)
+
+	stock, err := s.service.AdjustStock(s.ctx, s.vendorUID, inventory.AdjustStockInput{
+		VariantID: v.ID,
+		Quantity:  25,
+		Reason:    "restock",
+	})
+	s.Require().NoError(err)
+	s.Equal(25, stock.OnHandQuantity)
+	s.Len(s.stock.adjusts, 1)
+}
+
+func (s *VendorServiceSuite) TestVendorCannotTouchForeignVariant() {
+	foreignVendor := uuid.New()
+	foreignProduct := &model.Product{ID: uuid.New(), VendorID: &foreignVendor, Title: "Foreign"}
+	foreignVariant := &model.ProductVariant{ID: uuid.New(), ProductID: foreignProduct.ID, SKU: "F-1", Title: "Foreign Variant"}
+	s.catalog.mu.Lock()
+	s.catalog.products[foreignProduct.ID] = foreignProduct
+	s.catalog.mu.Unlock()
+	s.variants.mu.Lock()
+	s.variants.variants[foreignVariant.ID] = foreignVariant
+	s.variants.mu.Unlock()
+
+	title := "Hijacked"
+	err := s.service.UpdateVariant(s.ctx, s.vendorUID, foreignVariant.ID, variant.UpdateVariantInput{Title: &title})
+	apiErr := s.assertAPIError(err)
+	s.Equal(http.StatusNotFound, apiErr.Status)
+
+	err = s.service.DeleteVariant(s.ctx, s.vendorUID, foreignVariant.ID)
+	apiErr = s.assertAPIError(err)
+	s.Equal(http.StatusNotFound, apiErr.Status)
+
+	_, err = s.service.AdjustStock(s.ctx, s.vendorUID, inventory.AdjustStockInput{
+		VariantID: foreignVariant.ID,
+		Quantity:  10,
+		Reason:    "restock",
+	})
+	apiErr = s.assertAPIError(err)
+	s.Equal(http.StatusNotFound, apiErr.Status)
+
+	s.Equal("Foreign Variant", foreignVariant.Title)
+	s.Empty(s.stock.adjusts)
 }

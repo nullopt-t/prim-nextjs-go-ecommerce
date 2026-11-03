@@ -6,7 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
+	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/shared/validation"
@@ -860,4 +862,300 @@ func (h *Handler) ArchiveProduct(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Product archived"})
+}
+
+// ---- Vendor variants & stock --------------------------------------------
+
+// VendorCreateVariantRequest is the merchant variant creation payload.
+type VendorCreateVariantRequest struct {
+	// Optional custom SKU; generated when omitted.
+	SKU *string `json:"sku,omitempty" example:"SKU-BLK-01"`
+	// Variant display title.
+	Title string `json:"title" binding:"required" example:"Black, 128GB"`
+	// Price in minor units.
+	Price *int64 `json:"price,omitempty" example:"249900"`
+	// Original/crossed-out price in minor units.
+	CrossedOutPrice *int64 `json:"crossedOutPrice,omitempty" example:"299900"`
+	// ISO currency code.
+	Currency *string `json:"currency,omitempty" example:"EGP"`
+	// Attribute dimensions (e.g. {"color":"Black","storage":"128GB"}).
+	Attributes map[string]any `json:"attributes,omitempty"`
+	// Marks this variant as the default storefront selection.
+	IsDefault bool `json:"isDefault" example:"true"`
+	// Optional thumbnail storage object UUID.
+	ThumbnailObjectID *string `json:"thumbnailObjectId,omitempty"`
+}
+
+// VendorUpdateVariantRequest is the merchant variant edit payload.
+type VendorUpdateVariantRequest struct {
+	// Updated SKU.
+	SKU *string `json:"sku,omitempty"`
+	// Updated title.
+	Title *string `json:"title,omitempty"`
+	// Updated price in minor units.
+	Price *int64 `json:"price,omitempty"`
+	// Updated original price in minor units.
+	CrossedOutPrice *int64 `json:"crossedOutPrice,omitempty"`
+	// Updated ISO currency code.
+	Currency *string `json:"currency,omitempty"`
+	// Updated attribute dimensions.
+	Attributes map[string]any `json:"attributes,omitempty"`
+	// Updated default-selection flag.
+	IsDefault *bool `json:"isDefault,omitempty"`
+	// Updated thumbnail storage object UUID.
+	ThumbnailObjectID *string `json:"thumbnailObjectId,omitempty"`
+}
+
+// VendorStockAdjustRequest is a merchant stock movement payload.
+type VendorStockAdjustRequest struct {
+	// Signed delta: positive restocks, negative reduces on-hand.
+	Quantity int `json:"quantity" binding:"required" example:"50"`
+	// Business reason for the movement.
+	Reason string `json:"reason" binding:"required,oneof=restock return adjustment" example:"restock"`
+}
+
+// VendorStockResponse is the resulting stock state after an adjustment.
+type VendorStockResponse struct {
+	// Variant UUID.
+	VariantID uuid.UUID `json:"variantId"`
+	// Physical units on hand.
+	OnHandQuantity int `json:"onHandQuantity" example:"60"`
+	// Units reserved by open orders.
+	ReservedQuantity int `json:"reservedQuantity" example:"10"`
+	// Salable units (on hand minus reserved).
+	AvailableQuantity int `json:"availableQuantity" example:"50"`
+	// True when available units exceed zero.
+	IsInStock bool `json:"isInStock" example:"true"`
+}
+
+// ListProductVariants godoc
+// @Summary      List variants of my product
+// @Description  Returns the variants of a product owned by the authenticated vendor.
+// @Tags         Vendor
+// @Produce      json
+// @Param        id       path  string true  "Product UUID" format(uuid)
+// @Param        page     query int    false "Page number (1-based)"
+// @Param        pageSize query int    false "Page size (max 100)"
+// @Success      200 {object} api.PaginatedResponse{data=[]VendorVariantResponse}
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Failure      404 {object} api.NotFoundErrorResponse "Product or vendor not found"
+// @Router       /vendor/products/{id}/variants [get]
+// @Security     SessionAuth
+func (h *Handler) ListProductVariants(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	productID, ok := bindVendorID(c)
+	if !ok {
+		return
+	}
+
+	var q pagination.ListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 20, MaxPageSize: 100})
+
+	result, err := h.service.ListProductVariants(c.Request.Context(), userID, productID, &q)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.PaginatedResponse{
+		Data: result.Items,
+		Meta: result.Meta(),
+	})
+}
+
+// CreateVariant godoc
+// @Summary      Add a variant to my product
+// @Description  Creates a purchasable SKU under a product owned by the authenticated vendor.
+// @Tags         Vendor
+// @Accept       json
+// @Produce      json
+// @Param        id      path string                     true "Product UUID" format(uuid)
+// @Param        request body VendorCreateVariantRequest true "Variant payload"
+// @Success      201 {object} api.DataResponse{data=VendorVariantResponse}
+// @Failure      400 {object} api.BadReqResponse "Validation failed"
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Failure      404 {object} api.NotFoundErrorResponse "Product or vendor not found"
+// @Router       /vendor/products/{id}/variants [post]
+// @Security     SessionAuth
+func (h *Handler) CreateVariant(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	productID, ok := bindVendorID(c)
+	if !ok {
+		return
+	}
+
+	var req VendorCreateVariantRequest
+	if !bindVendorJSON(c, &req) {
+		return
+	}
+
+	var thumbnailID *uuid.UUID
+	if req.ThumbnailObjectID != nil {
+		thumbnailID = parseOptionalUUID(*req.ThumbnailObjectID)
+	}
+
+	created, err := h.service.CreateVariant(c.Request.Context(), userID, productID, &variant.CreateVariantInput{
+		SKU:               req.SKU,
+		Title:             req.Title,
+		Price:             req.Price,
+		CrossedOutPrice:   req.CrossedOutPrice,
+		Currency:          req.Currency,
+		Attributes:        req.Attributes,
+		IsDefault:         req.IsDefault,
+		ThumbnailObjectID: thumbnailID,
+	})
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, api.DataResponse{Data: toVendorVariantResponse(created)})
+}
+
+// UpdateVariant godoc
+// @Summary      Update my variant
+// @Description  Edits a variant whose parent product belongs to the authenticated vendor.
+// @Tags         Vendor
+// @Accept       json
+// @Produce      json
+// @Param        id      path string                     true "Variant UUID" format(uuid)
+// @Param        request body VendorUpdateVariantRequest true "Variant edit payload"
+// @Success      200 {object} api.MessageResponse
+// @Failure      400 {object} api.BadReqResponse "Validation failed"
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Failure      404 {object} api.NotFoundErrorResponse "Variant or vendor not found"
+// @Router       /vendor/variants/{id} [patch]
+// @Security     SessionAuth
+func (h *Handler) UpdateVariant(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	variantID, ok := bindVendorID(c)
+	if !ok {
+		return
+	}
+
+	var req VendorUpdateVariantRequest
+	if !bindVendorJSON(c, &req) {
+		return
+	}
+
+	var thumbnailID *uuid.UUID
+	if req.ThumbnailObjectID != nil {
+		thumbnailID = parseOptionalUUID(*req.ThumbnailObjectID)
+	}
+
+	if err := h.service.UpdateVariant(c.Request.Context(), userID, variantID, variant.UpdateVariantInput{
+		SKU:               req.SKU,
+		Title:             req.Title,
+		Price:             req.Price,
+		CrossedOutPrice:   req.CrossedOutPrice,
+		Currency:          req.Currency,
+		Attributes:        req.Attributes,
+		IsDefault:         req.IsDefault,
+		ThumbnailObjectID: thumbnailID,
+	}); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Variant updated"})
+}
+
+// DeleteVariant godoc
+// @Summary      Delete my variant
+// @Description  Soft-deletes a variant whose parent product belongs to the authenticated vendor.
+// @Tags         Vendor
+// @Produce      json
+// @Param        id path string true "Variant UUID" format(uuid)
+// @Success      200 {object} api.MessageResponse
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Failure      404 {object} api.NotFoundErrorResponse "Variant or vendor not found"
+// @Router       /vendor/variants/{id} [delete]
+// @Security     SessionAuth
+func (h *Handler) DeleteVariant(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	variantID, ok := bindVendorID(c)
+	if !ok {
+		return
+	}
+
+	if err := h.service.DeleteVariant(c.Request.Context(), userID, variantID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Variant deleted"})
+}
+
+// AdjustStock godoc
+// @Summary      Adjust my variant stock
+// @Description  Records a merchant stock movement (restock, return, correction) for a variant of the authenticated vendor.
+// @Tags         Vendor
+// @Accept       json
+// @Produce      json
+// @Param        id      path string                  true "Variant UUID" format(uuid)
+// @Param        request body VendorStockAdjustRequest true "Stock movement payload"
+// @Success      200 {object} api.DataResponse{data=VendorStockResponse}
+// @Failure      400 {object} api.BadReqResponse "Validation failed"
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Failure      404 {object} api.NotFoundErrorResponse "Variant or vendor not found"
+// @Router       /vendor/variants/{id}/stock [post]
+// @Security     SessionAuth
+func (h *Handler) AdjustStock(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	variantID, ok := bindVendorID(c)
+	if !ok {
+		return
+	}
+
+	var req VendorStockAdjustRequest
+	if !bindVendorJSON(c, &req) {
+		return
+	}
+
+	stock, err := h.service.AdjustStock(c.Request.Context(), userID, inventory.AdjustStockInput{
+		VariantID: variantID,
+		Quantity:  req.Quantity,
+		Reason:    req.Reason,
+	})
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{Data: VendorStockResponse{
+		VariantID:         stock.VariantID,
+		OnHandQuantity:    stock.OnHandQuantity,
+		ReservedQuantity:  stock.ReservedQuantity,
+		AvailableQuantity: stock.AvailableQuantity,
+		IsInStock:         stock.IsInStock,
+	}})
 }

@@ -3729,6 +3729,155 @@
                 }
             }
         },
+        "/vendor/products/{id}/variants": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the variants of a product owned by the authenticated vendor.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "List variants of my product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (max 100)",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/VendorVariantResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product or vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Creates a purchasable SKU under a product owned by the authenticated vendor.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Add a variant to my product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Variant payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/VendorCreateVariantRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/VendorVariantResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product or vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/vendor/profile": {
             "get": {
                 "security": [
@@ -3873,6 +4022,193 @@
                         "description": "Already registered or slug taken",
                         "schema": {
                             "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vendor/variants/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Soft-deletes a variant whose parent product belongs to the authenticated vendor.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Delete my variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Variant or vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Edits a variant whose parent product belongs to the authenticated vendor.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Update my variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Variant edit payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/VendorUpdateVariantRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Variant or vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vendor/variants/{id}/stock": {
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Records a merchant stock movement (restock, return, correction) for a variant of the authenticated vendor.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Adjust my variant stock",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Stock movement payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/VendorStockAdjustRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/VendorStockResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Variant or vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     }
                 }
@@ -6483,6 +6819,53 @@
                 }
             }
         },
+        "VendorCreateVariantRequest": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "attributes": {
+                    "description": "Attribute dimensions (e.g. {\"color\":\"Black\",\"storage\":\"128GB\"}).",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossedOutPrice": {
+                    "description": "Original/crossed-out price in minor units.",
+                    "type": "integer",
+                    "example": 299900
+                },
+                "currency": {
+                    "description": "ISO currency code.",
+                    "type": "string",
+                    "example": "EGP"
+                },
+                "isDefault": {
+                    "description": "Marks this variant as the default storefront selection.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "price": {
+                    "description": "Price in minor units.",
+                    "type": "integer",
+                    "example": 249900
+                },
+                "sku": {
+                    "description": "Optional custom SKU; generated when omitted.",
+                    "type": "string",
+                    "example": "SKU-BLK-01"
+                },
+                "thumbnailObjectId": {
+                    "description": "Optional thumbnail storage object UUID.",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Variant display title.",
+                    "type": "string",
+                    "example": "Black, 128GB"
+                }
+            }
+        },
         "VendorProductResponse": {
             "type": "object",
             "properties": {
@@ -6664,6 +7047,59 @@
                 "VendorStatusRejected"
             ]
         },
+        "VendorStockAdjustRequest": {
+            "type": "object",
+            "required": [
+                "quantity",
+                "reason"
+            ],
+            "properties": {
+                "quantity": {
+                    "description": "Signed delta: positive restocks, negative reduces on-hand.",
+                    "type": "integer",
+                    "example": 50
+                },
+                "reason": {
+                    "description": "Business reason for the movement.",
+                    "type": "string",
+                    "enum": [
+                        "restock",
+                        "return",
+                        "adjustment"
+                    ],
+                    "example": "restock"
+                }
+            }
+        },
+        "VendorStockResponse": {
+            "type": "object",
+            "properties": {
+                "availableQuantity": {
+                    "description": "Salable units (on hand minus reserved).",
+                    "type": "integer",
+                    "example": 50
+                },
+                "isInStock": {
+                    "description": "True when available units exceed zero.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "onHandQuantity": {
+                    "description": "Physical units on hand.",
+                    "type": "integer",
+                    "example": 60
+                },
+                "reservedQuantity": {
+                    "description": "Units reserved by open orders.",
+                    "type": "integer",
+                    "example": 10
+                },
+                "variantId": {
+                    "description": "Variant UUID.",
+                    "type": "string"
+                }
+            }
+        },
         "VendorUpdateProductRequest": {
             "type": "object",
             "properties": {
@@ -6705,6 +7141,86 @@
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "VendorUpdateVariantRequest": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "description": "Updated attribute dimensions.",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossedOutPrice": {
+                    "description": "Updated original price in minor units.",
+                    "type": "integer"
+                },
+                "currency": {
+                    "description": "Updated ISO currency code.",
+                    "type": "string"
+                },
+                "isDefault": {
+                    "description": "Updated default-selection flag.",
+                    "type": "boolean"
+                },
+                "price": {
+                    "description": "Updated price in minor units.",
+                    "type": "integer"
+                },
+                "sku": {
+                    "description": "Updated SKU.",
+                    "type": "string"
+                },
+                "thumbnailObjectId": {
+                    "description": "Updated thumbnail storage object UUID.",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Updated title.",
+                    "type": "string"
+                }
+            }
+        },
+        "VendorVariantResponse": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "description": "Attribute dimensions.",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossedOutPrice": {
+                    "description": "Crossed-out price in minor units.",
+                    "type": "integer"
+                },
+                "currency": {
+                    "description": "ISO currency code.",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Variant UUID.",
+                    "type": "string"
+                },
+                "isDefault": {
+                    "description": "Default-selection flag.",
+                    "type": "boolean"
+                },
+                "price": {
+                    "description": "Unit price in minor units.",
+                    "type": "integer"
+                },
+                "productId": {
+                    "description": "Parent product UUID.",
+                    "type": "string"
+                },
+                "sku": {
+                    "description": "Stock keeping unit.",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Display title.",
+                    "type": "string"
                 }
             }
         },

@@ -1570,6 +1570,42 @@ definitions:
     - slug
     - title
     type: object
+  VendorCreateVariantRequest:
+    properties:
+      attributes:
+        additionalProperties: {}
+        description: Attribute dimensions (e.g. {"color":"Black","storage":"128GB"}).
+        type: object
+      crossedOutPrice:
+        description: Original/crossed-out price in minor units.
+        example: 299900
+        type: integer
+      currency:
+        description: ISO currency code.
+        example: EGP
+        type: string
+      isDefault:
+        description: Marks this variant as the default storefront selection.
+        example: true
+        type: boolean
+      price:
+        description: Price in minor units.
+        example: 249900
+        type: integer
+      sku:
+        description: Optional custom SKU; generated when omitted.
+        example: SKU-BLK-01
+        type: string
+      thumbnailObjectId:
+        description: Optional thumbnail storage object UUID.
+        type: string
+      title:
+        description: Variant display title.
+        example: Black, 128GB
+        type: string
+    required:
+    - title
+    type: object
   VendorProductResponse:
     properties:
       createdAt:
@@ -1699,6 +1735,46 @@ definitions:
     - VendorStatusActive
     - VendorStatusSuspended
     - VendorStatusRejected
+  VendorStockAdjustRequest:
+    properties:
+      quantity:
+        description: 'Signed delta: positive restocks, negative reduces on-hand.'
+        example: 50
+        type: integer
+      reason:
+        description: Business reason for the movement.
+        enum:
+        - restock
+        - return
+        - adjustment
+        example: restock
+        type: string
+    required:
+    - quantity
+    - reason
+    type: object
+  VendorStockResponse:
+    properties:
+      availableQuantity:
+        description: Salable units (on hand minus reserved).
+        example: 50
+        type: integer
+      isInStock:
+        description: True when available units exceed zero.
+        example: true
+        type: boolean
+      onHandQuantity:
+        description: Physical units on hand.
+        example: 60
+        type: integer
+      reservedQuantity:
+        description: Units reserved by open orders.
+        example: 10
+        type: integer
+      variantId:
+        description: Variant UUID.
+        type: string
+    type: object
   VendorUpdateProductRequest:
     properties:
       brandId:
@@ -1731,6 +1807,65 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  VendorUpdateVariantRequest:
+    properties:
+      attributes:
+        additionalProperties: {}
+        description: Updated attribute dimensions.
+        type: object
+      crossedOutPrice:
+        description: Updated original price in minor units.
+        type: integer
+      currency:
+        description: Updated ISO currency code.
+        type: string
+      isDefault:
+        description: Updated default-selection flag.
+        type: boolean
+      price:
+        description: Updated price in minor units.
+        type: integer
+      sku:
+        description: Updated SKU.
+        type: string
+      thumbnailObjectId:
+        description: Updated thumbnail storage object UUID.
+        type: string
+      title:
+        description: Updated title.
+        type: string
+    type: object
+  VendorVariantResponse:
+    properties:
+      attributes:
+        additionalProperties: {}
+        description: Attribute dimensions.
+        type: object
+      crossedOutPrice:
+        description: Crossed-out price in minor units.
+        type: integer
+      currency:
+        description: ISO currency code.
+        type: string
+      id:
+        description: Variant UUID.
+        type: string
+      isDefault:
+        description: Default-selection flag.
+        type: boolean
+      price:
+        description: Unit price in minor units.
+        type: integer
+      productId:
+        description: Parent product UUID.
+        type: string
+      sku:
+        description: Stock keeping unit.
+        type: string
+      title:
+        description: Display title.
+        type: string
     type: object
   VerifyChallengeRequest:
     properties:
@@ -4293,6 +4428,98 @@ paths:
       summary: Publish a product
       tags:
       - Vendor
+  /vendor/products/{id}/variants:
+    get:
+      description: Returns the variants of a product owned by the authenticated vendor.
+      parameters:
+      - description: Product UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Page number (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (max 100)
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/VendorVariantResponse'
+                  type: array
+              type: object
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Product or vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List variants of my product
+      tags:
+      - Vendor
+    post:
+      consumes:
+      - application/json
+      description: Creates a purchasable SKU under a product owned by the authenticated
+        vendor.
+      parameters:
+      - description: Product UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Variant payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/VendorCreateVariantRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/VendorVariantResponse'
+              type: object
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Product or vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Add a variant to my product
+      tags:
+      - Vendor
   /vendor/profile:
     get:
       description: Returns the vendor profile belonging to the authenticated user.
@@ -4387,6 +4614,127 @@ paths:
       security:
       - SessionAuth: []
       summary: Register as vendor
+      tags:
+      - Vendor
+  /vendor/variants/{id}:
+    delete:
+      description: Soft-deletes a variant whose parent product belongs to the authenticated
+        vendor.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Variant or vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete my variant
+      tags:
+      - Vendor
+    patch:
+      consumes:
+      - application/json
+      description: Edits a variant whose parent product belongs to the authenticated
+        vendor.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Variant edit payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/VendorUpdateVariantRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Variant or vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Update my variant
+      tags:
+      - Vendor
+  /vendor/variants/{id}/stock:
+    post:
+      consumes:
+      - application/json
+      description: Records a merchant stock movement (restock, return, correction)
+        for a variant of the authenticated vendor.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stock movement payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/VendorStockAdjustRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/VendorStockResponse'
+              type: object
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Variant or vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Adjust my variant stock
       tags:
       - Vendor
   /wishlist:
