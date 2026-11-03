@@ -24,6 +24,8 @@ import (
 type SettlementReader interface {
 	// GetVendorSettledEarnings sums the delivered-order earnings of one vendor.
 	GetVendorSettledEarnings(ctx context.Context, vendorID uuid.UUID) (int64, error)
+	// GetVendorSalesStats projects revenue, earnings, and order counts.
+	GetVendorSalesStats(ctx context.Context, vendorID uuid.UUID) (*model.VendorSalesStats, error)
 }
 
 // ObjectReader is the subset of object persistence needed to resolve vendor

@@ -443,7 +443,7 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 		return nil, err
 	}
 	query := `
-		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot
+		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot, vendor_id, vendor_earning
 		FROM order_items
 		WHERE order_id = ANY($1)
 	`
@@ -471,6 +471,45 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 	}
 
 	return result, rows.Err()
+}
+
+// GetVendorSalesStats projects one vendor's sales from order data. Earnings are
+// the frozen per-line values stamped at checkout, so later commission changes
+// never rewrite history. Cancelled and refunded orders are excluded from
+// revenue and order counts.
+func (r *Repository) GetVendorSalesStats(
+	ctx context.Context,
+	vendorID uuid.UUID,
+) (*model.VendorSalesStats, error) {
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	stats := new(model.VendorSalesStats)
+	err = qe.QueryRow(ctx, `
+		SELECT
+			COALESCE(SUM(oi.price_at_purchase * oi.quantity)
+				FILTER (WHERE o.status IN ('paid', 'processing', 'shipped', 'delivered')), 0),
+			COALESCE(SUM(oi.vendor_earning)
+				FILTER (WHERE o.status = 'delivered'), 0),
+			COALESCE(SUM(oi.vendor_earning)
+				FILTER (WHERE o.status IN ('paid', 'processing', 'shipped')), 0),
+			COUNT(DISTINCT o.id)
+				FILTER (WHERE o.status NOT IN ('pending', 'cancelled', 'refunded'))
+		FROM order_items oi
+		JOIN orders o ON o.id = oi.order_id
+		WHERE oi.vendor_id = $1
+	`, vendorID).Scan(
+		&stats.GrossRevenue,
+		&stats.SettledEarnings,
+		&stats.PendingEarnings,
+		&stats.OrderCount,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get vendor sales stats: %w", err)
+	}
+	return stats, nil
 }
 
 // GetVendorSettledEarnings sums vendor earnings and derived sales counters for

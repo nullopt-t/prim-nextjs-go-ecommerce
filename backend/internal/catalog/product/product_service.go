@@ -532,6 +532,24 @@ func (s *ProductService) UpdateProduct(
 }
 
 // GetByID fetches a single product by its unique identifier.
+// GetVendorProductStats projects catalog counters for the vendor dashboard.
+func (s *ProductService) GetVendorProductStats(
+	ctx context.Context,
+	vendorID uuid.UUID,
+	lowStockThreshold int,
+) (*model.VendorProductStats, error) {
+	var stats *model.VendorProductStats
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
+		var repoErr error
+		stats, repoErr = s.productRepo.GetVendorProductStats(ctx, vendorID, lowStockThreshold)
+		return repoErr
+	})
+	if err != nil {
+		return nil, s.handleError(err, "get vendor product stats")
+	}
+	return stats, nil
+}
+
 func (s *ProductService) GetByID(
 	ctx context.Context,
 	productID uuid.UUID,

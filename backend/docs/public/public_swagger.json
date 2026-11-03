@@ -3256,6 +3256,55 @@
                 }
             }
         },
+        "/vendor/dashboard": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the merchant's money position (settled, pending, outstanding) and catalog health counts.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Vendor dashboard",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/Dashboard"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/vendor/payouts": {
             "get": {
                 "security": [
@@ -5181,6 +5230,51 @@
                     "description": "Optional review headline title",
                     "type": "string",
                     "example": "Unbelievable performance!"
+                }
+            }
+        },
+        "Dashboard": {
+            "type": "object",
+            "properties": {
+                "availableBalance": {
+                    "description": "AvailableBalance is settled earnings minus outstanding payout claims.",
+                    "type": "integer"
+                },
+                "draftProductCount": {
+                    "description": "DraftProductCount is the subset not yet published.",
+                    "type": "integer"
+                },
+                "grossRevenue": {
+                    "description": "GrossRevenue is the line-total revenue of paid-or-later orders.",
+                    "type": "integer"
+                },
+                "lifetimeEarnings": {
+                    "description": "LifetimeEarnings is the settled (delivered) earnings total.",
+                    "type": "integer"
+                },
+                "lowStockVariantCount": {
+                    "description": "LowStockVariantCount is the number of variants at/below the low-stock threshold.",
+                    "type": "integer"
+                },
+                "orderCount": {
+                    "description": "OrderCount is the number of non-cancelled orders containing the vendor's items.",
+                    "type": "integer"
+                },
+                "outstandingPayouts": {
+                    "description": "OutstandingPayouts is the sum of non-rejected payout claims.",
+                    "type": "integer"
+                },
+                "pendingEarnings": {
+                    "description": "PendingEarnings is earned on paid/processing/shipped orders, not yet payout-eligible.",
+                    "type": "integer"
+                },
+                "productCount": {
+                    "description": "ProductCount is the number of live vendor products.",
+                    "type": "integer"
+                },
+                "publishedProductCount": {
+                    "description": "PublishedProductCount is the subset visible in the storefront.",
+                    "type": "integer"
                 }
             }
         },

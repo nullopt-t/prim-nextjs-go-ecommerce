@@ -37,6 +37,7 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		middleware.Authorize(model.VendorRole, model.AdminRole, model.SuperRole),
 	)
 	{
+		portal.GET("/dashboard", r.handler.GetDashboard)
 		portal.POST("/register", r.handler.RegisterVendor)
 		portal.GET("/profile", r.handler.GetMyVendor)
 		portal.PATCH("/profile", r.handler.UpdateMyVendor)

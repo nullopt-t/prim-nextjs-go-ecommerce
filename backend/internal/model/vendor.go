@@ -54,7 +54,7 @@ type Vendor struct {
 	// Description is the optional storefront blurb.
 	Description string `db:"description" json:"description"`
 	// LogoObjectID / BannerObjectID reference storage_objects blobs.
-	LogoObjectID *uuid.UUID `db:"logo_object_id" json:"logoObjectId,omitempty"`
+	LogoObjectID   *uuid.UUID `db:"logo_object_id" json:"logoObjectId,omitempty"`
 	BannerObjectID *uuid.UUID `db:"banner_object_id" json:"bannerObjectId,omitempty"`
 	// CommissionRateBps is the platform commission in basis points (0..10000).
 	CommissionRateBps int `db:"commission_rate_bps" json:"commissionRateBps"`
@@ -63,12 +63,12 @@ type Vendor struct {
 	// BankAccountInfo is an opaque payout-details blob; schema-free until a real payout provider is integrated.
 	BankAccountInfo map[string]any `db:"bank_account_info" json:"bankAccountInfo,omitempty"`
 
-	CreatedAt time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
+	CreatedAt time.Time  `db:"created_at" json:"createdAt"`
+	UpdatedAt time.Time  `db:"updated_at" json:"updatedAt"`
 	DeletedAt *time.Time `db:"deleted_at" json:"-"`
 
 	// LogoURL / BannerURL are resolved public URLs (hydrated, not stored).
-	LogoURL string `db:"-" json:"logoUrl,omitempty"`
+	LogoURL   string `db:"-" json:"logoUrl,omitempty"`
 	BannerURL string `db:"-" json:"bannerUrl,omitempty"`
 }
 
@@ -97,4 +97,32 @@ type VendorPayout struct {
 	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
 	// ProcessedAt is when the payout reached a terminal state.
 	ProcessedAt *time.Time `db:"processed_at" json:"processedAt,omitempty"`
+}
+
+// VendorSalesStats is the order-domain projection of one vendor's sales.
+// "Pending" earnings come from paid/processing/shipped orders; "settled"
+// earnings come from delivered orders (the payout-eligible state).
+type VendorSalesStats struct {
+	// GrossRevenue sums line totals of orders that reached paid or later.
+	GrossRevenue int64
+	// SettledEarnings sums frozen vendor earnings of delivered orders.
+	SettledEarnings int64
+	// PendingEarnings sums frozen vendor earnings of paid/processing/shipped orders.
+	PendingEarnings int64
+	// OrderCount counts distinct non-cancelled/non-refunded orders containing the vendor's items.
+	OrderCount int
+}
+
+// VendorProductStats is the catalog-domain projection of one vendor's listings.
+type VendorProductStats struct {
+	// Total counts live products owned by the vendor.
+	Total int
+	// Published counts storefront-visible products.
+	Published int
+	// Draft counts unpublished drafts.
+	Draft int
+	// Archived counts archived products.
+	Archived int
+	// LowStock counts variants at or below the low-stock threshold.
+	LowStock int
 }

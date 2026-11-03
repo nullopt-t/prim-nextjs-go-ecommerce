@@ -539,6 +539,32 @@ func toPayoutList(payouts []*model.VendorPayout) []PayoutResponse {
 	return list
 }
 
+// GetDashboard godoc
+// @Summary      Vendor dashboard
+// @Description  Returns the merchant's money position (settled, pending, outstanding) and catalog health counts.
+// @Tags         Vendor
+// @Produce      json
+// @Success      200 {object} api.DataResponse{data=Dashboard}
+// @Failure      401 {object} api.UnauthorizedErrorResponse
+// @Failure      404 {object} api.NotFoundErrorResponse "Vendor not found"
+// @Router       /vendor/dashboard [get]
+// @Security     SessionAuth
+func (h *Handler) GetDashboard(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	dashboard, err := h.service.GetDashboard(c.Request.Context(), userID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{Data: dashboard})
+}
+
 // ---- Vendor product catalog ---------------------------------------------
 
 // VendorCreateProductRequest is the merchant product creation payload.

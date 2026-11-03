@@ -225,6 +225,27 @@ func (f *fakeProductCatalog) GetByID(_ context.Context, productID uuid.UUID) (*m
 	return p, nil
 }
 
+func (f *fakeProductCatalog) GetVendorProductStats(_ context.Context, vendorID uuid.UUID, _ int) (*model.VendorProductStats, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	stats := new(model.VendorProductStats)
+	for _, p := range f.products {
+		if p.VendorID == nil || *p.VendorID != vendorID {
+			continue
+		}
+		stats.Total++
+		switch p.Status {
+		case model.PublicationStatusPublished:
+			stats.Published++
+		case model.PublicationStatusDraft:
+			stats.Draft++
+		case model.PublicationStatusArchived:
+			stats.Archived++
+		}
+	}
+	return stats, nil
+}
+
 func (f *fakeProductCatalog) List(_ context.Context, q *product.ListProductsQuery, _ bool) (*pagination.PagedResult[product.ProductCardReadModel], error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -362,6 +383,10 @@ func (s *VendorServiceSuite) TearDownSuite() {
 // seedSettledEarnings inserts a delivered order carrying one vendor line with
 // the supplied frozen vendor_earning. Returns the order id.
 func (s *VendorServiceSuite) seedSettledEarnings(earning int64) uuid.UUID {
+	return s.seedSettledEarningsFor(s.vendorID, earning)
+}
+
+func (s *VendorServiceSuite) seedSettledEarningsFor(vendorID uuid.UUID, earning int64) uuid.UUID {
 	require := s.Require()
 	db := s.db
 	ctx := s.ctx
@@ -373,7 +398,7 @@ func (s *VendorServiceSuite) seedSettledEarnings(earning int64) uuid.UUID {
 	_, err := db.Exec(ctx, `
 		INSERT INTO products (id, category_id, slug, title, status, product_type, variation_axes, vendor_id)
 		VALUES ($1, $2, $3, 'Payout Product', 'published', 'simple', '{}', $4)
-	`, productID, s.categoryID, "payout-product-"+orderID.String()[:8], s.vendorID)
+	`, productID, s.categoryID, "payout-product-"+orderID.String()[:8], vendorID)
 	require.NoError(err)
 
 	_, err = db.Exec(ctx, `
@@ -390,8 +415,8 @@ func (s *VendorServiceSuite) seedSettledEarnings(earning int64) uuid.UUID {
 
 	_, err = db.Exec(ctx, `
 		INSERT INTO order_items (id, order_id, variant_id, quantity, price_at_purchase, product_snapshot, vendor_id, vendor_earning)
-		VALUES ($1, $2, $3, 1, 0, '{}'::jsonb, $4, $5)
-	`, uuid.New(), orderID, variantID, s.vendorID, earning)
+		VALUES ($1, $2, $3, 1, $5, '{}'::jsonb, $4, $5)
+	`, uuid.New(), orderID, variantID, vendorID, earning)
 	require.NoError(err)
 
 	return orderID
@@ -706,4 +731,53 @@ func (s *VendorServiceSuite) TestVendorCannotTouchForeignVariant() {
 
 	s.Equal("Foreign Variant", foreignVariant.Title)
 	s.Empty(s.stock.adjusts)
+}
+
+func (s *VendorServiceSuite) TestDashboardReportsMoneyAndCatalog() {
+	// A dedicated vendor keeps the counters independent of other tests.
+	uid := uuid.New()
+	_, err := s.db.Exec(s.ctx, `
+		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
+		VALUES ($1, 'dash@example.com', 'Dash Vendor', 'vendor', 'active', false, now(), now())
+	`, uid)
+	s.Require().NoError(err)
+
+	vendor, err := s.service.RegisterVendor(s.ctx, uid, vendors.RegisterVendorInput{
+		StoreName: "Dash Store",
+		Slug:      "dash-store",
+	})
+	s.Require().NoError(err)
+	_, err = s.service.AdminChangeVendorStatus(s.ctx, vendor.ID, model.VendorStatusActive)
+	s.Require().NoError(err)
+
+	for _, slug := range []string{"dash-a", "dash-b"} {
+		slug := slug
+		_, err := s.service.CreateProduct(s.ctx, uid, product.CreateProductInput{
+			CategoryID: s.categoryID,
+			Slug:       &slug,
+			Title:      "Dash Product " + slug,
+		})
+		s.Require().NoError(err)
+	}
+
+	s.seedSettledEarningsFor(vendor.ID, 2500)
+
+	dashboard, err := s.service.GetDashboard(s.ctx, uid)
+	s.Require().NoError(err)
+	s.Equal(int64(2500), dashboard.LifetimeEarnings)
+	s.Equal(int64(2500), dashboard.AvailableBalance)
+	s.Equal(int64(0), dashboard.PendingEarnings)
+	s.Equal(int64(2500), dashboard.GrossRevenue)
+	s.Equal(1, dashboard.OrderCount)
+	s.Equal(2, dashboard.ProductCount)
+	s.Equal(2, dashboard.DraftProductCount)
+	s.Equal(0, dashboard.PublishedProductCount)
+
+	_, err = s.service.RequestPayout(s.ctx, uid, 1000)
+	s.Require().NoError(err)
+
+	dashboard, err = s.service.GetDashboard(s.ctx, uid)
+	s.Require().NoError(err)
+	s.Equal(int64(1000), dashboard.OutstandingPayouts)
+	s.Equal(int64(1500), dashboard.AvailableBalance)
 }

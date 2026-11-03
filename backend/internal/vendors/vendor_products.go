@@ -26,6 +26,7 @@ type ProductCatalog interface {
 	ArchiveProduct(ctx context.Context, productID uuid.UUID) error
 	GetByID(ctx context.Context, productID uuid.UUID) (*model.Product, error)
 	List(ctx context.Context, q *product.ListProductsQuery, includeDeleted bool) (*pagination.PagedResult[product.ProductCardReadModel], error)
+	GetVendorProductStats(ctx context.Context, vendorID uuid.UUID, lowStockThreshold int) (*model.VendorProductStats, error)
 }
 
 // timeLayout is the wire format for vendor timestamps.

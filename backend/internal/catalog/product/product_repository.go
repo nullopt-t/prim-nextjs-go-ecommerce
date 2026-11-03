@@ -229,6 +229,58 @@ func (r *ProductRepository) get(
 	return product, nil
 }
 
+// GetVendorProductStats counts a vendor's listings and low-stock variants.
+// A variant is low-stock when its salable quantity (ledger on-hand minus live
+// reservations) is at or below the threshold.
+func (r *ProductRepository) GetVendorProductStats(
+	ctx context.Context,
+	vendorID uuid.UUID,
+	lowStockThreshold int,
+) (*model.VendorProductStats, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	stats := new(model.VendorProductStats)
+	err = executor.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE deleted_at IS NULL),
+			COUNT(*) FILTER (WHERE deleted_at IS NULL AND status = 'published'),
+			COUNT(*) FILTER (WHERE deleted_at IS NULL AND status = 'draft'),
+			COUNT(*) FILTER (WHERE deleted_at IS NULL AND status = 'archived')
+		FROM products
+		WHERE vendor_id = $1
+	`, vendorID).Scan(
+		&stats.Total,
+		&stats.Published,
+		&stats.Draft,
+		&stats.Archived,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get vendor product stats: %w", err)
+	}
+
+	err = executor.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM product_variants pv
+		JOIN products p ON p.id = pv.product_id
+		WHERE p.vendor_id = $1
+		  AND p.deleted_at IS NULL
+		  AND pv.deleted_at IS NULL
+		  AND GREATEST(
+			COALESCE((SELECT SUM(il.quantity) FROM inventory_ledgers il WHERE il.variant_id = pv.id), 0) -
+			COALESCE((SELECT SUM(ir.quantity) FROM inventory_reservations ir WHERE ir.variant_id = pv.id AND ir.released_at IS NULL AND ir.expires_at > now()), 0),
+			0
+		  ) <= $2
+	`, vendorID, lowStockThreshold).Scan(&stats.LowStock)
+	if err != nil {
+		return nil, fmt.Errorf("get vendor low stock count: %w", err)
+	}
+
+	return stats, nil
+}
+
 // LockForUpdate locks the product row for update within an active transaction.
 func (r *ProductRepository) LockForUpdate(
 	ctx context.Context,
