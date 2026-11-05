@@ -3311,6 +3311,152 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "/vendor/orders": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns orders containing the authenticated vendor's lines, newest first. Only the vendor's own lines are included; no customer PII is exposed.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "List my orders",
+                "parameters": [
+                    {
+                        "enum": [
+                            "pending",
+                            "paid",
+                            "processing",
+                            "shipped",
+                            "delivered",
+                            "cancelled",
+                            "refunded"
+                        ],
+                        "type": "string",
+                        "description": "Order status filter",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (max 100)",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/VendorOrderResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid status filter",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vendor/orders/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the vendor's own lines for one order. Orders without the vendor's lines answer 404.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Get one of my orders",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Order UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/VendorOrderResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vendor not found or order not yours",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/vendor/payouts": {
             "get": {
                 "security": [
@@ -6963,6 +7109,83 @@ const docTemplatepublic = `{
                     "description": "Variant display title.",
                     "type": "string",
                     "example": "Black, 128GB"
+                }
+            }
+        },
+        "VendorOrderItemResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Line item id.",
+                    "type": "string"
+                },
+                "lineTotal": {
+                    "description": "Line total in minor units.",
+                    "type": "integer"
+                },
+                "priceAtPurchase": {
+                    "description": "Unit price in minor units, frozen at checkout.",
+                    "type": "integer"
+                },
+                "quantity": {
+                    "description": "Units purchased.",
+                    "type": "integer"
+                },
+                "title": {
+                    "description": "Product/variant title from the checkout snapshot, when present.",
+                    "type": "string"
+                },
+                "variantId": {
+                    "description": "Purchased variant id.",
+                    "type": "string"
+                },
+                "vendorEarning": {
+                    "description": "Frozen vendor earning for this line, in minor units.",
+                    "type": "integer"
+                }
+            }
+        },
+        "VendorOrderResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "Order created timestamp (RFC3339).",
+                    "type": "string"
+                },
+                "currency": {
+                    "description": "Currency of the order.",
+                    "type": "string"
+                },
+                "earnings": {
+                    "description": "Sum of the vendor's frozen earnings, in minor units.",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "Order id.",
+                    "type": "string"
+                },
+                "items": {
+                    "description": "The vendor's lines in this order.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/VendorOrderItemResponse"
+                    }
+                },
+                "status": {
+                    "description": "Fulfillment lifecycle status.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/OrderStatus"
+                        }
+                    ]
+                },
+                "subtotal": {
+                    "description": "Sum of the vendor's line totals, in minor units.",
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "description": "Order last updated timestamp (RFC3339).",
+                    "type": "string"
                 }
             }
         },

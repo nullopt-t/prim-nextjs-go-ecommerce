@@ -2364,9 +2364,14 @@
     "loadFailed": "The vendor portal could not be loaded.",
     "orders": {
       "commission": "Commission: -EGP {amount}",
-      "noFulfillmentChanges": "Fulfillment changes are disabled here. Use the admin order console until vendor order access is implemented.",
+      "empty": "No orders yet.",
+      "historySubtitle": "Orders placed on the marketplace containing your products.",
+      "historyTitle": "Order History",
+      "loadDescription": "Your vendor orders could not be loaded.",
+      "loadTitle": "Orders unavailable",
+      "noFulfillmentChanges": "Fulfillment changes are disabled here. Use the admin order console until vendor order fulfillment workflows are available.",
       "qtyPrice": "Qty: {qty} @ EGP {price}",
-      "searchPlaceholder": "Search by Order ID, customer, or product...",
+      "searchPlaceholder": "Search by Order ID or product...",
       "statusLabel": "Status:",
       "storeFallback": "your store",
       "subtitle": "Orders placed on the marketplace containing products from {store}.",
@@ -2380,9 +2385,7 @@
         "netEarnings": "Net Vendor Earnings",
         "orderRef": "Order Ref"
       },
-      "title": "Vendor Orders & Fulfillment",
-      "unavailableDescription": "The backend does not yet expose a vendor-scoped order list or fulfillment workflow. This page intentionally does not use customer order data.",
-      "unavailableTitle": "Vendor orders are not available yet"
+      "title": "Vendor Orders & Fulfillment"
     },
     "payouts": {
       "accountEnding": "Account ending in •••• 8812",
@@ -2425,6 +2428,19 @@
       "title": "Vendor Earnings & Payouts",
       "verifiedAccount": "Verified Account",
       "withdrawalAmount": "Withdrawal Amount (EGP)"
+    },
+    "register": {
+      "description": "Description",
+      "descriptionPlaceholder": "Tell buyers what your store sells (optional).",
+      "pendingNote": "Your application is pending admin approval. You can start listing products once approved.",
+      "slug": "Store Slug",
+      "slugHint": "Lowercase letters, numbers, and hyphens, e.g. amrs-gadgets.",
+      "slugPlaceholder": "amrs-gadgets",
+      "storeName": "Store Name",
+      "storeNamePlaceholder": "Amr's Gadgets",
+      "submit": "Submit for Review",
+      "submitFailed": "The store application could not be submitted.",
+      "success": "Store application submitted. Our team will review it shortly."
     },
     "products": {
       "addTitle": "Add Vendor Product",

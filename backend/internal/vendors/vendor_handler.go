@@ -356,6 +356,55 @@ func (h *Handler) AdminSetCommission(c *gin.Context) {
 	c.JSON(http.StatusOK, api.DataResponse{Data: toVendorResponse(vendor)})
 }
 
+// AdminListVendors godoc
+// @Summary      List vendors (admin)
+// @Description  Returns the vendor directory, newest first, optionally filtered by lifecycle status.
+// @Tags         Admin Vendors
+// @Produce      json
+// @Param        status    query string false "Lifecycle filter" Enums(pending, active, suspended, rejected)
+// @Param        page      query int    false "Page number (1-based)"
+// @Param        pageSize  query int    false "Page size (max 100)"
+// @Success      200 {object} api.PaginatedResponse{data=[]VendorResponse}
+// @Failure      400 {object} api.BadReqResponse "Invalid status filter"
+// @Router       /admin/vendors [get]
+// @Security     SessionAuth
+func (h *Handler) AdminListVendors(c *gin.Context) {
+	var status *model.VendorStatus
+	if raw := c.Query("status"); raw != "" {
+		s := model.VendorStatus(raw)
+		switch s {
+		case model.VendorStatusPending, model.VendorStatusActive, model.VendorStatusSuspended, model.VendorStatusRejected:
+		default:
+			_ = c.Error(apierr.BadRequestError("Invalid vendor status filter"))
+			return
+		}
+		status = &s
+	}
+
+	var q pagination.ListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 20, MaxPageSize: 100})
+
+	result, err := h.service.AdminListVendors(c.Request.Context(), status, &q)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	responses := make([]VendorResponse, 0, len(result.Items))
+	for _, v := range result.Items {
+		responses = append(responses, toVendorResponse(v))
+	}
+
+	c.JSON(http.StatusOK, api.PaginatedResponse{
+		Data: responses,
+		Meta: result.Meta(),
+	})
+}
+
 // AdminGetVendor godoc
 // @Summary      Get vendor by ID (admin)
 // @Description  Returns any vendor profile for administration.

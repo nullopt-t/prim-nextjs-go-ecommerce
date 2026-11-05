@@ -1643,6 +1643,60 @@ definitions:
     required:
     - title
     type: object
+  VendorOrderItemResponse:
+    properties:
+      id:
+        description: Line item id.
+        type: string
+      lineTotal:
+        description: Line total in minor units.
+        type: integer
+      priceAtPurchase:
+        description: Unit price in minor units, frozen at checkout.
+        type: integer
+      quantity:
+        description: Units purchased.
+        type: integer
+      title:
+        description: Product/variant title from the checkout snapshot, when present.
+        type: string
+      variantId:
+        description: Purchased variant id.
+        type: string
+      vendorEarning:
+        description: Frozen vendor earning for this line, in minor units.
+        type: integer
+    type: object
+  VendorOrderResponse:
+    properties:
+      createdAt:
+        description: Order created timestamp (RFC3339).
+        type: string
+      currency:
+        description: Currency of the order.
+        type: string
+      earnings:
+        description: Sum of the vendor's frozen earnings, in minor units.
+        type: integer
+      id:
+        description: Order id.
+        type: string
+      items:
+        description: The vendor's lines in this order.
+        items:
+          $ref: '#/definitions/VendorOrderItemResponse'
+        type: array
+      status:
+        allOf:
+        - $ref: '#/definitions/OrderStatus'
+        description: Fulfillment lifecycle status.
+      subtotal:
+        description: Sum of the vendor's line totals, in minor units.
+        type: integer
+      updatedAt:
+        description: Order last updated timestamp (RFC3339).
+        type: string
+    type: object
   VendorProductResponse:
     properties:
       createdAt:
@@ -4190,6 +4244,98 @@ paths:
       security:
       - SessionAuth: []
       summary: Vendor dashboard
+      tags:
+      - Vendor
+  /vendor/orders:
+    get:
+      description: Returns orders containing the authenticated vendor's lines, newest
+        first. Only the vendor's own lines are included; no customer PII is exposed.
+      parameters:
+      - description: Order status filter
+        enum:
+        - pending
+        - paid
+        - processing
+        - shipped
+        - delivered
+        - cancelled
+        - refunded
+        in: query
+        name: status
+        type: string
+      - description: Page number (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (max 100)
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/VendorOrderResponse'
+                  type: array
+              type: object
+        "400":
+          description: Invalid status filter
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Vendor not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List my orders
+      tags:
+      - Vendor
+  /vendor/orders/{id}:
+    get:
+      description: Returns the vendor's own lines for one order. Orders without the
+        vendor's lines answer 404.
+      parameters:
+      - description: Order UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/VendorOrderResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Vendor not found or order not yours
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get one of my orders
       tags:
       - Vendor
   /vendor/payouts:

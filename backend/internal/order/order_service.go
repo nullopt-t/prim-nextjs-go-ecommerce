@@ -89,10 +89,10 @@ type InventoryReader interface {
 }
 
 // InventoryWriter owns the stock invariants the order lifecycle depends on:
-// appending compensating ledger entries and releasing or committing reservations.
-// It participates in the caller's transaction — every method receives the
-// executor the order use case already holds, so stock and order state commit
-// atomically.
+// appending compensating ledger entries, and releasing or committing
+// reservations. It participates in the caller's transaction — every method
+// receives the executor the order use case already holds, so stock and order
+// state commit atomically.
 type InventoryWriter interface {
 	// ApplyStockAdjustment appends a signed ledger entry within the active tx.
 	ApplyStockAdjustment(ctx context.Context, in inventory.AdjustStockInput) error
@@ -135,8 +135,9 @@ type OrderService struct {
 }
 
 // NewService instantiates an OrderService with its database runner, order
-// repository, logger, inventory read repository, user reader, and the inventory writer that
-// owns stock mutation invariants.
+// repository, logger, the inventory writer that owns stock mutation
+// invariants, inventory read repository, user reader, settings, and order
+// notifier.
 func NewService(
 	r database.Runner,
 	orderRepo *Repository,

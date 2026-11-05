@@ -16,11 +16,12 @@ import {
 import { useTranslations } from "next-intl";
 import { ErrorState } from "@/shared/ui/errorState";
 import { VendorProvider, useVendorContext } from "./vendorContext";
+import { VendorRegister } from "./vendorRegister";
 
 function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
   const t = useTranslations("vendor");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { vendor, loading, loadError, refreshVendor } = useVendorContext();
+  const { vendor, loading, loadError, notRegistered, refreshVendor } = useVendorContext();
 
   const navItems = [
     { label: t("layout.nav.dashboard"), path: "/vendor/dashboard", icon: LayoutDashboard },
@@ -42,6 +43,16 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="size-8 animate-spin rounded-full border-2 border-accent-brand border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (notRegistered) {
+    return (
+      <div className="min-h-screen bg-secondary/15 text-foreground flex flex-col font-sans">
+        <main className="flex-1 p-4 md:p-8">
+          <VendorRegister />
+        </main>
       </div>
     );
   }

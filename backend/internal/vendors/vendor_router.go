@@ -43,6 +43,8 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		portal.PATCH("/profile", r.handler.UpdateMyVendor)
 		portal.POST("/payouts", r.handler.RequestPayout)
 		portal.GET("/payouts", r.handler.ListMyPayouts)
+		portal.GET("/orders", r.handler.ListMyOrders)
+		portal.GET("/orders/:id", r.handler.GetMyOrder)
 
 		// Merchant-owned catalog. Ownership is enforced per product; platform
 		// (admin) products are not reachable through these routes.
@@ -67,6 +69,7 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		middleware.Authorize(model.AdminRole, model.SuperRole),
 	)
 	{
+		admin.GET("", r.handler.AdminListVendors)
 		admin.GET("/:id", r.handler.AdminGetVendor)
 		admin.PATCH("/:id/status", r.handler.AdminChangeVendorStatus)
 		admin.PATCH("/:id/commission", r.handler.AdminSetCommission)

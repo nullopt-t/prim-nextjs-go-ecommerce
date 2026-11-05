@@ -11,6 +11,8 @@ import type {
   UpdateVendorVariantPayload,
   Vendor,
   VendorDashboard,
+  VendorOrder,
+  VendorOrderItem,
   VendorPayout,
   VendorProduct,
   VendorProductListParams,
@@ -40,6 +42,17 @@ export const vendorService = {
 
   getDashboard: () =>
     api.get<ApiResponse<VendorDashboard>>("/api/v1/vendor/dashboard"),
+
+  getOrders: (params?: { status?: string; page?: number; pageSize?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set("status", params.status);
+    if (params?.page) query.set("page", String(params.page));
+    if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+    const qs = query.toString();
+    return api.get<ApiPaginatedResponse<VendorOrder>>(`/api/v1/vendor/orders${qs ? `?${qs}` : ""}`);
+  },
+  getOrder: (id: string) =>
+    api.get<ApiResponse<VendorOrder>>(`/api/v1/vendor/orders/${id}`),
 
   getPayouts: () =>
     api.get<ApiResponse<VendorPayout[]>>("/api/v1/vendor/payouts"),
@@ -87,6 +100,8 @@ export type {
   UpdateVendorVariantPayload,
   Vendor,
   VendorDashboard,
+  VendorOrder,
+  VendorOrderItem,
   VendorPayout,
   VendorProduct,
   VendorVariant,

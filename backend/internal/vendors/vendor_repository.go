@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
@@ -146,6 +147,54 @@ func (r *VendorRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (*
 
 func (r *VendorRepository) GetBySlug(ctx context.Context, slug string) (*model.Vendor, error) {
 	return r.getBy(ctx, "slug = $1 AND deleted_at IS NULL", slug)
+}
+
+// ListAll returns vendors ordered newest-first, optionally narrowed to one
+// lifecycle status, with classic offset pagination and a matching total.
+func (r *VendorRepository) ListAll(ctx context.Context, status *model.VendorStatus, q *pagination.ListQuery) ([]*model.Vendor, int64, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	where := "WHERE deleted_at IS NULL"
+	args := []any{}
+	if status != nil && *status != "" {
+		where += " AND status = $1::vendor_status"
+		args = append(args, *status)
+	}
+
+	var total int64
+	countQuery := `SELECT COUNT(*) FROM vendors ` + where
+	if err := executor.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count vendors: %w", err)
+	}
+
+	offsetIdx := len(args) + 1
+	limitIdx := len(args) + 2
+	rows, err := executor.Query(ctx, `
+		SELECT `+vendorColumns+` FROM vendors `+where+`
+		ORDER BY created_at DESC, id DESC
+		LIMIT $`+fmt.Sprint(limitIdx)+` OFFSET $`+fmt.Sprint(offsetIdx),
+		append(args, q.PageSize, q.Offset)...,
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list vendors: %w", err)
+	}
+	defer rows.Close()
+
+	vendors := make([]*model.Vendor, 0)
+	for rows.Next() {
+		v, err := scanVendor(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		vendors = append(vendors, v)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("list vendors: %w", err)
+	}
+	return vendors, total, nil
 }
 
 // GetByIDForUpdate locks the vendor row for the remainder of the caller's

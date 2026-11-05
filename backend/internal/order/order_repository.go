@@ -387,6 +387,124 @@ func (r *Repository) GetOrdersByCustomerID(
 	return orders, nil
 }
 
+// ListVendorOrders returns orders containing one vendor's lines, newest
+// first. Only rows whose order_items carry the vendor's id are ever
+// selected; the projection is what keeps vendors isolated from each
+// other without leaking the admin /admin/orders surface.
+func (r *Repository) ListVendorOrders(
+	ctx context.Context,
+	vendorID uuid.UUID,
+	status *model.OrderStatus,
+	q *pagination.ListQuery,
+) ([]model.Order, int64, error) {
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	where := "WHERE oi.vendor_id = $1"
+	args := []any{vendorID}
+	if status != nil && *status != "" {
+		where += " AND o.status = $2::order_status"
+		args = append(args, *status)
+	}
+
+	var total int64
+	countQuery := `
+		SELECT COUNT(DISTINCT o.id)
+		FROM orders o
+		JOIN order_items oi ON oi.order_id = o.id
+		` + where
+	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count vendor orders: %w", err)
+	}
+
+	limitIdx := len(args) + 1
+	offsetIdx := len(args) + 2
+	rows, err := qe.Query(ctx, `
+		SELECT DISTINCT o.id, o.customer_id, o.customer_email, o.shipping_address,
+		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
+		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
+		       o.locale, o.carrier, o.tracking_url,
+		       o.created_at, o.updated_at,
+		       c.code
+		FROM orders o
+		JOIN order_items oi ON oi.order_id = o.id
+		LEFT JOIN coupons c ON o.coupon_id = c.id
+		`+where+`
+		ORDER BY o.created_at DESC, o.id DESC
+		LIMIT $`+fmt.Sprint(limitIdx)+` OFFSET $`+fmt.Sprint(offsetIdx),
+		append(args, q.PageSize, q.Offset)...,
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list vendor orders: %w", err)
+	}
+
+	orders, err := scanOrders(rows)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Vendor sees only their own lines: filter each order's items to those
+	// carrying the vendor id, and never expose another vendor's lines that
+	// share the same order.
+	orderIDs := make([]uuid.UUID, len(orders))
+	for i := range orders {
+		orderIDs[i] = orders[i].ID
+	}
+	itemsMap, err := r.GetOrderItemsByOrderIDs(ctx, orderIDs)
+	if err != nil {
+		return nil, 0, fmt.Errorf("batch get vendor order items: %w", err)
+	}
+	for i := range orders {
+		for _, item := range itemsMap[orders[i].ID] {
+			if item.VendorID != nil && *item.VendorID == vendorID {
+				orders[i].Items = append(orders[i].Items, item)
+			}
+		}
+	}
+
+	return orders, total, nil
+}
+
+// GetVendorOrder loads a single order when it contains a line owned by the
+// vendor; otherwise it behaves as "not found" so existence of foreign or
+// platform orders is never leaked to a vendor.
+func (r *Repository) GetVendorOrder(ctx context.Context, vendorID, orderID uuid.UUID) (*model.Order, error) {
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var owned bool
+	err = qe.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM order_items
+			WHERE order_id = $1 AND vendor_id = $2
+		)
+	`, orderID, vendorID).Scan(&owned)
+	if err != nil {
+		return nil, fmt.Errorf("check vendor order ownership: %w", err)
+	}
+	if !owned {
+		return nil, pgx.ErrNoRows
+	}
+
+	order, err := r.GetOrderByID(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]model.OrderItem, 0, len(order.Items))
+	for _, item := range order.Items {
+		if item.VendorID != nil && *item.VendorID == vendorID {
+			items = append(items, item)
+		}
+	}
+	order.Items = items
+	return order, nil
+}
+
 // GetOrderItems fetches all line item rows associated with a given order ID.
 func (r *Repository) GetOrderItems(
 	ctx context.Context,
@@ -1080,4 +1198,63 @@ func derefString(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+// scanOrders consumes order rows from an already-open *pgx.Rows and hydrates
+// shipping/coupon fields, mirroring the per-method scan loops above.
+func scanOrders(rows pgx.Rows) ([]model.Order, error) {
+	defer rows.Close()
+
+	orders := make([]model.Order, 0)
+	for rows.Next() {
+		var o model.Order
+		var shippingBytes []byte
+		var couponCode *string
+		var paymentMethod, trackingNumber, locale, carrier, trackingURL *string
+
+		if err := rows.Scan(
+			&o.ID,
+			&o.CustomerID,
+			&o.CustomerEmail,
+			&shippingBytes,
+			&o.Status,
+			&o.CouponID,
+			&o.DiscountAmount,
+			&o.ShippingAmount,
+			&o.TaxAmount,
+			&o.CODFee,
+			&o.TotalAmount,
+			&o.Currency,
+			&paymentMethod,
+			&trackingNumber,
+			&locale,
+			&carrier,
+			&trackingURL,
+			&o.CreatedAt,
+			&o.UpdatedAt,
+			&couponCode,
+		); err != nil {
+			return nil, fmt.Errorf("scan order: %w", err)
+		}
+		o.CouponCode = couponCode
+		o.PaymentMethod = derefString(paymentMethod)
+		o.TrackingNumber = derefString(trackingNumber)
+		o.Locale = derefString(locale)
+		if o.Locale == "" {
+			o.Locale = "en"
+		}
+		o.Carrier = carrier
+		o.TrackingURL = trackingURL
+
+		if err := json.Unmarshal(shippingBytes, &o.ShippingAddress); err != nil {
+			return nil, fmt.Errorf("unmarshal shipping address: %w", err)
+		}
+
+		orders = append(orders, o)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate orders: %w", err)
+	}
+	return orders, nil
 }

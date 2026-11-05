@@ -41,12 +41,22 @@ type InventoryReader interface {
 	ListVariantLedgers(ctx context.Context, variantID uuid.UUID, q *pagination.ListQuery) (*pagination.PagedResult[model.InventoryLedger], error)
 }
 
-// InventoryWriter owns stock mutation. ApplyStockAdjustment participates in the
-// caller's transaction so initial stock commits atomically with the variant that
-// owns it; AdjustStock is the standalone entry point and owns its transaction.
+// InventoryWriter owns stock mutation invariants: appending ledger entries
+// and transitioning holds. Write rules (locking, on-hand vs reserved checks)
+// live here; the caller decides the transaction boundary — existing ctx
+// joins the ambient transaction, standalone calls start their own.
 type InventoryWriter interface {
+	// AdjustStock records one adjustment as a standalone use case.
 	AdjustStock(ctx context.Context, in inventory.AdjustStockInput) (*model.InventoryStock, error)
+	// ApplyStockAdjustment appends a signed ledger entry participating in the
+	// caller's transaction, committing atomically with the owning aggregate.
 	ApplyStockAdjustment(ctx context.Context, in inventory.AdjustStockInput) error
+	// CommitReservationsForOrder turns an order's holds into sale deductions.
+	CommitReservationsForOrder(ctx context.Context, orderID uuid.UUID) error
+	// ReleaseReservationsForOrder releases an order's holds, reporting the count.
+	ReleaseReservationsForOrder(ctx context.Context, orderID uuid.UUID) (int64, error)
+	// ExpiredReservationOrderIDs lists orders whose checkout hold has elapsed.
+	ExpiredReservationOrderIDs(ctx context.Context) ([]uuid.UUID, error)
 }
 
 // errSimpleProductLocked signals that a lifecycle change was rejected because the

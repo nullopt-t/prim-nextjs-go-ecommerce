@@ -347,6 +347,7 @@ func (s *VendorServiceSuite) SetupSuite() {
 		user.NewPostgresRepository(),
 		object.NewRepository(),
 		order.NewRepository(),
+		order.NewRepository(),
 		s.catalog,
 		s.variants,
 		s.stock,

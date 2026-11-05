@@ -175,3 +175,38 @@ export interface VendorStock {
   availableQuantity: number;
   isInStock: boolean;
 }
+
+export type VendorOrderStatus =
+  | "pending"
+  | "paid"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "cancelled"
+  | "refunded"
+  | string;
+
+export interface VendorOrderItem {
+  id: string;
+  variantId: string;
+  quantity: number;
+  priceAtPurchase: number;
+  lineTotal: number;
+  vendorEarning: number;
+  title?: string;
+}
+
+/**
+ * Merchant-facing order projection: the vendor's own lines only, with frozen
+ * money math. No customer PII is included by design.
+ */
+export interface VendorOrder {
+  id: string;
+  status: VendorOrderStatus;
+  currency: string;
+  items: VendorOrderItem[];
+  subtotal: number;
+  earnings: number;
+  createdAt: string;
+  updatedAt: string;
+}

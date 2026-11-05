@@ -4173,6 +4173,78 @@
                 }
             }
         },
+        "/admin/vendors": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the vendor directory, newest first, optionally filtered by lifecycle status.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Vendors"
+                ],
+                "summary": "List vendors (admin)",
+                "parameters": [
+                    {
+                        "enum": [
+                            "pending",
+                            "active",
+                            "suspended",
+                            "rejected"
+                        ],
+                        "type": "string",
+                        "description": "Lifecycle filter",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (max 100)",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/VendorResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid status filter",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/vendors/payouts": {
             "get": {
                 "security": [

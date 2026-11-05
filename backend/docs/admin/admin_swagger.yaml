@@ -4565,6 +4565,51 @@ paths:
       summary: Upload thumbnail image for a variant
       tags:
       - Admin Product Variants
+  /admin/vendors:
+    get:
+      description: Returns the vendor directory, newest first, optionally filtered
+        by lifecycle status.
+      parameters:
+      - description: Lifecycle filter
+        enum:
+        - pending
+        - active
+        - suspended
+        - rejected
+        in: query
+        name: status
+        type: string
+      - description: Page number (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (max 100)
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/VendorResponse'
+                  type: array
+              type: object
+        "400":
+          description: Invalid status filter
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+      security:
+      - SessionAuth: []
+      summary: List vendors (admin)
+      tags:
+      - Admin Vendors
   /admin/vendors/{id}:
     get:
       description: Returns any vendor profile for administration.

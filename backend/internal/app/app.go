@@ -362,6 +362,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		userRepo,
 		objectRepository,
 		settlementReader,
+		orderRepo,
 		productService,
 		variantService,
 		inventoryService,

@@ -13,6 +13,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
 	"github.com/nullopt-t/prim-backend/pkg/storage"
@@ -26,6 +27,19 @@ type SettlementReader interface {
 	GetVendorSettledEarnings(ctx context.Context, vendorID uuid.UUID) (int64, error)
 	// GetVendorSalesStats projects revenue, earnings, and order counts.
 	GetVendorSalesStats(ctx context.Context, vendorID uuid.UUID) (*model.VendorSalesStats, error)
+}
+
+// VendorOrderReader is the vendor portal's read-only window into orders
+// containing the vendor's lines (implemented by the order repository).
+// The reader owns the join; the vendor package never issues SQL against
+// order tables. Only the vendor's own lines are ever returned.
+type VendorOrderReader interface {
+	// ListVendorOrders returns orders containing the vendor's lines, newest
+	// first, with offset pagination and a matching total.
+	ListVendorOrders(ctx context.Context, vendorID uuid.UUID, status *model.OrderStatus, q *pagination.ListQuery) ([]model.Order, int64, error)
+	// GetVendorOrder loads one order only when it contains a line owned by
+	// the vendor; foreign and platform orders answer "not found".
+	GetVendorOrder(ctx context.Context, vendorID, orderID uuid.UUID) (*model.Order, error)
 }
 
 // ObjectReader is the subset of object persistence needed to resolve vendor
@@ -47,6 +61,7 @@ type Service struct {
 	userReader UserReader
 	objects    ObjectReader
 	settlement SettlementReader
+	orders     VendorOrderReader
 	products   ProductCatalog
 	variants   VariantCatalog
 	stock      StockAdjuster
@@ -67,6 +82,7 @@ func NewService(
 	userReader UserReader,
 	objects ObjectReader,
 	settlement SettlementReader,
+	orders VendorOrderReader,
 	products ProductCatalog,
 	variants VariantCatalog,
 	stock StockAdjuster,
@@ -86,6 +102,9 @@ func NewService(
 	}
 	if settlement == nil {
 		panic("vendor: settlement reader is required")
+	}
+	if orders == nil {
+		panic("vendor: order reader is required")
 	}
 	if products == nil {
 		panic("vendor: product catalog is required")
@@ -113,6 +132,7 @@ func NewService(
 		userReader: userReader,
 		objects:    objects,
 		settlement: settlement,
+		orders:     orders,
 		products:   products,
 		variants:   variants,
 		stock:      stock,
@@ -347,6 +367,31 @@ func isValidVendorTransition(from, to model.VendorStatus) bool {
 	default:
 		return false
 	}
+}
+
+// AdminListVendors returns the marketplace's vendor directory, optionally
+// narrowed to one lifecycle status, newest first.
+func (s *Service) AdminListVendors(ctx context.Context, status *model.VendorStatus, q *pagination.ListQuery) (*pagination.PagedResult[model.Vendor], error) {
+	var result *pagination.PagedResult[model.Vendor]
+	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
+		vendors, total, err := s.repo.ListAll(ctx, status, q)
+		if err != nil {
+			return s.handleError(err, "Failed to list vendors")
+		}
+
+		result = pagination.NewPagedResult(vendors, pagination.NewPage(q.Page, q.PageSize, int(total)))
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Hydrate asset URLs outside the executor; the attach helper only
+	// resolves object lookups and is safe to run without a DB context.
+	for _, v := range result.Items {
+		s.attachAssetURLs(ctx, v)
+	}
+	return result, nil
 }
 
 // AdminGetVendorByID loads any vendor for administration.
