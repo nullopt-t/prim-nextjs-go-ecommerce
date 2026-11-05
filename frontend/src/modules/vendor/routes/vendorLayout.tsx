@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+"use client";
+
+import { useMemo, useState } from "react";
 import { Link } from "@/shared/i18n/navigation";
 import {
   LayoutDashboard,
@@ -10,58 +12,63 @@ import {
   ShieldCheck,
   Menu,
   X,
-  UserCheck
 } from "lucide-react";
-import { type Vendor } from "../data/mockVendorData";
-import { vendorService } from "@/modules/vendor/api/vendorService";
 import { useTranslations } from "next-intl";
-
+import { ErrorState } from "@/shared/ui/errorState";
 import { VendorProvider, useVendorContext } from "./vendorContext";
 
 function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
   const t = useTranslations("vendor");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { vendor: selectedVendor, setSelectedVendor, vendors, setVendors } = useVendorContext();
-
-  useEffect(() => {
-    let isMounted = true;
-    vendorService.getVendors().then((res) => {
-      if (!isMounted) return;
-      const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
-      if (list.length > 0) {
-        setVendors(list);
-        setSelectedVendor((prev) => {
-          const matching = list.find((v: Vendor) => v.id === prev.id);
-          return matching || list[0];
-        });
-      }
-    }).catch(() => {});
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const { vendor, loading, loadError, refreshVendor } = useVendorContext();
 
   const navItems = [
     { label: t("layout.nav.dashboard"), path: "/vendor/dashboard", icon: LayoutDashboard },
     { label: t("layout.nav.products"), path: "/vendor/products", icon: Package },
     { label: t("layout.nav.inventory"), path: "/vendor/inventory", icon: Boxes },
     { label: t("layout.nav.orders"), path: "/vendor/orders", icon: ShoppingBag },
-    { label: t("layout.nav.payouts"), path: "/vendor/payouts", icon: DollarSign }
+    { label: t("layout.nav.payouts"), path: "/vendor/payouts", icon: DollarSign },
   ];
+
+  const statusMessage = useMemo(() => {
+    if (!vendor) return "";
+    if (vendor.status === "pending") return t("statusPending");
+    if (vendor.status === "suspended") return t("statusSuspended");
+    if (vendor.status === "rejected") return t("statusRejected");
+    return "";
+  }, [t, vendor]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-2 border-accent-brand border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (loadError || !vendor) {
+    return (
+      <div className="mx-auto max-w-3xl p-4 md:p-8">
+        <ErrorState
+          title={t("profileLoadTitle")}
+          description={loadError?.message || t("profileLoadDescription")}
+          onRetry={() => void refreshVendor()}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-secondary/15 text-foreground flex flex-col font-sans">
-      {/* Top Navigation Bar */}
       <header className="h-16 bg-background border-b border-border sticky top-0 z-40 px-4 lg:px-6 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-4">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="lg:hidden p-2 text-muted-foreground hover:text-foreground"
+            aria-label={t("layout.menu")}
           >
             {isMobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
-
           <Link href="/" className="flex items-center gap-2 group hover:opacity-90 transition-opacity">
             <span dir="ltr" className="font-black text-xl tracking-tighter text-foreground">
               PRI<span className="text-accent-brand">M</span>
@@ -75,28 +82,10 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
           </Link>
         </div>
 
-        {/* Vendor Selector & Shortcuts */}
         <div className="flex items-center gap-3">
-          {/* Vendor Active Account Select */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-secondary/40 border border-border rounded-xl text-xs">
-            <UserCheck className="size-3.5 text-accent-brand" />
-            <span className="text-muted-foreground">{t("layout.store")}</span>
-            <select
-              value={selectedVendor.id}
-              onChange={(e) => {
-                const found = vendors.find((v: Vendor) => v.id === e.target.value);
-                if (found) setSelectedVendor(found);
-              }}
-              className="bg-transparent font-semibold text-foreground focus:outline-none cursor-pointer"
-            >
-              {vendors.map((v: Vendor) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
+          <span className="hidden sm:inline-flex rounded-full border border-border bg-secondary/40 px-3 py-1 text-xs font-semibold text-muted-foreground">
+            {vendor.storeName}
+          </span>
           <Link
             href="/portal"
             className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-accent-brand/10 text-accent-brand border border-accent-brand/20 hover:bg-accent-brand/20 transition-colors"
@@ -104,7 +93,6 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
             <ShieldCheck className="size-3.5" />
             <span>{t("layout.routeManager")}</span>
           </Link>
-
           <Link
             href="/"
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-secondary text-foreground border border-border hover:bg-secondary/80 transition-colors"
@@ -116,7 +104,6 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar Navigation */}
         <aside
           className={`${
             isMobileMenuOpen ? "block fixed inset-0 z-50 top-16 bg-background" : "hidden"
@@ -126,16 +113,15 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
             <div className="text-[10px] font-bold text-accent-brand uppercase tracking-wider">
               {t("layout.activeAccount")}
             </div>
-            <div className="font-bold text-sm text-foreground mt-0.5">{selectedVendor.name}</div>
-            <div className="text-xs text-muted-foreground">{selectedVendor.email}</div>
+            <div className="font-bold text-sm text-foreground mt-0.5">{vendor.storeName}</div>
+            <div className="text-xs text-muted-foreground">{vendor.slug}</div>
             <div className="mt-2 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
               <span>{t("layout.commissionRate")}</span>
-              <span className="font-bold">{selectedVendor.commissionRate}%</span>
+              <span className="font-bold">{(vendor.commissionRateBps / 100).toFixed(2)}%</span>
             </div>
-            {(selectedVendor as Vendor)?.balance !== undefined && (
-              <div className="mt-1 text-[11px] font-medium text-muted-foreground flex items-center justify-between">
-                <span>{t("layout.availableBalance")}</span>
-                <span className="font-bold text-foreground">EGP {Number((selectedVendor as Vendor)?.balance).toFixed(2)}</span>
+            {statusMessage && (
+              <div className="mt-2 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                {statusMessage}
               </div>
             )}
           </div>
@@ -171,10 +157,7 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
           </div>
         </aside>
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
       </div>
     </div>
   );
@@ -187,4 +170,3 @@ export function VendorLayout({ children }: { children?: React.ReactNode }) {
     </VendorProvider>
   );
 }
-

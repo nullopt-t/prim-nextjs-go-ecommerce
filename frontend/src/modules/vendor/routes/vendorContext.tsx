@@ -1,86 +1,82 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { vendorService } from "@/modules/vendor/api/vendorService";
-import { INITIAL_VENDORS } from "../data/mockVendorData";
+import type { Vendor } from "@/modules/vendor/types";
 
-export interface Vendor {
-  id: string;
-  name: string;
-  owner?: string;
-  email: string;
-  rating?: number;
-  commissionRate: number;
-  balance?: number;
-  status?: string;
-  totalSales?: number;
-  joinedDate?: string;
-}
+export type { Vendor } from "@/modules/vendor/types";
 
 interface VendorContextType {
-  vendor: Vendor;
-  selectedVendor: Vendor;
-  setSelectedVendor: React.Dispatch<React.SetStateAction<Vendor>>;
-  vendors: Vendor[];
-  setVendors: React.Dispatch<React.SetStateAction<Vendor[]>>;
-  refreshVendors: () => Promise<void>;
+  vendor: Vendor | null;
+  refreshVendor: () => Promise<void>;
   loading: boolean;
+  /** 404 from /api/v1/vendor/profile means there is no merchant profile yet. */
+  notRegistered: boolean;
+  /** Vendor profile load failed before the server could answer. */
+  loadError: Error | null;
 }
 
-const defaultVendor: Vendor = INITIAL_VENDORS[0];
-
 const VendorContext = createContext<VendorContextType>({
-  vendor: defaultVendor,
-  selectedVendor: defaultVendor,
-  setSelectedVendor: () => {},
-  vendors: INITIAL_VENDORS,
-  setVendors: () => {},
-  refreshVendors: async () => {},
-  loading: false,
+  vendor: null,
+  refreshVendor: async () => {},
+  loading: true,
+  notRegistered: false,
+  loadError: null,
 });
 
-export function VendorProvider({ children }: { children: React.ReactNode }) {
-  const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
-  const [selectedVendor, setSelectedVendor] = useState<Vendor>(INITIAL_VENDORS[0]);
-  const [loading, setLoading] = useState(true);
+const PROFILE_ENDPOINT = "/api/v1/vendor/profile";
 
-  const loadVendors = async () => {
+function isVendorNotFound(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /vendor not found|HTTP Error 404/i.test(message);
+}
+
+export function VendorProvider({ children }: { children: React.ReactNode }) {
+  const [vendor, setVendor] = useState<Vendor | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notRegistered, setNotRegistered] = useState(false);
+  const [loadError, setLoadError] = useState<Error | null>(null);
+
+  const refreshVendor = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
     try {
-      const res = await vendorService.getVendors();
-      const data = Array.isArray(res) ? res : (res as { data?: unknown })?.data;
-      const list: Vendor[] = Array.isArray(data) ? data : [];
-      if (list.length > 0) {
-        setVendors(list);
-        setSelectedVendor((prev) => list.find((v: Vendor) => v.id === prev.id) || list[0]);
+      const response = await vendorService.getProfile();
+      setVendor(response.data);
+      setNotRegistered(false);
+    } catch (error) {
+      if (isVendorNotFound(error)) {
+        setVendor(null);
+        setNotRegistered(true);
+      } else {
+        setLoadError(error instanceof Error ? error : new Error(String(error)));
       }
-    } catch {
-      // Graceful fallback
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadVendors();
   }, []);
 
-  return (
-    <VendorContext.Provider
-      value={{
-        vendor: selectedVendor,
-        selectedVendor,
-        setSelectedVendor,
-        vendors,
-        setVendors,
-        refreshVendors: loadVendors,
-        loading,
-      }}
-    >
-      {children}
-    </VendorContext.Provider>
+  useEffect(() => {
+    void refreshVendor();
+  }, [refreshVendor]);
+
+  const value = useMemo(
+    () => ({ vendor, refreshVendor, loading, notRegistered, loadError }),
+    [vendor, refreshVendor, loading, notRegistered, loadError],
   );
+
+  return <VendorContext.Provider value={value}>{children}</VendorContext.Provider>;
 }
 
 export function useVendorContext() {
   return useContext(VendorContext);
 }
+
+export { PROFILE_ENDPOINT };
