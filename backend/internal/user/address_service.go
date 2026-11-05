@@ -171,11 +171,7 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 	// only one "first address" wins the default flag (the partial unique index
 	// on addresses(user_id) WHERE is_default is the backstop).
 	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
-		tx, err := database.RequireTx(ctx)
-		if err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock((hashtext($1::text))::bigint)`, userID.String()); err != nil {
+		if err := s.repo.LockUserAddresses(ctx, userID); err != nil {
 			return err
 		}
 

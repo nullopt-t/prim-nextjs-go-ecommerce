@@ -26,6 +26,20 @@ func NewAddressRepository() *AddressRepository {
 	return &AddressRepository{}
 }
 
+// LockUserAddresses serializes concurrent address operations for a given user
+// via a PostgreSQL transaction-scoped advisory lock. Mandates an active transaction.
+func (r *AddressRepository) LockUserAddresses(ctx context.Context, userID uuid.UUID) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock((hashtext($1::text))::bigint)`, userID.String())
+	if err != nil {
+		return fmt.Errorf("lock user addresses: %w", err)
+	}
+	return nil
+}
+
 // CountByUser returns the count of non-deleted addresses for a user.
 // Used during creation to determine if the new address should automatically become the default address.
 func (r *AddressRepository) CountByUser(
