@@ -219,11 +219,12 @@ func (h *OrderHandler) StreamEvents(c *gin.Context) {
 				eventType = "order.created"
 			}
 			var payload any
-			if msg.Type == "stock.updated" && msg.Stock != nil {
+			switch {
+			case msg.Type == "stock.updated" && msg.Stock != nil:
 				payload = msg.Stock
-			} else if msg.Order != nil {
+			case msg.Order != nil:
 				payload = msg.Order
-			} else {
+			default:
 				payload = msg
 			}
 

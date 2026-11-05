@@ -334,13 +334,7 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID uuid.UUID, in Upda
 				WithCode(errcode.CodeVendorNotAuthorizedForAction)
 		}
 
-		fields := UpdateVendorFields{
-			StoreName:       in.StoreName,
-			Description:     in.Description,
-			LogoObjectID:    in.LogoObjectID,
-			BannerObjectID:  in.BannerObjectID,
-			BankAccountInfo: in.BankAccountInfo,
-		}
+		fields := UpdateVendorFields(in)
 
 		updated, err = s.repo.Update(ctx, existing.ID, fields)
 		return err
