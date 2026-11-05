@@ -2502,9 +2502,11 @@
       "slugPlaceholder": "amrs-gadgets",
       "storeName": "Store Name",
       "storeNamePlaceholder": "Amr's Gadgets",
+      "subtitle": "Sell on the marketplace. Submit your store profile to start listing products.",
       "submit": "Submit for Review",
       "submitFailed": "The store application could not be submitted.",
-      "success": "Store application submitted. Our team will review it shortly."
+      "success": "Store application submitted. Our team will review it shortly.",
+      "title": "Open Your Store"
     },
     "products": {
       "addTitle": "Add Vendor Product",
