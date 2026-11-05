@@ -126,6 +126,7 @@
       "done": "Done",
       "export": "Export",
       "link": "Link",
+      "refresh": "Refresh",
       "reactivate": "Reactivate Account",
       "save": "Save",
       "suspend": "Suspend Account"
@@ -425,7 +426,8 @@
         "sessions": "Sessions",
         "settings": "Settings",
         "system": "System",
-        "usersStaff": "Users & Staff"
+        "usersStaff": "Users & Staff",
+        "vendors": "Vendors"
       },
       "signOut": "Sign Out",
       "storeConfiguration": "Store Configuration",
@@ -1141,7 +1143,8 @@
       "suspended": "Suspended",
       "unknown": "Unknown",
       "unverified": "Unverified",
-      "verified": "Verified"
+      "verified": "Verified",
+      "rejected": "Rejected"
     },
     "system": {
       "infrastructure": {
@@ -1190,6 +1193,67 @@
       "statusOnline": "All Systems Operational",
       "subtitle": "Live infrastructure operational metrics and service health.",
       "title": "System & Infrastructure"
+    },
+    "vendors": {
+      "actions": {
+        "activate": "Activate",
+        "approve": "Approve",
+        "markPaid": "Mark Paid",
+        "markProcessing": "Mark Processing",
+        "reject": "Reject",
+        "suspend": "Suspend",
+        "view": "View"
+      },
+      "back": "Back",
+      "colAction": "Actions",
+      "colAmount": "Amount",
+      "colCommission": "Commission",
+      "colId": "Payout ID",
+      "colRegistered": "Registered",
+      "colStatus": "Status",
+      "colStore": "Store",
+      "colTotal": "Total",
+      "commission": "Commission",
+      "commissionHint": "Commission rate applied to future orders, in percent.",
+      "commissionInvalid": "Enter a commission rate between 0 and 100.",
+      "empty": "No vendors found.",
+      "loadDescription": "Your vendor directory could not be loaded.",
+      "loadTitle": "Vendors unavailable",
+      "payouts": {
+        "actions": {
+          "approved": "Approve",
+          "markPaid": "Mark Paid",
+          "markProcessing": "Mark Processing",
+          "paid": "Mark Paid",
+          "processing": "Mark Processing",
+          "requested": "Approve"
+        },
+        "amount": "Amount",
+        "colAction": "Actions",
+        "colAmount": "Amount",
+        "colId": "Payout ID",
+        "colStatus": "Status",
+        "empty": "No payouts yet.",
+        "markPaid": "Mark Paid",
+        "markProcessing": "Mark Processing",
+        "requested": "Requested",
+        "status": "Status",
+        "subtitle": "Payouts tied to delivered orders awaiting settlement.",
+        "title": "Payouts",
+        "transitionFailed": "The payout transition failed."
+      },
+      "payoutsSubtitle": "Payouts tied to delivered orders awaiting settlement.",
+      "payoutsTitle": "Payouts",
+      "registered": "Registered",
+      "slug": "Slug",
+      "statusTitle": "Vendor Access",
+      "store": "Store",
+      "subtitle": "Review marketplace applications and manage seller access.",
+      "title": "Vendor Management",
+      "toast": {
+        "statusFailed": "The vendor status could not be updated.",
+        "statusUpdated": "Vendor status updated."
+      }
     }
   },
   "auth": {

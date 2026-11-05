@@ -184,6 +184,32 @@ export interface DailySales {
   orders: number;
 }
 
+export interface AdminVendor {
+  id: string;
+  userId: string;
+  storeName: string;
+  slug: string;
+  description?: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  commissionRateBps: number;
+  status: "pending" | "active" | "suspended" | "rejected" | string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminPayout {
+  id: string;
+  vendorId: string;
+  amount: number;
+  currency: string;
+  status: "requested" | "approved" | "processing" | "paid" | "rejected" | string;
+  notes?: string;
+  snapshotAvailableBalance: number;
+  createdAt: string;
+  processedAt?: string;
+}
+
 export interface AdminDashboardOverview {
   totalRevenue: number;
   totalOrders: number;

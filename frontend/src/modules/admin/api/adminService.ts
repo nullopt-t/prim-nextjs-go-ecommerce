@@ -8,6 +8,8 @@ import type {
   AdminDashboardOverview,
   AdminMedia,
   AdminPayment,
+  AdminPayout,
+  AdminVendor,
   InventoryLedger,
   InventoryStock,
 } from "@/modules/admin/types";
@@ -17,6 +19,8 @@ export type {
   AdminDashboardOverview,
   AdminMedia,
   AdminPayment,
+  AdminPayout,
+  AdminVendor,
   InventoryLedger,
   InventoryStock,
 } from "@/modules/admin/types";
@@ -224,6 +228,37 @@ export const adminService = {
   ): Promise<ApiMessageResponse> => {
     const payload = typeof data === "string" ? { trackingNumber: data } : data;
     return api.patch<ApiMessageResponse>(`/api/v1/admin/orders/${id}/tracking`, payload);
+  },
+
+  // Vendors Management
+  getVendors: async (params?: { status?: string; page?: number; pageSize?: number }): Promise<ApiPaginatedResponse<AdminVendor>> => {
+    const query = new URLSearchParams();
+    if (params?.status && params.status !== "all") query.set("status", params.status);
+    if (params?.page) query.set("page", String(params.page));
+    if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+    const qs = query.toString();
+    const endpoint = `/api/v1/admin/vendors${qs ? `?${qs}` : ""}`;
+    return api.get<ApiPaginatedResponse<AdminVendor>>(endpoint);
+  },
+
+  getVendorById: async (id: string): Promise<ApiResponse<AdminVendor>> => {
+    return api.get<ApiResponse<AdminVendor>>(`/api/v1/admin/vendors/${id}`);
+  },
+
+  updateVendorStatus: async (id: string, status: string): Promise<ApiResponse<AdminVendor>> => {
+    return api.patch<ApiResponse<AdminVendor>>(`/api/v1/admin/vendors/${id}/status`, { status });
+  },
+
+  updateVendorCommission: async (id: string, rateBps: number): Promise<ApiResponse<AdminVendor>> => {
+    return api.patch<ApiResponse<AdminVendor>>(`/api/v1/admin/vendors/${id}/commission`, { rateBps });
+  },
+
+  getVendorPayouts: async (): Promise<{ data: AdminPayout[] }> => {
+    return api.get<{ data: AdminPayout[] }>(`/api/v1/admin/vendors/payouts`);
+  },
+
+  transitionVendorPayout: async (id: string, status: string, notes?: string): Promise<ApiResponse<AdminPayout>> => {
+    return api.patch<ApiResponse<AdminPayout>>(`/api/v1/admin/vendors/payouts/${id}/transition`, { status, notes });
   },
 
   // Dashboard Overview

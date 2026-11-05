@@ -10,6 +10,8 @@ export { AdminInventory } from "./routes/inventory";
 export { AdminOrders } from "./routes/orders";
 export { AdminOrderDetails } from "./routes/orderDetails";
 export { AdminCustomers } from "./routes/customers";
+export { AdminVendors } from "./routes/vendors";
+export { AdminVendorDetail } from "./routes/vendorDetail";
 export { AdminPayments } from "./routes/payments";
 export { AdminPromotions } from "./routes/promotions";
 export { AdminSettings } from "./routes/settings";

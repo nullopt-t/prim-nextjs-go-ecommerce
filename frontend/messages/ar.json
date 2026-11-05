@@ -126,6 +126,7 @@
       "done": "تم",
       "export": "تصدير",
       "link": "ربط",
+      "refresh": "تحديث",
       "reactivate": "إعادة تفعيل الحساب",
       "save": "حفظ",
       "suspend": "تعليق الحساب"
@@ -425,7 +426,8 @@
         "sessions": "الجلسات",
         "settings": "الإعدادات",
         "system": "النظام",
-        "usersStaff": "المستخدمون والموظفون"
+        "usersStaff": "المستخدمون والموظفون",
+        "vendors": "البائعون"
       },
       "signOut": "تسجيل الخروج",
       "storeConfiguration": "إعدادات المتجر",
@@ -1141,7 +1143,8 @@
       "suspended": "معلق",
       "unknown": "غير معروف",
       "unverified": "غير موثّق",
-      "verified": "موثّق"
+      "verified": "موثّق",
+      "rejected": "مرفوض"
     },
     "system": {
       "infrastructure": {
@@ -1190,6 +1193,67 @@
       "statusOnline": "جميع الأنظمة تعمل بكفاءة",
       "subtitle": "مقاييس تشغيل البنية التحتية وحالة الخدمات المباشرة.",
       "title": "النظام والبنية التحتية"
+    },
+    "vendors": {
+      "actions": {
+        "activate": "تفعيل",
+        "approve": "موافقة",
+        "markPaid": "تم الدفع",
+        "markProcessing": "تم المعالجة",
+        "reject": "رفض",
+        "suspend": "تعليق",
+        "view": "عرض"
+      },
+      "back": "رجوع",
+      "colAction": "إجراءات",
+      "colAmount": "المبلغ",
+      "colCommission": "العمولة",
+      "colId": "معرّف الدفعة",
+      "colRegistered": "تاريخ التسجيل",
+      "colStatus": "الحالة",
+      "colStore": "المتجر",
+      "colTotal": "المجموع",
+      "commission": "العمولة",
+      "commissionHint": "معدل العمولة المطبق على الطلبات القادمة بالنسبة المئوية.",
+      "commissionInvalid": "أدخل نسبة عمولة بين 0 و 100.",
+      "empty": "لا توجد بائعين.",
+      "loadDescription": "تعذّر تحميل دليل البائعين.",
+      "loadTitle": "متوفر البائعون",
+      "payouts": {
+        "actions": {
+          "approved": "موافقة",
+          "markPaid": "تم الدفع",
+          "markProcessing": "تم المعالجة",
+          "paid": "تم الدفع",
+          "processing": "تم المعالجة",
+          "requested": "موافقة"
+        },
+        "amount": "المبلغ",
+        "colAction": "إجراءات",
+        "colAmount": "المبلغ",
+        "colId": "معرّف الدفعة",
+        "colStatus": "الحالة",
+        "empty": "لا توجد مدفوعات بعد.",
+        "markPaid": "تم الدفع",
+        "markProcessing": "تم المعالجة",
+        "requested": "مطلوب",
+        "status": "الحالة",
+        "subtitle": "مدفوعات مرتبطة بطلبيات تم التسليم بانتظار التسوية.",
+        "title": "المدفوعات",
+        "transitionFailed": "تعذّر تنفيذ تحويل الدفعة."
+      },
+      "payoutsSubtitle": "مدفوعات مرتبطة بطلبيات تم التسليم بانتظار التسوية.",
+      "payoutsTitle": "المدفوعات",
+      "registered": "تاريخ التسجيل",
+      "slug": "الرابط",
+      "statusTitle": "وصول البائع",
+      "store": "المتجر",
+      "subtitle": "راجع طلبات المتاجر وادارة وصول البائعين.",
+      "title": "إدارة البائعين",
+      "toast": {
+        "statusFailed": "تعذّر تحديث حالة البائع.",
+        "statusUpdated": "تم تحديث حالة البائع."
+      }
     }
   },
   "auth": {

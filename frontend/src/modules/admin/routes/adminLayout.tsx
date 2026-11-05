@@ -26,6 +26,7 @@ import {
   Moon,
   Languages,
   Bell,
+  Store,
   type LucideIcon,
 } from "lucide-react";
 import { useTheme } from "@/shared/theme";
@@ -224,6 +225,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
     { nameKey: "layout.nav.products", path: "/admin/products", icon: Package },
     { nameKey: "layout.nav.categories", path: "/admin/categories", icon: FolderTree },
     { nameKey: "layout.nav.brands", path: "/admin/brands", icon: Tag },
+    { nameKey: "layout.nav.vendors", path: "/admin/vendors", icon: Store },
     { nameKey: "layout.nav.inventory", path: "/admin/inventory", icon: Boxes, badge: "Low Stock", badgeKey: "layout.badges.lowStock" },
     { nameKey: "layout.nav.mediaLibrary", path: "/admin/media", icon: Image },
     { nameKey: "layout.nav.usersStaff", path: "/admin/customers", icon: Users },
