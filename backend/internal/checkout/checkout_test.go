@@ -50,11 +50,11 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/notifier"
 	"github.com/nullopt-t/prim-backend/internal/object"
-	"github.com/nullopt-t/prim-backend/internal/vendors"
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/user"
+	"github.com/nullopt-t/prim-backend/internal/vendors"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
@@ -1329,6 +1329,180 @@ func (s *CheckoutTestSuite) TestApplyCoupon_Red_EmptyCode() {
 	w := s.postApplyCoupon(sessionID, checkout.ApplyCouponRequest{Code: ""})
 	s.Require().Equal(http.StatusBadRequest, w.Code)
 	s.Equal("VALIDATION_FAILED", s.decodeError(w).Code)
+}
+
+// orderItemRow is one persisted order line, including the vendor attribution
+// and the frozen vendor earning recorded at checkout time.
+type orderItemRow struct {
+	ID              uuid.UUID
+	VariantID       uuid.UUID
+	Quantity        int
+	PriceAtPurchase int64
+	VendorID        *uuid.UUID
+	VendorEarning   int64
+}
+
+// seedVendorProfile inserts a vendor user plus a vendor profile row in the
+// requested lifecycle status (e.g. "active" or "suspended").
+func (s *CheckoutTestSuite) seedVendorProfile(status string) uuid.UUID {
+	ctx := context.Background()
+	vendorUserID := uuid.New()
+	_, err := s.db.Exec(ctx, `
+		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
+		VALUES ($1, $2, $3, 'vendor', true, 'active')
+	`, vendorUserID, "vendor_"+uuid.NewString()+"@example.com", "Vendor Seller")
+	s.Require().NoError(err)
+
+	vendorID := uuid.New()
+	_, err = s.db.Exec(ctx, `
+		INSERT INTO vendors (id, user_id, store_name, slug, commission_rate_bps, status)
+		VALUES ($1, $2, $3, $4, 1000, $5::vendor_status)
+	`, vendorID, vendorUserID, "Vendor Store "+uuid.NewString(), "vendor-store-"+uuid.NewString(), status)
+	s.Require().NoError(err)
+	return vendorID
+}
+
+// attachVendorProduct marks the seeded catalog product as owned by the vendor.
+func (s *CheckoutTestSuite) attachVendorProduct(vendorID uuid.UUID) {
+	_, err := s.db.Exec(context.Background(), `UPDATE products SET vendor_id = $1 WHERE id = $2`, vendorID, s.productID)
+	s.Require().NoError(err)
+}
+
+// seedVendorVariant creates a priced, in-stock variant under the vendor-owned
+// product and returns its id.
+func (s *CheckoutTestSuite) seedVendorVariant(price int64, stock int) uuid.UUID {
+	ctx := context.Background()
+	p := price
+	currency := defaultCurrency
+	v, err := s.variantService.CreateVariant(ctx, &variant.CreateVariantInput{
+		ProductID:  s.productID,
+		SKU:        func() *string { sku := "SKU-" + uuid.NewString(); return &sku }(),
+		Title:      "Vendor Widget",
+		Price:      &p,
+		Currency:   &currency,
+		Attributes: map[string]any{"color": "vendor-color-" + uuid.NewString()},
+	})
+	s.Require().NoError(err)
+	if stock > 0 {
+		_, err = s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
+			VariantID: v.ID,
+			Quantity:  stock,
+			Reason:    "restock",
+		})
+		s.Require().NoError(err)
+	}
+	return v.ID
+}
+
+// fetchOrderItems loads the persisted lines of an order, including the frozen
+// vendor attribution and earning.
+func (s *CheckoutTestSuite) fetchOrderItems(orderID uuid.UUID) []orderItemRow {
+	ctx := context.Background()
+	rows, err := s.db.Query(ctx, `
+		SELECT id, variant_id, quantity, price_at_purchase, vendor_id, vendor_earning
+		FROM order_items
+		WHERE order_id = $1
+	`, orderID)
+	s.Require().NoError(err)
+	defer rows.Close()
+
+	var items []orderItemRow
+	for rows.Next() {
+		var item orderItemRow
+		var vendorID *uuid.UUID
+		if err := rows.Scan(&item.ID, &item.VariantID, &item.Quantity, &item.PriceAtPurchase, &vendorID, &item.VendorEarning); err != nil {
+			s.Require().NoError(err)
+		}
+		item.VendorID = vendorID
+		items = append(items, item)
+	}
+	s.Require().NoError(rows.Err())
+	return items
+}
+
+// TestCheckout_Success_VendorOwnedLine_FreezeVendorEarning runs the canonical
+// happy path against a vendor-owned product: the placed order line records the
+// selling vendor and the frozen vendor earning (line total minus the platform
+// commission), and the COD payment commits the stock deduction.
+func (s *CheckoutTestSuite) TestCheckout_Success_VendorOwnedLine_FreezeVendorEarning() {
+	ctx := context.Background()
+
+	vendorID := s.seedVendorProfile("active")
+	s.attachVendorProduct(vendorID)
+	variantID := s.seedVendorVariant(2999, 10)
+
+	buyerID, sessionID := s.seedUser()
+	addressID := s.seedAddress(buyerID)
+	s.addToCart(buyerID, variantID, 2) // gross = 5998, COD commits stock
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
+		ShippingAddressID: addressID,
+		PaymentMethod:     "cash_on_delivery",
+	})
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var resp dataEnvelope[checkout.CheckoutResponse]
+	s.decodeSuccess(w, &resp)
+	orderID, err := uuid.Parse(resp.Data.OrderID)
+	s.Require().NoError(err)
+
+	items := s.fetchOrderItems(orderID)
+	s.Require().Len(items, 1)
+	item := items[0]
+	s.Require().NotNil(item.VendorID)
+	s.Equal(vendorID, *item.VendorID)
+	s.Equal(int64(2), int64(item.Quantity))
+	s.Equal(int64(2999), item.PriceAtPurchase)
+	s.Equal(int64(5998), item.PriceAtPurchase*int64(item.Quantity))
+	// Line total 5998 with a 10% platform commission (1000 bps) freezes 5399
+	// minor units for the vendor; platform lines keep their full earning.
+	s.Equal(int64(5399), item.VendorEarning)
+
+	// COD payment confirms the purchase immediately: stock moves from on-hand
+	// to sold and no reservation is left outstanding.
+	stock := s.fetchStock(variantID)
+	s.Equal(8, stock.OnHandQuantity)
+	s.Equal(0, stock.ReservedQuantity)
+	s.Equal(8, stock.AvailableQuantity)
+
+	// The attributed product is no longer platform-owned for this checkout.
+	var ownerID uuid.UUID
+	err = s.db.QueryRow(ctx, `SELECT vendor_id FROM products WHERE id = $1`, s.productID).Scan(&ownerID)
+	s.Require().NoError(err)
+	s.Require().NotEqual(uuid.Nil, ownerID)
+
+	// Restore the shared seeded product to the platform-owned baseline.
+	_, err = s.db.Exec(ctx, `UPDATE products SET vendor_id = NULL WHERE id = $1`, s.productID)
+	s.Require().NoError(err)
+}
+
+// TestCheckout_Red_SuspendedVendorBlocked proves the fail-closed seller gate:
+// a checkout line whose vendor is suspended is rejected before any order,
+// payment, reservation, or cart-clearance side effect is committed.
+func (s *CheckoutTestSuite) TestCheckout_Red_SuspendedVendorBlocked() {
+	vendorID := s.seedVendorProfile("suspended")
+	s.attachVendorProduct(vendorID)
+	variantID := s.seedVendorVariant(2999, 10)
+
+	buyerID, sessionID := s.seedUser()
+	addressID := s.seedAddress(buyerID)
+	s.addToCart(buyerID, variantID, 1)
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
+		ShippingAddressID: addressID,
+		PaymentMethod:     "cash_on_delivery",
+	})
+	s.Require().Equal(http.StatusBadRequest, w.Code)
+	s.Equal("INVALID_INPUT", s.decodeError(w).Code)
+
+	s.Equal(0, s.countOrdersForUser(buyerID))
+	s.Equal(0, s.countPaymentsForUser(buyerID))
+	s.Equal(0, s.countActiveReservations(variantID))
+	s.Equal(1, s.countActiveCartItems(buyerID))
+
+	// Restore the shared seeded product to the platform-owned baseline.
+	_, err := s.db.Exec(context.Background(), `UPDATE products SET vendor_id = NULL WHERE id = $1`, s.productID)
+	s.Require().NoError(err)
 }
 
 func TestCheckoutTestSuite(t *testing.T) {
