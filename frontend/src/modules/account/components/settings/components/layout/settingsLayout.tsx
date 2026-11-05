@@ -3,7 +3,6 @@
 import { useTranslations } from "next-intl";
 import PersonalInfoForm from "@/modules/account/components/settings/components/ui/personalInfoForm";
 import Preferences from "@/modules/account/components/settings/components/ui/preferences";
-import DangerZone from "@/modules/account/components/settings/components/ui/danger";
 
 interface SectionCardProps {
   title: string;
@@ -55,15 +54,6 @@ export default function SettingsLayout() {
         subtitle={t("preferences.subtitle")}
       >
         <Preferences />
-      </SectionCard>
-
-      {/* ── Danger Zone ── */}
-      <SectionCard
-        title={t("danger.title")}
-        subtitle={t("danger.subtitle")}
-        titleClassName="text-destructive font-bold"
-      >
-        <DangerZone />
       </SectionCard>
     </div>
   );

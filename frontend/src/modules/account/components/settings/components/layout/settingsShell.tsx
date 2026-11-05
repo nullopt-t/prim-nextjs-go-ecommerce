@@ -5,7 +5,6 @@ import { Link, usePathname } from "@/shared/i18n/navigation";
 import {
   User,
   Sliders,
-  ShieldAlert,
   MonitorSmartphone,
   ChevronRight,
   ChevronLeft,
@@ -38,14 +37,6 @@ export const settingsSubPages = [
     descKey: "sessions.subtitle",
     icon: MonitorSmartphone,
     isDanger: false,
-  },
-  {
-    id: "danger",
-    path: "/user/settings/danger",
-    labelKey: "danger.title",
-    descKey: "danger.subtitle",
-    icon: ShieldAlert,
-    isDanger: true,
   },
 ] as const;
 
