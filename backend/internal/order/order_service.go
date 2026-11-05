@@ -228,6 +228,8 @@ func (s *OrderService) PlaceOrder(
 			Quantity:        itemInput.Quantity,
 			PriceAtPurchase: itemInput.PriceAtPurchase,
 			ProductSnapshot: itemInput.ProductSnapshot,
+			VendorID:        itemInput.VendorID,
+			VendorEarning:   itemInput.VendorEarning,
 		}
 		orderItems = append(orderItems, item)
 	}
