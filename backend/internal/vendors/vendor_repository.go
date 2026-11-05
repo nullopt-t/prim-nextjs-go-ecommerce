@@ -71,7 +71,7 @@ const vendorColumns = `
 	user_id,
 	store_name,
 	slug,
-	description,
+	COALESCE(description, ''),
 	logo_object_id,
 	banner_object_id,
 	commission_rate_bps,
