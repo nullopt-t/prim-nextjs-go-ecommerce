@@ -2832,11 +2832,22 @@
         "noneDescription": "Ask the marketplace admin to define variation attributes for this category, or sell the product as simple. Free-typed axes often fail with “Variation axis is not defined for this category.”",
         "loading": "Loading the category attributes…",
         "loadFailed": "The category attributes could not be loaded. Check your connection and try again.",
-        "selectLabel": "Variation axes defined for this category"
+        "selectLabel": "Variation axes defined for this category",
+        "rowsIncomplete": "Each attribute needs at least one value. Delete unfinished rows or choose values."
       },
       "attributes": {
-        "rowsIncomplete": "Each attribute needs at least one value. Delete unfinished rows or choose values."
-      }
+        "title": "Attributes",
+        "subtitle": "Add one row per attribute, then pick the values that make up each variant combination.",
+        "add": "Add attribute",
+        "chooseAttribute": "Choose an attribute",
+        "values": "Values",
+        "customValuePlaceholder": "Type a value and add it",
+        "addValue": "Add value",
+        "combinations": "{count, plural, =1 {1 combination} other {# combinations}} will be created as variants."
+      },
+      "readinessTitle": "Listing readiness",
+      "readinessPercent": "{percent}% ready",
+      "autosavedAt": "Draft saved at {time}"
     },
     "clear": "Clear selection"
   },
