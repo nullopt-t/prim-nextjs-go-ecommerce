@@ -6,3 +6,11 @@ backend/bin/
 backend/tmp/
 backend/.env
 backend/.env.*
+
+.freebuff/
+.cursor/
+.windsurf/
+
+# Exclude development plans and reports
+*_REPORT.md
+*_PLAN.md

@@ -101,8 +101,30 @@ logs/
 
 # Task board (kept out of version control)
 NEXT_TASKS.md
+V1_BETA_PLAN.md
+*_REPORT.md
+*_PLAN.md
 
 # Skills & Agent customizations
 .skills/
 skills/
 .agents/
+
+# -----------------------------------------------------------------------------
+# AI tools / assistants (irrelevant to project)
+# -----------------------------------------------------------------------------
+.freebuff/
+.cursor/
+.claude/
+.windsurf/
+.copilot/
+.continue/
+.aider/
+.codeium/
+.tabnine/
+.cody/
+.cline/
+.roo/
+.kilocode/
+.trae/
+.qodo/

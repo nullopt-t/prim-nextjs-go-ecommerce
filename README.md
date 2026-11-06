@@ -1,20 +1,25 @@
 # PRIM
 
+<p align="center">
+  <a href="https://github.com/nullopt-t/prim-nextjs-go-ecommerce/actions/workflows/go.yml"><img src="https://img.shields.io/github/actions/workflow/status/nullopt-t/prim-nextjs-go-ecommerce/go.yml?label=Go%20Backend%20CI&style=flat-square" alt="Go Backend CI"></a>
+  <a href="https://github.com/nullopt-t/prim-nextjs-go-ecommerce/actions/workflows/node.js.yml"><img src="https://img.shields.io/github/actions/workflow/status/nullopt-t/prim-nextjs-go-ecommerce/node.js.yml?label=Frontend%20CI&style=flat-square" alt="Frontend CI"></a>
+  <a href="https://github.com/nullopt-t/prim-nextjs-go-ecommerce/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nullopt-t/prim-nextjs-go-ecommerce?style=flat-square" alt="License"></a>
+  <a href="https://github.com/nullopt-t/prim-nextjs-go-ecommerce/commits/main"><img src="https://img.shields.io/github/last-commit/nullopt-t/prim-nextjs-go-ecommerce/main?style=flat-square" alt="Last commit"></a>
+</p>
+
 PRIM is a bilingual (English / Arabic) e-commerce platform. A Next.js storefront, account area, admin back office, and vendor portal sit on top of a Go REST API, backed by PostgreSQL for data, Redis for cache and sessions, Kafka for notifications, and MinIO for media.
 
 It's meant to be the whole shop, not just a demo: a catalog with variants and inventory, a cart and checkout with coupons and Cash on Delivery, customer accounts with orders and addresses, an admin back office, and a media library. Some parts (the vendor portal, saved payment cards) are intentionally still in progress.
 
 ## What's in the box
 
-**Storefront** — bilingual EN/AR with automatic RTL, catalog browsing and filters, product pages with variants and reviews, a slide-over cart, coupons, wishlist, and checkout with saved addresses. Shipping, tax, the COD fee, available payment methods, and the maintenance/announcement banners all come from the admin settings, so changing them changes the live storefront.
-
-**Account area** (`/user`) — order history and details, addresses, reviews, wishlist, plus profile, preferences, session management, and a danger zone.
-
-**Admin back office** (`/admin`) — dashboard, products and variants, categories, brands, tags, attributes, inventory with an adjustment ledger, orders and tracking, payments and refunds, promotions and redemptions, customers, media library, store settings, and system settings.
-
-**Vendor portal** (`/vendor`) — dashboard, products, inventory, orders, and payouts. This is a frontend prototype backed by mock data; the backend vendor domain hasn't landed yet.
-
-**Backend** — a Gin API organized into per-domain packages (handler → service → repository on a shared transaction runner), passwordless email-OTP auth with Redis sessions, Kafka-driven notifications handled by a separate worker, and MinIO uploads. Swagger docs are generated for both the public and admin surfaces.
+| Surface | Description |
+| --- | --- |
+| **Storefront** | Bilingual EN/AR with automatic RTL, catalog browsing and filters, product pages with variants and reviews, a slide-over cart, coupons, wishlist, and checkout with saved addresses. Shipping, tax, the COD fee, available payment methods, and the maintenance/announcement banners all come from the admin settings. |
+| **Account area** (`/user`) | Order history and details, addresses, reviews, wishlist, plus profile, preferences, session management, and a danger zone. |
+| **Admin back office** (`/admin`) | Dashboard, products and variants, categories, brands, tags, attributes, inventory with an adjustment ledger, orders and tracking, payments and refunds, promotions and redemptions, customers, media library, store settings, and system settings. |
+| **Vendor portal** (`/vendor`) | Dashboard, products, inventory, orders, and payouts. Frontend prototype backed by mock data; the backend vendor domain hasn't landed yet. |
+| **Backend** | Gin API organized into per-domain packages (handler → service → repository on a shared transaction runner), passwordless email-OTP auth with Redis sessions, Kafka-driven notifications handled by a separate worker, and MinIO uploads. Swagger docs are generated for both the public and admin surfaces. |
 
 ## Architecture
 
@@ -80,9 +85,18 @@ make up-d     # or start it in the background
 
 This brings up the storefront, API, worker, PostgreSQL, Redis, Kafka, and MinIO, seeds the media bucket, and runs the migrations. The first build takes a few minutes while Go modules and npm packages download.
 
-Once it's up, open the storefront at <http://localhost:3000>. The API is at <http://localhost:8081>, and a quick health check lives at <http://localhost:8081/health>.
+Once it's up, open the storefront at [http://localhost:3000](http://localhost:3000). The API is at [http://localhost:8081](http://localhost:8081), and a quick health check lives at [http://localhost:8081/health](http://localhost:8081/health).
 
-> **A note on the URL configuration.** `backend/.env` holds the browser-facing `NEXT_PUBLIC_API_URL` plus `MINIO_PUBLIC_URL` and `CLIENT_BASE_URL` (LAN address by default, so the stack is reachable from other devices). Server-side rendering uses `API_URL` to reach the API over the Compose network (`http://api:8081` in dev, `http://api:8080` in prod), so the public URL is never used from inside a container. Change the public values in `backend/.env` and rebuild the frontend after changing them.
+> **URL configuration.** `backend/.env` holds the browser-facing `NEXT_PUBLIC_API_URL` plus `MINIO_PUBLIC_URL` and `CLIENT_BASE_URL`. Server-side rendering uses `API_URL` to reach the API over the Compose network (`http://api:8081` in dev, `http://api:8080` in prod), so the public URL is never used from inside a container. Change the public values in `backend/.env` and rebuild the frontend after changing them.
+
+### Backend documentation
+
+The backend is documented in [`backend/README.md`](./backend/README.md), with deeper operational and architectural notes under [`backend/docs/`](./backend/docs/):
+
+- [`backend/docs/deployment/environment.md`](./backend/docs/deployment/environment.md) — environment loading, production traps, secrets checklist
+- [`backend/docs/adr-vendor-domain.md`](./backend/docs/adr-vendor-domain.md) — multi-vendor domain design decision
+- [`backend/docs/transaction-runner-refactor.md`](./backend/docs/transaction-runner-refactor.md) — context-based executor & transaction architecture
+- [`backend/docs/connection-pool-starvation.md`](./backend/docs/connection-pool-starvation.md) — post-mortem and fix for connection-pool starvation
 
 > **Two stacks.** `make up*` starts the dev stack (`docker-compose.dev.yml`: Next dev server + Air hot reload). `make prod-*` starts the production stack (`backend/docker/docker-compose.prod.yml`: built standalone images). They use separate containers and volumes.
 
@@ -138,9 +152,10 @@ prim/
 │   ├── internal/                # domain packages (auth, catalog, cart, checkout, order, user, setting, ...)
 │   ├── migrations/              # SQL schema + seed data
 │   ├── pkg/                     # shared config, database, storage, logging, mail, broker
-│   ├── configs/                 # config.yaml and Air hot-reload configs
-│   ├── docs/                    # generated Swagger specs (public + admin)
-│   └── seed/                    # seed media for the catalog
+│   ├── configs/                 # Air hot-reload configs
+│   ├── docs/                    # generated Swagger specs (public + admin) + architecture notes
+│   ├── seed/                    # seed media for the catalog
+│   └── README.md                # backend-specific documentation
 ├── frontend/                    # Next.js 16 storefront, account, admin, and vendor apps
 │   ├── messages/                # en.json / ar.json
 │   ├── public/                  # static assets
@@ -155,6 +170,18 @@ prim/
 - The **vendor portal** is frontend-only for now: its pages read from mock data until the vendor backend and API land.
 - **Saved payment methods** are a UI shell; cards aren't persisted yet, and checkout currently runs Cash on Delivery (plus any card option enabled in settings).
 - Admin settings are wired through to real behavior — checkout pricing, the maintenance gate, payment availability, and the storefront's identity and announcement banner all read from the backend settings store.
+
+## Contributing
+
+- Work from `main`; create feature branches and open pull requests.
+- Backend changes must pass `go build ./...`, `go test ./...`, `go vet ./...`, and `go test -race ./...`.
+- Regenerate Swagger specs (`make swagger` from `backend/`) whenever route or doc annotations change.
+- Add migrations under `backend/migrations/` with both `.up.sql` and `.down.sql`; never edit an applied migration.
+- Keep `.env` files out of version control and never commit secrets.
+
+## Security
+
+Never commit `.env` files, credentials, OTP peppers, or SMTP secrets. If you discover a security issue, please disclose it responsibly by opening a private advisory or contacting the maintainers rather than filing a public issue.
 
 ## License
 

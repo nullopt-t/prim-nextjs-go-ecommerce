@@ -29,3 +29,19 @@ dist-ssr
 
 # Local refactor journal (intentionally not committed)
 REFACTOR_LOG.md
+# AI tools / assistants (irrelevant to project)
+.freebuff/
+.cursor/
+.claude/
+.windsurf/
+.copilot/
+.continue/
+.aider/
+.codeium/
+.tabnine/
+.cody/
+.cline/
+.roo/
+.kilocode/
+.trae/
+.qodo/

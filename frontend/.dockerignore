@@ -6,3 +6,7 @@ node_modules
 .env.*
 npm-debug.log*
 README.md
+# Exclude development plans and reports
+*_REPORT.md
+*_PLAN.md
+REFACTOR_LOG.md
