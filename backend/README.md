@@ -158,6 +158,7 @@ All routes are under `/api/v1`.
 | Orders | `GET /orders`, `GET /orders/:id`, `POST /orders/:id/cancel` |
 | Account | `/user/addresses`, `/user/notifications`, `/reviews` |
 | Wishlist | `GET /wishlist`, `POST /wishlist/items`, `DELETE /wishlist/items/:id` |
+| History | `GET /user/history/products`, `POST /user/history/products/:id`, `POST /user/history/products/sync`, `DELETE /user/history/products` |
 | Settings | `GET /settings/public` |
 | Admin | `/admin/products`, `/admin/categories`, `/admin/inventory`, `/admin/orders`, `/admin/payments`, `/admin/promotions`, `/admin/users`, `/admin/media`, `/admin/settings`, `/admin/dashboard` |
 

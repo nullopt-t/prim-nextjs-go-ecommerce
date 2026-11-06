@@ -15,6 +15,7 @@ import { useWishlist } from "@/modules/wishlist/model/useWishlist";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { copyTextToClipboard } from "@/shared/lib/clipboard";
 import { recordRecentlyViewed } from "@/shared/lib/recentlyViewed";
+import { recordProductView } from "@/modules/history/lib/recordProductView";
 
 import type { ProductDetailsEntity, ProductReview, ProductVariant, Review } from "../types";
 import {
@@ -123,10 +124,13 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   }, [id]);
 
   useEffect(() => {
-    if (product?.slug || product?.id) {
+    if (!product?.id) return;
+    if (user?.id) {
+      recordProductView(String(product.id));
+    } else {
       recordRecentlyViewed(String(product.slug || product.id));
     }
-  }, [product?.slug, product?.id]);
+  }, [product?.id, product?.slug, user?.id]);
 
   useEffect(() => {
     let isMounted = true;

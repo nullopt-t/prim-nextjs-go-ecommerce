@@ -21,6 +21,14 @@ export class ApiError extends Error {
   }
 }
 
+export interface ApiRequestOptions extends RequestInit {
+  /**
+   * Suppress the global sign-in redirect for background telemetry. The caller
+   * still receives the 401, but an expired session does not interrupt the page.
+   */
+  skipAuthRedirect?: boolean;
+}
+
 export const getBaseUrl = () => {
   // One env variable for the API base URL: NEXT_PUBLIC_API_URL. It is available
   // on both the server and the browser, so client and server API calls use the
@@ -50,23 +58,24 @@ function handleAuthRedirect() {
 
 export async function request<T = unknown>(
   endpoint: string,
-  options: RequestInit = {}
+  options: ApiRequestOptions = {}
 ): Promise<T> {
   const url = endpoint.startsWith("http") ? endpoint : `${getBaseUrl()}${endpoint}`;
   
   const locale = getActiveLocale();
+  const { skipAuthRedirect = false, headers, ...fetchOptions } = options;
 
   const response = await fetch(url, {
+    ...fetchOptions,
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
       "Accept-Language": locale,
-      ...options.headers,
+      ...headers,
     },
-    ...options,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && !skipAuthRedirect) {
     const isAuthEndpoint =
       endpoint.includes("/auth/me") ||
       endpoint.includes("/auth/challenge") ||
@@ -106,27 +115,27 @@ export async function request<T = unknown>(
 }
 
 export const api = {
-  get: <T = unknown>(endpoint: string, options?: RequestInit) =>
+  get: <T = unknown>(endpoint: string, options?: ApiRequestOptions) =>
     request<T>(endpoint, { method: "GET", ...options }),
-  post: <T = unknown, B = unknown>(endpoint: string, payload?: B, options?: RequestInit) =>
+  post: <T = unknown, B = unknown>(endpoint: string, payload?: B, options?: ApiRequestOptions) =>
     request<T>(endpoint, {
       method: "POST",
       body: payload !== undefined ? JSON.stringify(payload) : undefined,
       ...options,
     }),
-  patch: <T = unknown, B = unknown>(endpoint: string, payload?: B, options?: RequestInit) =>
+  patch: <T = unknown, B = unknown>(endpoint: string, payload?: B, options?: ApiRequestOptions) =>
     request<T>(endpoint, {
       method: "PATCH",
       body: payload !== undefined ? JSON.stringify(payload) : undefined,
       ...options,
     }),
-  put: <T = unknown, B = unknown>(endpoint: string, payload?: B, options?: RequestInit) =>
+  put: <T = unknown, B = unknown>(endpoint: string, payload?: B, options?: ApiRequestOptions) =>
     request<T>(endpoint, {
       method: "PUT",
       body: payload !== undefined ? JSON.stringify(payload) : undefined,
       ...options,
     }),
-  delete: <T = unknown>(endpoint: string, options?: RequestInit) =>
+  delete: <T = unknown>(endpoint: string, options?: ApiRequestOptions) =>
     request<T>(endpoint, { method: "DELETE", ...options }),
   /**
    * Fetches a binary/CSV endpoint with credentials and saves it to disk via an

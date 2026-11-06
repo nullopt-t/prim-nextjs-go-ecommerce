@@ -126,6 +126,11 @@ type RateLimitConfig struct {
 	AuthVerifyRequests int64 `yaml:"auth_verify_requests" env:"RL_AUTH_VERIFY_REQUESTS" env-default:"10"`
 	// AuthVerifyWindow is the sliding window duration (e.g. 1m). Must be > 0.
 	AuthVerifyWindow time.Duration `yaml:"auth_verify_window" env:"RL_AUTH_VERIFY_WINDOW" env-default:"1m"`
+
+	// HistoryWriteRequests is maximum allowed history record/sync requests within HistoryWriteWindow.
+	HistoryWriteRequests int64 `yaml:"history_write_requests" env:"RL_HISTORY_WRITE_REQUESTS" env-default:"120"`
+	// HistoryWriteWindow is the sliding window duration (e.g. 1m). Must be > 0.
+	HistoryWriteWindow time.Duration `yaml:"history_write_window" env:"RL_HISTORY_WRITE_WINDOW" env-default:"1m"`
 }
 
 // ServerConfig configures HTTP listener and environment options.
@@ -264,6 +269,9 @@ func Load(configPath ...string) (Config, error) {
 	}
 	if cfg.RateLimitCfg.AuthVerifyWindow <= 0 {
 		return cfg, fmt.Errorf("rate_limit auth_verify_window must be greater than 0")
+	}
+	if cfg.RateLimitCfg.HistoryWriteWindow <= 0 {
+		return cfg, fmt.Errorf("rate_limit history_write_window must be greater than 0")
 	}
 
 	return cfg, nil

@@ -15,6 +15,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/catalog/review"
 	"github.com/nullopt-t/prim-backend/internal/catalog/tag"
 	"github.com/nullopt-t/prim-backend/internal/checkout"
+	"github.com/nullopt-t/prim-backend/internal/history"
 	"github.com/nullopt-t/prim-backend/internal/http/swagger"
 	"github.com/nullopt-t/prim-backend/internal/notifier"
 	"github.com/nullopt-t/prim-backend/internal/object"
@@ -300,6 +301,18 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	wishlistHandler := wishlist.NewHandler(wishlistService)
 	wishlistRouter := wishlist.NewRouter(wishlistHandler, sessionStore)
 	wishlistRouter.MapRoutes(v1)
+
+	// browsing history
+	historyRepo := history.NewRepository()
+	historyService := history.NewService(txRunner, historyRepo, app.storageProvider)
+	historyHandler := history.NewHandler(historyService)
+	historyRouter := history.NewRouter(
+		historyHandler,
+		sessionStore,
+		rateLimiter,
+		app.config.RateLimitCfg,
+	)
+	historyRouter.MapRoutes(v1)
 
 	authHandler := auth.NewAuthHandler(
 		authService,

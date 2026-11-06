@@ -2721,6 +2721,293 @@
                 }
             }
         },
+        "/user/history/products": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated customer's recently viewed products, newest first. Unpublished, deleted, and inactive-vendor products are omitted.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "History"
+                ],
+                "summary": "List recently viewed products",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Maximum products to return (1-50, default 10)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Recently viewed products",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/ViewedProductItem"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid limit",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Deletes every recently viewed product for the authenticated customer.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "History"
+                ],
+                "summary": "Clear browsing history",
+                "responses": {
+                    "204": {
+                        "description": "History cleared"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/history/products/sync": {
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Merges guest product IDs or slugs into the authenticated account after sign-in. Unknown or no-longer-visible products are ignored.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "History"
+                ],
+                "summary": "Merge guest browsing history",
+                "parameters": [
+                    {
+                        "description": "Guest product identifiers, newest first",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/SyncHistoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "History merged",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/SyncHistoryResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or oversized payload",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/TooManyRequestsErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/history/products/{id}": {
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Records or refreshes a product view for the authenticated customer. Repeated views update viewed_at without creating duplicates.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "History"
+                ],
+                "summary": "Record a product view",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "View recorded"
+                    },
+                    "400": {
+                        "description": "Invalid product id",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product not found or not visible",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/TooManyRequestsErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Removes a single product from the authenticated customer's browsing history.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "History"
+                ],
+                "summary": "Delete one recently viewed product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "History item deleted"
+                    },
+                    "400": {
+                        "description": "Invalid product id",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "History item not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/user/notifications": {
             "get": {
                 "description": "Returns a paginated list of in-app notifications localized to the active site language.",
@@ -6683,6 +6970,42 @@
                 }
             }
         },
+        "SyncHistoryRequest": {
+            "type": "object",
+            "properties": {
+                "productIds": {
+                    "description": "Product UUIDs viewed by the guest.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"60000000-0000-0000-0000-000000000001\"]"
+                    ]
+                },
+                "slugs": {
+                    "description": "Product slugs viewed by the guest, newest first.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"macbook-pro-16\"",
+                        "\"wireless-headphones\"]"
+                    ]
+                }
+            }
+        },
+        "SyncHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "synced": {
+                    "description": "Number of products merged into the authenticated account's history.",
+                    "type": "integer",
+                    "example": 2
+                }
+            }
+        },
         "TagResponse": {
             "type": "object",
             "properties": {
@@ -6695,6 +7018,19 @@
                     "description": "Tag label name",
                     "type": "string",
                     "example": "Featured"
+                }
+            }
+        },
+        "TooManyRequestsErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "RATE_LIMIT_EXCEEDED"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Rate limit exceeded, please retry later"
                 }
             }
         },
@@ -7650,6 +7986,46 @@
                 },
                 "merge_cart": {
                     "type": "boolean"
+                }
+            }
+        },
+        "ViewedProductItem": {
+            "type": "object",
+            "properties": {
+                "basePrice": {
+                    "description": "BasePrice is the default variant price in minor units.",
+                    "type": "integer",
+                    "example": 249900
+                },
+                "currency": {
+                    "description": "Currency is the ISO currency code for BasePrice.",
+                    "type": "string",
+                    "example": "EGP"
+                },
+                "productId": {
+                    "description": "ProductID is the catalog product UUID.",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "slug": {
+                    "description": "Slug is the public product URL slug.",
+                    "type": "string",
+                    "example": "macbook-pro-16"
+                },
+                "thumbnailUrl": {
+                    "description": "ThumbnailURL is the public cover image URL when the product has one.",
+                    "type": "string",
+                    "example": "https://cdn.example.com/catalog/products/cover.webp"
+                },
+                "title": {
+                    "description": "Title is the product display title.",
+                    "type": "string",
+                    "example": "MacBook Pro 16"
+                },
+                "viewedAt": {
+                    "description": "ViewedAt is the most recent view timestamp (RFC3339).",
+                    "type": "string",
+                    "example": "2026-11-06T10:00:00Z"
                 }
             }
         },

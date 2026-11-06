@@ -1287,6 +1287,31 @@ definitions:
         example: https://example.com/media/image.webp
         type: string
     type: object
+  SyncHistoryRequest:
+    properties:
+      productIds:
+        description: Product UUIDs viewed by the guest.
+        example:
+        - '["60000000-0000-0000-0000-000000000001"]'
+        items:
+          type: string
+        type: array
+      slugs:
+        description: Product slugs viewed by the guest, newest first.
+        example:
+        - '["macbook-pro-16"'
+        - '"wireless-headphones"]'
+        items:
+          type: string
+        type: array
+    type: object
+  SyncHistoryResponse:
+    properties:
+      synced:
+        description: Number of products merged into the authenticated account's history.
+        example: 2
+        type: integer
+    type: object
   TagResponse:
     properties:
       id:
@@ -1296,6 +1321,15 @@ definitions:
       name:
         description: Tag label name
         example: Featured
+        type: string
+    type: object
+  TooManyRequestsErrorResponse:
+    properties:
+      code:
+        example: RATE_LIMIT_EXCEEDED
+        type: string
+      message:
+        example: Rate limit exceeded, please retry later
         type: string
     type: object
   UnauthorizedErrorResponse:
@@ -1995,6 +2029,38 @@ definitions:
     required:
     - code
     - email
+    type: object
+  ViewedProductItem:
+    properties:
+      basePrice:
+        description: BasePrice is the default variant price in minor units.
+        example: 249900
+        type: integer
+      currency:
+        description: Currency is the ISO currency code for BasePrice.
+        example: EGP
+        type: string
+      productId:
+        description: ProductID is the catalog product UUID.
+        example: 60000000-0000-0000-0000-000000000001
+        type: string
+      slug:
+        description: Slug is the public product URL slug.
+        example: macbook-pro-16
+        type: string
+      thumbnailUrl:
+        description: ThumbnailURL is the public cover image URL when the product has
+          one.
+        example: https://cdn.example.com/catalog/products/cover.webp
+        type: string
+      title:
+        description: Title is the product display title.
+        example: MacBook Pro 16
+        type: string
+      viewedAt:
+        description: ViewedAt is the most recent view timestamp (RFC3339).
+        example: "2026-11-06T10:00:00Z"
+        type: string
     type: object
   WishlistCheckResponse:
     properties:
@@ -3899,6 +3965,187 @@ paths:
       summary: Set address as default
       tags:
       - Addresses
+  /user/history/products:
+    delete:
+      description: Deletes every recently viewed product for the authenticated customer.
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: History cleared
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Clear browsing history
+      tags:
+      - History
+    get:
+      description: Returns the authenticated customer's recently viewed products,
+        newest first. Unpublished, deleted, and inactive-vendor products are omitted.
+      parameters:
+      - description: Maximum products to return (1-50, default 10)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Recently viewed products
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/ViewedProductItem'
+                  type: array
+              type: object
+        "400":
+          description: Invalid limit
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List recently viewed products
+      tags:
+      - History
+  /user/history/products/{id}:
+    delete:
+      description: Removes a single product from the authenticated customer's browsing
+        history.
+      parameters:
+      - description: Product UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: History item deleted
+        "400":
+          description: Invalid product id
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: History item not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete one recently viewed product
+      tags:
+      - History
+    post:
+      description: Records or refreshes a product view for the authenticated customer.
+        Repeated views update viewed_at without creating duplicates.
+      parameters:
+      - description: Product UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: View recorded
+        "400":
+          description: Invalid product id
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Product not found or not visible
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/TooManyRequestsErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Record a product view
+      tags:
+      - History
+  /user/history/products/sync:
+    post:
+      consumes:
+      - application/json
+      description: Merges guest product IDs or slugs into the authenticated account
+        after sign-in. Unknown or no-longer-visible products are ignored.
+      parameters:
+      - description: Guest product identifiers, newest first
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SyncHistoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: History merged
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/SyncHistoryResponse'
+              type: object
+        "400":
+          description: Invalid or oversized payload
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/TooManyRequestsErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Merge guest browsing history
+      tags:
+      - History
   /user/notifications:
     get:
       description: Returns a paginated list of in-app notifications localized to the

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { authService } from "@/modules/auth/api/authService";
+import { mergeGuestHistory } from "@/modules/history/lib/mergeGuestHistory";
 
 export interface User {
   id: string;
@@ -54,6 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await authService.getMe();
       const parsed = formatUserData(data);
       setUser(parsed);
+      if (parsed) {
+        // Reconcile guest views as soon as the server session is known, including
+        // users who were already signed in on this device.
+        await mergeGuestHistory();
+      }
       return parsed;
     } catch {
       setUser(null);
