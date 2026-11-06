@@ -21,7 +21,7 @@ interface AuthContextType {
   resendChallenge: (payload: { email: string }) => Promise<{ success: boolean; error?: string }>;
   verifyChallenge: (payload: { email?: string; code: string; mergeCart?: boolean }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<{ success: boolean; error?: string }>;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -52,9 +52,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       const data = await authService.getMe();
-      setUser(formatUserData(data));
+      const parsed = formatUserData(data);
+      setUser(parsed);
+      return parsed;
     } catch {
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -84,15 +87,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const verifyChallenge = async (payload: { email?: string; code: string; mergeCart?: boolean }) => {
     try {
-      const res: any = await authService.verifyChallenge({
+      await authService.verifyChallenge({
         email: payload.email,
         code: payload.code,
         ...(payload.mergeCart !== undefined ? { merge_cart: payload.mergeCart } : {}),
       });
-      if (res?.user) {
-        setUser(formatUserData(res.user));
-      } else {
-        await fetchUser();
+      // The backend returns 204 No Content on verify, so the session must be
+      // re-read before success can be claimed. If the session cookie was not
+      // accepted (e.g. cross-site cookie rejection), /me fails and returning
+      // success would send the user to a guarded page that bounces them back
+      // to /auth, which looks like a frozen page.
+      const loaded = await fetchUser();
+      if (!loaded) {
+        return { success: false, error: "Session could not be established; please try again." };
       }
       return { success: true };
     } catch (err: any) {
