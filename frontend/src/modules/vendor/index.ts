@@ -9,4 +9,6 @@ export { VendorDashboard } from "./routes/vendorDashboard";
 export { VendorProducts } from "./routes/vendorProducts";
 export { VendorInventory } from "./routes/vendorInventory";
 export { VendorOrders } from "./routes/vendorOrders";
+export { VendorOrderDetail } from "./routes/vendorOrderDetail";
+export { VendorSettings } from "./routes/vendorSettings";
 export { VendorPayouts } from "./routes/vendorPayouts";

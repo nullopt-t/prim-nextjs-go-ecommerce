@@ -94,15 +94,17 @@ export function VendorInventory() {
 		return matchesSearch && matchesLowStock;
 	});
 
-	const lowStockCount = rows.filter(({ product }) => product.stock <= 5).length;
+	const lowStockProductCount = Array.from(new Map(
+		rows.filter(({ product }) => product.stock <= 5).map((row) => [row.product.id, row.product]),
+	)).length;
 
 	return (
 		<div className="space-y-5">
 			<PageHeader title={t("inventory.title")} />
 
-			{lowStockCount > 0 ? (
+			{lowStockProductCount > 0 ? (
 				<p className="rounded-md border border-amber-600/20 bg-amber-600/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
-					{t("inventory.lowStockWarning", { count: lowStockCount })}
+					{t("inventory.lowStockWarning", { count: lowStockProductCount })}
 				</p>
 			) : null}
 
@@ -180,7 +182,8 @@ export function VendorInventory() {
 												{variant.sku}
 											</td>
 											<td className="py-3 font-medium text-foreground tabular-nums">
-												{product.stock}
+												<div>{t("inventory.productTotalStock", { count: product.stock })}</div>
+												<div className="text-xs font-normal text-muted-foreground">{t("inventory.productTotalStockNote")}</div>
 											</td>
 											<td className="py-3">
 												<select

@@ -8,6 +8,7 @@ import {
   Boxes,
   ShoppingBag,
   DollarSign,
+  Settings2,
   Menu,
   X,
 } from "lucide-react";
@@ -39,6 +40,12 @@ export function VendorLayout({ children }: { children?: React.ReactNode }) {
       items: [
         { label: t("layout.nav.orders"), path: "/vendor/orders", icon: ShoppingBag },
         { label: t("layout.nav.payouts"), path: "/vendor/payouts", icon: DollarSign },
+      ],
+    },
+    {
+      key: "account",
+      items: [
+        { label: t("layout.nav.settings"), path: "/vendor/settings", icon: Settings2 },
       ],
     },
   ];

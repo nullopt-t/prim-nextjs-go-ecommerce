@@ -2356,7 +2356,9 @@
       "viewAll": "View All",
       "viewInventory": "View inventory",
       "viewOrders": "View Orders",
-      "viewPayouts": "View payouts"
+      "viewPayouts": "View payouts",
+      "previous": "Previous",
+      "next": "Next"
     },
     "dashboard": {
       "acrossCatalog": "Lifetime gross revenue",
@@ -2394,7 +2396,9 @@
       "subtitle": "Track real-time sales revenue, commission deductions, inventory levels, and payout status.",
       "title": "Dashboard",
       "topProducts": "Top Vendor Products",
-      "totalUnitsSold": "Total Units Sold"
+      "totalUnitsSold": "Total Units Sold",
+      "attentionLowStock": "{count, plural, =1 {1 low-stock variant needs restocking} other {# low-stock variants need restocking}} — review inventory",
+      "attentionDrafts": "{count, plural, =1 {1 draft product is waiting to publish} other {# draft products are waiting to publish}} — review products"
     },
     "inventory": {
       "applyDelta": "Apply",
@@ -2418,12 +2422,14 @@
         "productVariant": "Product / variant",
         "reorderPoint": "Reorder Point",
         "sku": "SKU",
-        "skuStock": "Stock on hand",
+        "skuStock": "Product total stock",
         "status": "Status",
         "stockReason": "Movement reason"
       },
       "title": "Vendor Inventory Stock",
-      "variantLevelNote": "Stock is adjusted per variant (SKU). Positive values restock; negative values reduce on-hand stock."
+      "variantLevelNote": "Product totals are shown for reference. Stock movements are recorded per variant (SKU): positive values restock, negative values reduce on-hand stock.",
+      "productTotalStock": "{count} total",
+      "productTotalStockNote": "Product total across all variants. Adjust stock per variant below."
     },
     "layout": {
       "activeAccount": "Active Vendor Account",
@@ -2432,7 +2438,8 @@
       "groups": {
         "catalog": "Catalog",
         "overview": "Overview",
-        "sales": "Sales"
+        "sales": "Sales",
+        "account": "Account"
       },
       "menu": "Open navigation",
       "merchant": "Merchant",
@@ -2441,7 +2448,8 @@
         "inventory": "Inventory",
         "orders": "Orders",
         "payouts": "Payouts & Earnings",
-        "products": "My Products"
+        "products": "My Products",
+        "settings": "Settings"
       },
       "routeManager": "Route Manager",
       "store": "Store:",
@@ -2476,7 +2484,31 @@
         "netEarnings": "Net Vendor Earnings",
         "orderRef": "Order Ref"
       },
-      "title": "Vendor Orders & Fulfillment"
+      "title": "Vendor Orders & Fulfillment",
+      "pagination": "Page {page} of {total} · {count} orders",
+      "detail": {
+        "title": "Order detail",
+        "subtitle": "Order {id}",
+        "back": "Back to orders",
+        "view": "View",
+        "status": "Status",
+        "gross": "Gross revenue",
+        "earnings": "Net earnings",
+        "commission": "Commission",
+        "itemCount": "{count, plural, =1 {1 item} other {# items}}",
+        "linesTitle": "Your items",
+        "linesNote": "Only your store lines are shown. Money values are frozen at purchase time; no customer personal data is included.",
+        "loadTitle": "Order unavailable",
+        "loadDescription": "This order could not be loaded.",
+        "table": {
+          "item": "Item",
+          "qty": "Qty",
+          "unitPrice": "Unit price",
+          "lineTotal": "Line total",
+          "commission": "Commission",
+          "earning": "Your earning"
+        }
+      }
     },
     "payouts": {
       "accountEnding": "Account ending in •••• 8812",
@@ -2518,7 +2550,10 @@
       },
       "title": "Vendor Earnings & Payouts",
       "verifiedAccount": "Verified Account",
-      "withdrawalAmount": "Withdrawal Amount (EGP)"
+      "withdrawalAmount": "Withdrawal Amount (EGP)",
+      "destinationOnFile": "On file",
+      "destinationMissing": "Not added yet",
+      "managePayoutDetails": "Manage payout details"
     },
     "register": {
       "description": "Description",
@@ -2605,7 +2640,18 @@
       },
       "title": "My Products",
       "totalSales": "{count} total sales",
-      "units": "{count} units"
+      "units": "{count} units",
+      "validation": {
+        "titleRequired": "Product title is required.",
+        "categoryRequired": "Choose a category.",
+        "titleTooLong": "Title must be at most 200 characters.",
+        "slugInvalid": "Slug must use lowercase letters, numbers, and single hyphens only.",
+        "axesRequired": "Enter at least one variation axis for variable products.",
+        "priceInvalid": "Enter a selling or compare-at price greater than 0.",
+        "compareAtTooLow": "Compare-at price cannot be lower than the selling price.",
+        "currencyInvalid": "Currency must be a 3-letter code such as EGP.",
+        "stockInvalid": "Initial stock must be a whole number of 0 or more."
+      }
     },
     "profileLoadDescription": "Your merchant profile could not be loaded. Register as a vendor or try again.",
     "profileLoadTitle": "Vendor profile required",
@@ -2711,6 +2757,32 @@
         "updateApplication": "Update application"
       },
       "applicationId": "Application ID"
+    },
+    "settings": {
+      "title": "Store settings",
+      "subtitle": "Manage your store profile and payout details. Commission and status are managed by the marketplace.",
+      "slugImmutable": "Your store URL cannot be changed once your account is active. Contact merchant support to request a change.",
+      "descriptionHint": "{count} of 2000 characters",
+      "storeNameInvalid": "Store name must be at least 2 characters.",
+      "descriptionInvalid": "Description must be at most 2000 characters.",
+      "bankTitle": "Payout details",
+      "bankNote": "Saved for admin review before payouts. The marketplace does not show these details to buyers.",
+      "bankEmpty": "No payout details saved yet. Add the details your finance team uses to settle earnings.",
+      "bankKey": "Field name",
+      "bankValue": "Value",
+      "bankAdd": "Add detail",
+      "bankKeyRequired": "Each payout detail needs a field name.",
+      "bankKeyDuplicate": "Duplicate payout detail field: {key}.",
+      "saved": "Store settings saved.",
+      "saveFailed": "Store settings could not be saved.",
+      "accountTitle": "Account",
+      "accountStatus": "Status",
+      "memberSince": "Member since",
+      "payoutDetails": "Payout details",
+      "payoutDetailsSaved": "{count, plural, =1 {1 detail saved} other {# details saved}}",
+      "payoutDetailsMissing": "Not added yet",
+      "commissionNote": "Commission rate and account status cannot be changed here. Changes are reviewed by the marketplace team.",
+      "resubmitNote": "Saving changes returns your application to review."
     }
   },
   "wishlist": {

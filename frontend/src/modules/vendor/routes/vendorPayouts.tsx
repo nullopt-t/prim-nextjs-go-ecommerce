@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
+import { Link } from "@/shared/i18n/navigation";
 import { vendorService } from "@/modules/vendor/api/vendorService";
 import type { VendorDashboard, VendorPayout } from "@/modules/vendor/types";
 import { formatMinor } from "./vendorDashboard";
@@ -109,6 +110,8 @@ export function VendorPayouts() {
 		);
 	}
 
+  const hasPayoutDetails = Boolean(vendor?.bankAccountInfo && Object.keys(vendor.bankAccountInfo).length > 0);
+
 	const metrics = [
 		{
 			label: t("payouts.availableBalance"),
@@ -180,6 +183,12 @@ export function VendorPayouts() {
 							{t("payouts.lifetimeEarnings")}{" "}
 							<strong className="font-medium text-foreground">
 								{formatMinor(dashboard.lifetimeEarnings)}
+							</strong>
+						</span>
+						<span>
+							{t("payouts.destinationAccount")}{" "}
+							<strong className="font-medium text-foreground">
+								{hasPayoutDetails ? t("payouts.destinationOnFile") : t("payouts.destinationMissing")}
 							</strong>
 						</span>
 						<StatusPill tone={statusTone(vendor?.status)}>
@@ -299,6 +308,12 @@ export function VendorPayouts() {
 						</div>
 						<p className="rounded-md border border-border bg-secondary/30 p-3 text-xs text-muted-foreground">
 							{t("payouts.requestNote")}
+						</p>
+						<p className="text-xs text-muted-foreground">
+							{hasPayoutDetails ? t("payouts.destinationOnFile") : t("payouts.destinationMissing")}{" "}
+							<Link href="/vendor/settings" className="font-medium text-foreground underline-offset-4 hover:underline">
+								{t("payouts.managePayoutDetails")}
+							</Link>
 						</p>
 						<div className="flex justify-end gap-2 border-t border-border pt-3">
 							<button

@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Link } from "@/shared/i18n/navigation";
 import { vendorService } from "@/modules/vendor/api/vendorService";
 import type { VendorOrder } from "@/modules/vendor/types";
+import type { OffsetMeta } from "@/shared/api/types";
 import { ErrorState } from "@/shared/ui/errorState";
 import { PageHeader } from "@/shared/ui/pageHeader";
 import { ResponsiveTable } from "@/shared/ui/responsiveTable";
@@ -26,25 +29,37 @@ export function VendorOrders() {
 	const locale = useLocale();
 
 	const [orders, setOrders] = useState<VendorOrder[] | null>(null);
+	const [meta, setMeta] = useState<OffsetMeta | null>(null);
+	const [page, setPage] = useState(1);
+	const [statusFilter, setStatusFilter] = useState("all");
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState<Error | null>(null);
 
-	const loadOrders = async () => {
+	const loadOrders = async (nextPage = page, nextStatus = statusFilter) => {
 		setLoading(true);
 		setLoadError(null);
 		try {
-			const response = await vendorService.getOrders({ pageSize: 100 });
+			const response = await vendorService.getOrders({
+				page: nextPage,
+				pageSize: 20,
+				status: nextStatus === "all" ? undefined : nextStatus,
+			});
 			setOrders(response.data);
+			const nextMeta = response.meta as OffsetMeta | undefined;
+			if (nextMeta && typeof nextMeta.page === "number") setMeta(nextMeta);
+			else setMeta({ page: nextPage, pageSize: 20, totalItems: response.data.length, totalPages: 1, hasPrevious: nextPage > 1, hasNext: false });
 		} catch (error) {
 			setLoadError(error instanceof Error ? error : new Error(String(error)));
 			setOrders(null);
+			setMeta(null);
 		} finally {
 			setLoading(false);
 		}
 	};
 
 	useEffect(() => {
-		void loadOrders();
+		void loadOrders(1, "all");
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	const statusLabel = (status: string) => {
@@ -81,13 +96,31 @@ export function VendorOrders() {
 			<PageHeader title={t("orders.title")} />
 
 			<section className="overflow-hidden rounded-lg border border-border bg-background">
-				<div className="flex flex-col gap-1 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
-					<h2 className="text-sm font-semibold text-foreground">
-						{t("orders.historyTitle")}
-					</h2>
-					<p className="text-xs text-muted-foreground">
-						{t("orders.noFulfillmentChanges")}
-					</p>
+				<div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<h2 className="text-sm font-semibold text-foreground">
+							{t("orders.historyTitle")}
+						</h2>
+						<p className="mt-1 text-xs text-muted-foreground">
+							{t("orders.noFulfillmentChanges")}
+						</p>
+					</div>
+					<select
+						value={statusFilter}
+						onChange={(event) => {
+							const next = event.target.value;
+							setStatusFilter(next);
+							setPage(1);
+							void loadOrders(1, next);
+						}}
+						className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+						aria-label={t("orders.table.fulfillmentStatus")}
+					>
+						<option value="all">{t("status.all")}</option>
+						{Object.keys(ORDER_STATUS_KEYS).map((status) => (
+							<option key={status} value={status}>{t(ORDER_STATUS_KEYS[status])}</option>
+						))}
+					</select>
 				</div>
 
 				{orders.length === 0 ? (
@@ -114,8 +147,11 @@ export function VendorOrders() {
 									<th className="py-2.5 text-start font-medium">
 										{t("orders.table.grossRevenue")}
 									</th>
-									<th className="py-2.5 pe-4 text-end font-medium">
+									<th className="py-2.5 text-start font-medium">
 										{t("orders.table.netEarnings")}
+									</th>
+									<th className="py-2.5 pe-4 text-end font-medium">
+										{t("orders.table.actions")}
 									</th>
 								</tr>
 							</thead>
@@ -145,8 +181,16 @@ export function VendorOrders() {
 										<td className="py-3 font-medium text-foreground tabular-nums">
 											{formatMinor(order.subtotal, order.currency)}
 										</td>
-										<td className="py-3 pe-4 text-end font-medium text-foreground tabular-nums">
+										<td className="py-3 text-end font-medium text-foreground tabular-nums">
 											{formatMinor(order.earnings, order.currency)}
+										</td>
+										<td className="py-3 pe-4 text-end">
+											<Link
+												href={`/vendor/orders/${order.id}`}
+												className="text-xs font-medium text-foreground underline-offset-4 hover:underline"
+											>
+												{t("orders.detail.view")}
+											</Link>
 										</td>
 									</tr>
 								))}
@@ -154,6 +198,31 @@ export function VendorOrders() {
 						</ResponsiveTable>
 					</div>
 				)}
+				{meta && meta.totalPages > 1 ? (
+					<div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
+						<span className="text-xs text-muted-foreground">
+							{t("orders.pagination", { page: meta.page, total: meta.totalPages, count: meta.totalItems })}
+						</span>
+						<div className="flex items-center gap-2">
+							<button
+								onClick={() => { const next = Math.max(1, page - 1); setPage(next); void loadOrders(next); }}
+								disabled={page <= 1 || loading}
+								className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
+							>
+								<ChevronLeft className="size-4 rtl:rotate-180" />
+								{t("actions.previous")}
+							</button>
+							<button
+								onClick={() => { const next = page + 1; setPage(next); void loadOrders(next); }}
+								disabled={page >= meta.totalPages || loading}
+								className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
+							>
+								{t("actions.next")}
+								<ChevronRight className="size-4 rtl:rotate-180" />
+							</button>
+						</div>
+					</div>
+				) : null}
 			</section>
 		</div>
 	);

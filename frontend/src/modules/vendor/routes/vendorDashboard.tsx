@@ -78,21 +78,25 @@ export function VendorDashboard() {
       label: t("dashboard.grossSales"),
       value: formatMinor(stats.grossRevenue),
       detail: t("dashboard.acrossCatalog"),
+      href: "/vendor/orders" as const,
     },
     {
       label: t("dashboard.netEarnings"),
       value: formatMinor(stats.lifetimeEarnings),
       detail: t("dashboard.commissionNote", { rate: commissionPercent.toFixed(2) }),
+      href: "/vendor/payouts" as const,
     },
     {
       label: t("dashboard.availableBalance"),
       value: formatMinor(stats.availableBalance),
       detail: t("dashboard.outstanding", { amount: formatMinor(stats.outstandingPayouts) }),
+      href: "/vendor/payouts" as const,
     },
     {
       label: t("dashboard.catalogHealth"),
       value: String(stats.productCount),
       detail: t("dashboard.publishedCount", { count: stats.publishedProductCount }),
+      href: "/vendor/products" as const,
     },
   ];
 
@@ -112,9 +116,10 @@ export function VendorDashboard() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
-          <div
+          <Link
             key={metric.label}
-            className="rounded-lg border border-border bg-background p-4"
+            href={metric.href}
+            className="rounded-lg border border-border bg-background p-4 transition-colors hover:bg-secondary/40"
           >
             <div className="text-xs font-medium text-muted-foreground">
               {metric.label}
@@ -123,9 +128,30 @@ export function VendorDashboard() {
               {metric.value}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">{metric.detail}</div>
-          </div>
+          </Link>
         ))}
       </div>
+
+      {stats.lowStockVariantCount > 0 || stats.draftProductCount > 0 ? (
+        <div className="space-y-2">
+          {stats.lowStockVariantCount > 0 ? (
+            <Link
+              href="/vendor/inventory"
+              className="block rounded-md border border-amber-600/20 bg-amber-600/10 px-3 py-2 text-sm text-amber-700 hover:underline dark:text-amber-400"
+            >
+              {t("dashboard.attentionLowStock", { count: stats.lowStockVariantCount })}
+            </Link>
+          ) : null}
+          {stats.draftProductCount > 0 ? (
+            <Link
+              href="/vendor/products"
+              className="block rounded-md border border-border bg-background px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+              {t("dashboard.attentionDrafts", { count: stats.draftProductCount })}
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section className="rounded-lg border border-border bg-background">

@@ -88,6 +88,8 @@ export function VendorProducts() {
   const commercialLock = t("products.commercialLock");
 
   const [products, setProducts] = useState<VendorProduct[]>([]);
+  const [meta, setMeta] = useState<{ page: number; totalPages: number; totalItems: number } | null>(null);
+  const [page, setPage] = useState(1);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [variants, setVariants] = useState<VendorVariant[]>([]);
@@ -110,16 +112,22 @@ export function VendorProducts() {
   const [stockReason, setStockReason] = useState<"restock" | "return" | "adjustment">("restock");
   const [savingStock, setSavingStock] = useState(false);
 
-  const loadProducts = async () => {
+  const loadProducts = async (nextPage = page) => {
     setLoading(true);
     setLoadError(null);
     try {
       const [productResponse, categoryList, brandList] = await Promise.all([
-        vendorService.getProducts({ pageSize: 100 }),
+        vendorService.getProducts({ page: nextPage, pageSize: 20 }),
         catalogService.getCategories(100),
         catalogService.getBrands(100),
       ]);
       setProducts(productResponse.data);
+      const nextMeta = productResponse.meta as { page?: number; totalPages?: number; totalItems?: number } | undefined;
+      if (nextMeta && typeof nextMeta.page === "number") {
+        setMeta({ page: nextMeta.page, totalPages: nextMeta.totalPages ?? 1, totalItems: nextMeta.totalItems ?? productResponse.data.length });
+      } else {
+        setMeta({ page: nextPage, totalPages: 1, totalItems: productResponse.data.length });
+      }
       setCategories(Array.isArray(categoryList) ? categoryList : categoryList.data);
       setBrands(Array.isArray(brandList) ? brandList : brandList.data);
     } catch (error) {
@@ -172,7 +180,47 @@ export function VendorProducts() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!formData.title.trim() || (!editingProduct && !formData.categoryId)) return;
+    if (!formData.title.trim()) {
+      notify.error(t("products.validation.titleRequired"));
+      return;
+    }
+    if (!editingProduct && !formData.categoryId) {
+      notify.error(t("products.validation.categoryRequired"));
+      return;
+    }
+    if (formData.title.trim().length > 200) {
+      notify.error(t("products.validation.titleTooLong"));
+      return;
+    }
+    if (!editingProduct && formData.slug.trim() && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(formData.slug.trim().toLowerCase())) {
+      notify.error(t("products.validation.slugInvalid"));
+      return;
+    }
+    if (formData.productType === "variable" && !editingProduct && formData.variationAxes.split(",").map((a) => a.trim()).filter(Boolean).length === 0) {
+      notify.error(t("products.validation.axesRequired"));
+      return;
+    }
+    if (formData.price && parseMajorPrice(formData.price) === undefined) {
+      notify.error(t("products.validation.priceInvalid"));
+      return;
+    }
+    if (formData.crossesOutPrice && parseMajorPrice(formData.crossesOutPrice) === undefined) {
+      notify.error(t("products.validation.priceInvalid"));
+      return;
+    }
+    if (formData.price && formData.crossesOutPrice && (parseMajorPrice(formData.crossesOutPrice) ?? 0) < (parseMajorPrice(formData.price) ?? 0)) {
+      notify.error(t("products.validation.compareAtTooLow"));
+      return;
+    }
+    if (!/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase())) {
+      notify.error(t("products.validation.currencyInvalid"));
+      return;
+    }
+    const initialStockValue = Number.parseInt(formData.initialStock, 10);
+    if (!editingProduct && (!Number.isInteger(initialStockValue) || initialStockValue < 0)) {
+      notify.error(t("products.validation.stockInvalid"));
+      return;
+    }
     if (editingProduct && formData.categoryId && !categories.some((category) => category.id === formData.categoryId)) {
       // Existing category details are not returned by the summary API. Only send
       // the category when the form supplies a different one (handled on create).
@@ -537,6 +585,29 @@ export function VendorProducts() {
                 </tbody>
               </ResponsiveTable>
             </div>
+            {meta && meta.totalPages > 1 ? (
+              <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
+                <span className="text-xs text-muted-foreground">
+                  {t("orders.pagination", { page: meta.page, total: meta.totalPages, count: meta.totalItems })}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { const next = Math.max(1, page - 1); setPage(next); void loadProducts(next); }}
+                    disabled={page <= 1 || loading}
+                    className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
+                  >
+                    {t("actions.previous")}
+                  </button>
+                  <button
+                    onClick={() => { const next = page + 1; setPage(next); void loadProducts(next); }}
+                    disabled={page >= meta.totalPages || loading}
+                    className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
+                  >
+                    {t("actions.next")}
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </>
       )}
