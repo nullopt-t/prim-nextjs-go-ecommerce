@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
+	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
@@ -1050,6 +1051,188 @@ func (h *Handler) ArchiveProduct(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "Product archived"})
+}
+
+// ---- Vendor promotions --------------------------------------------------
+
+// VendorCreatePromotionRequest is the merchant coupon creation payload.
+type VendorCreatePromotionRequest struct {
+	// Promo code; stored uppercased.
+	Code string `json:"code" binding:"required" example:"SUMMER20"`
+	// Discount kind.
+	DiscountType string `json:"discountType" binding:"required,oneof=percentage fixed_amount" example:"percentage"`
+	// Percentage (1-100) or fixed amount in minor units.
+	DiscountValue int64 `json:"discountValue" binding:"required" example:"20"`
+	// ISO currency code; defaults to EGP.
+	Currency *string `json:"currency,omitempty" example:"EGP"`
+	// Minimum eligible subtotal in minor units before the coupon applies.
+	MinCartAmount *int64 `json:"minCartAmount,omitempty"`
+	// Optional total redemption cap.
+	UsageLimit *int `json:"usageLimit,omitempty"`
+	// Optional per-customer redemption cap.
+	PerUserLimit *int `json:"perUserLimit,omitempty"`
+	// Optional activation window.
+	StartsAt *time.Time `json:"startsAt,omitempty"`
+	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
+}
+
+// VendorPromotionStatusRequest is the merchant coupon lifecycle payload.
+type VendorPromotionStatusRequest struct {
+	// New lifecycle state.
+	Status string `json:"status" binding:"required,oneof=active disabled archived" example:"disabled"`
+}
+
+// ListPromotions godoc
+// @Summary      List my promotions
+// @Description  Lists coupons owned by the authenticated vendor.
+// @Tags         Vendor
+// @Produce      json
+// @Param        page     query int    false "Page number (1-based)"
+// @Param        pageSize query int    false "Page size (max 100)"
+// @Success      200 {object} api.PaginatedResponse{data=[]model.Coupon}
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Router       /vendor/promotions [get]
+// @Security     SessionAuth
+func (h *Handler) ListPromotions(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	var q pagination.ListQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+	q.Process(pagination.QueryOptions{DefaultPageSize: 20, MaxPageSize: 100})
+
+	cursor, err := q.Keyset()
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
+	result, page, err := h.service.ListPromotions(c.Request.Context(), userID, q.PageSize, cursor)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.SuccessResponse{Data: result, Meta: page})
+}
+
+// CreatePromotion godoc
+// @Summary      Create a promotion
+// @Description  Creates a coupon scoped to the authenticated vendor's products. The discount applies only to that vendor's eligible subtotal at checkout.
+// @Tags         Vendor
+// @Accept       json
+// @Produce      json
+// @Param        request body VendorCreatePromotionRequest true "Promotion payload"
+// @Success      201 {object} api.DataResponse{data=model.Coupon}
+// @Failure      400 {object} api.BadReqResponse "Validation failed"
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Router       /vendor/promotions [post]
+// @Security     SessionAuth
+func (h *Handler) CreatePromotion(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	var req VendorCreatePromotionRequest
+	if !bindVendorJSON(c, &req) {
+		return
+	}
+
+	created, err := h.service.CreatePromotion(c.Request.Context(), userID, coupon.CreateCouponInput{
+		Code:          req.Code,
+		DiscountType:  model.CouponDiscountType(req.DiscountType),
+		DiscountValue: req.DiscountValue,
+		Currency:      derefString(req.Currency),
+		MinCartAmount: req.MinCartAmount,
+		UsageLimit:    req.UsageLimit,
+		PerUserLimit:  req.PerUserLimit,
+		StartsAt:      req.StartsAt,
+		ExpiresAt:     req.ExpiresAt,
+		Status:        model.CouponStatusActive,
+	})
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, api.DataResponse{Data: created})
+}
+
+// SetPromotionStatus godoc
+// @Summary      Enable or disable a promotion
+// @Description  Changes the lifecycle state of a coupon owned by the authenticated vendor.
+// @Tags         Vendor
+// @Accept       json
+// @Produce      json
+// @Param        id      path string                      true "Coupon UUID" format(uuid)
+// @Param        request body VendorPromotionStatusRequest true "Status payload"
+// @Success      200 {object} api.MessageResponse
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Failure      404 {object} api.NotFoundErrorResponse "Promotion not found"
+// @Router       /vendor/promotions/{id}/status [patch]
+// @Security     SessionAuth
+func (h *Handler) SetPromotionStatus(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	couponID, ok := bindVendorID(c)
+	if !ok {
+		return
+	}
+
+	var req VendorPromotionStatusRequest
+	if !bindVendorJSON(c, &req) {
+		return
+	}
+
+	if err := h.service.SetPromotionStatus(c.Request.Context(), userID, couponID, model.CouponStatus(req.Status)); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Promotion updated"})
+}
+
+// DeletePromotion godoc
+// @Summary      Delete a promotion
+// @Description  Permanently removes a coupon owned by the authenticated vendor.
+// @Tags         Vendor
+// @Produce      json
+// @Param        id path string true "Coupon UUID" format(uuid)
+// @Success      200 {object} api.MessageResponse
+// @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
+// @Failure      404 {object} api.NotFoundErrorResponse "Promotion not found"
+// @Router       /vendor/promotions/{id} [delete]
+// @Security     SessionAuth
+func (h *Handler) DeletePromotion(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	couponID, ok := bindVendorID(c)
+	if !ok {
+		return
+	}
+
+	if err := h.service.DeletePromotion(c.Request.Context(), userID, couponID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Promotion deleted"})
 }
 
 // ---- Vendor variants & stock --------------------------------------------

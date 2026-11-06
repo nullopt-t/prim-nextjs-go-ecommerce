@@ -286,6 +286,63 @@ definitions:
         example: A resource with this identifier or name already exists
         type: string
     type: object
+  Coupon:
+    properties:
+      code:
+        type: string
+      createdAt:
+        type: string
+      currency:
+        type: string
+      discountType:
+        $ref: '#/definitions/CouponDiscountType'
+      discountValue:
+        type: integer
+      expiresAt:
+        type: string
+      id:
+        type: string
+      minCartAmount:
+        type: integer
+      perUserLimit:
+        type: integer
+      startsAt:
+        type: string
+      status:
+        $ref: '#/definitions/CouponStatus'
+      updatedAt:
+        type: string
+      usageCount:
+        description: |-
+          UsageCount is the number of times the coupon has been redeemed. It is not a
+          stored column: it is populated by list queries for admin display.
+        type: integer
+      usageLimit:
+        type: integer
+      vendorId:
+        description: |-
+          VendorID scopes the coupon to one merchant's products. Nil means a
+          platform-wide coupon managed by the admin.
+        type: string
+    type: object
+  CouponDiscountType:
+    enum:
+    - percentage
+    - fixed_amount
+    type: string
+    x-enum-varnames:
+    - CouponDiscountTypePercentage
+    - CouponDiscountTypeFixedAmount
+  CouponStatus:
+    enum:
+    - active
+    - disabled
+    - archived
+    type: string
+    x-enum-varnames:
+    - CouponStatusActive
+    - CouponStatusDisabled
+    - CouponStatusArchived
   CouponValidationResult:
     properties:
       code:
@@ -1660,6 +1717,46 @@ definitions:
     - slug
     - title
     type: object
+  VendorCreatePromotionRequest:
+    properties:
+      code:
+        description: Promo code; stored uppercased.
+        example: SUMMER20
+        type: string
+      currency:
+        description: ISO currency code; defaults to EGP.
+        example: EGP
+        type: string
+      discountType:
+        description: Discount kind.
+        enum:
+        - percentage
+        - fixed_amount
+        example: percentage
+        type: string
+      discountValue:
+        description: Percentage (1-100) or fixed amount in minor units.
+        example: 20
+        type: integer
+      expiresAt:
+        type: string
+      minCartAmount:
+        description: Minimum eligible subtotal in minor units before the coupon applies.
+        type: integer
+      perUserLimit:
+        description: Optional per-customer redemption cap.
+        type: integer
+      startsAt:
+        description: Optional activation window.
+        type: string
+      usageLimit:
+        description: Optional total redemption cap.
+        type: integer
+    required:
+    - code
+    - discountType
+    - discountValue
+    type: object
   VendorCreateVariantRequest:
     properties:
       attributes:
@@ -1829,6 +1926,19 @@ definitions:
         type: string
       updatedAt:
         type: string
+    type: object
+  VendorPromotionStatusRequest:
+    properties:
+      status:
+        description: New lifecycle state.
+        enum:
+        - active
+        - disabled
+        - archived
+        example: disabled
+        type: string
+    required:
+    - status
     type: object
   VendorResponse:
     properties:
@@ -5122,6 +5232,147 @@ paths:
       security:
       - SessionAuth: []
       summary: Update my vendor profile
+      tags:
+      - Vendor
+  /vendor/promotions:
+    get:
+      description: Lists coupons owned by the authenticated vendor.
+      parameters:
+      - description: Page number (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (max 100)
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/Coupon'
+                  type: array
+              type: object
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List my promotions
+      tags:
+      - Vendor
+    post:
+      consumes:
+      - application/json
+      description: Creates a coupon scoped to the authenticated vendor's products.
+        The discount applies only to that vendor's eligible subtotal at checkout.
+      parameters:
+      - description: Promotion payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/VendorCreatePromotionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/Coupon'
+              type: object
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Create a promotion
+      tags:
+      - Vendor
+  /vendor/promotions/{id}:
+    delete:
+      description: Permanently removes a coupon owned by the authenticated vendor.
+      parameters:
+      - description: Coupon UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Promotion not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete a promotion
+      tags:
+      - Vendor
+  /vendor/promotions/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Changes the lifecycle state of a coupon owned by the authenticated
+        vendor.
+      parameters:
+      - description: Coupon UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Status payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/VendorPromotionStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "403":
+          description: Vendor not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Promotion not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Enable or disable a promotion
       tags:
       - Vendor
   /vendor/register:

@@ -46,6 +46,10 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		// Merchant-owned catalog. Ownership is enforced per product; platform
 		// (admin) products are not reachable through these routes.
 		portal.POST("/media", r.handler.UploadMedia)
+		portal.GET("/promotions", r.handler.ListPromotions)
+		portal.POST("/promotions", r.handler.CreatePromotion)
+		portal.PATCH("/promotions/:id/status", r.handler.SetPromotionStatus)
+		portal.DELETE("/promotions/:id", r.handler.DeletePromotion)
 		portal.GET("/products", r.handler.ListMyProducts)
 		portal.POST("/products", r.handler.CreateProduct)
 		portal.PATCH("/products/:id", r.handler.UpdateProduct)

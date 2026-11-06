@@ -67,6 +67,7 @@ type Service struct {
 	orders     VendorOrderReader
 	products   ProductCatalog
 	variants   VariantCatalog
+	coupons    CouponCatalog
 	stock      StockAdjuster
 	settings   CommissionDefaults
 	storage    storage.StorageProvider
@@ -88,6 +89,7 @@ func NewService(
 	orders VendorOrderReader,
 	products ProductCatalog,
 	variants VariantCatalog,
+	coupons CouponCatalog,
 	stock StockAdjuster,
 	settings CommissionDefaults,
 	storageProvider storage.StorageProvider,
@@ -115,6 +117,9 @@ func NewService(
 	if variants == nil {
 		panic("vendor: variant catalog is required")
 	}
+	if coupons == nil {
+		panic("vendor: coupon catalog is required")
+	}
 	if stock == nil {
 		panic("vendor: stock adjuster is required")
 	}
@@ -138,6 +143,7 @@ func NewService(
 		orders:     orders,
 		products:   products,
 		variants:   variants,
+		coupons:    coupons,
 		stock:      stock,
 		settings:   settings,
 		storage:    storageProvider,

@@ -28,6 +28,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/vendors"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
+	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
@@ -38,6 +39,71 @@ import (
 // logic, backed by real PostgreSQL via testcontainers (mirroring the checkout
 // suite's scaffolding). Money-critical flows (lifecycle guards, balance
 // invariant, conditional payout transitions) are covered here.
+// fakeCouponCatalog is an in-memory CouponCatalog double for promotion tests.
+type fakeCouponCatalog struct {
+	mu      sync.Mutex
+	coupons map[uuid.UUID]*model.Coupon
+}
+
+func newFakeCouponCatalog() *fakeCouponCatalog {
+	return &fakeCouponCatalog{coupons: map[uuid.UUID]*model.Coupon{}}
+}
+
+func (f *fakeCouponCatalog) ListVendorCoupons(_ context.Context, vendorID uuid.UUID, _ int, _ *pagination.Keyset) ([]*model.Coupon, *pagination.CursorPage, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var list []*model.Coupon
+	for _, c := range f.coupons {
+		if c.VendorID != nil && *c.VendorID == vendorID {
+			list = append(list, c)
+		}
+	}
+	return list, &pagination.CursorPage{}, nil
+}
+
+func (f *fakeCouponCatalog) CreateVendorCoupon(_ context.Context, vendorID uuid.UUID, in coupon.CreateCouponInput) (*model.Coupon, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c := &model.Coupon{
+		ID:            uuid.New(),
+		Code:          in.Code,
+		DiscountType:  in.DiscountType,
+		DiscountValue: in.DiscountValue,
+		Currency:      in.Currency,
+		MinCartAmount: in.MinCartAmount,
+		UsageLimit:    in.UsageLimit,
+		PerUserLimit:  in.PerUserLimit,
+		StartsAt:      in.StartsAt,
+		ExpiresAt:     in.ExpiresAt,
+		Status:        in.Status,
+		VendorID:      &vendorID,
+	}
+	f.coupons[c.ID] = c
+	return c, nil
+}
+
+func (f *fakeCouponCatalog) SetVendorCouponStatus(_ context.Context, vendorID, couponID uuid.UUID, status model.CouponStatus) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.coupons[couponID]
+	if !ok || c.VendorID == nil || *c.VendorID != vendorID {
+		return database.ErrNotFound
+	}
+	c.Status = status
+	return nil
+}
+
+func (f *fakeCouponCatalog) DeleteVendorCoupon(_ context.Context, vendorID, couponID uuid.UUID) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	c, ok := f.coupons[couponID]
+	if !ok || c.VendorID == nil || *c.VendorID != vendorID {
+		return database.ErrNotFound
+	}
+	delete(f.coupons, couponID)
+	return nil
+}
+
 type VendorServiceSuite struct {
 	suite.Suite
 
@@ -50,6 +116,7 @@ type VendorServiceSuite struct {
 	categoryID uuid.UUID
 	catalog    *fakeProductCatalog
 	variants   *fakeVariantCatalog
+	coupons    *fakeCouponCatalog
 	stock      *fakeStockAdjuster
 }
 
@@ -346,6 +413,7 @@ func (s *VendorServiceSuite) SetupSuite() {
 
 	s.catalog = newFakeProductCatalog()
 	s.variants = newFakeVariantCatalog()
+	s.coupons = newFakeCouponCatalog()
 	s.stock = &fakeStockAdjuster{}
 
 	s.service = vendors.NewService(
@@ -356,6 +424,7 @@ func (s *VendorServiceSuite) SetupSuite() {
 		order.NewRepository(),
 		s.catalog,
 		s.variants,
+		s.coupons,
 		s.stock,
 		vendors.NewStaticCommissionDefaults(),
 		storage.NoopProvider{},

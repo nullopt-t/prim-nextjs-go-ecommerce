@@ -222,6 +222,11 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	_, err = db.Exec(ctx, string(lifecycleSchemaBytes))
 	require.NoError(s.T(), err)
 
+	couponVendorSchemaBytes, err := os.ReadFile("../../migrations/000006_coupon_vendor_scope.up.sql")
+	require.NoError(s.T(), err)
+	_, err = db.Exec(ctx, string(couponVendorSchemaBytes))
+	require.NoError(s.T(), err)
+
 	// ---- Redis (sessions) -------------------------------------------------
 	rContainer, err := redisContainer.Run(ctx, "redis:7-alpine")
 	require.NoError(s.T(), err)

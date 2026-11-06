@@ -380,6 +380,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		orderRepo,
 		productService,
 		variantService,
+		couponService,
 		inventoryService,
 		vendors.NewStaticCommissionDefaults(),
 		app.storageProvider,

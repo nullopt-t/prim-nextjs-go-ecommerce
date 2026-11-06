@@ -1,0 +1,1 @@
+ALTER TABLE coupons DROP COLUMN IF EXISTS vendor_id;

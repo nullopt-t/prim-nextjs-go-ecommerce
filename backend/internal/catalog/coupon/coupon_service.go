@@ -27,6 +27,8 @@ type CreateCouponInput struct {
 	StartsAt      *time.Time
 	ExpiresAt     *time.Time
 	Status        model.CouponStatus
+	// VendorID scopes the coupon to one merchant's products. Nil = platform coupon.
+	VendorID *uuid.UUID
 }
 
 // AppliedCoupon is the result of applying a coupon to a cart.
@@ -216,6 +218,7 @@ func (s *CouponService) CreateCoupon(ctx context.Context, in CreateCouponInput) 
 		StartsAt:      in.StartsAt,
 		ExpiresAt:     in.ExpiresAt,
 		Status:        status,
+		VendorID:      in.VendorID,
 	}
 
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
@@ -255,6 +258,57 @@ func (s *CouponService) Delete(ctx context.Context, id uuid.UUID) error {
 		return s.handleError(err, "Failed to delete coupon")
 	}
 	return nil
+}
+
+// ListVendorCoupons returns one merchant's coupons, newest first.
+func (s *CouponService) ListVendorCoupons(ctx context.Context, vendorID uuid.UUID, limit int, cursor *pagination.Keyset) ([]*model.Coupon, *pagination.CursorPage, error) {
+	return s.ListCoupons(ctx, ListCouponFilter{VendorID: &vendorID}, limit, cursor)
+}
+
+// CreateVendorCoupon creates a coupon owned by the given merchant.
+func (s *CouponService) CreateVendorCoupon(ctx context.Context, vendorID uuid.UUID, in CreateCouponInput) (*model.Coupon, error) {
+	in.VendorID = &vendorID
+	return s.CreateCoupon(ctx, in)
+}
+
+// requireOwnedCoupon loads a coupon and proves it belongs to the merchant.
+// Foreign and platform coupons answer as not found.
+func (s *CouponService) requireOwnedCoupon(ctx context.Context, vendorID, couponID uuid.UUID) (*model.Coupon, error) {
+	c, err := s.GetByID(ctx, couponID)
+	if err != nil {
+		return nil, err
+	}
+	if c.VendorID == nil || *c.VendorID != vendorID {
+		return nil, apierr.NotFoundError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
+	}
+	return c, nil
+}
+
+// SetVendorCouponStatus changes the lifecycle state of a merchant-owned coupon.
+func (s *CouponService) SetVendorCouponStatus(ctx context.Context, vendorID, couponID uuid.UUID, status model.CouponStatus) error {
+	if _, err := s.requireOwnedCoupon(ctx, vendorID, couponID); err != nil {
+		return err
+	}
+	return s.UpdateStatus(ctx, couponID, status)
+}
+
+// DeleteVendorCoupon permanently removes a merchant-owned coupon.
+func (s *CouponService) DeleteVendorCoupon(ctx context.Context, vendorID, couponID uuid.UUID) error {
+	if _, err := s.requireOwnedCoupon(ctx, vendorID, couponID); err != nil {
+		return err
+	}
+	return s.Delete(ctx, couponID)
+}
+
+// GetVendorIDByCode returns the owning merchant for a coupon code, or nil
+// for platform coupons. Checkout uses it to price the discount against the
+// vendor's eligible subtotal instead of the whole cart.
+func (s *CouponService) GetVendorIDByCode(ctx context.Context, code string) (*uuid.UUID, error) {
+	c, err := s.GetByCode(ctx, code)
+	if err != nil {
+		return nil, err
+	}
+	return c.VendorID, nil
 }
 
 // ListRedemptions returns the usage log for a coupon, newest first. The coupon

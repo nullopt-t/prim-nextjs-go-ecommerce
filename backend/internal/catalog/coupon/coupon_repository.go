@@ -16,6 +16,8 @@ import (
 
 type ListCouponFilter struct {
 	Status *model.CouponStatus
+	// VendorID, when set, restricts the listing to one merchant's coupons.
+	VendorID *uuid.UUID
 	// Limit is the page size; repositories over-fetch one row to detect more.
 	Limit int
 	// Cursor, when set, switches the query to keyset pagination on (created_at, id) DESC.
@@ -74,8 +76,8 @@ func (r *CouponRepository) get(ctx context.Context, where string, args ...any) (
 	}
 
 	query := `
-		SELECT 
-			id, 
+		SELECT
+			id,
 			code,
 		 	discount_type,
 		 	discount_value,
@@ -86,6 +88,7 @@ func (r *CouponRepository) get(ctx context.Context, where string, args ...any) (
 		 	starts_at,
 		 	expires_at,
 		 	status,
+		 	vendor_id,
 		 	created_at,
 		 	updated_at
 		FROM coupons
@@ -111,6 +114,7 @@ func (r *CouponRepository) get(ctx context.Context, where string, args ...any) (
 		&c.StartsAt,
 		&c.ExpiresAt,
 		&c.Status,
+		&c.VendorID,
 		&c.CreatedAt,
 		&c.UpdatedAt,
 	)
@@ -160,6 +164,7 @@ func (r *CouponRepository) List(ctx context.Context, filter ListCouponFilter) ([
 			starts_at,
 			expires_at,
 			status,
+			vendor_id,
 			created_at,
 			updated_at,
 			(SELECT COUNT(*) FROM coupon_redemptions r WHERE r.coupon_id = coupons.id) AS usage_count
@@ -170,6 +175,12 @@ func (r *CouponRepository) List(ctx context.Context, filter ListCouponFilter) ([
 	if filter.Status != nil {
 		fmt.Fprintf(&sb, " AND status = $%d::coupon_status", idx)
 		args = append(args, string(*filter.Status))
+		idx++
+	}
+
+	if filter.VendorID != nil {
+		fmt.Fprintf(&sb, " AND vendor_id = $%d", idx)
+		args = append(args, *filter.VendorID)
 		idx++
 	}
 
@@ -196,7 +207,7 @@ func (r *CouponRepository) List(ctx context.Context, filter ListCouponFilter) ([
 			minCartAmount sql.NullInt64
 			usageLimit    sql.NullInt32
 			perUserLimit  sql.NullInt32
-		)
+			)
 
 		if err := rows.Scan(
 			&c.ID,
@@ -210,6 +221,7 @@ func (r *CouponRepository) List(ctx context.Context, filter ListCouponFilter) ([
 			&c.StartsAt,
 			&c.ExpiresAt,
 			&c.Status,
+			&c.VendorID,
 			&c.CreatedAt,
 			&c.UpdatedAt,
 			&c.UsageCount,
@@ -262,6 +274,7 @@ func (r *CouponRepository) Create(ctx context.Context, c *model.Coupon) error {
 			starts_at,
 			expires_at,
 			status,
+			vendor_id,
 			created_at,
 			updated_at
 		)
@@ -276,11 +289,12 @@ func (r *CouponRepository) Create(ctx context.Context, c *model.Coupon) error {
 		 $9,
 		 $10,
 		 $11::coupon_status,
+		 $12,
 		 NOW(),
 		 NOW())
 		RETURNING created_at, updated_at
 	`
-	
+
 	status := c.Status
 	if status == "" {
 		status = model.CouponStatusActive
@@ -298,6 +312,7 @@ func (r *CouponRepository) Create(ctx context.Context, c *model.Coupon) error {
 		c.StartsAt,
 		c.ExpiresAt,
 		status,
+		c.VendorID,
 	).Scan(&c.CreatedAt, &c.UpdatedAt)
 }
 

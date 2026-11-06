@@ -4522,6 +4522,233 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "/vendor/promotions": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Lists coupons owned by the authenticated vendor.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "List my promotions",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (max 100)",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/Coupon"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Creates a coupon scoped to the authenticated vendor's products. The discount applies only to that vendor's eligible subtotal at checkout.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Create a promotion",
+                "parameters": [
+                    {
+                        "description": "Promotion payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/VendorCreatePromotionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/Coupon"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vendor/promotions/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Permanently removes a coupon owned by the authenticated vendor.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Delete a promotion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Coupon UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Promotion not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vendor/promotions/{id}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Changes the lifecycle state of a coupon owned by the authenticated vendor.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Enable or disable a promotion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Coupon UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/VendorPromotionStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Vendor not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Promotion not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/vendor/register": {
             "post": {
                 "security": [
@@ -5675,6 +5902,82 @@ const docTemplatepublic = `{
                     "example": "A resource with this identifier or name already exists"
                 }
             }
+        },
+        "Coupon": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "discountType": {
+                    "$ref": "#/definitions/CouponDiscountType"
+                },
+                "discountValue": {
+                    "type": "integer"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "minCartAmount": {
+                    "type": "integer"
+                },
+                "perUserLimit": {
+                    "type": "integer"
+                },
+                "startsAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/CouponStatus"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "usageCount": {
+                    "description": "UsageCount is the number of times the coupon has been redeemed. It is not a\nstored column: it is populated by list queries for admin display.",
+                    "type": "integer"
+                },
+                "usageLimit": {
+                    "type": "integer"
+                },
+                "vendorId": {
+                    "description": "VendorID scopes the coupon to one merchant's products. Nil means a\nplatform-wide coupon managed by the admin.",
+                    "type": "string"
+                }
+            }
+        },
+        "CouponDiscountType": {
+            "type": "string",
+            "enum": [
+                "percentage",
+                "fixed_amount"
+            ],
+            "x-enum-varnames": [
+                "CouponDiscountTypePercentage",
+                "CouponDiscountTypeFixedAmount"
+            ]
+        },
+        "CouponStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "disabled",
+                "archived"
+            ],
+            "x-enum-varnames": [
+                "CouponStatusActive",
+                "CouponStatusDisabled",
+                "CouponStatusArchived"
+            ]
         },
         "CouponValidationResult": {
             "type": "object",
@@ -7544,6 +7847,59 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "VendorCreatePromotionRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "discountType",
+                "discountValue"
+            ],
+            "properties": {
+                "code": {
+                    "description": "Promo code; stored uppercased.",
+                    "type": "string",
+                    "example": "SUMMER20"
+                },
+                "currency": {
+                    "description": "ISO currency code; defaults to EGP.",
+                    "type": "string",
+                    "example": "EGP"
+                },
+                "discountType": {
+                    "description": "Discount kind.",
+                    "type": "string",
+                    "enum": [
+                        "percentage",
+                        "fixed_amount"
+                    ],
+                    "example": "percentage"
+                },
+                "discountValue": {
+                    "description": "Percentage (1-100) or fixed amount in minor units.",
+                    "type": "integer",
+                    "example": 20
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "minCartAmount": {
+                    "description": "Minimum eligible subtotal in minor units before the coupon applies.",
+                    "type": "integer"
+                },
+                "perUserLimit": {
+                    "description": "Optional per-customer redemption cap.",
+                    "type": "integer"
+                },
+                "startsAt": {
+                    "description": "Optional activation window.",
+                    "type": "string"
+                },
+                "usageLimit": {
+                    "description": "Optional total redemption cap.",
+                    "type": "integer"
+                }
+            }
+        },
         "VendorCreateVariantRequest": {
             "type": "object",
             "required": [
@@ -7782,6 +8138,24 @@ const docTemplatepublic = `{
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "VendorPromotionStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "description": "New lifecycle state.",
+                    "type": "string",
+                    "enum": [
+                        "active",
+                        "disabled",
+                        "archived"
+                    ],
+                    "example": "disabled"
                 }
             }
         },

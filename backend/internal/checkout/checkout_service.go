@@ -68,6 +68,7 @@ type AddressReader interface {
 // rules live in one place without opening a second connection.
 type CouponService interface {
 	GetCodeByID(ctx context.Context, id uuid.UUID) (string, error)
+	GetVendorIDByCode(ctx context.Context, code string) (*uuid.UUID, error)
 	ApplyByCode(ctx context.Context, code string, grossTotal int64, userID *uuid.UUID) (*coupon.AppliedCoupon, error)
 	RecordRedemption(ctx context.Context, couponID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, discountAmount int64, currency string) error
 }
@@ -297,6 +298,9 @@ type CheckoutInput struct {
 type pricedCart struct {
 	items      []order.CreateOrderItemInput
 	grossTotal int64
+	// vendorTotals accumulates line totals per selling vendor so merchant
+	// coupons can be priced against the eligible subtotal only.
+	vendorTotals map[uuid.UUID]int64
 	currency   string
 }
 
@@ -356,7 +360,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		}
 
 		// 4. Validate and resolve the requested coupon before it is redeemed.
-		coupon, err := s.resolveCoupon(ctx, in, priced.grossTotal)
+		coupon, err := s.resolveCoupon(ctx, in, priced)
 		if err != nil {
 			return err
 		}
@@ -508,7 +512,7 @@ func (s *CheckoutService) resolveShippingAddress(ctx context.Context, userID uui
 // client subtotal: the gross total is computed here and thumbnails resolve
 // directly from storage (bucket/key), never from SQL.
 func (s *CheckoutService) priceCart(ctx context.Context, cart *model.Cart) (*pricedCart, error) {
-	result := &pricedCart{currency: "EGP"}
+	result := &pricedCart{currency: "EGP", vendorTotals: map[uuid.UUID]int64{}}
 	vendors := make(map[uuid.UUID]*model.Vendor)
 
 	for _, item := range cart.Items {
@@ -568,6 +572,9 @@ func (s *CheckoutService) priceCart(ctx context.Context, cart *model.Cart) (*pri
 		}
 
 		vendorEarning, commissionAmount := computeVendorSplit(itemTotal, vendorID, commissionBps)
+		if vendorID != nil {
+			result.vendorTotals[*vendorID] += itemTotal
+		}
 		result.items = append(result.items, order.CreateOrderItemInput{
 			VariantID:         item.VariantID,
 			Quantity:          item.Quantity,
@@ -701,9 +708,11 @@ func buildProductSnapshot(item model.CartItem, variant *model.ProductVariant, pr
 }
 
 // resolveCoupon resolves the requested coupon (by direct code or by coupon id)
-// and validates/prices it against the authoritative gross total. An empty
+// and validates/prices it against the authoritative gross total. A coupon
+// scoped to a merchant is priced against that merchant's eligible subtotal
+// only, and requires at least one eligible item in the cart. An empty
 // result with no coupon id means "no coupon requested".
-func (s *CheckoutService) resolveCoupon(ctx context.Context, in *CheckoutInput, grossTotal int64) (*appliedCoupon, error) {
+func (s *CheckoutService) resolveCoupon(ctx context.Context, in *CheckoutInput, priced *pricedCart) (*appliedCoupon, error) {
 	targetCode := ""
 	if in.CouponCode != nil && strings.TrimSpace(*in.CouponCode) != "" {
 		targetCode = strings.TrimSpace(*in.CouponCode)
@@ -722,7 +731,24 @@ func (s *CheckoutService) resolveCoupon(ctx context.Context, in *CheckoutInput, 
 		return &appliedCoupon{}, nil
 	}
 
-	applied, err := s.couponService.ApplyByCode(ctx, targetCode, grossTotal, &in.CustomerID)
+	// A merchant coupon discounts only that merchant's items: price it
+	// against the eligible subtotal, never the whole cart.
+	pricedTotal := priced.grossTotal
+	if vendorID, err := s.couponService.GetVendorIDByCode(ctx, targetCode); err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound {
+			return nil, apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
+		}
+		return nil, s.handleError(err, "Failed to resolve coupon scope")
+	} else if vendorID != nil {
+		pricedTotal = priced.vendorTotals[*vendorID]
+		if pricedTotal == 0 {
+			return nil, apierr.BadRequestError("This coupon does not apply to the items in your cart").
+				WithCode(errcode.CodeCouponNotFound)
+		}
+	}
+
+	applied, err := s.couponService.ApplyByCode(ctx, targetCode, pricedTotal, &in.CustomerID)
 	if err != nil {
 		if errors.Is(database.MapError(err), database.ErrNotFound) {
 			return nil, apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
@@ -1004,8 +1030,10 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 		// The cart is optional here: validating a coupon without a cart still
 		// works and prices against a zero subtotal.
 		var grossTotal int64
+		var cartData *model.Cart
 		if userID != nil || sessionID != nil {
-			cartData, err := s.loadCartForOwner(ctx, userID, sessionID)
+			var err error
+			cartData, err = s.loadCartForOwner(ctx, userID, sessionID)
 			if err != nil {
 				return err
 			}
@@ -1013,6 +1041,26 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 			if err != nil {
 				return err
 			}
+		}
+
+		// A merchant coupon prices against that merchant's eligible
+		// subtotal, mirroring checkout.
+		if vendorID, err := s.couponService.GetVendorIDByCode(ctx, code); err != nil {
+			var apiErr *apierr.APIError
+			if errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound {
+				return apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
+			}
+			return err
+		} else if vendorID != nil {
+			eligible, err := s.lenientVendorTotal(ctx, cartData, *vendorID)
+			if err != nil {
+				return err
+			}
+			if eligible == 0 {
+				return apierr.BadRequestError("This coupon does not apply to the items in your cart").
+					WithCode(errcode.CodeCouponNotFound)
+			}
+			grossTotal = eligible
 		}
 
 		// Client-supplied subtotals are never trusted for pricing decisions.
@@ -1099,4 +1147,39 @@ func (s *CheckoutService) lenientCartTotal(ctx context.Context, cart *model.Cart
 		grossTotal += int64(item.Quantity) * item.PriceAtPurchase
 	}
 	return grossTotal, nil
+}
+
+// lenientVendorTotal mirrors lenientCartTotal but only sums lines belonging
+// to the given merchant, for pricing vendor-scoped coupons in previews.
+func (s *CheckoutService) lenientVendorTotal(ctx context.Context, cart *model.Cart, vendorID uuid.UUID) (int64, error) {
+	if cart == nil {
+		return 0, nil
+	}
+
+	var total int64
+	for _, item := range cart.Items {
+		v, vErr := s.variantReader.GetByID(ctx, item.VariantID)
+		if vErr != nil {
+			if !errors.Is(database.MapError(vErr), database.ErrNotFound) {
+				return 0, s.handleError(vErr, "Failed to load variant price")
+			}
+			continue
+		}
+		product, pErr := s.productReader.GetByID(ctx, v.ProductID)
+		if pErr != nil {
+			if !errors.Is(database.MapError(pErr), database.ErrNotFound) {
+				return 0, s.handleError(pErr, "Failed to load product")
+			}
+			continue
+		}
+		if product.VendorID == nil || *product.VendorID != vendorID {
+			continue
+		}
+		if v.Price != nil {
+			total += int64(item.Quantity) * *v.Price
+		} else {
+			total += int64(item.Quantity) * item.PriceAtPurchase
+		}
+	}
+	return total, nil
 }
