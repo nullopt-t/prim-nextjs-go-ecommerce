@@ -2783,6 +2783,27 @@
       "payoutDetailsMissing": "Not added yet",
       "commissionNote": "Commission rate and account status cannot be changed here. Changes are reviewed by the marketplace team.",
       "resubmitNote": "Saving changes returns your application to review."
+    },
+    "wizard": {
+      "subtitle": "Place your product in four stages. Your answers stay with that stage until you finish.",
+      "steps": {
+        "identity": "Product identity",
+        "details": "Details",
+        "offer": "Price & inventory",
+        "review": "Review"
+      },
+      "progressLabel": "Product placement progress",
+      "stepHint": "Step {step} of {total} · your entries are kept as you move",
+      "back": "Back",
+      "continue": "Continue",
+      "saveDraft": "Save draft",
+      "savePublish": "Save & publish",
+      "loadFailed": "The product could not be loaded.",
+      "review": {
+        "categoryUnchanged": "Kept from the saved product",
+        "note": "Saving creates this product as a draft. Publishing makes it visible to buyers immediately.",
+        "publishedNote": "This product is already published. Saving keeps it published unless you adjust status from the product list."
+      }
     }
   },
   "wishlist": {

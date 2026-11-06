@@ -7,6 +7,7 @@ export { VendorStatusShell } from "./routes/vendorStatusShell";
 export { VendorConsoleGate } from "./routes/vendorConsoleGate";
 export { VendorDashboard } from "./routes/vendorDashboard";
 export { VendorProducts } from "./routes/vendorProducts";
+export { VendorProductWizard } from "./routes/vendorProductWizard";
 export { VendorInventory } from "./routes/vendorInventory";
 export { VendorOrders } from "./routes/vendorOrders";
 export { VendorOrderDetail } from "./routes/vendorOrderDetail";
