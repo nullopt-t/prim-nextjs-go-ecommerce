@@ -1,23 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Save,
-  Store,
-  Truck,
-  CreditCard,
-  Bell,
-  ShieldCheck,
-  Building2,
-  Globe,
-  Megaphone,
-  Percent,
-  Key,
-  Mail,
-  ShieldAlert,
-  Eye,
-  EyeOff
-} from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import { PageHeader } from "@/shared/ui/pageHeader";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { adminService } from "@/modules/admin/api/adminService";
 import { PUBLIC_SETTINGS_UPDATED_EVENT } from "@/shared/lib/settingsEvents";
@@ -116,55 +101,45 @@ export function AdminSettings() {
 
 
   const tabs = [
-    { id: "general" as const, label: t("settings.tabs.general"), icon: Store },
-    { id: "shipping" as const, label: t("settings.tabs.shipping"), icon: Truck },
-    { id: "payments" as const, label: t("settings.tabs.payments"), icon: CreditCard },
-    { id: "notifications" as const, label: t("settings.tabs.notifications"), icon: Bell },
-    { id: "security" as const, label: t("settings.tabs.security"), icon: ShieldCheck }
+    { id: "general" as const, label: t("settings.tabs.general") },
+    { id: "shipping" as const, label: t("settings.tabs.shipping") },
+    { id: "payments" as const, label: t("settings.tabs.payments") },
+    { id: "notifications" as const, label: t("settings.tabs.notifications") },
+    { id: "security" as const, label: t("settings.tabs.security") }
   ];
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Top Header Card */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-3xl border border-border/80 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("settings.title")}</h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent-brand/10 text-accent-brand border border-accent-brand/20">
-              v2.4
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">{t("settings.subtitle")}</p>
-        </div>
-
-        <button
-          onClick={() => handleSave()}
-          disabled={saving || loading}
-          className="flex items-center gap-2 px-5 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0 disabled:opacity-50"
-        >
-          <Save className="size-4" />
-          <span>{saving ? t("settings.saving") : t("settings.saveChanges")}</span>
-        </button>
-      </div>
+    <div className="w-full space-y-5">
+      <PageHeader
+        title={t("settings.title")}
+        actions={
+          <button
+            onClick={() => handleSave()}
+            disabled={saving || loading}
+            className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {saving ? t("settings.saving") : t("settings.saveChanges")}
+          </button>
+        }
+      />
 
       {/* Navigation Tab Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-border">
         {tabs.map((tab) => {
-          const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-semibold whitespace-nowrap transition-all border ${
+              aria-current={isActive ? "page" : undefined}
+              className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-background text-foreground border-border/80 shadow-xs font-bold"
-                  : "bg-secondary/20 text-muted-foreground border-transparent hover:text-foreground hover:bg-secondary/40"
+                  ? "border-foreground text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Icon className={`size-4 ${isActive ? "text-accent-brand" : "text-muted-foreground"}`} />
-              <span>{tab.label}</span>
+              {tab.label}
             </button>
           );
         })}
@@ -176,12 +151,11 @@ export function AdminSettings() {
         {activeTab === "general" && (
           <div className="space-y-6">
             {/* Store Identity */}
-            <div className="bg-background border border-border/80 rounded-2xl p-6 shadow-xs space-y-5">
+            <div className="rounded-lg border border-border bg-background p-4 space-y-5">
               <div className="border-b border-border/60 pb-3">
-                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                  <Building2 className="size-4 text-accent-brand" />
-                  <span>{t("settings.sections.storeIdentity")}</span>
-                </h3>
+                <h2 className="text-sm font-semibold text-foreground">
+{t("settings.sections.storeIdentity")}
+                </h2>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {t("settings.sections.storeIdentityDesc")}
                 </p>
@@ -189,62 +163,61 @@ export function AdminSettings() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.storeName")}
                   </label>
                   <input
                     type="text"
                     value={settings.storeName || ""}
                     onChange={(e) => setSettings({ ...settings, storeName: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.storeEmail")}
                   </label>
                   <input
                     type="email"
                     value={settings.storeEmail || ""}
                     onChange={(e) => setSettings({ ...settings, storeEmail: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.storePhone")}
                   </label>
                   <input
                     type="text"
                     value={settings.storePhone || ""}
                     onChange={(e) => setSettings({ ...settings, storePhone: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.storeAddress")}
                   </label>
                   <input
                     type="text"
                     value={settings.storeAddress || ""}
                     onChange={(e) => setSettings({ ...settings, storeAddress: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
               </div>
             </div>
 
             {/* Regional & Localization */}
-            <div className="bg-background border border-border/80 rounded-2xl p-6 shadow-xs space-y-5">
+            <div className="rounded-lg border border-border bg-background p-4 space-y-5">
               <div className="border-b border-border/60 pb-3">
-                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                  <Globe className="size-4 text-accent-brand" />
-                  <span>{t("settings.sections.regional")}</span>
-                </h3>
+                <h2 className="text-sm font-semibold text-foreground">
+{t("settings.sections.regional")}
+                </h2>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {t("settings.sections.regionalDesc")}
                 </p>
@@ -252,7 +225,7 @@ export function AdminSettings() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.currency")}
                   </label>
                   <div className="w-full px-3.5 py-2.5 bg-secondary/10 border border-border rounded-xl text-xs text-muted-foreground">
@@ -261,13 +234,13 @@ export function AdminSettings() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.defaultLocale")}
                   </label>
                   <select
                     value={settings.defaultLocale || "ar"}
                     onChange={(e) => setSettings({ ...settings, defaultLocale: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                   >
                     <option value="ar">العربية (Arabic - RTL)</option>
                     <option value="en">English (LTR)</option>
@@ -277,13 +250,12 @@ export function AdminSettings() {
             </div>
 
             {/* Announcement Ribbon */}
-            <div className="bg-background border border-border/80 rounded-2xl p-6 shadow-xs space-y-4">
+            <div className="rounded-lg border border-border bg-background p-4 space-y-4">
               <div className="border-b border-border/60 pb-3 flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                    <Megaphone className="size-4 text-accent-brand" />
-                    <span>{t("settings.sections.announcement")}</span>
-                  </h3>
+                  <h2 className="text-sm font-semibold text-foreground">
+{t("settings.sections.announcement")}
+                  </h2>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     {t("settings.sections.announcementDesc")}
                   </p>
@@ -302,14 +274,14 @@ export function AdminSettings() {
 
               {settings.announcementEnabled && (
                 <div className="space-y-1.5 pt-1">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.announcementText")}
                   </label>
                   <input
                     type="text"
                     value={settings.announcementText || ""}
                     onChange={(e) => setSettings({ ...settings, announcementText: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
               )}
@@ -320,12 +292,11 @@ export function AdminSettings() {
         {/* ─── TAB 2: SHIPPING & DELIVERY ─── */}
         {activeTab === "shipping" && (
           <div className="space-y-6">
-            <div className="bg-background border border-border/80 rounded-2xl p-6 shadow-xs space-y-5">
+            <div className="rounded-lg border border-border bg-background p-4 space-y-5">
               <div className="border-b border-border/60 pb-3">
-                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                  <Truck className="size-4 text-accent-brand" />
-                  <span>{t("settings.sections.deliveryRates")}</span>
-                </h3>
+                <h2 className="text-sm font-semibold text-foreground">
+{t("settings.sections.deliveryRates")}
+                </h2>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {t("settings.sections.deliveryRatesDesc")}
                 </p>
@@ -333,7 +304,7 @@ export function AdminSettings() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.flatShipping")}
                   </label>
                   <input
@@ -344,12 +315,12 @@ export function AdminSettings() {
                     onChange={(e) =>
                       setSettings({ ...settings, flatRateShipping: parseFloat(e.target.value) || 0 })
                     }
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.freeShippingMin")}
                   </label>
                   <input
@@ -360,12 +331,12 @@ export function AdminSettings() {
                     onChange={(e) =>
                       setSettings({ ...settings, freeShippingThreshold: parseFloat(e.target.value) || 0 })
                     }
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.estimatedDeliveryDays")}
                   </label>
                   <input
@@ -374,7 +345,7 @@ export function AdminSettings() {
                     onChange={(e) =>
                       setSettings({ ...settings, estimatedDeliveryDays: e.target.value })
                     }
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
               </div>
@@ -386,12 +357,11 @@ export function AdminSettings() {
         {activeTab === "payments" && (
           <div className="space-y-6">
             {/* Payment Channels */}
-            <div className="bg-background border border-border/80 rounded-2xl p-6 shadow-xs space-y-5">
+            <div className="rounded-lg border border-border bg-background p-4 space-y-5">
               <div className="border-b border-border/60 pb-3">
-                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                  <CreditCard className="size-4 text-accent-brand" />
-                  <span>{t("settings.sections.paymentMethods")}</span>
-                </h3>
+                <h2 className="text-sm font-semibold text-foreground">
+{t("settings.sections.paymentMethods")}
+                </h2>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {t("settings.sections.paymentMethodsDesc")}
                 </p>
@@ -421,7 +391,7 @@ export function AdminSettings() {
 
                 {settings.allowCod && (
                   <div className="ps-4 pe-2 py-2 border-s-2 border-accent-brand max-w-sm space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground">
+                    <label className="text-sm font-medium text-foreground">
                       {t("settings.fields.codFee")}
                     </label>
                     <input
@@ -459,12 +429,11 @@ export function AdminSettings() {
             </div>
 
             {/* Taxes & Reservation */}
-            <div className="bg-background border border-border/80 rounded-2xl p-6 shadow-xs space-y-5">
+            <div className="rounded-lg border border-border bg-background p-4 space-y-5">
               <div className="border-b border-border/60 pb-3">
-                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                  <Percent className="size-4 text-accent-brand" />
-                  <span>{t("settings.sections.taxRules")}</span>
-                </h3>
+                <h2 className="text-sm font-semibold text-foreground">
+{t("settings.sections.taxRules")}
+                </h2>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {t("settings.sections.taxRulesDesc")}
                 </p>
@@ -472,7 +441,7 @@ export function AdminSettings() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.taxRate")}
                   </label>
                   <input
@@ -484,12 +453,12 @@ export function AdminSettings() {
                     onChange={(e) =>
                       setSettings({ ...settings, taxRatePercent: parseFloat(e.target.value) || 0 })
                     }
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.cartReservationMinutes")}
                   </label>
                   <input
@@ -504,7 +473,7 @@ export function AdminSettings() {
                         cartReservationMinutes: parseInt(e.target.value, 10) || 15
                       })
                     }
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
               </div>
@@ -532,12 +501,11 @@ export function AdminSettings() {
         {activeTab === "notifications" && (
           <div className="space-y-6">
             {/* Customer Notifications */}
-            <div className="bg-background border border-border/80 rounded-2xl p-6 shadow-xs space-y-5">
+            <div className="rounded-lg border border-border bg-background p-4 space-y-5">
               <div className="border-b border-border/60 pb-3">
-                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                  <Mail className="size-4 text-accent-brand" />
-                  <span>{t("settings.sections.emailNotifications")}</span>
-                </h3>
+                <h2 className="text-sm font-semibold text-foreground">
+{t("settings.sections.emailNotifications")}
+                </h2>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {t("settings.sections.emailNotificationsDesc")}
                 </p>
@@ -545,7 +513,7 @@ export function AdminSettings() {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-4 rounded-xl border border-border/70 bg-secondary/10">
-                  <span className="text-xs font-semibold text-foreground">
+                  <span className="text-sm font-medium text-foreground">
                     {t("settings.fields.notifyOrderConfirmation")}
                   </span>
                   <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -562,7 +530,7 @@ export function AdminSettings() {
                 </div>
 
                 <div className="flex items-center justify-between p-4 rounded-xl border border-border/70 bg-secondary/10">
-                  <span className="text-xs font-semibold text-foreground">
+                  <span className="text-sm font-medium text-foreground">
                     {t("settings.fields.notifyOrderShipped")}
                   </span>
                   <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -581,12 +549,11 @@ export function AdminSettings() {
             </div>
 
             {/* Admin Internal Alerts */}
-            <div className="bg-background border border-border/80 rounded-2xl p-6 shadow-xs space-y-5">
+            <div className="rounded-lg border border-border bg-background p-4 space-y-5">
               <div className="border-b border-border/60 pb-3">
-                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                  <Bell className="size-4 text-accent-brand" />
-                  <span>{t("settings.sections.adminAlerts")}</span>
-                </h3>
+                <h2 className="text-sm font-semibold text-foreground">
+{t("settings.sections.adminAlerts")}
+                </h2>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {t("settings.sections.adminAlertsDesc")}
                 </p>
@@ -594,7 +561,7 @@ export function AdminSettings() {
 
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.adminNotificationEmail")}
                   </label>
                   <input
@@ -603,12 +570,12 @@ export function AdminSettings() {
                     onChange={(e) =>
                       setSettings({ ...settings, adminNotificationEmail: e.target.value })
                     }
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
                   />
                 </div>
 
                 <div className="flex items-center justify-between p-4 rounded-xl border border-border/70 bg-secondary/10">
-                  <span className="text-xs font-semibold text-foreground">
+                  <span className="text-sm font-medium text-foreground">
                     {t("settings.fields.notifyLowStock")}
                   </span>
                   <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -630,12 +597,11 @@ export function AdminSettings() {
         {activeTab === "security" && (
           <div className="space-y-6">
             {/* API Credentials */}
-            <div className="bg-background border border-border/80 rounded-2xl p-6 shadow-xs space-y-5">
+            <div className="rounded-lg border border-border bg-background p-4 space-y-5">
               <div className="border-b border-border/60 pb-3">
-                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                  <Key className="size-4 text-accent-brand" />
-                  <span>{t("settings.sections.apiKeys")}</span>
-                </h3>
+                <h2 className="text-sm font-semibold text-foreground">
+{t("settings.sections.apiKeys")}
+                </h2>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {t("settings.sections.apiKeysDesc")}
                 </p>
@@ -685,13 +651,12 @@ export function AdminSettings() {
             </div>
 
             {/* Maintenance Mode */}
-            <div className="bg-background border border-amber-500/30 rounded-2xl p-6 shadow-xs space-y-4">
+            <div className="bg-background rounded-lg border border-amber-500/30 bg-background p-4 space-y-4">
               <div className="border-b border-border/60 pb-3 flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                    <ShieldAlert className="size-4 text-amber-500" />
-                    <span>{t("settings.sections.maintenance")}</span>
-                  </h3>
+                  <h2 className="text-sm font-semibold text-foreground">
+                    {t("settings.sections.maintenance")}
+                  </h2>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     {t("settings.sections.maintenanceDesc")}
                   </p>
@@ -710,14 +675,14 @@ export function AdminSettings() {
 
               {settings.maintenanceMode && (
                 <div className="space-y-1.5 pt-1">
-                  <label className="text-xs font-semibold text-foreground">
+                  <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.maintenanceMessage")}
                   </label>
                   <textarea
                     rows={3}
                     value={settings.maintenanceMessage || ""}
                     onChange={(e) => setSettings({ ...settings, maintenanceMessage: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:ring-2 focus:ring-accent-brand/20 focus:border-accent-brand focus:outline-hidden resize-none"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 resize-none"
                   />
                 </div>
               )}

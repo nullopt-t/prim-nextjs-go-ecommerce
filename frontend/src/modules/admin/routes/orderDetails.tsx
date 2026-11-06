@@ -2,7 +2,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "@/shared/i18n/navigation";
 import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Truck, Clock, MapPin, CreditCard, User, Tag } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { PageHeader } from "@/shared/ui/pageHeader";
+import { StatusPill, statusTone } from "@/shared/ui/statusPill";
+import { usePublicSettings } from "@/modules/settings/model/publicSettingsContext";
+import { formatMoney } from "@/shared/lib/money";
 import { adminService } from "@/modules/admin/api/adminService";
 import type { Order, OrderItem } from "@/modules/orders/types";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
@@ -48,6 +52,8 @@ export function AdminOrderDetails() {
   const { id } = useParams();
   const navigate = useRouter();
   const t = useTranslations("admin");
+  const { settings } = usePublicSettings();
+  const currency = settings?.currency?.trim() ?? "";
 
   const locale = useLocale();
   const [order, setOrder] = useState<OrderView | null>(null);
@@ -71,8 +77,8 @@ export function AdminOrderDetails() {
           customer: remoteOrder.customerEmail ? remoteOrder.customerEmail.split("@")[0] : "—",
           email: remoteOrder.customerEmail || "—",
           date: formatDateTime(remoteOrder.createdAt, locale),
-          total: `EGP ${((remoteOrder.totalAmount || 0) / 100).toFixed(2)}`,
-          discount: remoteOrder.discountAmount ? `EGP ${((remoteOrder.discountAmount || 0) / 100).toFixed(2)}` : null,
+          total: formatMoney((remoteOrder.totalAmount || 0) / 100, currency),
+          discount: remoteOrder.discountAmount ? formatMoney((remoteOrder.discountAmount || 0) / 100, currency) : null,
           discountAmount: remoteOrder.discountAmount || 0,
           couponCode: remoteOrder.couponCode || null,
           couponId: remoteOrder.couponId || null,
@@ -107,7 +113,7 @@ export function AdminOrderDetails() {
               id: it.id,
               name: itemName,
               vendorName,
-              price: `EGP ${((it.priceAtPurchase || 0) / 100).toFixed(2)}`,
+              price: formatMoney((it.priceAtPurchase || 0) / 100, currency),
               quantity: it.quantity || 1
             };
           }),
@@ -189,36 +195,32 @@ export function AdminOrderDetails() {
   };
 
   return (
-    <div className="space-y-6 w-full">
-      <div className="flex items-center justify-between">
+    <div className="w-full space-y-5">
+      <div>
         <button
           onClick={() => navigate.push("/admin/orders")}
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          className="mb-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="size-4" />
-          <span>{t("orderDetails.back")}</span>
+          <ArrowLeft className="size-3.5 rtl:rotate-180" />
+          {t("orderDetails.back")}
         </button>
-        <span className="text-xs font-mono font-bold px-3 py-1 bg-secondary rounded-lg border border-border">
-          {order.id}
-        </span>
+        <PageHeader
+          title={`${t("orderDetails.title")}: ${order.id}`}
+          actions={
+            <StatusPill tone={statusTone(order.status)}>{t(`status.${order.status}`, { defaultValue: order.status })}</StatusPill>
+          }
+        />
+        <p className="mt-1 text-xs text-muted-foreground">{t("orderDetails.placedOn", { date: order.date })}</p>
       </div>
 
-      <div className="bg-background border border-border rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground">{t("orderDetails.title")}</h1>
-            <span className="text-xs text-foreground">{order.status}</span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">{t("orderDetails.placedOn", { date: order.date })}</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <select
-            value={order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-            onChange={(e) => handleUpdateFulfillment(e.target.value.toLowerCase())}
-            disabled={order.status === "cancelled" || order.status === "delivered"}
-            className="px-3 py-2 bg-secondary border border-border rounded-xl text-xs font-semibold text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+          onChange={(e) => handleUpdateFulfillment(e.target.value.toLowerCase())}
+          disabled={order.status === "cancelled" || order.status === "delivered"}
+          aria-label={t("orderDetails.statusLabel")}
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        >
             {order.status === "pending" && (
               <>
                 <option value="pending" disabled>{t("status.pending")}</option>
@@ -247,15 +249,14 @@ export function AdminOrderDetails() {
               <option value="cancelled">{t("status.cancelledFinal")}</option>
             )}
           </select>
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Left Column: Line Items & History */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-4 lg:col-span-2">
           {/* Purchased Items */}
-          <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
-            <h3 className="font-bold text-base text-foreground border-b border-border pb-3">{t("orderDetails.lineItems", { count: order.items.length })}</h3>
+          <section className="space-y-4 rounded-lg border border-border bg-background p-4">
+            <h2 className="border-b border-border pb-3 text-sm font-semibold text-foreground">{t("orderDetails.lineItems", { count: order.items.length })}</h2>
             <div className="divide-y divide-border">
               {order.items.map((item: OrderViewItem) => (
                 <div key={item.id} className="py-3 flex items-center justify-between text-xs">
@@ -277,7 +278,6 @@ export function AdminOrderDetails() {
             {order.couponCode && (
               <div className="pt-2 border-t border-border flex justify-between items-center text-xs">
                 <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
-                  <Tag className="size-3.5" />
                   <span>{t("orderDetails.couponApplied")}</span>
                   <span className="font-mono bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 uppercase tracking-wide">
                     {order.couponCode}
@@ -292,16 +292,13 @@ export function AdminOrderDetails() {
             )}
             <div className="pt-3 border-t border-border flex justify-between items-center text-sm font-bold">
               <span>{t("orderDetails.totalPaid")}</span>
-              <span className="text-accent-brand text-base">{order.total}</span>
+              <span className="text-base font-semibold text-foreground tabular-nums">{order.total}</span>
             </div>
-          </div>
+          </section>
 
           {/* Tracking Number Editor */}
-          <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
-            <h3 className="font-bold text-base text-foreground flex items-center gap-2">
-              <Truck className="size-5 text-accent-brand" />
-              <span>{t("orderDetails.shipmentTracking")}</span>
-            </h3>
+          <section className="space-y-4 rounded-lg border border-border bg-background p-4">
+            <h2 className="text-sm font-semibold text-foreground">{t("orderDetails.shipmentTracking")}</h2>
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <input
@@ -309,7 +306,7 @@ export function AdminOrderDetails() {
                   placeholder={t("orderDetails.carrierPlaceholder")}
                   value={carrier}
                   onChange={(e) => setCarrier(e.target.value)}
-                  className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                  className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 />
                 <input
                   type="text"
@@ -324,25 +321,22 @@ export function AdminOrderDetails() {
                 placeholder={t("orderDetails.trackingUrlPlaceholder")}
                 value={trackingUrl}
                 onChange={(e) => setTrackingUrl(e.target.value)}
-                className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
               />
               <div className="flex justify-end">
                 <button
                   onClick={handleSaveTracking}
-                  className="px-4 py-2 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90"
+                  className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
                 >
                   {t("orderDetails.saveTracking")}
                 </button>
               </div>
             </div>
-          </div>
+          </section>
 
           {/* History Timeline */}
-          <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
-            <h3 className="font-bold text-base text-foreground flex items-center gap-2">
-              <Clock className="size-5 text-accent-brand" />
-              <span>{t("orderDetails.timeline")}</span>
-            </h3>
+          <section className="space-y-4 rounded-lg border border-border bg-background p-4">
+            <h2 className="text-sm font-semibold text-foreground">{t("orderDetails.timeline")}</h2>
             <div className="space-y-3">
               {order.history.map((log: OrderViewHistory, idx: number) => (
                 <div key={idx} className="flex items-start gap-3 text-xs">
@@ -361,43 +355,34 @@ export function AdminOrderDetails() {
                 placeholder={t("orderDetails.notePlaceholder")}
                 value={noteInput}
                 onChange={(e) => setNoteInput(e.target.value)}
-                className="flex-1 px-3 py-1.5 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
               />
-              <button type="submit" className="px-3 py-1.5 bg-secondary text-foreground text-xs font-semibold rounded-xl border border-border">
+              <button type="submit" className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary">
                 {t("orderDetails.addNote")}
               </button>
             </form>
-          </div>
+          </section>
         </div>
 
         {/* Right Column: Customer & Payment Details */}
-        <div className="space-y-6">
-          <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
-            <h3 className="font-bold text-base text-foreground flex items-center gap-2">
-              <User className="size-4 text-accent-brand" />
-              <span>{t("orderDetails.customer")}</span>
-            </h3>
+        <div className="space-y-4">
+          <section className="space-y-3 rounded-lg border border-border bg-background p-4">
+            <h2 className="text-sm font-semibold text-foreground">{t("orderDetails.customer")}</h2>
             <div className="text-xs space-y-1">
               <div className="font-semibold text-foreground">{order.customer}</div>
               <div className="text-muted-foreground">{order.email}</div>
             </div>
-          </div>
+          </section>
 
-          <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
-            <h3 className="font-bold text-base text-foreground flex items-center gap-2">
-              <MapPin className="size-4 text-accent-brand" />
-              <span>{t("orderDetails.shippingAddress")}</span>
-            </h3>
+          <section className="space-y-3 rounded-lg border border-border bg-background p-4">
+            <h2 className="text-sm font-semibold text-foreground">{t("orderDetails.shippingAddress")}</h2>
             <div className="text-xs text-muted-foreground leading-relaxed">
               {order.shippingAddress}
             </div>
-          </div>
+          </section>
 
-          <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-4">
-            <h3 className="font-bold text-base text-foreground flex items-center gap-2">
-              <CreditCard className="size-4 text-accent-brand" />
-              <span>{t("orderDetails.paymentDetails")}</span>
-            </h3>
+          <section className="space-y-3 rounded-lg border border-border bg-background p-4">
+            <h2 className="text-sm font-semibold text-foreground">{t("orderDetails.paymentDetails")}</h2>
             <div className="text-xs space-y-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("orderDetails.method")}</span>
@@ -405,10 +390,10 @@ export function AdminOrderDetails() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t("orderDetails.statusLabel")}</span>
-                <span className="font-bold text-emerald-600">{t(`status.${order.paymentStatus}`)}</span>
+                <StatusPill tone={statusTone(order.paymentStatus)}>{t(`status.${order.paymentStatus}`, { defaultValue: order.paymentStatus })}</StatusPill>
               </div>
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </div>

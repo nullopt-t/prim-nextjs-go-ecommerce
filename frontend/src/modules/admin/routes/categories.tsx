@@ -1,6 +1,8 @@
 import { ResponsiveTable } from "@/shared/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Search, Edit2, Trash2, FolderTree, X, SlidersHorizontal, Table2, Network } from "lucide-react";
+import { Plus, Search, X, Loader2 } from "lucide-react";
+import { PageHeader } from "@/shared/ui/pageHeader";
+import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import CategoryTreeMap from "@/modules/admin/components/CategoryTreeMap";
 import CategoryProductsPanel from "@/modules/admin/components/CategoryProductsPanel";
 import { catalogService } from "@/modules/catalog/api/catalogService";
@@ -278,106 +280,99 @@ export function AdminCategories() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("categories.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t("categories.subtitle")}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <div className="inline-flex items-center rounded-xl border border-border bg-secondary/30 p-1">
+    <div className="space-y-5">
+      <PageHeader
+        title={t("categories.title")}
+        actions={
+          <>
+            <div className="inline-flex items-center gap-1 rounded-md border border-border p-1">
+              <button
+                type="button"
+                onClick={() => setViewMode("table")}
+                aria-pressed={viewMode === "table"}
+                className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
+                  viewMode === "table" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t("categories.viewTable")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("map")}
+                aria-pressed={viewMode === "map"}
+                className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
+                  viewMode === "map" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t("categories.viewMap")}
+              </button>
+            </div>
             <button
-              type="button"
-              onClick={() => setViewMode("table")}
-              aria-pressed={viewMode === "table"}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                viewMode === "table" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-              }`}
+              onClick={() => handleOpenModal()}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
             >
-              <Table2 className="size-3.5" />
-              <span>{t("categories.viewTable")}</span>
+              <Plus className="size-4" />
+              {t("categories.add")}
             </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("map")}
-              aria-pressed={viewMode === "map"}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                viewMode === "map" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Network className="size-3.5" />
-              <span>{t("categories.viewMap")}</span>
-            </button>
-          </div>
-          <button
-            onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0"
-          >
-            <Plus className="size-4" />
-            <span>{t("categories.add")}</span>
-          </button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {viewMode === "table" ? (
         <>
-      <div className="bg-background border border-border rounded-2xl p-4 shadow-xs">
-        <div className="relative max-w-sm">
-          <Search className="absolute start-3.5 top-2.5 size-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder={t("categories.searchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full ps-10 pe-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:outline-hidden"
-          />
-        </div>
+      <div className="relative w-full sm:max-w-xs">
+        <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder={t("categories.searchPlaceholder")}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-md border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30"
+        />
       </div>
 
-      <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
+      <div className="overflow-hidden rounded-lg border border-border bg-background">
         <div className="overflow-x-auto">
-          <ResponsiveTable className="w-full sm:min-w-max text-start text-xs">
-            <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
-              <tr>
-                <th className="py-3.5 ps-4">{t("categories.colName")}</th>
-                <th className="py-3.5">{t("categories.colSlug")}</th>
-                <th className="py-3.5">{t("categories.colParent")}</th>
-                <th className="py-3.5">{t("categories.colProducts")}</th>
-                <th className="py-3.5">{t("categories.colStatus")}</th>
-                <th className="py-3.5 pe-4 text-end">{t("categories.colActions")}</th>
+          <ResponsiveTable className="w-full text-start text-sm md:min-w-max">
+            <thead className="text-xs text-muted-foreground">
+              <tr className="border-b border-border">
+                <th className="py-2.5 ps-4 text-start font-medium">{t("categories.colName")}</th>
+                <th className="py-2.5 text-start font-medium">{t("categories.colSlug")}</th>
+                <th className="py-2.5 text-start font-medium">{t("categories.colParent")}</th>
+                <th className="py-2.5 text-start font-medium">{t("categories.colProducts")}</th>
+                <th className="py-2.5 text-start font-medium">{t("categories.colStatus")}</th>
+                <th className="py-2.5 pe-4 text-end font-medium">{t("categories.colActions")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody className="divide-y divide-border">
               {filtered.map((cat) => (
-                <tr key={cat.id} className="hover:bg-secondary/20 transition-colors">
-                  <td className="py-3.5 ps-4 font-semibold text-foreground flex items-center gap-2">
-                    <FolderTree className="size-4 text-accent-brand" />
-                    <span>{cat.name}</span>
+                <tr key={cat.id} className="transition-colors hover:bg-secondary/30">
+                  <td className="py-3 ps-4 font-medium text-foreground">{cat.name}</td>
+                  <td className="py-3 font-mono text-xs text-muted-foreground">{cat.slug}</td>
+                  <td className="py-3 text-xs text-muted-foreground">{cat.parent}</td>
+                  <td className="py-3 font-medium text-foreground tabular-nums">{t("categories.items", { count: cat.productsCount })}</td>
+                  <td className="py-3">
+                    <StatusPill tone={statusTone(cat.status)}>{cat.status}</StatusPill>
                   </td>
-                  <td className="py-3.5 font-mono text-muted-foreground">{cat.slug}</td>
-                  <td className="py-3.5 text-muted-foreground">{cat.parent}</td>
-                  <td className="py-3.5 font-bold text-foreground">{t("categories.items", { count: cat.productsCount })}</td>
-                  <td className="py-3.5 text-foreground">{cat.status}</td>
-                  <td className="py-3.5 pe-4 text-end">
-                    <div className="flex items-center justify-end gap-1.5">
+                  <td className="py-3 pe-4 text-end">
+                    <div className="inline-flex items-center gap-1">
                       <button
                         onClick={() => setViewingCategoryAttrs(cat)}
-                        className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border flex items-center gap-1.5 transition-colors"
-                        title={t("categories.manageAttributes")}
+                        className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                       >
-                        <SlidersHorizontal className="size-3.5 text-accent-brand" />
-                        <span>{t("categories.attributes")}</span>
-                        <span className="px-1.5 py-0.5 rounded-md bg-background text-[10px] font-bold text-muted-foreground">
-                          {categoryAttributes(cat.id).length}
-                        </span>
+                        {t("categories.attributes")} ({categoryAttributes(cat.id).length})
                       </button>
-                      <button onClick={() => handleOpenModal(cat)} className="p-1.5 text-muted-foreground hover:text-accent-brand rounded-lg">
-                        <Edit2 className="size-4" />
+                      <button
+                        onClick={() => handleOpenModal(cat)}
+                        className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                      >
+                        {t("actions.edit")}
                       </button>
-                      <button onClick={() => handleDelete(cat.id)} className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg">
-                        <Trash2 className="size-4" />
+                      <button
+                        onClick={() => handleDelete(cat.id)}
+                        className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        {t("actions.delete")}
                       </button>
                     </div>
                   </td>
@@ -423,33 +418,37 @@ export function AdminCategories() {
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md space-y-4 rounded-lg border border-border bg-background p-5 shadow-xl">
             <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="font-bold text-base text-foreground">
+              <h2 className="text-sm font-semibold text-foreground">
                 {editingCategory ? t("categories.editTitle") : t("categories.addTitle")}
-              </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground hover:text-foreground">
-                <X className="size-5" />
+              </h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label={t("actions.cancel")}
+              >
+                <X className="size-4" />
               </button>
             </div>
             <form onSubmit={handleSave} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">{t("categories.form.name")}</label>
+                <label className="text-sm font-medium text-foreground">{t("categories.form.name")}</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">{t("categories.form.parent")}</label>
+                <label className="text-sm font-medium text-foreground">{t("categories.form.parent")}</label>
                 <select
                   value={formData.parentId}
                   onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="">{t("categories.form.root")}</option>
                   {allCategories.filter(c => !editingCategory || c.id !== editingCategory.id).map((c) => (
@@ -457,9 +456,9 @@ export function AdminCategories() {
                   ))}
                 </select>
               </div>
-              <div className="flex justify-end gap-3 pt-3 border-t border-border">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs font-semibold border border-border rounded-xl">{t("actions.cancel")}</button>
-                <button type="submit" className="px-4 py-2 text-xs font-semibold bg-accent-brand text-white rounded-xl">{t("actions.save")}</button>
+              <div className="flex justify-end gap-2 border-t border-border pt-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary">{t("actions.cancel")}</button>
+                <button type="submit" className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">{t("actions.save")}</button>
               </div>
             </form>
           </div>
@@ -468,17 +467,12 @@ export function AdminCategories() {
 
       {/* Linked Category Attributes Modal */}
       {viewingCategoryAttrs && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 max-h-[85vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="flex max-h-[85vh] w-full max-w-lg flex-col space-y-4 rounded-lg border border-border bg-background p-5 shadow-xl">
             <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-accent-brand/10 text-accent-brand rounded-xl">
-                  <SlidersHorizontal className="size-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base text-foreground">{t("categories.attrs.title")}</h3>
-                  <p className="text-xs text-muted-foreground">{t("categories.attrs.subtitle", { name: viewingCategoryAttrs.name })}</p>
-                </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">{t("categories.attrs.title")}</h2>
+                <p className="text-xs text-muted-foreground">{t("categories.attrs.subtitle", { name: viewingCategoryAttrs.name })}</p>
               </div>
               <button
                 onClick={() => setViewingCategoryAttrs(null)}
@@ -547,10 +541,10 @@ export function AdminCategories() {
                         </div>
                         <button
                           onClick={() => handleDeleteAttribute(attr)}
-                          className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg transition-colors"
+                          className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                           title={t("categories.attrs.unlink")}
                         >
-                          <Trash2 className="size-4" />
+                          {t("actions.delete")}
                         </button>
                       </div>
 
