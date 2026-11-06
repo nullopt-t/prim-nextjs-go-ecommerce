@@ -2,12 +2,14 @@ import { ResponsiveTable } from "@/shared/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "@/shared/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Search, Filter, Eye, Download } from "lucide-react";
+import { Search, Eye } from "lucide-react";
 import { adminService } from "@/modules/admin/api/adminService";
 import type { Order, OrderItem } from "@/modules/orders/types";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { ErrorState } from "@/shared/ui/errorState";
+import { PageHeader } from "@/shared/ui/pageHeader";
+import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
 
@@ -143,29 +145,32 @@ export function AdminOrders() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("orders.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t("orders.subtitle")}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title={t("orders.title")}
+        actions={
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+          >
+            {t("actions.export")}
+          </button>
+        }
+      />
 
-      <div className="bg-background border border-border rounded-2xl p-4 shadow-xs flex flex-col md:flex-row gap-4 justify-between items-center">
-        <div className="relative w-full md:w-80">
-          <Search className="absolute start-3.5 top-2.5 size-4 text-muted-foreground" />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative w-full lg:max-w-xs">
+          <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder={t("orders.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full ps-10 pe-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+            className="w-full rounded-md border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30"
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto md:justify-end">
-          <Filter className="size-4 text-muted-foreground" />
+        <div className="flex flex-wrap items-center gap-2">
           <input
             type="date"
             value={dateFrom}
@@ -174,10 +179,10 @@ export function AdminOrders() {
               setDateFrom(e.target.value);
               reset();
             }}
-            className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             aria-label={t("reports.from")}
           />
-          <span className="text-muted-foreground text-xs">–</span>
+          <span className="text-sm text-muted-foreground">–</span>
           <input
             type="date"
             value={dateTo}
@@ -186,7 +191,7 @@ export function AdminOrders() {
               setDateTo(e.target.value);
               reset();
             }}
-            className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             aria-label={t("reports.to")}
           />
           <select
@@ -195,7 +200,7 @@ export function AdminOrders() {
               setStatusFilter(e.target.value);
               reset();
             }}
-            className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
           >
             <option value="all">{t("status.all")}</option>
             <option value="pending">{t("status.pending")}</option>
@@ -204,59 +209,53 @@ export function AdminOrders() {
             <option value="delivered">{t("status.delivered")}</option>
             <option value="cancelled">{t("status.cancelled")}</option>
           </select>
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="inline-flex items-center gap-1.5 px-3 py-2 border border-border rounded-xl text-xs font-semibold text-foreground hover:bg-secondary/40 disabled:opacity-50 transition-colors"
-          >
-            <Download className="size-3.5" />
-            {t("actions.export")}
-          </button>
         </div>
       </div>
 
-      <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
+      <div className="overflow-hidden rounded-lg border border-border bg-background">
         <div className="overflow-x-auto">
-          <ResponsiveTable className="w-full sm:min-w-max text-start text-xs">
-            <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
-              <tr>
-                <th className="py-3.5 ps-4">{t("orders.colOrderId")}</th>
-                <th className="py-3.5">{t("orders.colDate")}</th>
-                <th className="py-3.5">{t("orders.colCustomer")}</th>
-                <th className="py-3.5">{t("orders.colTotal")}</th>
-                <th className="py-3.5">{t("orders.colPayment")}</th>
-                <th className="py-3.5">{t("orders.colFulfillment")}</th>
-                <th className="py-3.5 pe-4 text-end">{t("orders.colAction")}</th>
+          <ResponsiveTable className="w-full text-start text-sm md:min-w-max">
+            <thead className="text-xs text-muted-foreground">
+              <tr className="border-b border-border">
+                <th className="py-2.5 ps-4 text-start font-medium">{t("orders.colOrderId")}</th>
+                <th className="py-2.5 text-start font-medium">{t("orders.colDate")}</th>
+                <th className="py-2.5 text-start font-medium">{t("orders.colCustomer")}</th>
+                <th className="py-2.5 text-start font-medium">{t("orders.colTotal")}</th>
+                <th className="py-2.5 text-start font-medium">{t("orders.colPayment")}</th>
+                <th className="py-2.5 text-start font-medium">{t("orders.colFulfillment")}</th>
+                <th className="py-2.5 pe-4 text-end font-medium">{t("orders.colAction")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {filtered.map((order) => (
                 <tr key={order.id} className="hover:bg-secondary/20 transition-colors">
-                  <td className="py-3.5 ps-4 font-mono font-bold text-foreground">{order.id}</td>
-                  <td className="py-3.5 text-muted-foreground">{order.date}</td>
-                  <td className="py-3.5">
-                    <div className="font-semibold text-foreground">{order.customer}</div>
-                    <div className="text-[10px] text-muted-foreground">{order.email}</div>
+                  <td className="max-w-36 truncate py-3 ps-4 font-mono text-xs text-foreground">{order.id}</td>
+                  <td className="py-3 text-xs text-muted-foreground">{order.date}</td>
+                  <td className="py-3">
+                    <div className="font-medium text-foreground">{order.customer}</div>
+                    <div className="text-xs text-muted-foreground">{order.email}</div>
                   </td>
-                  <td className="py-3.5">
-                    <div className="font-bold text-foreground">{order.total}</div>
-                    {order.couponCode && (
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <td className="py-3">
+                    <div className="font-medium text-foreground tabular-nums">{order.total}</div>
+                    {order.couponCode ? (
+                      <div className="mt-0.5 flex items-center gap-1">
+                        <span className="rounded border border-border bg-secondary/60 px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
                           {order.couponCode}
                         </span>
-                        {order.discount && (
-                          <span className="text-[10px] text-muted-foreground line-through">
+                        {order.discount ? (
+                          <span className="text-xs text-muted-foreground line-through">
                             -{order.discount}
                           </span>
-                        )}
+                        ) : null}
                       </div>
-                    )}
+                    ) : null}
                   </td>
-                  <td className="py-3.5 text-foreground">
-                    {t(`status.${order.paymentStatus}`)}
+                  <td className="py-3">
+                    <StatusPill tone={statusTone(order.paymentStatus)}>
+                      {t(`status.${order.paymentStatus}`)}
+                    </StatusPill>
                   </td>
-                  <td className="py-3.5">
+                  <td className="py-3">
                     <select
                       value={order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                       onChange={(e) => handleUpdateStatus(order.id, e.target.value.toLowerCase())}
@@ -292,7 +291,7 @@ export function AdminOrders() {
                       )}
                     </select>
                   </td>
-                  <td className="py-3.5 pe-4 text-end">
+                  <td className="py-3 pe-4 text-end">
                     <button
                       onClick={() => navigate.push(`/admin/orders/${order.id}`)}
                       className="p-1.5 text-muted-foreground hover:text-accent-brand hover:bg-secondary rounded-lg transition-colors"

@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Ban, CheckCheck, CheckCircle2, Eye, RefreshCw, XCircle } from "lucide-react";
 import { ResponsiveTable } from "@/shared/ui/responsiveTable";
 import { ErrorState } from "@/shared/ui/errorState";
+import { PageHeader } from "@/shared/ui/pageHeader";
+import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { adminService } from "@/modules/admin/api/adminService";
 import type { AdminVendor } from "@/modules/admin/types";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
@@ -73,123 +74,118 @@ export function AdminVendors() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("vendors.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t("vendors.subtitle")}</p>
-        </div>
-        <button
-          onClick={() => void loadVendors()}
-          className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-xl text-xs font-semibold text-foreground hover:bg-secondary/40 transition-colors"
+    <div className="space-y-5">
+      <PageHeader
+        title={t("vendors.title")}
+        actions={
+          <button
+            onClick={() => void loadVendors()}
+            disabled={loading}
+            className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+          >
+            {t("actions.refresh")}
+          </button>
+        }
+      />
+
+      <div className="flex items-center justify-between gap-3">
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+          aria-label={t("status.all")}
         >
-          <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-          <span>{t("actions.refresh")}</span>
-        </button>
+          <option value="all">{t("status.all")}</option>
+          <option value="pending">{t("status.pending")}</option>
+          <option value="active">{t("status.active")}</option>
+          <option value="suspended">{t("status.suspended")}</option>
+          <option value="rejected">{t("status.rejected")}</option>
+        </select>
+        <span className="text-xs text-muted-foreground">
+          {t("vendors.count", { count: vendors.length })}
+        </span>
       </div>
 
-      <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
-        <div className="p-6 border-b border-border flex flex-col md:flex-row gap-3 md:items-center justify-between">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
-            aria-label={t("status.all")}
-          >
-            <option value="all">{t("status.all")}</option>
-            <option value="pending">{t("status.pending")}</option>
-            <option value="active">{t("status.active")}</option>
-            <option value="suspended">{t("status.suspended")}</option>
-            <option value="rejected">{t("status.rejected")}</option>
-          </select>
-        </div>
-
+      <div className="overflow-hidden rounded-lg border border-border bg-background">
         <div className="overflow-x-auto">
-          <ResponsiveTable className="w-full sm:min-w-max text-start text-xs">
-            <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
-              <tr>
-                <th className="py-3.5 ps-4">{t("vendors.colStore")}</th>
-                <th className="py-3.5">{t("vendors.colStatus")}</th>
-                <th className="py-3.5">{t("vendors.colCommission")}</th>
-                <th className="py-3.5">{t("vendors.colRegistered")}</th>
-                <th className="py-3.5 pe-4 text-end">{t("vendors.colAction")}</th>
+          <ResponsiveTable className="w-full text-start text-sm md:min-w-max">
+            <thead className="text-xs text-muted-foreground">
+              <tr className="border-b border-border">
+                <th className="py-2.5 ps-4 text-start font-medium">{t("vendors.colStore")}</th>
+                <th className="py-2.5 text-start font-medium">{t("vendors.colStatus")}</th>
+                <th className="py-2.5 text-start font-medium">{t("vendors.colCommission")}</th>
+                <th className="py-2.5 text-start font-medium">{t("vendors.colRegistered")}</th>
+                <th className="py-2.5 pe-4 text-end font-medium">{t("vendors.colAction")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody className="divide-y divide-border">
               {vendors.map((vendor) => (
-                <tr key={vendor.id} className="hover:bg-secondary/20 transition-colors">
-                  <td className="py-3.5 ps-4">
+                <tr key={vendor.id} className="transition-colors hover:bg-secondary/30">
+                  <td className="py-3 ps-4">
                     <Link
                       href={`/admin/vendors/${vendor.id}`}
-                      className="font-bold text-foreground hover:text-accent-brand transition-colors"
+                      className="font-medium text-foreground hover:underline"
                     >
                       {vendor.storeName}
                     </Link>
-                    <div className="text-[10px] text-muted-foreground font-mono">{vendor.slug}</div>
+                    <div className="font-mono text-xs text-muted-foreground">{vendor.slug}</div>
                   </td>
-                  <td className="py-3.5">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-secondary text-foreground border border-border">
-                      {statusLabel(vendor.status)}
-                    </span>
+                  <td className="py-3">
+                    <StatusPill tone={statusTone(vendor.status)}>{statusLabel(vendor.status)}</StatusPill>
                   </td>
-                  <td className="py-3.5 font-bold text-foreground">{(vendor.commissionRateBps / 100).toFixed(2)}%</td>
-                  <td className="py-3.5 text-muted-foreground">{new Date(vendor.createdAt).toLocaleDateString(locale)}</td>
-                  <td className="py-3.5 pe-4 text-end">
-                    <div className="inline-flex items-center gap-2">
+                  <td className="py-3 font-medium text-foreground tabular-nums">{(vendor.commissionRateBps / 100).toFixed(2)}%</td>
+                  <td className="py-3 text-xs text-muted-foreground">{new Date(vendor.createdAt).toLocaleDateString(locale)}</td>
+                  <td className="py-3 pe-4 text-end">
+                    <div className="inline-flex items-center gap-1">
                       <Link
                         href={`/admin/vendors/${vendor.id}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-xl text-[11px] font-semibold text-foreground hover:bg-secondary/40 transition-colors"
+                        className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                       >
-                        <Eye className="size-3.5" />
-                        <span>{t("vendors.actions.view")}</span>
+                        {t("vendors.actions.view")}
                       </Link>
-                      {vendor.status === "pending" && (
+                      {vendor.status === "pending" ? (
                         <>
                           <button
                             onClick={() => void handleTransition(vendor, "active")}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl text-[11px] font-semibold hover:bg-emerald-500/20 transition-colors"
+                            className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                           >
-                            <CheckCircle2 className="size-3.5" />
-                            <span>{t("vendors.actions.approve")}</span>
+                            {t("vendors.actions.approve")}
                           </button>
                           <button
                             onClick={() => void handleTransition(vendor, "rejected")}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 rounded-xl text-[11px] font-semibold hover:bg-red-500/20 transition-colors"
+                            className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                           >
-                            <XCircle className="size-3.5" />
-                            <span>{t("vendors.actions.reject")}</span>
+                            {t("vendors.actions.reject")}
                           </button>
                         </>
-                      )}
-                      {vendor.status === "active" && (
+                      ) : null}
+                      {vendor.status === "active" ? (
                         <button
                           onClick={() => void handleTransition(vendor, "suspended")}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-xl text-[11px] font-semibold hover:bg-amber-500/20 transition-colors"
+                          className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                         >
-                          <Ban className="size-3.5" />
-                          <span>{t("vendors.actions.suspend")}</span>
+                          {t("vendors.actions.suspend")}
                         </button>
-                      )}
-                      {vendor.status === "suspended" && (
+                      ) : null}
+                      {vendor.status === "suspended" ? (
                         <button
                           onClick={() => void handleTransition(vendor, "active")}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl text-[11px] font-semibold hover:bg-emerald-500/20 transition-colors"
+                          className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                         >
-                          <CheckCheck className="size-3.5" />
-                          <span>{t("vendors.actions.activate")}</span>
+                          {t("vendors.actions.activate")}
                         </button>
-                      )}
+                      ) : null}
                     </div>
                   </td>
                 </tr>
               ))}
-              {vendors.length === 0 && (
+              {vendors.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-muted-foreground">
+                  <td colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
                     {t("vendors.empty")}
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </ResponsiveTable>
         </div>

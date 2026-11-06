@@ -1,15 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Link } from "@/shared/i18n/navigation";
+import { Link, usePathname } from "@/shared/i18n/navigation";
 import {
   LayoutDashboard,
   Package,
   Boxes,
   ShoppingBag,
   DollarSign,
-  Store,
-  ShieldCheck,
   Menu,
   X,
 } from "lucide-react";
@@ -20,15 +18,31 @@ import { VendorRegister } from "./vendorRegister";
 
 function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
   const t = useTranslations("vendor");
+  const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { vendor, loading, loadError, notRegistered, refreshVendor } = useVendorContext();
 
-  const navItems = [
-    { label: t("layout.nav.dashboard"), path: "/vendor/dashboard", icon: LayoutDashboard },
-    { label: t("layout.nav.products"), path: "/vendor/products", icon: Package },
-    { label: t("layout.nav.inventory"), path: "/vendor/inventory", icon: Boxes },
-    { label: t("layout.nav.orders"), path: "/vendor/orders", icon: ShoppingBag },
-    { label: t("layout.nav.payouts"), path: "/vendor/payouts", icon: DollarSign },
+  const navGroups = [
+    {
+      key: "overview",
+      items: [
+        { label: t("layout.nav.dashboard"), path: "/vendor/dashboard", icon: LayoutDashboard },
+      ],
+    },
+    {
+      key: "catalog",
+      items: [
+        { label: t("layout.nav.products"), path: "/vendor/products", icon: Package },
+        { label: t("layout.nav.inventory"), path: "/vendor/inventory", icon: Boxes },
+      ],
+    },
+    {
+      key: "sales",
+      items: [
+        { label: t("layout.nav.orders"), path: "/vendor/orders", icon: ShoppingBag },
+        { label: t("layout.nav.payouts"), path: "/vendor/payouts", icon: DollarSign },
+      ],
+    },
   ];
 
   const statusMessage = useMemo(() => {
@@ -70,105 +84,120 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-secondary/15 text-foreground flex flex-col font-sans">
-      <header className="h-16 bg-background border-b border-border sticky top-0 z-40 px-4 lg:px-6 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-4">
+    <div className="flex min-h-screen flex-col bg-muted/20 font-sans text-foreground">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background px-4 lg:px-6">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 text-muted-foreground hover:text-foreground"
+            className="p-2 text-muted-foreground hover:text-foreground lg:hidden"
             aria-label={t("layout.menu")}
           >
             {isMobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
-          <Link href="/" className="flex items-center gap-2 group hover:opacity-90 transition-opacity">
-            <span dir="ltr" className="font-black text-xl tracking-tighter text-foreground">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-90">
+            <span dir="ltr" className="text-lg font-black tracking-tighter text-foreground">
               PRI<span className="text-accent-brand">M</span>
             </span>
-            <div>
-              <span className="font-bold text-xs tracking-tight text-foreground block leading-none">
-                {t("layout.vendorHub")}
-              </span>
-              <span className="text-[9px] text-muted-foreground">{t("layout.merchant")}</span>
-            </div>
+            <span className="hidden border-s border-border ps-3 text-xs font-medium text-muted-foreground sm:inline">
+              {t("layout.vendorHub")}
+            </span>
           </Link>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="hidden sm:inline-flex rounded-full border border-border bg-secondary/40 px-3 py-1 text-xs font-semibold text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <span className="hidden max-w-48 truncate text-xs text-muted-foreground sm:inline">
             {vendor.storeName}
           </span>
           <Link
             href="/portal"
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-accent-brand/10 text-accent-brand border border-accent-brand/20 hover:bg-accent-brand/20 transition-colors"
+            className="hidden rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground md:inline-flex"
           >
-            <ShieldCheck className="size-3.5" />
-            <span>{t("layout.routeManager")}</span>
+            {t("layout.routeManager")}
           </Link>
           <Link
             href="/"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-secondary text-foreground border border-border hover:bg-secondary/80 transition-colors"
+            className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
           >
-            <Store className="size-3.5 text-accent-brand" />
-            <span className="hidden sm:inline">{t("layout.storefront")}</span>
+            {t("layout.storefront")}
           </Link>
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="relative flex flex-1">
+        {isMobileMenuOpen ? (
+          <div
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          />
+        ) : null}
+
         <aside
-          className={`${
-            isMobileMenuOpen ? "block fixed inset-0 z-50 top-16 bg-background" : "hidden"
-          } lg:block lg:w-64 border-r border-border bg-background/50 backdrop-blur-xs p-4 shrink-0`}
+          className={`fixed start-0 top-14 z-40 flex h-[calc(100dvh-3.5rem)] w-60 flex-col border-e border-border bg-sidebar transition-transform duration-200 ease-out lg:sticky ${
+            isMobileMenuOpen ? "translate-x-0" : "max-lg:-translate-x-full max-lg:rtl:translate-x-full"
+          }`}
         >
-          <div className="mb-6 p-3 bg-accent-brand/5 border border-accent-brand/20 rounded-xl">
-            <div className="text-[10px] font-bold text-accent-brand uppercase tracking-wider">
-              {t("layout.activeAccount")}
-            </div>
-            <div className="font-bold text-sm text-foreground mt-0.5">{vendor.storeName}</div>
-            <div className="text-xs text-muted-foreground">{vendor.slug}</div>
-            <div className="mt-2 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center justify-between">
-              <span>{t("layout.commissionRate")}</span>
-              <span className="font-bold">{(vendor.commissionRateBps / 100).toFixed(2)}%</span>
-            </div>
-            {statusMessage && (
-              <div className="mt-2 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
-                {statusMessage}
+          <div className="p-3">
+            <div className="rounded-md border border-border bg-background p-3">
+              <div className="truncate text-sm font-medium text-foreground">{vendor.storeName}</div>
+              <div className="mt-0.5 truncate text-xs text-muted-foreground">{vendor.slug}</div>
+              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                <span>{t("layout.commissionRate")}</span>
+                <span className="font-medium tabular-nums text-foreground">
+                  {(vendor.commissionRateBps / 100).toFixed(2)}%
+                </span>
               </div>
-            )}
+              {statusMessage ? (
+                <div className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-400">
+                  {statusMessage}
+                </div>
+              ) : null}
+            </div>
           </div>
 
-          <nav className="space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
-                >
-                  <Icon className="size-4 shrink-0" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
+          <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-3">
+            {navGroups.map((group) => (
+              <div key={group.key} className="space-y-0.5">
+                <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  {t(`layout.groups.${group.key}`)}
+                </div>
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
+                  return (
+                    <Link
+                      key={item.path}
+                      href={item.path}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      aria-current={isActive ? "page" : undefined}
+                      className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors ${
+                        isActive
+                          ? "bg-background font-medium text-foreground shadow-xs"
+                          : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="size-4 shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
 
-          <div className="mt-8 p-4 bg-secondary/30 rounded-2xl border border-border text-xs space-y-2">
-            <div className="font-bold text-foreground">{t("layout.support.title")}</div>
-            <p className="text-muted-foreground text-[11px] leading-relaxed">
-              {t("layout.support.description")}
-            </p>
+          <div className="border-t border-border p-3">
+            <div className="text-xs font-medium text-foreground">{t("layout.support.title")}</div>
             <a
               href="mailto:vendors@marketplace.com"
-              className="text-accent-brand font-semibold text-[11px] hover:underline block"
+              className="mt-1 block text-xs text-muted-foreground hover:text-foreground hover:underline"
             >
               vendors@marketplace.com
             </a>
           </div>
         </aside>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+        <main className="min-w-0 flex-1 overflow-y-auto p-4 md:p-6">
+          <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+        </main>
       </div>
     </div>
   );

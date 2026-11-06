@@ -305,7 +305,7 @@
     "dashboard": {
       "action": "Action",
       "activeCustomers": "Active Customers",
-      "activeInCatalog": "Active in catalog",
+      "activeInCatalog": "In catalog",
       "addProduct": "Add New Product",
       "adjustStock": "Adjust",
       "aov": "Average Order Value",
@@ -316,7 +316,7 @@
       "delivered": "Delivered",
       "grossRevenue": "Gross Revenue",
       "inventory": "Inventory",
-      "inventoryHealthy": "All catalog inventory levels healthy. Check Inventory tab for audit ledgers.",
+      "inventoryHealthy": "No low-stock variants.",
       "liveVelocity": "Live Order Velocity",
       "manageInventory": "Manage Inventory",
       "manageStockAdjustments": "Manage Stock Adjustments",
@@ -329,28 +329,28 @@
       "pipelineSubtitle": "Real-time dispatch and fulfillment pipeline status breakdown.",
       "processing": "Processing / Packing",
       "quickActions": "Quick Actions",
-      "recentOrders": "Recent Customer Orders",
+      "recentOrders": "Recent orders",
       "recentOrdersSub": "Latest purchases requiring processing and fulfillment.",
-      "registeredAccounts": "Registered customer accounts",
+      "registeredAccounts": "Registered accounts",
       "revenue": "Total Revenue",
       "revenueEgp": "Revenue (EGP)",
-      "revenueTrends": "Revenue & Sales Trends",
+      "revenueTrends": "Revenue",
       "revenueTrendsSub": "Historical order volume and daily store settlement.",
       "shipped": "Shipped / In Transit",
       "status": "Status",
       "statusBreakdown": "Order Status Breakdown",
-      "stockAlerts": "Stock Alerts",
+      "stockAlerts": "Low stock",
       "stockAlertsSub": "Products reaching critical inventory threshold.",
       "subtitle": "Platform performance, revenue metrics, order velocity, and key operational signals.",
       "timeframe": "Last 30 Days",
-      "title": "Command Center",
+      "title": "Dashboard",
       "toast": {
         "loadFailed": "Failed to load dashboard statistics"
       },
       "total": "Total",
       "totalOrders": "Total Orders",
       "totalRevenue": "Total Revenue",
-      "totalRevenueSub": "Real-time settled revenue",
+      "totalRevenueSub": "Settled revenue",
       "unitsLeft": "{count} left",
       "viewAllOrders": "View All Orders",
       "viewOrderDetails": "View Order Details",
@@ -407,6 +407,13 @@
       "brandSubtitle": "Console",
       "brandTitle": "Admin",
       "customerAccountHub": "Customer Account Hub",
+      "groups": {
+        "catalog": "Catalog",
+        "overview": "Overview",
+        "people": "People",
+        "sales": "Sales",
+        "system": "System"
+      },
       "language": "Language",
       "management": "Management",
       "nav": {
@@ -439,6 +446,7 @@
       "allLoaded": "All media loaded",
       "confirmDelete": "Delete this media asset?",
       "copyLink": "Copy Link",
+      "copied": "Copied",
       "dimensions": "Dimensions",
       "empty": "No media files found",
       "loadMoreFailed": "Couldn't load more media",
@@ -622,6 +630,7 @@
       "searchPlaceholder": "Search payments by ID, order, or customer...",
       "subtitle": "View credit card and payment gateway settlement logs, processor fees, and process refunds.",
       "title": "Payment Transactions",
+      "empty": "No payments match the current filters.",
       "toast": {
         "loadFailed": "Failed to load payments from server",
         "markedPaid": "Payment marked as captured for {customer}",
@@ -908,7 +917,8 @@
         "stepOf": "Step {current} of {total}",
         "summary": "Review",
         "variableProductDesc": "The same item in different choices, such as colors, sizes, or storage."
-      }
+      },
+      "variantCount": "{count} variants"
     },
     "promotions": {
       "colActions": "Actions",
@@ -942,6 +952,7 @@
         "loadFailed": "Failed to load the usage log",
         "loadMore": "Load more",
         "title": "Usage log — {code}",
+        "loading": "Loading usage log…",
         "unknownUser": "Deleted user"
       },
       "redeemed": "{used} / {limit} redeemed",
@@ -976,7 +987,12 @@
       "typeLabel": "Type: {type}",
       "usageProgress": "Usage Progress:",
       "valid": "Valid: {date}",
-      "viewLog": "Usage log"
+      "viewLog": "Usage log",
+      "empty": "No promotions yet.",
+      "actions": {
+        "activate": "Activate",
+        "deactivate": "Deactivate"
+      }
     },
     "reports": {
       "aov": "Avg. Order Value",
@@ -1029,6 +1045,7 @@
       "refresh": "Refresh",
       "revoke": "Revoke",
       "sessionId": "Session ID",
+      "count": "{count, plural, one {# session} other {# sessions}}",
       "subtitle": "Review active staff devices and revoke suspicious or stale sessions.",
       "thisDevice": "This device",
       "title": "Staff sessions",
@@ -2337,10 +2354,10 @@
       "viewPayouts": "View payouts"
     },
     "dashboard": {
-      "acrossCatalog": "Across active catalog",
+      "acrossCatalog": "Lifetime gross revenue",
       "availableBalance": "Available Balance",
-      "catalogHealth": "Catalog Health",
-      "catalogHealthTitle": "Catalog health",
+      "catalogHealth": "Products",
+      "catalogHealthTitle": "Catalog",
       "chartGross": "Gross Sales",
       "chartNet": "Net Earnings",
       "chartSubtitle": "Monthly gross revenue vs net vendor payout",
@@ -2370,7 +2387,7 @@
       "skuStock": "SKU: {sku} • Stock: {stock}",
       "soldCount": "{count, plural, =1 {1 sold} other {# sold}}",
       "subtitle": "Track real-time sales revenue, commission deductions, inventory levels, and payout status.",
-      "title": "Vendor Performance Dashboard",
+      "title": "Dashboard",
       "topProducts": "Top Vendor Products",
       "totalUnitsSold": "Total Units Sold"
     },
@@ -2406,7 +2423,12 @@
     "layout": {
       "activeAccount": "Active Vendor Account",
       "availableBalance": "Available Balance:",
-      "commissionRate": "Commission Rate:",
+      "commissionRate": "Commission Rate",
+      "groups": {
+        "catalog": "Catalog",
+        "overview": "Overview",
+        "sales": "Sales"
+      },
       "menu": "Open navigation",
       "merchant": "Merchant",
       "nav": {

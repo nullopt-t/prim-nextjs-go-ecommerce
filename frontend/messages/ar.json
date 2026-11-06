@@ -305,7 +305,7 @@
     "dashboard": {
       "action": "إجراء",
       "activeCustomers": "العملاء النشطون",
-      "activeInCatalog": "نشط في الكتالوج",
+      "activeInCatalog": "في الكتالوج",
       "addProduct": "إضافة منتج جديد",
       "adjustStock": "تعديل",
       "aov": "متوسط قيمة الطلب",
@@ -316,7 +316,7 @@
       "delivered": "تم التوصيل",
       "grossRevenue": "إجمالي الإيرادات",
       "inventory": "المخزون",
-      "inventoryHealthy": "جميع مستويات مخزون الكتالوج جيدة. تحقق من تبويب المخزون لسجلات التدقيق.",
+      "inventoryHealthy": "لا توجد أنواع منخفضة المخزون.",
       "liveVelocity": "سرعة معالجة الطلبات الحية",
       "manageInventory": "إدارة المخزون",
       "manageStockAdjustments": "إدارة تعديلات المخزون",
@@ -329,28 +329,28 @@
       "pipelineSubtitle": "حالة معالجة وشحن وتوصيل الطلبات الحالية في الوقت الفعلي.",
       "processing": "قيد التجهيز والتغليف",
       "quickActions": "إجراءات سريعة",
-      "recentOrders": "أحدث طلبات العملاء",
+      "recentOrders": "أحدث الطلبات",
       "recentOrdersSub": "أحدث المشتريات التي تتطلب المعالجة والتجهيز.",
-      "registeredAccounts": "حسابات العملاء المسجّلة",
+      "registeredAccounts": "حسابات مسجّلة",
       "revenue": "إجمالي الإيرادات",
       "revenueEgp": "الإيرادات (EGP)",
-      "revenueTrends": "اتجاهات الإيرادات والمبيعات",
+      "revenueTrends": "الإيرادات",
       "revenueTrendsSub": "حجم الطلبات التاريخي والتسوية اليومية للمتجر.",
       "shipped": "تم الشحن / في الطريق",
       "status": "الحالة",
       "statusBreakdown": "توزيع حالات الطلبات",
-      "stockAlerts": "تنبيهات المخزون",
+      "stockAlerts": "مخزون منخفض",
       "stockAlertsSub": "منتجات تقترب من حد المخزون الحرج.",
       "subtitle": "أداء المنصة، مؤشرات الإيرادات، وسرعة معالجة الطلبات، والإشارات التشغيلية.",
       "timeframe": "آخر 30 يوماً",
-      "title": "لوحة التحكم الرئيسية",
+      "title": "لوحة التحكم",
       "toast": {
         "loadFailed": "فشل تحميل إحصائيات لوحة التحكم"
       },
       "total": "الإجمالي",
       "totalOrders": "إجمالي الطلبات",
       "totalRevenue": "إجمالي الإيرادات",
-      "totalRevenueSub": "الإيرادات المسوّاة في الوقت الفعلي",
+      "totalRevenueSub": "الإيرادات المسوّاة",
       "unitsLeft": "متبقي {count}",
       "viewAllOrders": "عرض كل الطلبات",
       "viewOrderDetails": "عرض تفاصيل الطلب",
@@ -407,6 +407,13 @@
       "brandSubtitle": "لوحة التحكم",
       "brandTitle": "الإدارة",
       "customerAccountHub": "مركز حساب العميل",
+      "groups": {
+        "catalog": "الكتالوج",
+        "overview": "نظرة عامة",
+        "people": "الأشخاص",
+        "sales": "المبيعات",
+        "system": "النظام"
+      },
       "language": "اللغة",
       "management": "الإدارة",
       "nav": {
@@ -439,6 +446,7 @@
       "allLoaded": "تم تحميل كل الوسائط",
       "confirmDelete": "حذف أصل الوسائط هذا؟",
       "copyLink": "نسخ الرابط",
+      "copied": "تم النسخ",
       "dimensions": "الأبعاد",
       "empty": "لا توجد ملفات وسائط",
       "loadMoreFailed": "تعذّر تحميل المزيد من الوسائط",
@@ -622,6 +630,7 @@
       "searchPlaceholder": "ابحث في المدفوعات بالمعرّف أو الطلب أو العميل...",
       "subtitle": "اعرض سجلات تسوية بطاقات الائتمان وبوابات الدفع ورسوم المعالجة وعالج المبالغ المستردة.",
       "title": "معاملات الدفع",
+      "empty": "لا توجد مدفوعات مطابقة لعوامل التصفية الحالية.",
       "toast": {
         "loadFailed": "تعذّر تحميل المدفوعات من الخادم",
         "markedPaid": "تم تحديد الدفع كمُحصّل لـ {customer}",
@@ -908,7 +917,8 @@
         "stepOf": "الخطوة {current} من {total}",
         "summary": "مراجعة",
         "variableProductDesc": "المنتج نفسه بخيارات مختلفة، مثل الألوان أو المقاسات أو سعة التخزين."
-      }
+      },
+      "variantCount": "{count} أنواع"
     },
     "promotions": {
       "colActions": "إجراءات",
@@ -942,6 +952,7 @@
         "loadFailed": "فشل تحميل سجل الاستخدام",
         "loadMore": "تحميل المزيد",
         "title": "سجل الاستخدام — {code}",
+        "loading": "جارٍ تحميل سجل الاستخدام…",
         "unknownUser": "مستخدم محذوف"
       },
       "redeemed": "{used} / {limit} مستخدَم",
@@ -976,7 +987,12 @@
       "typeLabel": "النوع: {type}",
       "usageProgress": "تقدم الاستخدام:",
       "valid": "صالح: {date}",
-      "viewLog": "سجل الاستخدام"
+      "viewLog": "سجل الاستخدام",
+      "empty": "لا توجد عروض ترويجية بعد.",
+      "actions": {
+        "activate": "تفعيل",
+        "deactivate": "إلغاء التفعيل"
+      }
     },
     "reports": {
       "aov": "متوسط قيمة الطلب",
@@ -1029,6 +1045,7 @@
       "refresh": "تحديث",
       "revoke": "إبطال",
       "sessionId": "معرّف الجلسة",
+      "count": "{count, plural, one {جلسة واحدة} other {# جلسات}}",
       "subtitle": "راجع الأجهزة النشطة للطاقم وأبطل الجلسات المشبوهة أو القديمة.",
       "thisDevice": "هذا الجهاز",
       "title": "جلسات الطاقم",
@@ -2337,10 +2354,10 @@
       "viewPayouts": "عرض المدفوعات"
     },
     "dashboard": {
-      "acrossCatalog": "عبر الكتالوج النشط",
+      "acrossCatalog": "إجمالي الإيرادات التاريخية",
       "availableBalance": "الرصيد المتاح",
-      "catalogHealth": "صحة الكتالوج",
-      "catalogHealthTitle": "صحة الكتالوج",
+      "catalogHealth": "المنتجات",
+      "catalogHealthTitle": "الكتالوج",
       "chartGross": "إجمالي المبيعات",
       "chartNet": "صافي الأرباح",
       "chartSubtitle": "الإيراد الإجمالي الشهري مقابل صافي دفعات البائع",
@@ -2370,7 +2387,7 @@
       "skuStock": "SKU: {sku} • المخزون: {stock}",
       "soldCount": "{count, plural, =0 {لم تُبع أي قطعة} =1 {بيعت قطعة واحدة} two {بيعت قطعتان} few {بيعت # قطع} many {بيعت # قطعة} other {بيعت # قطعة}}",
       "subtitle": "تابع إيرادات المبيعات الفورية، والخصومات على العمولات، ومستويات المخزون، وحالة الدفعات.",
-      "title": "لوحة أداء البائع",
+      "title": "لوحة التحكم",
       "topProducts": "أفضل منتجات البائع",
       "totalUnitsSold": "إجمالي الوحدات المبيعة"
     },
@@ -2406,7 +2423,12 @@
     "layout": {
       "activeAccount": "حساب البائع النشط",
       "availableBalance": "الرصيد المتاح:",
-      "commissionRate": "نسبة العمولة:",
+      "commissionRate": "نسبة العمولة",
+      "groups": {
+        "catalog": "الكتالوج",
+        "overview": "نظرة عامة",
+        "sales": "المبيعات"
+      },
       "menu": "فتح التنقّل",
       "merchant": "تاجر",
       "nav": {

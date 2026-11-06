@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Search, Edit2, Trash2, ExternalLink, X } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import type { Brand } from "@/modules/catalog/types";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
+import { PageHeader } from "@/shared/ui/pageHeader";
 import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
 import { normalizeMediaUrl } from "@/shared/lib/media";
@@ -48,9 +49,8 @@ export function AdminBrands() {
       setBrands(list.map((b: Brand) => ({
         id: b.id,
         name: b.name,
-        website: b.link || "https://prim.com",
-        productsCount: b.productCount || 0,
-        status: "Active",
+        website: b.link ?? "",
+        productsCount: b.productCount ?? 0,
         logo: b.logoUrl ? normalizeMediaUrl(b.logoUrl) : brandPlaceholder(b.name)
       })));
       if ("meta" in res && res.meta) setMeta(res.meta as CursorMeta);
@@ -82,7 +82,7 @@ export function AdminBrands() {
       setFormData({ name: brand.name, website: brand.website, logo: brand.logo });
     } else {
       setEditingBrand(null);
-      setFormData({ name: "", website: "https://", logo: "" });
+      setFormData({ name: "", website: "", logo: "" });
     }
     setIsModalOpen(true);
   };
@@ -133,64 +133,65 @@ export function AdminBrands() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("brands.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t("brands.subtitle")}</p>
-        </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0"
-        >
-          <Plus className="size-4" />
-          <span>{t("brands.add")}</span>
-        </button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("brands.title")}
+        actions={
+          <button
+            onClick={() => handleOpenModal()}
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            <Plus className="size-4" />
+            {t("brands.add")}
+          </button>
+        }
+      />
 
-      <div className="relative max-w-md">
-        <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+      <div className="relative w-full sm:max-w-xs">
+        <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
           placeholder={t("brands.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full ps-10 pe-4 py-2.5 bg-background border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand"
+          className="w-full rounded-md border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30"
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((b) => (
-          <div key={b.id} className="bg-background border border-border rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <img src={normalizeMediaUrl(b.logo)} alt={b.name} className="size-12 rounded-xl object-cover border border-border" />
-                <div>
-                  <h3 className="font-bold text-sm text-foreground">{b.name}</h3>
+          <div key={b.id} className="flex flex-col justify-between gap-4 rounded-lg border border-border bg-background p-4">
+            <div className="flex items-center gap-3">
+              <img src={normalizeMediaUrl(b.logo)} alt="" className="size-10 rounded-md border border-border object-cover" />
+              <div className="min-w-0">
+                <h3 className="truncate text-sm font-medium text-foreground">{b.name}</h3>
+                {b.website ? (
                   <a
                     href={b.website}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-[10px] text-accent-brand hover:underline flex items-center gap-1 mt-0.5"
+                    className="block truncate text-xs text-muted-foreground hover:text-foreground hover:underline"
                   >
-                    <span>{t("brands.visitWebsite")}</span>
-                    <ExternalLink className="size-3" />
+                    {b.website}
                   </a>
-                </div>
+                ) : null}
               </div>
-              <span className="text-foreground">
-                {t(`status.${String(b.status).toLowerCase()}`) || b.status}
-              </span>
             </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-border text-xs">
-              <span className="text-muted-foreground font-medium">{t("brands.associatedProducts", { count: b.productsCount })}</span>
-              <div className="flex items-center gap-2">
-                <button onClick={() => handleOpenModal(b)} className="p-1 text-muted-foreground hover:text-accent-brand">
-                  <Edit2 className="size-4" />
+            <div className="flex items-center justify-between border-t border-border pt-3 text-xs">
+              <span className="text-muted-foreground">{t("brands.associatedProducts", { count: b.productsCount })}</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleOpenModal(b)}
+                  className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  {t("actions.edit")}
                 </button>
-                <button onClick={() => handleDelete(b.id)} className="p-1 text-muted-foreground hover:text-destructive">
-                  <Trash2 className="size-4" />
+                <button
+                  onClick={() => handleDelete(b.id)}
+                  className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                >
+                  {t("actions.delete")}
                 </button>
               </div>
             </div>
@@ -198,7 +199,7 @@ export function AdminBrands() {
         ))}
       </div>
 
-      <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
+      <div className="overflow-hidden rounded-lg border border-border bg-background">
         <CursorPager
           hasPrev={hasPrev}
           hasMore={meta.hasMore}
@@ -211,37 +212,41 @@ export function AdminBrands() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md space-y-4 rounded-lg border border-border bg-background p-5 shadow-xl">
             <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="font-bold text-base text-foreground">{editingBrand ? t("brands.editTitle") : t("brands.createTitle")}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground hover:text-foreground">
-                <X className="size-5" />
+              <h3 className="text-sm font-semibold text-foreground">{editingBrand ? t("brands.editTitle") : t("brands.createTitle")}</h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label={t("actions.cancel")}
+              >
+                <X className="size-4" />
               </button>
             </div>
             <form onSubmit={handleSave} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">{t("brands.form.name")}</label>
+                <label className="text-sm font-medium text-foreground">{t("brands.form.name")}</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">{t("brands.form.website")}</label>
+                <label className="text-sm font-medium text-foreground">{t("brands.form.website")}</label>
                 <input
                   type="text"
                   value={formData.website}
                   onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 />
               </div>
-              <div className="flex justify-end gap-3 pt-3 border-t border-border">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs font-semibold border border-border rounded-xl">{t("actions.cancel")}</button>
-                <button type="submit" className="px-4 py-2 text-xs font-semibold bg-accent-brand text-white rounded-xl">{t("actions.save")}</button>
+              <div className="flex justify-end gap-2 border-t border-border pt-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary">{t("actions.cancel")}</button>
+                <button type="submit" className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">{t("actions.save")}</button>
               </div>
             </form>
           </div>

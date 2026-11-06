@@ -1,12 +1,14 @@
 import { ResponsiveTable } from "@/shared/ui/responsiveTable";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Trash2, X, ArrowUp, ArrowDown, ArrowUpDown, ScrollText, Loader2, Share2 } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { adminService } from "@/modules/admin/api/adminService";
 import type { Promotion } from "@/modules/promotions/types";
 import { useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { ErrorState } from "@/shared/ui/errorState";
+import { PageHeader } from "@/shared/ui/pageHeader";
+import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { ConfirmDialog } from "@/shared/ui/confirmDialog";
 import { PromotionShareDialog, type PromotionShareContent } from "@/shared/ui/promotionShareDialog";
 import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
@@ -59,15 +61,14 @@ function sortValue(promo: PromotionView, key: SortKey): string | number {
 }
 
 function SortButton({ label, active, dir, onClick }: { label: string; active: boolean; dir: SortDir; onClick: () => void }) {
-  const Icon = !active ? ArrowUpDown : dir === "asc" ? ArrowUp : ArrowDown;
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1 transition-colors hover:text-foreground ${active ? "text-foreground" : ""}`}
+      className={`inline-flex items-center gap-1 text-xs font-medium transition-colors hover:text-foreground ${active ? "text-foreground" : "text-muted-foreground"}`}
     >
       {label}
-      <Icon className="size-3" />
+      <span aria-hidden>{!active ? "↕" : dir === "asc" ? "↑" : "↓"}</span>
     </button>
   );
 }
@@ -103,12 +104,12 @@ export function AdminPromotions() {
         value: p.discountType === "percentage" ? `${p.discountValue}%` : `EGP ${(p.discountValue / 100).toFixed(2)}`,
         discountPercent: p.discountType === "percentage" ? p.discountValue : 0,
         fixedDiscount: p.discountType === "fixed_amount" ? p.discountValue / 100 : 0,
-        usageLimit: p.usageLimit || 500,
+        usageLimit: p.usageLimit ?? 0,
         currentUsage: p.usageCount ?? 0,
-        status: p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : "Active",
-        startsAt: p.startsAt || "",
-        expiresAt: p.expiresAt || "",
-        createdAt: p.createdAt || ""
+        status: p.status ?? "",
+        startsAt: p.startsAt ?? "",
+        expiresAt: p.expiresAt ?? "",
+        createdAt: p.createdAt ?? ""
       })));
       if (res?.meta) setMeta(res.meta);
     } catch {
@@ -132,7 +133,8 @@ export function AdminPromotions() {
   });
 
   const handleToggleStatus = async (id: string, currentStatus: string) => {
-    const nextStatus = currentStatus === "Active" ? "disabled" : "active";
+    const isActive = currentStatus.toLowerCase() === "active";
+    const nextStatus = isActive ? "disabled" : "active";
     try {
       await adminService.updatePromotionStatus(id, nextStatus);
       notify.success(t("promotions.toast.statusUpdated"));
@@ -264,57 +266,54 @@ export function AdminPromotions() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("promotions.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t("promotions.subtitle")}
-          </p>
-        </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0"
-        >
-          <Plus className="size-4" />
-          <span>{t("promotions.create")}</span>
-        </button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("promotions.title")}
+        actions={
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            <Plus className="size-4" />
+            {t("promotions.create")}
+          </button>
+        }
+      />
 
-      <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
+      <div className="overflow-hidden rounded-lg border border-border bg-background">
         <div className="overflow-x-auto">
-          <ResponsiveTable className="w-full sm:min-w-max text-start text-xs">
-            <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
-              <tr>
-                <th className="py-3.5 ps-4">
+          <ResponsiveTable className="w-full text-start text-sm md:min-w-max">
+            <thead className="text-xs text-muted-foreground">
+              <tr className="border-b border-border">
+                <th className="py-2.5 ps-4 text-start font-medium">
                   <SortButton label={t("promotions.colCode")} active={sort.key === "code"} dir={sort.dir} onClick={() => toggleSort("code")} />
                 </th>
-                <th className="py-3.5">
+                <th className="py-2.5 text-start font-medium">
                   <SortButton label={t("promotions.colDiscount")} active={sort.key === "discount"} dir={sort.dir} onClick={() => toggleSort("discount")} />
                 </th>
-                <th className="py-3.5">
+                <th className="py-2.5 text-start font-medium">
                   <SortButton label={t("promotions.colUsage")} active={sort.key === "usage"} dir={sort.dir} onClick={() => toggleSort("usage")} />
                 </th>
-                <th className="py-3.5">
+                <th className="py-2.5 text-start font-medium">
                   <SortButton label={t("promotions.colValidity")} active={sort.key === "validity"} dir={sort.dir} onClick={() => toggleSort("validity")} />
                 </th>
-                <th className="py-3.5">
+                <th className="py-2.5 text-start font-medium">
                   <SortButton label={t("promotions.colStatus")} active={sort.key === "status"} dir={sort.dir} onClick={() => toggleSort("status")} />
                 </th>
-                <th className="py-3.5 pe-4 text-end">{t("promotions.colActions")}</th>
+                <th className="py-2.5 pe-4 text-end font-medium">{t("promotions.colActions")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody className="divide-y divide-border">
               {sorted.map((promo) => (
-                <tr key={promo.id} className="hover:bg-secondary/20 transition-colors">
-                  <td className="py-3.5 ps-4">
-                    <span className="font-mono font-bold text-sm text-accent-brand tracking-wider bg-accent-brand/10 px-2.5 py-1 rounded-lg border border-accent-brand/20">
+                <tr key={promo.id} className="transition-colors hover:bg-secondary/30">
+                  <td className="py-3 ps-4">
+                    <span className="font-mono text-xs font-medium tracking-wider text-foreground">
                       {promo.code}
                     </span>
                   </td>
-                  <td className="py-3.5">
-                    <div className="font-bold text-foreground">{promo.value}</div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                  <td className="py-3">
+                    <div className="font-medium text-foreground">{promo.value}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
                       {t("promotions.typeLabel", {
                         type:
                           promo.discountType === "percentage"
@@ -323,48 +322,57 @@ export function AdminPromotions() {
                       })}
                     </div>
                   </td>
-                  <td className="py-3.5 text-muted-foreground">
+                  <td className="py-3 text-xs text-muted-foreground">
                     {t("promotions.redeemed", { used: promo.currentUsage, limit: promo.usageLimit })}
                   </td>
-                  <td className="py-3.5 text-muted-foreground">
+                  <td className="py-3 text-xs text-muted-foreground">
                     <div>{t("promotions.valid", { date: formatDateTime(promo.startsAt) || "—" })}</div>
-                    <div className="text-[10px] mt-0.5">{t("promotions.expires", { date: formatDateTime(promo.expiresAt) || "—" })}</div>
+                    <div className="mt-0.5">{t("promotions.expires", { date: formatDateTime(promo.expiresAt) || "—" })}</div>
                   </td>
-                  <td className="py-3.5">
-                    <button
-                      onClick={() => handleToggleStatus(promo.id, promo.status)}
-                      className="text-foreground hover:text-accent-brand transition-colors"
-                    >
+                  <td className="py-3">
+                    <StatusPill tone={statusTone(promo.status)}>
                       {t(`status.${String(promo.status).toLowerCase()}`) || promo.status}
-                    </button>
+                    </StatusPill>
                   </td>
-                  <td className="py-3.5 pe-4 text-end">
-                    <div className="flex items-center justify-end gap-1">
+                  <td className="py-3 pe-4 text-end">
+                    <div className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => handleToggleStatus(promo.id, promo.status)}
+                        className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                      >
+                        {promo.status.toLowerCase() === "active"
+                          ? t("promotions.actions.deactivate")
+                          : t("promotions.actions.activate")}
+                      </button>
                       <button
                         onClick={() => openShare(promo)}
-                        className="p-1.5 text-muted-foreground hover:text-accent-brand transition-colors"
-                        title={t("promotions.share.button")}
+                        className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                       >
-                        <Share2 className="size-4" />
+                        {t("promotions.share.button")}
                       </button>
                       <button
                         onClick={() => openLog({ id: promo.id, code: promo.code })}
-                        className="p-1.5 text-muted-foreground hover:text-accent-brand transition-colors"
-                        title={t("promotions.viewLog")}
+                        className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                       >
-                        <ScrollText className="size-4" />
+                        {t("promotions.viewLog")}
                       </button>
                       <button
                         onClick={() => handleDelete(promo.id)}
-                        className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
-                        title={t("actions.delete")}
+                        className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                       >
-                        <Trash2 className="size-4" />
+                        {t("actions.delete")}
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
+              {sorted.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+                    {t("promotions.empty")}
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </ResponsiveTable>
         </div>
@@ -381,35 +389,39 @@ export function AdminPromotions() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-            <div className="flex justify-between items-center border-b border-border pb-3">
-              <h3 className="font-bold text-base text-foreground">{t("promotions.create")}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground">
-                <X className="size-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md space-y-4 rounded-lg border border-border bg-background p-5 shadow-xl">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-sm font-semibold text-foreground">{t("promotions.create")}</h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label={t("actions.cancel")}
+              >
+                <X className="size-4" />
               </button>
             </div>
 
             <form onSubmit={handleCreatePromo} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">{t("promotions.form.code")}</label>
+                <label className="text-sm font-medium text-foreground">{t("promotions.form.code")}</label>
                 <input
                   type="text"
                   required
                   placeholder={t("promotions.form.codePlaceholder")}
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs font-mono uppercase text-foreground"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm uppercase text-foreground"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">{t("promotions.form.discountType")}</label>
+                  <label className="text-sm font-medium text-foreground">{t("promotions.form.discountType")}</label>
                   <select
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                   >
                     <option value="Percentage">{t("promotions.form.typePercentage")}</option>
                     <option value="Fixed Amount">{t("promotions.form.typeFixed")}</option>
@@ -417,31 +429,31 @@ export function AdminPromotions() {
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">{t("promotions.form.valueLabel")}</label>
+                  <label className="text-sm font-medium text-foreground">{t("promotions.form.valueLabel")}</label>
                   <input
                     type="text"
                     required
                     placeholder={t("promotions.form.valuePlaceholder")}
                     value={formData.value}
                     onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">{t("promotions.form.usageLimit")}</label>
+                <label className="text-sm font-medium text-foreground">{t("promotions.form.usageLimit")}</label>
                 <input
                   type="number"
                   value={formData.usageLimit}
                   onChange={(e) => setFormData({ ...formData, usageLimit: Number(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-border">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs border border-border rounded-xl">{t("actions.cancel")}</button>
-                <button type="submit" className="px-4 py-2 text-xs bg-accent-brand text-white rounded-xl">{t("promotions.form.submit")}</button>
+              <div className="flex justify-end gap-2 border-t border-border pt-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary">{t("actions.cancel")}</button>
+                <button type="submit" className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">{t("promotions.form.submit")}</button>
               </div>
             </form>
           </div>
@@ -449,21 +461,25 @@ export function AdminPromotions() {
       )}
 
       {logPromo && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-2xl w-full p-6 shadow-xl space-y-4 flex flex-col max-h-[80vh]">
-            <div className="flex justify-between items-center border-b border-border pb-3">
-              <h3 className="font-bold text-base text-foreground">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="flex max-h-[80vh] w-full max-w-2xl flex-col space-y-4 rounded-lg border border-border bg-background p-5 shadow-xl">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-sm font-semibold text-foreground">
                 {t("promotions.log.title", { code: logPromo.code })}
               </h3>
-              <button onClick={() => setLogPromo(null)} className="text-muted-foreground">
-                <X className="size-5" />
+              <button
+                onClick={() => setLogPromo(null)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label={t("actions.close")}
+              >
+                <X className="size-4" />
               </button>
             </div>
 
             <div className="overflow-y-auto">
               {logLoading ? (
-                <div className="flex items-center justify-center py-10 text-muted-foreground">
-                  <Loader2 className="size-5 animate-spin" />
+                <div className="py-10 text-center text-sm text-muted-foreground">
+                  {t("promotions.log.loading")}
                 </div>
               ) : logError ? (
                 <p className="py-10 text-center text-sm text-destructive">
@@ -474,34 +490,34 @@ export function AdminPromotions() {
                   {t("promotions.log.empty")}
                 </p>
               ) : (
-                <ResponsiveTable className="w-full sm:min-w-max text-start text-xs">
-                  <thead className="text-muted-foreground font-semibold uppercase tracking-wider border-b border-border">
-                    <tr>
-                      <th className="py-2.5">{t("promotions.log.colUser")}</th>
-                      <th className="py-2.5">{t("promotions.log.colOrder")}</th>
-                      <th className="py-2.5">{t("promotions.log.colDiscount")}</th>
-                      <th className="py-2.5">{t("promotions.log.colDate")}</th>
+                <ResponsiveTable className="w-full text-start text-sm md:min-w-max">
+                  <thead className="text-xs text-muted-foreground">
+                    <tr className="border-b border-border">
+                      <th className="py-2.5 text-start font-medium">{t("promotions.log.colUser")}</th>
+                      <th className="py-2.5 text-start font-medium">{t("promotions.log.colOrder")}</th>
+                      <th className="py-2.5 text-start font-medium">{t("promotions.log.colDiscount")}</th>
+                      <th className="py-2.5 text-start font-medium">{t("promotions.log.colDate")}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border/60">
+                  <tbody className="divide-y divide-border">
                     {redemptions.map((r) => (
-                      <tr key={r.id}>
-                        <td className="py-2.5">
+                      <tr key={r.id} className="transition-colors hover:bg-secondary/30">
+                        <td className="py-3">
                           <div className="font-medium text-foreground">
                             {r.userName || t("promotions.log.customer")}
                           </div>
-                          <div className="text-[10px] text-muted-foreground">
+                          <div className="text-xs text-muted-foreground">
                             {r.userEmail || t("promotions.log.unknownUser")}
                           </div>
                         </td>
-                        <td className="py-2.5 font-mono text-[10px] text-muted-foreground" title={r.orderId}>
+                        <td className="py-3 font-mono text-xs text-muted-foreground" title={r.orderId}>
                           {String(r.orderId).slice(0, 8)}
                         </td>
-                        <td className="py-2.5 text-foreground">
+                        <td className="py-3 font-medium text-foreground tabular-nums">
                           EGP {(r.discountAmount / 100).toFixed(2)}
                         </td>
-                        <td className="py-2.5 text-muted-foreground">
-                          {formatDateTime(r.createdAt)}
+                        <td className="py-3 text-xs text-muted-foreground">
+                          {formatDateTime(r.createdAt) || "—"}
                         </td>
                       </tr>
                     ))}
@@ -510,16 +526,16 @@ export function AdminPromotions() {
               )}
             </div>
 
-            {!logLoading && logMeta.hasMore && (
-              <div className="flex justify-center pt-2 border-t border-border">
+            {!logLoading && logMeta.hasMore ? (
+              <div className="flex justify-center border-t border-border pt-3">
                 <button
                   onClick={loadMoreLog}
-                  className="px-4 py-2 text-xs font-semibold bg-secondary hover:bg-secondary/80 text-foreground border border-border rounded-xl"
+                  className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary"
                 >
                   {t("promotions.log.loadMore")}
                 </button>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}

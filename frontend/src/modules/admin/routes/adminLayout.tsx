@@ -16,7 +16,6 @@ import {
   Menu,
   X,
   ChevronDown,
-  User,
   LogOut,
   ShieldCheck,
   ScrollText,
@@ -25,7 +24,6 @@ import {
   Sun,
   Moon,
   Languages,
-  Bell,
   Store,
   type LucideIcon,
 } from "lucide-react";
@@ -209,43 +207,45 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
     nameKey: string;
     path: string;
     icon: LucideIcon;
+    group: "overview" | "catalog" | "sales" | "people" | "system";
     exact?: boolean;
-    badge?: string;
     badgeKey?: string;
     superadminOnly?: boolean;
   }[] = [
-    { nameKey: "layout.nav.dashboard", path: "/admin", icon: LayoutDashboard, exact: true },
-    {
-      nameKey: "layout.nav.orders",
-      path: "/admin/orders",
-      icon: ShoppingBag,
-      badge: pendingOrdersCount !== null && pendingOrdersCount > 0 ? `${pendingOrdersCount} New` : undefined,
-      badgeKey: pendingOrdersCount !== null && pendingOrdersCount > 0 ? "layout.badges.newOrders" : undefined,
-    },
-    { nameKey: "layout.nav.products", path: "/admin/products", icon: Package },
-    { nameKey: "layout.nav.categories", path: "/admin/categories", icon: FolderTree },
-    { nameKey: "layout.nav.brands", path: "/admin/brands", icon: Tag },
-    { nameKey: "layout.nav.vendors", path: "/admin/vendors", icon: Store },
-    { nameKey: "layout.nav.inventory", path: "/admin/inventory", icon: Boxes, badge: "Low Stock", badgeKey: "layout.badges.lowStock" },
-    { nameKey: "layout.nav.mediaLibrary", path: "/admin/media", icon: Image },
-    { nameKey: "layout.nav.usersStaff", path: "/admin/customers", icon: Users },
-    { nameKey: "layout.nav.payments", path: "/admin/payments", icon: CreditCard },
-    { nameKey: "layout.nav.promotions", path: "/admin/promotions", icon: Percent },
-    { nameKey: "layout.nav.reports", path: "/admin/reports", icon: BarChart3 },
-    { nameKey: "layout.nav.settings", path: "/admin/settings", icon: Settings },
-    { nameKey: "layout.nav.system", path: "/admin/system", icon: ShieldCheck },
-    { nameKey: "layout.nav.audit", path: "/admin/audit", icon: ScrollText, superadminOnly: true },
-    { nameKey: "layout.nav.sessions", path: "/admin/sessions", icon: MonitorSmartphone, superadminOnly: true },
+    { nameKey: "layout.nav.dashboard", path: "/admin", icon: LayoutDashboard, group: "overview", exact: true },
+    { nameKey: "layout.nav.reports", path: "/admin/reports", icon: BarChart3, group: "overview" },
+    { nameKey: "layout.nav.orders", path: "/admin/orders", icon: ShoppingBag, group: "sales", badgeKey: "layout.badges.newOrders" },
+    { nameKey: "layout.nav.payments", path: "/admin/payments", icon: CreditCard, group: "sales" },
+    { nameKey: "layout.nav.promotions", path: "/admin/promotions", icon: Percent, group: "sales" },
+    { nameKey: "layout.nav.products", path: "/admin/products", icon: Package, group: "catalog" },
+    { nameKey: "layout.nav.categories", path: "/admin/categories", icon: FolderTree, group: "catalog" },
+    { nameKey: "layout.nav.brands", path: "/admin/brands", icon: Tag, group: "catalog" },
+    { nameKey: "layout.nav.inventory", path: "/admin/inventory", icon: Boxes, group: "catalog" },
+    { nameKey: "layout.nav.mediaLibrary", path: "/admin/media", icon: Image, group: "catalog" },
+    { nameKey: "layout.nav.usersStaff", path: "/admin/customers", icon: Users, group: "people" },
+    { nameKey: "layout.nav.vendors", path: "/admin/vendors", icon: Store, group: "people" },
+    { nameKey: "layout.nav.settings", path: "/admin/settings", icon: Settings, group: "system" },
+    { nameKey: "layout.nav.system", path: "/admin/system", icon: ShieldCheck, group: "system" },
+    { nameKey: "layout.nav.audit", path: "/admin/audit", icon: ScrollText, group: "system", superadminOnly: true },
+    { nameKey: "layout.nav.sessions", path: "/admin/sessions", icon: MonitorSmartphone, group: "system", superadminOnly: true },
   ];
 
   const visibleNavItems = navItems.filter(
     (item) => !item.superadminOnly || user?.role === "superadmin"
   );
 
+  const navGroups = [
+    { key: "overview", items: visibleNavItems.filter((item) => item.group === "overview") },
+    { key: "sales", items: visibleNavItems.filter((item) => item.group === "sales") },
+    { key: "catalog", items: visibleNavItems.filter((item) => item.group === "catalog") },
+    { key: "people", items: visibleNavItems.filter((item) => item.group === "people") },
+    { key: "system", items: visibleNavItems.filter((item) => item.group === "system") },
+  ].filter((group) => group.items.length > 0);
+
   return (
     <div className="min-h-screen bg-muted/20 text-foreground flex flex-col font-sans">
       {/* Top Bar */}
-      <header className="sticky top-0 z-40 w-full bg-background border-b border-border h-16 px-4 md:px-6 flex items-center justify-between shadow-xs">
+      <header className="sticky top-0 z-40 w-full bg-background border-b border-border h-14 px-4 lg:px-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -256,13 +256,12 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
           </button>
 
           <Link href="/" className="flex items-center gap-2 group hover:opacity-90 transition-opacity">
-            <span dir="ltr" className="font-black text-xl tracking-tighter text-foreground">
+            <span dir="ltr" className="font-black text-lg tracking-tighter text-foreground">
               PRI<span className="text-accent-brand">M</span>
             </span>
-            <div className="hidden sm:flex flex-col">
-              <span className="font-bold text-xs leading-tight text-foreground">{t("layout.brandTitle")}</span>
-              <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">{t("layout.brandSubtitle")}</span>
-            </div>
+            <span className="hidden border-s border-border ps-3 text-xs font-medium text-muted-foreground sm:inline">
+              {t("layout.brandTitle")}
+            </span>
           </Link>
         </div>
 
@@ -300,69 +299,45 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
                   <p className="text-[11px] text-muted-foreground truncate mt-0.5">{user?.email || "superadmin@prim.com"}</p>
                 </div>
 
-                <div className="p-1.5 space-y-0.5 text-xs font-medium">
+                <div className="space-y-0.5 p-1.5 text-sm">
                   <button
                     type="button"
-                    onClick={() => {
-                      toggleTheme();
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors cursor-pointer text-start"
+                    onClick={toggleTheme}
+                    className="flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-start text-foreground transition-colors hover:bg-secondary/70"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <span className="flex items-center gap-2.5">
                       {theme === "light" ? <Moon className="size-4 text-muted-foreground" /> : <Sun className="size-4 text-muted-foreground" />}
                       <span>{t("layout.theme")}</span>
-                    </div>
-                    <span className="text-[11px] font-semibold text-muted-foreground capitalize">{theme}</span>
+                    </span>
+                    <span className="text-xs capitalize text-muted-foreground">{theme}</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      toggleLanguage();
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors cursor-pointer text-start"
+                    onClick={toggleLanguage}
+                    className="flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-start text-foreground transition-colors hover:bg-secondary/70"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <span className="flex items-center gap-2.5">
                       <Languages className="size-4 text-muted-foreground" />
                       <span>{t("layout.language")}</span>
-                    </div>
-                    <span className="text-[11px] font-semibold text-muted-foreground uppercase">{locale === "en" ? "العربية" : "English"}</span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">{locale === "en" ? "العربية" : "English"}</span>
                   </button>
-
-                  <div className="my-1 border-t border-border/50"></div>
-
-                  <Link
-                    href="/user/overview"
-                    onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
-                  >
-                    <User className="size-4 text-muted-foreground shrink-0" />
-                    <span>{t("layout.customerAccountHub")}</span>
-                  </Link>
 
                   <Link
                     href="/admin/settings"
                     onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
+                    className="flex items-center gap-2.5 rounded-md px-3 py-2 text-foreground transition-colors hover:bg-secondary/70"
                   >
-                    <Settings className="size-4 text-muted-foreground shrink-0" />
+                    <Settings className="size-4 shrink-0 text-muted-foreground" />
                     <span>{t("layout.storeConfiguration")}</span>
-                  </Link>
-
-                  <Link
-                    href="/admin/customers"
-                    onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-foreground hover:text-accent-brand hover:bg-secondary/70 transition-colors"
-                  >
-                    <Users className="size-4 text-muted-foreground shrink-0" />
-                    <span>{t("layout.userManagement")}</span>
                   </Link>
                 </div>
 
-                <div className="p-1.5 border-t border-border/70">
+                <div className="border-t border-border p-1.5">
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-destructive hover:bg-destructive/10 transition-colors text-xs font-semibold cursor-pointer"
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
                   >
                     <LogOut className="size-4 shrink-0" />
                     <span>{t("layout.signOut")}</span>
@@ -385,57 +360,57 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
 
         {/* Sidebar */}
         <aside
-          className={`fixed lg:sticky start-0 top-16 z-30 h-[calc(100dvh-4rem)] w-64 bg-background border-e border-border flex flex-col transition-transform duration-200 ease-in-out ${
+          className={`fixed start-0 top-14 z-30 flex h-[calc(100dvh-3.5rem)] w-60 flex-col border-e border-border bg-sidebar transition-transform duration-200 ease-out lg:sticky ${
             sidebarOpen ? "translate-x-0" : "max-lg:-translate-x-full max-lg:rtl:translate-x-full"
           }`}
         >
-          <div className="p-3 space-y-1 overflow-y-auto flex-1">
-            <div className="px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-              {t("layout.management")}
-            </div>
-
-            {visibleNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path);
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                    isActive
-                      ? "bg-accent-brand text-white font-semibold shadow-xs"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className="size-4 shrink-0" />
-                    <span>{t(item.nameKey)}</span>
-                  </div>
-                  {item.badge && (
-                    <span
-                      className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
-                        item.badge === "Low Stock"
-                          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300"
-                          : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300"
+          <nav className="flex-1 space-y-5 overflow-y-auto p-3">
+            {navGroups.map((group) => (
+              <div key={group.key} className="space-y-0.5">
+                <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  {t(`layout.groups.${group.key}`)}
+                </div>
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = item.exact
+                    ? location.pathname === item.path
+                    : location.pathname.startsWith(item.path);
+                  const showBadge =
+                    item.badgeKey === "layout.badges.newOrders" &&
+                    pendingOrdersCount !== null &&
+                    pendingOrdersCount > 0;
+                  return (
+                    <Link
+                      key={item.path}
+                      href={item.path}
+                      onClick={() => setSidebarOpen(false)}
+                      aria-current={isActive ? "page" : undefined}
+                      className={`flex items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+                        isActive
+                          ? "bg-background font-medium text-foreground shadow-xs"
+                          : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
                       }`}
                     >
-                      {item.badgeKey
-                        ? item.badgeKey === "layout.badges.newOrders" && pendingOrdersCount !== null
-                          ? t(item.badgeKey, { count: pendingOrdersCount })
-                          : t(item.badgeKey)
-                        : item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <Icon className="size-4 shrink-0" />
+                        <span className="truncate">{t(item.nameKey)}</span>
+                      </span>
+                      {showBadge && item.badgeKey ? (
+                        <span className="rounded-md border border-border bg-secondary/70 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+                          {t(item.badgeKey, { count: pendingOrdersCount })}
+                        </span>
+                      ) : null}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
+          </nav>
         </aside>
 
         {/* Main Workspace Area */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8 min-w-0 overflow-y-auto">
-          {children}
+        <main className="min-w-0 flex-1 overflow-y-auto p-4 md:p-6">
+          <div className="mx-auto w-full max-w-[1400px]">{children}</div>
         </main>
       </div>
     </div>

@@ -2,10 +2,12 @@
 
 import { ResponsiveTable } from "@/shared/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
-import { Search, X, ScrollText } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { adminService, type AuditLogEntry } from "@/modules/admin/api/adminService";
 import { useLocale, useTranslations } from "next-intl";
 import { ErrorState } from "@/shared/ui/errorState";
+import { PageHeader } from "@/shared/ui/pageHeader";
+import { StatusPill, type StatusTone } from "@/shared/ui/statusPill";
 import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
 import { formatDateTime } from "@/shared/lib/datetime";
@@ -75,33 +77,24 @@ export function AdminAudit() {
     setApplied(emptyFilters);
   };
 
-  const statusTone = (code: number) =>
-    code >= 500
-      ? "text-rose-600 bg-rose-500/10"
-      : code >= 400
-        ? "text-amber-600 bg-amber-500/10"
-        : "text-emerald-600 bg-emerald-500/10";
+  const httpTone = (code: number): StatusTone =>
+    code >= 500 ? "danger" : code >= 400 ? "warning" : "success";
 
   if (loadError) {
     return <ErrorState onRetry={load} />;
   }
 
   const inputClass =
-    "w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground";
+    "w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30";
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("audit.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t("audit.subtitle")}</p>
-        </div>
-      </div>
+    <div className="space-y-5">
+      <PageHeader title={t("audit.title")} />
 
-      <div className="bg-background border border-border rounded-2xl p-4 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="space-y-3 rounded-lg border border-border bg-background p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="relative sm:col-span-2">
-            <Search className="absolute start-3 top-2.5 size-4 text-muted-foreground" />
+            <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               placeholder={t("audit.filterAction")}
@@ -130,89 +123,87 @@ export function AdminAudit() {
               value={draft.from}
               onChange={(e) => setDraft((d) => ({ ...d, from: e.target.value }))}
               className={`${inputClass} sm:w-auto`}
+              aria-label={t("reports.from")}
             />
-            <span className="text-muted-foreground text-xs">–</span>
+            <span className="text-sm text-muted-foreground">–</span>
             <input
               type="date"
               value={draft.to}
               onChange={(e) => setDraft((d) => ({ ...d, to: e.target.value }))}
               className={`${inputClass} sm:w-auto`}
+              aria-label={t("reports.to")}
             />
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={applyFilters}
-            className="px-4 py-2 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-colors"
+            className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             {t("audit.apply")}
           </button>
           <button
             onClick={clearFilters}
-            className="px-4 py-2 border border-border text-muted-foreground hover:text-foreground text-xs font-semibold rounded-xl transition-colors"
+            className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
           >
             {t("audit.clear")}
           </button>
         </div>
       </div>
 
-      <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
+      <div className="overflow-hidden rounded-lg border border-border bg-background">
         <div className="overflow-x-auto">
-          <ResponsiveTable className="w-full sm:min-w-max text-start text-xs">
-            <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
-              <tr>
-                <th className="py-3.5 ps-4 text-start">{t("audit.colTime")}</th>
-                <th className="py-3.5 text-start">{t("audit.colActor")}</th>
-                <th className="py-3.5 text-start">{t("audit.colAction")}</th>
-                <th className="py-3.5 text-start">{t("audit.colEntity")}</th>
-                <th className="py-3.5 text-start">{t("audit.colMethod")}</th>
-                <th className="py-3.5 text-start">{t("audit.colStatus")}</th>
-                <th className="py-3.5 pe-4 text-start">{t("audit.colIp")}</th>
+          <ResponsiveTable className="w-full text-start text-sm md:min-w-max">
+            <thead className="text-xs text-muted-foreground">
+              <tr className="border-b border-border">
+                <th className="py-2.5 ps-4 text-start font-medium">{t("audit.colTime")}</th>
+                <th className="py-2.5 text-start font-medium">{t("audit.colActor")}</th>
+                <th className="py-2.5 text-start font-medium">{t("audit.colAction")}</th>
+                <th className="py-2.5 text-start font-medium">{t("audit.colEntity")}</th>
+                <th className="py-2.5 text-start font-medium">{t("audit.colMethod")}</th>
+                <th className="py-2.5 text-start font-medium">{t("audit.colStatus")}</th>
+                <th className="py-2.5 pe-4 text-start font-medium">{t("audit.colIp")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody className="divide-y divide-border">
               {entries.map((entry) => (
                 <tr
                   key={entry.id}
                   onClick={() => setDetail(entry)}
-                  className="hover:bg-secondary/20 transition-colors cursor-pointer"
+                  className="cursor-pointer transition-colors hover:bg-secondary/30"
                 >
-                  <td className="py-3.5 ps-4 text-muted-foreground whitespace-nowrap">
-                    {formatDateTime(entry.createdAt, locale)}
+                  <td className="whitespace-nowrap py-3 ps-4 text-xs text-muted-foreground">
+                    {formatDateTime(entry.createdAt, locale) || "—"}
                   </td>
-                  <td className="py-3.5 font-semibold text-foreground">{entry.actorRole || "—"}</td>
-                  <td className="py-3.5 font-mono font-semibold text-foreground">
+                  <td className="py-3 text-sm font-medium text-foreground">{entry.actorRole || "—"}</td>
+                  <td className="py-3 font-mono text-xs font-medium text-foreground">
                     <span dir="ltr">{entry.action}</span>
                   </td>
-                  <td className="py-3.5 font-semibold text-foreground">
+                  <td className="py-3 text-sm text-foreground">
                     <span dir="ltr">{entry.entityType || "—"}</span>
                   </td>
-                  <td className="py-3.5">
-                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-secondary/60 text-muted-foreground" dir="ltr">
+                  <td className="py-3">
+                    <span className="rounded border border-border bg-secondary/50 px-1.5 py-0.5 font-mono text-xs text-muted-foreground" dir="ltr">
                       {entry.method}
                     </span>
                   </td>
-                  <td className="py-3.5">
-                    <span
-                      className={`font-mono font-bold text-[11px] px-1.5 py-0.5 rounded ${statusTone(entry.statusCode)}`}
-                      dir="ltr"
-                    >
-                      {entry.statusCode}
-                    </span>
+                  <td className="py-3">
+                    <StatusPill tone={httpTone(entry.statusCode)}>
+                      <span dir="ltr">{entry.statusCode}</span>
+                    </StatusPill>
                   </td>
-                  <td className="py-3.5 pe-4 font-mono text-[10px] text-muted-foreground">
+                  <td className="py-3 pe-4 font-mono text-xs text-muted-foreground">
                     {entry.ipAddress ? <span dir="ltr">{entry.ipAddress}</span> : "—"}
                   </td>
                 </tr>
               ))}
-              {entries.length === 0 && !loading && (
+              {entries.length === 0 && !loading ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-muted-foreground">
-                    <ScrollText className="size-6 mx-auto mb-2 opacity-50" />
+                  <td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
                     {t("audit.empty")}
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </ResponsiveTable>
         </div>
@@ -228,93 +219,88 @@ export function AdminAudit() {
         />
       </div>
 
-      {detail && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-border">
+      {detail ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[85vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-lg border border-border bg-background p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-3">
               <div className="min-w-0">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("audit.title")}
-                </div>
-                <h3 className="font-bold text-base text-foreground font-mono truncate" dir="ltr">
+                <div className="text-xs font-medium text-muted-foreground">{t("audit.title")}</div>
+                <h3 className="mt-0.5 truncate font-mono text-sm font-semibold text-foreground" dir="ltr">
                   {detail.action}
                 </h3>
               </div>
               <button
                 onClick={() => setDetail(null)}
-                className="-me-1 shrink-0 rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
                 aria-label={t("actions.close")}
               >
-                <X className="size-5" />
+                <X className="size-4" />
               </button>
             </div>
 
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 px-5 py-5 text-xs">
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
               <div className="space-y-0.5">
-                <dt className="font-medium text-muted-foreground">{t("audit.colTime")}</dt>
-                <dd className="text-foreground">{formatDateTime(detail.createdAt, locale)}</dd>
+                <dt className="text-xs text-muted-foreground">{t("audit.colTime")}</dt>
+                <dd className="text-foreground">{formatDateTime(detail.createdAt, locale) || "—"}</dd>
               </div>
               <div className="space-y-0.5">
-                <dt className="font-medium text-muted-foreground">{t("audit.colActor")}</dt>
+                <dt className="text-xs text-muted-foreground">{t("audit.colActor")}</dt>
                 <dd className="text-foreground" dir="ltr">
                   {detail.actorRole}{" "}
                   <span className="font-mono text-muted-foreground">({detail.actorId || "—"})</span>
                 </dd>
               </div>
               <div className="space-y-0.5">
-                <dt className="font-medium text-muted-foreground">{t("audit.colEntity")}</dt>
-                <dd className="text-foreground font-mono" dir="ltr">
+                <dt className="text-xs text-muted-foreground">{t("audit.colEntity")}</dt>
+                <dd className="font-mono text-foreground" dir="ltr">
                   {detail.entityType} / {detail.entityId || "—"}
                 </dd>
               </div>
               <div className="space-y-0.5">
-                <dt className="font-medium text-muted-foreground">{t("audit.colStatus")}</dt>
+                <dt className="text-xs text-muted-foreground">{t("audit.colStatus")}</dt>
                 <dd>
-                  <span
-                    className={`inline-block font-mono font-bold text-[11px] px-1.5 py-0.5 rounded ${statusTone(detail.statusCode)}`}
-                    dir="ltr"
-                  >
-                    {detail.statusCode}
-                  </span>
+                  <StatusPill tone={httpTone(detail.statusCode)}>
+                    <span dir="ltr">{detail.statusCode}</span>
+                  </StatusPill>
                 </dd>
               </div>
-              <div className="sm:col-span-2 space-y-0.5">
-                <dt className="font-medium text-muted-foreground">{t("audit.colMethod")}</dt>
-                <dd className="text-foreground font-mono break-all" dir="ltr">
+              <div className="space-y-0.5 sm:col-span-2">
+                <dt className="text-xs text-muted-foreground">{t("audit.colMethod")}</dt>
+                <dd className="break-all font-mono text-foreground" dir="ltr">
                   {detail.method} {detail.path}
                 </dd>
               </div>
-              <div className="sm:col-span-2 space-y-0.5">
-                <dt className="font-medium text-muted-foreground">{t("audit.colIp")}</dt>
-                <dd className="text-foreground font-mono break-all" dir="ltr">
+              <div className="space-y-0.5 sm:col-span-2">
+                <dt className="text-xs text-muted-foreground">{t("audit.colIp")}</dt>
+                <dd className="break-all font-mono text-foreground" dir="ltr">
                   {detail.ipAddress} — {detail.userAgent}
                 </dd>
               </div>
             </dl>
 
-            {(detail.after || detail.metadata) && (
-              <div className="px-5 pb-5 space-y-4">
-                {detail.after && (
+            {detail.after || detail.metadata ? (
+              <div className="space-y-4">
+                {detail.after ? (
                   <div>
-                    <div className="text-xs font-semibold text-foreground mb-1">{t("audit.payload")}</div>
-                    <pre className="text-[11px] bg-secondary/40 border border-border rounded-xl p-3 overflow-x-auto" dir="ltr">
+                    <div className="mb-1 text-xs font-medium text-foreground">{t("audit.payload")}</div>
+                    <pre className="overflow-x-auto rounded-md border border-border bg-secondary/40 p-3 font-mono text-xs" dir="ltr">
                       {JSON.stringify(detail.after, null, 2)}
                     </pre>
                   </div>
-                )}
-                {detail.metadata && (
+                ) : null}
+                {detail.metadata ? (
                   <div>
-                    <div className="text-xs font-semibold text-foreground mb-1">{t("audit.metadata")}</div>
-                    <pre className="text-[11px] bg-secondary/40 border border-border rounded-xl p-3 overflow-x-auto" dir="ltr">
+                    <div className="mb-1 text-xs font-medium text-foreground">{t("audit.metadata")}</div>
+                    <pre className="overflow-x-auto rounded-md border border-border bg-secondary/40 p-3 font-mono text-xs" dir="ltr">
                       {JSON.stringify(detail.metadata, null, 2)}
                     </pre>
                   </div>
-                )}
+                ) : null}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

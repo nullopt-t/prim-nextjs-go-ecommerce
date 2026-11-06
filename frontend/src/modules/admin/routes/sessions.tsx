@@ -2,11 +2,13 @@
 
 import { ResponsiveTable } from "@/shared/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
-import { MonitorSmartphone, RefreshCcw, ShieldAlert, X } from "lucide-react";
+import { X } from "lucide-react";
 import { adminService, type StaffSession } from "@/modules/admin/api/adminService";
 import { useLocale, useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
+import { PageHeader } from "@/shared/ui/pageHeader";
+import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { formatDateTime } from "@/shared/lib/datetime";
 
 const STAFF_ROLES = ["all", "superadmin", "admin", "support", "vendor"] as const;
@@ -55,218 +57,194 @@ export function AdminSessions() {
     }
   };
 
-  const roleBadge = (role: string) =>
-    role === "superadmin"
-      ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
-      : role === "admin"
-        ? "bg-blue-500/10 text-blue-600 border-blue-500/20"
-        : role === "support"
-          ? "bg-teal-500/10 text-teal-600 border-teal-500/20"
-          : "bg-amber-500/10 text-amber-600 border-amber-500/20";
+  const roleLabel = (role: string) => t(`roles.${role}`);
 
   if (loadError) {
     return <ErrorState onRetry={load} />;
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("sessions.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t("sessions.subtitle")}</p>
-        </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2.5 border border-border bg-secondary/30 hover:bg-secondary text-foreground text-xs font-semibold rounded-xl transition-colors disabled:opacity-50 self-start md:self-auto"
+    <div className="space-y-5">
+      <PageHeader
+        title={t("sessions.title")}
+        actions={
+          <button
+            onClick={load}
+            disabled={loading}
+            className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
+          >
+            {t("sessions.refresh")}
+          </button>
+        }
+      />
+
+      <div className="flex items-center justify-between gap-3">
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+          aria-label={t("sessions.colRole")}
         >
-          <RefreshCcw className={`size-4 ${loading ? "animate-spin" : ""}`} />
-          <span>{t("sessions.refresh")}</span>
-        </button>
-      </div>
-
-      <div className="bg-background border border-border rounded-2xl p-4 shadow-xs">
-        <div className="flex flex-wrap items-center gap-2">
           {STAFF_ROLES.map((role) => (
-            <button
-              key={role}
-              onClick={() => setRoleFilter(role)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                roleFilter === role
-                  ? "bg-accent-brand text-white border-accent-brand"
-                  : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary/40"
-              }`}
-            >
-              {role === "all" ? t("sessions.allRoles") : t(`roles.${role}`)}
-            </button>
+            <option key={role} value={role}>
+              {role === "all" ? t("sessions.allRoles") : roleLabel(role)}
+            </option>
           ))}
-        </div>
+        </select>
+        <span className="text-xs text-muted-foreground">
+          {t("sessions.count", { count: sessions.length })}
+        </span>
       </div>
 
-      <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
+      <div className="overflow-hidden rounded-lg border border-border bg-background">
         <div className="overflow-x-auto">
-          <ResponsiveTable className="w-full sm:min-w-max text-start text-xs">
-            <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
-              <tr>
-                <th className="py-3.5 ps-4 text-start">{t("sessions.colUser")}</th>
-                <th className="py-3.5 text-start">{t("sessions.colRole")}</th>
-                <th className="py-3.5 text-start">{t("sessions.colDevice")}</th>
-                <th className="py-3.5 text-start">{t("sessions.colIp")}</th>
-                <th className="py-3.5 text-start">{t("sessions.colCreated")}</th>
-                <th className="py-3.5 text-start">{t("sessions.colLastActive")}</th>
-                <th className="py-3.5 pe-4 text-end">{t("sessions.colAction")}</th>
+          <ResponsiveTable className="w-full text-start text-sm md:min-w-max">
+            <thead className="text-xs text-muted-foreground">
+              <tr className="border-b border-border">
+                <th className="py-2.5 ps-4 text-start font-medium">{t("sessions.colUser")}</th>
+                <th className="py-2.5 text-start font-medium">{t("sessions.colRole")}</th>
+                <th className="py-2.5 text-start font-medium">{t("sessions.colDevice")}</th>
+                <th className="py-2.5 text-start font-medium">{t("sessions.colIp")}</th>
+                <th className="py-2.5 text-start font-medium">{t("sessions.colCreated")}</th>
+                <th className="py-2.5 text-start font-medium">{t("sessions.colLastActive")}</th>
+                <th className="py-2.5 pe-4 text-end font-medium">{t("sessions.colAction")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody className="divide-y divide-border">
               {sessions.map((session) => (
                 <tr
                   key={session.id}
                   onClick={() => setDetail(session)}
-                  className="hover:bg-secondary/20 transition-colors cursor-pointer"
+                  className="cursor-pointer transition-colors hover:bg-secondary/30"
                 >
-                  <td className="py-3.5 ps-4">
+                  <td className="py-3 ps-4">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-foreground truncate max-w-[180px]">
+                      <span className="max-w-[180px] truncate font-medium text-foreground">
                         {session.fullName || session.email}
                       </span>
-                      {session.current && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                          {t("sessions.thisDevice")}
-                        </span>
-                      )}
+                      {session.current ? <StatusPill tone="success">{t("sessions.thisDevice")}</StatusPill> : null}
                     </div>
-                    <div className="font-mono text-[10px] text-muted-foreground truncate max-w-[220px]">
+                    <div className="max-w-[220px] truncate font-mono text-xs text-muted-foreground">
                       {session.email}
                     </div>
                   </td>
-                  <td className="py-3.5">
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${roleBadge(session.role)}`}>
-                      {t(`roles.${session.role}`)}
-                    </span>
+                  <td className="py-3">
+                    <StatusPill tone={statusTone(session.role)}>{roleLabel(session.role)}</StatusPill>
                   </td>
-                  <td className="py-3.5 text-muted-foreground">
-                    <span className="block truncate max-w-[220px]">{session.userAgent || "—"}</span>
+                  <td className="py-3 text-xs text-muted-foreground">
+                    <span className="block max-w-[220px] truncate">{session.userAgent || "—"}</span>
                   </td>
-                  <td className="py-3.5 font-mono text-[10px] text-muted-foreground">
+                  <td className="py-3 font-mono text-xs text-muted-foreground">
                     {session.ipAddress || "—"}
                   </td>
-                  <td className="py-3.5 text-muted-foreground whitespace-nowrap">
-                    {formatDateTime(session.createdAt, locale)}
+                  <td className="whitespace-nowrap py-3 text-xs text-muted-foreground">
+                    {formatDateTime(session.createdAt, locale) || "—"}
                   </td>
-                  <td className="py-3.5 text-muted-foreground whitespace-nowrap">
-                    {formatDateTime(session.lastActive, locale)}
+                  <td className="whitespace-nowrap py-3 text-xs text-muted-foreground">
+                    {formatDateTime(session.lastActive, locale) || "—"}
                   </td>
-                  <td className="py-3.5 pe-4 text-end" onClick={(e) => e.stopPropagation()}>
+                  <td className="py-3 pe-4 text-end" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => handleRevoke(session)}
                       disabled={session.current || revoking === session.id}
                       title={session.current ? t("sessions.cannotRevokeCurrent") : t("sessions.revoke")}
-                      className="px-2.5 py-1 text-[11px] font-semibold text-destructive bg-destructive/10 hover:bg-destructive/20 rounded-lg transition-colors inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      <X className="size-3" />
-                      <span>{t("sessions.revoke")}</span>
+                      {t("sessions.revoke")}
                     </button>
                   </td>
                 </tr>
               ))}
-              {sessions.length === 0 && !loading && (
+              {sessions.length === 0 && !loading ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-muted-foreground">
-                    <MonitorSmartphone className="size-6 mx-auto mb-2 opacity-50" />
+                  <td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
                     {t("sessions.empty")}
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </ResponsiveTable>
         </div>
-        {loading && sessions.length === 0 && (
-          <div className="py-10 text-center text-xs text-muted-foreground">
+        {loading && sessions.length === 0 ? (
+          <div className="py-10 text-center text-sm text-muted-foreground">
             {t("sessions.loading")}
           </div>
-        )}
+        ) : null}
       </div>
 
-      {detail && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-border">
+      {detail ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[85vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-lg border border-border bg-background p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-3">
               <div className="min-w-0">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("sessions.detailTitle")}
-                </div>
-                <h3 className="font-bold text-base text-foreground flex items-center gap-2">
-                  <ShieldAlert className="size-4 text-accent-brand shrink-0" />
-                  <span className="truncate">{detail.fullName || detail.email}</span>
+                <div className="text-xs font-medium text-muted-foreground">{t("sessions.detailTitle")}</div>
+                <h3 className="mt-0.5 truncate text-sm font-semibold text-foreground">
+                  {detail.fullName || detail.email}
                 </h3>
               </div>
               <button
                 onClick={() => setDetail(null)}
-                className="-me-1 shrink-0 rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
                 aria-label={t("actions.close")}
               >
-                <X className="size-5" />
+                <X className="size-4" />
               </button>
             </div>
 
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 px-5 py-5 text-xs">
-              <div className="sm:col-span-2 space-y-0.5">
-                <dt className="font-medium text-muted-foreground">{t("sessions.colUser")}</dt>
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+              <div className="space-y-0.5 sm:col-span-2">
+                <dt className="text-xs text-muted-foreground">{t("sessions.colUser")}</dt>
                 <dd className="text-foreground" dir="ltr">
                   {detail.fullName ? `${detail.fullName} (${detail.email})` : detail.email}
                 </dd>
               </div>
               <div className="space-y-0.5">
-                <dt className="font-medium text-muted-foreground">{t("sessions.colRole")}</dt>
+                <dt className="text-xs text-muted-foreground">{t("sessions.colRole")}</dt>
                 <dd>
-                  <span
-                    className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${roleBadge(detail.role)}`}
-                  >
-                    {t(`roles.${detail.role}`)}
-                  </span>
+                  <StatusPill tone={statusTone(detail.role)}>{roleLabel(detail.role)}</StatusPill>
                 </dd>
               </div>
               <div className="space-y-0.5">
-                <dt className="font-medium text-muted-foreground">{t("sessions.colIp")}</dt>
-                <dd className="text-foreground font-mono" dir="ltr">
+                <dt className="text-xs text-muted-foreground">{t("sessions.colIp")}</dt>
+                <dd className="font-mono text-foreground" dir="ltr">
                   {detail.ipAddress || "—"}
                 </dd>
               </div>
               <div className="space-y-0.5">
-                <dt className="font-medium text-muted-foreground">{t("sessions.colCreated")}</dt>
-                <dd className="text-foreground">{formatDateTime(detail.createdAt, locale)}</dd>
+                <dt className="text-xs text-muted-foreground">{t("sessions.colCreated")}</dt>
+                <dd className="text-foreground">{formatDateTime(detail.createdAt, locale) || "—"}</dd>
               </div>
               <div className="space-y-0.5">
-                <dt className="font-medium text-muted-foreground">{t("sessions.colLastActive")}</dt>
-                <dd className="text-foreground">{formatDateTime(detail.lastActive, locale)}</dd>
+                <dt className="text-xs text-muted-foreground">{t("sessions.colLastActive")}</dt>
+                <dd className="text-foreground">{formatDateTime(detail.lastActive, locale) || "—"}</dd>
               </div>
-              <div className="sm:col-span-2 space-y-0.5">
-                <dt className="font-medium text-muted-foreground">{t("sessions.sessionId")}</dt>
-                <dd className="text-foreground font-mono break-all" dir="ltr">
+              <div className="space-y-0.5 sm:col-span-2">
+                <dt className="text-xs text-muted-foreground">{t("sessions.sessionId")}</dt>
+                <dd className="break-all font-mono text-xs text-foreground" dir="ltr">
                   {detail.id}
                 </dd>
               </div>
-              <div className="sm:col-span-2 space-y-0.5">
-                <dt className="font-medium text-muted-foreground">{t("sessions.colDevice")}</dt>
-                <dd className="text-foreground break-all" dir="ltr">
+              <div className="space-y-0.5 sm:col-span-2">
+                <dt className="text-xs text-muted-foreground">{t("sessions.colDevice")}</dt>
+                <dd className="break-all text-foreground" dir="ltr">
                   {detail.userAgent || "—"}
                 </dd>
               </div>
             </dl>
 
-            <div className="flex justify-end px-5 pb-5">
+            <div className="flex justify-end border-t border-border pt-3">
               <button
                 onClick={() => handleRevoke(detail)}
                 disabled={detail.current || revoking === detail.id}
                 title={detail.current ? t("sessions.cannotRevokeCurrent") : undefined}
-                className="px-4 py-2 text-xs font-semibold text-white bg-destructive rounded-xl hover:bg-destructive/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded-md bg-destructive px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {t("sessions.revoke")}
               </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

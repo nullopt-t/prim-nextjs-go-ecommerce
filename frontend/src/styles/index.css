@@ -78,8 +78,8 @@ input {
 	}
 }
 
-/* ── Responsive data tables: stack label/value cards on small screens ── */
-@media (max-width: 639px) {
+/* ── Responsive data tables: stack label/value cards below the md breakpoint ── */
+@media (max-width: 767px) {
 	.rtable {
 		display: block;
 		width: 100%;
@@ -91,36 +91,47 @@ input {
 	}
 
 	.rtable tbody {
-		display: block;
+		display: grid;
+		gap: 0.75rem;
+		padding: 0.75rem;
 	}
 
 	.rtable tr {
-		display: block;
-		padding-block: 0.25rem;
+		display: grid;
+		gap: 0.125rem;
+		padding: 0.875rem 1rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-background);
 	}
 
 	.rtable td {
-		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
+		display: grid;
+		grid-template-columns: minmax(6rem, 35%) minmax(0, 1fr);
+		align-items: baseline;
 		gap: 0.75rem;
 		width: 100%;
-		padding: 0.3rem 1rem;
+		padding: 0.25rem 0;
 		text-align: end;
 		overflow-wrap: anywhere;
 	}
 
 	.rtable td::before {
 		content: attr(data-label);
-		flex: 0 0 auto;
-		max-width: 45%;
-		font-weight: 600;
+		font-size: 0.75rem;
+		font-weight: 500;
+		line-height: 1.4;
 		text-align: start;
 		color: var(--color-muted-foreground);
 	}
 
 	.rtable td:not([data-label])::before {
 		content: none;
+	}
+
+	.rtable td:not([data-label]) {
+		display: flex;
+		justify-content: flex-end;
 	}
 
 	.rtable td[colspan] {
@@ -132,23 +143,7 @@ input {
 		min-width: 0;
 	}
 
-	/* Cells holding several values (e.g. name + email): keep the label beside
-	   the first line and stack the remaining values underneath it instead of
-	   spreading them across the row. */
-	.rtable td:has(> * + *) {
-		display: grid;
-		grid-template-columns: max-content minmax(0, 1fr);
-		align-items: start;
-		column-gap: 0.75rem;
-	}
-
-	.rtable td:has(> * + *)::before {
-		grid-column: 1;
-		max-width: none;
-		overflow-wrap: normal;
-	}
-
-	.rtable td:has(> * + *) > * {
-		grid-column: 2;
+	.rtable td > :where(img, picture, video) {
+		max-width: 100%;
 	}
 }

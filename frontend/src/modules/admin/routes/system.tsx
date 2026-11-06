@@ -1,17 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import {
-  Activity,
-  CheckCircle2,
-  AlertTriangle,
-  Database,
-  Layers,
-  HardDrive,
-  Radio
-} from "lucide-react";
 import { adminService, type SystemHealthReport, type SystemServiceHealth } from "@/modules/admin/api/adminService";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/shared/ui/pageHeader";
+import { StatusPill, type StatusTone } from "@/shared/ui/statusPill";
 
 // Short-poll interval for the core services health endpoint. Kept short so the
 // panel feels live; a single in-flight guard prevents request pile-up when a
@@ -23,40 +16,22 @@ const HISTORY_LIMIT = 24;
 
 type ServiceStatusKey = "healthy" | "degraded" | "unhealthy" | "unknown";
 
-// Static presentation for each probed service. Live status, latency, and
-// resource readings are overlaid from the backend health report.
-const SERVICE_NODES = [
-  { key: "postgres", icon: Database },
-  { key: "redis", icon: Layers },
-  { key: "kafka", icon: Radio },
-  { key: "minio", icon: HardDrive }
-] as const;
+// Probed services, in display order. Live status, latency, and resource
+// readings are overlaid from the backend health report.
+const SERVICE_NODES = ["postgres", "redis", "kafka", "minio"] as const;
 
-const STATUS_STYLES: Record<ServiceStatusKey, { badge: string; dot: string; tile: string; spark: string }> = {
-  healthy: {
-    badge: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-    dot: "bg-emerald-500",
-    tile: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    spark: "text-emerald-500"
-  },
-  degraded: {
-    badge: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-    dot: "bg-amber-500",
-    tile: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    spark: "text-amber-500"
-  },
-  unhealthy: {
-    badge: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-    dot: "bg-rose-500",
-    tile: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-    spark: "text-rose-500"
-  },
-  unknown: {
-    badge: "bg-secondary/40 text-muted-foreground border-border/60",
-    dot: "bg-muted-foreground",
-    tile: "bg-secondary/50 text-muted-foreground",
-    spark: "text-muted-foreground"
-  }
+const STATUS_TONES: Record<ServiceStatusKey, StatusTone> = {
+  healthy: "success",
+  degraded: "warning",
+  unhealthy: "danger",
+  unknown: "neutral",
+};
+
+const SPARK_TONES: Record<ServiceStatusKey, string> = {
+  healthy: "text-emerald-500",
+  degraded: "text-amber-500",
+  unhealthy: "text-rose-500",
+  unknown: "text-muted-foreground",
 };
 
 function formatLatency(value?: number): string {
@@ -176,7 +151,7 @@ export function AdminSystem() {
   const totalServices = SERVICE_NODES.length;
   const healthyServices = (health?.services ?? []).filter((s) => s.status === "healthy").length;
   const overallStatus = (health?.status ?? "unknown") as ServiceStatusKey;
-  const overallStyle = STATUS_STYLES[overallStatus] ?? STATUS_STYLES.unknown;
+  const overallTone = STATUS_TONES[overallStatus] ?? "neutral";
   const overallLabel = !health
     ? healthLoaded
       ? t("system.infrastructure.metric.unavailable")
@@ -202,152 +177,91 @@ export function AdminSystem() {
       : "bg-emerald-500";
 
   return (
-    <div className="space-y-6 w-full">
-      {/* Top Header Card */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-3xl border border-border/80 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("system.title")}</h1>
-            <span
-              className={
-                !health || overallStatus !== "healthy"
-                  ? `px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${overallStyle.badge}`
-                  : "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent-brand/10 text-accent-brand border border-accent-brand/20"
-              }
-            >
-              {!health || overallStatus !== "healthy" ? overallLabel : t("system.statusOnline")}
-            </span>
+    <div className="w-full space-y-5">
+      <PageHeader title={t("system.title")} />
+
+      <section className="space-y-4 rounded-lg border border-border bg-background p-4 sm:p-5">
+        {refreshing ? (
+          <span className="pointer-events-none block h-0.5 overflow-hidden" aria-hidden="true">
+            <span className="prim-sweep block h-full w-1/3 rounded-full bg-primary/40" />
+          </span>
+        ) : null}
+
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">{t("system.infrastructure.title")}</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t("system.infrastructure.subtitle")}</p>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">{t("system.subtitle")}</p>
-        </div>
-      </div>
 
-      <div className="space-y-6">
-        {/* Infrastructure & Services Health */}
-        <div className="relative overflow-hidden bg-background border border-border/80 rounded-2xl p-6 shadow-xs space-y-4">
-          {refreshing && (
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-[2px] overflow-hidden" aria-hidden="true">
-              <span className="prim-sweep block h-full w-1/3 rounded-full bg-accent-brand/50" />
-            </span>
-          )}
-
-          <div className="border-b border-border/60 pb-3 flex items-start justify-between gap-3">
-            <div>
-              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <Activity className="size-4 text-accent-brand" />
-                <span>{t("system.infrastructure.title")}</span>
-              </h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {t("system.infrastructure.subtitle")}
-              </p>
-            </div>
-
-            <div className="flex flex-col items-end gap-1.5 shrink-0">
-              <span className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border ${overallStyle.badge}`}>
-                {overallStatus === "healthy" ? (
-                  <CheckCircle2 className="size-3.5" />
-                ) : overallStatus === "unknown" ? (
-                  <Activity className="size-3.5" />
-                ) : (
-                  <AlertTriangle className="size-3.5" />
-                )}
-                <span>{overallLabel}</span>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <StatusPill tone={overallTone}>{overallLabel}</StatusPill>
+            {health ? (
+              <span className={`flex items-center gap-1.5 font-mono text-xs ${isStale ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}>
+                <span className={`size-1.5 rounded-full ${freshnessDot}`} />
+                <span>{freshnessLabel}</span>
               </span>
-              {health && (
-                <span className={`flex items-center gap-1.5 text-[10px] font-mono ${isStale ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
-                  <span className="relative flex size-1.5">
-                    <span className={`prim-heartbeat absolute inline-flex size-full rounded-full ${freshnessDot}`} />
-                    <span className={`relative inline-flex size-1.5 rounded-full ${freshnessDot}`} />
-                  </span>
-                  <span>{freshnessLabel}</span>
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
-            {!healthLoaded
-              ? SERVICE_NODES.map((node) => (
-                  <div
-                    key={node.key}
-                    className="p-4 rounded-xl border border-border/70 bg-card flex flex-col gap-3"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className="prim-shimmer size-8 shrink-0 rounded-md bg-muted" />
-                      <span className="prim-shimmer h-3 w-2/3 rounded bg-muted" />
-                    </div>
-                    <span className="prim-shimmer h-2.5 w-full rounded bg-muted" />
-                    <span className="prim-shimmer h-2.5 w-4/5 rounded bg-muted" />
-                    <span className="prim-shimmer h-6 w-full rounded bg-muted" />
-                  </div>
-                ))
-              : SERVICE_NODES.map((node) => {
-                  const NodeIcon = node.icon;
-                  const service = healthByKey[node.key];
-                  const status = (service?.status ?? "unknown") as ServiceStatusKey;
-                  const style = STATUS_STYLES[status] ?? STATUS_STYLES.unknown;
-                  const resources = service?.resources ?? [];
-                  const latencyLabel = service
-                    ? t("system.infrastructure.metric.latency", { value: formatLatency(service.latencyMs) })
-                    : t("system.infrastructure.metric.unavailable");
-
-                  return (
-                    <div
-                      key={node.key}
-                      className="group p-4 rounded-xl border border-border/70 bg-card flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-sm"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className={`grid size-8 shrink-0 place-items-center rounded-md transition-colors ${style.tile}`}>
-                            <NodeIcon className="size-4" />
-                          </span>
-                          <span className="font-bold text-xs text-foreground truncate">
-                            {t(`system.infrastructure.services.${node.key}.name`)}
-                          </span>
-                        </div>
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${style.badge}`}>
-                          <span className="relative flex size-1.5">
-                            <span className={`prim-heartbeat absolute inline-flex size-full rounded-full ${style.dot}`} />
-                            <span className={`relative inline-flex size-1.5 rounded-full ${style.dot}`} />
-                          </span>
-                          {t(`system.infrastructure.${status}`)}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        {resources.length > 0 ? (
-                          resources.map((resource) => (
-                            <div
-                              key={resource.key}
-                              className="flex items-baseline justify-between gap-3 text-[11px]"
-                            >
-                              <span className="text-muted-foreground truncate">
-                                {t(`system.infrastructure.resources.${resource.key}`)}
-                              </span>
-                              <span className="font-mono font-semibold text-foreground tabular-nums">
-                                {resource.value}
-                              </span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-[11px] text-muted-foreground">
-                            {t("system.infrastructure.metric.unavailable")}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-2 border-t border-border/60 pt-2">
-                        <span className="block text-[10px] text-muted-foreground font-mono">
-                          {latencyLabel}
-                        </span>
-                        <Sparkline values={history[node.key] ?? []} className={style.spark} />
-                      </div>
-                    </div>
-                  );
-                })}
+            ) : null}
           </div>
         </div>
-      </div>
+
+        <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-2 lg:grid-cols-4">
+          {!healthLoaded
+            ? SERVICE_NODES.map((key) => (
+                <div key={key} className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+                  <div className="flex items-center gap-2.5">
+                    <span className="prim-shimmer size-8 shrink-0 rounded-md bg-muted" />
+                    <span className="prim-shimmer h-3 w-2/3 rounded bg-muted" />
+                  </div>
+                  <span className="prim-shimmer h-2.5 w-full rounded bg-muted" />
+                  <span className="prim-shimmer h-2.5 w-4/5 rounded bg-muted" />
+                  <span className="prim-shimmer h-6 w-full rounded bg-muted" />
+                </div>
+              ))
+            : SERVICE_NODES.map((key) => {
+                const service = healthByKey[key];
+                const status = (service?.status ?? "unknown") as ServiceStatusKey;
+                const resources = service?.resources ?? [];
+                const latencyLabel = service
+                  ? t("system.infrastructure.metric.latency", { value: formatLatency(service.latencyMs) })
+                  : t("system.infrastructure.metric.unavailable");
+
+                return (
+                  <div key={key} className="flex flex-col justify-between gap-3 rounded-lg border border-border bg-card p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-medium text-foreground">
+                        {t(`system.infrastructure.services.${key}.name`)}
+                      </span>
+                      <StatusPill tone={STATUS_TONES[status] ?? "neutral"}>
+                        {t(`system.infrastructure.${status}`)}
+                      </StatusPill>
+                    </div>
+
+                    <dl className="space-y-1.5">
+                      {resources.length > 0 ? (
+                        resources.map((resource) => (
+                          <div key={resource.key} className="flex items-baseline justify-between gap-3 text-xs">
+                            <dt className="truncate text-muted-foreground">
+                              {t(`system.infrastructure.resources.${resource.key}`)}
+                            </dt>
+                            <dd className="font-mono font-medium text-foreground tabular-nums">{resource.value}</dd>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-xs text-muted-foreground">
+                          {t("system.infrastructure.metric.unavailable")}
+                        </div>
+                      )}
+                    </dl>
+
+                    <div className="space-y-2 border-t border-border pt-2">
+                      <span className="block font-mono text-xs text-muted-foreground">{latencyLabel}</span>
+                      <Sparkline values={history[key] ?? []} className={SPARK_TONES[status] ?? SPARK_TONES.unknown} />
+                    </div>
+                  </div>
+                );
+              })}
+        </div>
+      </section>
     </div>
   );
 }

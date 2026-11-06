@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { UploadCloud, Search, Trash2, Copy, Check, Eye, X, Loader2 } from "lucide-react";
+import { Search, X, Loader2 } from "lucide-react";
 import { adminService } from "@/modules/admin/api/adminService";
 import type { AdminMedia } from "@/modules/admin/types";
 import { useLocale, useTranslations } from "next-intl";
@@ -8,8 +8,26 @@ import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { copyTextToClipboard } from "@/shared/lib/clipboard";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { ErrorState } from "@/shared/ui/errorState";
+import { PageHeader } from "@/shared/ui/pageHeader";
 
 const MEDIA_PAGE_SIZE = 50;
+
+interface MediaItem {
+  id: string;
+  name: string;
+  size: string;
+  type: string;
+  dimensions: string;
+  url: string;
+  uploadedAt: string;
+}
+
+const formatBytes = (bytes?: number) => {
+  if (bytes == null) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 export function AdminMedia() {
   const t = useTranslations("admin");
@@ -17,13 +35,13 @@ export function AdminMedia() {
   const locale = useLocale();
   const { user } = useAuthContext();
   const isSuperadmin = user?.role === "superadmin";
-  const [mediaList, setMediaList] = useState<any[]>([]);
+  const [mediaList, setMediaList] = useState<MediaItem[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [previewItem, setPreviewItem] = useState<any>(null);
+  const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
@@ -61,20 +79,20 @@ export function AdminMedia() {
         if (requestId !== requestIdRef.current) return;
 
         const rows = res?.data ?? [];
-        const mapped = rows.map((m: AdminMedia) => ({
+        const mapped: MediaItem[] = rows.map((m: AdminMedia) => ({
           id: m.id,
-          name: m.objectKey || `media-${m.id.slice(0, 8)}`,
-          size: `${((m.fileSize || 500000) / (1024 * 1024)).toFixed(1)} MB`,
-          type: (m.contentType || "").includes("image") ? "Image" : "Media",
-          dimensions: "1200x1200",
-          url: m.url || `http://localhost:9000/${m.bucket || "product-media"}/${m.objectKey}`,
-          uploadedAt: formatDateTime(m.createdAt, locale),
+          name: m.filename || m.objectKey || m.id,
+          size: formatBytes(m.fileSize ?? m.size),
+          type: (m.contentType || "").includes("image") ? "Image" : (m.contentType || "—"),
+          dimensions: "—",
+          url: m.url || m.publicUrl || "",
+          uploadedAt: formatDateTime(m.createdAt, locale) || "—",
         }));
 
         setMediaList((previous) => {
           if (isReset) return mapped;
-          const seen = new Set(previous.map((item: any) => item.id));
-          return [...previous, ...mapped.filter((item: any) => !seen.has(item.id))];
+          const seen = new Set(previous.map((item) => item.id));
+          return [...previous, ...mapped.filter((item) => !seen.has(item.id))];
         });
 
         const meta = res?.meta;
@@ -181,154 +199,161 @@ export function AdminMedia() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("media.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t("media.subtitle")}</p>
-        </div>
-        <label className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 cursor-pointer transition-all shrink-0">
-          <UploadCloud className="size-4" />
-          <span>{isUploading ? t("media.uploading") : t("media.upload")}</span>
-          <input type="file" onChange={handleFileUpload} disabled={isUploading} className="hidden" accept="image/*" />
-        </label>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("media.title")}
+        actions={
+          <label className="inline-flex cursor-pointer items-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90">
+            {isUploading ? t("media.uploading") : t("media.upload")}
+            <input type="file" onChange={handleFileUpload} disabled={isUploading} className="hidden" accept="image/*" />
+          </label>
+        }
+      />
+
+      <div className="relative w-full sm:max-w-xs">
+        <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder={t("media.searchPlaceholder")}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-md border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30"
+        />
       </div>
 
-      <div className="bg-background border border-border rounded-2xl p-4 shadow-xs">
-        <div className="relative max-w-sm">
-          <Search className="absolute start-3.5 top-2.5 size-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder={t("media.searchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full ps-10 pe-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {loading && mediaList.length === 0
           ? Array.from({ length: 10 }).map((_, index) => (
               <div
                 key={`media-skeleton-${index}`}
                 aria-hidden
-                className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs"
+                className="overflow-hidden rounded-lg border border-border bg-background"
               >
-                <div className="aspect-square bg-secondary/40 animate-pulse" />
-                <div className="p-3 border-t border-border space-y-2">
-                  <div className="h-3 w-3/4 rounded bg-secondary/60 animate-pulse" />
-                  <div className="h-2.5 w-1/3 rounded bg-secondary/60 animate-pulse" />
+                <div className="aspect-square animate-pulse bg-secondary/40" />
+                <div className="space-y-2 border-t border-border p-3">
+                  <div className="h-3 w-3/4 animate-pulse rounded bg-secondary/60" />
+                  <div className="h-2.5 w-1/3 animate-pulse rounded bg-secondary/60" />
                 </div>
               </div>
             ))
           : filtered.map((item) => (
-              <div key={item.id} className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs group relative flex flex-col justify-between">
-                <div className="aspect-square relative overflow-hidden bg-secondary/20">
-                  <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <button onClick={() => setPreviewItem(item)} className="p-2 bg-white/90 text-black rounded-lg hover:bg-white" title={t("media.preview")}>
-                      <Eye className="size-4" />
+              <div key={item.id} className="group overflow-hidden rounded-lg border border-border bg-background">
+                <div className="relative aspect-square overflow-hidden bg-secondary/20">
+                  {item.url ? (
+                    <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">—</div>
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                    <button
+                      onClick={() => setPreviewItem(item)}
+                      className="rounded bg-white/90 px-2 py-1 text-xs font-medium text-black hover:bg-white"
+                    >
+                      {t("media.preview")}
                     </button>
-                    <button onClick={() => handleCopyUrl(item.url, item.id)} className="p-2 bg-white/90 text-black rounded-lg hover:bg-white" title={t("media.copyLink")}>
-                      {copiedId === item.id ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
+                    <button
+                      onClick={() => handleCopyUrl(item.url, item.id)}
+                      className="rounded bg-white/90 px-2 py-1 text-xs font-medium text-black hover:bg-white"
+                    >
+                      {copiedId === item.id ? t("media.copied") : t("media.copyLink")}
                     </button>
-                    {isSuperadmin && (
-                      <button onClick={() => handleDelete(item.id)} className="p-2 bg-white/90 text-red-600 rounded-lg hover:bg-white" title={t("actions.delete")}>
-                        <Trash2 className="size-4" />
+                    {isSuperadmin ? (
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="rounded bg-white/90 px-2 py-1 text-xs font-medium text-red-600 hover:bg-white"
+                      >
+                        {t("actions.delete")}
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
-                <div className="p-3 border-t border-border">
-                  <div className="font-semibold text-xs text-foreground truncate">{item.name}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5 flex justify-between">
+                <div className="border-t border-border p-3">
+                  <div className="truncate text-xs font-medium text-foreground">{item.name}</div>
+                  <div className="mt-0.5 flex justify-between gap-2 text-xs text-muted-foreground">
                     <span>{item.size}</span>
-                    <span>{item.dimensions}</span>
+                    <span className="truncate">{item.type}</span>
                   </div>
                 </div>
               </div>
             ))}
       </div>
 
-      {!loading && !loadingMore && filtered.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border bg-secondary/20 px-4 py-10 text-center text-xs text-muted-foreground">
+      {!loading && !loadingMore && filtered.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
           {mediaList.length === 0 ? t("media.empty") : t("media.noResults")}
         </div>
-      )}
+      ) : null}
 
       <div ref={sentinelRef} aria-hidden className="h-px w-full" />
 
       <div role="status" aria-live="polite">
-        {loadingMore && (
-          <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+        {loadingMore ? (
+          <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
             <span>{t("media.loadingMore")}</span>
           </div>
-        )}
+        ) : null}
 
-        {loadMoreError && (
-          <div className="flex items-center justify-center gap-3 py-4 text-xs text-muted-foreground">
+        {loadMoreError ? (
+          <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
             <span>{t("media.loadMoreFailed")}</span>
             <button
               type="button"
               onClick={() => loadPage("more")}
-              className="rounded-lg border border-border bg-card px-3 py-1.5 font-semibold text-foreground hover:bg-secondary transition-colors"
+              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
             >
               {tCommon("errors.retry")}
             </button>
           </div>
-        )}
+        ) : null}
 
-        {!loading && !loadingMore && !hasMore && !loadMoreError && mediaList.length > 0 && filtered.length > 0 && (
-          <div className="py-4 text-center text-[11px] text-muted-foreground">{t("media.allLoaded")}</div>
-        )}
+        {!loading && !loadingMore && !hasMore && !loadMoreError && mediaList.length > 0 && filtered.length > 0 ? (
+          <div className="py-4 text-center text-xs text-muted-foreground">{t("media.allLoaded")}</div>
+        ) : null}
       </div>
 
-      {previewItem && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-border">
+      {previewItem ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[85vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-lg border border-border bg-background p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-3">
               <div className="min-w-0">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("media.preview")}
-                </div>
-                <h3 className="font-bold text-base text-foreground truncate">{previewItem.name}</h3>
+                <div className="text-xs font-medium text-muted-foreground">{t("media.preview")}</div>
+                <h3 className="mt-0.5 truncate text-sm font-semibold text-foreground">{previewItem.name}</h3>
               </div>
               <button
                 onClick={() => setPreviewItem(null)}
-                className="-me-1 shrink-0 rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
                 aria-label={t("actions.close")}
               >
-                <X className="size-5" />
+                <X className="size-4" />
               </button>
             </div>
-            <div className="p-5 space-y-4">
-              <div className="aspect-square rounded-xl overflow-hidden border border-border">
-                <img src={previewItem.url} alt={previewItem.name} className="w-full h-full object-contain bg-black/5" />
+            <div className="space-y-4">
+              <div className="aspect-square overflow-hidden rounded-md border border-border">
+                {previewItem.url ? (
+                  <img src={previewItem.url} alt={previewItem.name} className="h-full w-full bg-black/5 object-contain" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">—</div>
+                )}
               </div>
-              <dl className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 text-xs">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
                 <div className="space-y-0.5">
-                  <dt className="font-medium text-muted-foreground">{t("media.size")}</dt>
-                  <dd className="text-foreground font-mono" dir="ltr">
-                    {previewItem.size}
-                  </dd>
+                  <dt className="text-xs text-muted-foreground">{t("media.size")}</dt>
+                  <dd className="font-mono text-foreground" dir="ltr">{previewItem.size}</dd>
                 </div>
                 <div className="space-y-0.5">
-                  <dt className="font-medium text-muted-foreground">{t("media.dimensions")}</dt>
-                  <dd className="text-foreground font-mono" dir="ltr">
-                    {previewItem.dimensions}
-                  </dd>
+                  <dt className="text-xs text-muted-foreground">{t("media.dimensions")}</dt>
+                  <dd className="font-mono text-foreground" dir="ltr">{previewItem.dimensions}</dd>
                 </div>
                 <div className="space-y-0.5">
-                  <dt className="font-medium text-muted-foreground">{t("media.uploaded")}</dt>
+                  <dt className="text-xs text-muted-foreground">{t("media.uploaded")}</dt>
                   <dd className="text-foreground">{previewItem.uploadedAt}</dd>
                 </div>
               </dl>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

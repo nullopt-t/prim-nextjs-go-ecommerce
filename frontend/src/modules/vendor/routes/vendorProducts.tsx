@@ -1,20 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Search,
-  Plus,
-  Edit2,
-  Trash2,
-  X,
-  Archive,
-  Upload,
-  Layers3,
-  Loader2,
-  Package2,
-  Link2,
-  Link2Off,
-} from "lucide-react";
+import { Search, Plus, X, Loader2 } from "lucide-react";
 import { vendorService } from "@/modules/vendor/api/vendorService";
 import type {
   VendorProduct,
@@ -23,6 +10,9 @@ import type {
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import type { Brand, Category } from "@/modules/catalog/types";
 import { ErrorState } from "@/shared/ui/errorState";
+import { PageHeader } from "@/shared/ui/pageHeader";
+import { ResponsiveTable } from "@/shared/ui/responsiveTable";
+import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { apiErrorMessage, notify } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
 import { useVendorContext } from "./vendorContext";
@@ -402,38 +392,29 @@ export function VendorProducts() {
   });
 
   const statusBadge = (product: VendorProduct) => (
-    <span
-      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-        product.status === "published"
-          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"
-          : product.status === "archived"
-            ? "bg-secondary text-muted-foreground"
-            : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400"
-      }`}
-    >
+    <StatusPill tone={statusTone(product.status)}>
       {t(`products.status.${product.status}`)}
-    </span>
+    </StatusPill>
   );
 
   return (
-    <div className="space-y-6 w-full">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-2xl border border-border shadow-xs">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("products.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t("products.subtitle")}</p>
-        </div>
-        <button
-          onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-4 py-2.5 bg-accent-brand text-white font-semibold text-xs rounded-xl shadow-xs hover:bg-accent-brand/90 transition-all shrink-0"
-        >
-          <Plus className="size-4" />
-          <span>{t("actions.addNewProduct")}</span>
-        </button>
-      </div>
+    <div className="space-y-5 w-full">
+      <PageHeader
+        title={t("products.title")}
+        actions={
+          <button
+            onClick={handleOpenAdd}
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            <Plus className="size-4" />
+            {t("actions.addNewProduct")}
+          </button>
+        }
+      />
 
       {loading ? (
         <div className="flex min-h-[40vh] items-center justify-center">
-          <Loader2 className="size-8 animate-spin text-accent-brand" />
+          <div className="size-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
         </div>
       ) : loadError ? (
         <ErrorState
@@ -443,21 +424,21 @@ export function VendorProducts() {
         />
       ) : (
         <>
-          <div className="bg-background border border-border rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="relative max-w-sm flex-1">
-              <Search className="absolute left-3.5 top-2.5 size-4 text-muted-foreground" />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
                 placeholder={t("products.searchPlaceholder")}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand"
+                className="w-full rounded-md border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30"
               />
             </div>
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
-              className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
               aria-label={t("products.table.status")}
             >
               <option value="all">{t("products.filterAll")}</option>
@@ -467,143 +448,148 @@ export function VendorProducts() {
             </select>
           </div>
 
-          <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-xs">
+          <div className="overflow-hidden rounded-lg border border-border bg-background">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-max text-left text-xs">
-                <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
-                  <tr>
-                    <th className="py-3.5 pl-4">{t("products.table.details")}</th>
-                    <th className="py-3.5">{t("products.table.sku")}</th>
-                    <th className="py-3.5">{t("products.table.price")}</th>
-                    <th className="py-3.5">{t("products.table.stock")}</th>
-                    <th className="py-3.5">{t("products.table.status")}</th>
-                    <th className="py-3.5 pr-4 text-right">{t("products.table.actions")}</th>
+              <ResponsiveTable className="w-full text-start text-sm md:min-w-max">
+                <thead className="text-xs text-muted-foreground">
+                  <tr className="border-b border-border">
+                    <th className="py-2.5 ps-4 text-start font-medium">{t("products.table.details")}</th>
+                    <th className="py-2.5 text-start font-medium">{t("products.table.sku")}</th>
+                    <th className="py-2.5 text-start font-medium">{t("products.table.price")}</th>
+                    <th className="py-2.5 text-start font-medium">{t("products.table.stock")}</th>
+                    <th className="py-2.5 text-start font-medium">{t("products.table.status")}</th>
+                    <th className="py-2.5 pe-4 text-end font-medium">{t("products.table.actions")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
                   {filtered.map((product) => (
-                    <tr key={product.id} className="hover:bg-secondary/20 transition-colors">
-                      <td className="py-3.5 pl-4">
+                    <tr key={product.id} className="transition-colors hover:bg-secondary/30">
+                      <td className="py-3 ps-4">
                         <div className="flex items-center gap-3">
                           {product.thumbnailUrl ? (
-                            <img src={product.thumbnailUrl} alt={product.title} className="size-10 rounded-xl object-cover border border-border shrink-0" />
+                            <img src={product.thumbnailUrl} alt="" className="size-10 shrink-0 rounded-md border border-border object-cover" />
                           ) : (
-                            <div className="size-10 rounded-xl border border-border bg-secondary/40 flex items-center justify-center shrink-0">
-                              <Package2 className="size-4 text-muted-foreground" />
-                            </div>
+                            <div className="size-10 shrink-0 rounded-md border border-border bg-secondary/40" />
                           )}
-                          <div>
-                            <div className="font-semibold text-foreground text-xs">{product.title}</div>
-                            <div className="text-[10px] text-muted-foreground">{product.slug}</div>
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium text-foreground">{product.title}</div>
+                            <div className="truncate text-xs text-muted-foreground">{product.slug}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="py-3.5 font-mono text-muted-foreground">{product.sku ?? "—"}</td>
-                      <td className="py-3.5 font-bold text-foreground">
+                      <td className="py-3 font-mono text-xs text-muted-foreground">{product.sku ?? "—"}</td>
+                      <td className="py-3 font-medium text-foreground tabular-nums">
                         {product.price ? `${product.currency ?? "EGP"} ${(product.price / 100).toFixed(2)}` : "—"}
                       </td>
-                      <td className="py-3.5 font-bold text-foreground">{t("products.units", { count: product.stock })}</td>
-                      <td className="py-3.5">{statusBadge(product)}</td>
-                      <td className="py-3.5 pr-4 text-right">
+                      <td className="py-3 font-medium text-foreground tabular-nums">
+                        {t("products.units", { count: product.stock })}
+                      </td>
+                      <td className="py-3">{statusBadge(product)}</td>
+                      <td className="py-3 pe-4 text-end">
                         <div className="inline-flex items-center gap-1">
                           <button
                             onClick={() => void openVariants(product)}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-muted-foreground hover:text-accent-brand"
-                            title={t("variants.manage")}
+                            className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                           >
-                            <Layers3 className="size-4" />
-                            <span className="hidden xl:inline">{t("variants.manage")}</span>
+                            {t("variants.manage")}
                           </button>
-                          <button onClick={() => handleOpenEdit(product)} className="p-1.5 text-muted-foreground hover:text-accent-brand" title={t("actions.edit")}>
-                            <Edit2 className="size-4" />
+                          <button
+                            onClick={() => handleOpenEdit(product)}
+                            className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                          >
+                            {t("actions.edit")}
                           </button>
-                          {product.status !== "published" && (
+                          {product.status !== "published" ? (
                             <button
                               onClick={() => void handleLifecycle(product, "publish")}
                               disabled={lifecycleId === product.id}
-                              className="p-1.5 text-muted-foreground hover:text-emerald-600 disabled:opacity-50"
-                              title={t("actions.publish")}
+                              className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
                             >
-                              <Upload className="size-4" />
+                              {t("actions.publish")}
                             </button>
-                          )}
-                          {product.status === "published" && (
+                          ) : (
                             <button
                               onClick={() => void handleLifecycle(product, "archive")}
                               disabled={lifecycleId === product.id}
-                              className="p-1.5 text-muted-foreground hover:text-amber-600 disabled:opacity-50"
-                              title={t("actions.archive")}
+                              className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
                             >
-                              <Archive className="size-4" />
+                              {t("actions.archive")}
                             </button>
                           )}
                           <button
                             onClick={() => void handleLifecycle(product, "delete")}
                             disabled={lifecycleId === product.id}
-                            className="p-1.5 text-muted-foreground hover:text-destructive disabled:opacity-50"
-                            title={t("actions.delete")}
+                            className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
                           >
-                            <Trash2 className="size-4" />
+                            {t("actions.delete")}
                           </button>
                         </div>
                       </td>
                     </tr>
                   ))}
-                  {filtered.length === 0 && (
+                  {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-10 text-center text-muted-foreground">
+                      <td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
                         {t("products.empty")}
                       </td>
                     </tr>
-                  )}
+                  ) : null}
                 </tbody>
-              </table>
+              </ResponsiveTable>
             </div>
           </div>
         </>
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleSubmit} className="bg-background border border-border rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-border pb-3">
-              <h3 className="font-bold text-base text-foreground">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <form
+            onSubmit={handleSubmit}
+            className="max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-lg border border-border bg-background p-5 shadow-xl"
+          >
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-sm font-semibold text-foreground">
                 {editingProduct ? t("products.editTitle") : t("products.addTitle")}
               </h3>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="text-muted-foreground">
-                <X className="size-5" />
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label={t("actions.cancel")}
+              >
+                <X className="size-4" />
               </button>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">{t("products.form.title")}</label>
+              <label className="text-sm font-medium text-foreground">{t("products.form.title")}</label>
               <input
                 required
                 value={formData.title}
                 onChange={(event) => setFormData({ ...formData, title: event.target.value })}
-                className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
               />
             </div>
 
             {!editingProduct && (
               <>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">{t("products.form.slug")}</label>
+                  <label className="text-sm font-medium text-foreground">{t("products.form.slug")}</label>
                   <input
                     value={formData.slug}
                     onChange={(event) => setFormData({ ...formData, slug: event.target.value })}
                     placeholder={formData.title ? slugify(formData.title) : t("products.form.slugPlaceholder")}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">{t("products.form.category")}</label>
+                    <label className="text-sm font-medium text-foreground">{t("products.form.category")}</label>
                     <select
                       required
                       value={formData.categoryId}
                       onChange={(event) => setFormData({ ...formData, categoryId: event.target.value })}
-                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                     >
                       <option value="">{t("products.form.chooseCategory")}</option>
                       {categories.map((category) => (
@@ -612,11 +598,11 @@ export function VendorProducts() {
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">{t("products.form.brand")}</label>
+                    <label className="text-sm font-medium text-foreground">{t("products.form.brand")}</label>
                     <select
                       value={formData.brandId}
                       onChange={(event) => setFormData({ ...formData, brandId: event.target.value })}
-                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                     >
                       <option value="">{t("products.form.noBrand")}</option>
                       {brands.map((brand) => (
@@ -629,22 +615,22 @@ export function VendorProducts() {
             )}
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground">{t("products.form.description")}</label>
+              <label className="text-sm font-medium text-foreground">{t("products.form.description")}</label>
               <textarea
                 value={formData.description}
                 onChange={(event) => setFormData({ ...formData, description: event.target.value })}
                 rows={4}
-                className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">{t("products.form.productType")}</label>
+                <label className="text-sm font-medium text-foreground">{t("products.form.productType")}</label>
                 <select
                   value={formData.productType}
                   onChange={(event) => setFormData({ ...formData, productType: event.target.value as "simple" | "variable" })}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
                   <option value="simple">{t("products.form.simple")}</option>
                   <option value="variable">{t("products.form.variable")}</option>
@@ -652,81 +638,89 @@ export function VendorProducts() {
               </div>
               {formData.productType === "variable" && (
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">{t("products.form.variationAxes")}</label>
+                  <label className="text-sm font-medium text-foreground">{t("products.form.variationAxes")}</label>
                   <input
                     value={formData.variationAxes}
                     onChange={(event) => setFormData({ ...formData, variationAxes: event.target.value })}
                     placeholder={t("products.form.variationAxesPlaceholder")}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </div>
               )}
             </div>
 
             {!editingProduct && (
-              <div className="space-y-4 rounded-xl border border-border p-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4 rounded-md border border-border p-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">{t("products.form.skuCode")}</label>
+                    <label className="text-sm font-medium text-foreground">{t("products.form.skuCode")}</label>
                     <input
                       value={formData.sku}
                       onChange={(event) => setFormData({ ...formData, sku: event.target.value })}
-                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">{t("products.form.sellingPrice")}</label>
+                    <label className="text-sm font-medium text-foreground">{t("products.form.sellingPrice")}</label>
                     <input
                       type="number"
                       min="0.01"
                       step="0.01"
                       value={formData.price}
                       onChange={(event) => setFormData({ ...formData, price: event.target.value })}
-                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">{t("products.form.compareAtPrice")}</label>
+                    <label className="text-sm font-medium text-foreground">{t("products.form.compareAtPrice")}</label>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
                       value={formData.crossesOutPrice}
                       onChange={(event) => setFormData({ ...formData, crossesOutPrice: event.target.value })}
-                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">{t("products.form.currency")}</label>
+                    <label className="text-sm font-medium text-foreground">{t("products.form.currency")}</label>
                     <input
                       value={formData.currency}
                       onChange={(event) => setFormData({ ...formData, currency: event.target.value.toUpperCase() })}
-                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">{t("products.form.initialStock")}</label>
+                    <label className="text-sm font-medium text-foreground">{t("products.form.initialStock")}</label>
                     <input
                       type="number"
                       min="0"
                       value={formData.initialStock}
                       onChange={(event) => setFormData({ ...formData, initialStock: event.target.value })}
-                      className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground"
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                     />
                   </div>
                 </div>
-                <p className="text-[11px] text-muted-foreground">{t("products.form.initialPurchaseNote")}</p>
+                <p className="text-xs text-muted-foreground">{t("products.form.initialPurchaseNote")}</p>
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-border">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-xs border border-border rounded-xl">
+            <div className="flex justify-end gap-2 border-t border-border pt-3">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary"
+              >
                 {t("actions.cancel")}
               </button>
-              <button type="submit" disabled={saving} className="inline-flex items-center gap-2 px-4 py-2 text-xs bg-accent-brand text-white font-semibold rounded-xl disabled:opacity-60">
-                {saving && <Loader2 className="size-4 animate-spin" />}
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+              >
+                {saving ? <Loader2 className="size-4 animate-spin" /> : null}
                 {t("actions.saveChanges")}
               </button>
             </div>
@@ -735,60 +729,72 @@ export function VendorProducts() {
       )}
 
       {selectedProduct && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-3xl w-full p-6 shadow-xl space-y-4 max-h-[92vh] overflow-y-auto">
-            <div className="flex justify-between items-start border-b border-border pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[92vh] w-full max-w-3xl space-y-4 overflow-y-auto rounded-lg border border-border bg-background p-5 shadow-xl">
+            <div className="flex items-start justify-between border-b border-border pb-3">
               <div>
-                <h3 className="font-bold text-base text-foreground">{t("variants.title")}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{selectedProduct.title}</p>
+                <h3 className="text-sm font-semibold text-foreground">{t("variants.title")}</h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">{selectedProduct.title}</p>
               </div>
-              <button onClick={closeVariants} className="text-muted-foreground">
-                <X className="size-5" />
+              <button
+                onClick={closeVariants}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label={t("actions.cancel")}
+              >
+                <X className="size-4" />
               </button>
             </div>
 
-            <div className="rounded-xl border border-border bg-secondary/30 p-3">
-              <div className="flex items-center justify-between gap-3 text-xs">
-                <span className="inline-flex items-center gap-1.5 font-semibold">
-                  {commercialLock ? <Link2 className="size-3.5" /> : <Link2Off className="size-3.5" />}
-                  {t("variants.sellable")}
-                </span>
-                <span className="text-muted-foreground">{t("variants.sellableNote")}</span>
-              </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
+              <span className="font-medium text-foreground">{t("variants.sellable")}</span>
+              <span className="text-muted-foreground">{t("variants.sellableNote")}</span>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full min-w-max text-left text-xs">
-                <thead className="bg-secondary/40 border-b border-border text-muted-foreground font-semibold uppercase tracking-wider">
-                  <tr>
-                    <th className="py-2.5 pl-3">{t("variants.table.title")}</th>
-                    <th className="py-2.5">{t("variants.table.sku")}</th>
-                    <th className="py-2.5">{t("variants.table.price")}</th>
-                    <th className="py-2.5">{t("variants.table.default")}</th>
-                    <th className="py-2.5">{t("variants.table.stockAdjustment")}</th>
-                    <th className="py-2.5 pr-3 text-right">{t("variants.table.actions")}</th>
+            <div className="overflow-x-auto rounded-md border border-border">
+              <ResponsiveTable className="w-full text-start text-sm md:min-w-max">
+                <thead className="text-xs text-muted-foreground">
+                  <tr className="border-b border-border">
+                    <th className="py-2.5 ps-3 text-start font-medium">{t("variants.table.title")}</th>
+                    <th className="py-2.5 text-start font-medium">{t("variants.table.sku")}</th>
+                    <th className="py-2.5 text-start font-medium">{t("variants.table.price")}</th>
+                    <th className="py-2.5 text-start font-medium">{t("variants.table.default")}</th>
+                    <th className="py-2.5 text-start font-medium">{t("variants.table.stockAdjustment")}</th>
+                    <th className="py-2.5 pe-3 text-end font-medium">{t("variants.table.actions")}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/60">
+                <tbody className="divide-y divide-border">
                   {variants.map((variant) => (
-                    <tr key={variant.id}>
-                      <td className="py-2.5 pl-3 font-semibold">{variant.title}</td>
-                      <td className="py-2.5 font-mono text-muted-foreground">{variant.sku}</td>
-                      <td className="py-2.5">{variant.price ? `${variant.currency ?? "EGP"} ${(variant.price / 100).toFixed(2)}` : "—"}</td>
-                      <td className="py-2.5">{variant.isDefault ? t("variants.defaultYes") : t("variants.defaultNo")}</td>
-                      <td className="py-2.5">
-                        <div className="flex items-center gap-2">
+                    <tr key={variant.id} className="transition-colors hover:bg-secondary/30">
+                      <td className="py-3 ps-3">
+                        <span className="font-medium text-foreground">{variant.title}</span>
+                        {variant.isDefault ? (
+                          <span className="ms-2 align-middle">
+                            <StatusPill>{t("variants.defaultYes")}</StatusPill>
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="py-3 font-mono text-xs text-muted-foreground">{variant.sku}</td>
+                      <td className="py-3 font-medium text-foreground tabular-nums">
+                        {variant.price ? `${variant.currency ?? "EGP"} ${(variant.price / 100).toFixed(2)}` : "—"}
+                      </td>
+                      <td className="py-3">
+                        <StatusPill tone={variant.isDefault ? "info" : "neutral"}>
+                          {variant.isDefault ? t("variants.defaultYes") : t("variants.defaultNo")}
+                        </StatusPill>
+                      </td>
+                      <td className="py-3">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <input
                             type="number"
                             value={stockAmount}
                             onChange={(event) => setStockAmount(event.target.value)}
-                            className="w-20 px-2 py-1.5 bg-secondary/40 border border-border rounded-lg text-xs"
+                            className="w-20 rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
                             aria-label={t("variants.stockAmount")}
                           />
                           <select
                             value={stockReason}
                             onChange={(event) => setStockReason(event.target.value as "restock" | "return" | "adjustment")}
-                            className="px-2 py-1.5 bg-secondary/40 border border-border rounded-lg text-xs"
+                            className="rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
                             aria-label={t("variants.stockReason")}
                           >
                             <option value="restock">{t("variants.reasonRestock")}</option>
@@ -798,103 +804,115 @@ export function VendorProducts() {
                           <button
                             onClick={() => void handleAdjustStock(variant)}
                             disabled={savingStock}
-                            className="px-2 py-1.5 bg-accent-brand text-white rounded-lg disabled:opacity-50"
+                            className="rounded-md border border-border px-2 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
                           >
                             {t("variants.applyStock")}
                           </button>
                         </div>
                       </td>
-                      <td className="py-2.5 pr-3 text-right">
-                        <button onClick={() => handleOpenVariantEdit(variant)} className="p-1.5 text-muted-foreground hover:text-accent-brand">
-                          <Edit2 className="size-4" />
-                        </button>
-                        <button onClick={() => void handleDeleteVariant(variant)} className="p-1.5 text-muted-foreground hover:text-destructive">
-                          <Trash2 className="size-4" />
-                        </button>
+                      <td className="py-3 pe-3 text-end">
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            onClick={() => handleOpenVariantEdit(variant)}
+                            className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                          >
+                            {t("actions.edit")}
+                          </button>
+                          <button
+                            onClick={() => void handleDeleteVariant(variant)}
+                            className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            {t("actions.delete")}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
-                  {variants.length === 0 && (
+                  {variants.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-muted-foreground">{t("variants.empty")}</td>
+                      <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                        {t("variants.empty")}
+                      </td>
                     </tr>
-                  )}
+                  ) : null}
                 </tbody>
-              </table>
+              </ResponsiveTable>
             </div>
 
-            <form onSubmit={handleSubmitVariant} className="space-y-4 rounded-xl border border-border p-4">
+            <form onSubmit={handleSubmitVariant} className="space-y-4 rounded-md border border-border p-4">
               <div className="flex items-center justify-between">
-                <h4 className="font-bold text-sm">{editingVariant ? t("variants.edit") : t("variants.add")}</h4>
+                <h4 className="text-sm font-semibold text-foreground">
+                  {editingVariant ? t("variants.edit") : t("variants.add")}
+                </h4>
                 <button
                   type="button"
                   onClick={handleOpenVariantCreate}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-accent-brand"
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-secondary"
                 >
                   <Plus className="size-3.5" /> {t("variants.add")}
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold">{t("variants.form.title")}</label>
+                  <label className="text-sm font-medium text-foreground">{t("variants.form.title")}</label>
                   <input
                     required
                     value={variantForm.title}
                     onChange={(event) => setVariantForm({ ...variantForm, title: event.target.value })}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold">{t("variants.form.sku")}</label>
+                  <label className="text-sm font-medium text-foreground">{t("variants.form.sku")}</label>
                   <input
                     value={variantForm.sku}
                     onChange={(event) => setVariantForm({ ...variantForm, sku: event.target.value })}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold">{t("variants.form.price")}</label>
+                  <label className="text-sm font-medium text-foreground">{t("variants.form.price")}</label>
                   <input
                     type="number"
                     min="0.01"
                     step="0.01"
                     value={variantForm.price}
                     onChange={(event) => setVariantForm({ ...variantForm, price: event.target.value })}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold">{t("variants.form.compareAtPrice")}</label>
+                  <label className="text-sm font-medium text-foreground">{t("variants.form.compareAtPrice")}</label>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
                     value={variantForm.crossedOutPrice}
                     onChange={(event) => setVariantForm({ ...variantForm, crossedOutPrice: event.target.value })}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold">{t("variants.form.currency")}</label>
+                  <label className="text-sm font-medium text-foreground">{t("variants.form.currency")}</label>
                   <input
                     value={variantForm.currency}
                     onChange={(event) => setVariantForm({ ...variantForm, currency: event.target.value.toUpperCase() })}
-                    className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                   />
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-semibold">{t("variants.form.attributes")}</label>
+                <label className="text-sm font-medium text-foreground">{t("variants.form.attributes")}</label>
                 <input
                   value={variantForm.attributes}
                   onChange={(event) => setVariantForm({ ...variantForm, attributes: event.target.value })}
                   placeholder={t("variants.form.attributesPlaceholder")}
-                  className="w-full px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 />
               </div>
-              <label className="flex items-center gap-2 text-xs font-semibold">
+              <label className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <input
                   type="checkbox"
                   checked={variantForm.isDefault}
@@ -903,8 +921,12 @@ export function VendorProducts() {
                 {t("variants.form.isDefault")}
               </label>
               <div className="flex justify-end">
-                <button type="submit" disabled={savingVariant} className="inline-flex items-center gap-2 px-4 py-2 text-xs bg-accent-brand text-white font-semibold rounded-xl disabled:opacity-60">
-                  {savingVariant && <Loader2 className="size-4 animate-spin" />}
+                <button
+                  type="submit"
+                  disabled={savingVariant}
+                  className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+                >
+                  {savingVariant ? <Loader2 className="size-4 animate-spin" /> : null}
                   {t("actions.saveChanges")}
                 </button>
               </div>

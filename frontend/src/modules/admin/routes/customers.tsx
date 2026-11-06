@@ -1,18 +1,8 @@
 "use client";
 
 import { ResponsiveTable } from "@/shared/ui/responsiveTable";
-import React, { useState, useEffect, useCallback } from "react";
-import { 
-  Search, 
-  RefreshCw, 
-  Shield, 
-  MoreVertical, 
-  UserX, 
-  LogOut, 
-  Users, 
-  Filter,
-  Eye
-} from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Search } from "lucide-react";
 import { adminService, AdminUser } from "@/modules/admin/api/adminService";
 import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
@@ -24,6 +14,8 @@ import { useAuthContext } from "@/modules/auth/model/authContext";
 import { useLocale, useTranslations } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
+import { PageHeader } from "@/shared/ui/pageHeader";
+import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { ROLE_RANKS } from "@/shared/lib/roles";
 
 export function AdminCustomers() {
@@ -136,7 +128,7 @@ export function AdminCustomers() {
 
   // Role label
   const renderRoleBadge = (role: AdminUser["role"]) => (
-    <span className="text-foreground">{t(`roles.${role}`)}</span>
+    <span className="text-sm text-foreground">{t(`roles.${role}`)}</span>
   );
 
   if (loadError) {
@@ -144,75 +136,57 @@ export function AdminCustomers() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-background p-6 rounded-3xl border border-border/80 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("customers.title")}</h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {t("customers.subtitle")}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
+    <div className="space-y-5">
+      <PageHeader
+        title={t("customers.title")}
+        actions={
           <button
             onClick={() => fetchUsers()}
             disabled={loading}
-            className="p-2.5 rounded-xl border border-border bg-card hover:bg-secondary text-foreground text-xs font-semibold transition-colors flex items-center gap-2 disabled:opacity-50"
-            title={t("customers.refreshTitle")}
+            className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
           >
-            <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">{t("customers.refresh")}</span>
+            {t("customers.refresh")}
           </button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Control & Filter Bar */}
-      <div className="bg-background border border-border/80 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-        {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute start-3.5 top-2.5 size-4 text-muted-foreground" />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             placeholder={t("customers.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full ps-10 pe-4 py-2 bg-secondary/20 border border-border rounded-xl text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:outline-hidden"
+            className="w-full rounded-md border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30"
           />
         </div>
 
-        {/* Filters */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Role Filter */}
-          <div className="flex items-center gap-1.5 bg-secondary/30 border border-border rounded-xl p-1 text-xs">
+          <select
+            value={roleFilter}
+            onChange={(e) => {
+              setRoleFilter(e.target.value);
+              reset();
+            }}
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            aria-label={t("customers.colRole")}
+          >
             {["all", "customer", "vendor", "admin", "superadmin"].map((r) => (
-              <button
-                key={r}
-                onClick={() => {
-                  setRoleFilter(r);
-                  reset();
-                }}
-                className={`px-2.5 py-1 rounded-lg font-medium text-[11px] capitalize transition-all ${
-                  roleFilter === r
-                    ? "bg-card text-foreground font-bold shadow-xs border border-border"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
+              <option key={r} value={r}>
                 {t(`customers.roles.${r}`)}
-              </button>
+              </option>
             ))}
-          </div>
+          </select>
 
-          {/* Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value);
               reset();
             }}
-            className="py-1.5 px-3 bg-secondary/30 border border-border rounded-xl text-xs text-foreground font-medium focus:outline-hidden"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            aria-label={t("customers.colStatus")}
           >
             <option value="all">{t("customers.allStatuses")}</option>
             <option value="active">{t("customers.activeOnly")}</option>
@@ -221,47 +195,44 @@ export function AdminCustomers() {
         </div>
       </div>
 
-      {/* Dense User Table */}
-      <div className="bg-background border border-border/80 rounded-2xl overflow-hidden shadow-xs">
+      <div className="overflow-hidden rounded-lg border border-border bg-background">
         <div className="overflow-x-auto">
-          <ResponsiveTable className="w-full sm:min-w-max text-start border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-border/80 bg-muted/20 text-muted-foreground uppercase text-[10px] font-bold tracking-wider">
-                <th className="py-3 px-4">{t("customers.colIdentity")}</th>
-                <th className="py-3 px-4">{t("customers.colRole")}</th>
-                <th className="py-3 px-4">{t("customers.colStatus")}</th>
-                <th className="py-3 px-4">{t("customers.colVerification")}</th>
-                <th className="py-3 px-4">{t("customers.colJoined")}</th>
-                <th className="py-3 px-4 text-end">{t("customers.colActions")}</th>
+          <ResponsiveTable className="w-full text-start text-sm md:min-w-max">
+            <thead className="text-xs text-muted-foreground">
+              <tr className="border-b border-border">
+                <th className="py-2.5 ps-4 text-start font-medium">{t("customers.colIdentity")}</th>
+                <th className="py-2.5 text-start font-medium">{t("customers.colRole")}</th>
+                <th className="py-2.5 text-start font-medium">{t("customers.colStatus")}</th>
+                <th className="py-2.5 text-start font-medium">{t("customers.colVerification")}</th>
+                <th className="py-2.5 text-start font-medium">{t("customers.colJoined")}</th>
+                <th className="py-2.5 pe-4 text-end font-medium">{t("customers.colActions")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/60">
+            <tbody className="divide-y divide-border">
               {loading && users.length === 0 ? (
-                // Skeletons
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td className="py-3.5 px-4">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="size-8 rounded-full bg-muted/60" />
                         <div className="space-y-1.5">
-                          <div className="h-3 w-32 bg-muted/60 rounded-sm" />
-                          <div className="h-2.5 w-44 bg-muted/40 rounded-sm" />
+                          <div className="h-3 w-32 rounded-sm bg-muted/60" />
+                          <div className="h-2.5 w-44 rounded-sm bg-muted/40" />
                         </div>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-muted/60 rounded-full" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-14 bg-muted/60 rounded-full" /></td>
-                    <td className="py-3.5 px-4"><div className="h-4 w-16 bg-muted/40 rounded-sm" /></td>
-                    <td className="py-3.5 px-4"><div className="h-3 w-20 bg-muted/40 rounded-sm" /></td>
-                    <td className="py-3.5 px-4 text-end"><div className="h-6 w-16 bg-muted/40 rounded-lg ms-auto" /></td>
+                    <td className="px-4 py-3"><div className="h-4 w-16 rounded-full bg-muted/60" /></td>
+                    <td className="px-4 py-3"><div className="h-4 w-14 rounded-full bg-muted/60" /></td>
+                    <td className="px-4 py-3"><div className="h-4 w-16 rounded-sm bg-muted/40" /></td>
+                    <td className="px-4 py-3"><div className="h-3 w-20 rounded-sm bg-muted/40" /></td>
+                    <td className="px-4 py-3 text-end"><div className="ms-auto h-6 w-16 rounded-md bg-muted/40" /></td>
                   </tr>
                 ))
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
-                    <Users className="size-8 mx-auto mb-2 text-muted-foreground/50" />
-                    <p className="font-semibold text-foreground text-sm">{t("customers.emptyTitle")}</p>
-                    <p className="text-xs mt-0.5">{t("customers.emptySub")}</p>
+                  <td colSpan={6} className="px-4 py-12 text-center">
+                    <p className="text-sm font-medium text-foreground">{t("customers.emptyTitle")}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{t("customers.emptySub")}</p>
                   </td>
                 </tr>
               ) : (
@@ -274,29 +245,25 @@ export function AdminCustomers() {
                   const canManageUser = !isSelf && callerRank > targetRank;
 
                   return (
-                    <tr 
-                      key={u.id} 
+                    <tr
+                      key={u.id}
                       onClick={() => setInspectUser(u)}
-                      className="hover:bg-muted/15 transition-colors cursor-pointer group"
+                      className="cursor-pointer transition-colors hover:bg-secondary/30"
                     >
                       {/* Identity */}
-                      <td className="py-3 px-4">
+                      <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="size-8 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-xs font-medium text-foreground">
                             {u.fullName ? u.fullName.slice(0, 2).toUpperCase() : u.email.slice(0, 2).toUpperCase()}
                           </div>
-                          <div className="flex flex-col min-w-0">
+                          <div className="flex min-w-0 flex-col">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                              <span className="truncate font-medium text-foreground">
                                 {u.fullName || t("customers.unnamed")}
                               </span>
-                              {isSelf && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-accent-brand/10 text-accent-brand border border-accent-brand/20">
-                                  {t("customers.you")}
-                                </span>
-                              )}
+                              {isSelf ? <StatusPill>{t("customers.you")}</StatusPill> : null}
                             </div>
-                            <span className="text-[11px] font-mono text-muted-foreground truncate">
+                            <span className="truncate font-mono text-xs text-muted-foreground">
                               {u.email}
                             </span>
                           </div>
@@ -304,35 +271,35 @@ export function AdminCustomers() {
                       </td>
 
                       {/* Role Badge */}
-                      <td className="py-3 px-4 whitespace-nowrap">
+                      <td className="whitespace-nowrap px-4 py-3">
                         {renderRoleBadge(u.role)}
                       </td>
 
                       {/* Status */}
-                      <td className="py-3 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <td className="whitespace-nowrap px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         {canManageUser ? (
                           <select
                             value={u.status}
                             onChange={(e) => handleStatusSelect(u, e.target.value as AdminUser["status"])}
-                            className="px-2.5 py-1 bg-secondary/50 border border-border rounded-lg text-xs font-semibold text-foreground focus:outline-hidden cursor-pointer"
+                            className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-foreground"
                           >
                             <option value="active">{t("status.active")}</option>
                             <option value="suspended">{t("status.suspended")}</option>
                           </select>
                         ) : (
-                          <span className="text-foreground">
+                          <StatusPill tone={statusTone(u.status)}>
                             {t(`status.${String(u.status).toLowerCase()}`) || u.status}
-                          </span>
+                          </StatusPill>
                         )}
                       </td>
 
                       {/* Email Verified */}
-                      <td className="py-3 px-4 whitespace-nowrap text-foreground">
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
                         {u.isEmailVerified ? t("status.verified") : t("status.unverified")}
                       </td>
 
                       {/* Joined Date */}
-                      <td className="py-3 px-4 whitespace-nowrap text-muted-foreground font-mono text-[11px]">
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
                         {new Date(u.createdAt).toLocaleDateString(locale, {
                           year: "numeric",
                           month: "short",
@@ -341,37 +308,34 @@ export function AdminCustomers() {
                       </td>
 
                       {/* Row Action Buttons */}
-                      <td className="py-3 px-4 text-end whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="whitespace-nowrap px-4 py-3 text-end" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex items-center gap-1">
                           <button
                             onClick={() => setInspectUser(u)}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                            title={t("customers.inspect")}
+                            className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                           >
-                            <Eye className="size-4" />
+                            {t("customers.inspect")}
                           </button>
 
-                          {canManageUser && (
+                          {canManageUser ? (
                             <>
-                              {currentUser?.role === "superadmin" && (
+                              {currentUser?.role === "superadmin" ? (
                                 <button
                                   onClick={() => setRoleModalUser(u)}
-                                  className="p-1.5 rounded-lg text-purple-600 hover:text-purple-700 hover:bg-purple-500/10 transition-colors"
-                                  title={t("customers.changeRole")}
+                                  className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                                 >
-                                  <Shield className="size-4" />
+                                  {t("customers.changeRole")}
                                 </button>
-                              )}
+                              ) : null}
 
                               <button
                                 onClick={() => setRevokeModalUser(u)}
-                                className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-500/10 transition-colors"
-                                title={t("customers.revokeSessions")}
+                                className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                               >
-                                <LogOut className="size-4" />
+                                {t("customers.revokeSessions")}
                               </button>
 
-                              {currentUser?.role === "superadmin" && (
+                              {currentUser?.role === "superadmin" ? (
                                 <button
                                   onClick={() => {
                                     if (confirm(t("customers.confirmDelete", { email: u.email }))) {
@@ -381,14 +345,13 @@ export function AdminCustomers() {
                                       });
                                     }
                                   }}
-                                  className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
-                                  title={t("customers.deleteUser")}
+                                  className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                                 >
-                                  <UserX className="size-4" />
+                                  {t("customers.deleteUser")}
                                 </button>
-                              )}
+                              ) : null}
                             </>
-                          )}
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -399,7 +362,6 @@ export function AdminCustomers() {
           </ResponsiveTable>
         </div>
 
-        {/* Pagination Bar */}
         <CursorPager
           hasPrev={hasPrev}
           hasMore={meta.hasMore}
