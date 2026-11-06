@@ -2885,7 +2885,7 @@
       },
       "variants": {
         "title": "Variant pricing & stock",
-        "subtitle": "Set a price and stock for each combination. Empty prices inherit the default price above; empty stock adds no initial stock.",
+        "subtitle": "Set a price, SKU, stock, and thumbnail for each combination. The selected currency applies to all of them.",
         "thumbnail": "Thumbnail",
         "chooseThumbnail": "Upload thumbnail",
         "removeThumbnail": "Remove thumbnail"

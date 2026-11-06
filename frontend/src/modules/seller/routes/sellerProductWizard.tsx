@@ -157,20 +157,27 @@ export function SellerProductWizard() {
 				label: steps[2],
 				done:
 					mode === "edit" ||
-					((!formData.price || parseMajorPrice(formData.price) !== undefined) &&
-						(!formData.crossesOutPrice || parseMajorPrice(formData.crossesOutPrice) !== undefined) &&
-						(!formData.price ||
-							!formData.crossesOutPrice ||
-							(parseMajorPrice(formData.crossesOutPrice) ?? 0) >= (parseMajorPrice(formData.price) ?? 0)) &&
-						/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase()) &&
-						Number.isInteger(Number.parseInt(formData.initialStock, 10)) &&
-						Number.parseInt(formData.initialStock, 10) >= 0),
+					(formData.productType === "variable"
+						? savedCombinations.length > 0 &&
+							savedCombinations.every((combination) => {
+								const price = variantOverrides[combinationKey(combination)]?.price;
+								return price !== undefined && parseMajorPrice(price) !== undefined;
+							}) &&
+							/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase())
+						: (!formData.price || parseMajorPrice(formData.price) !== undefined) &&
+							(!formData.crossesOutPrice || parseMajorPrice(formData.crossesOutPrice) !== undefined) &&
+							(!formData.price ||
+								!formData.crossesOutPrice ||
+								(parseMajorPrice(formData.crossesOutPrice) ?? 0) >= (parseMajorPrice(formData.price) ?? 0)) &&
+							/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase()) &&
+							Number.isInteger(Number.parseInt(formData.initialStock, 10)) &&
+							Number.parseInt(formData.initialStock, 10) >= 0),
 			},
 			{ label: steps[3], done: false },
 		];
 		const doneCount = checks.filter((c) => c.done).length;
 		return { checks, percent: Math.round((doneCount / checks.length) * 100) };
-	}, [formData, steps, mode]);
+	}, [formData, steps, mode, savedCombinations, variantOverrides]);
 
 	const combinations = useMemo(
 		() => (formData.productType === "variable" ? savedCombinations : []),
@@ -324,38 +331,44 @@ export function SellerProductWizard() {
 			}
 		}
 		if (currentStep === 2) {
-			if (formData.price && parseMajorPrice(formData.price) === undefined) {
-				nextErrors.price = t("products.validation.priceInvalid");
-			}
-			if (formData.crossesOutPrice && parseMajorPrice(formData.crossesOutPrice) === undefined) {
-				nextErrors.crossesOutPrice = t("products.validation.priceInvalid");
-			}
-			if (
-				formData.price &&
-				formData.crossesOutPrice &&
-				(parseMajorPrice(formData.crossesOutPrice) ?? 0) < (parseMajorPrice(formData.price) ?? 0)
-			) {
-				nextErrors.crossesOutPrice = t("products.validation.compareAtTooLow");
+			const isVariableCreate = mode === "create" && formData.productType === "variable";
+			if (!isVariableCreate) {
+				if (formData.price && parseMajorPrice(formData.price) === undefined) {
+					nextErrors.price = t("products.validation.priceInvalid");
+				}
+				if (formData.crossesOutPrice && parseMajorPrice(formData.crossesOutPrice) === undefined) {
+					nextErrors.crossesOutPrice = t("products.validation.priceInvalid");
+				}
+				if (
+					formData.price &&
+					formData.crossesOutPrice &&
+					(parseMajorPrice(formData.crossesOutPrice) ?? 0) < (parseMajorPrice(formData.price) ?? 0)
+				) {
+					nextErrors.crossesOutPrice = t("products.validation.compareAtTooLow");
+				}
+				const stock = Number.parseInt(formData.initialStock, 10);
+				if (!Number.isInteger(stock) || stock < 0) nextErrors.initialStock = t("products.validation.stockInvalid");
 			}
 			if (!/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase())) {
 				nextErrors.currency = t("products.validation.currencyInvalid");
 			}
-			const stock = Number.parseInt(formData.initialStock, 10);
-			if (!Number.isInteger(stock) || stock < 0) nextErrors.initialStock = t("products.validation.stockInvalid");
-			if (currentStep === 2 && mode === "create" && formData.productType === "variable") {
-				for (const override of Object.values(variantOverrides)) {
-					if (override.price && parseMajorPrice(override.price) === undefined) {
+			if (isVariableCreate) {
+				for (const combination of savedCombinations) {
+					const override = variantOverrides[combinationKey(combination)];
+					if (!override?.price) {
+						nextErrors.price = t("products.validation.priceInvalid");
+					} else if (parseMajorPrice(override.price) === undefined) {
 						nextErrors.price = t("products.validation.priceInvalid");
 					}
-					if (override.crossesOutPrice && parseMajorPrice(override.crossesOutPrice) === undefined) {
+					if (override?.crossesOutPrice && parseMajorPrice(override.crossesOutPrice) === undefined) {
 						nextErrors.crossesOutPrice = t("products.validation.priceInvalid");
 					}
-					const overridePrice = override.price ? parseMajorPrice(override.price) : undefined;
-					const overrideCompare = override.crossesOutPrice ? parseMajorPrice(override.crossesOutPrice) : undefined;
+					const overridePrice = override?.price ? parseMajorPrice(override.price) : undefined;
+					const overrideCompare = override?.crossesOutPrice ? parseMajorPrice(override.crossesOutPrice) : undefined;
 					if (overridePrice !== undefined && overrideCompare !== undefined && overrideCompare < overridePrice) {
 						nextErrors.crossesOutPrice = t("products.validation.compareAtTooLow");
 					}
-					if (override.stock !== undefined && override.stock !== "") {
+					if (override?.stock !== undefined && override.stock !== "") {
 						const overrideStock = Number.parseInt(override.stock, 10);
 						if (!Number.isInteger(overrideStock) || overrideStock < 0) {
 							nextErrors.initialStock = t("products.validation.stockInvalid");
@@ -469,15 +482,13 @@ export function SellerProductWizard() {
 						const combination = combinations[index];
 						const override = variantOverrides[combinationKey(combination)];
 						const label = formatCombination(combination);
-						const variantPrice = override?.price ? parseMajorPrice(override.price) : priceMinor;
-						const variantCrossedOut = override?.crossesOutPrice ? parseMajorPrice(override.crossesOutPrice) : crossedOutMinor;
+						const variantPrice = override?.price ? parseMajorPrice(override.price) : undefined;
+						const variantCrossedOut = override?.crossesOutPrice ? parseMajorPrice(override.crossesOutPrice) : undefined;
 						const variantStock =
 							override?.stock !== undefined && override.stock !== "" ? Number.parseInt(override.stock, 10) : undefined;
 						const variant = await sellerService.createVariant(created.data.id, {
 							title: `${formData.title.trim()} - ${label}`,
-							sku:
-								override?.sku?.trim() ||
-								(formData.sku.trim() ? `${formData.sku.trim()}-${index + 1}` : undefined),
+							sku: override?.sku?.trim() || undefined,
 							price: variantPrice,
 							crossedOutPrice: variantCrossedOut,
 							currency: formData.currency.trim() || "EGP",
@@ -878,6 +889,7 @@ export function SellerProductWizard() {
 
 				{step === 2 && (
 					<div className="mt-5 space-y-4">
+					{!(mode === "create" && formData.productType === "variable") && (<>
 						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div className="space-y-1">
 								<label htmlFor="wizard-sku" className="text-sm font-medium text-foreground">{t("products.form.skuCode")}</label>
@@ -940,7 +952,20 @@ export function SellerProductWizard() {
 							</div>
 						</div>
 						<p className="text-xs text-muted-foreground">{t("products.form.initialPurchaseNote")}</p>
-						{mode === "create" && formData.productType === "variable" && combinations.length > 0 && (
+						</>)}
+					{mode === "create" && formData.productType === "variable" && (
+						<>
+							<div className="max-w-40 space-y-1">
+								<label htmlFor="wizard-currency" className="text-sm font-medium text-foreground">{t("products.form.currency")}</label>
+								<input
+									id="wizard-currency"
+									value={formData.currency}
+									onChange={(e) => setField("currency", e.target.value.toUpperCase())}
+									className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+								/>
+								{fieldError("currency")}
+							</div>
+							{combinations.length > 0 && (
 							<div className="space-y-3 rounded-md border border-border p-4">
 								<div>
 									<h3 className="text-sm font-semibold text-foreground">{t("wizard.variants.title")}</h3>
@@ -962,7 +987,6 @@ export function SellerProductWizard() {
 														min="0.01"
 														step="0.01"
 														value={override.price ?? ""}
-														placeholder={formData.price || undefined}
 														onChange={(e) => setOverride({ price: e.target.value })}
 														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
 													/>
@@ -974,7 +998,6 @@ export function SellerProductWizard() {
 														min="0"
 														step="0.01"
 														value={override.crossesOutPrice ?? ""}
-														placeholder={formData.crossesOutPrice || undefined}
 														onChange={(e) => setOverride({ crossesOutPrice: e.target.value })}
 														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
 													/>
@@ -983,7 +1006,6 @@ export function SellerProductWizard() {
 													<label className="text-xs font-medium text-muted-foreground">{t("products.form.skuCode")}</label>
 													<input
 														value={override.sku ?? ""}
-														placeholder={formData.sku ? `${formData.sku}-${combinations.indexOf(combination) + 1}` : undefined}
 														onChange={(e) => setOverride({ sku: e.target.value })}
 														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
 													/>
@@ -1040,6 +1062,8 @@ export function SellerProductWizard() {
 								{fieldError("crossesOutPrice")}
 								{fieldError("initialStock")}
 							</div>
+								)}
+							</>
 						)}
 					</div>
 				)}
@@ -1060,7 +1084,7 @@ export function SellerProductWizard() {
 								<ul className="divide-y divide-border text-sm">
 									{combinations.map((combination) => {
 										const override = variantOverrides[combinationKey(combination)];
-										const price = override?.price || formData.price;
+										const price = override?.price;
 										const stock = override?.stock;
 										return (
 											<li key={combinationKey(combination)} className="flex items-center justify-between gap-4 px-4 py-2.5">
