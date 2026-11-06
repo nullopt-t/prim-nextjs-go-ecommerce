@@ -177,6 +177,36 @@ export type StockReason = "restock" | "return" | "adjustment";
 export interface VendorMediaUpload {
   url: string;
 }
+
+export interface VendorPromotion {
+  id: string;
+  code: string;
+  discountType: "percentage" | "fixed_amount" | string;
+  discountValue: number;
+  currency: string;
+  minCartAmount?: number;
+  usageLimit?: number;
+  perUserLimit?: number;
+  startsAt?: string;
+  expiresAt?: string;
+  status: "active" | "disabled" | "archived" | string;
+  vendorId?: string;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateVendorPromotionPayload {
+  code: string;
+  discountType: "percentage" | "fixed_amount";
+  discountValue: number;
+  currency?: string;
+  minCartAmount?: number;
+  usageLimit?: number;
+  perUserLimit?: number;
+  startsAt?: string;
+  expiresAt?: string;
+}
 export interface AdjustStockPayload {
   quantity: number;
   reason: StockReason;

@@ -7,6 +7,7 @@ import {
   Package,
   Boxes,
   ShoppingBag,
+  BadgePercent,
   DollarSign,
   Settings2,
   Menu,
@@ -39,6 +40,7 @@ export function VendorLayout({ children }: { children?: React.ReactNode }) {
       key: "sales",
       items: [
         { label: t("layout.nav.orders"), path: "/vendor/orders", icon: ShoppingBag },
+        { label: t("layout.nav.promotions"), path: "/vendor/promotions", icon: BadgePercent },
         { label: t("layout.nav.payouts"), path: "/vendor/payouts", icon: DollarSign },
       ],
     },

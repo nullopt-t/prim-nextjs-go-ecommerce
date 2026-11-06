@@ -13,3 +13,4 @@ export { VendorOrders } from "./routes/vendorOrders";
 export { VendorOrderDetail } from "./routes/vendorOrderDetail";
 export { VendorSettings } from "./routes/vendorSettings";
 export { VendorPayouts } from "./routes/vendorPayouts";
+export { VendorPromotions } from "./routes/vendorPromotions";

@@ -19,6 +19,8 @@ import type {
   VendorProduct,
   VendorProductListParams,
   VendorProductResponse,
+  VendorPromotion,
+  CreateVendorPromotionPayload,
   VendorStock,
   VendorVariant,
 } from "@/modules/vendor/types";
@@ -100,6 +102,12 @@ export const vendorService = {
     formData.append("file", file);
     return api.upload<ApiResponse<VendorMediaUpload>>("/api/v1/vendor/media", formData);
   },
+  getPromotions: () => api.get<{ data: VendorPromotion[] }>("/api/v1/vendor/promotions"),
+  createPromotion: (payload: CreateVendorPromotionPayload) =>
+    api.post<ApiResponse<VendorPromotion>, CreateVendorPromotionPayload>("/api/v1/vendor/promotions", payload),
+  setPromotionStatus: (id: string, status: "active" | "disabled" | "archived") =>
+    api.patch<ApiMessageResponse, { status: string }>(`/api/v1/vendor/promotions/${id}/status`, { status }),
+  deletePromotion: (id: string) => api.delete<ApiMessageResponse>(`/api/v1/vendor/promotions/${id}`),
 };
 
 export type {
