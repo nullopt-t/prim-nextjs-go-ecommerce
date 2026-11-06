@@ -2,6 +2,8 @@ import { useTranslations } from "next-intl";
 import { Stars } from "@/shared/ui/stars";
 import { CustomButton } from "@/shared/ui";
 import QuantitySelector from "@/shared/ui/quantitySelector";
+import { usePublicSettings } from "@/modules/settings/model/publicSettingsContext";
+import { formatMoney } from "@/shared/lib/money";
 import { ProductVariationAxis } from "../../types";
 
 interface ProductActionsProps {
@@ -50,6 +52,7 @@ export function ProductActions({
   onShare,
 }: ProductActionsProps) {
   const t = useTranslations("products");
+  const { settings } = usePublicSettings();
   const formatPrice = (val?: number) => {
     if (val === undefined || isNaN(val)) return "0";
     return val.toLocaleString(undefined, {
@@ -222,7 +225,11 @@ export function ProductActions({
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {t("actions.freeDelivery")}
           </p>
-          <p className="mt-1 text-sm text-foreground">{t("actions.freeDeliveryHint")}</p>
+          <p className="mt-1 text-sm text-foreground">
+            {t("actions.freeDeliveryHint", {
+              threshold: settings ? formatMoney(settings.freeShippingThreshold, settings.currency?.trim() ?? "") : "—",
+            })}
+          </p>
         </div>
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">

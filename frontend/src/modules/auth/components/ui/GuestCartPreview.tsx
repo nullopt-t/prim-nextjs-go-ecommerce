@@ -7,6 +7,8 @@ import { LazyImage } from "@/shared/ui/lazyImage";
 import { ShoppingBag, Sparkles, Trash2, Plus, Minus, Loader2 } from "lucide-react";
 import { Toggle } from "@/shared/ui/Toggle";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
+import { useCurrency } from "@/modules/settings/model/publicSettingsContext";
+import { formatMoney } from "@/shared/lib/money";
 
 interface GuestCartPreviewProps {
   mergeCart: boolean;
@@ -17,6 +19,7 @@ export function GuestCartPreview({ mergeCart, onToggleMerge }: GuestCartPreviewP
   const t = useTranslations("auth.guestCart");
   const locale = useLocale();
   const { cartItems, cartSummary, updateCartItem, removeFromCart } = useCart();
+  const currency = useCurrency();
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
 
   if (!cartItems || cartItems.length === 0) {
@@ -161,7 +164,7 @@ export function GuestCartPreview({ mergeCart, onToggleMerge }: GuestCartPreviewP
 
               {/* Item Price */}
               <div className="min-w-[56px] text-xs font-bold text-foreground text-right rtl:text-left shrink-0">
-                ${itemTotal.toFixed(2)}
+                {formatMoney(itemTotal, currency)}
               </div>
 
               {/* Quick Remove Button */}
@@ -185,7 +188,7 @@ export function GuestCartPreview({ mergeCart, onToggleMerge }: GuestCartPreviewP
         <div className="flex items-center justify-between text-xs px-1">
           <span className="text-muted-foreground font-medium">{t("total")}</span>
           <span className="text-sm font-bold text-foreground">
-            ${cartSummary.total > 0 ? cartSummary.total.toFixed(2) : cartSummary.subtotal.toFixed(2)}
+            {formatMoney(cartSummary.total > 0 ? cartSummary.total : cartSummary.subtotal, currency)}
           </span>
         </div>
 

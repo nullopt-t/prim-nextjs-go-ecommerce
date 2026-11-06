@@ -1,4 +1,5 @@
 import { normalizeMediaUrl } from "@/shared/lib/media";
+import { formatMoney } from "@/shared/lib/money";
 
 /**
  * Shape-agnostic normalizer for catalog payloads coming from the Go API.
@@ -64,6 +65,7 @@ export interface RawProductPayload {
 	categories?: Array<string | { id?: string; name?: string }>;
 	inStock?: boolean;
 	stockCount?: number;
+	currency?: string;
 	variantId?: string;
 	defaultVariantId?: string;
 	brand?: string | { logoUrl?: string; logo?: string; [key: string]: unknown };
@@ -277,6 +279,8 @@ export function normalizeProduct(raw: RawProductPayload | null) {
 		firstCategoryId ||
 		"";
 
+	const currency = typeof raw.currency === "string" ? raw.currency : "";
+
 	const variants = Array.isArray(raw.variants)
 		? raw.variants.map((v: RawProductVariant) => {
 				const vPrice =
@@ -313,7 +317,7 @@ export function normalizeProduct(raw: RawProductPayload | null) {
 					oldPrice: vOldPrice,
 					extractedOriginalPrice: vOldPrice,
 					originalPrice:
-						v.originalPrice || (vOldPrice !== undefined ? `E£${vOldPrice.toFixed(2)}` : undefined),
+						v.originalPrice || (vOldPrice !== undefined ? formatMoney(vOldPrice, currency) : undefined),
 				};
 			})
 		: [];
@@ -363,7 +367,7 @@ export function normalizeProduct(raw: RawProductPayload | null) {
 		originalPrice:
 			p.originalPrice ||
 			raw.originalPrice ||
-			(oldPriceNum !== undefined ? `E£${oldPriceNum.toFixed(2)}` : undefined),
+			(oldPriceNum !== undefined ? formatMoney(oldPriceNum, currency) : undefined),
 		discountPercentage:
 			typeof discountPercentage === "number" ? `${discountPercentage}%` : discountPercentage,
 		stars,

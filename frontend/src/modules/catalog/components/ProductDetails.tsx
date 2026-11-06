@@ -31,6 +31,8 @@ import { ProductReviews } from "./ui/ProductReviews";
 import { CatalogFeedLoader } from "./CatalogFeedLoader";
 
 import { useAuthContext } from "@/modules/auth/model/authContext";
+import { useCurrency } from "@/modules/settings/model/publicSettingsContext";
+import { formatMoney } from "@/shared/lib/money";
 
 export function ProductDetails({ initialProduct = null }: { initialProduct?: ProductDetailsEntity | null }) {
   const { id } = useParams();
@@ -38,6 +40,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   const navigate = useRouter();
   const locale = useLocale();
   const t = useTranslations("common");
+  const currency = useCurrency();
   const tReviews = useTranslations("reviews");
   const tProducts = useTranslations("products");
   const { user } = useAuthContext();
@@ -330,7 +333,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
       slug: product.slug,
       variantId: resolvedVariantId,
       productName: product.product,
-      productPrice: `EGP ${currentPrice}`,
+      productPrice: formatMoney(currentPrice, currency),
       img: images[0],
       quantity,
       color: selectedColorLabel,
@@ -358,7 +361,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
       slug: product.slug,
       variantId: resolvedVariantId,
       productName: product.product,
-      productPrice: `EGP ${currentPrice}`,
+      productPrice: formatMoney(currentPrice, currency),
       img: images[0],
       quantity,
       color: selectedColorLabel,
@@ -541,7 +544,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
               reviewsCount={reviewCount}
               price={currentPrice}
               oldPrice={currentOldPrice}
-              currency={t("currency")}
+              currency={currency}
               variationAxes={product.variationAxes}
               selectedValues={selectedValues}
               onSelectAxis={handleSelectAxis}

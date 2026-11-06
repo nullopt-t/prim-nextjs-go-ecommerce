@@ -6,6 +6,7 @@ import type { Cart, CartItem, CouponApplication } from "@/modules/cart/types";
 import type { ApiResponse } from "@/shared/api/types";
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import { normalizeMediaUrl } from "@/shared/lib/media";
+import { formatMoney } from "@/shared/lib/money";
 
 export interface CartContextItem {
   id: string;
@@ -114,11 +115,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       ? rawCart.items
       : [];
 
+    const cartCurrency = rawCart.currency?.trim() ?? "";
     const formattedItems: CartContextItem[] = rawItems.map((item: CartItem) => {
       const title = item.title || "Product";
       const price = item.unitPrice !== undefined
-        ? `EGP ${(item.unitPrice / 100).toFixed(2)}`
-        : "EGP 0.00";
+        ? formatMoney(item.unitPrice / 100, cartCurrency)
+        : formatMoney(0, cartCurrency);
       const img = normalizeMediaUrl(item.thumbnailUrl);
 
       return {

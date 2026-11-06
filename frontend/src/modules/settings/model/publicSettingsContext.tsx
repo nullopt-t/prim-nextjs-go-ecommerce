@@ -68,3 +68,9 @@ export function PublicSettingsProvider({
 export function usePublicSettings() {
   return useContext(PublicSettingsContext);
 }
+
+/** Display currency from public settings; "" while settings are unavailable. */
+export function useCurrency(): string {
+  const { settings } = usePublicSettings();
+  return settings?.currency?.trim() ?? "";
+}

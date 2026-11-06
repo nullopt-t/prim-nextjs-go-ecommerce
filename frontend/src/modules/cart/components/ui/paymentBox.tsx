@@ -1,18 +1,17 @@
 "use client";
 
 import { CustomButton } from "@/shared/ui/button";
-import PaymentMethods from "@/modules/cart/components/ui/paymentMethods";
 import { useTranslations } from "next-intl";
 import { useCart } from "@/modules/cart/model/useCart";
 import { useRouter } from "@/shared/i18n/navigation";
 import { usePublicSettings } from "@/modules/settings/model/publicSettingsContext";
 import { Truck, Sparkles, ShieldCheck } from "lucide-react";
+import { formatMoney } from "@/shared/lib/money";
 
-import { calculateCartTotals, SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from "@/modules/cart/utils/cartCalculations";
+import { calculateCartTotals } from "@/modules/cart/utils/cartCalculations";
 
 export default function PaymentBox({ compact = false }: { compact?: boolean }) {
   const t = useTranslations("cart");
-  const tCommon = useTranslations("common");
   const { cartItems, appliedCoupon, closeCart } = useCart();
   const router = useRouter();
   const { settings: storeSettings } = usePublicSettings();
@@ -21,8 +20,10 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
     return null;
   }
 
-  const standardShippingCost = storeSettings?.flatRateShipping ?? STANDARD_SHIPPING_COST;
-  const freeShippingThreshold = storeSettings?.freeShippingThreshold ?? SHIPPING_THRESHOLD;
+  const currency = storeSettings?.currency?.trim() ?? "";
+  const shippingKnown = storeSettings !== null;
+  const standardShippingCost = storeSettings?.flatRateShipping ?? 0;
+  const freeShippingThreshold = storeSettings?.freeShippingThreshold ?? null;
 
   const {
     subtotal,
@@ -40,17 +41,21 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
       : 0;
   const total = Math.max(0, subtotal - discount + shippingCost + taxAmount);
 
-  const currencySymbol = tCommon("currency");
+  const shippingLabel = !shippingKnown
+    ? "—"
+    : isFreeShipping
+      ? t("orderSummary.free")
+      : formatMoney(shippingCost, currency);
 
   if (compact) {
     return (
       <div className="flex flex-col gap-3">
         {/* Compact Free Shipping Notice */}
-        {subtotal > 0 && !isFreeShipping && (
+        {subtotal > 0 && shippingKnown && !isFreeShipping && (
           <div className="flex items-center justify-between text-xs text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-lg border border-border/40">
             <span className="flex items-center gap-1.5 text-foreground truncate">
               <Truck className="size-3 text-accent-brand shrink-0" />
-              <span>{t("shippingAdd", { amount: `${currencySymbol} ${remainingForFreeShipping.toFixed(2)}` })}</span>
+              <span>{t("shippingAdd", { amount: formatMoney(remainingForFreeShipping, currency) })}</span>
             </span>
             <span className="text-[11px] font-semibold">{Math.round(shippingProgress)}%</span>
           </div>
@@ -69,21 +74,21 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
               {t("orderSummary.total", { defaultMessage: "Total" })}
             </span>
             <span className="text-xl font-bold text-foreground tracking-tight">
-              {currencySymbol} {total.toFixed(2)}
+              {formatMoney(total, currency)}
             </span>
           </div>
 
           <div className="text-end text-xs text-muted-foreground">
             {discount > 0 ? (
               <span className="text-emerald-600 dark:text-emerald-400 font-medium block">
-                {t("discount", { amount: `-${currencySymbol} ${discount.toFixed(2)}` })}
+                {t("discount", { amount: `-${formatMoney(discount, currency)}` })}
               </span>
             ) : null}
             <span>
-              {isFreeShipping ? (
-                t("orderSummary.free")
+              {!shippingKnown || isFreeShipping ? (
+                shippingLabel
               ) : (
-                `+${currencySymbol} ${shippingCost.toFixed(2)} ${t("orderSummary.shipping")}`
+                `+${shippingLabel} ${t("orderSummary.shipping")}`
               )}
             </span>
           </div>
@@ -116,7 +121,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
       </h3>
 
       {/* Free shipping progress bar */}
-      {subtotal > 0 && (
+      {subtotal > 0 && shippingKnown && (
         <div className="mb-6 p-3.5 rounded-xl bg-secondary/40 border border-border/60">
           <div className="flex items-center justify-between text-xs font-medium mb-2">
             <span className="flex items-center gap-1.5 text-foreground">
@@ -124,7 +129,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
               {isFreeShipping
                 ? t("shippingUnlocked")
                 : t("shippingAdd", {
-                    amount: `${currencySymbol} ${remainingForFreeShipping.toFixed(2)}`,
+                    amount: formatMoney(remainingForFreeShipping, currency),
                   })}
             </span>
             <span className="text-muted-foreground">{Math.round(shippingProgress)}%</span>
@@ -143,7 +148,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <span className="text-muted-foreground">
             {t("orderSummary.subtotal", { defaultMessage: "Subtotal" })}
           </span>
-          <span className="text-foreground font-medium">{currencySymbol} {subtotal.toFixed(2)}</span>
+          <span className="text-foreground font-medium">{formatMoney(subtotal, currency)}</span>
         </p>
 
         {discount > 0 && (
@@ -152,7 +157,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
               <Sparkles className="size-3.5" />
               {t("discountLabel", { code: appliedCoupon?.code ?? "" })}
             </span>
-            <span>-{currencySymbol} {discount.toFixed(2)}</span>
+            <span>-{formatMoney(discount, currency)}</span>
           </p>
         )}
 
@@ -166,7 +171,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
                 {t("orderSummary.free")}
               </span>
             ) : (
-              `${currencySymbol} ${shippingCost.toFixed(2)}`
+              shippingLabel
             )}
           </span>
         </p>
@@ -174,7 +179,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <span className="text-muted-foreground">
             {t("orderSummary.tax", { defaultMessage: "Estimated Tax" })}
           </span>
-          <span className="text-foreground font-medium">{currencySymbol} {taxAmount.toFixed(2)}</span>
+          <span className="text-foreground font-medium">{formatMoney(taxAmount, currency)}</span>
         </p>
       </div>
 
@@ -185,7 +190,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <span className="text-foreground font-semibold">
             {t("orderSummary.total", { defaultMessage: "Total" })}
           </span>
-          <span className="text-foreground font-bold text-2xl">{currencySymbol} {total.toFixed(2)}</span>
+          <span className="text-foreground font-bold text-2xl">{formatMoney(total, currency)}</span>
         </p>
       </div>
 
@@ -204,10 +209,6 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
       <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-4">
         <ShieldCheck className="size-3.5 text-emerald-600" />
         <span>{t("sslCheckout")}</span>
-      </div>
-
-      <div className="mt-6 pt-4 border-t border-border/50">
-        <PaymentMethods />
       </div>
     </div>
   );

@@ -8,19 +8,23 @@ export interface CartCalculation {
   remainingForFreeShipping: number;
   shippingProgress: number;
   total: number;
+  /** False when the shipping rules are unknown (settings unavailable). */
+  shippingKnown: boolean;
 }
-
-export const SHIPPING_THRESHOLD = 150;
-export const STANDARD_SHIPPING_COST = 9.99;
 
 /**
  * Pure calculation function for cart totals, shipping rules, and discounts.
+ *
+ * Shipping rules always come from public settings: pass the configured
+ * free-shipping threshold (or null when settings are unavailable) and the
+ * flat standard rate. When the threshold is unknown the shipping cost is
+ * reported as unknown (`shippingKnown = false`) instead of inventing a price.
  */
 export function calculateCartTotals(
   items: CartContextItem[] = [],
   appliedCoupon: CouponData | null = null,
-  shippingThreshold: number = SHIPPING_THRESHOLD,
-  standardShippingCost: number = STANDARD_SHIPPING_COST
+  shippingThreshold: number | null,
+  standardShippingCost: number,
 ): CartCalculation {
   const subtotal = items.reduce((acc, item) => {
     const rawPrice = typeof item.productPrice === "number"
@@ -45,10 +49,11 @@ export function calculateCartTotals(
     }
   }
 
-  const isFreeShipping = subtotal >= shippingThreshold || Boolean(appliedCoupon?.freeShipping);
-  const shippingCost = isFreeShipping || subtotal === 0 ? 0 : standardShippingCost;
-  const remainingForFreeShipping = Math.max(0, shippingThreshold - subtotal);
-  const shippingProgress = Math.min(100, (subtotal / shippingThreshold) * 100);
+  const shippingKnown = shippingThreshold !== null;
+  const isFreeShipping = shippingKnown && (subtotal >= (shippingThreshold as number) || Boolean(appliedCoupon?.freeShipping));
+  const shippingCost = !shippingKnown || isFreeShipping || subtotal === 0 ? 0 : standardShippingCost;
+  const remainingForFreeShipping = shippingKnown ? Math.max(0, (shippingThreshold as number) - subtotal) : 0;
+  const shippingProgress = shippingKnown && shippingThreshold ? Math.min(100, (subtotal / shippingThreshold) * 100) : 0;
 
   const total = Math.max(0, subtotal - discount + shippingCost);
 
@@ -60,5 +65,6 @@ export function calculateCartTotals(
     remainingForFreeShipping,
     shippingProgress,
     total,
+    shippingKnown,
   };
 }

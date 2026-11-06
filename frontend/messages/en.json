@@ -1409,14 +1409,14 @@
     "delivery": {
       "express": "Express Priority",
       "expressDesc": "Guaranteed air express courier with real-time GPS tracking and signature on delivery.",
-      "expressRecap": "Express Priority (1-2 days) • EGP 15.00",
+      "expressRecap": "Express Priority (1-2 days) • {price}",
       "expressTime": "1 to 2 business days",
       "heading": "2. Delivery Speed",
       "instructions": "Delivery Instructions (Optional)",
       "instructionsPlaceholder": "e.g. Leave package at front door, gate code #4492",
       "selected": "Selected method",
       "standard": "Standard Delivery",
-      "standardDesc": "Standard ground delivery via regular postal service. Free for orders over EGP 150.",
+      "standardDesc": "Standard ground delivery via regular postal service. Free for orders over {threshold}.",
       "standardRecap": "Standard Delivery (3-5 days) • {price}",
       "standardTime": "3 to 5 business days",
       "subtitle": "Select your preferred courier fulfillment schedule."
@@ -1516,7 +1516,6 @@
   "common": {
     "cancel": "Cancel",
     "confirm": "Confirm",
-    "currency": "EGP",
     "errors": {
       "copyFailed": "Couldn't copy to clipboard",
       "loadDescription": "Something went wrong while loading this content. Please try again.",
@@ -2063,7 +2062,7 @@
       "easyReturns": "Easy returns",
       "easyReturnsHint": "Within 30 days",
       "freeDelivery": "Free delivery",
-      "freeDeliveryHint": "On all orders",
+      "freeDeliveryHint": "Free on orders over {threshold}",
       "inStock": "In Stock ({count} available)",
       "outOfStock": "Out of Stock",
       "reviewsCount": "{count} Reviews",
@@ -2265,7 +2264,7 @@
           "question": "Can I change or cancel my order?"
         },
         "payment": {
-          "answer": "We accept major credit cards including Visa, MasterCard, American Express, as well as digital payment options.",
+          "answer": "We offer cash on delivery. Card payments are not available yet.",
           "question": "What payment methods do you accept?"
         },
         "title": "Frequently Asked Questions",
@@ -2283,15 +2282,15 @@
         "intro": "We want you to be completely satisfied with your purchase. If you are not happy with your order, we are here to help.",
         "policyDescription": "You have 30 calendar days to return an item from the date you received it. To be eligible for a return, your item must be unused and in the same condition that you received it. Your item must be in the original packaging.",
         "policyTitle": "Return Policy",
-        "refundsDescription": "Once we receive your item, we will inspect it and notify you that we have received your returned item. We will immediately notify you on the status of your refund after inspecting the item. If your return is approved, we will initiate a refund to your credit card (or original method of payment).",
+        "refundsDescription": "Once we receive your item, we will inspect it and notify you that we have received your returned item. We will immediately notify you on the status of your refund after inspecting the item. If your return is approved, we will initiate a refund via the original payment method.",
         "refundsTitle": "Refunds",
         "title": "Returns & Exchanges"
       },
       "shipping": {
-        "expressDescription": "Need it faster? We offer express shipping options at checkout. Express orders are prioritized and typically arrive within 2-3 business days.",
+        "expressDescription": "Need it faster? We offer express delivery at checkout. Express orders are prioritized and typically arrive within 1 to 2 business days.",
         "expressTitle": "Express Shipping",
-        "intro": "We offer worldwide shipping with various delivery options to ensure you receive your order as quickly and safely as possible.",
-        "standardDescription": "Standard shipping usually takes 5-7 business days within the contiguous United States. International shipping times may vary based on destination and customs processing.",
+        "intro": "We offer delivery options to ensure you receive your order as quickly and safely as possible.",
+        "standardDescription": "Standard delivery typically takes {days}. Orders over {threshold} ship free; otherwise a flat rate of {rate} applies.",
         "standardTitle": "Standard Shipping",
         "title": "Shipping Information"
       }

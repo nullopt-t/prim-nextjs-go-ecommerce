@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { useCart } from "@/modules/cart/model/useCart";
-import { calculateCartTotals, SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from "@/modules/cart/utils/cartCalculations";
+import { calculateCartTotals } from "@/modules/cart/utils/cartCalculations";
+import { formatMoney } from "@/shared/lib/money";
 import { useCheckout } from "@/modules/orders/model/useOrders";
 import { useAddresses } from "@/modules/account/model/useUserAccount";
 import type { Address } from "@/modules/account/types";
@@ -136,9 +137,13 @@ export function Checkout() {
 	// Derived selection IDs without setState in effect
 	const effectiveAddressId = selectedAddressId || addresses?.find((a: Address) => a.isDefault)?.id || addresses?.[0]?.id || "";
 
-	// Calculations using standard cartCalculations utility
-	const standardShippingCost = storeSettings?.flatRateShipping ?? STANDARD_SHIPPING_COST;
-	const freeShippingThreshold = storeSettings?.freeShippingThreshold ?? SHIPPING_THRESHOLD;
+	// Calculations using standard cartCalculations utility. Shipping rules come
+	// from public settings; when settings are unavailable the rate is unknown
+	// and rendered as "—" instead of an invented price.
+	const currency = storeSettings?.currency?.trim() ?? "";
+	const shippingKnown = storeSettings !== null;
+	const standardShippingCost = storeSettings?.flatRateShipping ?? 0;
+	const freeShippingThreshold = storeSettings?.freeShippingThreshold ?? null;
 
 	const {
 		subtotal,
@@ -302,7 +307,7 @@ export function Checkout() {
 			const completedOrderInfo = {
 				id: orderData.orderId || order.orderId || "",
 				trackingNumber: orderData.trackingNumber || order.trackingNumber || "",
-				total: `EGP ${Number(orderData.totalAmount ?? order.totalAmount ?? finalTotal).toFixed(2)}`,
+				total: formatMoney(Number(orderData.totalAmount ?? order.totalAmount ?? finalTotal), currency),
 				shippingAddress: finalShippingAddress,
 				date: t("success.today"),
 			};
@@ -882,11 +887,11 @@ export function Checkout() {
 															</div>
 														</div>
 														<span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
-															{isStandardFree ? tCart("orderSummary.free") : "EGP 9.99"}
+															{isStandardFree ? tCart("orderSummary.free") : shippingKnown ? formatMoney(standardShippingCost, currency) : "—"}
 														</span>
 													</div>
 													<p className="text-xs text-muted-foreground leading-relaxed">
-														{t("delivery.standardDesc")}
+														{t("delivery.standardDesc", { threshold: freeShippingThreshold !== null ? formatMoney(freeShippingThreshold, currency) : "—" })}
 													</p>
 												</div>
 												{shippingSpeed === "standard" && (
@@ -916,7 +921,7 @@ export function Checkout() {
 																<span className="text-[11px] text-muted-foreground">{t("delivery.expressTime")}</span>
 															</div>
 														</div>
-														<span className="text-xs font-extrabold text-foreground">EGP 15.00</span>
+														<span className="text-xs font-extrabold text-foreground">{shippingKnown ? formatMoney(expressShippingCost, currency) : "—"}</span>
 													</div>
 													<p className="text-xs text-muted-foreground leading-relaxed">
 														{t("delivery.expressDesc")}
@@ -1006,7 +1011,7 @@ export function Checkout() {
 												<div>
 													<span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("steps.shipping")}</span>
 													<p className="text-xs sm:text-sm font-semibold text-foreground">
-														{shippingSpeed === "express" ? t("delivery.expressRecap") : t("delivery.standardRecap", { price: isStandardFree ? tCart("orderSummary.free") : `EGP ${standardShippingCost.toFixed(2)}` })}
+														{shippingSpeed === "express" ? t("delivery.expressRecap", { price: shippingKnown ? formatMoney(expressShippingCost, currency) : "—" }) : t("delivery.standardRecap", { price: isStandardFree ? tCart("orderSummary.free") : shippingKnown ? formatMoney(standardShippingCost, currency) : "—" })}
 													</p>
 												</div>
 											</div>
@@ -1197,7 +1202,7 @@ export function Checkout() {
 							<div className="flex flex-col gap-2.5 pt-4 border-t border-border/60 text-sm">
 								<div className="flex justify-between text-muted-foreground">
 									<span>{tCart("orderSummary.subtotal")}</span>
-									<span className="font-medium text-foreground">EGP {subtotal.toFixed(2)}</span>
+									<span className="font-medium text-foreground">{formatMoney(subtotal, currency)}</span>
 								</div>
 
 								{discount > 0 && (
@@ -1206,7 +1211,7 @@ export function Checkout() {
 											<Sparkles className="size-3.5" />
 											{t("summary.discount", { code: appliedCoupon?.code ?? "" })}
 										</span>
-										<span>-EGP {discount.toFixed(2)}</span>
+										<span>-{formatMoney(discount, currency)}</span>
 									</div>
 								)}
 
@@ -1216,26 +1221,26 @@ export function Checkout() {
 										{shippingCost === 0 ? (
 											<span className="text-emerald-600 font-medium">{tCart("orderSummary.free")}</span>
 										) : (
-											`EGP ${shippingCost.toFixed(2)}`
+											formatMoney(shippingCost, currency)
 										)}
 									</span>
 								</div>
 
 								<div className="flex justify-between text-muted-foreground">
 									<span>{t("summary.taxes")}</span>
-									<span className="font-medium text-foreground">EGP {taxAmount.toFixed(2)}</span>
+									<span className="font-medium text-foreground">{formatMoney(taxAmount, currency)}</span>
 								</div>
 
 								{codFee > 0 && (
 									<div className="flex justify-between text-muted-foreground">
 										<span>{t("summary.codFee")}</span>
-										<span className="font-medium text-foreground">EGP {codFee.toFixed(2)}</span>
+										<span className="font-medium text-foreground">{formatMoney(codFee, currency)}</span>
 									</div>
 								)}
 
 								<div className="flex justify-between items-center text-lg font-bold text-foreground pt-3 border-t border-border">
 									<span>{t("summary.total")}</span>
-									<span className="text-2xl font-extrabold text-foreground">EGP {finalTotal.toFixed(2)}</span>
+									<span className="text-2xl font-extrabold text-foreground">{formatMoney(finalTotal, currency)}</span>
 								</div>
 							</div>
 
