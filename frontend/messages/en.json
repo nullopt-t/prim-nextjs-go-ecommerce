@@ -2398,7 +2398,20 @@
       "topProducts": "Top Vendor Products",
       "totalUnitsSold": "Total Units Sold",
       "attentionLowStock": "{count, plural, =1 {1 low-stock variant needs restocking} other {# low-stock variants need restocking}} — review inventory",
-      "attentionDrafts": "{count, plural, =1 {1 draft product is waiting to publish} other {# draft products are waiting to publish}} — review products"
+      "attentionDrafts": "{count, plural, =1 {1 draft product is waiting to publish} other {# draft products are waiting to publish}} — review products",
+      "nextStepsTitle": "Your next steps",
+      "nextStepsProgress": "{done} of {total} done",
+      "nextStepsDone": "All set — your store is in good shape. Keep selling.",
+      "nextSteps": {
+        "addProduct": "Add your first product",
+        "addProductDetail": "Create a draft and publish it to go live.",
+        "finishDrafts": "Finish your drafts",
+        "finishDraftsDetail": "{count, plural, =1 {1 draft product} other {# draft products}} waiting for review and publish.",
+        "restock": "Restock low-stock items",
+        "restockDetail": "{count, plural, =1 {1 variant} other {# variants}} are running low.",
+        "requestPayout": "Request your payout",
+        "requestPayoutDetail": "{amount} is available to withdraw."
+      }
     },
     "inventory": {
       "applyDelta": "Apply",
@@ -2651,7 +2664,14 @@
         "compareAtTooLow": "Compare-at price cannot be lower than the selling price.",
         "currencyInvalid": "Currency must be a 3-letter code such as EGP.",
         "stockInvalid": "Initial stock must be a whole number of 0 or more."
-      }
+      },
+      "bulkSelected": "{count, plural, =1 {1 product selected} other {# products selected}}",
+      "bulkSelectAll": "Select all products on this page",
+      "bulkConfirm": "Apply this change to {count, plural, =1 {1 selected product} other {# selected products}}?",
+      "bulkPublished": "{count, plural, =1 {1 product published} other {# products published}}",
+      "bulkArchived": "{count, plural, =1 {1 product archived} other {# products archived}}",
+      "bulkPartial": "{failed, plural, =1 {1 change failed} other {# changes failed}}",
+      "clear": "Clear selection"
     },
     "profileLoadDescription": "Your merchant profile could not be loaded. Register as a vendor or try again.",
     "profileLoadTitle": "Vendor profile required",
@@ -2804,7 +2824,8 @@
         "note": "Saving creates this product as a draft. Publishing makes it visible to buyers immediately.",
         "publishedNote": "This product is already published. Saving keeps it published unless you adjust status from the product list."
       }
-    }
+    },
+    "clear": "Clear selection"
   },
   "wishlist": {
     "addAllToCart": "Add all to Cart",

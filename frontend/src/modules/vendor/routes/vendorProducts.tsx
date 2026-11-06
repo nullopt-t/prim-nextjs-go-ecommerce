@@ -57,6 +57,9 @@ export function VendorProducts() {
 
   const [lifecycleId, setLifecycleId] = useState<string | null>(null);
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   const [selectedProduct, setSelectedProduct] = useState<VendorProduct | null>(null);
   const [editingVariant, setEditingVariant] = useState<VendorVariant | null>(null);
   const [variantForm, setVariantForm] = useState<VariantForm>(EMPTY_VARIANT_FORM);
@@ -246,6 +249,54 @@ export function VendorProducts() {
     return matchesSearch && matchesStatus;
   });
 
+  useEffect(() => {
+    setSelectedIds((current) => {
+      const valid = new Set(products.map((product) => product.id));
+      const next = new Set([...current].filter((id) => valid.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [products]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds((current) =>
+      current.size === filtered.length ? new Set<string>() : new Set(filtered.map((product) => product.id)),
+    );
+  };
+
+  const handleBulk = async (action: "publish" | "archive") => {
+    if (selectedIds.size === 0) return;
+    const confirmed = window.confirm(t("products.bulkConfirm", { count: selectedIds.size }));
+    if (!confirmed) return;
+    setBulkBusy(true);
+    const results = await Promise.allSettled(
+      [...selectedIds].map((id) =>
+        action === "publish" ? vendorService.publishProduct(id) : vendorService.archiveProduct(id),
+      ),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    const succeeded = results.length - failed;
+    if (succeeded > 0) {
+      notify.success(
+        action === "publish"
+          ? t("products.bulkPublished", { count: succeeded })
+          : t("products.bulkArchived", { count: succeeded }),
+      );
+    }
+    if (failed > 0) notify.error(t("products.bulkPartial", { failed }));
+    setSelectedIds(new Set());
+    setBulkBusy(false);
+    await loadProducts();
+  };
+
   const statusBadge = (product: VendorProduct) => (
     <StatusPill tone={statusTone(product.status)}>
       {t(`products.status.${product.status}`)}
@@ -256,6 +307,7 @@ export function VendorProducts() {
     <div className="space-y-5 w-full">
       <PageHeader
         title={t("products.title")}
+        description={t("products.subtitle")}
         actions={
           <button
             onClick={handleOpenAdd}
@@ -304,11 +356,47 @@ export function VendorProducts() {
           </div>
 
           <div className="overflow-hidden rounded-lg border border-border bg-background">
+            {selectedIds.size > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 border-b border-border bg-secondary/40 px-4 py-2.5 text-sm">
+                <span className="font-medium text-foreground">
+                  {t("products.bulkSelected", { count: selectedIds.size })}
+                </span>
+                <button
+                  onClick={() => void handleBulk("publish")}
+                  disabled={bulkBusy}
+                  className="rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
+                >
+                  {t("actions.publish")}
+                </button>
+                <button
+                  onClick={() => void handleBulk("archive")}
+                  disabled={bulkBusy}
+                  className="rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
+                >
+                  {t("actions.archive")}
+                </button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  disabled={bulkBusy}
+                  className="rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-background disabled:opacity-50"
+                >
+                  {t("actions.clear")}
+                </button>
+              </div>
+            ) : null}
             <div className="overflow-x-auto">
               <ResponsiveTable className="w-full text-start text-sm md:min-w-max">
                 <thead className="text-xs text-muted-foreground">
                   <tr className="border-b border-border">
-                    <th className="py-2.5 ps-4 text-start font-medium">{t("products.table.details")}</th>
+                    <th className="py-2.5 ps-4 w-8">
+                      <input
+                        type="checkbox"
+                        checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                        onChange={toggleSelectAll}
+                        aria-label={t("products.bulkSelectAll")}
+                      />
+                    </th>
+                    <th className="py-2.5 text-start font-medium">{t("products.table.details")}</th>
                     <th className="py-2.5 text-start font-medium">{t("products.table.sku")}</th>
                     <th className="py-2.5 text-start font-medium">{t("products.table.price")}</th>
                     <th className="py-2.5 text-start font-medium">{t("products.table.stock")}</th>
@@ -320,6 +408,14 @@ export function VendorProducts() {
                   {filtered.map((product) => (
                     <tr key={product.id} className="transition-colors hover:bg-secondary/30">
                       <td className="py-3 ps-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(product.id)}
+                          onChange={() => toggleSelect(product.id)}
+                          aria-label={product.title}
+                        />
+                      </td>
+                      <td className="py-3">
                         <div className="flex items-center gap-3">
                           {product.thumbnailUrl ? (
                             <img src={product.thumbnailUrl} alt="" className="size-10 shrink-0 rounded-md border border-border object-cover" />
@@ -384,8 +480,17 @@ export function VendorProducts() {
                   ))}
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
-                        {t("products.empty")}
+                      <td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                        <p>{t("products.empty")}</p>
+                        {products.length === 0 ? (
+                          <button
+                            onClick={handleOpenAdd}
+                            className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
+                          >
+                            <Plus className="size-3.5" />
+                            {t("actions.addNewProduct")}
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                   ) : null}
@@ -521,7 +626,7 @@ export function VendorProducts() {
                   ))}
                   {variants.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                      <td colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                         {t("variants.empty")}
                       </td>
                     </tr>

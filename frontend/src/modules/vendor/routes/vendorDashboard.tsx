@@ -73,6 +73,37 @@ export function VendorDashboard() {
   const stats = dashboard ?? EMPTY_DASHBOARD;
   const commissionPercent = vendor ? vendor.commissionRateBps / 100 : 0;
 
+  const nextSteps = (() => {
+    const items: { label: string; detail: string; href: string; done: boolean }[] = [
+      {
+        label: t("dashboard.nextSteps.addProduct"),
+        detail: t("dashboard.nextSteps.addProductDetail"),
+        href: "/vendor/products/new",
+        done: stats.productCount > 0,
+      },
+      {
+        label: t("dashboard.nextSteps.finishDrafts"),
+        detail: t("dashboard.nextSteps.finishDraftsDetail", { count: stats.draftProductCount }),
+        href: "/vendor/products",
+        done: stats.draftProductCount === 0,
+      },
+      {
+        label: t("dashboard.nextSteps.restock"),
+        detail: t("dashboard.nextSteps.restockDetail", { count: stats.lowStockVariantCount }),
+        href: "/vendor/inventory",
+        done: stats.lowStockVariantCount === 0,
+      },
+      {
+        label: t("dashboard.nextSteps.requestPayout"),
+        detail: t("dashboard.nextSteps.requestPayoutDetail", { amount: formatMinor(stats.availableBalance) }),
+        href: "/vendor/payouts",
+        done: stats.availableBalance <= 0,
+      },
+    ];
+    return items;
+  })();
+  const openSteps = nextSteps.filter((item) => !item.done);
+
   const metrics = [
     {
       label: t("dashboard.grossSales"),
@@ -104,15 +135,56 @@ export function VendorDashboard() {
     <div className="space-y-5">
       <PageHeader
         title={t("dashboard.title")}
+        description={t("dashboard.subtitle")}
         actions={
-          <Link
-            href="/vendor/products"
-            className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
-          >
-            {t("actions.manageProducts")}
-          </Link>
+          <>
+            <Link
+              href="/vendor/products/new"
+              className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              {t("actions.addNewProduct")}
+            </Link>
+            <Link
+              href="/vendor/products"
+              className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+            >
+              {t("actions.manageProducts")}
+            </Link>
+          </>
         }
       />
+
+      <section className="rounded-xl border border-border bg-background p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">{t("dashboard.nextStepsTitle")}</h2>
+          <span className="text-xs text-muted-foreground">
+            {t("dashboard.nextStepsProgress", { done: nextSteps.length - openSteps.length, total: nextSteps.length })}
+          </span>
+        </div>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-valuenow={nextSteps.length - openSteps.length} aria-valuemax={nextSteps.length}>
+          <div
+            className="h-full bg-primary transition-all"
+            style={{ width: `${nextSteps.length ? Math.round(((nextSteps.length - openSteps.length) / nextSteps.length) * 100) : 0}%` }}
+          />
+        </div>
+        {openSteps.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">{t("dashboard.nextStepsDone")}</p>
+        ) : (
+          <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {openSteps.map((item) => (
+              <li key={item.label}>
+                <Link
+                  href={item.href}
+                  className="block rounded-lg border border-border px-3 py-2.5 text-sm transition-colors hover:bg-secondary/50"
+                >
+                  <span className="font-medium text-foreground">{item.label}</span>
+                  <span className="block text-xs text-muted-foreground">{item.detail}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (

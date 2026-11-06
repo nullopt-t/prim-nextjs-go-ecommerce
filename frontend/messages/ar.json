@@ -2398,7 +2398,20 @@
       "topProducts": "أفضل منتجات البائع",
       "totalUnitsSold": "إجمالي الوحدات المبيعة",
       "attentionLowStock": "{count, plural, =1 {متغير واحد منخفض المخزون يحتاج إلى إعادة مخزون} other {# متغيرات منخفضة المخزون تحتاج إلى إعادة مخزون}} — راجع المخزون",
-      "attentionDrafts": "{count, plural, =1 {منتج مسودة واحد بانتظار النشر} other {# منتجات مسودة بانتظار النشر}} — راجع المنتجات"
+      "attentionDrafts": "{count, plural, =1 {منتج مسودة واحد بانتظار النشر} other {# منتجات مسودة بانتظار النشر}} — راجع المنتجات",
+      "nextStepsTitle": "خطواتك التالية",
+      "nextStepsProgress": "تم {done} من {total}",
+      "nextStepsDone": "كل شيء جاهز — متجرك في حالة جيدة. واصل البيع.",
+      "nextSteps": {
+        "addProduct": "أضف منتجك الأول",
+        "addProductDetail": "أنشئ مسودة وانشرها لتصبح متاحة.",
+        "finishDrafts": "أكمل مسوداتك",
+        "finishDraftsDetail": "{count, plural, =0 {لا مسودات} =1 {منتج مسودة واحد} other {# منتجات مسودة}} بانتظار المراجعة والنشر.",
+        "restock": "أعد مخزون العناصر المنخفضة",
+        "restockDetail": "{count, plural, =0 {لا عناصر منخفضة} =1 {متغير واحد} other {# متغيرات}} منخفضة المخزون.",
+        "requestPayout": "اطلب دفعتك",
+        "requestPayoutDetail": "{amount} متاح للسحب."
+      }
     },
     "inventory": {
       "applyDelta": "تطبيق",
@@ -2651,7 +2664,14 @@
         "compareAtTooLow": "لا يمكن أن يكون سعر المقارنة أقل من سعر البيع.",
         "currencyInvalid": "يجب أن تكون العملة رمزًا من 3 حروف مثل EGP.",
         "stockInvalid": "يجب أن يكون المخزون الأولي رقمًا صحيحًا 0 أو أكثر."
-      }
+      },
+      "bulkSelected": "{count, plural, =1 {منتج واحد محدد} other {# منتجات محددة}}",
+      "bulkSelectAll": "تحديد كل المنتجات في هذه الصفحة",
+      "bulkConfirm": "تطبيق هذا التغيير على {count, plural, =1 {منتج واحد محدد} other {# منتجات محددة}}؟",
+      "bulkPublished": "{count, plural, =1 {تم نشر منتج واحد} other {تم نشر # منتجات}}",
+      "bulkArchived": "{count, plural, =1 {تمت أرشفة منتج واحد} other {تمت أرشفة # منتجات}}",
+      "bulkPartial": "{failed, plural, =1 {فشل تغيير واحد} other {فشل # تغييرات}}",
+      "clear": "مسح التحديد"
     },
     "profileLoadDescription": "تعذّر تحميل ملف التاجر. سجّل كتاجر أو حاول مرة أخرى.",
     "profileLoadTitle": "يلزم ملف البائع",
@@ -2804,7 +2824,8 @@
         "note": "الحفظ ينشئ المنتج كمسودة. النشر يجعله ظاهرًا للمشترين فورًا.",
         "publishedNote": "هذا المنتج منشور بالفعل. الحفظ يبقيه منشورًا ما لم تغيّر حالته من قائمة المنتجات."
       }
-    }
+    },
+    "clear": "مسح التحديد"
   },
   "wishlist": {
     "addAllToCart": "إضافة الكل إلى السلة",

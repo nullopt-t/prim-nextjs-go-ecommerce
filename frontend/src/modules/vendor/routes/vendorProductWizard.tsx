@@ -84,6 +84,7 @@ export function VendorProductWizard() {
 	const [publishing, setPublishing] = useState(false);
 	const [hydrated, setHydrated] = useState(false);
 	const [existingProduct, setExistingProduct] = useState<VendorProduct | null>(null);
+	const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 
 	const steps = useMemo(
 		() => [
@@ -94,6 +95,41 @@ export function VendorProductWizard() {
 		],
 		[t],
 	);
+
+	const readiness = useMemo(() => {
+		const checks = [
+			{
+				label: steps[0],
+				done: Boolean(
+					formData.title.trim() &&
+						(mode === "edit" || formData.categoryId) &&
+						(!formData.slug.trim() || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(formData.slug.trim().toLowerCase())),
+				),
+			},
+			{
+				label: steps[1],
+				done:
+					formData.productType === "simple" ||
+					formData.variationAxes.split(",").map((a) => a.trim()).filter(Boolean).length > 0,
+			},
+			{
+				label: steps[2],
+				done:
+					mode === "edit" ||
+					((!formData.price || parseMajorPrice(formData.price) !== undefined) &&
+						(!formData.crossesOutPrice || parseMajorPrice(formData.crossesOutPrice) !== undefined) &&
+						(!formData.price ||
+							!formData.crossesOutPrice ||
+							(parseMajorPrice(formData.crossesOutPrice) ?? 0) >= (parseMajorPrice(formData.price) ?? 0)) &&
+						/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase()) &&
+						Number.isInteger(Number.parseInt(formData.initialStock, 10)) &&
+						Number.parseInt(formData.initialStock, 10) >= 0),
+			},
+			{ label: steps[3], done: false },
+		];
+		const doneCount = checks.filter((c) => c.done).length;
+		return { checks, percent: Math.round((doneCount / checks.length) * 100) };
+	}, [formData, steps, mode]);
 
 	const draftKey = draftKeyFor(productId);
 
@@ -161,6 +197,7 @@ export function VendorProductWizard() {
 	useEffect(() => {
 		if (!hydrated) return;
 		sessionStorage.setItem(draftKey, JSON.stringify(formData));
+		setLastSavedAt(Date.now());
 	}, [draftKey, formData, hydrated]);
 
 	const setField = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => {
@@ -371,6 +408,28 @@ export function VendorProductWizard() {
 					);
 				})}
 			</ol>
+
+
+			<section className="rounded-lg border border-border bg-background p-4">
+				<div className="flex items-center justify-between">
+					<h2 className="text-sm font-semibold text-foreground">{t("wizard.readinessTitle")}</h2>
+					<span className="text-xs text-muted-foreground">
+						{t("wizard.readinessPercent", { percent: readiness.percent })}
+						{lastSavedAt ? ` · ${t("wizard.autosavedAt", { time: new Date(lastSavedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })}` : ""}
+					</span>
+				</div>
+				<div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-valuenow={readiness.percent} aria-valuemax={100}>
+					<div className="h-full bg-primary transition-all" style={{ width: `${readiness.percent}%` }} />
+				</div>
+				<ul className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+					{readiness.checks.map((check) => (
+						<li key={check.label} className={`rounded-md border px-2.5 py-2 ${check.done ? "border-emerald-600/30 bg-emerald-600/5 text-foreground" : "border-border text-muted-foreground"}`}>
+							{check.done ? "✓ " : ""}{check.label}
+						</li>
+					))}
+				</ul>
+			</section>
+
 
 			<section className="rounded-lg border border-border bg-background p-5">
 				<h2 className="text-base font-semibold text-foreground">{steps[step]}</h2>
