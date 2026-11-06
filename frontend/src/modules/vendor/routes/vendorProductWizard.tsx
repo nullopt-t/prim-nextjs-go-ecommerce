@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, Loader2, PackagePlus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, PackagePlus, Plus, Trash2 } from "lucide-react";
 import { Link, useRouter } from "@/shared/i18n/navigation";
 import { vendorService } from "@/modules/vendor/api/vendorService";
 import type { VendorProduct } from "@/modules/vendor/types";
@@ -67,6 +67,45 @@ function draftKeyFor(productId?: string) {
 	return productId ? `prim:vendor-product-draft:${productId}` : "prim:vendor-product-draft:new";
 }
 
+interface VariationRow {
+	key: string;
+	values: string[];
+	combinations: string[];
+}
+
+function parseAxes(value: string): VariationRow[] {
+	return value
+		.split(",")
+		.map((item) => item.trim())
+		.filter(Boolean)
+		.map((key) => ({ key, values: [], combinations: [] }));
+}
+
+function unique(values: string[]): string[] {
+	return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function expandCombinations(rows: VariationRow[]): Record<string, string>[] {
+	const valid = rows.filter((row) => row.key && row.values.length > 0);
+	if (valid.length === 0) return [];
+	return valid.reduce<Record<string, string>[]>(
+		(combinations, row) => {
+			const next: Record<string, string>[] = [];
+			for (const combination of combinations) {
+				for (const value of row.values) {
+					next.push({ ...combination, [row.key]: value });
+				}
+			}
+			return next;
+		},
+		[{}],
+	);
+}
+
+function formatCombination(combination: Record<string, string>): string {
+	return Object.values(combination).join(", ");
+}
+
 export function VendorProductWizard() {
 	const t = useTranslations("vendor");
 	const router = useRouter();
@@ -79,6 +118,8 @@ export function VendorProductWizard() {
 	const [categoryAttributes, setCategoryAttributes] = useState<CategoryAttribute[]>([]);
 	const [attributesLoading, setAttributesLoading] = useState(false);
 	const [attributesError, setAttributesError] = useState<string | null>(null);
+	const [variationRows, setVariationRows] = useState<VariationRow[]>([]);
+	const [customValue, setCustomValue] = useState("");
 	const [loadingCatalog, setLoadingCatalog] = useState(true);
 	const [loadError, setLoadError] = useState<Error | null>(null);
 
@@ -153,7 +194,9 @@ export function VendorProductWizard() {
 			const saved = sessionStorage.getItem(draftKey);
 			if (saved) {
 				try {
-					setFormData({ ...EMPTY_FORM, ...(JSON.parse(saved) as ProductForm) });
+					const parsed = JSON.parse(saved) as ProductForm;
+					setFormData({ ...EMPTY_FORM, ...parsed });
+					setVariationRows(parseAxes(parsed.variationAxes ?? ""));
 					setHydrated(true);
 					return;
 				} catch {
@@ -171,15 +214,18 @@ export function VendorProductWizard() {
 				}
 				if (!found) throw new Error(t("wizard.loadFailed"));
 				setExistingProduct(found);
+				const initialAxes = found.productType === "variable" ? "" : "";
 				setFormData({
 					...EMPTY_FORM,
 					title: found.title,
 					slug: found.slug,
 					productType: (found.productType as "simple" | "variable") || "simple",
+					variationAxes: initialAxes,
 					sku: found.sku ?? "",
 					price: found.price ? String(found.price / 100) : "",
 					currency: found.currency ?? "EGP",
 				});
+				setVariationRows([]);
 			}
 		};
 
@@ -262,8 +308,11 @@ export function VendorProductWizard() {
 			}
 		}
 		if (currentStep === 1 && formData.productType === "variable") {
-			if (formData.variationAxes.split(",").map((a) => a.trim()).filter(Boolean).length === 0) {
+			const axes = variationRows.map((row) => row.key).filter(Boolean);
+			if (axes.length === 0) {
 				nextErrors.variationAxes = t("products.validation.axesRequired");
+			} else if (variationRows.some((row) => !row.key || row.values.length === 0)) {
+				nextErrors.variationAxes = t("wizard.attributes.rowsIncomplete");
 			}
 		}
 		if (currentStep === 2) {
@@ -299,6 +348,9 @@ export function VendorProductWizard() {
 	};
 
 	const finish = async (shouldPublish: boolean) => {
+		if (formData.productType === "variable") {
+			setField("variationAxes", variationRows.map((row) => row.key).filter(Boolean).join(", "));
+		}
 		if (!validateStep(0)) {
 			setStep(0);
 			return;
@@ -333,6 +385,10 @@ export function VendorProductWizard() {
 			} else {
 				const slug = formData.slug.trim() || slugify(formData.title);
 				const highlightList = formData.highlights.split("\n").map((h) => h.trim()).filter(Boolean);
+				const axes = formData.productType === "variable"
+					? [...new Set(variationRows.map((row) => row.key).filter(Boolean))]
+					: undefined;
+				const combinations = formData.productType === "variable" ? expandCombinations(variationRows) : [];
 				const created = await vendorService.createProduct({
 					brandId: formData.brandId || undefined,
 					categoryId: formData.categoryId,
@@ -341,22 +397,38 @@ export function VendorProductWizard() {
 					description: formData.description.trim() || undefined,
 					highlights: highlightList.length > 0 ? highlightList : undefined,
 					productType: formData.productType,
-					variationAxes:
-						formData.productType === "variable"
-							? formData.variationAxes.split(",").map((axis) => axis.trim()).filter(Boolean)
-							: undefined,
-				});
-				const variant = await vendorService.createVariant(created.data.id, {
-					title: formData.title.trim(),
-					sku: formData.sku.trim() || undefined,
-					price: priceMinor,
-					crossedOutPrice: crossedOutMinor,
-					currency: formData.currency.trim() || "EGP",
-					isDefault: true,
+					variationAxes: axes,
 				});
 				const initialStock = Number.parseInt(formData.initialStock, 10);
-				if (Number.isFinite(initialStock) && initialStock !== 0) {
-					await vendorService.adjustStock(variant.data.id, { quantity: initialStock, reason: "restock" });
+				if (combinations.length > 0) {
+					for (let index = 0; index < combinations.length; index += 1) {
+						const combination = combinations[index];
+						const label = formatCombination(combination);
+						const variant = await vendorService.createVariant(created.data.id, {
+							title: `${formData.title.trim()} - ${label}`,
+							sku: formData.sku.trim() ? `${formData.sku.trim()}-${index + 1}` : undefined,
+							price: priceMinor,
+							crossedOutPrice: crossedOutMinor,
+							currency: formData.currency.trim() || "EGP",
+							attributes: combination,
+							isDefault: index === 0,
+						});
+						if (index === 0 && Number.isFinite(initialStock) && initialStock !== 0) {
+							await vendorService.adjustStock(variant.data.id, { quantity: initialStock, reason: "restock" });
+						}
+					}
+				} else {
+					const variant = await vendorService.createVariant(created.data.id, {
+						title: formData.title.trim(),
+						sku: formData.sku.trim() || undefined,
+						price: priceMinor,
+						crossedOutPrice: crossedOutMinor,
+						currency: formData.currency.trim() || "EGP",
+						isDefault: true,
+					});
+					if (Number.isFinite(initialStock) && initialStock !== 0) {
+						await vendorService.adjustStock(variant.data.id, { quantity: initialStock, reason: "restock" });
+					}
 				}
 				if (shouldPublish) await vendorService.publishProduct(created.data.id);
 				notify.success(shouldPublish ? t("toasts.productPublished") : t("toasts.productAdded"));
@@ -406,7 +478,7 @@ export function VendorProductWizard() {
 		{ label: t("products.form.category"), value: categories.find((c) => c.id === formData.categoryId)?.name ?? (mode === "edit" ? t("wizard.review.categoryUnchanged") : "—") },
 		{ label: t("products.form.brand"), value: brands.find((b) => b.id === formData.brandId)?.name ?? t("products.form.noBrand") },
 		{ label: t("products.form.productType"), value: formData.productType === "variable" ? t("products.form.variable") : t("products.form.simple") },
-		{ label: t("products.form.variationAxes"), value: formData.variationAxes.trim() || "—" },
+		{ label: t("products.form.variationAxes"), value: variationRows.length > 0 ? variationRows.map((row) => `${row.key}(${row.values.join("|")})`).join(" · ") : (formData.variationAxes.trim() || "—") },
 		{ label: t("products.form.skuCode"), value: formData.sku.trim() || "—" },
 		{ label: t("products.form.sellingPrice"), value: formData.price ? `${formData.currency.toUpperCase()} ${(Number(formData.price)).toFixed(2)}` : "—" },
 		{ label: t("products.form.compareAtPrice"), value: formData.crossesOutPrice ? `${formData.currency.toUpperCase()} ${Number(formData.crossesOutPrice).toFixed(2)}` : "—" },
@@ -579,79 +651,142 @@ export function VendorProductWizard() {
 									<option value="variable">{t("products.form.variable")}</option>
 								</select>
 							</div>
-							{formData.productType === "variable" && !categoryAttributes.length && (
-								<div className="space-y-1 rounded-md border border-amber-600/25 bg-amber-600/5 p-3 text-xs leading-5 text-muted-foreground">
-									<p className="font-medium text-foreground">{t("wizard.axes.noneTitle")}</p>
-									<p>
-										{attributesLoading
-											? t("wizard.axes.loading")
-											: attributesError
-												? t("wizard.axes.loadFailed")
-												: t("wizard.axes.noneDescription")}
-									</p>
-								</div>
-							)}
-							{formData.productType === "variable" && categoryAttributes.length > 0 && (
-								<div className="space-y-2 rounded-md border border-border p-3">
-									<fieldset>
-										<legend className="text-xs font-medium text-muted-foreground">
-											{t("wizard.axes.selectLabel")}
-										</legend>
-										<div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-											{categoryAttributes.map((attribute) => {
-												const selected = formData.variationAxes
-													.split(",")
-													.map((axis) => axis.trim())
-													.filter(Boolean)
-													.includes(attribute.key);
-												return (
-													<label
-														key={attribute.key}
-														className="flex cursor-pointer items-start gap-2 rounded-md border border-border px-3 py-2 text-sm text-foreground"
-													>
-														<input
-															type="checkbox"
-															checked={selected}
-															onChange={(e) => {
-																const axes = formData.variationAxes
-																	.split(",")
-																	.map((v) => v.trim())
-																	.filter(Boolean);
-																const next = e.target.checked
-																	? [...axes, attribute.key]
-																	: axes.filter((v) => v !== attribute.key);
-																setField("variationAxes", next.join(", "));
-															}}
-														/>
-														<span>
-															<span className="font-medium">{attribute.label}</span>
-															{attribute.allowedValues?.length ? (
-																<span className="block text-xs text-muted-foreground">
-																	{attribute.allowedValues.slice(0, 4).join(" · ")}
-																</span>
-															) : null}
-														</span>
-													</label>
-												);
-											})}
-										</div>
-									</fieldset>
-								</div>
-							)}
-							{formData.productType === "variable" && (
-								<div className="space-y-1">
-									<label htmlFor="wizard-axes" className="text-sm font-medium text-foreground">{t("products.form.variationAxes")}</label>
-									<input
-										id="wizard-axes"
-										value={formData.variationAxes}
-										onChange={(e) => setField("variationAxes", e.target.value)}
-										placeholder={t("products.form.variationAxesPlaceholder")}
-										className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-									/>
-									{fieldError("variationAxes")}
-								</div>
-							)}
 						</div>
+						{formData.productType === "variable" && (
+							<div className="space-y-3 rounded-md border border-border p-4">
+								<div className="flex flex-wrap items-center justify-between gap-2">
+									<div>
+										<h3 className="text-sm font-semibold text-foreground">{t("wizard.attributes.title")}</h3>
+										<p className="text-xs text-muted-foreground">{t("wizard.attributes.subtitle")}</p>
+									</div>
+									<button
+										type="button"
+										disabled={!categoryAttributes.length || variationRows.length >= categoryAttributes.length}
+										onClick={() => setVariationRows((current) => [...current, { key: "", values: [], combinations: [] }])}
+										className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
+									>
+										<Plus className="size-3.5" />
+										{t("wizard.attributes.add")}
+									</button>
+								</div>
+
+								{attributesLoading && (
+									<p className="text-xs text-muted-foreground">{t("wizard.axes.loading")}</p>
+								)}
+								{attributesError && (
+									<p className="text-xs text-destructive">{t("wizard.axes.loadFailed")}</p>
+								)}
+								{!attributesLoading && !attributesError && !categoryAttributes.length && (
+									<p className="rounded-md bg-secondary/50 p-3 text-xs text-muted-foreground">{t("wizard.axes.noneDescription")}</p>
+								)}
+
+								{variationRows.map((row, rowIndex) => {
+									const selectedAttribute = categoryAttributes.find((attribute) => attribute.key === row.key);
+									const usedKeys = variationRows.map((item) => item.key).filter(Boolean);
+									const available = categoryAttributes.filter(
+										(attribute) => attribute.key === row.key || !usedKeys.includes(attribute.key),
+									);
+									return (
+										<div key={rowIndex} className="rounded-lg border border-border p-3">
+											<div className="flex items-center gap-2">
+												<select
+													value={row.key}
+													onChange={(e) => {
+														const next = [...variationRows];
+														next[rowIndex] = { ...row, key: e.target.value, values: [] };
+														setVariationRows(next);
+														setField("variationAxes", next.map((item) => item.key).filter(Boolean).join(", "));
+													}}
+													className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+													aria-label={`${t("products.form.variationAxes")} ${rowIndex + 1}`}
+												>
+													<option value="">{t("wizard.attributes.chooseAttribute")}</option>
+													{available.map((attribute) => (
+														<option key={attribute.key} value={attribute.key}>
+															{attribute.label} · {attribute.key}
+														</option>
+													))}
+												</select>
+												<button
+													type="button"
+													onClick={() => {
+														const next = variationRows.filter((_, index) => index !== rowIndex);
+														setVariationRows(next);
+														setField("variationAxes", next.map((item) => item.key).filter(Boolean).join(", "));
+													}}
+													className="rounded-md border border-border p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+													aria-label={t("actions.delete")}
+												>
+													<Trash2 className="size-4" />
+												</button>
+											</div>
+
+											{selectedAttribute && (
+												<div className="mt-3">
+													<p className="text-xs font-medium text-muted-foreground">{t("wizard.attributes.values")}</p>
+													<div className="mt-2 flex flex-wrap gap-2">
+														{selectedAttribute.allowedValues?.length ? (
+															selectedAttribute.allowedValues.map((value) => {
+																const selected = row.values.includes(value);
+																return (
+																	<button
+																		key={value}
+																		type="button"
+																		onClick={() => {
+																			const next = [...variationRows];
+																			next[rowIndex] = {
+																				...row,
+																				values: selected
+																					? row.values.filter((item) => item !== value)
+																					: [...row.values, value],
+																			};
+																			setVariationRows(next);
+																		}}
+																		className={`rounded-full border px-2.5 py-1 text-xs ${selected ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
+																	>
+																		{value}
+																	</button>
+																);
+															})
+														) : (
+															<div className="flex w-full gap-2">
+																<input
+																	value={customValue}
+																	onChange={(e) => setCustomValue(e.target.value)}
+																	placeholder={t("wizard.attributes.customValuePlaceholder")}
+																	className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+																/>
+																<button
+																	type="button"
+																	onClick={() => {
+																		const value = customValue.trim();
+																		if (!value || row.values.includes(value)) return;
+																		const next = [...variationRows];
+																		next[rowIndex] = { ...row, values: [...row.values, value] };
+																		setVariationRows(next);
+																		setCustomValue("");
+																	}}
+																	className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
+																>
+																	{t("wizard.attributes.addValue")}
+																</button>
+															</div>
+														)}
+													</div>
+												</div>
+											)}
+										</div>
+									);
+								})}
+
+								{expandCombinations(variationRows).length > 0 && (
+									<p className="text-xs text-muted-foreground">
+										{t("wizard.attributes.combinations", { count: expandCombinations(variationRows).length })}
+									</p>
+								)}
+								{fieldError("variationAxes")}
+							</div>
+						)}
 					</div>
 				)}
 

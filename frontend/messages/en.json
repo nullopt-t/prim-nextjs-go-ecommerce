@@ -2833,6 +2833,9 @@
         "loading": "Loading the category attributes…",
         "loadFailed": "The category attributes could not be loaded. Check your connection and try again.",
         "selectLabel": "Variation axes defined for this category"
+      },
+      "attributes": {
+        "rowsIncomplete": "Each attribute needs at least one value. Delete unfinished rows or choose values."
       }
     },
     "clear": "Clear selection"
