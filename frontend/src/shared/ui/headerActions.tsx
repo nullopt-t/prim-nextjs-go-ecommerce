@@ -36,7 +36,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 	const pathname = usePathname();
 	const { cartItems, openCart } = useCart();
 	const { user, isAuthenticated, logout } = useAuthContext();
-	const { } = useWishlist();
+	const { wishlistCount } = useWishlist();
 	const t = useTranslations("common.header");
 	const tAdmin = useTranslations("admin");
 
@@ -101,6 +101,21 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 				</button>
 			)}
 
+			{!isSettingsContext && (
+				<Link
+					href="/wishlist"
+					aria-label={t("wishlist")}
+					className="size-9 sm:size-10 rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all relative flex items-center justify-center border border-border/40 hover:border-accent-brand/40 shadow-2xs"
+				>
+					<Heart className="size-4.5 sm:size-5" />
+					{wishlistCount > 0 && (
+						<span className="absolute -top-1 end-0 min-w-[18px] h-4.5 px-1 bg-accent-brand text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-xs ring-2 ring-background animate-in zoom-in duration-150">
+							{wishlistCount}
+						</span>
+					)}
+				</Link>
+			)}
+
 			{/* 2. Notifications Center */}
 			{isAuthenticated && <NotificationsDropdown />}
 
@@ -140,7 +155,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 				{/* Dropdown Menu Panel */}
 				{isMenuOpen && (
 					<div
-						className={`absolute mt-2 w-64 rounded-2xl bg-card border border-border/80 shadow-xl py-2 z-50 animate-in fade-in-0 zoom-in-95 duration-150 ${
+						className={`absolute mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-card border border-border/80 shadow-xl py-2 z-50 animate-in fade-in-0 zoom-in-95 duration-150 ${
 							"end-0 origin-top-end"
 						}`}
 					>

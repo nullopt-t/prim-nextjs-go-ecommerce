@@ -120,7 +120,7 @@ export function NotificationsDropdown() {
       {/* Notifications Drawer / Dropdown */}
       {isOpen && (
         <div
-          className={`absolute mt-2 w-80 sm:w-96 rounded-2xl bg-card border border-border/80 shadow-2xl z-50 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150 ${
+          className={`absolute mt-2 w-80 sm:w-96 max-w-[calc(100vw-2rem)] rounded-2xl bg-card border border-border/80 shadow-2xl z-50 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150 ${
             "end-0 origin-top-end"
           }`}
         >

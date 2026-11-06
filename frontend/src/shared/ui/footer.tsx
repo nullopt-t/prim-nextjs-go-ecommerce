@@ -11,7 +11,7 @@ const currentDate = new Date().getFullYear();
 export function Footer() {
   const t = useTranslations("common");
   const { settings } = usePublicSettings();
-  const storeName = settings?.storeName?.trim() || "PRIM";
+  const storeName = settings?.storeName?.trim() || t("footer.defaultStore");
 
   const sections = [
     {
@@ -80,6 +80,16 @@ export function Footer() {
           nameKey: "footer.vendorPortal",
           path: "/vendor",
         },
+        {
+          id: "comp_careers",
+          nameKey: "footer.careers",
+          path: "/careers",
+        },
+        {
+          id: "comp_press",
+          nameKey: "footer.press",
+          path: "/press",
+        },
       ],
     },
   ];
@@ -91,21 +101,21 @@ export function Footer() {
           <div className="flex-1 max-w-sm">
             <Brand />
             <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-              {t("footer.footerDescription")}
+              {t("footer.footerDescription", { store: storeName })}
             </p>
             <StoreContactInfo />
           </div>
           {sections.map((value) => (
             <div key={value.id} className="flex-1">
-              <p className="mb-4 text-base font-bold text-foreground">
+              <h2 className="mb-4 text-base font-bold text-foreground">
                 {t(value.title)}
-              </p>
+              </h2>
               <div className="flex flex-col gap-2.5">
                 {value.content.map((content) => (
                   <Link
                     href={content.path}
                     key={content.id}
-                    className="text-muted-foreground hover:text-accent-brand text-sm transition-colors cursor-pointer"
+                    className="text-muted-foreground hover:text-accent-brand text-sm transition-colors cursor-pointer py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand"
                   >
                     {t(content.nameKey)}
                   </Link>
