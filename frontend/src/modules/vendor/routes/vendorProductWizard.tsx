@@ -119,7 +119,7 @@ export function VendorProductWizard() {
 	const [attributesLoading, setAttributesLoading] = useState(false);
 	const [attributesError, setAttributesError] = useState<string | null>(null);
 	const [variationRows, setVariationRows] = useState<VariationRow[]>([]);
-	const [customValue, setCustomValue] = useState("");
+	const [customValues, setCustomValues] = useState<Record<number, string>>({});
 	const [loadingCatalog, setLoadingCatalog] = useState(true);
 	const [loadError, setLoadError] = useState<Error | null>(null);
 
@@ -501,30 +501,6 @@ export function VendorProductWizard() {
 				}
 			/>
 
-			<ol className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label={t("wizard.progressLabel")}>
-				{steps.map((label, index) => {
-					const isCurrent = index === step;
-					const isDone = index < step;
-					return (
-						<li
-							key={label}
-							className={`rounded-lg border px-3 py-2.5 text-xs ${
-								isCurrent
-									? "border-primary bg-primary/5 font-semibold text-foreground"
-									: "border-border bg-background text-muted-foreground"
-							}`}
-							aria-current={isCurrent ? "step" : undefined}
-						>
-							<span className="flex items-center gap-1.5">
-								{isDone ? <Check className="size-3.5 text-emerald-600" /> : <span className="font-bold">{index + 1}</span>}
-								{label}
-							</span>
-						</li>
-					);
-				})}
-			</ol>
-
-
 			<section className="rounded-lg border border-border bg-background p-4">
 				<div className="flex items-center justify-between">
 					<h2 className="text-sm font-semibold text-foreground">{t("wizard.readinessTitle")}</h2>
@@ -536,13 +512,29 @@ export function VendorProductWizard() {
 				<div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary" role="progressbar" aria-valuenow={readiness.percent} aria-valuemax={100}>
 					<div className="h-full bg-primary transition-all" style={{ width: `${readiness.percent}%` }} />
 				</div>
-				<ul className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-					{readiness.checks.map((check) => (
-						<li key={check.label} className={`rounded-md border px-2.5 py-2 ${check.done ? "border-emerald-600/30 bg-emerald-600/5 text-foreground" : "border-border text-muted-foreground"}`}>
-							{check.done ? "✓ " : ""}{check.label}
-						</li>
-					))}
-				</ul>
+				<ol className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4" aria-label={t("wizard.progressLabel")}>
+					{readiness.checks.map((check, index) => {
+						const isCurrent = index === step;
+						return (
+							<li
+								key={check.label}
+								aria-current={isCurrent ? "step" : undefined}
+								className={`rounded-md border px-2.5 py-2 ${
+									check.done
+										? "border-emerald-600/30 bg-emerald-600/5 text-foreground"
+										: isCurrent
+											? "border-primary bg-primary/5 font-semibold text-foreground"
+											: "border-border text-muted-foreground"
+								}`}
+							>
+								<span className="flex items-center gap-1.5">
+									{check.done ? <Check className="size-3.5 shrink-0 text-emerald-600" /> : <span className="font-bold">{index + 1}</span>}
+									{check.label}
+								</span>
+							</li>
+						);
+					})}
+				</ol>
 			</section>
 
 
@@ -661,7 +653,7 @@ export function VendorProductWizard() {
 									</div>
 									<button
 										type="button"
-										disabled={!categoryAttributes.length || variationRows.length >= categoryAttributes.length}
+										disabled={variationRows.length >= Math.max(categoryAttributes.length, 1) && categoryAttributes.length > 0}
 										onClick={() => setVariationRows((current) => [...current, { key: "", values: [], combinations: [] }])}
 										className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
 									>
@@ -686,34 +678,45 @@ export function VendorProductWizard() {
 									const available = categoryAttributes.filter(
 										(attribute) => attribute.key === row.key || !usedKeys.includes(attribute.key),
 									);
+									const syncRows = (next: VariationRow[]) => {
+										setVariationRows(next);
+										setField("variationAxes", next.map((item) => item.key).filter(Boolean).join(", "));
+									};
+									const updateRow = (nextRow: VariationRow) => {
+										const next = [...variationRows];
+										next[rowIndex] = nextRow;
+										syncRows(next);
+									};
+									const customValue = customValues[rowIndex] ?? "";
 									return (
 										<div key={rowIndex} className="rounded-lg border border-border p-3">
 											<div className="flex items-center gap-2">
-												<select
-													value={row.key}
-													onChange={(e) => {
-														const next = [...variationRows];
-														next[rowIndex] = { ...row, key: e.target.value, values: [] };
-														setVariationRows(next);
-														setField("variationAxes", next.map((item) => item.key).filter(Boolean).join(", "));
-													}}
-													className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-													aria-label={`${t("products.form.variationAxes")} ${rowIndex + 1}`}
-												>
-													<option value="">{t("wizard.attributes.chooseAttribute")}</option>
-													{available.map((attribute) => (
-														<option key={attribute.key} value={attribute.key}>
-															{attribute.label} · {attribute.key}
-														</option>
-													))}
-												</select>
+												{categoryAttributes.length > 0 ? (
+													<select
+														value={row.key}
+														onChange={(e) => updateRow({ ...row, key: e.target.value, values: [] })}
+														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+														aria-label={`${t("products.form.variationAxes")} ${rowIndex + 1}`}
+													>
+														<option value="">{t("wizard.attributes.chooseAttribute")}</option>
+														{available.map((attribute) => (
+															<option key={attribute.key} value={attribute.key}>
+																{attribute.label} · {attribute.key}
+															</option>
+														))}
+													</select>
+												) : (
+													<input
+														value={row.key}
+														onChange={(e) => updateRow({ ...row, key: e.target.value.trim() })}
+														placeholder={t("products.form.variationAxes")}
+														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+														aria-label={`${t("products.form.variationAxes")} ${rowIndex + 1}`}
+													/>
+												)}
 												<button
 													type="button"
-													onClick={() => {
-														const next = variationRows.filter((_, index) => index !== rowIndex);
-														setVariationRows(next);
-														setField("variationAxes", next.map((item) => item.key).filter(Boolean).join(", "));
-													}}
+													onClick={() => syncRows(variationRows.filter((_, index) => index !== rowIndex))}
 													className="rounded-md border border-border p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
 													aria-label={t("actions.delete")}
 												>
@@ -721,27 +724,25 @@ export function VendorProductWizard() {
 												</button>
 											</div>
 
-											{selectedAttribute && (
+											{row.key && (
 												<div className="mt-3">
 													<p className="text-xs font-medium text-muted-foreground">{t("wizard.attributes.values")}</p>
-													<div className="mt-2 flex flex-wrap gap-2">
-														{selectedAttribute.allowedValues?.length ? (
+													<div className="mt-2 flex flex-wrap items-center gap-2">
+														{selectedAttribute?.allowedValues?.length ? (
 															selectedAttribute.allowedValues.map((value) => {
 																const selected = row.values.includes(value);
 																return (
 																	<button
 																		key={value}
 																		type="button"
-																		onClick={() => {
-																			const next = [...variationRows];
-																			next[rowIndex] = {
+																		onClick={() =>
+																			updateRow({
 																				...row,
 																				values: selected
 																					? row.values.filter((item) => item !== value)
 																					: [...row.values, value],
-																			};
-																			setVariationRows(next);
-																		}}
+																			})
+																		}
 																		className={`rounded-full border px-2.5 py-1 text-xs ${selected ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
 																	>
 																		{value}
@@ -749,28 +750,46 @@ export function VendorProductWizard() {
 																);
 															})
 														) : (
-															<div className="flex w-full gap-2">
-																<input
-																	value={customValue}
-																	onChange={(e) => setCustomValue(e.target.value)}
-																	placeholder={t("wizard.attributes.customValuePlaceholder")}
-																	className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-																/>
-																<button
-																	type="button"
-																	onClick={() => {
-																		const value = customValue.trim();
-																		if (!value || row.values.includes(value)) return;
-																		const next = [...variationRows];
-																		next[rowIndex] = { ...row, values: [...row.values, value] };
-																		setVariationRows(next);
-																		setCustomValue("");
-																	}}
-																	className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
-																>
-																	{t("wizard.attributes.addValue")}
-																</button>
-															</div>
+															<>
+																{row.values.map((value) => (
+																	<button
+																		key={value}
+																		type="button"
+																		onClick={() => updateRow({ ...row, values: row.values.filter((item) => item !== value) })}
+																		className="rounded-full border border-primary bg-primary px-2.5 py-1 text-xs text-primary-foreground"
+																	>
+																		{value} ×
+																	</button>
+																))}
+																<div className="flex w-full min-w-52 flex-1 gap-2">
+																	<input
+																		value={customValue}
+																		onChange={(e) => setCustomValues((current) => ({ ...current, [rowIndex]: e.target.value }))}
+																		onKeyDown={(e) => {
+																			if (e.key !== "Enter") return;
+																			e.preventDefault();
+																			const value = customValue.trim();
+																			if (!value || row.values.includes(value)) return;
+																			updateRow({ ...row, values: [...row.values, value] });
+																			setCustomValues((current) => ({ ...current, [rowIndex]: "" }));
+																		}}
+																		placeholder={t("wizard.attributes.customValuePlaceholder")}
+																		className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+																	/>
+																	<button
+																		type="button"
+																		onClick={() => {
+																			const value = customValue.trim();
+																			if (!value || row.values.includes(value)) return;
+																			updateRow({ ...row, values: [...row.values, value] });
+																			setCustomValues((current) => ({ ...current, [rowIndex]: "" }));
+																		}}
+																		className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
+																	>
+																		{t("wizard.attributes.addValue")}
+																	</button>
+																</div>
+															</>
 														)}
 													</div>
 												</div>
