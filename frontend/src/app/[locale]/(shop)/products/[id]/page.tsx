@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { ProductDetails } from "@/modules/catalog/components/ProductDetails";
 import { getProductBySlug } from "@/shared/lib/server/catalog";
@@ -51,6 +52,12 @@ export async function generateMetadata({
 			url: path,
 			images: product.img ? [{ url: product.img, alt: title }] : undefined,
 		},
+		twitter: {
+			card: "summary_large_image",
+			title,
+			description,
+			images: product.img ? [product.img] : undefined,
+		},
 	};
 }
 
@@ -61,46 +68,64 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 		getPublicSettings(),
 	]);
 
-	const jsonLd = product
-		? {
-				"@context": "https://schema.org",
-				"@type": "Product",
-				name: localizedTitle(product, locale, id),
-				description:
-					typeof product.description === "string" ? product.description : undefined,
-				image: product.img ? [product.img] : undefined,
-				sku: product.sku || product.id,
-				brand:
-					typeof product.brand === "string" && product.brand
-						? { "@type": "Brand", name: product.brand }
-						: undefined,
-				aggregateRating:
-					Number(product.stars) > 0 && Number(product.reviews) > 0
-						? {
-								"@type": "AggregateRating",
-								ratingValue: Number(product.stars),
-								reviewCount: Number(product.reviews),
-							}
-						: undefined,
-				offers: {
-					"@type": "Offer",
-					price: Number(product.price) || 0,
-					priceCurrency: settings?.currency || product.currency || undefined,
-					availability: product.inStock
-						? "https://schema.org/InStock"
-						: "https://schema.org/OutOfStock",
-				},
-			}
-		: null;
+	if (!product) notFound();
+
+	const price = Number(product.price);
+	const brandName =
+		typeof product.brand === "string"
+			? product.brand
+			: typeof product.brand?.name === "string"
+				? product.brand.name
+				: undefined;
+
+	const jsonLd = {
+		"@context": "https://schema.org",
+		"@type": "Product",
+		name: localizedTitle(product, locale, id),
+		description:
+			typeof product.description === "string" ? product.description : undefined,
+		image: product.img ? [product.img] : undefined,
+		sku: product.sku || undefined,
+		brand: brandName ? { "@type": "Brand", name: brandName } : undefined,
+		aggregateRating:
+			Number(product.stars) > 0 && Number(product.reviews) > 0
+				? {
+						"@type": "AggregateRating",
+						ratingValue: Number(product.stars),
+						reviewCount: Number(product.reviews),
+					}
+				: undefined,
+		offers:
+			price > 0
+				? {
+						"@type": "Offer",
+						price,
+						priceCurrency: settings?.currency || product.currency || undefined,
+						itemCondition: "https://schema.org/NewCondition",
+						availability: product.inStock
+							? "https://schema.org/InStock"
+							: "https://schema.org/OutOfStock",
+						seller: settings?.storeName
+							? { "@type": "Organization", name: settings.storeName }
+							: undefined,
+					}
+				: undefined,
+	};
+
+	const breadcrumbJsonLd = {
+		"@context": "https://schema.org",
+		"@type": "BreadcrumbList",
+		itemListElement: [
+			{ "@type": "ListItem", position: 1, name: "Home", item: `/${locale}` },
+			{ "@type": "ListItem", position: 2, name: "Products", item: `/${locale}/products` },
+			{ "@type": "ListItem", position: 3, name: localizedTitle(product, locale, id) },
+		],
+	};
 
 	return (
 		<>
-			{jsonLd ? (
-				<script
-					type="application/ld+json"
-					dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-				/>
-			) : null}
+			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
 			<ProductDetails initialProduct={product} />
 		</>
 	);
