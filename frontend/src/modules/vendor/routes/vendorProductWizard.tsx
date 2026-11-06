@@ -7,7 +7,7 @@ import { Link, useRouter } from "@/shared/i18n/navigation";
 import { vendorService } from "@/modules/vendor/api/vendorService";
 import type { VendorProduct } from "@/modules/vendor/types";
 import { catalogService } from "@/modules/catalog/api/catalogService";
-import type { Brand, Category } from "@/modules/catalog/types";
+import type { Brand, Category, CategoryAttribute } from "@/modules/catalog/types";
 import { ErrorState } from "@/shared/ui/errorState";
 import { PageHeader } from "@/shared/ui/pageHeader";
 import { apiErrorMessage, notify } from "@/shared/lib/notify";
@@ -19,6 +19,7 @@ interface ProductForm {
 	brandId: string;
 	categoryId: string;
 	description: string;
+	highlights: string;
 	productType: "simple" | "variable";
 	variationAxes: string;
 	sku: string;
@@ -34,6 +35,7 @@ const EMPTY_FORM: ProductForm = {
 	brandId: "",
 	categoryId: "",
 	description: "",
+	highlights: "",
 	productType: "simple",
 	variationAxes: "",
 	sku: "",
@@ -74,6 +76,9 @@ export function VendorProductWizard() {
 
 	const [categories, setCategories] = useState<Category[]>([]);
 	const [brands, setBrands] = useState<Brand[]>([]);
+	const [categoryAttributes, setCategoryAttributes] = useState<CategoryAttribute[]>([]);
+	const [attributesLoading, setAttributesLoading] = useState(false);
+	const [attributesError, setAttributesError] = useState<string | null>(null);
 	const [loadingCatalog, setLoadingCatalog] = useState(true);
 	const [loadError, setLoadError] = useState<Error | null>(null);
 
@@ -193,6 +198,40 @@ export function VendorProductWizard() {
 		};
 	}, [draftKey, mode, productId, t]);
 
+	// Load variation-axis definitions for the selected category so the seller can
+	// pick real axes instead of guessing keys. Categories with no attributes get a
+	// clear empty state; request failures are surfaced, not silently ignored.
+	useEffect(() => {
+		let cancelled = false;
+		if (!formData.categoryId) {
+			setCategoryAttributes([]);
+			setAttributesLoading(false);
+			setAttributesError(null);
+			return () => {
+				cancelled = true;
+			};
+		}
+		setAttributesLoading(true);
+		setAttributesError(null);
+		void catalogService
+			.getCategoryAttributes(formData.categoryId)
+			.then((response) => {
+				if (cancelled) return;
+				setCategoryAttributes(response.data ?? []);
+			})
+			.catch((error: unknown) => {
+				if (cancelled) return;
+				setCategoryAttributes([]);
+				setAttributesError(apiErrorMessage(error, t("wizard.axes.loadFailed")));
+			})
+			.finally(() => {
+				if (!cancelled) setAttributesLoading(false);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [formData.categoryId, t]);
+
 	// Persist the staged draft so back/forward navigation and refresh keep state.
 	useEffect(() => {
 		if (!hydrated) return;
@@ -282,6 +321,7 @@ export function VendorProductWizard() {
 				await vendorService.updateProduct(productId, {
 					title: formData.title.trim(),
 					description: formData.description.trim() || undefined,
+					highlights: formData.highlights.split("\n").map((h) => h.trim()).filter(Boolean),
 					productType: formData.productType,
 					variationAxes:
 						formData.productType === "variable"
@@ -292,12 +332,14 @@ export function VendorProductWizard() {
 				notify.success(shouldPublish ? t("toasts.productPublished") : t("toasts.productUpdated"));
 			} else {
 				const slug = formData.slug.trim() || slugify(formData.title);
+				const highlightList = formData.highlights.split("\n").map((h) => h.trim()).filter(Boolean);
 				const created = await vendorService.createProduct({
 					brandId: formData.brandId || undefined,
 					categoryId: formData.categoryId,
 					slug,
 					title: formData.title.trim(),
 					description: formData.description.trim() || undefined,
+					highlights: highlightList.length > 0 ? highlightList : undefined,
 					productType: formData.productType,
 					variationAxes:
 						formData.productType === "variable"
@@ -359,6 +401,7 @@ export function VendorProductWizard() {
 
 	const reviewRows = [
 		{ label: t("products.form.title"), value: formData.title.trim() || "—" },
+		{ label: t("products.form.highlights"), value: formData.highlights.split("\n").map((h) => h.trim()).filter(Boolean).join(" · ") || "—" },
 		{ label: t("products.form.slug"), value: formData.slug.trim() || slugify(formData.title) || "—" },
 		{ label: t("products.form.category"), value: categories.find((c) => c.id === formData.categoryId)?.name ?? (mode === "edit" ? t("wizard.review.categoryUnchanged") : "—") },
 		{ label: t("products.form.brand"), value: brands.find((b) => b.id === formData.brandId)?.name ?? t("products.form.noBrand") },
@@ -511,6 +554,18 @@ export function VendorProductWizard() {
 								className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
 							/>
 						</div>
+						<div className="space-y-1">
+							<label htmlFor="wizard-highlights" className="text-sm font-medium text-foreground">{t("products.form.highlights")}</label>
+							<textarea
+								id="wizard-highlights"
+								value={formData.highlights}
+								onChange={(e) => setField("highlights", e.target.value)}
+								rows={3}
+								placeholder={t("products.form.highlightsPlaceholder")}
+								className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+							/>
+							<p className="text-xs text-muted-foreground">{t("products.form.highlightsNote")}</p>
+						</div>
 						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div className="space-y-1">
 								<label htmlFor="wizard-type" className="text-sm font-medium text-foreground">{t("products.form.productType")}</label>
@@ -524,6 +579,65 @@ export function VendorProductWizard() {
 									<option value="variable">{t("products.form.variable")}</option>
 								</select>
 							</div>
+							{formData.productType === "variable" && !categoryAttributes.length && (
+								<div className="space-y-1 rounded-md border border-amber-600/25 bg-amber-600/5 p-3 text-xs leading-5 text-muted-foreground">
+									<p className="font-medium text-foreground">{t("wizard.axes.noneTitle")}</p>
+									<p>
+										{attributesLoading
+											? t("wizard.axes.loading")
+											: attributesError
+												? t("wizard.axes.loadFailed")
+												: t("wizard.axes.noneDescription")}
+									</p>
+								</div>
+							)}
+							{formData.productType === "variable" && categoryAttributes.length > 0 && (
+								<div className="space-y-2 rounded-md border border-border p-3">
+									<fieldset>
+										<legend className="text-xs font-medium text-muted-foreground">
+											{t("wizard.axes.selectLabel")}
+										</legend>
+										<div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+											{categoryAttributes.map((attribute) => {
+												const selected = formData.variationAxes
+													.split(",")
+													.map((axis) => axis.trim())
+													.filter(Boolean)
+													.includes(attribute.key);
+												return (
+													<label
+														key={attribute.key}
+														className="flex cursor-pointer items-start gap-2 rounded-md border border-border px-3 py-2 text-sm text-foreground"
+													>
+														<input
+															type="checkbox"
+															checked={selected}
+															onChange={(e) => {
+																const axes = formData.variationAxes
+																	.split(",")
+																	.map((v) => v.trim())
+																	.filter(Boolean);
+																const next = e.target.checked
+																	? [...axes, attribute.key]
+																	: axes.filter((v) => v !== attribute.key);
+																setField("variationAxes", next.join(", "));
+															}}
+														/>
+														<span>
+															<span className="font-medium">{attribute.label}</span>
+															{attribute.allowedValues?.length ? (
+																<span className="block text-xs text-muted-foreground">
+																	{attribute.allowedValues.slice(0, 4).join(" · ")}
+																</span>
+															) : null}
+														</span>
+													</label>
+												);
+											})}
+										</div>
+									</fieldset>
+								</div>
+							)}
 							{formData.productType === "variable" && (
 								<div className="space-y-1">
 									<label htmlFor="wizard-axes" className="text-sm font-medium text-foreground">{t("products.form.variationAxes")}</label>

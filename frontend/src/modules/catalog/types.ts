@@ -18,6 +18,15 @@ export interface AdminCategory {
   updatedAt: string;
 }
 
+export interface CategoryAttribute {
+  key: string;
+  label: string;
+  valueType: string;
+  allowedValues?: string[];
+  isFilterable: boolean;
+  sortOrder: number;
+}
+
 export interface Brand {
   id: string;
   name: string;

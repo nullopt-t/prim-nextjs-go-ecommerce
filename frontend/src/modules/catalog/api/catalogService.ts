@@ -4,6 +4,7 @@ import type {
   AdminCategory,
   Brand,
   Category,
+  CategoryAttribute,
   Product,
   ProductDetails,
   ProductRatingSummary,
@@ -68,6 +69,9 @@ export const catalogService = {
 
   getProductBySlug: (slug: string) =>
     api.get<ApiResponse<ProductDetails>>(`/api/v1/products/${slug}`),
+
+  getCategoryAttributes: (categoryId: string) =>
+    api.get<ApiResponse<CategoryAttribute[]>>(`/api/v1/categories/${encodeURIComponent(categoryId)}/attributes`),
 
   getCategories: (params?: CatalogListParams) =>
     api.get<ApiResponse<Category[]> | ApiPaginatedResponse<Category>>(

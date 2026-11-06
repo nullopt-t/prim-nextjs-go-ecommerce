@@ -679,6 +679,8 @@ type VendorCreateProductRequest struct {
 	Title string `json:"title" binding:"required,max=200" example:"Wireless Headphones"`
 	// Full product description.
 	Description *string `json:"description,omitempty"`
+	// Key bullet points shown on the storefront.
+	Highlights []string `json:"highlights,omitempty" example:"Active Noise Cancellation,30h battery"`
 	// Product classification: simple or variable.
 	ProductType string `json:"productType" binding:"omitempty,oneof=simple variable" example:"simple"`
 	// Ordered variation axis keys for variable products.
@@ -829,6 +831,7 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 		Slug:          &req.Slug,
 		Title:         req.Title,
 		Description:   req.Description,
+		Highlights:    req.Highlights,
 		ProductType:   req.ProductType,
 		VariationAxes: req.VariationAxes,
 	})

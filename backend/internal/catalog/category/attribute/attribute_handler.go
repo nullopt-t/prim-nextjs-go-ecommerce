@@ -10,6 +10,30 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 )
 
+type PublicAttributeItem struct {
+	Key           string   `json:"key"`
+	Label         string   `json:"label"`
+	ValueType     string   `json:"valueType"`
+	AllowedValues []string `json:"allowedValues,omitempty"`
+	IsFilterable  bool     `json:"isFilterable"`
+	SortOrder     int      `json:"sortOrder"`
+}
+
+func toPublicAttribute(item AttributeItem) PublicAttributeItem {
+	var allowed []string
+	if len(item.AllowedValues) > 0 {
+		_ = json.Unmarshal(item.AllowedValues, &allowed)
+	}
+	return PublicAttributeItem{
+		Key:           item.Key,
+		Label:         item.Label,
+		ValueType:     item.ValueType,
+		AllowedValues: allowed,
+		IsFilterable:  item.IsFilterable,
+		SortOrder:     item.SortOrder,
+	}
+}
+
 type AttributeHandler struct {
 	attributeService *AttributeService
 }
@@ -30,6 +54,25 @@ func (h *AttributeHandler) ListAttributes(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, api.DataResponse{Data: list})
+}
+
+func (h *AttributeHandler) ListByCategory(c *gin.Context) {
+	rawID := c.Param("id")
+	parsed, err := uuid.Parse(rawID)
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid category ID").WithCode(apierr.CodeValidationFailed))
+		return
+	}
+	list, err := h.attributeService.ListByCategory(c.Request.Context(), parsed)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	items := make([]PublicAttributeItem, 0, len(list))
+	for _, item := range list {
+		items = append(items, toPublicAttribute(item))
+	}
+	c.JSON(http.StatusOK, api.DataResponse{Data: items})
 }
 
 type CreateAttributeRequest struct {

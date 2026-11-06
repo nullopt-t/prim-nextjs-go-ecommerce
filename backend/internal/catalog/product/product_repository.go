@@ -101,6 +101,8 @@ func (r *ProductRepository) Create(
 			category_id,
 			slug,
 			title,
+			description,
+			highlights,
 			status,
 			product_type,
 			variation_axes,
@@ -108,7 +110,7 @@ func (r *ProductRepository) Create(
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
 		RETURNING created_at, updated_at
 	`
 
@@ -120,6 +122,8 @@ func (r *ProductRepository) Create(
 		p.CategoryID,
 		p.Slug,
 		p.Title,
+		p.Description,
+		p.Highlights,
 		p.Status,
 		p.ProductType,
 		p.VariationAxes,

@@ -189,6 +189,7 @@ type CreateProductInput struct {
 	Slug          *string
 	Title         string
 	Description   *string
+	Highlights    []string
 	ProductType   string
 	VariationAxes []string
 }
@@ -373,6 +374,7 @@ func (s *ProductService) CreateProductAsDraft(
 			CategoryID:    input.CategoryID,
 			Title:         input.Title,
 			Description:   input.Description,
+			Highlights:    input.Highlights,
 			Status:        model.PublicationStatusDraft,
 			ProductType:   pt,
 			VariationAxes: axes,

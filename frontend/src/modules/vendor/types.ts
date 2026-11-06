@@ -112,6 +112,7 @@ export interface CreateVendorProductPayload {
   slug: string;
   title: string;
   description?: string;
+  highlights?: string[];
   productType?: string;
   variationAxes?: string[];
 }

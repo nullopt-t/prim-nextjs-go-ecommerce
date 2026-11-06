@@ -2628,7 +2628,10 @@
         "unitCost": "Unit Cost (EGP)",
         "variable": "Variable",
         "variationAxes": "Variation axes",
-        "variationAxesPlaceholder": "color, storage"
+        "variationAxesPlaceholder": "color, storage",
+        "highlights": "Highlights",
+        "highlightsPlaceholder": "Active Noise Cancellation\n30h battery",
+        "highlightsNote": "One bullet per line. Shown on the storefront product page."
       },
       "lifecycleFailed": "The product change could not be completed.",
       "loadDescription": "Your product catalog could not be loaded.",
@@ -2823,6 +2826,13 @@
         "categoryUnchanged": "Kept from the saved product",
         "note": "Saving creates this product as a draft. Publishing makes it visible to buyers immediately.",
         "publishedNote": "This product is already published. Saving keeps it published unless you adjust status from the product list."
+      },
+      "axes": {
+        "noneTitle": "This category has no published variation attributes",
+        "noneDescription": "Ask the marketplace admin to define variation attributes for this category, or sell the product as simple. Free-typed axes often fail with “Variation axis is not defined for this category.”",
+        "loading": "Loading the category attributes…",
+        "loadFailed": "The category attributes could not be loaded. Check your connection and try again.",
+        "selectLabel": "Variation axes defined for this category"
       }
     },
     "clear": "Clear selection"

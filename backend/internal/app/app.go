@@ -220,6 +220,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	)
 	attributeRouter := attribute.NewRouter(attributeHandler, sessionStore)
 	attributeRouter.MapRoutes(v1)
+	attributeRouter.MapPublicRoutes(v1)
 
 	// admin real-time broadcaster
 	adminBroadcaster := order.NewAdminBroadcaster(app.redisClient, app.logger)
