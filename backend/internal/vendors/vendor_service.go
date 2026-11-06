@@ -44,9 +44,11 @@ type VendorOrderReader interface {
 }
 
 // ObjectReader is the subset of object persistence needed to resolve vendor
-// asset URLs.
+// asset URLs. Storage object UUIDs never cross the vendor API boundary:
+// clients send public URLs and the object domain resolves them.
 type ObjectReader interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
+	ResolvePublicURL(ctx context.Context, rawURL string) (*model.Object, error)
 }
 
 // CommissionDefaults supplies the platform-wide default commission rate used

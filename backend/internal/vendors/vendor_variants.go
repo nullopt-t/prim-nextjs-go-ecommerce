@@ -3,6 +3,7 @@ package vendors
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
@@ -136,11 +137,25 @@ func (s *Service) ListProductVariants(
 	return result, nil
 }
 
+// resolveThumbnailURL maps a client-supplied public thumbnail URL to the
+// internal storage object id. Empty input means "no thumbnail".
+func (s *Service) resolveThumbnailURL(ctx context.Context, rawURL string) (*uuid.UUID, error) {
+	if strings.TrimSpace(rawURL) == "" {
+		return nil, nil
+	}
+	obj, err := s.objects.ResolvePublicURL(ctx, rawURL)
+	if err != nil {
+		return nil, err
+	}
+	return &obj.ID, nil
+}
+
 // CreateVariant adds a variant to a merchant-owned product.
 func (s *Service) CreateVariant(
 	ctx context.Context,
 	userID uuid.UUID,
 	productID uuid.UUID,
+	thumbnailURL string,
 	in *variant.CreateVariantInput,
 ) (*model.ProductVariant, error) {
 	var created *model.ProductVariant
@@ -149,8 +164,13 @@ func (s *Service) CreateVariant(
 			return err
 		}
 
+		thumbnailID, err := s.resolveThumbnailURL(ctx, thumbnailURL)
+		if err != nil {
+			return err
+		}
+		in.ThumbnailObjectID = thumbnailID
+
 		in.ProductID = productID
-		var err error
 		created, err = s.variants.CreateVariant(ctx, in)
 		return err
 	})
@@ -165,11 +185,16 @@ func (s *Service) CreateVariant(
 }
 
 // UpdateVariant edits a variant of a merchant-owned product.
-func (s *Service) UpdateVariant(ctx context.Context, userID, variantID uuid.UUID, in variant.UpdateVariantInput) error {
+func (s *Service) UpdateVariant(ctx context.Context, userID, variantID uuid.UUID, thumbnailURL string, in variant.UpdateVariantInput) error {
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
 		if _, _, err := s.requireOwnedVariant(ctx, userID, variantID); err != nil {
 			return err
 		}
+		thumbnailID, err := s.resolveThumbnailURL(ctx, thumbnailURL)
+		if err != nil {
+			return err
+		}
+		in.ThumbnailObjectID = thumbnailID
 		return s.variants.UpdateVariant(ctx, variantID, in)
 	})
 	if err != nil {

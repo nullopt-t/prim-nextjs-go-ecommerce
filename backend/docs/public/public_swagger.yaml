@@ -487,25 +487,6 @@ definitions:
       status:
         type: string
     type: object
-  MediaItem:
-    properties:
-      bucket:
-        type: string
-      contentType:
-        type: string
-      createdAt:
-        type: string
-      fileSize:
-        type: integer
-      id:
-        type: string
-      objectKey:
-        type: string
-      status:
-        type: string
-      url:
-        type: string
-    type: object
   MessageResponse:
     properties:
       message:
@@ -1705,8 +1686,8 @@ definitions:
         description: Optional custom SKU; generated when omitted.
         example: SKU-BLK-01
         type: string
-      thumbnailObjectId:
-        description: Optional thumbnail storage object UUID.
+      thumbnailUrl:
+        description: Optional public thumbnail image URL, as returned by POST /vendor/media.
         type: string
       title:
         description: Variant display title.
@@ -1714,6 +1695,13 @@ definitions:
         type: string
     required:
     - title
+    type: object
+  VendorMediaUploadResponse:
+    properties:
+      url:
+        description: Public URL of the uploaded image.
+        example: https://cdn.example.com/catalog/8f14e45f-ea0a-4a7a-9c9a-123456789abc
+        type: string
     type: object
   VendorOrderItemResponse:
     properties:
@@ -2007,8 +1995,8 @@ definitions:
       sku:
         description: Updated SKU.
         type: string
-      thumbnailObjectId:
-        description: Updated thumbnail storage object UUID.
+      thumbnailUrl:
+        description: Updated public thumbnail image URL, as returned by POST /vendor/media.
         type: string
       title:
         description: Updated title.
@@ -4551,9 +4539,9 @@ paths:
     post:
       consumes:
       - multipart/form-data
-      description: Uploads a raster image to the catalog bucket and returns the storage
-        object id, which callers pass as thumbnailObjectId when creating variants.
-        Only registered vendors may upload.
+      description: Uploads a raster image to the catalog bucket and returns its public
+        URL, which callers pass as thumbnailUrl when creating variants. Only registered
+        vendors may upload.
       parameters:
       - description: Image file (JPEG, PNG, GIF, WebP or AVIF, up to 10 MB)
         in: formData
@@ -4568,7 +4556,7 @@ paths:
             - $ref: '#/definitions/DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/MediaItem'
+                  $ref: '#/definitions/VendorMediaUploadResponse'
               type: object
         "401":
           description: Authentication required

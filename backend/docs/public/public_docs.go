@@ -3605,7 +3605,7 @@ const docTemplatepublic = `{
                         "SessionAuth": []
                     }
                 ],
-                "description": "Uploads a raster image to the catalog bucket and returns the storage object id, which callers pass as thumbnailObjectId when creating variants. Only registered vendors may upload.",
+                "description": "Uploads a raster image to the catalog bucket and returns its public URL, which callers pass as thumbnailUrl when creating variants. Only registered vendors may upload.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -3634,7 +3634,7 @@ const docTemplatepublic = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/MediaItem"
+                                            "$ref": "#/definitions/VendorMediaUploadResponse"
                                         }
                                     }
                                 }
@@ -5951,35 +5951,6 @@ const docTemplatepublic = `{
                 }
             }
         },
-        "MediaItem": {
-            "type": "object",
-            "properties": {
-                "bucket": {
-                    "type": "string"
-                },
-                "contentType": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "fileSize": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "objectKey": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
         "MessageResponse": {
             "type": "object",
             "properties": {
@@ -7609,14 +7580,24 @@ const docTemplatepublic = `{
                     "type": "string",
                     "example": "SKU-BLK-01"
                 },
-                "thumbnailObjectId": {
-                    "description": "Optional thumbnail storage object UUID.",
+                "thumbnailUrl": {
+                    "description": "Optional public thumbnail image URL, as returned by POST /vendor/media.",
                     "type": "string"
                 },
                 "title": {
                     "description": "Variant display title.",
                     "type": "string",
                     "example": "Black, 128GB"
+                }
+            }
+        },
+        "VendorMediaUploadResponse": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "description": "Public URL of the uploaded image.",
+                    "type": "string",
+                    "example": "https://cdn.example.com/catalog/8f14e45f-ea0a-4a7a-9c9a-123456789abc"
                 }
             }
         },
@@ -8023,8 +8004,8 @@ const docTemplatepublic = `{
                     "description": "Updated SKU.",
                     "type": "string"
                 },
-                "thumbnailObjectId": {
-                    "description": "Updated thumbnail storage object UUID.",
+                "thumbnailUrl": {
+                    "description": "Updated public thumbnail image URL, as returned by POST /vendor/media.",
                     "type": "string"
                 },
                 "title": {

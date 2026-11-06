@@ -375,7 +375,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	vendorService := vendors.NewService(
 		vendorRepo,
 		userRepo,
-		objectRepository,
+		objectService,
 		settlementReader,
 		orderRepo,
 		productService,

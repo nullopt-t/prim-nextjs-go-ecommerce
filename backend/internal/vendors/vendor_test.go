@@ -351,7 +351,7 @@ func (s *VendorServiceSuite) SetupSuite() {
 	s.service = vendors.NewService(
 		vendors.NewRepository(),
 		user.NewPostgresRepository(),
-		object.NewRepository(),
+		object.NewService(runner, object.NewRepository(), storage.NoopProvider{}),
 		order.NewRepository(),
 		order.NewRepository(),
 		s.catalog,
@@ -892,7 +892,7 @@ func (s staticSessionStore) GetSessionByID(context.Context, string) (*model.User
 // not exercise uploads.
 type stubMediaUploader struct{}
 
-func (stubMediaUploader) UploadMedia(*gin.Context) {}
+func (stubMediaUploader) Upload(*gin.Context) (*object.MediaItem, error) { return nil, nil }
 
 func (s *VendorServiceSuite) assertAPIError(err error) *apierr.APIError {
 	s.Require().Error(err)
@@ -1001,7 +1001,7 @@ func (s *VendorServiceSuite) TestVendorCreatesVariantUnderOwnedProduct() {
 	s.Require().NoError(err)
 
 	price := int64(12500)
-	v, err := s.service.CreateVariant(s.ctx, s.vendorUID, created.ID, &variant.CreateVariantInput{
+	v, err := s.service.CreateVariant(s.ctx, s.vendorUID, created.ID, "", &variant.CreateVariantInput{
 		Title: "Black",
 		Price: &price,
 	})
@@ -1034,7 +1034,7 @@ func (s *VendorServiceSuite) TestVendorCannotTouchForeignVariant() {
 	s.variants.mu.Unlock()
 
 	title := "Hijacked"
-	err := s.service.UpdateVariant(s.ctx, s.vendorUID, foreignVariant.ID, variant.UpdateVariantInput{Title: &title})
+	err := s.service.UpdateVariant(s.ctx, s.vendorUID, foreignVariant.ID, "", variant.UpdateVariantInput{Title: &title})
 	apiErr := s.assertAPIError(err)
 	s.Equal(http.StatusNotFound, apiErr.Status)
 

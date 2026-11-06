@@ -5,6 +5,9 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
+	"path"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/model"
@@ -189,6 +192,13 @@ func (os *ObjectService) DeleteObjectByID(ctx context.Context, id uuid.UUID) err
 	return os.DeleteObject(ctx, obj.Bucket, obj.Key)
 }
 
+// GetByID loads a storage object by id. It aliases GetObjectByID under the
+// repository-style name so the service satisfies narrow reader interfaces
+// (e.g. vendors.ObjectReader) without receiver changes in consumers.
+func (os *ObjectService) GetByID(ctx context.Context, id uuid.UUID) (*model.Object, error) {
+	return os.GetObjectByID(ctx, id)
+}
+
 func (os *ObjectService) GetObjectByID(ctx context.Context, id uuid.UUID) (*model.Object, error) {
 	var obj *model.Object
 	err := os.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
@@ -198,6 +208,46 @@ func (os *ObjectService) GetObjectByID(ctx context.Context, id uuid.UUID) (*mode
 	})
 	if err != nil {
 		return nil, os.handleError(err, "Failed to load object")
+	}
+	return obj, nil
+}
+
+// ResolvePublicURL maps a public object URL back to its stored object. The
+// public URL is the only identifier clients ever see; storage object UUIDs
+// stay internal. Uploaded keys are single-segment UUIDs, so the last two
+// path segments of the public URL are bucket and key.
+func (os *ObjectService) ResolvePublicURL(ctx context.Context, rawURL string) (*model.Object, error) {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil || parsed.Path == "" {
+		return nil, apierr.BadRequestError("Invalid thumbnail URL").
+			WithCode(apierr.CodeInvalidInput)
+	}
+	segments := strings.Split(strings.Trim(path.Clean(parsed.Path), "/"), "/")
+	if len(segments) < 2 {
+		return nil, apierr.BadRequestError("Invalid thumbnail URL").
+			WithCode(apierr.CodeInvalidInput)
+	}
+	key, err := url.PathUnescape(segments[len(segments)-1])
+	if err != nil || key == "" {
+		return nil, apierr.BadRequestError("Invalid thumbnail URL").
+			WithCode(apierr.CodeInvalidInput)
+	}
+	bucket := segments[len(segments)-2]
+
+	var obj *model.Object
+	err = os.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
+		var err error
+		obj, err = os.objectRepo.GetByBucketAndKey(ctx, bucket, key)
+		return err
+	})
+	if err != nil {
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			return nil, apierr.NotFoundError("Thumbnail image not found").WithCode(apierr.CodeNotFound)
+		}
+		return nil, os.handleError(err, "Failed to load thumbnail image")
+	}
+	if obj.DeletedAt != nil || obj.Status == model.ObjectStatusDeleted {
+		return nil, apierr.NotFoundError("Thumbnail image not found").WithCode(apierr.CodeNotFound)
 	}
 	return obj, nil
 }

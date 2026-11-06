@@ -139,6 +139,29 @@ func (or *ObjectRepository) GetByID(
 	return obj, nil
 }
 
+func (or *ObjectRepository) GetByBucketAndKey(
+	ctx context.Context,
+	bucket, key string,
+) (*model.Object, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	obj := &model.Object{}
+	err = executor.QueryRow(ctx, `
+		SELECT id, bucket, object_key, content_type, file_size, status, created_at, updated_at, deleted_at
+		FROM storage_objects
+		WHERE bucket = $1 AND object_key = $2
+	`, bucket, key).Scan(
+		&obj.ID, &obj.Bucket, &obj.Key, &obj.ContentType,
+		&obj.FileSize, &obj.Status, &obj.CreatedAt, &obj.UpdatedAt, &obj.DeletedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get object by bucket and key: %w", err)
+	}
+	return obj, nil
+}
+
 func (or *ObjectRepository) GetByIDs(
 	ctx context.Context,
 	ids []uuid.UUID,

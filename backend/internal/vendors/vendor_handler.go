@@ -10,6 +10,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/shared/validation"
 	"github.com/nullopt-t/prim-backend/pkg/api"
@@ -24,10 +25,10 @@ type Handler struct {
 }
 
 // MediaUploader is the narrow slice of the object domain the vendor portal
-// needs: merchant thumbnail uploads. The object service owns storage and
-// content-type validation; the vendor handler only gates on vendor status.
+// needs: merchant image uploads. Storage object ids stay internal; the
+// vendor surface only ever returns public URLs.
 type MediaUploader interface {
-	UploadMedia(c *gin.Context)
+	Upload(c *gin.Context) (*object.MediaItem, error)
 }
 
 func NewHandler(service *Service, media MediaUploader) *Handler {
@@ -193,11 +194,11 @@ func (h *Handler) RegisterVendor(c *gin.Context) {
 
 // UploadMedia godoc
 // @Summary      Upload a merchant product image
-// @Description  Uploads a raster image to the catalog bucket and returns the storage object id, which callers pass as thumbnailObjectId when creating variants. Only registered vendors may upload.
+// @Description  Uploads a raster image to the catalog bucket and returns its public URL, which callers pass as thumbnailUrl when creating variants. Only registered vendors may upload.
 // @Tags         Vendor
 // @Accept       multipart/form-data
 // @Param        file formData string true "Image file (JPEG, PNG, GIF, WebP or AVIF, up to 10 MB)"
-// @Success      201 {object} api.DataResponse{data=object.MediaItem}
+// @Success      201 {object} api.DataResponse{data=VendorMediaUploadResponse}
 // @Failure      401 {object} api.ErrorResponse "Authentication required"
 // @Failure      404 {object} api.ErrorResponse "Vendor not found"
 // @Router       /vendor/media [post]
@@ -214,7 +215,20 @@ func (h *Handler) UploadMedia(c *gin.Context) {
 		return
 	}
 
-	h.media.UploadMedia(c)
+	item, err := h.media.Upload(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, api.DataResponse{Data: VendorMediaUploadResponse{URL: item.URL}})
+}
+
+// VendorMediaUploadResponse is the merchant-facing upload result. It exposes
+// only the public URL; storage object ids never leave the backend.
+type VendorMediaUploadResponse struct {
+	// Public URL of the uploaded image.
+	URL string `json:"url" example:"https://cdn.example.com/catalog/8f14e45f-ea0a-4a7a-9c9a-123456789abc"`
 }
 
 // GetMyVendor godoc
@@ -352,6 +366,14 @@ func parseOptionalUUID(s string) *uuid.UUID {
 		return nil
 	}
 	return &id
+}
+
+// Helper: dereference an optional string; nil means absent.
+func derefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 // ---- Admin lifecycle ----------------------------------------------------
@@ -1048,8 +1070,8 @@ type VendorCreateVariantRequest struct {
 	Attributes map[string]any `json:"attributes,omitempty"`
 	// Marks this variant as the default storefront selection.
 	IsDefault bool `json:"isDefault" example:"true"`
-	// Optional thumbnail storage object UUID.
-	ThumbnailObjectID *string `json:"thumbnailObjectId,omitempty"`
+	// Optional public thumbnail image URL, as returned by POST /vendor/media.
+	ThumbnailURL *string `json:"thumbnailUrl,omitempty"`
 }
 
 // VendorUpdateVariantRequest is the merchant variant edit payload.
@@ -1068,8 +1090,8 @@ type VendorUpdateVariantRequest struct {
 	Attributes map[string]any `json:"attributes,omitempty"`
 	// Updated default-selection flag.
 	IsDefault *bool `json:"isDefault,omitempty"`
-	// Updated thumbnail storage object UUID.
-	ThumbnailObjectID *string `json:"thumbnailObjectId,omitempty"`
+	// Updated public thumbnail image URL, as returned by POST /vendor/media.
+	ThumbnailURL *string `json:"thumbnailUrl,omitempty"`
 }
 
 // VendorStockAdjustRequest is a merchant stock movement payload.
@@ -1169,12 +1191,7 @@ func (h *Handler) CreateVariant(c *gin.Context) {
 		return
 	}
 
-	var thumbnailID *uuid.UUID
-	if req.ThumbnailObjectID != nil {
-		thumbnailID = parseOptionalUUID(*req.ThumbnailObjectID)
-	}
-
-	created, err := h.service.CreateVariant(c.Request.Context(), userID, productID, &variant.CreateVariantInput{
+	created, err := h.service.CreateVariant(c.Request.Context(), userID, productID, derefString(req.ThumbnailURL), &variant.CreateVariantInput{
 		SKU:               req.SKU,
 		Title:             req.Title,
 		Price:             req.Price,
@@ -1182,7 +1199,6 @@ func (h *Handler) CreateVariant(c *gin.Context) {
 		Currency:          req.Currency,
 		Attributes:        req.Attributes,
 		IsDefault:         req.IsDefault,
-		ThumbnailObjectID: thumbnailID,
 	})
 	if err != nil {
 		_ = c.Error(err)
@@ -1223,12 +1239,7 @@ func (h *Handler) UpdateVariant(c *gin.Context) {
 		return
 	}
 
-	var thumbnailID *uuid.UUID
-	if req.ThumbnailObjectID != nil {
-		thumbnailID = parseOptionalUUID(*req.ThumbnailObjectID)
-	}
-
-	if err := h.service.UpdateVariant(c.Request.Context(), userID, variantID, variant.UpdateVariantInput{
+	if err := h.service.UpdateVariant(c.Request.Context(), userID, variantID, derefString(req.ThumbnailURL), variant.UpdateVariantInput{
 		SKU:               req.SKU,
 		Title:             req.Title,
 		Price:             req.Price,
@@ -1236,7 +1247,6 @@ func (h *Handler) UpdateVariant(c *gin.Context) {
 		Currency:          req.Currency,
 		Attributes:        req.Attributes,
 		IsDefault:         req.IsDefault,
-		ThumbnailObjectID: thumbnailID,
 	}); err != nil {
 		_ = c.Error(err)
 		return
