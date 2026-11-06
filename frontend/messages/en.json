@@ -1296,6 +1296,7 @@
       "emailLabel": "Email Address",
       "emailPlaceholder": "name@example.com",
       "emailRequired": "Please enter your email address.",
+      "sendFailed": "Could not send a verification code. Please try again.",
       "signButton": "Continue",
       "subtitle": "Enter your email to sign in or create a new account.",
       "title": "Get Started"

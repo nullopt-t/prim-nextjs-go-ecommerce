@@ -93,6 +93,7 @@ export default function OtpInput({
           }}
           type="text"
           inputMode="numeric"
+          autoComplete="one-time-code"
           pattern="[0-9]*"
           maxLength={1}
           value={digit}

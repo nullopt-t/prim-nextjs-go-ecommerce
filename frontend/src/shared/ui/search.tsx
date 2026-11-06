@@ -37,12 +37,14 @@ export function SearchBar({ className = "" }: { className?: string }) {
 
   return (
     <form
+      role="search"
       onSubmit={handleSubmit}
       className={`flex items-center relative bg-secondary/40 hover:bg-secondary/60 focus-within:bg-background rounded-full border border-border/80 focus-within:border-accent-brand focus-within:ring-2 focus-within:ring-accent-brand/15 px-3.5 py-1.5 transition-all duration-200 ${className}`}
     >
-      <Search className="text-muted-foreground size-4 shrink-0 transition-colors" />
+      <Search aria-hidden className="text-muted-foreground size-4 shrink-0 transition-colors" />
       <input
         type="search"
+        aria-label={t("header.search")}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="w-full text-xs sm:text-sm text-foreground bg-transparent placeholder:text-muted-foreground px-2.5 py-1 outline-none font-normal"

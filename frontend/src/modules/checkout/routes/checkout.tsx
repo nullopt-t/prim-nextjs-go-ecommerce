@@ -28,6 +28,7 @@ import {
 	Loader2
 } from "lucide-react";
 import { CountrySelect } from "@/shared/ui/CountrySelect";
+import { ErrorState } from "@/shared/ui/errorState";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuthContext } from "@/modules/auth/model/authContext";
@@ -96,11 +97,11 @@ export function Checkout() {
 	const tCart = useTranslations("cart");
 	const tAddresses = useTranslations("addresses");
 	const { user } = useAuthContext();
-	const { cartItems, refreshCart, resetCart, appliedCoupon, applyCoupon, removeCoupon } = useCart();
+	const { cartItems, refreshCart, resetCart, appliedCoupon, applyCoupon, removeCoupon, loading: cartLoading, errorMsg: cartError } = useCart();
 	const { checkout, loading: placingOrder } = useCheckout();
 	const [couponInput, setCouponInput] = useState("");
 	const [applyingCoupon, setApplyingCoupon] = useState(false);
-	const { addresses, addAddress, refreshAddresses } = useAddresses();
+	const { addresses, addAddress, refreshAddresses, loading: addressesLoading, error: addressesError } = useAddresses();
 	const router = useRouter();
 	const { settings: storeSettings } = usePublicSettings();
 
@@ -231,7 +232,28 @@ export function Checkout() {
 
 	// Validation helpers
 	const validateStep1 = () => {
-		if (!cartItems || cartItems.length === 0) {
+		if (cartLoading && (!cartItems || cartItems.length === 0)) {
+		return (
+			<div role="status" aria-live="polite" aria-busy="true" className="max-w-2xl mx-auto py-16 px-4">
+				<div className="bg-card border border-border rounded-3xl p-8 sm:p-12 shadow-sm space-y-4">
+					<div className="h-6 w-40 animate-pulse rounded bg-secondary/70" />
+					<div className="h-4 w-full animate-pulse rounded bg-secondary/50" />
+					<div className="h-4 w-2/3 animate-pulse rounded bg-secondary/50" />
+					<div className="h-12 w-full animate-pulse rounded-xl bg-secondary/50" />
+				</div>
+			</div>
+		);
+	}
+
+	if (cartError && (!cartItems || cartItems.length === 0)) {
+		return (
+			<div className="max-w-2xl mx-auto py-16 px-4">
+				<ErrorState onRetry={() => void refreshCart?.()} />
+			</div>
+		);
+	}
+
+	if (!cartItems || cartItems.length === 0) {
 			notify.error(tCart("empty.title"));
 			router.push("/cart");
 			return false;
@@ -437,6 +459,7 @@ export function Checkout() {
 										<li key={step.id} className="flex flex-col items-center">
 											<button
 												type="button"
+												aria-current={isActive ? "step" : undefined}
 												disabled={step.id > currentStep}
 												onClick={() => {
 													if (step.id < currentStep) {
@@ -727,15 +750,26 @@ export function Checkout() {
 												</div>
 											</form>
 										</Form>
+									) : addressesError ? (
+										<div className="py-8 px-4 border border-border rounded-2xl bg-background">
+											<ErrorState onRetry={() => void refreshAddresses?.()} />
+										</div>
+									) : addressesLoading ? (
+										<div role="status" aria-live="polite" aria-busy="true" className="py-8 px-4 border border-border rounded-2xl space-y-3">
+											<div className="h-4 w-1/2 animate-pulse rounded bg-secondary/60" />
+											<div className="h-4 w-2/3 animate-pulse rounded bg-secondary/60" />
+										</div>
 									) : addresses && addresses.length > 0 ? (
 										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 											{addresses.map((addr) => {
 												const isSelected = effectiveAddressId === addr.id;
 												return (
-													<div
+													<button
+														type="button"
 														key={addr.id}
 														onClick={() => setSelectedAddressId(addr.id)}
-														className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between ${
+														aria-pressed={isSelected}
+														className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between text-start ${
 															isSelected
 																? "border-accent-brand bg-accent-brand/5 ring-2 ring-accent-brand"
 																: "border-border hover:border-border/80 bg-background"
@@ -765,12 +799,13 @@ export function Checkout() {
 														{addr.phone && (
 															<span className="text-[11px] text-muted-foreground mt-3 font-medium">{addr.phone}</span>
 														)}
-													</div>
+													</button>
 												);
 											})}
 
 											{/* Add Address Card Option */}
-											<div
+											<button
+												type="button"
 												onClick={handleOpenAddAddress}
 												className="p-5 rounded-xl border border-dashed border-border hover:border-accent-brand/60 bg-secondary/10 hover:bg-accent-brand/5 cursor-pointer transition-all flex flex-col items-center justify-center text-center gap-2 min-h-[140px]"
 											>
@@ -779,7 +814,7 @@ export function Checkout() {
 												</div>
 												<span className="text-xs font-semibold text-foreground">{t("address.addAnother")}</span>
 												<span className="text-[11px] text-muted-foreground">{t("address.addAnotherDesc")}</span>
-											</div>
+											</button>
 										</div>
 									) : (
 										<div className="py-8 px-4 border border-dashed border-border rounded-2xl bg-secondary/20 text-center flex flex-col items-center">
@@ -867,9 +902,11 @@ export function Checkout() {
 										</div>
 
 										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-											<div
+											<button
+												type="button"
 												onClick={() => setShippingSpeed("standard")}
-												className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
+												aria-pressed={shippingSpeed === "standard"}
+												className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between text-start ${
 													shippingSpeed === "standard"
 														? "border-accent-brand bg-accent-brand/5 ring-2 ring-accent-brand"
 														: "border-border hover:border-border/80 bg-background"
@@ -900,11 +937,13 @@ export function Checkout() {
 														<span>{t("delivery.selected")}</span>
 													</div>
 												)}
-											</div>
+											</button>
 
-											<div
+											<button
+												type="button"
 												onClick={() => setShippingSpeed("express")}
-												className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
+												aria-pressed={shippingSpeed === "express"}
+												className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between text-start ${
 													shippingSpeed === "express"
 														? "border-accent-brand bg-accent-brand/5 ring-2 ring-accent-brand"
 														: "border-border hover:border-border/80 bg-background"
@@ -933,13 +972,14 @@ export function Checkout() {
 														<span>{t("delivery.selected")}</span>
 													</div>
 												)}
-											</div>
+											</button>
 										</div>
 
 										{/* Optional Delivery Instructions */}
 										<div className="space-y-2 pt-4 border-t border-border/60">
-											<label className="text-xs font-semibold text-foreground">{t("delivery.instructions")}</label>
+											<label htmlFor="delivery-notes" className="text-xs font-semibold text-foreground">{t("delivery.instructions")}</label>
 											<input
+												id="delivery-notes"
 												type="text"
 												placeholder={t("delivery.instructionsPlaceholder")}
 												value={deliveryNotes}
@@ -1163,6 +1203,7 @@ export function Checkout() {
 										<button
 											type="button"
 											onClick={handleRemoveCoupon}
+											aria-label={t("summary.removePromo")}
 											className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-background/80 transition-colors"
 											title={t("summary.removePromo")}
 										>
@@ -1175,6 +1216,7 @@ export function Checkout() {
 											<Tag className="size-3.5 text-muted-foreground shrink-0 me-2" />
 											<input
 												type="text"
+												aria-label={t("summary.promoPlaceholder")}
 												placeholder={t("summary.promoPlaceholder")}
 												value={couponInput}
 												onChange={(e) => setCouponInput(e.target.value)}

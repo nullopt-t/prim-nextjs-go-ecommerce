@@ -120,6 +120,8 @@ export function NotificationsDropdown() {
       {/* Notifications Drawer / Dropdown */}
       {isOpen && (
         <div
+          role="list"
+          aria-label={t("notifications")}
           className={`absolute mt-2 w-80 sm:w-96 max-w-[calc(100vw-2rem)] rounded-2xl bg-card border border-border/80 shadow-2xl z-50 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150 ${
             "end-0 origin-top-end"
           }`}
@@ -140,6 +142,7 @@ export function NotificationsDropdown() {
               <button
                 type="button"
                 onClick={markAllAsRead}
+                aria-label={t("markAllRead")}
                 className="text-xs text-muted-foreground hover:text-accent-brand flex items-center gap-1 cursor-pointer transition-colors"
                 title={t("markAllRead")}
               >
@@ -172,7 +175,15 @@ export function NotificationsDropdown() {
               notifications.map((item) => (
                 <div
                   key={item.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleNotificationClick(item)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handleNotificationClick(item);
+                    }
+                  }}
                   className={`p-3.5 flex items-start gap-3 transition-colors cursor-pointer group hover:bg-secondary/50 relative ${
                     !item.isRead ? "bg-accent-brand/[0.03]" : ""
                   }`}
@@ -214,12 +225,13 @@ export function NotificationsDropdown() {
                   {/* Delete button on hover */}
                   <button
                     type="button"
+                    className="p-1 text-muted-foreground/60 hover:text-destructive rounded-lg transition-all absolute top-3 end-3 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100"
+                    aria-label={t("dismiss")}
+                    title={t("dismiss")}
                     onClick={(e) => {
                       e.stopPropagation();
                       deleteNotification(item.id);
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground/60 hover:text-rose-500 rounded-lg transition-all absolute top-3 ltr:right-3 rtl:left-3"
-                    title={t("dismiss")}
                   >
                     <X className="size-3.5" />
                   </button>

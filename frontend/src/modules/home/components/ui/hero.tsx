@@ -45,6 +45,7 @@ export default function Hero() {
 
 	useEffect(() => {
 		if (!isPlaying || slides.length < 2) return;
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 		timerRef.current = setInterval(() => {
 			nextSlide();
 		}, AUTOPLAY_INTERVAL);
@@ -65,6 +66,8 @@ export default function Hero() {
 			className="relative w-full overflow-hidden rounded-2xl border border-border/60 group/hero"
 			onMouseEnter={() => setIsPlaying(false)}
 			onMouseLeave={() => setIsPlaying(true)}
+			onFocus={() => setIsPlaying(false)}
+			onBlur={() => setIsPlaying(true)}
 			aria-roledescription="carousel"
 			aria-label={t("billboard")}
 		>

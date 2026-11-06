@@ -6,7 +6,7 @@ import { useRouter } from "@/shared/i18n/navigation";
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import { useCart } from "@/modules/cart/model/useCart";
 import { GuestCartPreview } from "./ui/GuestCartPreview";
-import { notify } from "@/shared/lib/notify";
+import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
 
 export function LoginView() {
@@ -35,30 +35,24 @@ export function LoginView() {
   };
 
   const handleEmailSubmit = async (email: string) => {
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("identifier", email.trim());
-      sessionStorage.setItem("merge_cart", String(mergeCart));
-    }
-
     try {
       setIsLoading(true);
       const res = await startChallenge({ email: email.trim() });
-      const searchParams = new URLSearchParams(window.location.search);
-      const redirect = searchParams.get("redirect");
-      const targetUrl = redirect ? `/auth/verify?redirect=${encodeURIComponent(redirect)}` : "/auth/verify";
-
-      if (res.success) {
-        notify.success(t("sign.codeSent"));
-        router.push(targetUrl);
-      } else {
-        // Fallback navigation if offline or demo mode
-        router.push(targetUrl);
+      if (!res.success) {
+        notify.error(apiErrorMessage(res, t("sign.sendFailed")));
+        return;
       }
-    } catch {
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("identifier", email.trim());
+        sessionStorage.setItem("merge_cart", String(mergeCart));
+      }
       const searchParams = new URLSearchParams(window.location.search);
       const redirect = searchParams.get("redirect");
       const targetUrl = redirect ? `/auth/verify?redirect=${encodeURIComponent(redirect)}` : "/auth/verify";
+      notify.success(t("sign.codeSent"));
       router.push(targetUrl);
+    } catch {
+      notify.error(t("sign.sendFailed"));
     } finally {
       setIsLoading(false);
     }

@@ -31,24 +31,39 @@ export function CartSidebar() {
     };
   }, [isCartOpen]);
 
+  useEffect(() => {
+    if (!isCartOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeCart();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isCartOpen, closeCart]);
+
   if (!mounted) return null;
 
   return createPortal(
     <>
       {/* Backdrop */}
       {isCartOpen && (
-        <div
-          className="fixed inset-0 h-[100dvh] z-[100] bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+        <button
+          type="button"
+          aria-label={tUi("cart.closeCart")}
+          className="fixed inset-0 h-[100dvh] z-[100] cursor-default bg-black/60 backdrop-blur-xs transition-opacity duration-300"
           onClick={closeCart}
         />
       )}
 
       {/* Sidebar Drawer */}
       <div
+        role="dialog"
+        aria-modal={isCartOpen}
+        aria-label={t("cart.title", { defaultMessage: "Your Cart" })}
+        aria-hidden={!isCartOpen}
         className={`fixed top-0 bottom-0 h-[100dvh] z-[100] w-full sm:w-[420px] max-w-full bg-background border-s border-border shadow-2xl transition-transform duration-300 ease-out flex flex-col end-0 ${
           isCartOpen
             ? "translate-x-0"
-            : "translate-x-full rtl:-translate-x-full"
+            : "translate-x-full rtl:-translate-x-full invisible"
         }`}
       >
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border bg-card/60 backdrop-blur-sm">

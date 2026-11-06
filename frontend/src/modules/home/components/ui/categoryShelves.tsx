@@ -62,7 +62,7 @@ function CategoryShelf({ category, products }: CategoryShelfProps) {
         type="button"
         onClick={() => scroll("left")}
         aria-label={t("scrollLeft")}
-        className="flex absolute ltr:left-2 rtl:right-2 top-1/2 -translate-y-1/2 z-10 size-9 rounded-full bg-background/90 backdrop-blur-sm border border-border shadow-md items-center justify-center text-foreground hover:bg-accent hover:text-accent-brand opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
+        className="flex absolute ltr:left-2 rtl:right-2 top-1/2 -translate-y-1/2 z-10 size-9 rounded-full bg-background/90 backdrop-blur-sm border border-border shadow-md items-center justify-center text-foreground hover:bg-accent hover:text-accent-brand opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity cursor-pointer"
       >
         <ChevronLeft className="size-4 rtl:rotate-180" />
       </button>
@@ -71,7 +71,7 @@ function CategoryShelf({ category, products }: CategoryShelfProps) {
         type="button"
         onClick={() => scroll("right")}
         aria-label={t("scrollRight")}
-        className="flex absolute ltr:right-2 rtl:left-2 top-1/2 -translate-y-1/2 z-10 size-9 rounded-full bg-background/90 backdrop-blur-sm border border-border shadow-md items-center justify-center text-foreground hover:bg-accent hover:text-accent-brand opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
+        className="flex absolute ltr:right-2 rtl:left-2 top-1/2 -translate-y-1/2 z-10 size-9 rounded-full bg-background/90 backdrop-blur-sm border border-border shadow-md items-center justify-center text-foreground hover:bg-accent hover:text-accent-brand opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity cursor-pointer"
       >
         <ChevronRight className="size-4 rtl:rotate-180" />
       </button>

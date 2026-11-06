@@ -53,17 +53,19 @@ export function QuantitySelector({
         type="button"
         onClick={handleDecrement}
         disabled={disabled || currentValue <= min}
+        aria-label="Decrease quantity"
         className="h-full flex-1 flex items-center justify-center border-e border-border/80 hover:bg-secondary/70 transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer text-sm font-semibold"
       >
         -
       </button>
-      <span className="h-full flex-[1.5] flex items-center justify-center font-semibold text-xs sm:text-sm">
+      <span className="h-full flex-[1.5] flex items-center justify-center font-semibold text-xs sm:text-sm" aria-live="polite">
         {currentValue}
       </span>
       <button
         type="button"
         onClick={handleIncrement}
         disabled={disabled || currentValue >= max}
+        aria-label="Increase quantity"
         className="h-full flex-1 flex items-center justify-center border-s border-border/80 hover:bg-secondary/70 transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer text-sm font-semibold"
       >
         +
