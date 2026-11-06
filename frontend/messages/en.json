@@ -129,7 +129,8 @@
       "refresh": "Refresh",
       "reactivate": "Reactivate Account",
       "save": "Save",
-      "suspend": "Suspend Account"
+      "suspend": "Suspend Account",
+      "edit": "Edit"
     },
     "audit": {
       "apply": "Apply Filters",
@@ -1270,7 +1271,8 @@
       "toast": {
         "statusFailed": "The vendor status could not be updated.",
         "statusUpdated": "Vendor status updated."
-      }
+      },
+      "count": "{count} vendors"
     }
   },
   "auth": {
