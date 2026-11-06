@@ -1,0 +1,35 @@
+# dependabot.yml
+# """
+# Automated dependency updates for Go and Node.js monorepo
+# """
+
+version: 2
+
+updates:
+  # Enable version updates for npm/Node.js
+  - package-ecosystem: "npm"
+    directory: "/"
+    # schedule: "weekly"
+    open-pull-requests-limit: 10
+    schedule:
+      interval: "weekly"
+    # ignore:
+    #   - dependency-type: "all"
+    #     update-type: "version-update:semver-major"
+    #     update-type: "version-update:semver-minor"
+    #     update-type: "version-update:semver-patch"
+    #     update-type: "version-update:auto"
+  # Enable version updates for Go
+  - package-ecosystem: "go"
+    directory: "/backend"
+    open-pull-requests-limit: 10
+    schedule:
+      interval: "weekly"
+    # ignore:
+    #   - dependency-type: "all"
+    #     update-type: "version-update:semver-major"
+    #     update-type: "version-update:semver-minor"
+    #     update-type: "version-update:semver-patch"
+    #     update-type: "version-update:auto"
+    # allow: ...
+    # ignor: ...

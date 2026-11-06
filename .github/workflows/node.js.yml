@@ -3,20 +3,13 @@ name: Frontend CI
 on:
   push:
     branches: ["main"]
-    paths:
-      - "frontend/**"
-      - ".github/workflows/node.js.yml"
   pull_request:
     branches: ["main"]
-    paths:
-      - "frontend/**"
-      - ".github/workflows/node.js.yml"
 
 jobs:
-  build:
-    name: Build & Check (Node ${{ matrix.node-version }})
+  build-and-test:
+    name: Build & Check
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
         node-version: [20.x, 22.x]
@@ -47,9 +40,17 @@ jobs:
 
       - name: Test
         run: npm test
+        env:
+          CI: true
 
       - name: Build Next.js
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           NEXT_PUBLIC_API_URL: "http://localhost:8081"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-report
+          path: frontend/vitest/
