@@ -44,6 +44,23 @@ async function fetchJson<T = unknown>(path: string, tags: string[] = []): Promis
 	}
 }
 
+async function fetchEnvelope<T = unknown>(path: string, tags: string[] = []): Promise<{ data: T | null; meta: Record<string, unknown> | null }> {
+	const baseUrl = getApiBaseUrl();
+	if (!baseUrl) return { data: null, meta: null };
+
+	try {
+		const response = await fetch(`${baseUrl}${path}`, {
+			next: { revalidate: CATALOG_REVALIDATE_SECONDS, tags },
+			headers: { Accept: "application/json" },
+		});
+		if (!response.ok) return { data: null, meta: null };
+		const payload = (await response.json()) as { data?: T | null; meta?: Record<string, unknown> };
+		return { data: (payload?.data ?? null) as T | null, meta: payload?.meta ?? null };
+	} catch {
+		return { data: null, meta: null };
+	}
+}
+
 function asList<T>(payload: unknown): T[] {
 	if (Array.isArray(payload)) return payload as T[];
 	if (payload && typeof payload === "object" && "data" in payload && Array.isArray((payload as { data: unknown }).data)) {
@@ -66,22 +83,64 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailsEnti
 
 export interface CatalogQuery {
 	pageSize?: number;
+	page?: number;
 	category?: string;
 	search?: string;
+	brand?: string;
+	inStock?: boolean;
+	minPrice?: number;
+	maxPrice?: number;
+	sort?: string;
 }
 
-export async function getProducts(query: CatalogQuery = {}): Promise<ProductDetailsEntity[]> {
+function productParams(query: CatalogQuery): URLSearchParams {
 	const params = new URLSearchParams();
 	params.set("pageSize", String(query.pageSize ?? 100));
+	if (query.page) params.set("page", String(query.page));
 	if (query.category && query.category.toLowerCase() !== "all") {
 		params.set("category", query.category);
 	}
 	if (query.search) params.set("search", query.search);
+	if (query.brand) params.set("brand", query.brand);
+	if (query.inStock) params.set("inStock", "true");
+	if (query.minPrice !== undefined) params.set("min_price", String(query.minPrice));
+	if (query.maxPrice !== undefined) params.set("max_price", String(query.maxPrice));
+	if (query.sort) params.set("sort", query.sort);
+	return params;
+}
 
-	const raw = await fetchJson(`/api/v1/products?${params.toString()}`, [PRODUCTS_TAG]);
+export async function getProducts(query: CatalogQuery = {}): Promise<ProductDetailsEntity[]> {
+	const raw = await fetchJson(`/api/v1/products?${productParams(query).toString()}`, [PRODUCTS_TAG]);
 	return (asList<RawProductPayload>(raw)
 		.map(normalizeProduct)
 		.filter((p) => p !== null)) as unknown as ProductDetailsEntity[];
+}
+
+export interface ProductsWithMeta {
+	products: ProductDetailsEntity[];
+	page: number;
+	pageSize: number;
+	totalItems: number;
+	totalPages: number;
+}
+
+export async function getProductsWithMeta(query: CatalogQuery = {}): Promise<ProductsWithMeta> {
+	const pageSize = query.pageSize ?? 100;
+	const page = query.page ?? 1;
+	const { data, meta } = await fetchEnvelope<RawProductPayload[]>(
+		`/api/v1/products?${productParams({ ...query, pageSize, page }).toString()}`,
+		[PRODUCTS_TAG],
+	);
+	const products = (asList<RawProductPayload>(data ?? [])
+		.map(normalizeProduct)
+		.filter((p) => p !== null)) as unknown as ProductDetailsEntity[];
+
+	const totalItems = typeof meta?.totalItems === "number" ? meta.totalItems : products.length;
+	const totalPages =
+		typeof meta?.totalPages === "number"
+			? meta.totalPages
+			: Math.max(1, Math.ceil(totalItems / pageSize));
+	return { products, page, pageSize, totalItems, totalPages };
 }
 
 export async function getCategories(pageSize = 50): Promise<Category[]> {

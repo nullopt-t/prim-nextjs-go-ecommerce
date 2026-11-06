@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ProductsGrid } from "@/shared/ui/productsGrid";
 import { CardDetails } from "@/shared/ui/productsCard";
@@ -15,12 +15,71 @@ interface ContentProps {
 }
 
 export default function Content({ products, category }: ContentProps) {
-  const { products: contextProducts, loading: contextLoading, filters, clearFilters } = useCatalogContext();
+  const { products: contextProducts, loading: contextLoading, filters, setFilter, clearFilters } = useCatalogContext();
   const t = useTranslations("products");
   const [categoryProducts, setCategoryProducts] = useState<ProductDetailsEntity[] | null>(products ?? null);
   const [catLoading, setCatLoading] = useState(false);
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const searchQuery = (searchParams.get("q") || "").trim().toLowerCase();
+  const searchParamsString = searchParams.toString();
+
+  // Initialize filter state from the URL once, so shared links restore the view.
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    const params = new URLSearchParams(searchParamsString);
+    const number = (key: string) => {
+      const value = params.get(key);
+      if (!value) return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+    };
+    const brand = params.get("brand");
+    if (brand) setFilter("brand", brand);
+    if (params.get("inStock") === "true") setFilter("inStockOnly", true);
+    const rating = number("rating");
+    if (rating !== null) setFilter("rating", rating);
+    const discount = number("discount");
+    if (discount !== null) setFilter("discount", discount);
+    const minPrice = number("minPrice");
+    if (minPrice !== null) setFilter("minPrice", minPrice);
+    const maxPrice = number("maxPrice");
+    if (maxPrice !== null) setFilter("maxPrice", maxPrice);
+    const sort = params.get("sort");
+    if (sort) setFilter("sort", sort);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Push filter state back to the URL (debounced) so views are shareable and
+  // the server can apply the same filters to the next request.
+  useEffect(() => {
+    if (!initializedRef.current) return;
+    const current = filters;
+    const timer = setTimeout(() => {
+      const next = new URLSearchParams(searchParamsString);
+      const apply = (key: string, value: string | null) => {
+        if (value) next.set(key, value);
+        else next.delete(key);
+      };
+      apply("brand", current.brand);
+      apply("inStock", current.inStockOnly ? "true" : null);
+      apply("rating", current.rating !== null ? String(current.rating) : null);
+      apply("discount", current.discount !== null ? String(current.discount) : null);
+      apply("minPrice", current.minPrice !== null ? String(current.minPrice) : null);
+      apply("maxPrice", current.maxPrice !== null ? String(current.maxPrice) : null);
+      apply("sort", current.sort);
+      next.delete("page");
+      const query = next.toString();
+      if (query !== searchParamsString) {
+        router.replace(query ? `${pathname}?${query}` : pathname);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, pathname, router, searchParamsString]);
 
   useEffect(() => {
     // Server-provided products already reflect the URL category/search.

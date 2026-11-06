@@ -2068,6 +2068,12 @@
     },
     "layout": {
       "allProducts": "All Products",
+      "pagination": {
+        "next": "Next",
+        "pageOf": "Page {page} of {total}",
+        "previous": "Previous",
+        "results": "{count} products"
+      },
       "emptyDescription": "Try a different search term or clear your filters.",
       "emptyTitle": "No products found",
       "clearFilters": "Clear filters",

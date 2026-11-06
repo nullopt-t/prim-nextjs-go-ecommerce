@@ -2068,6 +2068,12 @@
     },
     "layout": {
       "allProducts": "جميع المنتجات",
+      "pagination": {
+        "next": "التالي",
+        "pageOf": "الصفحة {page} من {total}",
+        "previous": "السابق",
+        "results": "{count} منتج"
+      },
       "emptyDescription": "جرّب كلمة بحث مختلفة أو امسح عوامل التصفية.",
       "emptyTitle": "لا توجد منتجات",
       "clearFilters": "مسح عوامل التصفية",

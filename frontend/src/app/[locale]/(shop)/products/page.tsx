@@ -1,9 +1,29 @@
 import ProductsLayout from "@/modules/catalog/components/layout/productsLayout";
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { getCategories, getProducts } from "@/shared/lib/server/catalog";
+import { getCategories, getProductsWithMeta } from "@/shared/lib/server/catalog";
 
-type ProductsSearchParams = { category?: string; q?: string };
+type ProductsSearchParams = {
+  category?: string;
+  q?: string;
+  brand?: string;
+  inStock?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  sort?: string;
+  page?: string;
+};
+
+function parseNumber(value?: string): number | undefined {
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+function parsePage(value?: string): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 1;
+}
 
 function resolveCategoryName(
 	name: string | { en?: string; ar?: string } | undefined,
@@ -45,12 +65,18 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<ProductsSearchParams>;
 }) {
-  const { category, q } = await searchParams;
-  // Ask the API for the filtered set instead of filtering a capped snapshot.
-  const products = await getProducts({
-    category: category && category.toLowerCase() !== "all" ? category : undefined,
-    search: q?.trim() ? q.trim() : undefined,
-    pageSize: 100,
+  const params = await searchParams;
+  const page = parsePage(params.page);
+  const { products, totalItems, totalPages } = await getProductsWithMeta({
+    category: params.category && params.category.toLowerCase() !== "all" ? params.category : undefined,
+    search: params.q?.trim() ? params.q.trim() : undefined,
+    brand: params.brand?.trim() ? params.brand.trim() : undefined,
+    inStock: params.inStock === "true",
+    minPrice: parseNumber(params.minPrice),
+    maxPrice: parseNumber(params.maxPrice),
+    sort: params.sort?.trim() ? params.sort.trim() : undefined,
+    page,
+    pageSize: 24,
   });
 
   const itemListJsonLd = {
@@ -72,7 +98,13 @@ export default async function ProductsPage({
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
-      <ProductsLayout category={category} products={products} />
+      <ProductsLayout
+        category={params.category}
+        products={products}
+        page={page}
+        totalItems={totalItems}
+        totalPages={totalPages}
+      />
     </>
   );
 }
