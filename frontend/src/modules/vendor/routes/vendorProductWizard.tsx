@@ -876,18 +876,37 @@ export function VendorProductWizard() {
 										<p className="text-xs text-muted-foreground">
 											{t("wizard.attributes.combinations", { count: expandCombinations(variationRows).length })}
 										</p>
-										<ul className="flex flex-wrap gap-1.5">
-											{expandCombinations(variationRows).slice(0, 24).map((combination) => (
-												<li key={combinationKey(combination)} className="rounded-full border border-border bg-secondary/40 px-2.5 py-1 text-xs text-foreground">
-													{formatCombination(combination)}
-												</li>
-											))}
-											{expandCombinations(variationRows).length > 24 && (
-												<li className="rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground">
-													{t("wizard.attributes.moreCombinations", { count: expandCombinations(variationRows).length - 24 })}
-												</li>
-											)}
-										</ul>
+										<div className="overflow-x-auto rounded-md border border-border">
+											<table className="w-full text-start text-xs">
+												<thead>
+													<tr className="border-b border-border bg-secondary/40">
+														{variationRows.filter((row) => row.key).map((row) => (
+															<th key={row.key} className="px-3 py-2 text-start font-medium text-muted-foreground">
+																{categoryAttributes.find((attribute) => attribute.key === row.key)?.label ?? row.key}
+															</th>
+														))}
+													</tr>
+												</thead>
+												<tbody className="divide-y divide-border">
+													{expandCombinations(variationRows).slice(0, 24).map((combination) => (
+														<tr key={combinationKey(combination)}>
+															{variationRows.filter((row) => row.key).map((row) => (
+																<td key={row.key} className="px-3 py-2 text-foreground">
+																	{combination[row.key]}
+																</td>
+															))}
+														</tr>
+													))}
+													{expandCombinations(variationRows).length > 24 && (
+														<tr>
+															<td colSpan={Math.max(variationRows.filter((row) => row.key).length, 1)} className="px-3 py-2 text-muted-foreground">
+																{t("wizard.attributes.moreCombinations", { count: expandCombinations(variationRows).length - 24 })}
+															</td>
+														</tr>
+													)}
+												</tbody>
+											</table>
+										</div>
 									</div>
 								)}
 								{fieldError("variationAxes")}
