@@ -106,6 +106,20 @@ function formatCombination(combination: Record<string, string>): string {
 	return Object.values(combination).join(", ");
 }
 
+function combinationKey(combination: Record<string, string>): string {
+	return Object.keys(combination)
+		.sort()
+		.map((key) => `${key}=${combination[key]}`)
+		.join("|");
+}
+
+interface VariantOverride {
+	price?: string;
+	crossesOutPrice?: string;
+	sku?: string;
+	stock?: string;
+}
+
 export function VendorProductWizard() {
 	const t = useTranslations("vendor");
 	const router = useRouter();
@@ -119,6 +133,7 @@ export function VendorProductWizard() {
 	const [attributesLoading, setAttributesLoading] = useState(false);
 	const [attributesError, setAttributesError] = useState<string | null>(null);
 	const [variationRows, setVariationRows] = useState<VariationRow[]>([]);
+	const [variantOverrides, setVariantOverrides] = useState<Record<string, VariantOverride>>({});
 	const [customValues, setCustomValues] = useState<Record<number, string>>({});
 	const [loadingCatalog, setLoadingCatalog] = useState(true);
 	const [loadError, setLoadError] = useState<Error | null>(null);
@@ -177,6 +192,11 @@ export function VendorProductWizard() {
 		return { checks, percent: Math.round((doneCount / checks.length) * 100) };
 	}, [formData, steps, mode]);
 
+	const combinations = useMemo(
+		() => (formData.productType === "variable" ? expandCombinations(variationRows) : []),
+		[formData.productType, variationRows],
+	);
+
 	const draftKey = draftKeyFor(productId);
 
 	// Hydrate from saved draft (create) or server product summary (edit).
@@ -194,9 +214,16 @@ export function VendorProductWizard() {
 			const saved = sessionStorage.getItem(draftKey);
 			if (saved) {
 				try {
-					const parsed = JSON.parse(saved) as ProductForm;
-					setFormData({ ...EMPTY_FORM, ...parsed });
-					setVariationRows(parseAxes(parsed.variationAxes ?? ""));
+					const parsed = JSON.parse(saved) as {
+						formData?: ProductForm;
+						variantOverrides?: Record<string, VariantOverride>;
+					} & ProductForm;
+					// Older drafts stored the form directly; newer drafts wrap it
+					// so per-variant overrides survive a refresh.
+					const draftForm = parsed.formData ?? parsed;
+					setFormData({ ...EMPTY_FORM, ...draftForm });
+					setVariationRows(parseAxes(draftForm.variationAxes ?? ""));
+					setVariantOverrides(parsed.formData ? (parsed.variantOverrides ?? {}) : {});
 					setHydrated(true);
 					return;
 				} catch {
@@ -281,9 +308,9 @@ export function VendorProductWizard() {
 	// Persist the staged draft so back/forward navigation and refresh keep state.
 	useEffect(() => {
 		if (!hydrated) return;
-		sessionStorage.setItem(draftKey, JSON.stringify(formData));
+		sessionStorage.setItem(draftKey, JSON.stringify({ formData, variantOverrides }));
 		setLastSavedAt(Date.now());
-	}, [draftKey, formData, hydrated]);
+	}, [draftKey, formData, variantOverrides, hydrated]);
 
 	const setField = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => {
 		setFormData((current) => ({ ...current, [key]: value }));
@@ -334,6 +361,27 @@ export function VendorProductWizard() {
 			}
 			const stock = Number.parseInt(formData.initialStock, 10);
 			if (!Number.isInteger(stock) || stock < 0) nextErrors.initialStock = t("products.validation.stockInvalid");
+			if (currentStep === 2 && mode === "create" && formData.productType === "variable") {
+				for (const override of Object.values(variantOverrides)) {
+					if (override.price && parseMajorPrice(override.price) === undefined) {
+						nextErrors.price = t("products.validation.priceInvalid");
+					}
+					if (override.crossesOutPrice && parseMajorPrice(override.crossesOutPrice) === undefined) {
+						nextErrors.crossesOutPrice = t("products.validation.priceInvalid");
+					}
+					const overridePrice = override.price ? parseMajorPrice(override.price) : undefined;
+					const overrideCompare = override.crossesOutPrice ? parseMajorPrice(override.crossesOutPrice) : undefined;
+					if (overridePrice !== undefined && overrideCompare !== undefined && overrideCompare < overridePrice) {
+						nextErrors.crossesOutPrice = t("products.validation.compareAtTooLow");
+					}
+					if (override.stock !== undefined && override.stock !== "") {
+						const overrideStock = Number.parseInt(override.stock, 10);
+						if (!Number.isInteger(overrideStock) || overrideStock < 0) {
+							nextErrors.initialStock = t("products.validation.stockInvalid");
+						}
+					}
+				}
+			}
 		}
 		setErrors(nextErrors);
 		return Object.keys(nextErrors).length === 0;
@@ -388,7 +436,6 @@ export function VendorProductWizard() {
 				const axes = formData.productType === "variable"
 					? [...new Set(variationRows.map((row) => row.key).filter(Boolean))]
 					: undefined;
-				const combinations = formData.productType === "variable" ? expandCombinations(variationRows) : [];
 				const created = await vendorService.createProduct({
 					brandId: formData.brandId || undefined,
 					categoryId: formData.categoryId,
@@ -403,18 +450,25 @@ export function VendorProductWizard() {
 				if (combinations.length > 0) {
 					for (let index = 0; index < combinations.length; index += 1) {
 						const combination = combinations[index];
+						const override = variantOverrides[combinationKey(combination)];
 						const label = formatCombination(combination);
+						const variantPrice = override?.price ? parseMajorPrice(override.price) : priceMinor;
+						const variantCrossedOut = override?.crossesOutPrice ? parseMajorPrice(override.crossesOutPrice) : crossedOutMinor;
+						const variantStock =
+							override?.stock !== undefined && override.stock !== "" ? Number.parseInt(override.stock, 10) : undefined;
 						const variant = await vendorService.createVariant(created.data.id, {
 							title: `${formData.title.trim()} - ${label}`,
-							sku: formData.sku.trim() ? `${formData.sku.trim()}-${index + 1}` : undefined,
-							price: priceMinor,
-							crossedOutPrice: crossedOutMinor,
+							sku:
+								override?.sku?.trim() ||
+								(formData.sku.trim() ? `${formData.sku.trim()}-${index + 1}` : undefined),
+							price: variantPrice,
+							crossedOutPrice: variantCrossedOut,
 							currency: formData.currency.trim() || "EGP",
 							attributes: combination,
 							isDefault: index === 0,
 						});
-						if (index === 0 && Number.isFinite(initialStock) && initialStock !== 0) {
-							await vendorService.adjustStock(variant.data.id, { quantity: initialStock, reason: "restock" });
+						if (variantStock !== undefined && Number.isFinite(variantStock) && variantStock !== 0) {
+							await vendorService.adjustStock(variant.data.id, { quantity: variantStock, reason: "restock" });
 						}
 					}
 				} else {
@@ -873,6 +927,73 @@ export function VendorProductWizard() {
 							</div>
 						</div>
 						<p className="text-xs text-muted-foreground">{t("products.form.initialPurchaseNote")}</p>
+						{mode === "create" && formData.productType === "variable" && combinations.length > 0 && (
+							<div className="space-y-3 rounded-md border border-border p-4">
+								<div>
+									<h3 className="text-sm font-semibold text-foreground">{t("wizard.variants.title")}</h3>
+									<p className="text-xs text-muted-foreground">{t("wizard.variants.subtitle")}</p>
+								</div>
+								{combinations.map((combination) => {
+									const key = combinationKey(combination);
+									const override = variantOverrides[key] ?? {};
+									const setOverride = (patch: VariantOverride) =>
+										setVariantOverrides((current) => ({ ...current, [key]: { ...(current[key] ?? {}), ...patch } }));
+									return (
+										<div key={key} className="rounded-lg border border-border p-3">
+											<p className="text-sm font-medium text-foreground">{formatCombination(combination)}</p>
+											<div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+												<div className="space-y-1">
+													<label className="text-xs font-medium text-muted-foreground">{t("products.form.sellingPrice")}</label>
+													<input
+														type="number"
+														min="0.01"
+														step="0.01"
+														value={override.price ?? ""}
+														placeholder={formData.price || undefined}
+														onChange={(e) => setOverride({ price: e.target.value })}
+														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+													/>
+												</div>
+												<div className="space-y-1">
+													<label className="text-xs font-medium text-muted-foreground">{t("products.form.compareAtPrice")}</label>
+													<input
+														type="number"
+														min="0"
+														step="0.01"
+														value={override.crossesOutPrice ?? ""}
+														placeholder={formData.crossesOutPrice || undefined}
+														onChange={(e) => setOverride({ crossesOutPrice: e.target.value })}
+														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+													/>
+												</div>
+												<div className="space-y-1">
+													<label className="text-xs font-medium text-muted-foreground">{t("products.form.skuCode")}</label>
+													<input
+														value={override.sku ?? ""}
+														placeholder={formData.sku ? `${formData.sku}-${combinations.indexOf(combination) + 1}` : undefined}
+														onChange={(e) => setOverride({ sku: e.target.value })}
+														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+													/>
+												</div>
+												<div className="space-y-1">
+													<label className="text-xs font-medium text-muted-foreground">{t("products.form.initialStock")}</label>
+													<input
+														type="number"
+														min="0"
+														value={override.stock ?? ""}
+														onChange={(e) => setOverride({ stock: e.target.value })}
+														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+													/>
+												</div>
+											</div>
+										</div>
+									);
+								})}
+								{fieldError("price")}
+								{fieldError("crossesOutPrice")}
+								{fieldError("initialStock")}
+							</div>
+						)}
 					</div>
 				)}
 
@@ -886,6 +1007,27 @@ export function VendorProductWizard() {
 								</div>
 							))}
 						</dl>
+						{mode === "create" && formData.productType === "variable" && combinations.length > 0 && (
+							<div className="rounded-md border border-border">
+								<p className="border-b border-border px-4 py-2.5 text-sm font-semibold text-foreground">{t("wizard.variants.title")}</p>
+								<ul className="divide-y divide-border text-sm">
+									{combinations.map((combination) => {
+										const override = variantOverrides[combinationKey(combination)];
+										const price = override?.price || formData.price;
+										const stock = override?.stock;
+										return (
+											<li key={combinationKey(combination)} className="flex items-center justify-between gap-4 px-4 py-2.5">
+												<span className="text-muted-foreground">{formatCombination(combination)}</span>
+												<span className="font-medium text-foreground">
+													{price ? `${formData.currency.toUpperCase()} ${Number(price).toFixed(2)}` : "—"}
+													{stock ? ` · ${stock}` : ""}
+												</span>
+											</li>
+										);
+									})}
+								</ul>
+							</div>
+						)}
 						<p className="text-xs text-muted-foreground">{t("wizard.review.note")}</p>
 						{existingProduct?.status === "published" && mode === "edit" ? (
 							<p className="rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground">

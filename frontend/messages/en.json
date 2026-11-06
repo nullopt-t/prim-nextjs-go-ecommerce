@@ -2845,6 +2845,10 @@
         "addValue": "Add value",
         "combinations": "{count, plural, =1 {1 combination} other {# combinations}} will be created as variants."
       },
+      "variants": {
+        "title": "Variant pricing & stock",
+        "subtitle": "Set a price and stock for each combination. Empty prices inherit the default price above; empty stock adds no initial stock."
+      },
       "readinessTitle": "Listing readiness",
       "readinessPercent": "{percent}% ready",
       "autosavedAt": "Draft saved at {time}"
