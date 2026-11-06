@@ -156,7 +156,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
             title: r.title || tProducts("details.customerReview"),
             content: r.body || "",
             helpful: r.helpfulCount ?? 0,
-            verified: true,
+            verified: Boolean(r.orderItemId),
             userVoted: r.userVoted ?? false,
           };
         });

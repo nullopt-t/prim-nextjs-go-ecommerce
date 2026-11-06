@@ -1621,19 +1621,6 @@
       "seeAll": "See all",
       "title": "Categories"
     },
-    "dealsBanner": {
-      "badge": "Daily Deals",
-      "couponDesc": "Use coupon at checkout",
-      "couponTitle": "Extra 15% Off",
-      "cta": "Shop All Deals",
-      "guaranteeDesc": "100% Buyer guarantee",
-      "guaranteeTitle": "Money Back",
-      "headline": "Up to 60% off top electronics, fashion & gear",
-      "limitedTime": "Ending Soon",
-      "shippingDesc": "On qualifying orders",
-      "shippingTitle": "Free Delivery",
-      "subtext": "Verified sellers, unbeatable daily bargains, and free standard delivery on eligible items."
-    },
     "featuredProducts": {
       "title": "Featured Products"
     },
@@ -1648,37 +1635,10 @@
       "playCarousel": "Play carousel",
       "previousSlide": "Previous slide",
       "shopNow": "Shop now",
-      "slides": {
-        "slide1": {
-          "badge": "DEAL OF THE DAY",
-          "cta": "Explore Audio",
-          "desc": "Immerse yourself with premium acoustic performance and noise-canceling headphones crafted for daily focus.",
-          "highlight": "Pure Sound.",
-          "productAlt": "Premium Wireless Headphones",
-          "tag": "Featured Collection",
-          "title": "Next-Gen Audio & Gear"
-        },
-        "slide2": {
-          "badge": "TOP TECH PICK",
-          "cta": "Shop Tech Deals",
-          "desc": "Upgrade your desk setup with ultra-slim mechanical keyboards, ergonomic monitors, and precision accessories.",
-          "highlight": "Up to 40% Off.",
-          "productAlt": "Custom Mechanical Keyboards",
-          "tag": "Special Offers",
-          "title": "Smart Tech Essentials"
-        },
-        "slide3": {
-          "badge": "CERTIFIED REFURBISHED",
-          "cta": "Discover More",
-          "desc": "Timeless watches, handcrafted leather bags, and sleek everyday carry items built with modern utility.",
-          "highlight": "Designed to Last.",
-          "productAlt": "Smart Lifestyle Watch",
-          "tag": "New Arrivals",
-          "title": "Minimalist Lifestyle"
-        }
-      },
       "title": "Everything you need, ",
-      "viewDeals": "View deals"
+      "viewDeals": "View deals",
+      "featured": "Featured",
+      "viewProduct": "View product"
     },
     "product": {
       "addToCart": "Add to cart"
@@ -2100,6 +2060,9 @@
     },
     "layout": {
       "allProducts": "All Products",
+      "emptyDescription": "Try a different search term or clear your filters.",
+      "emptyTitle": "No products found",
+      "clearFilters": "Clear filters",
       "matching": "Matching products",
       "searchTitle": "Search: \"{query}\"",
       "showingAll": "Showing all products",
@@ -2115,11 +2078,6 @@
       "category": "Category",
       "condition": "Condition",
       "description": "Description",
-      "fallbackFeature1": "High-quality materials for lasting durability",
-      "fallbackFeature2": "Ergonomic design for maximum comfort",
-      "fallbackFeature3": "Advanced features for enhanced productivity",
-      "fallbackFeature4": "Eco-friendly packaging and sustainable production",
-      "fallbackIntro": "Enhance your lifestyle with the {productName}. Built with premium materials and cutting-edge technology, it delivers outstanding performance and reliability. Whether you're a professional or enthusiast, you'll appreciate the attention to detail and superior build quality.",
       "returnPolicy": "Return Policy",
       "returnPolicyText": "If you're not completely satisfied with your purchase, you can return it within 30 days for a full refund or exchange. The item must be in its original condition and packaging. Please contact our support team to initiate a return.",
       "shippingInfo": "Shipping Information",

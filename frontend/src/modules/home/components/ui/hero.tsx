@@ -1,230 +1,170 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/shared/i18n/navigation";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Sparkles,
-  ArrowRight,
-  Headphones,
-  Laptop,
-  Watch,
-  Pause,
-  Play,
-} from "lucide-react";
-
-interface SlideData {
-  id: string;
-  tagKey: string;
-  titleKey: string;
-  highlightKey: string;
-  descKey: string;
-  ctaKey: string;
-  link: string;
-  productImage: string;
-  productAltKey: string;
-  badgeKey: string;
-  bannerBg: string;
-  badgeBg: string;
-  ctaClass: string;
-}
-
-const SLIDES: SlideData[] = [
-  {
-    id: "slide1",
-    tagKey: "slides.slide1.tag",
-    titleKey: "slides.slide1.title",
-    highlightKey: "slides.slide1.highlight",
-    descKey: "slides.slide1.desc",
-    ctaKey: "slides.slide1.cta",
-    link: "/products",
-    productImage: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=85&w=800",
-    productAltKey: "slides.slide1.productAlt",
-    badgeKey: "slides.slide1.badge",
-    bannerBg: "bg-[#f7f7f7] dark:bg-secondary/40",
-    badgeBg: "bg-red-600 text-white",
-    ctaClass: "bg-foreground text-background hover:bg-foreground/90",
-  },
-  {
-    id: "slide2",
-    tagKey: "slides.slide2.tag",
-    titleKey: "slides.slide2.title",
-    highlightKey: "slides.slide2.highlight",
-    descKey: "slides.slide2.desc",
-    ctaKey: "slides.slide2.cta",
-    link: "/products",
-    productImage: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&q=85&w=800",
-    productAltKey: "slides.slide2.productAlt",
-    badgeKey: "slides.slide2.badge",
-    bannerBg: "bg-[#eef2f6] dark:bg-secondary/40",
-    badgeBg: "bg-sky-600 text-white",
-    ctaClass: "bg-foreground text-background hover:bg-foreground/90",
-  },
-  {
-    id: "slide3",
-    tagKey: "slides.slide3.tag",
-    titleKey: "slides.slide3.title",
-    highlightKey: "slides.slide3.highlight",
-    descKey: "slides.slide3.desc",
-    ctaKey: "slides.slide3.cta",
-    link: "/products",
-    productImage: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=85&w=800",
-    productAltKey: "slides.slide3.productAlt",
-    badgeKey: "slides.slide3.badge",
-    bannerBg: "bg-[#f5f5f0] dark:bg-secondary/40",
-    badgeBg: "bg-emerald-700 text-white",
-    ctaClass: "bg-foreground text-background hover:bg-foreground/90",
-  },
-];
+import { ChevronLeft, ChevronRight, ArrowRight, Pause, Play } from "lucide-react";
+import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
+import { useCurrency } from "@/modules/settings/model/publicSettingsContext";
+import { formatMoney } from "@/shared/lib/money";
+import { normalizeMediaUrl } from "@/shared/lib/media";
+import type { ProductDetailsEntity } from "@/modules/catalog/types";
 
 const AUTOPLAY_INTERVAL = 6000;
 
+function productName(product: ProductDetailsEntity, locale: string): string {
+	const name =
+		typeof product.product === "object"
+			? locale === "ar"
+				? product.product?.ar || product.product?.en
+				: product.product?.en || product.product?.ar
+			: product.product;
+	return (typeof name === "string" && name.trim()) || product.title || "";
+}
+
 export default function Hero() {
-  const t = useTranslations("home.hero");
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+	const t = useTranslations("home.hero");
+	const locale = useLocale();
+	const { products } = useCatalogContext();
+	const currency = useCurrency();
+	const [currentIndex, setCurrentIndex] = useState(0);
+	const [isPlaying, setIsPlaying] = useState(true);
+	const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const nextSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % SLIDES.length);
-  }, []);
+	const slides = (products ?? [])
+		.filter((product) => product.img)
+		.slice(0, 3);
 
-  const prevSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev - 1 + SLIDES.length) % SLIDES.length);
-  }, []);
+	const nextSlide = useCallback(() => {
+		setCurrentIndex((prev) => (prev + 1) % slides.length);
+	}, [slides.length]);
 
-  useEffect(() => {
-    if (!isPlaying) return;
-    timerRef.current = setInterval(() => {
-      nextSlide();
-    }, AUTOPLAY_INTERVAL);
+	const prevSlide = useCallback(() => {
+		setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
+	}, [slides.length]);
 
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isPlaying, nextSlide, currentIndex]);
+	useEffect(() => {
+		if (!isPlaying || slides.length < 2) return;
+		timerRef.current = setInterval(() => {
+			nextSlide();
+		}, AUTOPLAY_INTERVAL);
 
-  const activeSlide = SLIDES[currentIndex];
+		return () => {
+			if (timerRef.current) clearInterval(timerRef.current);
+		};
+	}, [isPlaying, nextSlide, slides.length, currentIndex]);
 
-  return (
-    <div
-      className={`relative w-full rounded-2xl overflow-hidden border border-border/60 transition-colors duration-500 group/hero ${activeSlide.bannerBg}`}
-      onMouseEnter={() => setIsPlaying(false)}
-      onMouseLeave={() => setIsPlaying(true)}
-      aria-roledescription="carousel"
-      aria-label={t("billboard")}
-    >
-      {/* Billboard Main Layout: Clean split with typography and cutout photography */}
-      <div className="relative px-6 py-8 sm:px-10 sm:py-10 md:px-14 md:py-12 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-12 min-h-[290px] sm:min-h-[320px]">
-        {/* Left Column: Direct editorial copy */}
-        <div className="flex-1 max-w-lg text-left rtl:text-right z-10">
-          {/* Promotional badge */}
-          <div className="inline-flex items-center gap-2 mb-3">
-            <span
-              className={`px-2.5 py-0.5 rounded text-[11px] font-black tracking-wider uppercase ${activeSlide.badgeBg}`}
-            >
-              {t(activeSlide.badgeKey)}
-            </span>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {t(activeSlide.tagKey)}
-            </span>
-          </div>
+	if (slides.length === 0) return null;
 
-          {/* High-contrast solid headline */}
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[42px] font-black text-foreground tracking-tight leading-tight mb-2.5">
-            <span>{t(activeSlide.titleKey)} </span>
-            <span className="block text-foreground/80 font-extrabold text-xl sm:text-2xl md:text-3xl mt-0.5">
-              {t(activeSlide.highlightKey)}
-            </span>
-          </h1>
+	const activeSlide = slides[currentIndex % slides.length];
+	const activeName = productName(activeSlide, locale);
+	const activeHref = `/products/${activeSlide.slug || activeSlide.id}`;
 
-          {/* Clean concise description */}
-          <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed mb-6 max-w-md line-clamp-2">
-            {t(activeSlide.descKey)}
-          </p>
+	return (
+		<div
+			className="relative w-full overflow-hidden rounded-2xl border border-border/60 group/hero"
+			onMouseEnter={() => setIsPlaying(false)}
+			onMouseLeave={() => setIsPlaying(true)}
+			aria-roledescription="carousel"
+			aria-label={t("billboard")}
+		>
+			<div className="relative flex min-h-[290px] flex-col items-center justify-between gap-6 px-6 py-8 sm:min-h-[320px] sm:px-10 sm:py-10 md:flex-row md:gap-12 md:px-14 md:py-12">
+				<div className="z-10 max-w-lg flex-1 text-start">
+					<div className="mb-3 inline-flex items-center gap-2">
+						<span className="rounded bg-secondary px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-foreground">
+							{t("featured")}
+						</span>
+						{activeSlide.category ? (
+							<span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+								{activeSlide.category.replace(/-/g, " ")}
+							</span>
+						) : null}
+					</div>
 
-          {/* Clean pill CTA */}
-          <div className="flex items-center gap-3">
-            <Link
-              href={activeSlide.link}
-              className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold shadow-xs transition-transform hover:-translate-y-0.5 cursor-pointer ${activeSlide.ctaClass}`}
-            >
-              <span>{t(activeSlide.ctaKey)}</span>
-              <ArrowRight className="size-4 rtl:rotate-180" />
-            </Link>
+					<h1 className="mb-2.5 text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl md:text-4xl">
+						{activeName}
+					</h1>
 
-            <Link
-              href="/products"
-              className="text-xs sm:text-sm font-semibold text-foreground hover:underline underline-offset-4 px-2 py-1"
-            >
-              {t("viewDeals")}
-            </Link>
-          </div>
-        </div>
+					<p className="mb-6 max-w-md text-sm leading-relaxed text-muted-foreground">
+						{formatMoney(activeSlide.price, currency)}
+						{activeSlide.oldPrice && activeSlide.oldPrice > activeSlide.price
+							? ` · ${formatMoney(activeSlide.oldPrice, currency)}`
+							: ""}
+					</p>
 
-        {/* Right Column: Genuine crisp product photography in clean framing */}
-        <div className="w-full md:w-auto shrink-0 flex items-center justify-center z-10">
-          <div className="relative size-56 sm:size-64 md:size-72 rounded-2xl overflow-hidden bg-background border border-border/50 shadow-md group-hover/hero:shadow-lg transition-all duration-300 flex items-center justify-center p-3">
-            <img
-              key={activeSlide.id}
-              src={activeSlide.productImage}
-              alt={t(activeSlide.productAltKey)}
-              className="w-full h-full object-cover rounded-xl transition-transform duration-500 ease-out group-hover/hero:scale-102"
-            />
-          </div>
-        </div>
-      </div>
+					<div className="flex items-center gap-3">
+						<Link
+							href={activeHref}
+							className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background shadow-xs transition-transform hover:-translate-y-0.5"
+						>
+							<span>{t("viewProduct")}</span>
+							<ArrowRight className="size-4 rtl:rotate-180" />
+						</Link>
+					</div>
+				</div>
 
-      {/* Bottom controls: Clean dot indicators and pause/arrow buttons */}
-      <div className="relative px-6 py-2.5 bg-background/60 dark:bg-background/40 backdrop-blur-xs border-t border-border/40 flex items-center justify-between gap-4">
-        {/* Pagination Dots */}
-        <div className="flex items-center gap-2">
-          {SLIDES.map((slide, idx) => {
-            const isActive = idx === currentIndex;
-            return (
-              <button
-                key={slide.id}
-                onClick={() => setCurrentIndex(idx)}
-                aria-label={t("goToSlide", { slide: idx + 1 })}
-                className={`h-2.5 rounded-full transition-all duration-200 cursor-pointer ${
-                  isActive
-                    ? "w-7 bg-foreground"
-                    : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60"
-                } px-1 py-1`}
-              />
-            );
-          })}
-        </div>
+				<div className="z-10 flex w-full shrink-0 items-center justify-center md:w-auto">
+					<div className="relative flex size-56 items-center justify-center overflow-hidden rounded-2xl border border-border/50 bg-background p-3 shadow-md transition-all duration-300 group-hover/hero:shadow-lg sm:size-64 md:size-72">
+						<img
+							key={activeSlide.id}
+							src={normalizeMediaUrl(activeSlide.img)}
+							alt={activeName}
+							className="h-full w-full rounded-xl object-cover transition-transform duration-500 ease-out group-hover/hero:scale-105"
+						/>
+					</div>
+				</div>
+			</div>
 
-        {/* Playback & Navigation Controls */}
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setIsPlaying((prev) => !prev)}
-            aria-label={isPlaying ? t("pauseCarousel") : t("playCarousel")}
-            className="h-11 w-11 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          >
-            {isPlaying ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
-          </button>
+			{slides.length > 1 ? (
+				<div className="relative flex items-center justify-between gap-4 border-t border-border/40 bg-background/60 px-6 py-2.5 backdrop-blur-xs dark:bg-background/40">
+					<div className="flex items-center gap-2">
+						{slides.map((slide, idx) => {
+							const isActive = idx === currentIndex % slides.length;
+							return (
+								<button
+									key={slide.id}
+									type="button"
+									onClick={() => setCurrentIndex(idx)}
+									aria-label={t("goToSlide", { slide: idx + 1 })}
+									aria-current={isActive ? "true" : undefined}
+									className={`h-2.5 rounded-full transition-all duration-200 ${
+										isActive ? "w-7 bg-foreground" : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60"
+									} px-1 py-1`}
+								/>
+							);
+						})}
+					</div>
 
-          <button
-            onClick={prevSlide}
-            aria-label={t("previousSlide")}
-            className="h-11 w-11 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          >
-            <ChevronLeft className="size-4.5 rtl:rotate-180" />
-          </button>
+					<div className="flex items-center gap-1.5">
+						<button
+							type="button"
+							onClick={() => setIsPlaying((prev) => !prev)}
+							aria-label={isPlaying ? t("pauseCarousel") : t("playCarousel")}
+							className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+						>
+							{isPlaying ? <Pause className="size-4" /> : <Play className="size-4" />}
+						</button>
 
-          <button
-            onClick={nextSlide}
-            aria-label={t("nextSlide")}
-            className="h-11 w-11 rounded-full bg-background border border-border hover:bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          >
-            <ChevronRight className="size-4.5 rtl:rotate-180" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+						<button
+							type="button"
+							onClick={prevSlide}
+							aria-label={t("previousSlide")}
+							className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+						>
+							<ChevronLeft className="size-4.5 rtl:rotate-180" />
+						</button>
+
+						<button
+							type="button"
+							onClick={nextSlide}
+							aria-label={t("nextSlide")}
+							className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+						>
+							<ChevronRight className="size-4.5 rtl:rotate-180" />
+						</button>
+					</div>
+				</div>
+			) : null}
+		</div>
+	);
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { ProductsGrid } from "@/shared/ui/productsGrid";
 import { CardDetails } from "@/shared/ui/productsCard";
 import { useCatalogContext, normalizeProduct } from "@/modules/catalog/model/catalogContext";
@@ -14,7 +15,8 @@ interface ContentProps {
 }
 
 export default function Content({ products, category }: ContentProps) {
-  const { products: contextProducts, loading: contextLoading, filters } = useCatalogContext();
+  const { products: contextProducts, loading: contextLoading, filters, clearFilters } = useCatalogContext();
+  const t = useTranslations("products");
   const [categoryProducts, setCategoryProducts] = useState<ProductDetailsEntity[] | null>(products ?? null);
   const [catLoading, setCatLoading] = useState(false);
   const searchParams = useSearchParams();
@@ -131,6 +133,22 @@ export default function Content({ products, category }: ContentProps) {
         {[...Array(10)].map((_, i) => (
           <div key={i} className="aspect-square bg-secondary/50 rounded-xl animate-pulse" />
         ))}
+      </div>
+    );
+  }
+
+  if (filtered.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-16 text-center">
+        <p className="text-sm font-medium text-foreground">{t("layout.emptyTitle")}</p>
+        <p className="max-w-sm text-sm text-muted-foreground">{t("layout.emptyDescription")}</p>
+        <button
+          type="button"
+          onClick={clearFilters}
+          className="mt-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+        >
+          {t("layout.clearFilters")}
+        </button>
       </div>
     );
   }

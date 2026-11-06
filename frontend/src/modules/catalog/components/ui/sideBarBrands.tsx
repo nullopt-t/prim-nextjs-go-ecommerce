@@ -10,15 +10,9 @@ export default function SideBarBrands() {
   const t = useTranslations("common.filters");
   const tProducts = useTranslations("products");
 
-  const fallbackBrands = [
-    { id: "brand-1", name: "Apple" },
-    { id: "brand-2", name: "Sony" },
-    { id: "brand-3", name: "Samsung" },
-    { id: "brand-4", name: "Bose" },
-    { id: "brand-5", name: "Logitech" },
-  ];
+  const brandList = brands ?? [];
 
-  const brandList = brands && brands.length > 0 ? brands : fallbackBrands;
+  if (brandList.length === 0) return null;
 
   return (
     <div className="border-b border-border pb-5">

@@ -22,7 +22,6 @@ function SectionHeading({ children }: { children: ReactNode }) {
 }
 
 export function ProductSpecs({
-	productName,
 	category,
 	brand,
 	description,
@@ -44,40 +43,23 @@ export function ProductSpecs({
   return (
     <div className="mt-10 flex flex-col gap-8 sm:mt-14 sm:gap-10">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Description Section */}
+        {/* Description Section: only when the catalog has real copy */}
+        {description ? (
         <section className="lg:col-span-7">
           <SectionHeading>{t("specs.description")}</SectionHeading>
           <div className="h-full rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-            {description ? (
-              <p
-                dir="auto"
-                className="whitespace-pre-line text-start text-sm leading-7 text-foreground/90 sm:text-base"
-              >
-                {description}
-              </p>
-            ) : (
-              <div className="space-y-4 text-sm leading-7 text-muted-foreground sm:text-base">
-                <p>{t("specs.fallbackIntro", { productName })}</p>
-                <ul className="grid gap-2.5 sm:grid-cols-2">
-                  {[
-                    t("specs.fallbackFeature1"),
-                    t("specs.fallbackFeature2"),
-                    t("specs.fallbackFeature3"),
-                    t("specs.fallbackFeature4"),
-                  ].map((feature) => (
-                    <li key={feature} className="flex items-start gap-2">
-                      <span className="mt-2.5 size-1 shrink-0 rounded-full bg-muted-foreground/50" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <p
+              dir="auto"
+              className="whitespace-pre-line text-start text-sm leading-7 text-foreground/90 sm:text-base"
+            >
+              {description}
+            </p>
           </div>
         </section>
+        ) : null}
 
         {/* Specifications Section */}
-        <section className="lg:col-span-5">
+        <section className={description ? "lg:col-span-5" : "lg:col-span-12"}>
           <SectionHeading>{t("specs.specifications")}</SectionHeading>
           <div className="h-full rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
             <div className="divide-y divide-border/70 text-sm">

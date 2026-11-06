@@ -64,7 +64,7 @@ export function ProductsCard({
   const productName =
     typeof cardDetails.product === "object"
       ? (locale === "ar" ? cardDetails.product.ar || cardDetails.product.en : cardDetails.product.en || cardDetails.product.ar)
-      : String(cardDetails.product || "Product");
+      : String(cardDetails.product || "—");
 
   const baseProductTarget = cardDetails.slug || String(cardDetails.id);
   const productHref = cardDetails.variantId

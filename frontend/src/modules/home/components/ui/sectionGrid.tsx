@@ -2,9 +2,14 @@
 
 import SectionCard from "@/modules/home/components/ui/sectionCard";
 import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
+import { ErrorState } from "@/shared/ui/errorState";
 
 export default function SectionGrid() {
-  const { categories } = useCatalogContext();
+  const { categories, errorMsg } = useCatalogContext();
+
+  if (categories.length === 0 && errorMsg) {
+    return <ErrorState />;
+  }
 
   if (categories.length === 0) {
     return null;
@@ -14,7 +19,7 @@ export default function SectionGrid() {
     <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] xl:grid-cols-[repeat(6,minmax(0,1fr))] gap-5">
       {categories.map((cat: any) => {
         const catSlug = cat.slug || cat.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-        const catName = typeof cat.name === "object" ? (cat.name.en || cat.name.ar) : (cat.name || cat.title || "Category");
+        const catName = typeof cat.name === "object" ? (cat.name.en || cat.name.ar) : (cat.name || cat.title || "—");
         return (
           <SectionCard
             key={cat.id || catSlug}

@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import { Link } from "@/shared/i18n/navigation";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
+import { ErrorState } from "@/shared/ui/errorState";
 import { ProductsCard } from "@/shared/ui/productsCard";
 import { useTranslations, useLocale } from "next-intl";
 
@@ -94,7 +95,7 @@ function CategoryShelf({ category, products }: CategoryShelfProps) {
 }
 
 export default function CategoryShelves() {
-  const { categories, products, loading } = useCatalogContext();
+  const { categories, products, loading, errorMsg } = useCatalogContext();
 
   // Create curated rows for each category that has items
   const shelves = useMemo(() => {
@@ -104,7 +105,7 @@ export default function CategoryShelves() {
 
     return categories
       .map((cat: any) => {
-        const catName = typeof cat.name === "object" ? (cat.name.en || cat.name.ar) : (cat.name || "Category");
+        const catName = typeof cat.name === "object" ? (cat.name.en || cat.name.ar) : (cat.name || "—");
         const catProducts = products.filter(
           (p: any) =>
             p.categoryId === cat.id ||
@@ -130,6 +131,10 @@ export default function CategoryShelves() {
         ))}
       </div>
     );
+  }
+
+  if (errorMsg && shelves.length === 0) {
+    return <ErrorState />;
   }
 
   return (

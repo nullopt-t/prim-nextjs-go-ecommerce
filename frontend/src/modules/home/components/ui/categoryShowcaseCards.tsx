@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Link } from "@/shared/i18n/navigation";
 import { ArrowRight } from "lucide-react";
 import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
+import { ErrorState } from "@/shared/ui/errorState";
 import { useTranslations, useLocale } from "next-intl";
 import { normalizeMediaUrl } from "@/shared/lib/media";
 
@@ -36,7 +37,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
               const productTarget = p.slug || p.id;
               const productTitle = typeof p.product === "object"
                 ? (locale === "ar" ? p.product?.ar || p.product?.en : p.product?.en || p.product?.ar) || p.title
-                : (p.title || "Product");
+                : (p.title || "—");
 
               return (
                 <Link
@@ -61,7 +62,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
             const productTarget = top4[0].slug || top4[0].id;
             const productTitle = typeof top4[0].product === "object"
               ? (locale === "ar" ? top4[0].product?.ar || top4[0].product?.en : top4[0].product?.en || top4[0].product?.ar) || top4[0].title
-              : (top4[0].title || "Product");
+              : (top4[0].title || "—");
 
             return (
               <Link
@@ -98,7 +99,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
 }
 
 export default function CategoryShowcaseCards() {
-  const { categories, products, loading } = useCatalogContext();
+  const { categories, products, loading, errorMsg } = useCatalogContext();
 
   const categoryGroups = useMemo(() => {
     if (!categories || categories.length === 0 || !products || products.length === 0) {
@@ -108,7 +109,7 @@ export default function CategoryShowcaseCards() {
     // Group products by category ID
     return categories
       .map((cat: any) => {
-        const catName = typeof cat.name === "object" ? (cat.name.en || cat.name.ar) : (cat.name || "Category");
+        const catName = typeof cat.name === "object" ? (cat.name.en || cat.name.ar) : (cat.name || "—");
         const catProducts = products.filter(
           (p: any) =>
             p.categoryId === cat.id ||
@@ -136,6 +137,8 @@ export default function CategoryShowcaseCards() {
       </div>
     );
   }
+
+  if (errorMsg && categoryGroups.length === 0) return <ErrorState />;
 
   if (categoryGroups.length === 0) return null;
 
