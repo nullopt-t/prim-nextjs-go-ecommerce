@@ -39,6 +39,7 @@ import { VariantBasicsFields } from "@/modules/admin/components/VariantBasicsFie
 import { SimplePricingFields } from "@/modules/admin/components/SimplePricingFields";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
+import { StatusPill } from "@/shared/ui/statusPill";
 import { normalizeMediaUrl } from "@/shared/lib/media";
 import type { AdminCategory, Brand, Product, ProductDetails } from "@/modules/catalog/types";
 import type { ProductVariant } from "@/modules/catalog/types";
@@ -1267,7 +1268,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
-        <Loader2 className="size-8 animate-spin text-accent-brand" />
+        <Loader2 className="size-8 animate-spin text-foreground" />
         <p className="text-xs text-muted-foreground">{t("products.audit.loading")}</p>
       </div>
     );
@@ -1326,34 +1327,26 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16">
       {/* Sticky Top Header */}
-      <div className="sticky top-0 z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-background/95 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-border shadow-xs">
-        <div className="flex items-center gap-3">
+      <div className="sticky top-0 z-20 flex flex-col justify-between gap-3 rounded-lg border border-border bg-background/95 p-4 backdrop-blur-md sm:flex-row sm:items-center">
+        <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
             onClick={() => router.push("/admin/products")}
-            className="p-2 rounded-xl border border-border hover:bg-secondary text-muted-foreground hover:text-foreground transition-all shrink-0"
-            title={t("products.backToProducts")}
+            className="shrink-0 rounded-md border border-border p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            aria-label={t("products.backToProducts")}
           >
             <ArrowLeft className="size-4 rtl:rotate-180" />
           </button>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-bold text-foreground truncate max-w-md">
+              <h1 className="max-w-md truncate text-base font-semibold text-foreground">
                 {formData.name.trim() || (isCreate ? t("products.pageTitleNew") : t("products.pageTitleEdit"))}
               </h1>
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
-                  isPublished
-                    ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30"
-                    : productStatus === "archived"
-                    ? "bg-slate-500/10 text-slate-600 border border-slate-500/30"
-                    : "bg-amber-500/10 text-amber-600 border border-amber-500/30"
-                }`}
-              >
+              <StatusPill tone={isPublished ? "success" : productStatus === "archived" ? "danger" : "warning"}>
                 {statusLabel}
-              </span>
+              </StatusPill>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {productId ? `ID: ${productId.slice(0, 8)}...` : t("products.wizard.draftNotice")}
             </p>
           </div>
@@ -1364,10 +1357,10 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
             type="button"
             onClick={handleSaveDraft}
             disabled={isSavingStep}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-border bg-background hover:bg-secondary text-foreground transition-all disabled:opacity-50"
+            className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50"
           >
-            {isSavingStep ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
-            <span>{isEditMode ? t("products.editMode.saveChanges") : t("products.wizard.saveDraft")}</span>
+            {isSavingStep ? <Loader2 className="size-4 animate-spin" /> : null}
+            {isEditMode ? t("products.editMode.saveChanges") : t("products.wizard.saveDraft")}
           </button>
 
           {(isEditMode || wizardStep === 5) && (
@@ -1375,18 +1368,18 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
               type="button"
               onClick={handlePublishProduct}
               disabled={publishing || isSavingStep || !productId || (productDetail?.variants?.length ?? 0) === 0}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50 transition-all"
+              className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
               title={(productDetail?.variants?.length ?? 0) === 0 ? t("products.wizard.noVariantsWarning") : ""}
             >
-              {publishing ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-              <span>{isPublished ? t("products.editMode.republish") : t("products.publish")}</span>
+              {publishing ? <Loader2 className="size-4 animate-spin" /> : null}
+              {isPublished ? t("products.editMode.republish") : t("products.publish")}
             </button>
           )}
         </div>
       </div>
 
       {isEditMode ? (
-        <div className="bg-background border border-border rounded-2xl p-2 shadow-xs">
+        <div className="rounded-lg border border-border bg-background p-1">
           <div role="tablist" aria-label={t("products.editMode.tabsLabel")} className="grid grid-cols-3 gap-1">
             {[
               {
@@ -1417,13 +1410,12 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setEditTab(tab.id)}
-                  className={`flex items-center justify-center sm:justify-start gap-2.5 rounded-xl px-3 py-2.5 text-start transition-all ${
+                  className={`flex items-center justify-center gap-2.5 rounded-md px-3 py-2.5 text-start transition-colors sm:justify-start ${
                     isActive
-                      ? "bg-accent-brand/10 text-accent-brand shadow-2xs"
+                      ? "bg-secondary text-foreground"
                       : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
                   }`}
                 >
-                  <Icon className="size-4 shrink-0" />
                   <span className="min-w-0">
                     <span className="block text-xs font-bold truncate">{tab.label}</span>
                     <span className="hidden sm:block text-[11px] text-muted-foreground truncate">
@@ -1436,18 +1428,18 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
           </div>
         </div>
       ) : (
-        <div className="bg-background border border-border rounded-2xl p-3 shadow-xs">
+        <div className="rounded-lg border border-border bg-background p-3">
           <div className="flex items-center justify-between px-1 pb-2">
             <span className="text-[11px] font-semibold text-muted-foreground">
               {t("products.wizard.stepOf", { current: currentStageIndex + 1, total: totalStages })}
             </span>
-            <span className="text-[11px] font-bold text-accent-brand">
+            <span className="text-[11px] font-bold text-foreground">
               {currentStageIndex + 1}/{totalStages}
             </span>
           </div>
           <div className="mx-1 mb-3 h-1 overflow-hidden rounded-full bg-secondary">
             <div
-              className="h-full rounded-full bg-accent-brand transition-all duration-300"
+              className="h-full rounded-full bg-primary transition-all duration-300"
               style={{ width: `${((currentStageIndex + 1) / totalStages) * 100}%` }}
             />
           </div>
@@ -1474,18 +1466,18 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                   onClick={() => {
                     if (canClick) setWizardStep(s.step as 1 | 2 | 3 | 4 | 5);
                   }}
-                  className={`flex items-center gap-3 p-3 rounded-xl text-start transition-all ${
+                  className={`flex items-center gap-3 rounded-md p-3 text-start transition-colors ${
                     isCurrent
-                      ? "bg-accent-brand/10 border border-accent-brand/40 text-accent-brand shadow-2xs"
+                      ? "border border-border bg-secondary text-foreground"
                       : complete
-                      ? "bg-secondary/30 text-foreground border border-border hover:bg-secondary/60"
-                      : "text-muted-foreground border border-transparent"
-                  } ${!canClick ? "opacity-45 cursor-not-allowed" : "cursor-pointer"}`}
+                      ? "border border-border bg-background text-foreground hover:bg-secondary/60"
+                      : "border border-transparent text-muted-foreground"
+                  } ${!canClick ? "cursor-not-allowed opacity-45" : "cursor-pointer"}`}
                 >
                   <span
-                    className={`size-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                       isCurrent
-                        ? "bg-accent-brand text-white"
+                        ? "bg-primary text-primary-foreground"
                         : complete
                         ? "bg-emerald-600 text-white"
                         : "bg-secondary text-muted-foreground"
@@ -1514,12 +1506,12 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       )}
 
       {/* Step Content Card */}
-      <div className="bg-background border border-border rounded-2xl p-6 shadow-xs space-y-6">
+      <div className="space-y-6 rounded-lg border border-border bg-background p-4 sm:p-5">
         {/* Step 1: Core Details (Title, Description, Category) */}
         {showStep(1) && (
           <div className="space-y-6 max-w-2xl">
             <div>
-              <h2 className="text-base font-bold text-foreground">
+              <h2 className="text-sm font-semibold text-foreground">
                 {isEditMode ? t("products.editMode.detailsHeading") : t("products.wizard.step1")}
               </h2>
               <p className="text-xs text-muted-foreground mt-1">
@@ -1558,7 +1550,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
           <div className="space-y-6">
             {!isEditMode && (
               <div>
-                <h2 className="text-base font-bold text-foreground">
+                <h2 className="text-sm font-semibold text-foreground">
                   {wizardStep === 3 ? t("products.wizard.step3") : t("products.wizard.step2")}
                 </h2>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -1572,8 +1564,8 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
             {showStep(2) && (
               <>
             {/* Stage 1 Category Context Banner */}
-            <div className="rounded-xl border border-accent-brand/20 bg-accent-brand/5 p-4 flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-accent-brand/10 text-accent-brand shrink-0">
+            <div className="rounded-xl border border-border bg-secondary/40 p-4 flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-secondary text-foreground shrink-0">
                 <Layers className="size-4" />
               </div>
               <div className="text-xs space-y-0.5">
@@ -1623,7 +1615,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
         {showStep(4) && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-base font-bold text-foreground">
+              <h2 className="text-sm font-semibold text-foreground">
                 {isEditMode ? t("products.editMode.variantsHeading") : t("products.wizard.step4")}
               </h2>
               <p className="text-xs text-muted-foreground mt-1">
@@ -1663,17 +1655,17 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                   </div>
                 )}
 
-                <div className="rounded-2xl border border-border bg-secondary/15 p-5 space-y-4">
+                <div className="rounded-lg border border-border bg-background p-5 space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                      <h3 className="text-xs font-semibold text-muted-foreground">
                         {t("products.variants.variationAxes")}
                       </h3>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
                         {t("products.wizard.step3OptionsHint")}
                       </p>
                     </div>
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-accent-brand/10 text-accent-brand">
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-secondary text-foreground">
                       {t("products.variants.optionsCount", { count: activeAxes.length })}
                     </span>
                   </div>
@@ -1706,7 +1698,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                 {/* Generated Variants List */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                    <h3 className="text-xs font-semibold text-muted-foreground">
                       {t("products.variants.listTitle")} ({productDetail?.variants?.length ?? 0})
                     </h3>
                     <button
@@ -1721,11 +1713,11 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
 
                   {detailLoading ? (
                     <div className="flex items-center gap-2 py-6 text-xs text-muted-foreground justify-center">
-                      <Loader2 className="size-4 animate-spin text-accent-brand" />
+                      <Loader2 className="size-4 animate-spin text-foreground" />
                       <span>{t("products.variants.loading")}</span>
                     </div>
                   ) : !productDetail?.variants?.length ? (
-                    <div className="p-8 text-center border border-dashed border-border rounded-2xl bg-secondary/10">
+                    <div className="p-8 text-center border border-dashed border-border rounded-lg bg-secondary/40">
                       <Package className="size-8 mx-auto text-muted-foreground opacity-50 mb-2" />
                       <p className="text-xs text-muted-foreground font-medium">{t("products.variants.empty")}</p>
                     </div>
@@ -1745,7 +1737,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                               <button
                                 type="button"
                                 onClick={() => setSelectedVariantForMedia(variant)}
-                                className="size-12 rounded-xl border border-border bg-background overflow-hidden shrink-0 flex items-center justify-center hover:border-accent-brand/60 transition-all group relative shadow-2xs"
+                                className="size-12 rounded-xl border border-border bg-background overflow-hidden shrink-0 flex items-center justify-center hover:border-foreground/40 transition-all group relative shadow-2xs"
                                 title={t("products.variants.manageMedia")}
                               >
                                 {thumbUrl ? (
@@ -1758,7 +1750,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                                     }}
                                   />
                                 ) : (
-                                  <Camera className="size-5 text-muted-foreground group-hover:text-accent-brand transition-colors" />
+                                  <Camera className="size-5 text-muted-foreground group-hover:text-foreground transition-colors" />
                                 )}
                                 <span className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
                                   <Upload className="size-4" />
@@ -1769,7 +1761,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                                 <div className="flex items-center gap-2">
                                   <span className="font-semibold text-xs text-foreground truncate">{variant.title}</span>
                                   {variant.isDefault && (
-                                    <span className="rounded-full bg-accent-brand/10 text-accent-brand px-2 py-0.5 text-[10px] font-bold">
+                                    <span className="rounded-full bg-secondary text-foreground px-2 py-0.5 text-[10px] font-bold">
                                       {t("products.variants.defaultBadge")}
                                     </span>
                                   )}
@@ -1795,16 +1787,16 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                                       setQuickStockAmount(String(variant.stock?.availableQuantity ?? 0));
                                       setQuickStockReason("restock");
                                     }}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-border bg-background hover:border-accent-brand hover:bg-accent-brand/10 text-foreground text-[10px] font-semibold transition-all cursor-pointer shadow-2xs"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-border bg-background hover:border-foreground/40 hover:bg-secondary text-foreground text-[10px] font-semibold transition-all cursor-pointer shadow-2xs"
                                     title={t("products.variants.adjustStock")}
                                   >
-                                    <Boxes className="size-3 text-accent-brand" />
+                                    <Boxes className="size-3 text-foreground" />
                                     <span>{t("products.units", { count: variant.stock?.availableQuantity ?? 0 })}</span>
                                   </button>
                                   {mediaCount > 0 && (
                                     <>
                                       <span>·</span>
-                                      <span className="text-accent-brand font-medium">
+                                      <span className="text-foreground font-medium">
                                         {t("products.variants.imagesCount", { count: mediaCount })}
                                       </span>
                                     </>
@@ -1818,13 +1810,13 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                               <button
                                 type="button"
                                 onClick={() => setSelectedVariantForMedia(variant)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-background hover:border-accent-brand/50 hover:bg-accent-brand/10 text-muted-foreground hover:text-accent-brand transition-all text-xs font-semibold shadow-2xs"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-background hover:border-foreground/40 hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-all text-xs font-semibold shadow-2xs"
                                 title={t("products.variants.manageMedia")}
                               >
-                                <ImageIcon className="size-3.5 text-accent-brand" />
+                                <ImageIcon className="size-3.5 text-foreground" />
                                 <span>{t("products.variants.manageMedia")}</span>
                                 {mediaCount > 0 && (
-                                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-accent-brand/20 text-accent-brand">
+                                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-secondary text-foreground">
                                     {mediaCount}
                                   </span>
                                 )}
@@ -1834,7 +1826,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                                 <button
                                   type="button"
                                   onClick={() => handleSetDefaultVariant(variant)}
-                                  className="p-2 rounded-xl border border-border bg-background text-muted-foreground hover:text-accent-brand hover:border-accent-brand/50 transition-colors shadow-2xs"
+                                  className="p-2 rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors shadow-2xs"
                                   title={t("products.variants.setDefault")}
                                 >
                                   <Star className="size-4" />
@@ -1843,7 +1835,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                               <button
                                 type="button"
                                 onClick={() => openVariantEdit(variant)}
-                                className="p-2 rounded-xl border border-border bg-background text-muted-foreground hover:text-accent-brand hover:border-accent-brand/50 transition-colors shadow-2xs"
+                                className="p-2 rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors shadow-2xs"
                                 title={t("products.variants.edit")}
                               >
                                 <Edit2 className="size-4" />
@@ -1866,7 +1858,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
 
                 {/* Inline Variant Form modal/drawer */}
                 {variantForm && (
-                  <div className="space-y-4 rounded-2xl border border-accent-brand/40 bg-secondary/30 p-5 shadow-xs">
+                  <div className="space-y-4 rounded-lg border border-border bg-background p-5">
                     <div className="flex items-center justify-between border-b border-border pb-2.5">
                       <h4 className="text-xs font-bold text-foreground">
                         {variantForm.mode === "create" ? t("products.variants.newTitle") : t("products.variants.editTitle")}
@@ -1938,7 +1930,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                         type="button"
                         onClick={handleSaveVariant}
                         disabled={savingVariant}
-                        className="flex items-center gap-1.5 rounded-xl bg-accent-brand px-4 py-2 text-xs font-semibold text-white hover:bg-accent-brand/90 disabled:opacity-60 shadow-xs"
+                        className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60 shadow-xs"
                       >
                         {savingVariant && <Loader2 className="size-3.5 animate-spin" />}
                         {t("products.variants.save")}
@@ -1955,7 +1947,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
         {showStep(5) && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-base font-bold text-foreground">
+              <h2 className="text-sm font-semibold text-foreground">
                 {isEditMode ? t("products.editMode.publishingHeading") : t("products.wizard.step5")}
               </h2>
               <p className="text-xs text-muted-foreground mt-1">
@@ -1966,11 +1958,11 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
             </div>
 
             {/* Product Master Thumbnail Uploader */}
-            <div className="space-y-3 max-w-2xl bg-secondary/20 border border-border rounded-2xl p-5 shadow-xs">
+            <div className="space-y-3 max-w-2xl rounded-lg border border-border bg-background p-5 shadow-xs">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <Camera className="size-3.5 text-accent-brand" />
+                    <Camera className="size-3.5 text-foreground" />
                     <span>{t("products.form.productThumbnail")}</span>
                   </h3>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -1991,7 +1983,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-5 pt-2">
-                <div className="size-28 rounded-2xl border-2 border-border overflow-hidden bg-background shrink-0 flex items-center justify-center shadow-xs relative group">
+                <div className="size-28 rounded-lg border-2 border-border overflow-hidden bg-background shrink-0 flex items-center justify-center shadow-xs relative group">
                   {formData.image ? (
                     <img
                       src={normalizeMediaUrl(formData.image)}
@@ -2006,8 +1998,8 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                   )}
                   {uploadingProductThumbnail && (
                     <div className="absolute inset-0 bg-background/80 backdrop-blur-2xs flex flex-col items-center justify-center gap-1.5">
-                      <Loader2 className="size-6 animate-spin text-accent-brand" />
-                      <span className="text-[10px] font-bold text-accent-brand">{t("products.form.uploadingImage")}</span>
+                      <Loader2 className="size-6 animate-spin text-foreground" />
+                      <span className="text-[10px] font-bold text-foreground">{t("products.form.uploadingImage")}</span>
                     </div>
                   )}
                 </div>
@@ -2026,9 +2018,9 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
 
                   <div
                     onClick={() => productFileInputRef.current?.click()}
-                    className="border-2 border-dashed border-border hover:border-accent-brand/60 rounded-xl p-4 text-center cursor-pointer transition-all bg-background/50 hover:bg-secondary/40 flex flex-col items-center justify-center gap-1.5"
+                    className="border-2 border-dashed border-border hover:border-foreground/40 rounded-xl p-4 text-center cursor-pointer transition-all bg-background/50 hover:bg-secondary/40 flex flex-col items-center justify-center gap-1.5"
                   >
-                    <Upload className="size-5 text-accent-brand" />
+                    <Upload className="size-5 text-foreground" />
                     <span className="text-xs font-semibold text-foreground">
                       {t("products.form.uploadThumbnail")}
                     </span>
@@ -2044,7 +2036,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                       value={formData.image}
                       onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                       placeholder="https://..."
-                      className="flex-1 px-3 py-1.5 bg-background border border-border rounded-lg text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-accent-brand/40 font-mono text-[11px]"
+                      className="flex-1 px-3 py-1.5 bg-background border border-border rounded-lg text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring/30 font-mono text-[11px]"
                     />
                   </div>
                 </div>
@@ -2052,9 +2044,9 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
             </div>
 
             {/* Product Summary Review Card */}
-            <div className="rounded-2xl border border-border bg-secondary/20 p-5 space-y-4 max-w-2xl">
+            <div className="rounded-lg border border-border bg-background p-5 space-y-4 max-w-2xl">
               <div className="flex items-center justify-between border-b border-border pb-3">
-                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">{t("products.wizard.summary")}</h3>
+                <h3 className="text-xs font-semibold text-muted-foreground">{t("products.wizard.summary")}</h3>
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                     isPublished
@@ -2144,7 +2136,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                 onClick={handleStep1Next}
                 disabled={isSavingStep || !basicsComplete}
                 title={!basicsComplete ? t("products.toast.requiredFields") : undefined}
-                className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-xl bg-accent-brand text-white shadow-xs hover:bg-accent-brand/90 disabled:opacity-60 transition-all"
+                className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-all"
               >
                 {isSavingStep && <Loader2 className="size-3.5 animate-spin" />}
                 <span>{t("products.wizard.next")}</span>
@@ -2158,7 +2150,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                 onClick={handleStep2Next}
                 disabled={isSavingStep || !basicsComplete || !productId}
                 title={!basicsComplete ? t("products.toast.requiredFields") : undefined}
-                className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-xl bg-accent-brand text-white shadow-xs hover:bg-accent-brand/90 disabled:opacity-60 transition-all"
+                className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-all"
               >
                 {isSavingStep && <Loader2 className="size-3.5 animate-spin" />}
                 <span>{t("products.wizard.next")}</span>
@@ -2172,7 +2164,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                 onClick={handleOptionsNext}
                 disabled={isSavingStep || formData.variationAxes.length === 0}
                 title={formData.variationAxes.length === 0 ? t("products.form.axesRequired") : undefined}
-                className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-xl bg-accent-brand text-white shadow-xs hover:bg-accent-brand/90 disabled:opacity-60 transition-all"
+                className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-all"
               >
                 {isSavingStep && <Loader2 className="size-3.5 animate-spin" />}
                 <span>{t("products.wizard.next")}</span>
@@ -2186,7 +2178,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                 onClick={handleVersionsNext}
                 disabled={isSavingStep || (formData.productType === "variable" && (productDetail?.variants?.length ?? 0) === 0)}
                 title={formData.productType === "variable" && (productDetail?.variants?.length ?? 0) === 0 ? t("products.wizard.noVariantsWarning") : undefined}
-                className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-xl bg-accent-brand text-white shadow-xs hover:bg-accent-brand/90 disabled:opacity-60 transition-all"
+                className="flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-all"
               >
                 {isSavingStep && <Loader2 className="size-3.5 animate-spin" />}
                 <span>{t("products.wizard.next")}</span>
@@ -2267,15 +2259,15 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       </div>
       {selectedVariantForMedia && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-background border border-border rounded-3xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto space-y-6">
+          <div className="bg-background border border-border rounded-lg max-w-2xl w-full p-5 shadow-xl max-h-[90vh] overflow-y-auto space-y-6">
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-border pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-foreground">
+                  <h3 className="text-sm font-semibold text-foreground">
                     {t("products.variants.manageMedia")}
                   </h3>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-accent-brand/10 text-accent-brand border border-accent-brand/30">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-secondary text-foreground border border-border">
                     {selectedVariantForMedia.title}
                   </span>
                 </div>
@@ -2299,11 +2291,11 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
             </div>
 
             {/* Section 1: Variant Specific Thumbnail */}
-            <div className="space-y-3 bg-secondary/20 border border-border rounded-2xl p-4">
+            <div className="space-y-3 rounded-lg border border-border bg-background p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <Camera className="size-3.5 text-accent-brand" />
+                    <Camera className="size-3.5 text-foreground" />
                     <span>{t("products.variants.thumbnail")}</span>
                   </h4>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -2340,7 +2332,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                   )}
                   {uploadingVariantThumb && (
                     <div className="absolute inset-0 bg-background/80 backdrop-blur-2xs flex items-center justify-center">
-                      <Loader2 className="size-5 animate-spin text-accent-brand" />
+                      <Loader2 className="size-5 animate-spin text-foreground" />
                     </div>
                   )}
                 </div>
@@ -2360,7 +2352,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                     type="button"
                     onClick={() => variantThumbInputRef.current?.click()}
                     disabled={uploadingVariantThumb}
-                    className="flex items-center gap-2 px-3.5 py-2 bg-accent-brand text-white text-xs font-semibold rounded-xl hover:bg-accent-brand/90 transition-all shadow-2xs disabled:opacity-60"
+                    className="flex items-center gap-2 px-3.5 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-xl hover:opacity-90 transition-all shadow-2xs disabled:opacity-60"
                   >
                     {uploadingVariantThumb ? (
                       <Loader2 className="size-3.5 animate-spin" />
@@ -2377,11 +2369,11 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
             </div>
 
             {/* Section 2: Variant Previews Gallery */}
-            <div className="space-y-3 bg-secondary/20 border border-border rounded-2xl p-4">
+            <div className="space-y-3 rounded-lg border border-border bg-background p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <ImageIcon className="size-3.5 text-accent-brand" />
+                    <ImageIcon className="size-3.5 text-foreground" />
                     <span>{t("products.variants.previews")}</span>
                     <span className="text-muted-foreground ml-1">
                       ({selectedVariantForMedia.media?.length || 0})
@@ -2409,12 +2401,12 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                     type="button"
                     onClick={() => variantMediaInputRef.current?.click()}
                     disabled={uploadingVariantMedia}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border hover:border-accent-brand/50 text-foreground hover:text-accent-brand text-xs font-semibold rounded-xl transition-all shadow-2xs disabled:opacity-60"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-background border border-border hover:border-foreground/40 text-foreground hover:text-foreground text-xs font-semibold rounded-xl transition-all shadow-2xs disabled:opacity-60"
                   >
                     {uploadingVariantMedia ? (
-                      <Loader2 className="size-3.5 animate-spin text-accent-brand" />
+                      <Loader2 className="size-3.5 animate-spin text-foreground" />
                     ) : (
-                      <Plus className="size-3.5 text-accent-brand" />
+                      <Plus className="size-3.5 text-foreground" />
                     )}
                     <span>{t("products.variants.uploadPreview")}</span>
                   </button>
@@ -2459,13 +2451,13 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
               ) : (
                 <div
                   onClick={() => variantMediaInputRef.current?.click()}
-                  className="border-2 border-dashed border-border hover:border-accent-brand/60 rounded-xl p-6 text-center cursor-pointer transition-all bg-background/40 hover:bg-secondary/40 flex flex-col items-center justify-center gap-1.5"
+                  className="border-2 border-dashed border-border hover:border-foreground/40 rounded-xl p-6 text-center cursor-pointer transition-all bg-background/40 hover:bg-secondary/40 flex flex-col items-center justify-center gap-1.5"
                 >
                   <Upload className="size-5 text-muted-foreground" />
                   <span className="text-xs font-medium text-muted-foreground">
                     {t("products.variants.noPreviews")}
                   </span>
-                  <span className="text-[11px] text-accent-brand font-semibold">
+                  <span className="text-[11px] text-foreground font-semibold">
                     {t("products.variants.uploadPreview")}
                   </span>
                 </div>
@@ -2477,7 +2469,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
               <button
                 type="button"
                 onClick={() => setSelectedVariantForMedia(null)}
-                className="px-5 py-2 bg-accent-brand text-white text-xs font-semibold rounded-xl hover:bg-accent-brand/90 transition-all shadow-xs"
+                className="px-5 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-xl hover:opacity-90 transition-all shadow-xs"
               >
                 {t("actions.close") || "Done"}
               </button>
@@ -2489,11 +2481,11 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
       {/* Quick Variant Inventory Adjustment Modal */}
       {quickStockVariant && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-background border border-border rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4">
+          <div className="bg-background border border-border rounded-lg max-w-sm w-full p-5 shadow-xl space-y-4">
             <div className="flex items-start justify-between border-b border-border pb-3">
               <div>
-                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <Boxes className="size-4 text-accent-brand" />
+                <h3 className="text-sm font-semibold text-foreground">
+                  <Boxes className="size-4 text-foreground" />
                   <span>{t("products.variants.adjustStock")}</span>
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5 font-medium">
@@ -2527,7 +2519,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                   required
                   value={quickStockAmount}
                   onChange={(e) => setQuickStockAmount(e.target.value)}
-                  className="w-full px-3 py-2 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
+                  className="w-full px-3 py-2 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30"
                   placeholder="New stock quantity"
                 />
               </div>
@@ -2539,7 +2531,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                 <select
                   value={quickStockReason}
                   onChange={(e) => setQuickStockReason(e.target.value)}
-                  className="w-full px-3 py-2 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
+                  className="w-full px-3 py-2 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30"
                 >
                   <option value="restock">{t("products.form.reasonRestock")}</option>
                   <option value="adjustment">{t("products.form.reasonAdjustment")}</option>
@@ -2561,7 +2553,7 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                 type="button"
                 onClick={handleApplyQuickStock}
                 disabled={savingQuickStock}
-                className="flex items-center gap-1.5 px-4 py-2 bg-accent-brand text-white text-xs font-semibold rounded-xl hover:bg-accent-brand/90 transition-all shadow-xs disabled:opacity-60"
+                className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-xl hover:opacity-90 transition-all shadow-xs disabled:opacity-60"
               >
                 {savingQuickStock && <Loader2 className="size-3.5 animate-spin" />}
                 <span>{t("actions.save")}</span>
