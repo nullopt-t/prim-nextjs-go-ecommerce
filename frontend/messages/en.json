@@ -1661,98 +1661,98 @@
   "meta": {
     "auth": {
       "signIn": {
-        "description": "Sign in to your PRIM account",
-        "title": "Sign In | PRIM"
+        "description": "Sign in to your the store account",
+        "title": "Sign In"
       },
       "verify": {
         "description": "Verify your email to continue",
-        "title": "Verify Account | PRIM"
+        "title": "Verify Account"
       }
     },
     "dashboard": {
       "user": {
         "addresses": {
           "description": "Manage shipping and delivery addresses",
-          "title": "Delivery Addresses | PRIM"
+          "title": "Delivery Addresses"
         },
         "orderDetails": {
           "description": "View detailed invoice, shipping, and items for your order",
-          "title": "Order Details | PRIM"
+          "title": "Order Details"
         },
         "orders": {
           "description": "View and track your previous orders",
-          "title": "My Orders | PRIM"
+          "title": "My Orders"
         },
         "overview": {
           "description": "User dashboard and account overview",
-          "title": "Account Overview | PRIM"
+          "title": "Account Overview"
         },
         "reviews": {
           "description": "View and manage your product reviews",
-          "title": "Your Reviews | PRIM"
+          "title": "Your Reviews"
         },
         "wishlist": {
           "description": "Your saved products",
-          "title": "Dashboard Wishlist | PRIM"
+          "title": "Dashboard Wishlist"
         }
       }
     },
     "home": {
       "description": "E-Commerce store for audio gear, wearables, and accessories",
-      "title": "PRIM - Premium Audio & Wearables"
+      "title": "Premium Audio & Wearables"
     },
     "portal": {
       "description": "Select workspace environment: Public Storefront, Vendor Hub, or Admin Control Panel",
-      "title": "PRIM Route Manager | Multi-Portal Architecture"
+      "title": "the store Route Manager | Multi-Portal Architecture"
     },
     "shop": {
       "about": {
-        "description": "Learn more about PRIM's values, mission, and team",
-        "title": "About Us | PRIM"
+        "description": "Learn more about our values, mission, and team",
+        "title": "About Us"
       },
       "careers": {
-        "description": "Join the team behind PRIM",
-        "title": "Careers | PRIM"
+        "description": "Join the team behind the store",
+        "title": "Careers"
       },
       "cart": {
         "description": "Review and checkout your cart items",
-        "title": "Your Shopping Cart | PRIM"
+        "title": "Your Shopping Cart"
       },
       "categories": {
-        "description": "Shop every department in the PRIM catalog",
-        "title": "Browse Categories | PRIM"
+        "description": "Shop every department in the store catalog",
+        "title": "Browse Categories"
       },
       "checkout": {
         "description": "Complete your order with secure delivery and payment options",
-        "title": "Secure Checkout | PRIM"
+        "title": "Secure Checkout"
       },
       "contact": {
-        "description": "Get in touch with PRIM support",
-        "title": "Contact Us | PRIM"
+        "description": "Get in touch with the store support",
+        "title": "Contact Us"
       },
       "faqs": {
         "description": "Answers to common questions about orders and delivery",
-        "title": "FAQs | PRIM"
+        "title": "FAQs"
       },
       "press": {
-        "description": "PRIM news, media, and brand resources",
-        "title": "Press | PRIM"
+        "description": "the store news, media, and brand resources",
+        "title": "Press"
       },
       "products": {
         "description": "Browse our premium audio and gear catalog",
-        "title": "Products Catalog | PRIM"
+        "title": "Products Catalog"
       },
       "returns": {
         "description": "How to return or exchange an order",
-        "title": "Returns | PRIM"
+        "title": "Returns"
       },
       "shipping": {
         "description": "Delivery options, timelines, and costs",
-        "title": "Shipping | PRIM"
+        "title": "Shipping"
       },
       "wishlist": {
         "description": "View and manage your saved items",
-        "title": "Your Wishlist | PRIM"
+        "title": "Your Wishlist"
       },
       "brands": {
         "description": "Browse every brand in the store catalog",

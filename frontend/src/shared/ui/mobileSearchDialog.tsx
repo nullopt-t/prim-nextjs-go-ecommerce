@@ -67,6 +67,17 @@ export function MobileSearchDialog() {
     }
   }, [isOpen]);
 
+  // Close when the viewport grows past the mobile breakpoint so the body
+  // scroll lock and the (hidden) dialog do not trap the user.
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleResize = () => {
+      if (window.innerWidth >= 768) setIsOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isOpen]);
+
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

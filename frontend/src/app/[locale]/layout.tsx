@@ -25,11 +25,16 @@ const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta.home");
+  const settings = await getPublicSettings().catch(() => null);
+  const storeName = settings?.storeName?.trim();
   return {
     metadataBase: new URL(
       process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
     ),
-    title: t("title"),
+    title: {
+      default: t("title"),
+      template: storeName ? `%s | ${storeName}` : "%s",
+    },
     description: t("description"),
     icons: {
       icon: [

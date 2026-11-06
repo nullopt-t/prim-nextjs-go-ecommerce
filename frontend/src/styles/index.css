@@ -19,6 +19,14 @@ input {
 	outline: none;
 }
 
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
 /* ── Core services health: live heartbeat, loading shimmer, and refresh sweep ── */
 
 @keyframes prim-heartbeat {
