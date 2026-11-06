@@ -5,3 +5,8 @@ tmp
 coverage
 .env
 .env.*
+
+# Exclude development plans, reports and stress notes
+*_REPORT.md
+*_PLAN.md
+stress/
