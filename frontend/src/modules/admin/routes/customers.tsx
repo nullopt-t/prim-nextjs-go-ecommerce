@@ -172,7 +172,7 @@ export function AdminCustomers() {
             className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             aria-label={t("customers.colRole")}
           >
-            {["all", "customer", "vendor", "admin", "superadmin"].map((r) => (
+            {["all", "customer", "seller", "admin", "superadmin"].map((r) => (
               <option key={r} value={r}>
                 {t(`customers.roles.${r}`)}
               </option>

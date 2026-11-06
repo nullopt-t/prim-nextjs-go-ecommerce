@@ -55,7 +55,7 @@ func userIDFromContext(c *gin.Context) (uuid.UUID, error) {
 // GetHistory godoc
 //
 //	@Summary		List recently viewed products
-//	@Description	Returns the authenticated customer's recently viewed products, newest first. Unpublished, deleted, and inactive-vendor products are omitted.
+//	@Description	Returns the authenticated customer's recently viewed products, newest first. Unpublished, deleted, and inactive-seller products are omitted.
 //	@Tags			History
 //	@Produce		json
 //	@Security		SessionAuth

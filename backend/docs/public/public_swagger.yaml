@@ -306,6 +306,11 @@ definitions:
         type: integer
       perUserLimit:
         type: integer
+      sellerId:
+        description: |-
+          SellerID scopes the coupon to one merchant's products. Nil means a
+          platform-wide coupon managed by the admin.
+        type: string
       startsAt:
         type: string
       status:
@@ -319,11 +324,6 @@ definitions:
         type: integer
       usageLimit:
         type: integer
-      vendorId:
-        description: |-
-          VendorID scopes the coupon to one merchant's products. Nil means a
-          platform-wide coupon managed by the admin.
-        type: string
     type: object
   CouponDiscountType:
     enum:
@@ -443,7 +443,7 @@ definitions:
         type: integer
       orderCount:
         description: OrderCount is the number of non-cancelled orders containing the
-          vendor's items.
+          seller's items.
         type: integer
       outstandingPayouts:
         description: OutstandingPayouts is the sum of non-rejected payout claims.
@@ -453,7 +453,7 @@ definitions:
           not yet payout-eligible.
         type: integer
       productCount:
-        description: ProductCount is the number of live vendor products.
+        description: ProductCount is the number of live seller products.
         type: integer
       publishedProductCount:
         description: PublishedProductCount is the subset visible in the storefront.
@@ -757,6 +757,10 @@ definitions:
       referenceNumber:
         description: External transfer reference when available.
         type: string
+      sellerId:
+        description: Seller id.
+        example: 50000000-0000-0000-0000-000000000001
+        type: string
       snapshotAvailableBalance:
         description: Available balance stamped at request time.
         example: 300000
@@ -771,10 +775,6 @@ definitions:
         - processing
         - paid
         - rejected
-      vendorId:
-        description: Vendor id.
-        example: 50000000-0000-0000-0000-000000000001
-        type: string
     type: object
   PayoutStatus:
     enum:
@@ -1165,7 +1165,7 @@ definitions:
     - PublicationStatusDraft
     - PublicationStatusPublished
     - PublicationStatusArchived
-  RegisterVendorRequest:
+  RegisterSellerRequest:
     properties:
       bannerObjectId:
         example: 10000000-0000-0000-0000-00000000000e
@@ -1263,6 +1263,483 @@ definitions:
         description: Whether requesting user voted this review helpful
         example: false
         type: boolean
+    type: object
+  SellerCreateProductRequest:
+    properties:
+      brandId:
+        description: Optional brand UUID.
+        example: 30000000-0000-0000-0000-000000000001
+        type: string
+      categoryId:
+        description: Required category UUID.
+        example: 40000000-0000-0000-0000-000000000002
+        type: string
+      description:
+        description: Full product description.
+        type: string
+      highlights:
+        description: Key bullet points shown on the storefront.
+        example:
+        - Active Noise Cancellation
+        - 30h battery
+        items:
+          type: string
+        type: array
+      productType:
+        description: 'Product classification: simple or variable.'
+        enum:
+        - simple
+        - variable
+        example: simple
+        type: string
+      slug:
+        description: URL-friendly product identifier.
+        example: wireless-headphones
+        maxLength: 200
+        type: string
+      title:
+        description: Product display title.
+        example: Wireless Headphones
+        maxLength: 200
+        type: string
+      variationAxes:
+        description: Ordered variation axis keys for variable products.
+        example:
+        - color
+        - storage
+        items:
+          type: string
+        type: array
+    required:
+    - categoryId
+    - slug
+    - title
+    type: object
+  SellerCreatePromotionRequest:
+    properties:
+      code:
+        description: Promo code; stored uppercased.
+        example: SUMMER20
+        type: string
+      currency:
+        description: ISO currency code; defaults to EGP.
+        example: EGP
+        type: string
+      discountType:
+        description: Discount kind.
+        enum:
+        - percentage
+        - fixed_amount
+        example: percentage
+        type: string
+      discountValue:
+        description: Percentage (1-100) or fixed amount in minor units.
+        example: 20
+        type: integer
+      expiresAt:
+        type: string
+      minCartAmount:
+        description: Minimum eligible subtotal in minor units before the coupon applies.
+        type: integer
+      perUserLimit:
+        description: Optional per-customer redemption cap.
+        type: integer
+      startsAt:
+        description: Optional activation window.
+        type: string
+      usageLimit:
+        description: Optional total redemption cap.
+        type: integer
+    required:
+    - code
+    - discountType
+    - discountValue
+    type: object
+  SellerCreateVariantRequest:
+    properties:
+      attributes:
+        additionalProperties: {}
+        description: Attribute dimensions (e.g. {"color":"Black","storage":"128GB"}).
+        type: object
+      crossedOutPrice:
+        description: Original/crossed-out price in minor units.
+        example: 299900
+        type: integer
+      currency:
+        description: ISO currency code.
+        example: EGP
+        type: string
+      isDefault:
+        description: Marks this variant as the default storefront selection.
+        example: true
+        type: boolean
+      price:
+        description: Price in minor units.
+        example: 249900
+        type: integer
+      sku:
+        description: Optional custom SKU; generated when omitted.
+        example: SKU-BLK-01
+        type: string
+      thumbnailUrl:
+        description: Optional public thumbnail image URL, as returned by POST /seller/media.
+        type: string
+      title:
+        description: Variant display title.
+        example: Black, 128GB
+        type: string
+    required:
+    - title
+    type: object
+  SellerMediaUploadResponse:
+    properties:
+      url:
+        description: Public URL of the uploaded image.
+        example: https://cdn.example.com/catalog/8f14e45f-ea0a-4a7a-9c9a-123456789abc
+        type: string
+    type: object
+  SellerOrderItemResponse:
+    properties:
+      commissionAmount:
+        description: Frozen platform commission amount for this line, in minor units.
+        type: integer
+      commissionRateBps:
+        description: Frozen commission rate applied to this line.
+        type: integer
+      id:
+        description: Line item id.
+        type: string
+      lineTotal:
+        description: Line total in minor units.
+        type: integer
+      priceAtPurchase:
+        description: Unit price in minor units, frozen at checkout.
+        type: integer
+      quantity:
+        description: Units purchased.
+        type: integer
+      sellerEarning:
+        description: Frozen seller earning for this line, in minor units.
+        type: integer
+      title:
+        description: Product/variant title from the checkout snapshot, when present.
+        type: string
+      variantId:
+        description: Purchased variant id.
+        type: string
+    type: object
+  SellerOrderResponse:
+    properties:
+      createdAt:
+        description: Order created timestamp (RFC3339).
+        type: string
+      currency:
+        description: Currency of the order.
+        type: string
+      earnings:
+        description: Sum of the seller's frozen earnings, in minor units.
+        type: integer
+      id:
+        description: Order id.
+        type: string
+      items:
+        description: The seller's lines in this order.
+        items:
+          $ref: '#/definitions/SellerOrderItemResponse'
+        type: array
+      status:
+        allOf:
+        - $ref: '#/definitions/OrderStatus'
+        description: Fulfillment lifecycle status.
+      subtotal:
+        description: Sum of the seller's line totals, in minor units.
+        type: integer
+      updatedAt:
+        description: Order last updated timestamp (RFC3339).
+        type: string
+    type: object
+  SellerProductResponse:
+    properties:
+      createdAt:
+        description: Created timestamp (RFC3339).
+        type: string
+      id:
+        description: Product UUID.
+        example: 70000000-0000-0000-0000-000000000001
+        type: string
+      productType:
+        allOf:
+        - $ref: '#/definitions/ProductType'
+        description: Product classification.
+        enum:
+        - simple
+        - variable
+      sellerId:
+        description: Owning seller UUID.
+        example: 50000000-0000-0000-0000-000000000001
+        type: string
+      slug:
+        description: URL-friendly slug.
+        example: wireless-headphones
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/PublicationStatus'
+        description: Lifecycle status.
+        enum:
+        - draft
+        - published
+        - archived
+      title:
+        description: Display title.
+        example: Wireless Headphones
+        type: string
+      updatedAt:
+        description: Updated timestamp (RFC3339).
+        type: string
+    type: object
+  SellerProductSummary:
+    properties:
+      createdAt:
+        type: string
+      currency:
+        type: string
+      id:
+        type: string
+      price:
+        type: integer
+      productType:
+        $ref: '#/definitions/ProductType'
+      sku:
+        type: string
+      slug:
+        type: string
+      status:
+        $ref: '#/definitions/PublicationStatus'
+      stock:
+        type: integer
+      thumbnailUrl:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  SellerPromotionStatusRequest:
+    properties:
+      status:
+        description: New lifecycle state.
+        enum:
+        - active
+        - disabled
+        - archived
+        example: disabled
+        type: string
+    required:
+    - status
+    type: object
+  SellerResponse:
+    properties:
+      bannerUrl:
+        description: Public banner URL, when set.
+        type: string
+      commissionRateBps:
+        description: Platform commission in basis points.
+        example: 1000
+        type: integer
+      createdAt:
+        description: Created timestamp (RFC3339).
+        example: "2026-11-02T10:00:00Z"
+        type: string
+      description:
+        description: Optional storefront description.
+        example: Electronics and accessories
+        type: string
+      id:
+        description: Seller profile id.
+        example: 50000000-0000-0000-0000-000000000001
+        type: string
+      logoUrl:
+        description: Public logo URL, when set.
+        type: string
+      reviewedAt:
+        description: When the latest lifecycle decision was made (RFC3339).
+        type: string
+      reviewedBy:
+        description: Administrator who made the latest lifecycle decision.
+        type: string
+      slug:
+        description: URL-safe unique store identifier.
+        example: amrs-gadgets
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/SellerStatus'
+        description: Lifecycle status.
+        enum:
+        - pending
+        - active
+        - suspended
+        - rejected
+      statusReason:
+        description: Merchant-visible reason for the latest rejection or suspension.
+        type: string
+      storeName:
+        description: Customer-facing store display name.
+        example: Amr's Gadgets
+        type: string
+      updatedAt:
+        description: Updated timestamp (RFC3339).
+        example: "2026-11-02T10:00:00Z"
+        type: string
+      userId:
+        description: Owning account id.
+        example: 10000000-0000-0000-0000-000000000001
+        type: string
+    type: object
+  SellerStatus:
+    enum:
+    - pending
+    - active
+    - suspended
+    - rejected
+    type: string
+    x-enum-varnames:
+    - SellerStatusPending
+    - SellerStatusActive
+    - SellerStatusSuspended
+    - SellerStatusRejected
+  SellerStockAdjustRequest:
+    properties:
+      quantity:
+        description: 'Signed delta: positive restocks, negative reduces on-hand.'
+        example: 50
+        type: integer
+      reason:
+        description: Business reason for the movement.
+        enum:
+        - restock
+        - return
+        - adjustment
+        example: restock
+        type: string
+    required:
+    - quantity
+    - reason
+    type: object
+  SellerStockResponse:
+    properties:
+      availableQuantity:
+        description: Salable units (on hand minus reserved).
+        example: 50
+        type: integer
+      isInStock:
+        description: True when available units exceed zero.
+        example: true
+        type: boolean
+      onHandQuantity:
+        description: Physical units on hand.
+        example: 60
+        type: integer
+      reservedQuantity:
+        description: Units reserved by open orders.
+        example: 10
+        type: integer
+      variantId:
+        description: Variant UUID.
+        type: string
+    type: object
+  SellerUpdateProductRequest:
+    properties:
+      brandId:
+        description: Optional brand UUID.
+        type: string
+      categoryId:
+        description: Optional category UUID.
+        type: string
+      description:
+        description: Updated product description.
+        type: string
+      highlights:
+        description: Updated highlight bullets.
+        items:
+          type: string
+        type: array
+      productType:
+        description: 'Product classification: simple or variable.'
+        enum:
+        - simple
+        - variable
+        type: string
+      title:
+        description: Updated product title.
+        maxLength: 200
+        type: string
+      variationAxes:
+        description: Variation axes; omit to leave unchanged, [] to make the product
+          simple.
+        items:
+          type: string
+        type: array
+    type: object
+  SellerUpdateVariantRequest:
+    properties:
+      attributes:
+        additionalProperties: {}
+        description: Updated attribute dimensions.
+        type: object
+      crossedOutPrice:
+        description: Updated original price in minor units.
+        type: integer
+      currency:
+        description: Updated ISO currency code.
+        type: string
+      isDefault:
+        description: Updated default-selection flag.
+        type: boolean
+      price:
+        description: Updated price in minor units.
+        type: integer
+      sku:
+        description: Updated SKU.
+        type: string
+      thumbnailUrl:
+        description: Updated public thumbnail image URL, as returned by POST /seller/media.
+        type: string
+      title:
+        description: Updated title.
+        type: string
+    type: object
+  SellerVariantResponse:
+    properties:
+      attributes:
+        additionalProperties: {}
+        description: Attribute dimensions.
+        type: object
+      crossedOutPrice:
+        description: Crossed-out price in minor units.
+        type: integer
+      currency:
+        description: ISO currency code.
+        type: string
+      id:
+        description: Variant UUID.
+        type: string
+      isDefault:
+        description: Default-selection flag.
+        type: boolean
+      price:
+        description: Unit price in minor units.
+        type: integer
+      productId:
+        description: Parent product UUID.
+        type: string
+      sku:
+        description: Stock keeping unit.
+        type: string
+      title:
+        description: Display title.
+        type: string
     type: object
   SessionType:
     enum:
@@ -1432,7 +1909,7 @@ definitions:
       state:
         type: string
     type: object
-  UpdateMyVendorRequest:
+  UpdateMySellerRequest:
     properties:
       bankAccountInfo:
         additionalProperties: {}
@@ -1523,14 +2000,14 @@ definitions:
     - superadmin
     - admin
     - support
-    - vendor
+    - seller
     - customer
     type: string
     x-enum-varnames:
     - SuperRole
     - AdminRole
     - SupportRole
-    - VendorRole
+    - SellerRole
     - CustomerRole
   UserSession:
     properties:
@@ -1664,483 +2141,6 @@ definitions:
       title:
         description: Variant title
         example: Space Black, 18GB RAM, 512GB SSD
-        type: string
-    type: object
-  VendorCreateProductRequest:
-    properties:
-      brandId:
-        description: Optional brand UUID.
-        example: 30000000-0000-0000-0000-000000000001
-        type: string
-      categoryId:
-        description: Required category UUID.
-        example: 40000000-0000-0000-0000-000000000002
-        type: string
-      description:
-        description: Full product description.
-        type: string
-      highlights:
-        description: Key bullet points shown on the storefront.
-        example:
-        - Active Noise Cancellation
-        - 30h battery
-        items:
-          type: string
-        type: array
-      productType:
-        description: 'Product classification: simple or variable.'
-        enum:
-        - simple
-        - variable
-        example: simple
-        type: string
-      slug:
-        description: URL-friendly product identifier.
-        example: wireless-headphones
-        maxLength: 200
-        type: string
-      title:
-        description: Product display title.
-        example: Wireless Headphones
-        maxLength: 200
-        type: string
-      variationAxes:
-        description: Ordered variation axis keys for variable products.
-        example:
-        - color
-        - storage
-        items:
-          type: string
-        type: array
-    required:
-    - categoryId
-    - slug
-    - title
-    type: object
-  VendorCreatePromotionRequest:
-    properties:
-      code:
-        description: Promo code; stored uppercased.
-        example: SUMMER20
-        type: string
-      currency:
-        description: ISO currency code; defaults to EGP.
-        example: EGP
-        type: string
-      discountType:
-        description: Discount kind.
-        enum:
-        - percentage
-        - fixed_amount
-        example: percentage
-        type: string
-      discountValue:
-        description: Percentage (1-100) or fixed amount in minor units.
-        example: 20
-        type: integer
-      expiresAt:
-        type: string
-      minCartAmount:
-        description: Minimum eligible subtotal in minor units before the coupon applies.
-        type: integer
-      perUserLimit:
-        description: Optional per-customer redemption cap.
-        type: integer
-      startsAt:
-        description: Optional activation window.
-        type: string
-      usageLimit:
-        description: Optional total redemption cap.
-        type: integer
-    required:
-    - code
-    - discountType
-    - discountValue
-    type: object
-  VendorCreateVariantRequest:
-    properties:
-      attributes:
-        additionalProperties: {}
-        description: Attribute dimensions (e.g. {"color":"Black","storage":"128GB"}).
-        type: object
-      crossedOutPrice:
-        description: Original/crossed-out price in minor units.
-        example: 299900
-        type: integer
-      currency:
-        description: ISO currency code.
-        example: EGP
-        type: string
-      isDefault:
-        description: Marks this variant as the default storefront selection.
-        example: true
-        type: boolean
-      price:
-        description: Price in minor units.
-        example: 249900
-        type: integer
-      sku:
-        description: Optional custom SKU; generated when omitted.
-        example: SKU-BLK-01
-        type: string
-      thumbnailUrl:
-        description: Optional public thumbnail image URL, as returned by POST /vendor/media.
-        type: string
-      title:
-        description: Variant display title.
-        example: Black, 128GB
-        type: string
-    required:
-    - title
-    type: object
-  VendorMediaUploadResponse:
-    properties:
-      url:
-        description: Public URL of the uploaded image.
-        example: https://cdn.example.com/catalog/8f14e45f-ea0a-4a7a-9c9a-123456789abc
-        type: string
-    type: object
-  VendorOrderItemResponse:
-    properties:
-      commissionAmount:
-        description: Frozen platform commission amount for this line, in minor units.
-        type: integer
-      commissionRateBps:
-        description: Frozen commission rate applied to this line.
-        type: integer
-      id:
-        description: Line item id.
-        type: string
-      lineTotal:
-        description: Line total in minor units.
-        type: integer
-      priceAtPurchase:
-        description: Unit price in minor units, frozen at checkout.
-        type: integer
-      quantity:
-        description: Units purchased.
-        type: integer
-      title:
-        description: Product/variant title from the checkout snapshot, when present.
-        type: string
-      variantId:
-        description: Purchased variant id.
-        type: string
-      vendorEarning:
-        description: Frozen vendor earning for this line, in minor units.
-        type: integer
-    type: object
-  VendorOrderResponse:
-    properties:
-      createdAt:
-        description: Order created timestamp (RFC3339).
-        type: string
-      currency:
-        description: Currency of the order.
-        type: string
-      earnings:
-        description: Sum of the vendor's frozen earnings, in minor units.
-        type: integer
-      id:
-        description: Order id.
-        type: string
-      items:
-        description: The vendor's lines in this order.
-        items:
-          $ref: '#/definitions/VendorOrderItemResponse'
-        type: array
-      status:
-        allOf:
-        - $ref: '#/definitions/OrderStatus'
-        description: Fulfillment lifecycle status.
-      subtotal:
-        description: Sum of the vendor's line totals, in minor units.
-        type: integer
-      updatedAt:
-        description: Order last updated timestamp (RFC3339).
-        type: string
-    type: object
-  VendorProductResponse:
-    properties:
-      createdAt:
-        description: Created timestamp (RFC3339).
-        type: string
-      id:
-        description: Product UUID.
-        example: 70000000-0000-0000-0000-000000000001
-        type: string
-      productType:
-        allOf:
-        - $ref: '#/definitions/ProductType'
-        description: Product classification.
-        enum:
-        - simple
-        - variable
-      slug:
-        description: URL-friendly slug.
-        example: wireless-headphones
-        type: string
-      status:
-        allOf:
-        - $ref: '#/definitions/PublicationStatus'
-        description: Lifecycle status.
-        enum:
-        - draft
-        - published
-        - archived
-      title:
-        description: Display title.
-        example: Wireless Headphones
-        type: string
-      updatedAt:
-        description: Updated timestamp (RFC3339).
-        type: string
-      vendorId:
-        description: Owning vendor UUID.
-        example: 50000000-0000-0000-0000-000000000001
-        type: string
-    type: object
-  VendorProductSummary:
-    properties:
-      createdAt:
-        type: string
-      currency:
-        type: string
-      id:
-        type: string
-      price:
-        type: integer
-      productType:
-        $ref: '#/definitions/ProductType'
-      sku:
-        type: string
-      slug:
-        type: string
-      status:
-        $ref: '#/definitions/PublicationStatus'
-      stock:
-        type: integer
-      thumbnailUrl:
-        type: string
-      title:
-        type: string
-      updatedAt:
-        type: string
-    type: object
-  VendorPromotionStatusRequest:
-    properties:
-      status:
-        description: New lifecycle state.
-        enum:
-        - active
-        - disabled
-        - archived
-        example: disabled
-        type: string
-    required:
-    - status
-    type: object
-  VendorResponse:
-    properties:
-      bannerUrl:
-        description: Public banner URL, when set.
-        type: string
-      commissionRateBps:
-        description: Platform commission in basis points.
-        example: 1000
-        type: integer
-      createdAt:
-        description: Created timestamp (RFC3339).
-        example: "2026-11-02T10:00:00Z"
-        type: string
-      description:
-        description: Optional storefront description.
-        example: Electronics and accessories
-        type: string
-      id:
-        description: Vendor profile id.
-        example: 50000000-0000-0000-0000-000000000001
-        type: string
-      logoUrl:
-        description: Public logo URL, when set.
-        type: string
-      reviewedAt:
-        description: When the latest lifecycle decision was made (RFC3339).
-        type: string
-      reviewedBy:
-        description: Administrator who made the latest lifecycle decision.
-        type: string
-      slug:
-        description: URL-safe unique store identifier.
-        example: amrs-gadgets
-        type: string
-      status:
-        allOf:
-        - $ref: '#/definitions/VendorStatus'
-        description: Lifecycle status.
-        enum:
-        - pending
-        - active
-        - suspended
-        - rejected
-      statusReason:
-        description: Merchant-visible reason for the latest rejection or suspension.
-        type: string
-      storeName:
-        description: Customer-facing store display name.
-        example: Amr's Gadgets
-        type: string
-      updatedAt:
-        description: Updated timestamp (RFC3339).
-        example: "2026-11-02T10:00:00Z"
-        type: string
-      userId:
-        description: Owning account id.
-        example: 10000000-0000-0000-0000-000000000001
-        type: string
-    type: object
-  VendorStatus:
-    enum:
-    - pending
-    - active
-    - suspended
-    - rejected
-    type: string
-    x-enum-varnames:
-    - VendorStatusPending
-    - VendorStatusActive
-    - VendorStatusSuspended
-    - VendorStatusRejected
-  VendorStockAdjustRequest:
-    properties:
-      quantity:
-        description: 'Signed delta: positive restocks, negative reduces on-hand.'
-        example: 50
-        type: integer
-      reason:
-        description: Business reason for the movement.
-        enum:
-        - restock
-        - return
-        - adjustment
-        example: restock
-        type: string
-    required:
-    - quantity
-    - reason
-    type: object
-  VendorStockResponse:
-    properties:
-      availableQuantity:
-        description: Salable units (on hand minus reserved).
-        example: 50
-        type: integer
-      isInStock:
-        description: True when available units exceed zero.
-        example: true
-        type: boolean
-      onHandQuantity:
-        description: Physical units on hand.
-        example: 60
-        type: integer
-      reservedQuantity:
-        description: Units reserved by open orders.
-        example: 10
-        type: integer
-      variantId:
-        description: Variant UUID.
-        type: string
-    type: object
-  VendorUpdateProductRequest:
-    properties:
-      brandId:
-        description: Optional brand UUID.
-        type: string
-      categoryId:
-        description: Optional category UUID.
-        type: string
-      description:
-        description: Updated product description.
-        type: string
-      highlights:
-        description: Updated highlight bullets.
-        items:
-          type: string
-        type: array
-      productType:
-        description: 'Product classification: simple or variable.'
-        enum:
-        - simple
-        - variable
-        type: string
-      title:
-        description: Updated product title.
-        maxLength: 200
-        type: string
-      variationAxes:
-        description: Variation axes; omit to leave unchanged, [] to make the product
-          simple.
-        items:
-          type: string
-        type: array
-    type: object
-  VendorUpdateVariantRequest:
-    properties:
-      attributes:
-        additionalProperties: {}
-        description: Updated attribute dimensions.
-        type: object
-      crossedOutPrice:
-        description: Updated original price in minor units.
-        type: integer
-      currency:
-        description: Updated ISO currency code.
-        type: string
-      isDefault:
-        description: Updated default-selection flag.
-        type: boolean
-      price:
-        description: Updated price in minor units.
-        type: integer
-      sku:
-        description: Updated SKU.
-        type: string
-      thumbnailUrl:
-        description: Updated public thumbnail image URL, as returned by POST /vendor/media.
-        type: string
-      title:
-        description: Updated title.
-        type: string
-    type: object
-  VendorVariantResponse:
-    properties:
-      attributes:
-        additionalProperties: {}
-        description: Attribute dimensions.
-        type: object
-      crossedOutPrice:
-        description: Crossed-out price in minor units.
-        type: integer
-      currency:
-        description: ISO currency code.
-        type: string
-      id:
-        description: Variant UUID.
-        type: string
-      isDefault:
-        description: Default-selection flag.
-        type: boolean
-      price:
-        description: Unit price in minor units.
-        type: integer
-      productId:
-        description: Parent product UUID.
-        type: string
-      sku:
-        description: Stock keeping unit.
-        type: string
-      title:
-        description: Display title.
         type: string
     type: object
   VerifyChallengeRequest:
@@ -3804,6 +3804,956 @@ paths:
       summary: List current user's reviews
       tags:
       - Reviews
+  /seller/dashboard:
+    get:
+      description: Returns the merchant's money position (settled, pending, outstanding)
+        and catalog health counts. Active sellers only; other lifecycle states receive
+        403.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/Dashboard'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Seller dashboard
+      tags:
+      - Seller
+  /seller/media:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads a raster image to the catalog bucket and returns its public
+        URL, which callers pass as thumbnailUrl when creating variants. Only registered
+        sellers may upload.
+      parameters:
+      - description: Image file (JPEG, PNG, GIF, WebP or AVIF, up to 10 MB)
+        in: formData
+        name: file
+        required: true
+        type: string
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/SellerMediaUploadResponse'
+              type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Seller not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Upload a merchant product image
+      tags:
+      - Seller
+  /seller/orders:
+    get:
+      description: Returns orders containing the authenticated seller's lines, newest
+        first. Only the seller's own lines are included; no customer PII is exposed.
+      parameters:
+      - description: Order status filter
+        enum:
+        - pending
+        - paid
+        - processing
+        - shipped
+        - delivered
+        - cancelled
+        - refunded
+        in: query
+        name: status
+        type: string
+      - description: Page number (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (max 100)
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/SellerOrderResponse'
+                  type: array
+              type: object
+        "400":
+          description: Invalid status filter
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List my orders
+      tags:
+      - Seller
+  /seller/orders/{id}:
+    get:
+      description: Returns the seller's own lines for one order. Orders without the
+        seller's lines answer 404.
+      parameters:
+      - description: Order UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/SellerOrderResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Seller not found or order not yours
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get one of my orders
+      tags:
+      - Seller
+  /seller/payouts:
+    get:
+      description: Returns the caller's payout ledger including rejected records (full
+        audit trail). Available to active and suspended sellers.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/PayoutResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List my payouts
+      tags:
+      - Seller
+    post:
+      consumes:
+      - application/json
+      description: Registers a payout request against settled earnings, validating
+        the available balance under the seller row lock. Active sellers only. Reusing
+        an Idempotency-Key with the same amount replays the original request; a different
+        amount returns 409.
+      parameters:
+      - description: Payout request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/RequestPayoutRequest'
+      - description: Client retry key (max 100 chars)
+        in: header
+        name: Idempotency-Key
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/PayoutResponse'
+        "400":
+          description: Validation failed or insufficient balance
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Request a payout
+      tags:
+      - Seller
+  /seller/products:
+    get:
+      description: Returns the authenticated seller's catalog, drafts included. Ownership
+        is enforced server-side and the seller must be active.
+      parameters:
+      - description: Page number (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (max 100)
+        in: query
+        name: pageSize
+        type: integer
+      - description: Publication status filter
+        enum:
+        - draft
+        - published
+        - archived
+        in: query
+        name: status
+        type: string
+      - description: Category name(s) or UUID(s), comma-separated
+        in: query
+        name: category
+        type: string
+      - description: Brand name(s) or UUID(s), comma-separated
+        in: query
+        name: brand
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/SellerProductSummary'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List my products
+      tags:
+      - Seller
+    post:
+      consumes:
+      - application/json
+      description: Creates a draft product owned by the authenticated seller. Requires
+        an active seller profile.
+      parameters:
+      - description: Product draft payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SellerCreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/SellerProductResponse'
+              type: object
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Create a product
+      tags:
+      - Seller
+  /seller/products/{id}:
+    delete:
+      description: Soft-deletes a product owned by the authenticated seller.
+      parameters:
+      - description: Product UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Product or seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete a product
+      tags:
+      - Seller
+    patch:
+      consumes:
+      - application/json
+      description: Edits a product owned by the authenticated seller. Foreign or platform
+        products return 404.
+      parameters:
+      - description: Product UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Product edit payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SellerUpdateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Product or seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Update a product
+      tags:
+      - Seller
+  /seller/products/{id}/archive:
+    post:
+      description: Archives a product owned by the authenticated seller, removing
+        it from the storefront.
+      parameters:
+      - description: Product UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Product or seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Archive a product
+      tags:
+      - Seller
+  /seller/products/{id}/publish:
+    post:
+      description: Publishes a product owned by the authenticated seller. Product-domain
+        preconditions (e.g. at least one variant) still apply.
+      parameters:
+      - description: Product UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Publishing preconditions not met
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Product or seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Publish a product
+      tags:
+      - Seller
+  /seller/products/{id}/variants:
+    get:
+      description: Returns the variants of a product owned by the authenticated seller.
+      parameters:
+      - description: Product UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Page number (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (max 100)
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/SellerVariantResponse'
+                  type: array
+              type: object
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Product or seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List variants of my product
+      tags:
+      - Seller
+    post:
+      consumes:
+      - application/json
+      description: Creates a purchasable SKU under a product owned by the authenticated
+        seller.
+      parameters:
+      - description: Product UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Variant payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SellerCreateVariantRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/SellerVariantResponse'
+              type: object
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Product or seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Add a variant to my product
+      tags:
+      - Seller
+  /seller/profile:
+    get:
+      description: Returns the seller profile belonging to the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SellerResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Seller not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get my seller profile
+      tags:
+      - Seller
+    patch:
+      consumes:
+      - application/json
+      description: Edits the merchant profile for pending, active, or rejected sellers.
+        Rejected edits return the application to pending; suspended sellers are blocked.
+        The slug is immutable once the seller is active. Commission and status remain
+        admin-controlled.
+      parameters:
+      - description: Profile update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateMySellerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SellerResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "403":
+          description: Seller not authorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Seller not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Update my seller profile
+      tags:
+      - Seller
+  /seller/promotions:
+    get:
+      description: Lists coupons owned by the authenticated seller.
+      parameters:
+      - description: Page number (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (max 100)
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/Coupon'
+                  type: array
+              type: object
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List my promotions
+      tags:
+      - Seller
+    post:
+      consumes:
+      - application/json
+      description: Creates a coupon scoped to the authenticated seller's products.
+        The discount applies only to that seller's eligible subtotal at checkout.
+      parameters:
+      - description: Promotion payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SellerCreatePromotionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/Coupon'
+              type: object
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Create a promotion
+      tags:
+      - Seller
+  /seller/promotions/{id}:
+    delete:
+      description: Permanently removes a coupon owned by the authenticated seller.
+      parameters:
+      - description: Coupon UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Promotion not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete a promotion
+      tags:
+      - Seller
+  /seller/promotions/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Changes the lifecycle state of a coupon owned by the authenticated
+        seller.
+      parameters:
+      - description: Coupon UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Status payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SellerPromotionStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Promotion not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Enable or disable a promotion
+      tags:
+      - Seller
+  /seller/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a pending seller application for any authenticated account.
+        A rejected profile may resubmit, which updates the application and returns
+        it to pending review.
+      parameters:
+      - description: Seller registration payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/RegisterSellerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/SellerResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "409":
+          description: Already registered or slug taken
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Register as seller
+      tags:
+      - Seller
+  /seller/slug-availability:
+    get:
+      description: Validates slug syntax and reserved words, then checks the authoritative
+        uniqueness set. A merchant's own current slug is reported available for re-application.
+      parameters:
+      - description: Candidate store slug
+        in: query
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/SlugAvailability'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Check store slug availability
+      tags:
+      - Seller
+  /seller/variants/{id}:
+    delete:
+      description: Soft-deletes a variant whose parent product belongs to the authenticated
+        seller.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Variant or seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete my variant
+      tags:
+      - Seller
+    patch:
+      consumes:
+      - application/json
+      description: Edits a variant whose parent product belongs to the authenticated
+        seller.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Variant edit payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SellerUpdateVariantRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Variant or seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Update my variant
+      tags:
+      - Seller
+  /seller/variants/{id}/stock:
+    post:
+      consumes:
+      - application/json
+      description: Records a merchant stock movement (restock, return, correction)
+        for a variant of the authenticated seller.
+      parameters:
+      - description: Variant UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stock movement payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SellerStockAdjustRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/SellerStockResponse'
+              type: object
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Variant or seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Adjust my variant stock
+      tags:
+      - Seller
   /settings/public:
     get:
       consumes:
@@ -4113,7 +5063,7 @@ paths:
       - History
     get:
       description: Returns the authenticated customer's recently viewed products,
-        newest first. Unpublished, deleted, and inactive-vendor products are omitted.
+        newest first. Unpublished, deleted, and inactive-seller products are omitted.
       parameters:
       - description: Maximum products to return (1-50, default 10)
         in: query
@@ -4615,956 +5565,6 @@ paths:
       summary: Get variant details by SKU
       tags:
       - Product Variants
-  /vendor/dashboard:
-    get:
-      description: Returns the merchant's money position (settled, pending, outstanding)
-        and catalog health counts. Active vendors only; other lifecycle states receive
-        403.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/Dashboard'
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/UnauthorizedErrorResponse'
-        "404":
-          description: Vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Vendor dashboard
-      tags:
-      - Vendor
-  /vendor/media:
-    post:
-      consumes:
-      - multipart/form-data
-      description: Uploads a raster image to the catalog bucket and returns its public
-        URL, which callers pass as thumbnailUrl when creating variants. Only registered
-        vendors may upload.
-      parameters:
-      - description: Image file (JPEG, PNG, GIF, WebP or AVIF, up to 10 MB)
-        in: formData
-        name: file
-        required: true
-        type: string
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/VendorMediaUploadResponse'
-              type: object
-        "401":
-          description: Authentication required
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-        "404":
-          description: Vendor not found
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Upload a merchant product image
-      tags:
-      - Vendor
-  /vendor/orders:
-    get:
-      description: Returns orders containing the authenticated vendor's lines, newest
-        first. Only the vendor's own lines are included; no customer PII is exposed.
-      parameters:
-      - description: Order status filter
-        enum:
-        - pending
-        - paid
-        - processing
-        - shipped
-        - delivered
-        - cancelled
-        - refunded
-        in: query
-        name: status
-        type: string
-      - description: Page number (1-based)
-        in: query
-        name: page
-        type: integer
-      - description: Page size (max 100)
-        in: query
-        name: pageSize
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/PaginatedResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/VendorOrderResponse'
-                  type: array
-              type: object
-        "400":
-          description: Invalid status filter
-          schema:
-            $ref: '#/definitions/BadReqResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/UnauthorizedErrorResponse'
-        "404":
-          description: Vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: List my orders
-      tags:
-      - Vendor
-  /vendor/orders/{id}:
-    get:
-      description: Returns the vendor's own lines for one order. Orders without the
-        vendor's lines answer 404.
-      parameters:
-      - description: Order UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/VendorOrderResponse'
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/UnauthorizedErrorResponse'
-        "404":
-          description: Vendor not found or order not yours
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Get one of my orders
-      tags:
-      - Vendor
-  /vendor/payouts:
-    get:
-      description: Returns the caller's payout ledger including rejected records (full
-        audit trail). Available to active and suspended vendors.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/DataResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/PayoutResponse'
-                  type: array
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/UnauthorizedErrorResponse'
-        "404":
-          description: Vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: List my payouts
-      tags:
-      - Vendor
-    post:
-      consumes:
-      - application/json
-      description: Registers a payout request against settled earnings, validating
-        the available balance under the vendor row lock. Active vendors only. Reusing
-        an Idempotency-Key with the same amount replays the original request; a different
-        amount returns 409.
-      parameters:
-      - description: Payout request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/RequestPayoutRequest'
-      - description: Client retry key (max 100 chars)
-        in: header
-        name: Idempotency-Key
-        type: string
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/PayoutResponse'
-        "400":
-          description: Validation failed or insufficient balance
-          schema:
-            $ref: '#/definitions/BadReqResponse'
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-        "404":
-          description: Vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Request a payout
-      tags:
-      - Vendor
-  /vendor/products:
-    get:
-      description: Returns the authenticated vendor's catalog, drafts included. Ownership
-        is enforced server-side and the vendor must be active.
-      parameters:
-      - description: Page number (1-based)
-        in: query
-        name: page
-        type: integer
-      - description: Page size (max 100)
-        in: query
-        name: pageSize
-        type: integer
-      - description: Publication status filter
-        enum:
-        - draft
-        - published
-        - archived
-        in: query
-        name: status
-        type: string
-      - description: Category name(s) or UUID(s), comma-separated
-        in: query
-        name: category
-        type: string
-      - description: Brand name(s) or UUID(s), comma-separated
-        in: query
-        name: brand
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/PaginatedResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/VendorProductSummary'
-                  type: array
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/UnauthorizedErrorResponse'
-        "404":
-          description: Vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: List my products
-      tags:
-      - Vendor
-    post:
-      consumes:
-      - application/json
-      description: Creates a draft product owned by the authenticated vendor. Requires
-        an active vendor profile.
-      parameters:
-      - description: Product draft payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/VendorCreateProductRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/VendorProductResponse'
-              type: object
-        "400":
-          description: Validation failed
-          schema:
-            $ref: '#/definitions/BadReqResponse'
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-        "404":
-          description: Vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Create a product
-      tags:
-      - Vendor
-  /vendor/products/{id}:
-    delete:
-      description: Soft-deletes a product owned by the authenticated vendor.
-      parameters:
-      - description: Product UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/MessageResponse'
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-        "404":
-          description: Product or vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Delete a product
-      tags:
-      - Vendor
-    patch:
-      consumes:
-      - application/json
-      description: Edits a product owned by the authenticated vendor. Foreign or platform
-        products return 404.
-      parameters:
-      - description: Product UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Product edit payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/VendorUpdateProductRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/MessageResponse'
-        "400":
-          description: Validation failed
-          schema:
-            $ref: '#/definitions/BadReqResponse'
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-        "404":
-          description: Product or vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Update a product
-      tags:
-      - Vendor
-  /vendor/products/{id}/archive:
-    post:
-      description: Archives a product owned by the authenticated vendor, removing
-        it from the storefront.
-      parameters:
-      - description: Product UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/MessageResponse'
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-        "404":
-          description: Product or vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Archive a product
-      tags:
-      - Vendor
-  /vendor/products/{id}/publish:
-    post:
-      description: Publishes a product owned by the authenticated vendor. Product-domain
-        preconditions (e.g. at least one variant) still apply.
-      parameters:
-      - description: Product UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/MessageResponse'
-        "400":
-          description: Publishing preconditions not met
-          schema:
-            $ref: '#/definitions/BadReqResponse'
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-        "404":
-          description: Product or vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Publish a product
-      tags:
-      - Vendor
-  /vendor/products/{id}/variants:
-    get:
-      description: Returns the variants of a product owned by the authenticated vendor.
-      parameters:
-      - description: Product UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Page number (1-based)
-        in: query
-        name: page
-        type: integer
-      - description: Page size (max 100)
-        in: query
-        name: pageSize
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/PaginatedResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/VendorVariantResponse'
-                  type: array
-              type: object
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-        "404":
-          description: Product or vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: List variants of my product
-      tags:
-      - Vendor
-    post:
-      consumes:
-      - application/json
-      description: Creates a purchasable SKU under a product owned by the authenticated
-        vendor.
-      parameters:
-      - description: Product UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Variant payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/VendorCreateVariantRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/VendorVariantResponse'
-              type: object
-        "400":
-          description: Validation failed
-          schema:
-            $ref: '#/definitions/BadReqResponse'
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-        "404":
-          description: Product or vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Add a variant to my product
-      tags:
-      - Vendor
-  /vendor/profile:
-    get:
-      description: Returns the vendor profile belonging to the authenticated user.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/VendorResponse'
-        "401":
-          description: Authentication required
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-        "404":
-          description: Vendor not found
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Get my vendor profile
-      tags:
-      - Vendor
-    patch:
-      consumes:
-      - application/json
-      description: Edits the merchant profile for pending, active, or rejected vendors.
-        Rejected edits return the application to pending; suspended vendors are blocked.
-        The slug is immutable once the vendor is active. Commission and status remain
-        admin-controlled.
-      parameters:
-      - description: Profile update payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/UpdateMyVendorRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/VendorResponse'
-        "400":
-          description: Validation failed
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-        "403":
-          description: Vendor not authorized
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-        "404":
-          description: Vendor not found
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Update my vendor profile
-      tags:
-      - Vendor
-  /vendor/promotions:
-    get:
-      description: Lists coupons owned by the authenticated vendor.
-      parameters:
-      - description: Page number (1-based)
-        in: query
-        name: page
-        type: integer
-      - description: Page size (max 100)
-        in: query
-        name: pageSize
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/PaginatedResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/Coupon'
-                  type: array
-              type: object
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: List my promotions
-      tags:
-      - Vendor
-    post:
-      consumes:
-      - application/json
-      description: Creates a coupon scoped to the authenticated vendor's products.
-        The discount applies only to that vendor's eligible subtotal at checkout.
-      parameters:
-      - description: Promotion payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/VendorCreatePromotionRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/Coupon'
-              type: object
-        "400":
-          description: Validation failed
-          schema:
-            $ref: '#/definitions/BadReqResponse'
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Create a promotion
-      tags:
-      - Vendor
-  /vendor/promotions/{id}:
-    delete:
-      description: Permanently removes a coupon owned by the authenticated vendor.
-      parameters:
-      - description: Coupon UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/MessageResponse'
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-        "404":
-          description: Promotion not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Delete a promotion
-      tags:
-      - Vendor
-  /vendor/promotions/{id}/status:
-    patch:
-      consumes:
-      - application/json
-      description: Changes the lifecycle state of a coupon owned by the authenticated
-        vendor.
-      parameters:
-      - description: Coupon UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Status payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/VendorPromotionStatusRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/MessageResponse'
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-        "404":
-          description: Promotion not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Enable or disable a promotion
-      tags:
-      - Vendor
-  /vendor/register:
-    post:
-      consumes:
-      - application/json
-      description: Creates a pending vendor application for any authenticated account.
-        A rejected profile may resubmit, which updates the application and returns
-        it to pending review.
-      parameters:
-      - description: Vendor registration payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/RegisterVendorRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/VendorResponse'
-        "400":
-          description: Validation failed
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-        "401":
-          description: Authentication required
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-        "409":
-          description: Already registered or slug taken
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Register as vendor
-      tags:
-      - Vendor
-  /vendor/slug-availability:
-    get:
-      description: Validates slug syntax and reserved words, then checks the authoritative
-        uniqueness set. A merchant's own current slug is reported available for re-application.
-      parameters:
-      - description: Candidate store slug
-        in: query
-        name: slug
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/SlugAvailability'
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/UnauthorizedErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Check store slug availability
-      tags:
-      - Vendor
-  /vendor/variants/{id}:
-    delete:
-      description: Soft-deletes a variant whose parent product belongs to the authenticated
-        vendor.
-      parameters:
-      - description: Variant UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/MessageResponse'
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-        "404":
-          description: Variant or vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Delete my variant
-      tags:
-      - Vendor
-    patch:
-      consumes:
-      - application/json
-      description: Edits a variant whose parent product belongs to the authenticated
-        vendor.
-      parameters:
-      - description: Variant UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Variant edit payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/VendorUpdateVariantRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/MessageResponse'
-        "400":
-          description: Validation failed
-          schema:
-            $ref: '#/definitions/BadReqResponse'
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-        "404":
-          description: Variant or vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Update my variant
-      tags:
-      - Vendor
-  /vendor/variants/{id}/stock:
-    post:
-      consumes:
-      - application/json
-      description: Records a merchant stock movement (restock, return, correction)
-        for a variant of the authenticated vendor.
-      parameters:
-      - description: Variant UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Stock movement payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/VendorStockAdjustRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/DataResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/VendorStockResponse'
-              type: object
-        "400":
-          description: Validation failed
-          schema:
-            $ref: '#/definitions/BadReqResponse'
-        "403":
-          description: Vendor not active
-          schema:
-            $ref: '#/definitions/ForbiddenErrorResponse'
-        "404":
-          description: Variant or vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Adjust my variant stock
-      tags:
-      - Vendor
   /wishlist:
     delete:
       description: Clears all items from the authenticated user's wishlist. If productId

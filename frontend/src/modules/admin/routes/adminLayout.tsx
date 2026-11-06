@@ -223,7 +223,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
     { nameKey: "layout.nav.inventory", path: "/admin/inventory", icon: Boxes, group: "catalog" },
     { nameKey: "layout.nav.mediaLibrary", path: "/admin/media", icon: Image, group: "catalog" },
     { nameKey: "layout.nav.usersStaff", path: "/admin/customers", icon: Users, group: "people" },
-    { nameKey: "layout.nav.vendors", path: "/admin/vendors", icon: Store, group: "people" },
+    { nameKey: "layout.nav.sellers", path: "/admin/sellers", icon: Store, group: "people" },
     { nameKey: "layout.nav.settings", path: "/admin/settings", icon: Settings, group: "system" },
     { nameKey: "layout.nav.system", path: "/admin/system", icon: ShieldCheck, group: "system" },
     { nameKey: "layout.nav.audit", path: "/admin/audit", icon: ScrollText, group: "system", superadminOnly: true },

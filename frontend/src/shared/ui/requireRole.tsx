@@ -11,7 +11,7 @@ interface RequireRoleProps {
 }
 
 /**
- * Client-side UX guard for the admin and vendor consoles. The backend remains
+ * Client-side UX guard for the admin and seller consoles. The backend remains
  * the authority for authorization; this only prevents rendering a console the
  * current session cannot use.
  */

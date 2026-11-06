@@ -26,7 +26,7 @@ func (s UserSubject) Validate() error {
 		return errors.New("user ID cannot be nil")
 	}
 	switch s.UserRole {
-	case model.SuperRole, model.AdminRole, model.SupportRole, model.VendorRole, model.CustomerRole:
+	case model.SuperRole, model.AdminRole, model.SupportRole, model.SellerRole, model.CustomerRole:
 		return nil
 	default:
 		return fmt.Errorf("invalid user role: %q", s.UserRole)

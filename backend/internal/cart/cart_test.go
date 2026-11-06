@@ -50,12 +50,12 @@ func (d *dummyProductService) GetByID(ctx context.Context, id uuid.UUID) (*model
 	}, nil
 }
 
-// dummyVendorReader keeps all cart fixtures platform-owned by reporting an
-// active vendor for any id (the dummy products carry no vendor).
-type dummyVendorReader struct{}
+// dummySellerReader keeps all cart fixtures platform-owned by reporting an
+// active seller for any id (the dummy products carry no seller).
+type dummySellerReader struct{}
 
-func (dummyVendorReader) GetByID(ctx context.Context, id uuid.UUID) (*model.Vendor, error) {
-	return &model.Vendor{ID: id, Status: model.VendorStatusActive}, nil
+func (dummySellerReader) GetByID(ctx context.Context, id uuid.UUID) (*model.Seller, error) {
+	return &model.Seller{ID: id, Status: model.SellerStatusActive}, nil
 }
 
 type CartHTTPTestSuite struct {
@@ -148,7 +148,7 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	}
 
 	s.cartRepo = cart.NewRepository()
-	s.cartService = cart.NewService(s.txRunner, s.cartRepo, s.variantRepo, s.productService, dummyVendorReader{}, s.inventoryRepo, object.NewRepository(), storage.NoopProvider{})
+	s.cartService = cart.NewService(s.txRunner, s.cartRepo, s.variantRepo, s.productService, dummySellerReader{}, s.inventoryRepo, object.NewRepository(), storage.NoopProvider{})
 	s.handler = cart.NewHandler(s.cartService)
 
 	// Start Redis Container
@@ -907,20 +907,20 @@ func (s *CartHTTPTestSuite) TestAddItem_ConcurrentSameVariantDoesNotOversell() {
 	s.Equal(3, finalCart.Items[0].Quantity)
 }
 
-type suspendedVendorReader struct{}
+type suspendedSellerReader struct{}
 
-func (suspendedVendorReader) GetByID(ctx context.Context, id uuid.UUID) (*model.Vendor, error) {
-	return &model.Vendor{ID: id, Status: model.VendorStatusSuspended}, nil
+func (suspendedSellerReader) GetByID(ctx context.Context, id uuid.UUID) (*model.Seller, error) {
+	return &model.Seller{ID: id, Status: model.SellerStatusSuspended}, nil
 }
 
 // TestAddItem_RejectsUnavailableCatalog pins that unpublished products and
-// products owned by a suspended vendor cannot enter the cart.
+// products owned by a suspended seller cannot enter the cart.
 func (s *CartHTTPTestSuite) TestAddItem_RejectsUnavailableCatalog() {
 	guestSessionID := s.createGuestSession()
 	variantID := s.createVariant("SKU-UNAVAILABLE", 1000, 10)
 
 	cartSvc := cart.NewService(
-		s.txRunner, s.cartRepo, s.variantRepo, s.productService, suspendedVendorReader{},
+		s.txRunner, s.cartRepo, s.variantRepo, s.productService, suspendedSellerReader{},
 		s.inventoryRepo, object.NewRepository(), storage.NoopProvider{},
 	)
 	cartData, err := cartSvc.GetOrCreateCart(context.Background(), nil, &guestSessionID)
@@ -929,10 +929,10 @@ func (s *CartHTTPTestSuite) TestAddItem_RejectsUnavailableCatalog() {
 	originalProduct := s.productService.products[s.productID]
 	defer func() { s.productService.products[s.productID] = originalProduct }()
 
-	vendorID := uuid.New()
+	sellerID := uuid.New()
 	s.productService.products[s.productID] = &model.Product{
 		ID: s.productID, Title: "Suspended Seller Product",
-		Status: model.PublicationStatusPublished, VendorID: &vendorID,
+		Status: model.PublicationStatusPublished, SellerID: &sellerID,
 	}
 
 	_, err = cartSvc.AddItem(context.Background(), cartData.ID, variantID, 1)

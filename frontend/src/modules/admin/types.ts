@@ -4,7 +4,7 @@ export interface AdminUser {
   id: string;
   email: string;
   fullName?: string | null;
-  role: "customer" | "vendor" | "support" | "admin" | "superadmin";
+  role: "customer" | "seller" | "support" | "admin" | "superadmin";
   isEmailVerified: boolean;
   status: "active" | "inactive" | "suspended" | "deleted";
   suspendedUntil?: string | null;
@@ -22,7 +22,7 @@ export interface ListUsersParams {
 }
 
 export interface UpdateRolePayload {
-  role: "customer" | "vendor" | "support" | "admin" | "superadmin";
+  role: "customer" | "seller" | "support" | "admin" | "superadmin";
 }
 
 export interface UpdateStatusPayload {
@@ -184,7 +184,7 @@ export interface DailySales {
   orders: number;
 }
 
-export interface AdminVendor {
+export interface AdminSeller {
   id: string;
   userId: string;
   storeName: string;
@@ -203,7 +203,7 @@ export interface AdminVendor {
 
 export interface AdminPayout {
   id: string;
-  vendorId: string;
+  sellerId: string;
   amount: number;
   currency: string;
   status: "requested" | "approved" | "processing" | "paid" | "rejected" | string;

@@ -26,13 +26,13 @@ export default async function MarketingLayout({
               {t("nav.storefront")}
             </Link>
             <Link
-              href="/auth?redirect=%2Fvendor"
+              href="/auth?redirect=%2Fseller"
               className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
             >
               {t("nav.signIn")}
             </Link>
             <Link
-              href="/vendor"
+              href="/seller"
               className="rounded-md bg-accent-brand px-3.5 py-2 text-sm font-semibold text-white hover:bg-accent-brand/90"
             >
               {t("nav.startSelling")}
@@ -53,7 +53,7 @@ export default async function MarketingLayout({
             <Link href="/contact" className="hover:text-foreground">
               {t("footer.contact")}
             </Link>
-            <a href="mailto:vendors@marketplace.com" className="hover:text-foreground">
+            <a href="mailto:sellers@marketplace.com" className="hover:text-foreground">
               {t("footer.merchantSupport")}
             </a>
           </div>

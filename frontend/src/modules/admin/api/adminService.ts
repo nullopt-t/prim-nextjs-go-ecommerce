@@ -9,7 +9,7 @@ import type {
   AdminMedia,
   AdminPayment,
   AdminPayout,
-  AdminVendor,
+  AdminSeller,
   InventoryLedger,
   InventoryStock,
 } from "@/modules/admin/types";
@@ -20,7 +20,7 @@ export type {
   AdminMedia,
   AdminPayment,
   AdminPayout,
-  AdminVendor,
+  AdminSeller,
   InventoryLedger,
   InventoryStock,
 } from "@/modules/admin/types";
@@ -29,7 +29,7 @@ export interface AdminUser {
   id: string;
   email: string;
   fullName?: string | null;
-  role: "customer" | "vendor" | "support" | "admin" | "superadmin";
+  role: "customer" | "seller" | "support" | "admin" | "superadmin";
   isEmailVerified: boolean;
   status: "active" | "inactive" | "suspended" | "deleted";
   suspendedUntil?: string | null;
@@ -52,7 +52,7 @@ export interface ListUsersResponse {
 }
 
 export interface UpdateRolePayload {
-  role: "customer" | "vendor" | "support" | "admin" | "superadmin";
+  role: "customer" | "seller" | "support" | "admin" | "superadmin";
 }
 
 export interface UpdateStatusPayload {
@@ -230,42 +230,42 @@ export const adminService = {
     return api.patch<ApiMessageResponse>(`/api/v1/admin/orders/${id}/tracking`, payload);
   },
 
-  // Vendors Management
-  getVendors: async (params?: { status?: string; page?: number; pageSize?: number }): Promise<ApiPaginatedResponse<AdminVendor>> => {
+  // Sellers Management
+  getSellers: async (params?: { status?: string; page?: number; pageSize?: number }): Promise<ApiPaginatedResponse<AdminSeller>> => {
     const query = new URLSearchParams();
     if (params?.status && params.status !== "all") query.set("status", params.status);
     if (params?.page) query.set("page", String(params.page));
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     const qs = query.toString();
-    const endpoint = `/api/v1/admin/vendors${qs ? `?${qs}` : ""}`;
-    return api.get<ApiPaginatedResponse<AdminVendor>>(endpoint);
+    const endpoint = `/api/v1/admin/sellers${qs ? `?${qs}` : ""}`;
+    return api.get<ApiPaginatedResponse<AdminSeller>>(endpoint);
   },
 
-  getVendorById: async (id: string): Promise<ApiResponse<AdminVendor>> => {
-    return api.get<ApiResponse<AdminVendor>>(`/api/v1/admin/vendors/${id}`);
+  getSellerById: async (id: string): Promise<ApiResponse<AdminSeller>> => {
+    return api.get<ApiResponse<AdminSeller>>(`/api/v1/admin/sellers/${id}`);
   },
 
-  updateVendorStatus: async (
+  updateSellerStatus: async (
     id: string,
     status: string,
     reason?: string,
-  ): Promise<ApiResponse<AdminVendor>> => {
-    return api.patch<ApiResponse<AdminVendor>>(`/api/v1/admin/vendors/${id}/status`, {
+  ): Promise<ApiResponse<AdminSeller>> => {
+    return api.patch<ApiResponse<AdminSeller>>(`/api/v1/admin/sellers/${id}/status`, {
       status,
       ...(reason ? { reason } : {}),
     });
   },
 
-  updateVendorCommission: async (id: string, rateBps: number): Promise<ApiResponse<AdminVendor>> => {
-    return api.patch<ApiResponse<AdminVendor>>(`/api/v1/admin/vendors/${id}/commission`, { rateBps });
+  updateSellerCommission: async (id: string, rateBps: number): Promise<ApiResponse<AdminSeller>> => {
+    return api.patch<ApiResponse<AdminSeller>>(`/api/v1/admin/sellers/${id}/commission`, { rateBps });
   },
 
-  getVendorPayouts: async (): Promise<{ data: AdminPayout[] }> => {
-    return api.get<{ data: AdminPayout[] }>(`/api/v1/admin/vendors/payouts`);
+  getSellerPayouts: async (): Promise<{ data: AdminPayout[] }> => {
+    return api.get<{ data: AdminPayout[] }>(`/api/v1/admin/sellers/payouts`);
   },
 
-  transitionVendorPayout: async (id: string, status: string, notes?: string): Promise<ApiResponse<AdminPayout>> => {
-    return api.patch<ApiResponse<AdminPayout>>(`/api/v1/admin/vendors/payouts/${id}/transition`, { status, notes });
+  transitionSellerPayout: async (id: string, status: string, notes?: string): Promise<ApiResponse<AdminPayout>> => {
+    return api.patch<ApiResponse<AdminPayout>>(`/api/v1/admin/sellers/payouts/${id}/transition`, { status, notes });
   },
 
   // Dashboard Overview

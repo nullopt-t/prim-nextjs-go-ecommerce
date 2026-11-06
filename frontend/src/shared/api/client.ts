@@ -1,6 +1,6 @@
 import type { ApiFieldError } from "@/shared/api/types";
 
-export const VENDOR_NOT_AUTHORIZED_EVENT = "prim:vendor-not-authorized";
+export const SELLER_NOT_AUTHORIZED_EVENT = "prim:seller-not-authorized";
 
 export class ApiError extends Error {
   status: number;
@@ -95,10 +95,10 @@ export async function request<T = unknown>(
       details?: ApiFieldError[];
     };
     if (
-      errorData.code === "VENDOR_NOT_AUTHORIZED_FOR_ACTION" &&
+      errorData.code === "SELLER_NOT_AUTHORIZED_FOR_ACTION" &&
       typeof window !== "undefined"
     ) {
-      window.dispatchEvent(new Event(VENDOR_NOT_AUTHORIZED_EVENT));
+      window.dispatchEvent(new Event(SELLER_NOT_AUTHORIZED_EVENT));
     }
     throw new ApiError(
       errorData.error || errorData.message || `HTTP Error ${response.status}`,

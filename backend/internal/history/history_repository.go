@@ -9,16 +9,16 @@ import (
 )
 
 // visibleProductPredicate keeps history aligned with storefront visibility:
-// deleted and unpublished products never surface, and vendor-owned products
+// deleted and unpublished products never surface, and seller-owned products
 // disappear while their seller is not active.
 const visibleProductPredicate = `
 	p.deleted_at IS NULL
 	AND p.status = 'published'
 	AND (
-		p.vendor_id IS NULL
+		p.seller_id IS NULL
 		OR EXISTS (
-			SELECT 1 FROM vendors v
-			WHERE v.id = p.vendor_id AND v.status = 'active'
+			SELECT 1 FROM sellers v
+			WHERE v.id = p.seller_id AND v.status = 'active'
 		)
 	)
 `

@@ -46,14 +46,14 @@ export default async function SellPage() {
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
-                href="/vendor"
+                href="/seller"
                 className="inline-flex h-11 items-center gap-2 rounded-lg bg-accent-brand px-5 text-sm font-semibold text-white hover:bg-accent-brand/90"
               >
                 {t("hero.cta")}
                 <ArrowRight className="size-4 rtl:rotate-180" />
               </Link>
               <Link
-                href="/auth?redirect=%2Fvendor"
+                href="/auth?redirect=%2Fseller"
                 className="inline-flex h-11 items-center rounded-lg border border-border bg-background px-5 text-sm font-medium hover:bg-secondary"
               >
                 {t("hero.secondaryCta")}
@@ -192,7 +192,7 @@ export default async function SellPage() {
           <p className="mt-3 text-sm leading-6 text-background/70">{t("closing.description")}</p>
           <div className="mt-6">
             <Link
-              href="/vendor"
+              href="/seller"
               className="inline-flex h-11 items-center gap-2 rounded-lg bg-background px-5 text-sm font-semibold text-foreground hover:bg-background/90"
             >
               {t("closing.cta")}

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * Consistent page heading for admin and vendor workspaces.
+ * Consistent page heading for admin and seller workspaces.
  *
  * Keep this intentionally plain: a title, an optional short description and a
  * trailing action group. Decorative icons and marketing-style subtitles do not

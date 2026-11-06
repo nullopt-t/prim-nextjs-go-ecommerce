@@ -2270,6 +2270,1502 @@
                 }
             }
         },
+        "/seller/dashboard": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the merchant's money position (settled, pending, outstanding) and catalog health counts. Active sellers only; other lifecycle states receive 403.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Seller dashboard",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/Dashboard"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/media": {
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Uploads a raster image to the catalog bucket and returns its public URL, which callers pass as thumbnailUrl when creating variants. Only registered sellers may upload.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Upload a merchant product image",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Image file (JPEG, PNG, GIF, WebP or AVIF, up to 10 MB)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/SellerMediaUploadResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/orders": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns orders containing the authenticated seller's lines, newest first. Only the seller's own lines are included; no customer PII is exposed.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "List my orders",
+                "parameters": [
+                    {
+                        "enum": [
+                            "pending",
+                            "paid",
+                            "processing",
+                            "shipped",
+                            "delivered",
+                            "cancelled",
+                            "refunded"
+                        ],
+                        "type": "string",
+                        "description": "Order status filter",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (max 100)",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/SellerOrderResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid status filter",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/orders/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the seller's own lines for one order. Orders without the seller's lines answer 404.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Get one of my orders",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Order UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/SellerOrderResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found or order not yours",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/payouts": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the caller's payout ledger including rejected records (full audit trail). Available to active and suspended sellers.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "List my payouts",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/PayoutResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Registers a payout request against settled earnings, validating the available balance under the seller row lock. Active sellers only. Reusing an Idempotency-Key with the same amount replays the original request; a different amount returns 409.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Request a payout",
+                "parameters": [
+                    {
+                        "description": "Payout request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RequestPayoutRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Client retry key (max 100 chars)",
+                        "name": "Idempotency-Key",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/PayoutResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed or insufficient balance",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/products": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated seller's catalog, drafts included. Ownership is enforced server-side and the seller must be active.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "List my products",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (max 100)",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                        ],
+                        "type": "string",
+                        "description": "Publication status filter",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Category name(s) or UUID(s), comma-separated",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Brand name(s) or UUID(s), comma-separated",
+                        "name": "brand",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/SellerProductSummary"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Creates a draft product owned by the authenticated seller. Requires an active seller profile.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Create a product",
+                "parameters": [
+                    {
+                        "description": "Product draft payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/SellerCreateProductRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/SellerProductResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/products/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Soft-deletes a product owned by the authenticated seller.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Delete a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product or seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Edits a product owned by the authenticated seller. Foreign or platform products return 404.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Update a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Product edit payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/SellerUpdateProductRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product or seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/products/{id}/archive": {
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Archives a product owned by the authenticated seller, removing it from the storefront.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Archive a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product or seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/products/{id}/publish": {
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Publishes a product owned by the authenticated seller. Product-domain preconditions (e.g. at least one variant) still apply.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Publish a product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Publishing preconditions not met",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product or seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/products/{id}/variants": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the variants of a product owned by the authenticated seller.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "List variants of my product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (max 100)",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/SellerVariantResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product or seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Creates a purchasable SKU under a product owned by the authenticated seller.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Add a variant to my product",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Variant payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/SellerCreateVariantRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/SellerVariantResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Product or seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/profile": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the seller profile belonging to the authenticated user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Get my seller profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SellerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Edits the merchant profile for pending, active, or rejected sellers. Rejected edits return the application to pending; suspended sellers are blocked. The slug is immutable once the seller is active. Commission and status remain admin-controlled.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Update my seller profile",
+                "parameters": [
+                    {
+                        "description": "Profile update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateMySellerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SellerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/promotions": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Lists coupons owned by the authenticated seller.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "List my promotions",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (max 100)",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/Coupon"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Creates a coupon scoped to the authenticated seller's products. The discount applies only to that seller's eligible subtotal at checkout.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Create a promotion",
+                "parameters": [
+                    {
+                        "description": "Promotion payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/SellerCreatePromotionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/Coupon"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/promotions/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Permanently removes a coupon owned by the authenticated seller.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Delete a promotion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Coupon UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Promotion not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/promotions/{id}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Changes the lifecycle state of a coupon owned by the authenticated seller.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Enable or disable a promotion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Coupon UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/SellerPromotionStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Promotion not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/register": {
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Creates a pending seller application for any authenticated account. A rejected profile may resubmit, which updates the application and returns it to pending review.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Register as seller",
+                "parameters": [
+                    {
+                        "description": "Seller registration payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RegisterSellerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/SellerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Already registered or slug taken",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/slug-availability": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Validates slug syntax and reserved words, then checks the authoritative uniqueness set. A merchant's own current slug is reported available for re-application.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Check store slug availability",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Candidate store slug",
+                        "name": "slug",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/SlugAvailability"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/variants/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Soft-deletes a variant whose parent product belongs to the authenticated seller.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Delete my variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Variant or seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Edits a variant whose parent product belongs to the authenticated seller.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Update my variant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Variant edit payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/SellerUpdateVariantRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Variant or seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/variants/{id}/stock": {
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Records a merchant stock movement (restock, return, correction) for a variant of the authenticated seller.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Adjust my variant stock",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Variant UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Stock movement payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/SellerStockAdjustRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/SellerStockResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Variant or seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/settings/public": {
             "get": {
                 "description": "Returns the non-sensitive settings used by the storefront (identity, currency, announcement, shipping, maintenance state).",
@@ -2728,7 +4224,7 @@
                         "SessionAuth": []
                     }
                 ],
-                "description": "Returns the authenticated customer's recently viewed products, newest first. Unpublished, deleted, and inactive-vendor products are omitted.",
+                "description": "Returns the authenticated customer's recently viewed products, newest first. Unpublished, deleted, and inactive-seller products are omitted.",
                 "produces": [
                     "application/json"
                 ],
@@ -3538,1502 +5034,6 @@
                         "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/InternalServerErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/dashboard": {
-            "get": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Returns the merchant's money position (settled, pending, outstanding) and catalog health counts. Active vendors only; other lifecycle states receive 403.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Vendor dashboard",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/Dashboard"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/UnauthorizedErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/media": {
-            "post": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Uploads a raster image to the catalog bucket and returns its public URL, which callers pass as thumbnailUrl when creating variants. Only registered vendors may upload.",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Upload a merchant product image",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Image file (JPEG, PNG, GIF, WebP or AVIF, up to 10 MB)",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/VendorMediaUploadResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "Authentication required",
-                        "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/orders": {
-            "get": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Returns orders containing the authenticated vendor's lines, newest first. Only the vendor's own lines are included; no customer PII is exposed.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "List my orders",
-                "parameters": [
-                    {
-                        "enum": [
-                            "pending",
-                            "paid",
-                            "processing",
-                            "shipped",
-                            "delivered",
-                            "cancelled",
-                            "refunded"
-                        ],
-                        "type": "string",
-                        "description": "Order status filter",
-                        "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page number (1-based)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size (max 100)",
-                        "name": "pageSize",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/PaginatedResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/VendorOrderResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid status filter",
-                        "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/UnauthorizedErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/orders/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Returns the vendor's own lines for one order. Orders without the vendor's lines answer 404.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Get one of my orders",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Order UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/VendorOrderResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/UnauthorizedErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vendor not found or order not yours",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/payouts": {
-            "get": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Returns the caller's payout ledger including rejected records (full audit trail). Available to active and suspended vendors.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "List my payouts",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/PayoutResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/UnauthorizedErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Registers a payout request against settled earnings, validating the available balance under the vendor row lock. Active vendors only. Reusing an Idempotency-Key with the same amount replays the original request; a different amount returns 409.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Request a payout",
-                "parameters": [
-                    {
-                        "description": "Payout request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/RequestPayoutRequest"
-                        }
-                    },
-                    {
-                        "type": "string",
-                        "description": "Client retry key (max 100 chars)",
-                        "name": "Idempotency-Key",
-                        "in": "header"
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/PayoutResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Validation failed or insufficient balance",
-                        "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/products": {
-            "get": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Returns the authenticated vendor's catalog, drafts included. Ownership is enforced server-side and the vendor must be active.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "List my products",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Page number (1-based)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size (max 100)",
-                        "name": "pageSize",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "draft",
-                            "published",
-                            "archived"
-                        ],
-                        "type": "string",
-                        "description": "Publication status filter",
-                        "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Category name(s) or UUID(s), comma-separated",
-                        "name": "category",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Brand name(s) or UUID(s), comma-separated",
-                        "name": "brand",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/PaginatedResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/VendorProductSummary"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/UnauthorizedErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Creates a draft product owned by the authenticated vendor. Requires an active vendor profile.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Create a product",
-                "parameters": [
-                    {
-                        "description": "Product draft payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/VendorCreateProductRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/VendorProductResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Validation failed",
-                        "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/products/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Soft-deletes a product owned by the authenticated vendor.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Delete a product",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Product UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/MessageResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Product or vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Edits a product owned by the authenticated vendor. Foreign or platform products return 404.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Update a product",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Product UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Product edit payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/VendorUpdateProductRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Validation failed",
-                        "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Product or vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/products/{id}/archive": {
-            "post": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Archives a product owned by the authenticated vendor, removing it from the storefront.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Archive a product",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Product UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/MessageResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Product or vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/products/{id}/publish": {
-            "post": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Publishes a product owned by the authenticated vendor. Product-domain preconditions (e.g. at least one variant) still apply.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Publish a product",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Product UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Publishing preconditions not met",
-                        "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Product or vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/products/{id}/variants": {
-            "get": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Returns the variants of a product owned by the authenticated vendor.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "List variants of my product",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Product UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page number (1-based)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size (max 100)",
-                        "name": "pageSize",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/PaginatedResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/VendorVariantResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Product or vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Creates a purchasable SKU under a product owned by the authenticated vendor.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Add a variant to my product",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Product UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Variant payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/VendorCreateVariantRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/VendorVariantResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Validation failed",
-                        "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Product or vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/profile": {
-            "get": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Returns the vendor profile belonging to the authenticated user.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Get my vendor profile",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/VendorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Authentication required",
-                        "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Edits the merchant profile for pending, active, or rejected vendors. Rejected edits return the application to pending; suspended vendors are blocked. The slug is immutable once the vendor is active. Commission and status remain admin-controlled.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Update my vendor profile",
-                "parameters": [
-                    {
-                        "description": "Profile update payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/UpdateMyVendorRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/VendorResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Validation failed",
-                        "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not authorized",
-                        "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/promotions": {
-            "get": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Lists coupons owned by the authenticated vendor.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "List my promotions",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Page number (1-based)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size (max 100)",
-                        "name": "pageSize",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/PaginatedResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/Coupon"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Creates a coupon scoped to the authenticated vendor's products. The discount applies only to that vendor's eligible subtotal at checkout.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Create a promotion",
-                "parameters": [
-                    {
-                        "description": "Promotion payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/VendorCreatePromotionRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/Coupon"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Validation failed",
-                        "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/promotions/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Permanently removes a coupon owned by the authenticated vendor.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Delete a promotion",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Coupon UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/MessageResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Promotion not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/promotions/{id}/status": {
-            "patch": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Changes the lifecycle state of a coupon owned by the authenticated vendor.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Enable or disable a promotion",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Coupon UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Status payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/VendorPromotionStatusRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/MessageResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Promotion not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/register": {
-            "post": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Creates a pending vendor application for any authenticated account. A rejected profile may resubmit, which updates the application and returns it to pending review.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Register as vendor",
-                "parameters": [
-                    {
-                        "description": "Vendor registration payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/RegisterVendorRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/VendorResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Validation failed",
-                        "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Authentication required",
-                        "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Already registered or slug taken",
-                        "schema": {
-                            "$ref": "#/definitions/ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/slug-availability": {
-            "get": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Validates slug syntax and reserved words, then checks the authoritative uniqueness set. A merchant's own current slug is reported available for re-application.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Check store slug availability",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Candidate store slug",
-                        "name": "slug",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/SlugAvailability"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/UnauthorizedErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/variants/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Soft-deletes a variant whose parent product belongs to the authenticated vendor.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Delete my variant",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Variant UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/MessageResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Variant or vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Edits a variant whose parent product belongs to the authenticated vendor.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Update my variant",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Variant UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Variant edit payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/VendorUpdateVariantRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Validation failed",
-                        "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Variant or vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/vendor/variants/{id}/stock": {
-            "post": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Records a merchant stock movement (restock, return, correction) for a variant of the authenticated vendor.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Vendor"
-                ],
-                "summary": "Adjust my variant stock",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Variant UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Stock movement payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/VendorStockAdjustRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/VendorStockResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Validation failed",
-                        "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Vendor not active",
-                        "schema": {
-                            "$ref": "#/definitions/ForbiddenErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Variant or vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
                         }
                     }
                 }
@@ -5927,6 +5927,10 @@
                 "perUserLimit": {
                     "type": "integer"
                 },
+                "sellerId": {
+                    "description": "SellerID scopes the coupon to one merchant's products. Nil means a\nplatform-wide coupon managed by the admin.",
+                    "type": "string"
+                },
                 "startsAt": {
                     "type": "string"
                 },
@@ -5942,10 +5946,6 @@
                 },
                 "usageLimit": {
                     "type": "integer"
-                },
-                "vendorId": {
-                    "description": "VendorID scopes the coupon to one merchant's products. Nil means a\nplatform-wide coupon managed by the admin.",
-                    "type": "string"
                 }
             }
         },
@@ -6109,7 +6109,7 @@
                     "type": "integer"
                 },
                 "orderCount": {
-                    "description": "OrderCount is the number of non-cancelled orders containing the vendor's items.",
+                    "description": "OrderCount is the number of non-cancelled orders containing the seller's items.",
                     "type": "integer"
                 },
                 "outstandingPayouts": {
@@ -6121,7 +6121,7 @@
                     "type": "integer"
                 },
                 "productCount": {
-                    "description": "ProductCount is the number of live vendor products.",
+                    "description": "ProductCount is the number of live seller products.",
                     "type": "integer"
                 },
                 "publishedProductCount": {
@@ -6527,6 +6527,11 @@
                     "description": "External transfer reference when available.",
                     "type": "string"
                 },
+                "sellerId": {
+                    "description": "Seller id.",
+                    "type": "string",
+                    "example": "50000000-0000-0000-0000-000000000001"
+                },
                 "snapshotAvailableBalance": {
                     "description": "Available balance stamped at request time.",
                     "type": "integer",
@@ -6546,11 +6551,6 @@
                             "$ref": "#/definitions/PayoutStatus"
                         }
                     ]
-                },
-                "vendorId": {
-                    "description": "Vendor id.",
-                    "type": "string",
-                    "example": "50000000-0000-0000-0000-000000000001"
                 }
             }
         },
@@ -7085,7 +7085,7 @@
                 "PublicationStatusArchived"
             ]
         },
-        "RegisterVendorRequest": {
+        "RegisterSellerRequest": {
             "type": "object",
             "required": [
                 "slug",
@@ -7213,6 +7213,656 @@
                     "description": "Whether requesting user voted this review helpful",
                     "type": "boolean",
                     "example": false
+                }
+            }
+        },
+        "SellerCreateProductRequest": {
+            "type": "object",
+            "required": [
+                "categoryId",
+                "slug",
+                "title"
+            ],
+            "properties": {
+                "brandId": {
+                    "description": "Optional brand UUID.",
+                    "type": "string",
+                    "example": "30000000-0000-0000-0000-000000000001"
+                },
+                "categoryId": {
+                    "description": "Required category UUID.",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
+                },
+                "description": {
+                    "description": "Full product description.",
+                    "type": "string"
+                },
+                "highlights": {
+                    "description": "Key bullet points shown on the storefront.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Active Noise Cancellation",
+                        "30h battery"
+                    ]
+                },
+                "productType": {
+                    "description": "Product classification: simple or variable.",
+                    "type": "string",
+                    "enum": [
+                        "simple",
+                        "variable"
+                    ],
+                    "example": "simple"
+                },
+                "slug": {
+                    "description": "URL-friendly product identifier.",
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "wireless-headphones"
+                },
+                "title": {
+                    "description": "Product display title.",
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "Wireless Headphones"
+                },
+                "variationAxes": {
+                    "description": "Ordered variation axis keys for variable products.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "color",
+                        "storage"
+                    ]
+                }
+            }
+        },
+        "SellerCreatePromotionRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "discountType",
+                "discountValue"
+            ],
+            "properties": {
+                "code": {
+                    "description": "Promo code; stored uppercased.",
+                    "type": "string",
+                    "example": "SUMMER20"
+                },
+                "currency": {
+                    "description": "ISO currency code; defaults to EGP.",
+                    "type": "string",
+                    "example": "EGP"
+                },
+                "discountType": {
+                    "description": "Discount kind.",
+                    "type": "string",
+                    "enum": [
+                        "percentage",
+                        "fixed_amount"
+                    ],
+                    "example": "percentage"
+                },
+                "discountValue": {
+                    "description": "Percentage (1-100) or fixed amount in minor units.",
+                    "type": "integer",
+                    "example": 20
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "minCartAmount": {
+                    "description": "Minimum eligible subtotal in minor units before the coupon applies.",
+                    "type": "integer"
+                },
+                "perUserLimit": {
+                    "description": "Optional per-customer redemption cap.",
+                    "type": "integer"
+                },
+                "startsAt": {
+                    "description": "Optional activation window.",
+                    "type": "string"
+                },
+                "usageLimit": {
+                    "description": "Optional total redemption cap.",
+                    "type": "integer"
+                }
+            }
+        },
+        "SellerCreateVariantRequest": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "attributes": {
+                    "description": "Attribute dimensions (e.g. {\"color\":\"Black\",\"storage\":\"128GB\"}).",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossedOutPrice": {
+                    "description": "Original/crossed-out price in minor units.",
+                    "type": "integer",
+                    "example": 299900
+                },
+                "currency": {
+                    "description": "ISO currency code.",
+                    "type": "string",
+                    "example": "EGP"
+                },
+                "isDefault": {
+                    "description": "Marks this variant as the default storefront selection.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "price": {
+                    "description": "Price in minor units.",
+                    "type": "integer",
+                    "example": 249900
+                },
+                "sku": {
+                    "description": "Optional custom SKU; generated when omitted.",
+                    "type": "string",
+                    "example": "SKU-BLK-01"
+                },
+                "thumbnailUrl": {
+                    "description": "Optional public thumbnail image URL, as returned by POST /seller/media.",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Variant display title.",
+                    "type": "string",
+                    "example": "Black, 128GB"
+                }
+            }
+        },
+        "SellerMediaUploadResponse": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "description": "Public URL of the uploaded image.",
+                    "type": "string",
+                    "example": "https://cdn.example.com/catalog/8f14e45f-ea0a-4a7a-9c9a-123456789abc"
+                }
+            }
+        },
+        "SellerOrderItemResponse": {
+            "type": "object",
+            "properties": {
+                "commissionAmount": {
+                    "description": "Frozen platform commission amount for this line, in minor units.",
+                    "type": "integer"
+                },
+                "commissionRateBps": {
+                    "description": "Frozen commission rate applied to this line.",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "Line item id.",
+                    "type": "string"
+                },
+                "lineTotal": {
+                    "description": "Line total in minor units.",
+                    "type": "integer"
+                },
+                "priceAtPurchase": {
+                    "description": "Unit price in minor units, frozen at checkout.",
+                    "type": "integer"
+                },
+                "quantity": {
+                    "description": "Units purchased.",
+                    "type": "integer"
+                },
+                "sellerEarning": {
+                    "description": "Frozen seller earning for this line, in minor units.",
+                    "type": "integer"
+                },
+                "title": {
+                    "description": "Product/variant title from the checkout snapshot, when present.",
+                    "type": "string"
+                },
+                "variantId": {
+                    "description": "Purchased variant id.",
+                    "type": "string"
+                }
+            }
+        },
+        "SellerOrderResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "Order created timestamp (RFC3339).",
+                    "type": "string"
+                },
+                "currency": {
+                    "description": "Currency of the order.",
+                    "type": "string"
+                },
+                "earnings": {
+                    "description": "Sum of the seller's frozen earnings, in minor units.",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "Order id.",
+                    "type": "string"
+                },
+                "items": {
+                    "description": "The seller's lines in this order.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/SellerOrderItemResponse"
+                    }
+                },
+                "status": {
+                    "description": "Fulfillment lifecycle status.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/OrderStatus"
+                        }
+                    ]
+                },
+                "subtotal": {
+                    "description": "Sum of the seller's line totals, in minor units.",
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "description": "Order last updated timestamp (RFC3339).",
+                    "type": "string"
+                }
+            }
+        },
+        "SellerProductResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "Created timestamp (RFC3339).",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Product UUID.",
+                    "type": "string",
+                    "example": "70000000-0000-0000-0000-000000000001"
+                },
+                "productType": {
+                    "description": "Product classification.",
+                    "enum": [
+                        "simple",
+                        "variable"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductType"
+                        }
+                    ]
+                },
+                "sellerId": {
+                    "description": "Owning seller UUID.",
+                    "type": "string",
+                    "example": "50000000-0000-0000-0000-000000000001"
+                },
+                "slug": {
+                    "description": "URL-friendly slug.",
+                    "type": "string",
+                    "example": "wireless-headphones"
+                },
+                "status": {
+                    "description": "Lifecycle status.",
+                    "enum": [
+                        "draft",
+                        "published",
+                        "archived"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/PublicationStatus"
+                        }
+                    ]
+                },
+                "title": {
+                    "description": "Display title.",
+                    "type": "string",
+                    "example": "Wireless Headphones"
+                },
+                "updatedAt": {
+                    "description": "Updated timestamp (RFC3339).",
+                    "type": "string"
+                }
+            }
+        },
+        "SellerProductSummary": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "productType": {
+                    "$ref": "#/definitions/ProductType"
+                },
+                "sku": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/PublicationStatus"
+                },
+                "stock": {
+                    "type": "integer"
+                },
+                "thumbnailUrl": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "SellerPromotionStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "description": "New lifecycle state.",
+                    "type": "string",
+                    "enum": [
+                        "active",
+                        "disabled",
+                        "archived"
+                    ],
+                    "example": "disabled"
+                }
+            }
+        },
+        "SellerResponse": {
+            "type": "object",
+            "properties": {
+                "bannerUrl": {
+                    "description": "Public banner URL, when set.",
+                    "type": "string"
+                },
+                "commissionRateBps": {
+                    "description": "Platform commission in basis points.",
+                    "type": "integer",
+                    "example": 1000
+                },
+                "createdAt": {
+                    "description": "Created timestamp (RFC3339).",
+                    "type": "string",
+                    "example": "2026-11-02T10:00:00Z"
+                },
+                "description": {
+                    "description": "Optional storefront description.",
+                    "type": "string",
+                    "example": "Electronics and accessories"
+                },
+                "id": {
+                    "description": "Seller profile id.",
+                    "type": "string",
+                    "example": "50000000-0000-0000-0000-000000000001"
+                },
+                "logoUrl": {
+                    "description": "Public logo URL, when set.",
+                    "type": "string"
+                },
+                "reviewedAt": {
+                    "description": "When the latest lifecycle decision was made (RFC3339).",
+                    "type": "string"
+                },
+                "reviewedBy": {
+                    "description": "Administrator who made the latest lifecycle decision.",
+                    "type": "string"
+                },
+                "slug": {
+                    "description": "URL-safe unique store identifier.",
+                    "type": "string",
+                    "example": "amrs-gadgets"
+                },
+                "status": {
+                    "description": "Lifecycle status.",
+                    "enum": [
+                        "pending",
+                        "active",
+                        "suspended",
+                        "rejected"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/SellerStatus"
+                        }
+                    ]
+                },
+                "statusReason": {
+                    "description": "Merchant-visible reason for the latest rejection or suspension.",
+                    "type": "string"
+                },
+                "storeName": {
+                    "description": "Customer-facing store display name.",
+                    "type": "string",
+                    "example": "Amr's Gadgets"
+                },
+                "updatedAt": {
+                    "description": "Updated timestamp (RFC3339).",
+                    "type": "string",
+                    "example": "2026-11-02T10:00:00Z"
+                },
+                "userId": {
+                    "description": "Owning account id.",
+                    "type": "string",
+                    "example": "10000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "SellerStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "active",
+                "suspended",
+                "rejected"
+            ],
+            "x-enum-varnames": [
+                "SellerStatusPending",
+                "SellerStatusActive",
+                "SellerStatusSuspended",
+                "SellerStatusRejected"
+            ]
+        },
+        "SellerStockAdjustRequest": {
+            "type": "object",
+            "required": [
+                "quantity",
+                "reason"
+            ],
+            "properties": {
+                "quantity": {
+                    "description": "Signed delta: positive restocks, negative reduces on-hand.",
+                    "type": "integer",
+                    "example": 50
+                },
+                "reason": {
+                    "description": "Business reason for the movement.",
+                    "type": "string",
+                    "enum": [
+                        "restock",
+                        "return",
+                        "adjustment"
+                    ],
+                    "example": "restock"
+                }
+            }
+        },
+        "SellerStockResponse": {
+            "type": "object",
+            "properties": {
+                "availableQuantity": {
+                    "description": "Salable units (on hand minus reserved).",
+                    "type": "integer",
+                    "example": 50
+                },
+                "isInStock": {
+                    "description": "True when available units exceed zero.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "onHandQuantity": {
+                    "description": "Physical units on hand.",
+                    "type": "integer",
+                    "example": 60
+                },
+                "reservedQuantity": {
+                    "description": "Units reserved by open orders.",
+                    "type": "integer",
+                    "example": 10
+                },
+                "variantId": {
+                    "description": "Variant UUID.",
+                    "type": "string"
+                }
+            }
+        },
+        "SellerUpdateProductRequest": {
+            "type": "object",
+            "properties": {
+                "brandId": {
+                    "description": "Optional brand UUID.",
+                    "type": "string"
+                },
+                "categoryId": {
+                    "description": "Optional category UUID.",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Updated product description.",
+                    "type": "string"
+                },
+                "highlights": {
+                    "description": "Updated highlight bullets.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "productType": {
+                    "description": "Product classification: simple or variable.",
+                    "type": "string",
+                    "enum": [
+                        "simple",
+                        "variable"
+                    ]
+                },
+                "title": {
+                    "description": "Updated product title.",
+                    "type": "string",
+                    "maxLength": 200
+                },
+                "variationAxes": {
+                    "description": "Variation axes; omit to leave unchanged, [] to make the product simple.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "SellerUpdateVariantRequest": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "description": "Updated attribute dimensions.",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossedOutPrice": {
+                    "description": "Updated original price in minor units.",
+                    "type": "integer"
+                },
+                "currency": {
+                    "description": "Updated ISO currency code.",
+                    "type": "string"
+                },
+                "isDefault": {
+                    "description": "Updated default-selection flag.",
+                    "type": "boolean"
+                },
+                "price": {
+                    "description": "Updated price in minor units.",
+                    "type": "integer"
+                },
+                "sku": {
+                    "description": "Updated SKU.",
+                    "type": "string"
+                },
+                "thumbnailUrl": {
+                    "description": "Updated public thumbnail image URL, as returned by POST /seller/media.",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Updated title.",
+                    "type": "string"
+                }
+            }
+        },
+        "SellerVariantResponse": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "description": "Attribute dimensions.",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "crossedOutPrice": {
+                    "description": "Crossed-out price in minor units.",
+                    "type": "integer"
+                },
+                "currency": {
+                    "description": "ISO currency code.",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Variant UUID.",
+                    "type": "string"
+                },
+                "isDefault": {
+                    "description": "Default-selection flag.",
+                    "type": "boolean"
+                },
+                "price": {
+                    "description": "Unit price in minor units.",
+                    "type": "integer"
+                },
+                "productId": {
+                    "description": "Parent product UUID.",
+                    "type": "string"
+                },
+                "sku": {
+                    "description": "Stock keeping unit.",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "Display title.",
+                    "type": "string"
                 }
             }
         },
@@ -7458,7 +8108,7 @@
                 }
             }
         },
-        "UpdateMyVendorRequest": {
+        "UpdateMySellerRequest": {
             "type": "object",
             "properties": {
                 "bankAccountInfo": {
@@ -7583,14 +8233,14 @@
                 "superadmin",
                 "admin",
                 "support",
-                "vendor",
+                "seller",
                 "customer"
             ],
             "x-enum-varnames": [
                 "SuperRole",
                 "AdminRole",
                 "SupportRole",
-                "VendorRole",
+                "SellerRole",
                 "CustomerRole"
             ]
         },
@@ -7771,656 +8421,6 @@
                     "description": "Variant title",
                     "type": "string",
                     "example": "Space Black, 18GB RAM, 512GB SSD"
-                }
-            }
-        },
-        "VendorCreateProductRequest": {
-            "type": "object",
-            "required": [
-                "categoryId",
-                "slug",
-                "title"
-            ],
-            "properties": {
-                "brandId": {
-                    "description": "Optional brand UUID.",
-                    "type": "string",
-                    "example": "30000000-0000-0000-0000-000000000001"
-                },
-                "categoryId": {
-                    "description": "Required category UUID.",
-                    "type": "string",
-                    "example": "40000000-0000-0000-0000-000000000002"
-                },
-                "description": {
-                    "description": "Full product description.",
-                    "type": "string"
-                },
-                "highlights": {
-                    "description": "Key bullet points shown on the storefront.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "Active Noise Cancellation",
-                        "30h battery"
-                    ]
-                },
-                "productType": {
-                    "description": "Product classification: simple or variable.",
-                    "type": "string",
-                    "enum": [
-                        "simple",
-                        "variable"
-                    ],
-                    "example": "simple"
-                },
-                "slug": {
-                    "description": "URL-friendly product identifier.",
-                    "type": "string",
-                    "maxLength": 200,
-                    "example": "wireless-headphones"
-                },
-                "title": {
-                    "description": "Product display title.",
-                    "type": "string",
-                    "maxLength": 200,
-                    "example": "Wireless Headphones"
-                },
-                "variationAxes": {
-                    "description": "Ordered variation axis keys for variable products.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "color",
-                        "storage"
-                    ]
-                }
-            }
-        },
-        "VendorCreatePromotionRequest": {
-            "type": "object",
-            "required": [
-                "code",
-                "discountType",
-                "discountValue"
-            ],
-            "properties": {
-                "code": {
-                    "description": "Promo code; stored uppercased.",
-                    "type": "string",
-                    "example": "SUMMER20"
-                },
-                "currency": {
-                    "description": "ISO currency code; defaults to EGP.",
-                    "type": "string",
-                    "example": "EGP"
-                },
-                "discountType": {
-                    "description": "Discount kind.",
-                    "type": "string",
-                    "enum": [
-                        "percentage",
-                        "fixed_amount"
-                    ],
-                    "example": "percentage"
-                },
-                "discountValue": {
-                    "description": "Percentage (1-100) or fixed amount in minor units.",
-                    "type": "integer",
-                    "example": 20
-                },
-                "expiresAt": {
-                    "type": "string"
-                },
-                "minCartAmount": {
-                    "description": "Minimum eligible subtotal in minor units before the coupon applies.",
-                    "type": "integer"
-                },
-                "perUserLimit": {
-                    "description": "Optional per-customer redemption cap.",
-                    "type": "integer"
-                },
-                "startsAt": {
-                    "description": "Optional activation window.",
-                    "type": "string"
-                },
-                "usageLimit": {
-                    "description": "Optional total redemption cap.",
-                    "type": "integer"
-                }
-            }
-        },
-        "VendorCreateVariantRequest": {
-            "type": "object",
-            "required": [
-                "title"
-            ],
-            "properties": {
-                "attributes": {
-                    "description": "Attribute dimensions (e.g. {\"color\":\"Black\",\"storage\":\"128GB\"}).",
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "crossedOutPrice": {
-                    "description": "Original/crossed-out price in minor units.",
-                    "type": "integer",
-                    "example": 299900
-                },
-                "currency": {
-                    "description": "ISO currency code.",
-                    "type": "string",
-                    "example": "EGP"
-                },
-                "isDefault": {
-                    "description": "Marks this variant as the default storefront selection.",
-                    "type": "boolean",
-                    "example": true
-                },
-                "price": {
-                    "description": "Price in minor units.",
-                    "type": "integer",
-                    "example": 249900
-                },
-                "sku": {
-                    "description": "Optional custom SKU; generated when omitted.",
-                    "type": "string",
-                    "example": "SKU-BLK-01"
-                },
-                "thumbnailUrl": {
-                    "description": "Optional public thumbnail image URL, as returned by POST /vendor/media.",
-                    "type": "string"
-                },
-                "title": {
-                    "description": "Variant display title.",
-                    "type": "string",
-                    "example": "Black, 128GB"
-                }
-            }
-        },
-        "VendorMediaUploadResponse": {
-            "type": "object",
-            "properties": {
-                "url": {
-                    "description": "Public URL of the uploaded image.",
-                    "type": "string",
-                    "example": "https://cdn.example.com/catalog/8f14e45f-ea0a-4a7a-9c9a-123456789abc"
-                }
-            }
-        },
-        "VendorOrderItemResponse": {
-            "type": "object",
-            "properties": {
-                "commissionAmount": {
-                    "description": "Frozen platform commission amount for this line, in minor units.",
-                    "type": "integer"
-                },
-                "commissionRateBps": {
-                    "description": "Frozen commission rate applied to this line.",
-                    "type": "integer"
-                },
-                "id": {
-                    "description": "Line item id.",
-                    "type": "string"
-                },
-                "lineTotal": {
-                    "description": "Line total in minor units.",
-                    "type": "integer"
-                },
-                "priceAtPurchase": {
-                    "description": "Unit price in minor units, frozen at checkout.",
-                    "type": "integer"
-                },
-                "quantity": {
-                    "description": "Units purchased.",
-                    "type": "integer"
-                },
-                "title": {
-                    "description": "Product/variant title from the checkout snapshot, when present.",
-                    "type": "string"
-                },
-                "variantId": {
-                    "description": "Purchased variant id.",
-                    "type": "string"
-                },
-                "vendorEarning": {
-                    "description": "Frozen vendor earning for this line, in minor units.",
-                    "type": "integer"
-                }
-            }
-        },
-        "VendorOrderResponse": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "description": "Order created timestamp (RFC3339).",
-                    "type": "string"
-                },
-                "currency": {
-                    "description": "Currency of the order.",
-                    "type": "string"
-                },
-                "earnings": {
-                    "description": "Sum of the vendor's frozen earnings, in minor units.",
-                    "type": "integer"
-                },
-                "id": {
-                    "description": "Order id.",
-                    "type": "string"
-                },
-                "items": {
-                    "description": "The vendor's lines in this order.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/VendorOrderItemResponse"
-                    }
-                },
-                "status": {
-                    "description": "Fulfillment lifecycle status.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/OrderStatus"
-                        }
-                    ]
-                },
-                "subtotal": {
-                    "description": "Sum of the vendor's line totals, in minor units.",
-                    "type": "integer"
-                },
-                "updatedAt": {
-                    "description": "Order last updated timestamp (RFC3339).",
-                    "type": "string"
-                }
-            }
-        },
-        "VendorProductResponse": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "description": "Created timestamp (RFC3339).",
-                    "type": "string"
-                },
-                "id": {
-                    "description": "Product UUID.",
-                    "type": "string",
-                    "example": "70000000-0000-0000-0000-000000000001"
-                },
-                "productType": {
-                    "description": "Product classification.",
-                    "enum": [
-                        "simple",
-                        "variable"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/ProductType"
-                        }
-                    ]
-                },
-                "slug": {
-                    "description": "URL-friendly slug.",
-                    "type": "string",
-                    "example": "wireless-headphones"
-                },
-                "status": {
-                    "description": "Lifecycle status.",
-                    "enum": [
-                        "draft",
-                        "published",
-                        "archived"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/PublicationStatus"
-                        }
-                    ]
-                },
-                "title": {
-                    "description": "Display title.",
-                    "type": "string",
-                    "example": "Wireless Headphones"
-                },
-                "updatedAt": {
-                    "description": "Updated timestamp (RFC3339).",
-                    "type": "string"
-                },
-                "vendorId": {
-                    "description": "Owning vendor UUID.",
-                    "type": "string",
-                    "example": "50000000-0000-0000-0000-000000000001"
-                }
-            }
-        },
-        "VendorProductSummary": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "currency": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "price": {
-                    "type": "integer"
-                },
-                "productType": {
-                    "$ref": "#/definitions/ProductType"
-                },
-                "sku": {
-                    "type": "string"
-                },
-                "slug": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/PublicationStatus"
-                },
-                "stock": {
-                    "type": "integer"
-                },
-                "thumbnailUrl": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "VendorPromotionStatusRequest": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "status": {
-                    "description": "New lifecycle state.",
-                    "type": "string",
-                    "enum": [
-                        "active",
-                        "disabled",
-                        "archived"
-                    ],
-                    "example": "disabled"
-                }
-            }
-        },
-        "VendorResponse": {
-            "type": "object",
-            "properties": {
-                "bannerUrl": {
-                    "description": "Public banner URL, when set.",
-                    "type": "string"
-                },
-                "commissionRateBps": {
-                    "description": "Platform commission in basis points.",
-                    "type": "integer",
-                    "example": 1000
-                },
-                "createdAt": {
-                    "description": "Created timestamp (RFC3339).",
-                    "type": "string",
-                    "example": "2026-11-02T10:00:00Z"
-                },
-                "description": {
-                    "description": "Optional storefront description.",
-                    "type": "string",
-                    "example": "Electronics and accessories"
-                },
-                "id": {
-                    "description": "Vendor profile id.",
-                    "type": "string",
-                    "example": "50000000-0000-0000-0000-000000000001"
-                },
-                "logoUrl": {
-                    "description": "Public logo URL, when set.",
-                    "type": "string"
-                },
-                "reviewedAt": {
-                    "description": "When the latest lifecycle decision was made (RFC3339).",
-                    "type": "string"
-                },
-                "reviewedBy": {
-                    "description": "Administrator who made the latest lifecycle decision.",
-                    "type": "string"
-                },
-                "slug": {
-                    "description": "URL-safe unique store identifier.",
-                    "type": "string",
-                    "example": "amrs-gadgets"
-                },
-                "status": {
-                    "description": "Lifecycle status.",
-                    "enum": [
-                        "pending",
-                        "active",
-                        "suspended",
-                        "rejected"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/VendorStatus"
-                        }
-                    ]
-                },
-                "statusReason": {
-                    "description": "Merchant-visible reason for the latest rejection or suspension.",
-                    "type": "string"
-                },
-                "storeName": {
-                    "description": "Customer-facing store display name.",
-                    "type": "string",
-                    "example": "Amr's Gadgets"
-                },
-                "updatedAt": {
-                    "description": "Updated timestamp (RFC3339).",
-                    "type": "string",
-                    "example": "2026-11-02T10:00:00Z"
-                },
-                "userId": {
-                    "description": "Owning account id.",
-                    "type": "string",
-                    "example": "10000000-0000-0000-0000-000000000001"
-                }
-            }
-        },
-        "VendorStatus": {
-            "type": "string",
-            "enum": [
-                "pending",
-                "active",
-                "suspended",
-                "rejected"
-            ],
-            "x-enum-varnames": [
-                "VendorStatusPending",
-                "VendorStatusActive",
-                "VendorStatusSuspended",
-                "VendorStatusRejected"
-            ]
-        },
-        "VendorStockAdjustRequest": {
-            "type": "object",
-            "required": [
-                "quantity",
-                "reason"
-            ],
-            "properties": {
-                "quantity": {
-                    "description": "Signed delta: positive restocks, negative reduces on-hand.",
-                    "type": "integer",
-                    "example": 50
-                },
-                "reason": {
-                    "description": "Business reason for the movement.",
-                    "type": "string",
-                    "enum": [
-                        "restock",
-                        "return",
-                        "adjustment"
-                    ],
-                    "example": "restock"
-                }
-            }
-        },
-        "VendorStockResponse": {
-            "type": "object",
-            "properties": {
-                "availableQuantity": {
-                    "description": "Salable units (on hand minus reserved).",
-                    "type": "integer",
-                    "example": 50
-                },
-                "isInStock": {
-                    "description": "True when available units exceed zero.",
-                    "type": "boolean",
-                    "example": true
-                },
-                "onHandQuantity": {
-                    "description": "Physical units on hand.",
-                    "type": "integer",
-                    "example": 60
-                },
-                "reservedQuantity": {
-                    "description": "Units reserved by open orders.",
-                    "type": "integer",
-                    "example": 10
-                },
-                "variantId": {
-                    "description": "Variant UUID.",
-                    "type": "string"
-                }
-            }
-        },
-        "VendorUpdateProductRequest": {
-            "type": "object",
-            "properties": {
-                "brandId": {
-                    "description": "Optional brand UUID.",
-                    "type": "string"
-                },
-                "categoryId": {
-                    "description": "Optional category UUID.",
-                    "type": "string"
-                },
-                "description": {
-                    "description": "Updated product description.",
-                    "type": "string"
-                },
-                "highlights": {
-                    "description": "Updated highlight bullets.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "productType": {
-                    "description": "Product classification: simple or variable.",
-                    "type": "string",
-                    "enum": [
-                        "simple",
-                        "variable"
-                    ]
-                },
-                "title": {
-                    "description": "Updated product title.",
-                    "type": "string",
-                    "maxLength": 200
-                },
-                "variationAxes": {
-                    "description": "Variation axes; omit to leave unchanged, [] to make the product simple.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "VendorUpdateVariantRequest": {
-            "type": "object",
-            "properties": {
-                "attributes": {
-                    "description": "Updated attribute dimensions.",
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "crossedOutPrice": {
-                    "description": "Updated original price in minor units.",
-                    "type": "integer"
-                },
-                "currency": {
-                    "description": "Updated ISO currency code.",
-                    "type": "string"
-                },
-                "isDefault": {
-                    "description": "Updated default-selection flag.",
-                    "type": "boolean"
-                },
-                "price": {
-                    "description": "Updated price in minor units.",
-                    "type": "integer"
-                },
-                "sku": {
-                    "description": "Updated SKU.",
-                    "type": "string"
-                },
-                "thumbnailUrl": {
-                    "description": "Updated public thumbnail image URL, as returned by POST /vendor/media.",
-                    "type": "string"
-                },
-                "title": {
-                    "description": "Updated title.",
-                    "type": "string"
-                }
-            }
-        },
-        "VendorVariantResponse": {
-            "type": "object",
-            "properties": {
-                "attributes": {
-                    "description": "Attribute dimensions.",
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "crossedOutPrice": {
-                    "description": "Crossed-out price in minor units.",
-                    "type": "integer"
-                },
-                "currency": {
-                    "description": "ISO currency code.",
-                    "type": "string"
-                },
-                "id": {
-                    "description": "Variant UUID.",
-                    "type": "string"
-                },
-                "isDefault": {
-                    "description": "Default-selection flag.",
-                    "type": "boolean"
-                },
-                "price": {
-                    "description": "Unit price in minor units.",
-                    "type": "integer"
-                },
-                "productId": {
-                    "description": "Parent product UUID.",
-                    "type": "string"
-                },
-                "sku": {
-                    "description": "Stock keeping unit.",
-                    "type": "string"
-                },
-                "title": {
-                    "description": "Display title.",
-                    "type": "string"
                 }
             }
         },

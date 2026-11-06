@@ -26,7 +26,7 @@ func NewRouter(h *AttributeHandler, sessionStore middleware.SessionStore) *Attri
 
 func (r *AttributeRouter) MapPublicRoutes(vgroup *gin.RouterGroup) {
 	// Category attributes are public product taxonomy metadata and drive the
-	// variation-axis pickers used by non-admin catalog flows (e.g. vendor wizard).
+	// variation-axis pickers used by non-admin catalog flows (e.g. seller wizard).
 	public := vgroup.Group("/categories/:id/attributes")
 	public.Use(middleware.PublicCache(300))
 	{

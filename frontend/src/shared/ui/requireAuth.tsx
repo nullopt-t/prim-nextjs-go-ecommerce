@@ -7,7 +7,7 @@ import { useAuthContext } from "@/modules/auth/model/authContext";
 /**
  * Authentication-only UX guard. Merchant authorization remains a backend
  * resource check; this component only ensures a session exists before the
- * vendor provider starts calling the profile endpoint.
+ * seller provider starts calling the profile endpoint.
  */
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthContext();
@@ -16,7 +16,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading || user) return;
-    const destination = pathname || "/vendor";
+    const destination = pathname || "/seller";
     router.replace(`/auth?redirect=${encodeURIComponent(destination)}`);
   }, [loading, pathname, router, user]);
 

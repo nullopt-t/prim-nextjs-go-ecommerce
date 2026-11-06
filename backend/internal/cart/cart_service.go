@@ -22,10 +22,10 @@ type ProductReader interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error)
 }
 
-// VendorReader resolves a product's seller so the cart refuses items from a
-// suspended or rejected vendor rather than letting them fail only at checkout.
-type VendorReader interface {
-	GetByID(ctx context.Context, id uuid.UUID) (*model.Vendor, error)
+// SellerReader resolves a product's seller so the cart refuses items from a
+// suspended or rejected seller rather than letting them fail only at checkout.
+type SellerReader interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Seller, error)
 }
 
 type InventoryReader interface {
@@ -42,7 +42,7 @@ type CartService struct {
 	cartRepo        *CartRepository
 	variantReader   VariantReader
 	productReader   ProductReader
-	vendorReader    VendorReader
+	sellerReader    SellerReader
 	inventoryReader InventoryReader
 	objectReader    ObjectReader
 	storageProvider storage.StorageProvider
@@ -53,7 +53,7 @@ func NewService(
 	cartRepo *CartRepository,
 	variantReader VariantReader,
 	productReader ProductReader,
-	vendorReader VendorReader,
+	sellerReader SellerReader,
 	inventoryReader InventoryReader,
 	objectReader ObjectReader,
 	storageProvider storage.StorageProvider,
@@ -70,8 +70,8 @@ func NewService(
 	if productReader == nil {
 		panic("cart: product reader is required")
 	}
-	if vendorReader == nil {
-		panic("cart: vendor reader is required")
+	if sellerReader == nil {
+		panic("cart: seller reader is required")
 	}
 	if inventoryReader == nil {
 		panic("cart: inventory reader is required")
@@ -87,7 +87,7 @@ func NewService(
 		cartRepo:        cartRepo,
 		variantReader:   variantReader,
 		productReader:   productReader,
-		vendorReader:    vendorReader,
+		sellerReader:    sellerReader,
 		inventoryReader: inventoryReader,
 		objectReader:    objectReader,
 		storageProvider: storageProvider,
@@ -335,7 +335,7 @@ func (s *CartService) AddItem(
 		}
 
 		// Only published products from an active seller are addable. This keeps
-		// an unpublished listing or a suspended vendor's catalog out of the cart
+		// an unpublished listing or a suspended seller's catalog out of the cart
 		// instead of surfacing the problem only at checkout.
 		product, productErr := s.productReader.GetByID(ctx, v.ProductID)
 		if productErr != nil {
@@ -349,16 +349,16 @@ func (s *CartService) AddItem(
 			return apierr.BadRequestError("Product is not available").
 				WithCode(apierr.CodeInvalidInput)
 		}
-		if product.VendorID != nil {
-			vendor, vendorErr := s.vendorReader.GetByID(ctx, *product.VendorID)
-			if vendorErr != nil {
-				if errors.Is(database.MapError(vendorErr), database.ErrNotFound) {
+		if product.SellerID != nil {
+			seller, sellerErr := s.sellerReader.GetByID(ctx, *product.SellerID)
+			if sellerErr != nil {
+				if errors.Is(database.MapError(sellerErr), database.ErrNotFound) {
 					return apierr.BadRequestError("Product is not available").
 						WithCode(apierr.CodeInvalidInput)
 				}
-				return apierr.InternalServerError("Failed to load product seller").Wrap(vendorErr)
+				return apierr.InternalServerError("Failed to load product seller").Wrap(sellerErr)
 			}
-			if vendor == nil || vendor.Status != model.VendorStatusActive {
+			if seller == nil || seller.Status != model.SellerStatusActive {
 				return apierr.BadRequestError("Product is not available").
 					WithCode(apierr.CodeInvalidInput)
 			}

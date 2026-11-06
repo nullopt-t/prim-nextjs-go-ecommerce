@@ -93,7 +93,7 @@ func (r *Repository) AddOrderItem(
 	query := `
 		INSERT INTO order_items (
 			id, order_id, variant_id, quantity, price_at_purchase, product_snapshot,
-			vendor_id, vendor_earning, commission_rate_bps, commission_amount
+			seller_id, seller_earning, commission_rate_bps, commission_amount
 		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
@@ -106,8 +106,8 @@ func (r *Repository) AddOrderItem(
 		item.Quantity,
 		item.PriceAtPurchase,
 		item.ProductSnapshot,
-		item.VendorID,
-		item.VendorEarning,
+		item.SellerID,
+		item.SellerEarning,
 		item.CommissionRateBps,
 		item.CommissionAmount,
 	)
@@ -392,13 +392,13 @@ func (r *Repository) GetOrdersByCustomerID(
 	return orders, nil
 }
 
-// ListVendorOrders returns orders containing one vendor's lines, newest
-// first. Only rows whose order_items carry the vendor's id are ever
-// selected; the projection is what keeps vendors isolated from each
+// ListSellerOrders returns orders containing one seller's lines, newest
+// first. Only rows whose order_items carry the seller's id are ever
+// selected; the projection is what keeps sellers isolated from each
 // other without leaking the admin /admin/orders surface.
-func (r *Repository) ListVendorOrders(
+func (r *Repository) ListSellerOrders(
 	ctx context.Context,
-	vendorID uuid.UUID,
+	sellerID uuid.UUID,
 	status *model.OrderStatus,
 	q *pagination.ListQuery,
 ) ([]model.Order, int64, error) {
@@ -407,8 +407,8 @@ func (r *Repository) ListVendorOrders(
 		return nil, 0, err
 	}
 
-	where := "WHERE oi.vendor_id = $1"
-	args := []any{vendorID}
+	where := "WHERE oi.seller_id = $1"
+	args := []any{sellerID}
 	if status != nil && *status != "" {
 		where += " AND o.status = $2::order_status"
 		args = append(args, *status)
@@ -421,7 +421,7 @@ func (r *Repository) ListVendorOrders(
 		JOIN order_items oi ON oi.order_id = o.id
 		` + where
 	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count vendor orders: %w", err)
+		return nil, 0, fmt.Errorf("count seller orders: %w", err)
 	}
 
 	limitIdx := len(args) + 1
@@ -442,7 +442,7 @@ func (r *Repository) ListVendorOrders(
 		append(args, q.PageSize, q.Offset)...,
 	)
 	if err != nil {
-		return nil, 0, fmt.Errorf("list vendor orders: %w", err)
+		return nil, 0, fmt.Errorf("list seller orders: %w", err)
 	}
 
 	orders, err := scanOrders(rows)
@@ -450,8 +450,8 @@ func (r *Repository) ListVendorOrders(
 		return nil, 0, err
 	}
 
-	// Vendor sees only their own lines: filter each order's items to those
-	// carrying the vendor id, and never expose another vendor's lines that
+	// Seller sees only their own lines: filter each order's items to those
+	// carrying the seller id, and never expose another seller's lines that
 	// share the same order.
 	orderIDs := make([]uuid.UUID, len(orders))
 	for i := range orders {
@@ -459,11 +459,11 @@ func (r *Repository) ListVendorOrders(
 	}
 	itemsMap, err := r.GetOrderItemsByOrderIDs(ctx, orderIDs)
 	if err != nil {
-		return nil, 0, fmt.Errorf("batch get vendor order items: %w", err)
+		return nil, 0, fmt.Errorf("batch get seller order items: %w", err)
 	}
 	for i := range orders {
 		for _, item := range itemsMap[orders[i].ID] {
-			if item.VendorID != nil && *item.VendorID == vendorID {
+			if item.SellerID != nil && *item.SellerID == sellerID {
 				orders[i].Items = append(orders[i].Items, item)
 			}
 		}
@@ -472,10 +472,10 @@ func (r *Repository) ListVendorOrders(
 	return orders, total, nil
 }
 
-// GetVendorOrder loads a single order when it contains a line owned by the
-// vendor; otherwise it behaves as "not found" so existence of foreign or
-// platform orders is never leaked to a vendor.
-func (r *Repository) GetVendorOrder(ctx context.Context, vendorID, orderID uuid.UUID) (*model.Order, error) {
+// GetSellerOrder loads a single order when it contains a line owned by the
+// seller; otherwise it behaves as "not found" so existence of foreign or
+// platform orders is never leaked to a seller.
+func (r *Repository) GetSellerOrder(ctx context.Context, sellerID, orderID uuid.UUID) (*model.Order, error) {
 	qe, err := database.Executor(ctx)
 	if err != nil {
 		return nil, err
@@ -485,11 +485,11 @@ func (r *Repository) GetVendorOrder(ctx context.Context, vendorID, orderID uuid.
 	err = qe.QueryRow(ctx, `
 		SELECT EXISTS (
 			SELECT 1 FROM order_items
-			WHERE order_id = $1 AND vendor_id = $2
+			WHERE order_id = $1 AND seller_id = $2
 		)
-	`, orderID, vendorID).Scan(&owned)
+	`, orderID, sellerID).Scan(&owned)
 	if err != nil {
-		return nil, fmt.Errorf("check vendor order ownership: %w", err)
+		return nil, fmt.Errorf("check seller order ownership: %w", err)
 	}
 	if !owned {
 		return nil, pgx.ErrNoRows
@@ -502,7 +502,7 @@ func (r *Repository) GetVendorOrder(ctx context.Context, vendorID, orderID uuid.
 
 	items := make([]model.OrderItem, 0, len(order.Items))
 	for _, item := range order.Items {
-		if item.VendorID != nil && *item.VendorID == vendorID {
+		if item.SellerID != nil && *item.SellerID == sellerID {
 			items = append(items, item)
 		}
 	}
@@ -521,7 +521,7 @@ func (r *Repository) GetOrderItems(
 	}
 	query := `
 		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot,
-			vendor_id, vendor_earning, commission_rate_bps, commission_amount
+			seller_id, seller_earning, commission_rate_bps, commission_amount
 		FROM order_items
 		WHERE order_id = $1
 	`
@@ -541,8 +541,8 @@ func (r *Repository) GetOrderItems(
 			&item.Quantity,
 			&item.PriceAtPurchase,
 			&item.ProductSnapshot,
-			&item.VendorID,
-			&item.VendorEarning,
+			&item.SellerID,
+			&item.SellerEarning,
 			&item.CommissionRateBps,
 			&item.CommissionAmount,
 		); err != nil {
@@ -570,7 +570,7 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 	}
 	query := `
 		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot,
-			vendor_id, vendor_earning, commission_rate_bps, commission_amount
+			seller_id, seller_earning, commission_rate_bps, commission_amount
 		FROM order_items
 		WHERE order_id = ANY($1)
 	`
@@ -589,8 +589,8 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 			&item.Quantity,
 			&item.PriceAtPurchase,
 			&item.ProductSnapshot,
-			&item.VendorID,
-			&item.VendorEarning,
+			&item.SellerID,
+			&item.SellerEarning,
 			&item.CommissionRateBps,
 			&item.CommissionAmount,
 		); err != nil {
@@ -602,53 +602,53 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 	return result, rows.Err()
 }
 
-// GetVendorSalesStats projects one vendor's sales from order data. Earnings are
+// GetSellerSalesStats projects one seller's sales from order data. Earnings are
 // the frozen per-line values stamped at checkout, so later commission changes
 // never rewrite history. Cancelled and refunded orders are excluded from
 // revenue and order counts.
-func (r *Repository) GetVendorSalesStats(
+func (r *Repository) GetSellerSalesStats(
 	ctx context.Context,
-	vendorID uuid.UUID,
-) (*model.VendorSalesStats, error) {
+	sellerID uuid.UUID,
+) (*model.SellerSalesStats, error) {
 	qe, err := database.Executor(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	stats := new(model.VendorSalesStats)
+	stats := new(model.SellerSalesStats)
 	err = qe.QueryRow(ctx, `
 		SELECT
 			COALESCE(SUM(oi.price_at_purchase * oi.quantity)
 				FILTER (WHERE o.status IN ('paid', 'processing', 'shipped', 'delivered')), 0),
-			COALESCE(SUM(oi.vendor_earning)
+			COALESCE(SUM(oi.seller_earning)
 				FILTER (WHERE o.status = 'delivered'), 0),
-			COALESCE(SUM(oi.vendor_earning)
+			COALESCE(SUM(oi.seller_earning)
 				FILTER (WHERE o.status IN ('paid', 'processing', 'shipped')), 0),
 			COUNT(DISTINCT o.id)
 				FILTER (WHERE o.status NOT IN ('pending', 'cancelled', 'refunded'))
 		FROM order_items oi
 		JOIN orders o ON o.id = oi.order_id
-		WHERE oi.vendor_id = $1
-	`, vendorID).Scan(
+		WHERE oi.seller_id = $1
+	`, sellerID).Scan(
 		&stats.GrossRevenue,
 		&stats.SettledEarnings,
 		&stats.PendingEarnings,
 		&stats.OrderCount,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("get vendor sales stats: %w", err)
+		return nil, fmt.Errorf("get seller sales stats: %w", err)
 	}
 	return stats, nil
 }
 
-// GetVendorSettledEarnings sums vendor earnings and derived sales counters for
+// GetSellerSettledEarnings sums seller earnings and derived sales counters for
 // orders that reached a settled lifecycle state (delivered). Cancelled and
 // refunded orders drop out automatically. The method is a read-only
-// projection owned by the order domain and consumed by vendor via an
-// interface, so the vendor package never issues SQL against order tables.
-func (r *Repository) GetVendorSettledEarnings(
+// projection owned by the order domain and consumed by seller via an
+// interface, so the seller package never issues SQL against order tables.
+func (r *Repository) GetSellerSettledEarnings(
 	ctx context.Context,
-	vendorID uuid.UUID,
+	sellerID uuid.UUID,
 ) (int64, error) {
 	qe, err := database.Executor(ctx)
 	if err != nil {
@@ -657,13 +657,13 @@ func (r *Repository) GetVendorSettledEarnings(
 
 	var total int64
 	err = qe.QueryRow(ctx, `
-		SELECT COALESCE(SUM(oi.vendor_earning), 0)
+		SELECT COALESCE(SUM(oi.seller_earning), 0)
 		FROM order_items oi
 		JOIN orders o ON o.id = oi.order_id
-		WHERE oi.vendor_id = $1 AND o.status = 'delivered'
-	`, vendorID).Scan(&total)
+		WHERE oi.seller_id = $1 AND o.status = 'delivered'
+	`, sellerID).Scan(&total)
 	if err != nil {
-		return 0, fmt.Errorf("sum settled vendor earnings: %w", err)
+		return 0, fmt.Errorf("sum settled seller earnings: %w", err)
 	}
 	return total, nil
 }

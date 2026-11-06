@@ -103,7 +103,7 @@ func (s *HistoryTestSuite) SetupSuite() {
 
 	for _, migration := range []string{
 		"000001_init_sechema.up.sql",
-		"000003_vendor_domain.up.sql",
+		"000003_seller_domain.up.sql",
 		"000005_user_product_views.up.sql",
 	} {
 		raw, err := os.ReadFile("../../migrations/" + migration)
@@ -176,7 +176,7 @@ func (s *HistoryTestSuite) createProduct(
 	slug string,
 	title string,
 	status model.PublicationStatus,
-	vendorID *uuid.UUID,
+	sellerID *uuid.UUID,
 	thumbnailID *uuid.UUID,
 ) uuid.UUID {
 	s.T().Helper()
@@ -184,10 +184,10 @@ func (s *HistoryTestSuite) createProduct(
 	id := uuid.New()
 	_, err := s.db.Exec(context.Background(), `
 		INSERT INTO products (
-			id, category_id, slug, title, status, product_type, vendor_id, thumbnail_object_id
+			id, category_id, slug, title, status, product_type, seller_id, thumbnail_object_id
 		)
 		VALUES ($1, $2, $3, $4, $5, 'simple', $6, $7)
-	`, id, s.categoryID, slug, title, status, vendorID, thumbnailID)
+	`, id, s.categoryID, slug, title, status, sellerID, thumbnailID)
 	require.NoError(s.T(), err)
 	return id
 }
@@ -304,23 +304,23 @@ func (s *HistoryTestSuite) TestListHidesProductsThatAreNoLongerVisible() {
 	s.Equal(s.product1ID, items[0].ProductID)
 }
 
-func (s *HistoryTestSuite) TestListHidesInactiveVendorProducts() {
+func (s *HistoryTestSuite) TestListHidesInactiveSellerProducts() {
 	ctx := context.Background()
-	vendorUserID := uuid.New()
+	sellerUserID := uuid.New()
 	_, err := s.db.Exec(ctx, `
 		INSERT INTO users (id, email, full_name, role)
 		VALUES ($1, $2, $3, 'customer')
-	`, vendorUserID, "inactive-vendor@example.com", "Inactive Vendor")
+	`, sellerUserID, "inactive-seller@example.com", "Inactive Seller")
 	s.Require().NoError(err)
 
-	vendorID := uuid.New()
+	sellerID := uuid.New()
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO vendors (id, user_id, store_name, slug, status)
+		INSERT INTO sellers (id, user_id, store_name, slug, status)
 		VALUES ($1, $2, $3, $4, 'suspended')
-	`, vendorID, vendorUserID, "Inactive Store", "inactive-store")
+	`, sellerID, sellerUserID, "Inactive Store", "inactive-store")
 	s.Require().NoError(err)
 
-	productID := s.createProduct("history-vendor-product", "Vendor Product", model.PublicationStatusPublished, &vendorID, nil)
+	productID := s.createProduct("history-seller-product", "Seller Product", model.PublicationStatusPublished, &sellerID, nil)
 	_, err = s.db.Exec(ctx, `
 		INSERT INTO user_product_views (user_id, product_id, viewed_at)
 		VALUES ($1, $2, now())

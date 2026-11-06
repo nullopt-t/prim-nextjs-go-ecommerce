@@ -18,7 +18,7 @@ interface OrderViewItem {
   name: string;
   price: string;
   quantity: number;
-  vendorName?: string;
+  sellerName?: string;
 }
 
 interface OrderViewHistory {
@@ -94,25 +94,25 @@ export function AdminOrderDetails() {
           trackingUrl: remoteOrder.trackingUrl || "",
           items: (Array.isArray(remoteOrder.items) ? remoteOrder.items : []).map((it: OrderItem) => {
             let itemName = t("orderDetails.orderItem");
-            let vendorName: string | undefined;
+            let sellerName: string | undefined;
             const snapshot: unknown = it.productSnapshot;
             if (typeof snapshot === "string") {
               try {
                 const parsed = JSON.parse(snapshot);
                 itemName = parsed.title || parsed.name || itemName;
-                vendorName = parsed.vendorName;
+                sellerName = parsed.sellerName;
               } catch {
                 itemName = snapshot;
               }
             } else if (snapshot && typeof snapshot === "object") {
-              const snap = snapshot as { title?: string; name?: string; vendorName?: string };
+              const snap = snapshot as { title?: string; name?: string; sellerName?: string };
               itemName = snap.title || snap.name || itemName;
-              vendorName = snap.vendorName;
+              sellerName = snap.sellerName;
             }
             return {
               id: it.id,
               name: itemName,
-              vendorName,
+              sellerName,
               price: formatMoney((it.priceAtPurchase || 0) / 100, currency),
               quantity: it.quantity || 1
             };
@@ -263,9 +263,9 @@ export function AdminOrderDetails() {
                   <div>
                     <div className="font-semibold text-foreground flex items-center gap-2">
                       <span>{item.name}</span>
-                      {item.vendorName && (
+                      {item.sellerName && (
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-secondary text-muted-foreground border border-border">
-                          {item.vendorName}
+                          {item.sellerName}
                         </span>
                       )}
                     </div>

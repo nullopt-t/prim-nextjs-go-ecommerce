@@ -2847,6 +2847,342 @@ const docTemplateadmin = `{
                 }
             }
         },
+        "/admin/sellers": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the seller directory, newest first, optionally filtered by lifecycle status.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Sellers"
+                ],
+                "summary": "List sellers (admin)",
+                "parameters": [
+                    {
+                        "enum": [
+                            "pending",
+                            "active",
+                            "suspended",
+                            "rejected"
+                        ],
+                        "type": "string",
+                        "description": "Lifecycle filter",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (max 100)",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/PaginatedResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/SellerResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid status filter",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/sellers/payouts": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns every payout across all sellers for administration.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Sellers"
+                ],
+                "summary": "List all payouts (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/PayoutResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/sellers/payouts/{id}/transition": {
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Moves a payout through its lifecycle (conditional on prior state). State conflicts return 409.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Sellers"
+                ],
+                "summary": "Transition a payout (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Payout UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Transition payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AdminTransitionPayoutRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/PayoutResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Payout not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Transition not permitted",
+                        "schema": {
+                            "$ref": "#/definitions/ConflictErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/sellers/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns any seller profile for administration.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Sellers"
+                ],
+                "summary": "Get seller by ID (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Seller UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SellerResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/sellers/{id}/commission": {
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Overrides the per-seller commission in basis points. Future orders use the new rate; already-placed orders keep their frozen earning.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Sellers"
+                ],
+                "summary": "Set seller commission rate (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Seller UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Rate in bps",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AdminSetCommissionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SellerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/sellers/{id}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Applies a guarded lifecycle transition (pending-\u003eactive/rejected, active\u003c-\u003esuspended) and records reviewer metadata. Rejection and suspension require a merchant-facing reason.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Sellers"
+                ],
+                "summary": "Change seller status (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Seller UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New status",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AdminChangeSellerStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SellerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Transition not permitted",
+                        "schema": {
+                            "$ref": "#/definitions/ConflictErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/sessions": {
             "get": {
                 "description": "Returns every active session/device belonging to a staff account, newest activity first. Superadmin only.",
@@ -2860,7 +3196,7 @@ const docTemplateadmin = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Filter by staff role (vendor, support, admin, superadmin)",
+                        "description": "Filter by staff role (seller, support, admin, superadmin)",
                         "name": "role",
                         "in": "query"
                     }
@@ -4178,342 +4514,6 @@ const docTemplateadmin = `{
                     }
                 }
             }
-        },
-        "/admin/vendors": {
-            "get": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Returns the vendor directory, newest first, optionally filtered by lifecycle status.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Vendors"
-                ],
-                "summary": "List vendors (admin)",
-                "parameters": [
-                    {
-                        "enum": [
-                            "pending",
-                            "active",
-                            "suspended",
-                            "rejected"
-                        ],
-                        "type": "string",
-                        "description": "Lifecycle filter",
-                        "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page number (1-based)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size (max 100)",
-                        "name": "pageSize",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/PaginatedResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/VendorResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid status filter",
-                        "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/vendors/payouts": {
-            "get": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Returns every payout across all vendors for administration.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Vendors"
-                ],
-                "summary": "List all payouts (admin)",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/DataResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/PayoutResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/vendors/payouts/{id}/transition": {
-            "patch": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Moves a payout through its lifecycle (conditional on prior state). State conflicts return 409.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Vendors"
-                ],
-                "summary": "Transition a payout (admin)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Payout UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Transition payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/AdminTransitionPayoutRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/PayoutResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Payout not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Transition not permitted",
-                        "schema": {
-                            "$ref": "#/definitions/ConflictErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/vendors/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Returns any vendor profile for administration.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Vendors"
-                ],
-                "summary": "Get vendor by ID (admin)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Vendor UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/VendorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/vendors/{id}/commission": {
-            "patch": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Overrides the per-vendor commission in basis points. Future orders use the new rate; already-placed orders keep their frozen earning.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Vendors"
-                ],
-                "summary": "Set vendor commission rate (admin)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Vendor UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Rate in bps",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/AdminSetCommissionRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/VendorResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Validation failed",
-                        "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/vendors/{id}/status": {
-            "patch": {
-                "security": [
-                    {
-                        "SessionAuth": []
-                    }
-                ],
-                "description": "Applies a guarded lifecycle transition (pending-\u003eactive/rejected, active\u003c-\u003esuspended) and records reviewer metadata. Rejection and suspension require a merchant-facing reason.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Vendors"
-                ],
-                "summary": "Change vendor status (admin)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Vendor UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "New status",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/AdminChangeVendorStatusRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/VendorResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Validation failed",
-                        "schema": {
-                            "$ref": "#/definitions/BadReqResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Vendor not found",
-                        "schema": {
-                            "$ref": "#/definitions/NotFoundErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Transition not permitted",
-                        "schema": {
-                            "$ref": "#/definitions/ConflictErrorResponse"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -4656,7 +4656,7 @@ const docTemplateadmin = `{
                 }
             }
         },
-        "AdminChangeVendorStatusRequest": {
+        "AdminChangeSellerStatusRequest": {
             "type": "object",
             "required": [
                 "status"
@@ -4668,7 +4668,7 @@ const docTemplateadmin = `{
                     "maxLength": 2000
                 },
                 "status": {
-                    "description": "New vendor lifecycle state.",
+                    "description": "New seller lifecycle state.",
                     "enum": [
                         "pending",
                         "active",
@@ -4677,7 +4677,7 @@ const docTemplateadmin = `{
                     ],
                     "allOf": [
                         {
-                            "$ref": "#/definitions/VendorStatus"
+                            "$ref": "#/definitions/SellerStatus"
                         }
                     ]
                 }
@@ -5873,6 +5873,11 @@ const docTemplateadmin = `{
                     "description": "External transfer reference when available.",
                     "type": "string"
                 },
+                "sellerId": {
+                    "description": "Seller id.",
+                    "type": "string",
+                    "example": "50000000-0000-0000-0000-000000000001"
+                },
                 "snapshotAvailableBalance": {
                     "description": "Available balance stamped at request time.",
                     "type": "integer",
@@ -5892,11 +5897,6 @@ const docTemplateadmin = `{
                             "$ref": "#/definitions/PayoutStatus"
                         }
                     ]
-                },
-                "vendorId": {
-                    "description": "Vendor id.",
-                    "type": "string",
-                    "example": "50000000-0000-0000-0000-000000000001"
                 }
             }
         },
@@ -6297,6 +6297,100 @@ const docTemplateadmin = `{
                     "type": "integer"
                 }
             }
+        },
+        "SellerResponse": {
+            "type": "object",
+            "properties": {
+                "bannerUrl": {
+                    "description": "Public banner URL, when set.",
+                    "type": "string"
+                },
+                "commissionRateBps": {
+                    "description": "Platform commission in basis points.",
+                    "type": "integer",
+                    "example": 1000
+                },
+                "createdAt": {
+                    "description": "Created timestamp (RFC3339).",
+                    "type": "string",
+                    "example": "2026-11-02T10:00:00Z"
+                },
+                "description": {
+                    "description": "Optional storefront description.",
+                    "type": "string",
+                    "example": "Electronics and accessories"
+                },
+                "id": {
+                    "description": "Seller profile id.",
+                    "type": "string",
+                    "example": "50000000-0000-0000-0000-000000000001"
+                },
+                "logoUrl": {
+                    "description": "Public logo URL, when set.",
+                    "type": "string"
+                },
+                "reviewedAt": {
+                    "description": "When the latest lifecycle decision was made (RFC3339).",
+                    "type": "string"
+                },
+                "reviewedBy": {
+                    "description": "Administrator who made the latest lifecycle decision.",
+                    "type": "string"
+                },
+                "slug": {
+                    "description": "URL-safe unique store identifier.",
+                    "type": "string",
+                    "example": "amrs-gadgets"
+                },
+                "status": {
+                    "description": "Lifecycle status.",
+                    "enum": [
+                        "pending",
+                        "active",
+                        "suspended",
+                        "rejected"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/SellerStatus"
+                        }
+                    ]
+                },
+                "statusReason": {
+                    "description": "Merchant-visible reason for the latest rejection or suspension.",
+                    "type": "string"
+                },
+                "storeName": {
+                    "description": "Customer-facing store display name.",
+                    "type": "string",
+                    "example": "Amr's Gadgets"
+                },
+                "updatedAt": {
+                    "description": "Updated timestamp (RFC3339).",
+                    "type": "string",
+                    "example": "2026-11-02T10:00:00Z"
+                },
+                "userId": {
+                    "description": "Owning account id.",
+                    "type": "string",
+                    "example": "10000000-0000-0000-0000-000000000001"
+                }
+            }
+        },
+        "SellerStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "active",
+                "suspended",
+                "rejected"
+            ],
+            "x-enum-varnames": [
+                "SellerStatusPending",
+                "SellerStatusActive",
+                "SellerStatusSuspended",
+                "SellerStatusRejected"
+            ]
         },
         "ServiceHealth": {
             "type": "object",
@@ -6801,100 +6895,6 @@ const docTemplateadmin = `{
                     "example": "Space Black, 18GB RAM, 512GB SSD"
                 }
             }
-        },
-        "VendorResponse": {
-            "type": "object",
-            "properties": {
-                "bannerUrl": {
-                    "description": "Public banner URL, when set.",
-                    "type": "string"
-                },
-                "commissionRateBps": {
-                    "description": "Platform commission in basis points.",
-                    "type": "integer",
-                    "example": 1000
-                },
-                "createdAt": {
-                    "description": "Created timestamp (RFC3339).",
-                    "type": "string",
-                    "example": "2026-11-02T10:00:00Z"
-                },
-                "description": {
-                    "description": "Optional storefront description.",
-                    "type": "string",
-                    "example": "Electronics and accessories"
-                },
-                "id": {
-                    "description": "Vendor profile id.",
-                    "type": "string",
-                    "example": "50000000-0000-0000-0000-000000000001"
-                },
-                "logoUrl": {
-                    "description": "Public logo URL, when set.",
-                    "type": "string"
-                },
-                "reviewedAt": {
-                    "description": "When the latest lifecycle decision was made (RFC3339).",
-                    "type": "string"
-                },
-                "reviewedBy": {
-                    "description": "Administrator who made the latest lifecycle decision.",
-                    "type": "string"
-                },
-                "slug": {
-                    "description": "URL-safe unique store identifier.",
-                    "type": "string",
-                    "example": "amrs-gadgets"
-                },
-                "status": {
-                    "description": "Lifecycle status.",
-                    "enum": [
-                        "pending",
-                        "active",
-                        "suspended",
-                        "rejected"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/VendorStatus"
-                        }
-                    ]
-                },
-                "statusReason": {
-                    "description": "Merchant-visible reason for the latest rejection or suspension.",
-                    "type": "string"
-                },
-                "storeName": {
-                    "description": "Customer-facing store display name.",
-                    "type": "string",
-                    "example": "Amr's Gadgets"
-                },
-                "updatedAt": {
-                    "description": "Updated timestamp (RFC3339).",
-                    "type": "string",
-                    "example": "2026-11-02T10:00:00Z"
-                },
-                "userId": {
-                    "description": "Owning account id.",
-                    "type": "string",
-                    "example": "10000000-0000-0000-0000-000000000001"
-                }
-            }
-        },
-        "VendorStatus": {
-            "type": "string",
-            "enum": [
-                "pending",
-                "active",
-                "suspended",
-                "rejected"
-            ],
-            "x-enum-varnames": [
-                "VendorStatusPending",
-                "VendorStatusActive",
-                "VendorStatusSuspended",
-                "VendorStatusRejected"
-            ]
         },
         "auditEntryResponse": {
             "type": "object",

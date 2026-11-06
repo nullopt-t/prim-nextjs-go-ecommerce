@@ -10,7 +10,7 @@ This document benchmarks PRIM against the standard features defined in the [Mage
 |---|---|---|---|
 | **Product Types** | Simple, Configurable, Grouped, Virtual, Bundle, Downloadable | Simple + Configurable (Matrix Variants with option combinations) | Digital/downloadable assets; bundle products. |
 | **Catalog Attributes & Sets** | Dynamic EAV attribute sets, custom attributes per category/type | Normalized attribute schema (`attribute_definitions`, `attribute_values`, category mapping) | Dynamic attribute builders in merchant console. |
-| **Inventory & Stock Management** | Multi-source inventory (MSI), backorders, low stock alerts, reservation locks | Single-warehouse inventory ledger, real-time stock reservations, low stock threshold flags | Multi-location/vendor warehouse routing; backorder policy per variant. |
+| **Inventory & Stock Management** | Multi-source inventory (MSI), backorders, low stock alerts, reservation locks | Single-warehouse inventory ledger, real-time stock reservations, low stock threshold flags | Multi-location/seller warehouse routing; backorder policy per variant. |
 | **Pricing Rules & Discounts** | Tiered/volume pricing, special pricing schedules, catalog price rules | Base price, compare-at price, promotion engine with coupon redemptions | Volume/quantity-tier discounts; scheduled sale windows. |
 | **Media & Assets** | Role-based gallery (Base, Small, Thumbnail, Swatch) | S3/MinIO storage objects with CDN URL resolution, primary thumbnail + gallery objects | Swatch asset binding per variant attribute. |
 
@@ -32,18 +32,18 @@ This document benchmarks PRIM against the standard features defined in the [Mage
 | Domain / Capability | Magento Open Source Standard | PRIM Current Status | Roadmap Gap / Next Steps |
 |---|---|---|---|
 | **Order Lifecycle State Machine** | Pending -> Processing -> Complete / Cancelled / Closed / On Hold | Clean state machine: Pending -> Processing -> Shipped -> Delivered / Cancelled | Return merchandise authorization (RMA) & refund workflows. |
-| **Invoicing & Shipments** | Split invoices, partial shipments, tracking number attachments | Order item status tracking, merchant line-item allocation, frozen commission capture | Carrier tracking link generator; multi-shipment dispatch per vendor order. |
+| **Invoicing & Shipments** | Split invoices, partial shipments, tracking number attachments | Order item status tracking, merchant line-item allocation, frozen commission capture | Carrier tracking link generator; multi-shipment dispatch per seller order. |
 | **Order Status Audit History** | Append-only status change log with admin/automated comments | `order_status_history` table with timestamped status changes and notes | Expose status timeline directly in the customer tracking portal. |
 | **Guest to Customer Lifecycle** | Seamless guest checkout, convert guest order to registered customer account | Guest cart merging upon OTP login; authenticated checkout | Guest order lookup portal (`/order-lookup`) with email + order number. |
 
 ---
 
-## 4. Multi-Vendor & Merchant Operations
+## 4. Multi-Seller & Merchant Operations
 
 | Domain / Capability | Magento Open Source Standard *(Enterprise/Extension)* | PRIM Native Implementation | Roadmap Gap / Next Steps |
 |---|---|---|---|
-| **Vendor Onboarding & Status** | Extension-based (Marketplace modules) | Core lifecycle state machine: `pending` -> `active` / `rejected` / `suspended` | Document verification attachment uploads (tax ID, commercial register). |
-| **Catalog Partitioning** | Vendor ownership of products & inventory | Strict merchant tenancy: vendors manage only their own products & stock movements | Vendor-specific shipping fee matrices. |
+| **Seller Onboarding & Status** | Extension-based (Marketplace modules) | Core lifecycle state machine: `pending` -> `active` / `rejected` / `suspended` | Document verification attachment uploads (tax ID, commercial register). |
+| **Catalog Partitioning** | Seller ownership of products & inventory | Strict merchant tenancy: sellers manage only their own products & stock movements | Seller-specific shipping fee matrices. |
 | **Settlement & Payouts** | Periodic ledger balance with commission deductions | Double-entry balance calculation, payout requests with idempotency keys, admin transition queue | Automated settlement schedule via payment gateway splits. |
 
 ---

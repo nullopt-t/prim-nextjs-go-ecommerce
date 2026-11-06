@@ -40,10 +40,10 @@ type OrderItem struct {
 	PriceAtPurchase int64
 	// ProductSnapshot contains a JSON snapshot of the product and variant title, attributes, and media.
 	ProductSnapshot string
-	// VendorID is the selling vendor at purchase time (nil = platform-owned line).
-	VendorID *uuid.UUID
-	// VendorEarning is the vendor share in minor units: item total minus platform commission, frozen at checkout.
-	VendorEarning int64
+	// SellerID is the selling seller at purchase time (nil = platform-owned line).
+	SellerID *uuid.UUID
+	// SellerEarning is the seller share in minor units: item total minus platform commission, frozen at checkout.
+	SellerEarning int64
 	// CommissionRateBps is the platform commission rate applied to this line, frozen at checkout.
 	CommissionRateBps int
 	// CommissionAmount is the platform commission in minor units, frozen at checkout.

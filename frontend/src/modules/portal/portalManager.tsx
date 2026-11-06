@@ -28,21 +28,21 @@ export function PortalManager() {
       ]
     },
     {
-      id: "vendor",
-      title: t("names.vendor"),
-      subtitle: t("cards.vendor.subtitle"),
-      description: t("cards.vendor.description"),
+      id: "seller",
+      title: t("names.seller"),
+      subtitle: t("cards.seller.subtitle"),
+      description: t("cards.seller.description"),
       icon: Building2,
-      badge: t("cards.vendor.badge"),
+      badge: t("cards.seller.badge"),
       color: "from-emerald-500/10 to-teal-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 hover:border-emerald-500/50",
       iconBg: "bg-emerald-500 text-white",
       buttonColor: "bg-emerald-600 hover:bg-emerald-700 text-white",
-      route: "/vendor",
+      route: "/seller",
       features: [
-        t("cards.vendor.features.analytics"),
-        t("cards.vendor.features.submission"),
-        t("cards.vendor.features.inventory"),
-        t("cards.vendor.features.payouts")
+        t("cards.seller.features.analytics"),
+        t("cards.seller.features.submission"),
+        t("cards.seller.features.inventory"),
+        t("cards.seller.features.payouts")
       ]
     },
     {

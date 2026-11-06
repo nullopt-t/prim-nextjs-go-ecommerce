@@ -194,7 +194,7 @@ func (os *ObjectService) DeleteObjectByID(ctx context.Context, id uuid.UUID) err
 
 // GetByID loads a storage object by id. It aliases GetObjectByID under the
 // repository-style name so the service satisfies narrow reader interfaces
-// (e.g. vendors.ObjectReader) without receiver changes in consumers.
+// (e.g. sellers.ObjectReader) without receiver changes in consumers.
 func (os *ObjectService) GetByID(ctx context.Context, id uuid.UUID) (*model.Object, error) {
 	return os.GetObjectByID(ctx, id)
 }

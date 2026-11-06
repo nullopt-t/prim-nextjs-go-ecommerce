@@ -281,7 +281,7 @@
         "all": "All",
         "customer": "Customer",
         "superadmin": "Superadmin",
-        "vendor": "Vendor"
+        "seller": "Seller"
       },
       "searchPlaceholder": "Search by email, name, or UUID...",
       "showing": "Showing <b>{shown}</b> of <b>{total}</b> accounts",
@@ -435,7 +435,7 @@
         "settings": "Settings",
         "system": "System",
         "usersStaff": "Users & Staff",
-        "vendors": "Vendors"
+        "sellers": "Sellers"
       },
       "signOut": "Sign Out",
       "storeConfiguration": "Store Configuration",
@@ -490,9 +490,9 @@
             "desc": "Support staff. Can view customer orders, inspect buyer issues, and assist customers.",
             "label": "Customer Support"
           },
-          "vendor": {
-            "desc": "Merchant account. Can access Vendor Portal to manage catalog listings, stock, and view order fulfillment.",
-            "label": "Vendor Merchant"
+          "seller": {
+            "desc": "Merchant account. Can access Seller Portal to manage catalog listings, stock, and view order fulfillment.",
+            "label": "Seller Merchant"
           }
         },
         "selectTier": "Select New Permission Tier",
@@ -1027,7 +1027,7 @@
       "customer": "Customer",
       "superadmin": "Superadmin",
       "support": "Support",
-      "vendor": "Vendor"
+      "seller": "Seller"
     },
     "sessions": {
       "allRoles": "All roles",
@@ -1212,7 +1212,7 @@
       "subtitle": "Live infrastructure operational metrics and service health.",
       "title": "System & Infrastructure"
     },
-    "vendors": {
+    "sellers": {
       "actions": {
         "activate": "Activate",
         "approve": "Approve",
@@ -1234,9 +1234,9 @@
       "commission": "Commission",
       "commissionHint": "Commission rate applied to future orders, in percent.",
       "commissionInvalid": "Enter a commission rate between 0 and 100.",
-      "empty": "No vendors found.",
-      "loadDescription": "Your vendor directory could not be loaded.",
-      "loadTitle": "Vendors unavailable",
+      "empty": "No sellers found.",
+      "loadDescription": "Your seller directory could not be loaded.",
+      "loadTitle": "Sellers unavailable",
       "payouts": {
         "actions": {
           "approved": "Approve",
@@ -1264,15 +1264,15 @@
       "payoutsTitle": "Payouts",
       "registered": "Registered",
       "slug": "Slug",
-      "statusTitle": "Vendor Access",
+      "statusTitle": "Seller Access",
       "store": "Store",
       "subtitle": "Review marketplace applications and manage seller access.",
-      "title": "Vendor Management",
+      "title": "Seller Management",
       "toast": {
-        "statusFailed": "The vendor status could not be updated.",
-        "statusUpdated": "Vendor status updated."
+        "statusFailed": "The seller status could not be updated.",
+        "statusUpdated": "Seller status updated."
       },
-      "count": "{count} vendors",
+      "count": "{count} sellers",
       "reason": {
         "label": "Reason for {action}",
         "placeholder": "Explain what the merchant must fix. This is shown to the merchant.",
@@ -1573,7 +1573,7 @@
       "shop": "Shop",
       "support": "Support",
       "trackOrders": "Track Orders",
-      "vendorPortal": "Vendor Portal",
+      "sellerPortal": "Seller Portal",
       "wishlist": "Wishlist",
       "sellOnPrim": "Sell on PRIM"
     },
@@ -1715,7 +1715,7 @@
       "title": "Premium Audio & Wearables"
     },
     "portal": {
-      "description": "Select workspace environment: Public Storefront, Vendor Hub, or Admin Control Panel",
+      "description": "Select workspace environment: Public Storefront, Seller Hub, or Admin Control Panel",
       "title": "the store Route Manager | Multi-Portal Architecture"
     },
     "shop": {
@@ -1802,7 +1802,7 @@
     "placedOn": "Placed on {date}",
     "quantity": "Qty: {count}",
     "shipping": "Shipping Fee",
-    "soldBy": "Sold by: {vendor}",
+    "soldBy": "Sold by: {seller}",
     "status": "Order Status",
     "subtotal": "Items Subtotal",
     "timeline": {
@@ -2005,11 +2005,11 @@
         },
         "subtitle": "Customer Shopping Experience"
       },
-      "vendor": {
+      "seller": {
         "badge": "Merchant Portal",
         "description": "Dedicated portal for independent seller shops to list items, monitor stock levels, view orders, and manage payouts.",
         "features": {
-          "analytics": "Vendor analytics & sales revenue",
+          "analytics": "Seller analytics & sales revenue",
           "inventory": "Stock inventory & low-stock alerts",
           "payouts": "Payout requests & bank details",
           "submission": "Product submission & SKU management"
@@ -2033,7 +2033,7 @@
       "public": "Public Storefront",
       "routeManager": "Route Manager",
       "storefront": "Storefront",
-      "vendor": "Vendor Hub"
+      "seller": "Seller Hub"
     },
     "switcher": {
       "adminActive": "Admin Console",
@@ -2337,7 +2337,7 @@
     "toastFailed": "Failed to delete review.",
     "viewProduct": "View product"
   },
-  "vendor": {
+  "seller": {
     "actions": {
       "addNewProduct": "Add New Product",
       "archive": "Archive",
@@ -2367,7 +2367,7 @@
       "catalogHealthTitle": "Catalog",
       "chartGross": "Gross Sales",
       "chartNet": "Net Earnings",
-      "chartSubtitle": "Monthly gross revenue vs net vendor payout",
+      "chartSubtitle": "Monthly gross revenue vs net seller payout",
       "chartTitle": "Sales Revenue & Payout Trends",
       "commissionNote": "After {rate}% marketplace commission",
       "dashboardLoadDescription": "Your money and catalog totals could not be loaded.",
@@ -2379,7 +2379,7 @@
       "lastSixMonths": "Last 6 Months",
       "lowStockVariants": "Low-stock variants",
       "moneyPosition": "Money Position",
-      "netEarnings": "Net Vendor Earnings",
+      "netEarnings": "Net Seller Earnings",
       "orderCount": "Orders",
       "orders": "Orders containing your products",
       "ordersCount": "{count, plural, =0 {No orders} =1 {1 order} other {# orders}}",
@@ -2389,13 +2389,13 @@
       "pendingFulfillment": "Pending Fulfillment",
       "published": "Published products",
       "publishedCount": "{count} published",
-      "recentOrders": "Recent Vendor Orders",
+      "recentOrders": "Recent Seller Orders",
       "requiresShipping": "Requires shipping action",
       "skuStock": "SKU: {sku} • Stock: {stock}",
       "soldCount": "{count, plural, =1 {1 sold} other {# sold}}",
       "subtitle": "Track real-time sales revenue, commission deductions, inventory levels, and payout status.",
       "title": "Dashboard",
-      "topProducts": "Top Vendor Products",
+      "topProducts": "Top Seller Products",
       "totalUnitsSold": "Total Units Sold",
       "attentionLowStock": "{count, plural, =1 {1 low-stock variant needs restocking} other {# low-stock variants need restocking}} — review inventory",
       "attentionDrafts": "{count, plural, =1 {1 draft product is waiting to publish} other {# draft products are waiting to publish}} — review products",
@@ -2439,13 +2439,13 @@
         "status": "Status",
         "stockReason": "Movement reason"
       },
-      "title": "Vendor Inventory Stock",
+      "title": "Seller Inventory Stock",
       "variantLevelNote": "Product totals are shown for reference. Stock movements are recorded per variant (SKU): positive values restock, negative values reduce on-hand stock.",
       "productTotalStock": "{count} total",
       "productTotalStockNote": "Product total across all variants. Adjust stock per variant below."
     },
     "layout": {
-      "activeAccount": "Active Vendor Account",
+      "activeAccount": "Active Seller Account",
       "availableBalance": "Available Balance:",
       "commissionRate": "Commission Rate",
       "groups": {
@@ -2457,7 +2457,7 @@
       "menu": "Open navigation",
       "merchant": "Merchant",
       "nav": {
-        "dashboard": "Vendor Dashboard",
+        "dashboard": "Seller Dashboard",
         "inventory": "Inventory",
         "orders": "Orders",
         "payouts": "Payouts & Earnings",
@@ -2470,19 +2470,19 @@
       "storefront": "Storefront",
       "support": {
         "description": "Reach out to our Marketplace Merchant Operations team for payout or catalog queries.",
-        "title": "Need Vendor Support?"
+        "title": "Need Seller Support?"
       },
-      "vendorHub": "Vendor Hub"
+      "sellerHub": "Seller Hub"
     },
-    "loadFailed": "The vendor portal could not be loaded.",
+    "loadFailed": "The seller portal could not be loaded.",
     "orders": {
       "commission": "Commission: -EGP {amount}",
       "empty": "No orders yet.",
       "historySubtitle": "Orders placed on the marketplace containing your products.",
       "historyTitle": "Order History",
-      "loadDescription": "Your vendor orders could not be loaded.",
+      "loadDescription": "Your seller orders could not be loaded.",
       "loadTitle": "Orders unavailable",
-      "noFulfillmentChanges": "Fulfillment changes are disabled here. Use the admin order console until vendor order fulfillment workflows are available.",
+      "noFulfillmentChanges": "Fulfillment changes are disabled here. Use the admin order console until seller order fulfillment workflows are available.",
       "qtyPrice": "Qty: {qty} @ EGP {price}",
       "searchPlaceholder": "Search by Order ID or product...",
       "statusLabel": "Status:",
@@ -2495,10 +2495,10 @@
         "fulfillmentStatus": "Fulfillment Status",
         "grossRevenue": "Gross Revenue",
         "item": "Ordered Item",
-        "netEarnings": "Net Vendor Earnings",
+        "netEarnings": "Net Seller Earnings",
         "orderRef": "Order Ref"
       },
-      "title": "Vendor Orders & Fulfillment",
+      "title": "Seller Orders & Fulfillment",
       "pagination": "Page {page} of {total} · {count} orders",
       "detail": {
         "title": "Order detail",
@@ -2541,7 +2541,7 @@
       "loadDescription": "Your balance and payout ledger could not be loaded.",
       "loadTitle": "Payouts unavailable",
       "maximumWithdrawable": "Maximum withdrawable:",
-      "modalTitle": "Request Vendor Withdrawal",
+      "modalTitle": "Request Seller Withdrawal",
       "outstandingClaims": "Outstanding claims",
       "outstandingClaimsNote": "Requested, approved, and processing payouts",
       "pendingClearance": "Pending Clearance",
@@ -2562,7 +2562,7 @@
         "settlementDate": "Settlement Date",
         "status": "Status"
       },
-      "title": "Vendor Earnings & Payouts",
+      "title": "Seller Earnings & Payouts",
       "verifiedAccount": "Verified Account",
       "withdrawalAmount": "Withdrawal Amount (EGP)",
       "destinationOnFile": "On file",
@@ -2627,7 +2627,7 @@
       "slugCheckFailed": "Availability could not be checked."
     },
     "products": {
-      "addTitle": "Add Vendor Product",
+      "addTitle": "Add Seller Product",
       "categories": {
         "accessories": "Accessories",
         "audio": "Audio",
@@ -2635,7 +2635,7 @@
         "keyboards": "Keyboards"
       },
       "commercialLock": "Commercial record",
-      "confirmDelete": "Are you sure you want to delete this vendor product?",
+      "confirmDelete": "Are you sure you want to delete this seller product?",
       "cost": "Cost: EGP {amount}",
       "editTitle": "Edit Product",
       "empty": "No products match your filters.",
@@ -2710,8 +2710,8 @@
       "bulkPartial": "{failed, plural, =1 {1 change failed} other {# changes failed}}",
       "clear": "Clear selection"
     },
-    "profileLoadDescription": "Your merchant profile could not be loaded. Register as a vendor or try again.",
-    "profileLoadTitle": "Vendor profile required",
+    "profileLoadDescription": "Your merchant profile could not be loaded. Register as a seller or try again.",
+    "profileLoadTitle": "Seller profile required",
     "status": {
       "active": "Active",
       "all": "All",
@@ -2788,7 +2788,7 @@
       "title": "Variants & stock"
     },
     "statusPages": {
-      "vendorHub": "Vendor Hub",
+      "sellerHub": "Seller Hub",
       "signOut": "Sign out",
       "contactSupport": "Contact support",
       "storefront": "Back to storefront",

@@ -66,7 +66,7 @@ func (h *ObjectHandler) UploadMedia(c *gin.Context) {
 
 // Upload stores a multipart image upload in the catalog bucket and returns
 // the stored object. It is split from UploadMedia so other authenticated
-// surfaces (e.g. the vendor portal) can reuse the same validation and
+// surfaces (e.g. the seller portal) can reuse the same validation and
 // storage flow while shaping their own response.
 func (h *ObjectHandler) Upload(c *gin.Context) (*MediaItem, error) {
 	// Cap the total request body before parsing the multipart form so an

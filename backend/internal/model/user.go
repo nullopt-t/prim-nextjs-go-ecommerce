@@ -17,8 +17,8 @@ const (
 	AdminRole UserRole = "admin"
 	// SupportRole designates staff members with customer service and support permissions.
 	SupportRole UserRole = "support"
-	// VendorRole designates merchant/seller partners with localized product access.
-	VendorRole UserRole = "vendor"
+	// SellerRole designates merchant/seller partners with localized product access.
+	SellerRole UserRole = "seller"
 	// CustomerRole designates standard shoppers.
 	CustomerRole UserRole = "customer"
 )
@@ -37,7 +37,7 @@ const (
 	StatusDeleted AccountStatus = "deleted"
 )
 
-// User represents an account identity (customer, staff, or vendor) in the system.
+// User represents an account identity (customer, staff, or seller) in the system.
 type User struct {
 	// ID is the unique database UUID for the user account.
 	ID uuid.UUID

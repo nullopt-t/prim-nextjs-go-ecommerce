@@ -33,10 +33,10 @@ type CreateOrderItemInput struct {
 	PriceAtPurchase int64
 	// ProductSnapshot contains serialized JSON capturing product name, variant title, SKU, and image URL at checkout time.
 	ProductSnapshot string
-	// VendorID is the selling vendor for this line (nil = platform-owned; resolved from the product at checkout).
-	VendorID *uuid.UUID
-	// VendorEarning is the vendor share (item total minus commission, minor units), frozen at checkout.
-	VendorEarning int64
+	// SellerID is the selling seller for this line (nil = platform-owned; resolved from the product at checkout).
+	SellerID *uuid.UUID
+	// SellerEarning is the seller share (item total minus commission, minor units), frozen at checkout.
+	SellerEarning int64
 	// CommissionRateBps is the platform commission rate applied to this line, frozen at checkout.
 	CommissionRateBps int
 	// CommissionAmount is the platform commission in minor units, frozen at checkout.
@@ -232,8 +232,8 @@ func (s *OrderService) PlaceOrder(
 			Quantity:          itemInput.Quantity,
 			PriceAtPurchase:   itemInput.PriceAtPurchase,
 			ProductSnapshot:   itemInput.ProductSnapshot,
-			VendorID:          itemInput.VendorID,
-			VendorEarning:     itemInput.VendorEarning,
+			SellerID:          itemInput.SellerID,
+			SellerEarning:     itemInput.SellerEarning,
 			CommissionRateBps: itemInput.CommissionRateBps,
 			CommissionAmount:  itemInput.CommissionAmount,
 		}

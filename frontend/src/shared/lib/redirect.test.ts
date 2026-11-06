@@ -3,7 +3,7 @@ import { safeRedirectPath } from "./redirect";
 
 describe("safeRedirectPath", () => {
   it("allows internal paths", () => {
-    expect(safeRedirectPath("/vendor")).toBe("/vendor");
+    expect(safeRedirectPath("/seller")).toBe("/seller");
     expect(safeRedirectPath("/en/user/orders?page=2")).toBe("/en/user/orders?page=2");
   });
 
@@ -15,8 +15,8 @@ describe("safeRedirectPath", () => {
   });
 
   it("rejects encoded traversal and whitespace tricks", () => {
-    expect(safeRedirectPath(" /vendor")).toBe("/");
-    expect(safeRedirectPath("/vendor\nSet-Cookie: x=1")).toBe("/");
+    expect(safeRedirectPath(" /seller")).toBe("/");
+    expect(safeRedirectPath("/seller\nSet-Cookie: x=1")).toBe("/");
   });
 
   it("falls back for missing values", () => {

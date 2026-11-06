@@ -81,9 +81,9 @@ export function Footer() {
           path: "/sell",
         },
         {
-          id: "comp_vendor",
-          nameKey: "footer.vendorPortal",
-          path: "/vendor",
+          id: "comp_seller",
+          nameKey: "footer.sellerPortal",
+          path: "/seller",
         },
         {
           id: "comp_careers",

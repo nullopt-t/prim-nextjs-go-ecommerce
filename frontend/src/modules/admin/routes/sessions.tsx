@@ -11,7 +11,7 @@ import { PageHeader } from "@/shared/ui/pageHeader";
 import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { formatDateTime } from "@/shared/lib/datetime";
 
-const STAFF_ROLES = ["all", "superadmin", "admin", "support", "vendor"] as const;
+const STAFF_ROLES = ["all", "superadmin", "admin", "support", "seller"] as const;
 
 export function AdminSessions() {
   const t = useTranslations("admin");

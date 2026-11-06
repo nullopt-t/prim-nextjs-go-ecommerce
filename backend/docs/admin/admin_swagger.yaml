@@ -107,7 +107,7 @@ definitions:
         example: "2026-06-30T15:47:19Z"
         type: string
     type: object
-  AdminChangeVendorStatusRequest:
+  AdminChangeSellerStatusRequest:
     properties:
       reason:
         description: Merchant-visible reason; required for rejection and suspension.
@@ -115,8 +115,8 @@ definitions:
         type: string
       status:
         allOf:
-        - $ref: '#/definitions/VendorStatus'
-        description: New vendor lifecycle state.
+        - $ref: '#/definitions/SellerStatus'
+        description: New seller lifecycle state.
         enum:
         - pending
         - active
@@ -1007,6 +1007,10 @@ definitions:
       referenceNumber:
         description: External transfer reference when available.
         type: string
+      sellerId:
+        description: Seller id.
+        example: 50000000-0000-0000-0000-000000000001
+        type: string
       snapshotAvailableBalance:
         description: Available balance stamped at request time.
         example: 300000
@@ -1021,10 +1025,6 @@ definitions:
         - processing
         - paid
         - rejected
-      vendorId:
-        description: Vendor id.
-        example: 50000000-0000-0000-0000-000000000001
-        type: string
     type: object
   PayoutStatus:
     enum:
@@ -1317,6 +1317,77 @@ definitions:
       revenue:
         type: integer
     type: object
+  SellerResponse:
+    properties:
+      bannerUrl:
+        description: Public banner URL, when set.
+        type: string
+      commissionRateBps:
+        description: Platform commission in basis points.
+        example: 1000
+        type: integer
+      createdAt:
+        description: Created timestamp (RFC3339).
+        example: "2026-11-02T10:00:00Z"
+        type: string
+      description:
+        description: Optional storefront description.
+        example: Electronics and accessories
+        type: string
+      id:
+        description: Seller profile id.
+        example: 50000000-0000-0000-0000-000000000001
+        type: string
+      logoUrl:
+        description: Public logo URL, when set.
+        type: string
+      reviewedAt:
+        description: When the latest lifecycle decision was made (RFC3339).
+        type: string
+      reviewedBy:
+        description: Administrator who made the latest lifecycle decision.
+        type: string
+      slug:
+        description: URL-safe unique store identifier.
+        example: amrs-gadgets
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/SellerStatus'
+        description: Lifecycle status.
+        enum:
+        - pending
+        - active
+        - suspended
+        - rejected
+      statusReason:
+        description: Merchant-visible reason for the latest rejection or suspension.
+        type: string
+      storeName:
+        description: Customer-facing store display name.
+        example: Amr's Gadgets
+        type: string
+      updatedAt:
+        description: Updated timestamp (RFC3339).
+        example: "2026-11-02T10:00:00Z"
+        type: string
+      userId:
+        description: Owning account id.
+        example: 10000000-0000-0000-0000-000000000001
+        type: string
+    type: object
+  SellerStatus:
+    enum:
+    - pending
+    - active
+    - suspended
+    - rejected
+    type: string
+    x-enum-varnames:
+    - SellerStatusPending
+    - SellerStatusActive
+    - SellerStatusSuspended
+    - SellerStatusRejected
   ServiceHealth:
     properties:
       error:
@@ -1689,77 +1760,6 @@ definitions:
         example: Space Black, 18GB RAM, 512GB SSD
         type: string
     type: object
-  VendorResponse:
-    properties:
-      bannerUrl:
-        description: Public banner URL, when set.
-        type: string
-      commissionRateBps:
-        description: Platform commission in basis points.
-        example: 1000
-        type: integer
-      createdAt:
-        description: Created timestamp (RFC3339).
-        example: "2026-11-02T10:00:00Z"
-        type: string
-      description:
-        description: Optional storefront description.
-        example: Electronics and accessories
-        type: string
-      id:
-        description: Vendor profile id.
-        example: 50000000-0000-0000-0000-000000000001
-        type: string
-      logoUrl:
-        description: Public logo URL, when set.
-        type: string
-      reviewedAt:
-        description: When the latest lifecycle decision was made (RFC3339).
-        type: string
-      reviewedBy:
-        description: Administrator who made the latest lifecycle decision.
-        type: string
-      slug:
-        description: URL-safe unique store identifier.
-        example: amrs-gadgets
-        type: string
-      status:
-        allOf:
-        - $ref: '#/definitions/VendorStatus'
-        description: Lifecycle status.
-        enum:
-        - pending
-        - active
-        - suspended
-        - rejected
-      statusReason:
-        description: Merchant-visible reason for the latest rejection or suspension.
-        type: string
-      storeName:
-        description: Customer-facing store display name.
-        example: Amr's Gadgets
-        type: string
-      updatedAt:
-        description: Updated timestamp (RFC3339).
-        example: "2026-11-02T10:00:00Z"
-        type: string
-      userId:
-        description: Owning account id.
-        example: 10000000-0000-0000-0000-000000000001
-        type: string
-    type: object
-  VendorStatus:
-    enum:
-    - pending
-    - active
-    - suspended
-    - rejected
-    type: string
-    x-enum-varnames:
-    - VendorStatusPending
-    - VendorStatusActive
-    - VendorStatusSuspended
-    - VendorStatusRejected
   auditEntryResponse:
     properties:
       action:
@@ -3689,12 +3689,227 @@ paths:
       summary: Moderate review status (Admin)
       tags:
       - Admin Reviews
+  /admin/sellers:
+    get:
+      description: Returns the seller directory, newest first, optionally filtered
+        by lifecycle status.
+      parameters:
+      - description: Lifecycle filter
+        enum:
+        - pending
+        - active
+        - suspended
+        - rejected
+        in: query
+        name: status
+        type: string
+      - description: Page number (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (max 100)
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/SellerResponse'
+                  type: array
+              type: object
+        "400":
+          description: Invalid status filter
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+      security:
+      - SessionAuth: []
+      summary: List sellers (admin)
+      tags:
+      - Admin Sellers
+  /admin/sellers/{id}:
+    get:
+      description: Returns any seller profile for administration.
+      parameters:
+      - description: Seller UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SellerResponse'
+        "404":
+          description: Seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get seller by ID (admin)
+      tags:
+      - Admin Sellers
+  /admin/sellers/{id}/commission:
+    patch:
+      consumes:
+      - application/json
+      description: Overrides the per-seller commission in basis points. Future orders
+        use the new rate; already-placed orders keep their frozen earning.
+      parameters:
+      - description: Seller UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rate in bps
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/AdminSetCommissionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SellerResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "404":
+          description: Seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Set seller commission rate (admin)
+      tags:
+      - Admin Sellers
+  /admin/sellers/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Applies a guarded lifecycle transition (pending->active/rejected,
+        active<->suspended) and records reviewer metadata. Rejection and suspension
+        require a merchant-facing reason.
+      parameters:
+      - description: Seller UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/AdminChangeSellerStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SellerResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "404":
+          description: Seller not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "409":
+          description: Transition not permitted
+          schema:
+            $ref: '#/definitions/ConflictErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Change seller status (admin)
+      tags:
+      - Admin Sellers
+  /admin/sellers/payouts:
+    get:
+      description: Returns every payout across all sellers for administration.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/PayoutResponse'
+                  type: array
+              type: object
+      security:
+      - SessionAuth: []
+      summary: List all payouts (admin)
+      tags:
+      - Admin Sellers
+  /admin/sellers/payouts/{id}/transition:
+    patch:
+      consumes:
+      - application/json
+      description: Moves a payout through its lifecycle (conditional on prior state).
+        State conflicts return 409.
+      parameters:
+      - description: Payout UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Transition payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/AdminTransitionPayoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PayoutResponse'
+        "404":
+          description: Payout not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "409":
+          description: Transition not permitted
+          schema:
+            $ref: '#/definitions/ConflictErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Transition a payout (admin)
+      tags:
+      - Admin Sellers
   /admin/sessions:
     get:
       description: Returns every active session/device belonging to a staff account,
         newest activity first. Superadmin only.
       parameters:
-      - description: Filter by staff role (vendor, support, admin, superadmin)
+      - description: Filter by staff role (seller, support, admin, superadmin)
         in: query
         name: role
         type: string
@@ -4578,219 +4793,4 @@ paths:
       summary: Upload thumbnail image for a variant
       tags:
       - Admin Product Variants
-  /admin/vendors:
-    get:
-      description: Returns the vendor directory, newest first, optionally filtered
-        by lifecycle status.
-      parameters:
-      - description: Lifecycle filter
-        enum:
-        - pending
-        - active
-        - suspended
-        - rejected
-        in: query
-        name: status
-        type: string
-      - description: Page number (1-based)
-        in: query
-        name: page
-        type: integer
-      - description: Page size (max 100)
-        in: query
-        name: pageSize
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/PaginatedResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/VendorResponse'
-                  type: array
-              type: object
-        "400":
-          description: Invalid status filter
-          schema:
-            $ref: '#/definitions/BadReqResponse'
-      security:
-      - SessionAuth: []
-      summary: List vendors (admin)
-      tags:
-      - Admin Vendors
-  /admin/vendors/{id}:
-    get:
-      description: Returns any vendor profile for administration.
-      parameters:
-      - description: Vendor UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/VendorResponse'
-        "404":
-          description: Vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Get vendor by ID (admin)
-      tags:
-      - Admin Vendors
-  /admin/vendors/{id}/commission:
-    patch:
-      consumes:
-      - application/json
-      description: Overrides the per-vendor commission in basis points. Future orders
-        use the new rate; already-placed orders keep their frozen earning.
-      parameters:
-      - description: Vendor UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Rate in bps
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/AdminSetCommissionRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/VendorResponse'
-        "400":
-          description: Validation failed
-          schema:
-            $ref: '#/definitions/BadReqResponse'
-        "404":
-          description: Vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Set vendor commission rate (admin)
-      tags:
-      - Admin Vendors
-  /admin/vendors/{id}/status:
-    patch:
-      consumes:
-      - application/json
-      description: Applies a guarded lifecycle transition (pending->active/rejected,
-        active<->suspended) and records reviewer metadata. Rejection and suspension
-        require a merchant-facing reason.
-      parameters:
-      - description: Vendor UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: New status
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/AdminChangeVendorStatusRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/VendorResponse'
-        "400":
-          description: Validation failed
-          schema:
-            $ref: '#/definitions/BadReqResponse'
-        "404":
-          description: Vendor not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-        "409":
-          description: Transition not permitted
-          schema:
-            $ref: '#/definitions/ConflictErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Change vendor status (admin)
-      tags:
-      - Admin Vendors
-  /admin/vendors/payouts:
-    get:
-      description: Returns every payout across all vendors for administration.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/DataResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/PayoutResponse'
-                  type: array
-              type: object
-      security:
-      - SessionAuth: []
-      summary: List all payouts (admin)
-      tags:
-      - Admin Vendors
-  /admin/vendors/payouts/{id}/transition:
-    patch:
-      consumes:
-      - application/json
-      description: Moves a payout through its lifecycle (conditional on prior state).
-        State conflicts return 409.
-      parameters:
-      - description: Payout UUID
-        format: uuid
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Transition payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/AdminTransitionPayoutRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/PayoutResponse'
-        "404":
-          description: Payout not found
-          schema:
-            $ref: '#/definitions/NotFoundErrorResponse'
-        "409":
-          description: Transition not permitted
-          schema:
-            $ref: '#/definitions/ConflictErrorResponse'
-      security:
-      - SessionAuth: []
-      summary: Transition a payout (admin)
-      tags:
-      - Admin Vendors
 swagger: "2.0"

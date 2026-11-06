@@ -68,7 +68,7 @@ type AddressReader interface {
 // rules live in one place without opening a second connection.
 type CouponService interface {
 	GetCodeByID(ctx context.Context, id uuid.UUID) (string, error)
-	GetVendorIDByCode(ctx context.Context, code string) (*uuid.UUID, error)
+	GetSellerIDByCode(ctx context.Context, code string) (*uuid.UUID, error)
 	ApplyByCode(ctx context.Context, code string, grossTotal int64, userID *uuid.UUID) (*coupon.AppliedCoupon, error)
 	RecordRedemption(ctx context.Context, couponID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, discountAmount int64, currency string) error
 }
@@ -85,11 +85,11 @@ type ProductReader interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error)
 }
 
-// VendorReader is the subset of vendor data checkout needs: standing and
-// commission terms for the line's seller. Implemented by the vendor
-// repository; inactive vendors make their items unpurchasable.
-type VendorReader interface {
-	GetByID(ctx context.Context, id uuid.UUID) (*model.Vendor, error)
+// SellerReader is the subset of seller data checkout needs: standing and
+// commission terms for the line's seller. Implemented by the seller
+// repository; inactive sellers make their items unpurchasable.
+type SellerReader interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Seller, error)
 }
 
 // ObjectReader is the subset of storage-object persistence checkout needs
@@ -126,7 +126,7 @@ type CheckoutService struct {
 	couponService CouponService
 	variantReader VariantReader
 	productReader ProductReader
-	vendorReader  VendorReader
+	sellerReader  SellerReader
 	objectReader  ObjectReader
 	storage       storage.StorageProvider
 	settings      SettingsProvider
@@ -146,7 +146,7 @@ func NewService(
 	couponService CouponService,
 	variantReader VariantReader,
 	productReader ProductReader,
-	vendorReader VendorReader,
+	sellerReader SellerReader,
 	objectReader ObjectReader,
 	storageProvider storage.StorageProvider,
 	settings SettingsProvider,
@@ -182,8 +182,8 @@ func NewService(
 	if productReader == nil {
 		panic("checkout: product reader is required")
 	}
-	if vendorReader == nil {
-		panic("checkout: vendor reader is required")
+	if sellerReader == nil {
+		panic("checkout: seller reader is required")
 	}
 	if objectReader == nil {
 		panic("checkout: object reader is required")
@@ -216,7 +216,7 @@ func NewService(
 		couponService: couponService,
 		variantReader: variantReader,
 		productReader: productReader,
-		vendorReader:  vendorReader,
+		sellerReader:  sellerReader,
 		objectReader:  objectReader,
 		storage:       storageProvider,
 		settings:      settings,
@@ -298,9 +298,9 @@ type CheckoutInput struct {
 type pricedCart struct {
 	items      []order.CreateOrderItemInput
 	grossTotal int64
-	// vendorTotals accumulates line totals per selling vendor so merchant
+	// sellerTotals accumulates line totals per selling seller so merchant
 	// coupons can be priced against the eligible subtotal only.
-	vendorTotals map[uuid.UUID]int64
+	sellerTotals map[uuid.UUID]int64
 	currency   string
 }
 
@@ -512,8 +512,8 @@ func (s *CheckoutService) resolveShippingAddress(ctx context.Context, userID uui
 // client subtotal: the gross total is computed here and thumbnails resolve
 // directly from storage (bucket/key), never from SQL.
 func (s *CheckoutService) priceCart(ctx context.Context, cart *model.Cart) (*pricedCart, error) {
-	result := &pricedCart{currency: "EGP", vendorTotals: map[uuid.UUID]int64{}}
-	vendors := make(map[uuid.UUID]*model.Vendor)
+	result := &pricedCart{currency: "EGP", sellerTotals: map[uuid.UUID]int64{}}
+	sellers := make(map[uuid.UUID]*model.Seller)
 
 	for _, item := range cart.Items {
 		variant, err := s.variantReader.GetByID(ctx, item.VariantID)
@@ -560,29 +560,29 @@ func (s *CheckoutService) priceCart(ctx context.Context, cart *model.Cart) (*pri
 		}
 		result.grossTotal += itemTotal
 
-		// Seller attribution: platform products (nil vendor) are unattributed.
-		// A vendor-owned product is only purchasable while its vendor is
-		// active; a suspended vendor (or soft-deleted profile) blocks checkout
+		// Seller attribution: platform products (nil seller) are unattributed.
+		// A seller-owned product is only purchasable while its seller is
+		// active; a suspended seller (or soft-deleted profile) blocks checkout
 		// so orders cannot be attributed to a merchant unable to fulfill.
-		vendorID, vendorName, commissionBps, err := s.resolveVendorTerms(
-			ctx, vendors, product.VendorID,
+		sellerID, sellerName, commissionBps, err := s.resolveSellerTerms(
+			ctx, sellers, product.SellerID,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		vendorEarning, commissionAmount := computeVendorSplit(itemTotal, vendorID, commissionBps)
-		if vendorID != nil {
-			result.vendorTotals[*vendorID] += itemTotal
+		sellerEarning, commissionAmount := computeSellerSplit(itemTotal, sellerID, commissionBps)
+		if sellerID != nil {
+			result.sellerTotals[*sellerID] += itemTotal
 		}
 		result.items = append(result.items, order.CreateOrderItemInput{
 			VariantID:         item.VariantID,
 			Quantity:          item.Quantity,
 			PriceAtPurchase:   unitPrice,
-			ProductSnapshot:   buildProductSnapshot(item, variant, product, unitPrice, thumbnailURL, vendorName),
-			VendorID:          vendorID,
-			VendorEarning:     vendorEarning,
-			CommissionRateBps: commissionBpsForLine(vendorID, commissionBps),
+			ProductSnapshot:   buildProductSnapshot(item, variant, product, unitPrice, thumbnailURL, sellerName),
+			SellerID:          sellerID,
+			SellerEarning:     sellerEarning,
+			CommissionRateBps: commissionBpsForLine(sellerID, commissionBps),
 			CommissionAmount:  commissionAmount,
 		})
 	}
@@ -590,49 +590,49 @@ func (s *CheckoutService) priceCart(ctx context.Context, cart *model.Cart) (*pri
 	return result, nil
 }
 
-// resolveVendorTerms resolves the seller's standing and commission for an
-// item, memoizing vendor lookups within one cart pricing pass. A
-// vendor-owned product is only purchasable while its vendor exists and is
+// resolveSellerTerms resolves the seller's standing and commission for an
+// item, memoizing seller lookups within one cart pricing pass. A
+// seller-owned product is only purchasable while its seller exists and is
 // active; anything else is a checkout failure (unfulfillable order).
-// Returns (vendorID, storeName, commissionBps) for attributed lines.
-func (s *CheckoutService) resolveVendorTerms(
+// Returns (sellerID, storeName, commissionBps) for attributed lines.
+func (s *CheckoutService) resolveSellerTerms(
 	ctx context.Context,
-	vendors map[uuid.UUID]*model.Vendor,
-	productVendorID *uuid.UUID,
+	sellers map[uuid.UUID]*model.Seller,
+	productSellerID *uuid.UUID,
 ) (*uuid.UUID, string, int, error) {
-	if productVendorID == nil {
+	if productSellerID == nil {
 		return nil, "", 0, nil
 	}
 
-	vendor, ok := vendors[*productVendorID]
+	seller, ok := sellers[*productSellerID]
 	if !ok {
 		var err error
-		vendor, err = s.vendorReader.GetByID(ctx, *productVendorID)
+		seller, err = s.sellerReader.GetByID(ctx, *productSellerID)
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
 				return nil, "", 0, apierr.BadRequestError(
-					fmt.Sprintf("Product seller %s is no longer available", *productVendorID),
+					fmt.Sprintf("Product seller %s is no longer available", *productSellerID),
 				).WithCode(apierr.CodeInvalidInput)
 			}
-			return nil, "", 0, s.handleError(err, "Failed to load vendor")
+			return nil, "", 0, s.handleError(err, "Failed to load seller")
 		}
-		vendors[*productVendorID] = vendor
+		sellers[*productSellerID] = seller
 	}
 
-	if vendor.Status != model.VendorStatusActive {
+	if seller.Status != model.SellerStatusActive {
 		return nil, "", 0, apierr.BadRequestError(
-			fmt.Sprintf("Product seller '%s' is currently unavailable", vendor.StoreName),
+			fmt.Sprintf("Product seller '%s' is currently unavailable", seller.StoreName),
 		).WithCode(apierr.CodeInvalidInput)
 	}
 
-	return productVendorID, vendor.StoreName, vendor.CommissionRateBps, nil
+	return productSellerID, seller.StoreName, seller.CommissionRateBps, nil
 }
 
-// computeVendorSplit freezes both sides of the platform commission: the
-// vendor share and the commission amount. Platform lines have no vendor and
+// computeSellerSplit freezes both sides of the platform commission: the
+// seller share and the commission amount. Platform lines have no seller and
 // therefore zero commission/earning.
-func computeVendorSplit(itemTotal int64, vendorID *uuid.UUID, commissionBps int) (earning, commission int64) {
-	if vendorID == nil {
+func computeSellerSplit(itemTotal int64, sellerID *uuid.UUID, commissionBps int) (earning, commission int64) {
+	if sellerID == nil {
 		return 0, 0
 	}
 	commission = itemTotal * int64(commissionBps) / 10000
@@ -643,15 +643,15 @@ func computeVendorSplit(itemTotal int64, vendorID *uuid.UUID, commissionBps int)
 	return earning, commission
 }
 
-// computeVendorEarning is retained as the focused unit-test entry point for
-// the vendor share.
-func computeVendorEarning(itemTotal int64, vendorID *uuid.UUID, commissionBps int) int64 {
-	earning, _ := computeVendorSplit(itemTotal, vendorID, commissionBps)
+// computeSellerEarning is retained as the focused unit-test entry point for
+// the seller share.
+func computeSellerEarning(itemTotal int64, sellerID *uuid.UUID, commissionBps int) int64 {
+	earning, _ := computeSellerSplit(itemTotal, sellerID, commissionBps)
 	return earning
 }
 
-func commissionBpsForLine(vendorID *uuid.UUID, commissionBps int) int {
-	if vendorID == nil {
+func commissionBpsForLine(sellerID *uuid.UUID, commissionBps int) int {
+	if sellerID == nil {
 		return 0
 	}
 	return commissionBps
@@ -683,7 +683,7 @@ func (s *CheckoutService) resolveThumbnailURL(ctx context.Context, variantThumbn
 // on the order line, so the order keeps what the customer saw even if the
 // variant changes or disappears later. Seller identity (when attributed) is
 // frozen alongside product data.
-func buildProductSnapshot(item model.CartItem, variant *model.ProductVariant, product *model.Product, unitPrice int64, thumbnailURL, vendorName string) string {
+func buildProductSnapshot(item model.CartItem, variant *model.ProductVariant, product *model.Product, unitPrice int64, thumbnailURL, sellerName string) string {
 	snapshotMap := make(map[string]any)
 	snapshotMap["variantId"] = item.VariantID.String()
 	snapshotMap["sku"] = variant.SKU
@@ -699,8 +699,8 @@ func buildProductSnapshot(item model.CartItem, variant *model.ProductVariant, pr
 	snapshotMap["productId"] = product.ID.String()
 	snapshotMap["productTitle"] = product.Title
 	snapshotMap["slug"] = product.Slug
-	if vendorName != "" {
-		snapshotMap["vendorName"] = vendorName
+	if sellerName != "" {
+		snapshotMap["sellerName"] = sellerName
 	}
 
 	snapshotBytes, _ := json.Marshal(snapshotMap)
@@ -734,14 +734,14 @@ func (s *CheckoutService) resolveCoupon(ctx context.Context, in *CheckoutInput, 
 	// A merchant coupon discounts only that merchant's items: price it
 	// against the eligible subtotal, never the whole cart.
 	pricedTotal := priced.grossTotal
-	if vendorID, err := s.couponService.GetVendorIDByCode(ctx, targetCode); err != nil {
+	if sellerID, err := s.couponService.GetSellerIDByCode(ctx, targetCode); err != nil {
 		var apiErr *apierr.APIError
 		if errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound {
 			return nil, apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
 		}
 		return nil, s.handleError(err, "Failed to resolve coupon scope")
-	} else if vendorID != nil {
-		pricedTotal = priced.vendorTotals[*vendorID]
+	} else if sellerID != nil {
+		pricedTotal = priced.sellerTotals[*sellerID]
 		if pricedTotal == 0 {
 			return nil, apierr.BadRequestError("This coupon does not apply to the items in your cart").
 				WithCode(errcode.CodeCouponNotFound)
@@ -1045,14 +1045,14 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 
 		// A merchant coupon prices against that merchant's eligible
 		// subtotal, mirroring checkout.
-		if vendorID, err := s.couponService.GetVendorIDByCode(ctx, code); err != nil {
+		if sellerID, err := s.couponService.GetSellerIDByCode(ctx, code); err != nil {
 			var apiErr *apierr.APIError
 			if errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound {
 				return apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
 			}
 			return err
-		} else if vendorID != nil {
-			eligible, err := s.lenientVendorTotal(ctx, cartData, *vendorID)
+		} else if sellerID != nil {
+			eligible, err := s.lenientSellerTotal(ctx, cartData, *sellerID)
 			if err != nil {
 				return err
 			}
@@ -1149,9 +1149,9 @@ func (s *CheckoutService) lenientCartTotal(ctx context.Context, cart *model.Cart
 	return grossTotal, nil
 }
 
-// lenientVendorTotal mirrors lenientCartTotal but only sums lines belonging
-// to the given merchant, for pricing vendor-scoped coupons in previews.
-func (s *CheckoutService) lenientVendorTotal(ctx context.Context, cart *model.Cart, vendorID uuid.UUID) (int64, error) {
+// lenientSellerTotal mirrors lenientCartTotal but only sums lines belonging
+// to the given merchant, for pricing seller-scoped coupons in previews.
+func (s *CheckoutService) lenientSellerTotal(ctx context.Context, cart *model.Cart, sellerID uuid.UUID) (int64, error) {
 	if cart == nil {
 		return 0, nil
 	}
@@ -1172,7 +1172,7 @@ func (s *CheckoutService) lenientVendorTotal(ctx context.Context, cart *model.Ca
 			}
 			continue
 		}
-		if product.VendorID == nil || *product.VendorID != vendorID {
+		if product.SellerID == nil || *product.SellerID != sellerID {
 			continue
 		}
 		if v.Price != nil {

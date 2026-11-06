@@ -58,7 +58,7 @@ type ProductCardReadModel struct {
 	Currency         *string
 	SKU              *string
 	DefaultVariantID *uuid.UUID
-	VendorID         *uuid.UUID
+	SellerID         *uuid.UUID
 	StockQuantity    int
 	Rating           *model.RatingSummary
 	TagsRaw          []byte
@@ -106,7 +106,7 @@ func (r *ProductRepository) Create(
 			status,
 			product_type,
 			variation_axes,
-			vendor_id,
+			seller_id,
 			created_at,
 			updated_at
 		)
@@ -127,7 +127,7 @@ func (r *ProductRepository) Create(
 		p.Status,
 		p.ProductType,
 		p.VariationAxes,
-		p.VendorID,
+		p.SellerID,
 	).Scan(&p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("create product: %w", err)
@@ -158,16 +158,16 @@ func (r *ProductRepository) GetBySlug(
 	ctx context.Context,
 	slug string,
 ) (*model.Product, error) {
-	// A vendor-owned product is only storefront-visible while its seller is
-	// active. Suspended/rejected vendor catalogs must not be reachable by slug
+	// A seller-owned product is only storefront-visible while its seller is
+	// active. Suspended/rejected seller catalogs must not be reachable by slug
 	// or id, even though the product row itself is still published.
-	const visibleVendor = `(vendor_id IS NULL OR EXISTS (
-		SELECT 1 FROM vendors v WHERE v.id = products.vendor_id AND v.status = 'active'
+	const visibleSeller = `(seller_id IS NULL OR EXISTS (
+		SELECT 1 FROM sellers v WHERE v.id = products.seller_id AND v.status = 'active'
 	))`
 	if parsedUUID, err := uuid.Parse(slug); err == nil && parsedUUID != uuid.Nil {
-		return r.get(ctx, fmt.Sprintf("(slug = $1 OR id = $2) AND deleted_at IS NULL AND status = $3 AND %s", visibleVendor), slug, parsedUUID, model.PublicationStatusPublished)
+		return r.get(ctx, fmt.Sprintf("(slug = $1 OR id = $2) AND deleted_at IS NULL AND status = $3 AND %s", visibleSeller), slug, parsedUUID, model.PublicationStatusPublished)
 	}
-	return r.get(ctx, fmt.Sprintf("slug = $1 AND deleted_at IS NULL AND status = $2 AND %s", visibleVendor), slug, model.PublicationStatusPublished)
+	return r.get(ctx, fmt.Sprintf("slug = $1 AND deleted_at IS NULL AND status = $2 AND %s", visibleSeller), slug, model.PublicationStatusPublished)
 }
 
 // SlugExists checks whether any product (including soft-deleted) has the specified slug.
@@ -217,7 +217,7 @@ func (r *ProductRepository) get(
 			variation_axes,
 			thumbnail_object_id,
 			default_variant_id,
-			vendor_id,
+			seller_id,
 			created_at,
 			updated_at,
 			deleted_at
@@ -239,20 +239,20 @@ func (r *ProductRepository) get(
 	return product, nil
 }
 
-// GetVendorProductStats counts a vendor's listings and low-stock variants.
+// GetSellerProductStats counts a seller's listings and low-stock variants.
 // A variant is low-stock when its salable quantity (ledger on-hand minus live
 // reservations) is at or below the threshold.
-func (r *ProductRepository) GetVendorProductStats(
+func (r *ProductRepository) GetSellerProductStats(
 	ctx context.Context,
-	vendorID uuid.UUID,
+	sellerID uuid.UUID,
 	lowStockThreshold int,
-) (*model.VendorProductStats, error) {
+) (*model.SellerProductStats, error) {
 	executor, err := database.Executor(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	stats := new(model.VendorProductStats)
+	stats := new(model.SellerProductStats)
 	err = executor.QueryRow(ctx, `
 		SELECT
 			COUNT(*) FILTER (WHERE deleted_at IS NULL),
@@ -260,22 +260,22 @@ func (r *ProductRepository) GetVendorProductStats(
 			COUNT(*) FILTER (WHERE deleted_at IS NULL AND status = 'draft'),
 			COUNT(*) FILTER (WHERE deleted_at IS NULL AND status = 'archived')
 		FROM products
-		WHERE vendor_id = $1
-	`, vendorID).Scan(
+		WHERE seller_id = $1
+	`, sellerID).Scan(
 		&stats.Total,
 		&stats.Published,
 		&stats.Draft,
 		&stats.Archived,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("get vendor product stats: %w", err)
+		return nil, fmt.Errorf("get seller product stats: %w", err)
 	}
 
 	err = executor.QueryRow(ctx, `
 		SELECT COUNT(*)
 		FROM product_variants pv
 		JOIN products p ON p.id = pv.product_id
-		WHERE p.vendor_id = $1
+		WHERE p.seller_id = $1
 		  AND p.deleted_at IS NULL
 		  AND pv.deleted_at IS NULL
 		  AND GREATEST(
@@ -283,9 +283,9 @@ func (r *ProductRepository) GetVendorProductStats(
 			COALESCE((SELECT SUM(ir.quantity) FROM inventory_reservations ir WHERE ir.variant_id = pv.id AND ir.released_at IS NULL AND ir.expires_at > now()), 0),
 			0
 		  ) <= $2
-	`, vendorID, lowStockThreshold).Scan(&stats.LowStock)
+	`, sellerID, lowStockThreshold).Scan(&stats.LowStock)
 	if err != nil {
-		return nil, fmt.Errorf("get vendor low stock count: %w", err)
+		return nil, fmt.Errorf("get seller low stock count: %w", err)
 	}
 
 	return stats, nil
@@ -393,9 +393,9 @@ func (r *ProductRepository) List(
 		whereClauses = append(whereClauses, "p.deleted_at IS NULL")
 	}
 
-	if len(q.VendorUUIDs) > 0 {
-		whereClauses = append(whereClauses, fmt.Sprintf("p.vendor_id = ANY($%d)", argIdx))
-		args = append(args, q.VendorUUIDs)
+	if len(q.SellerUUIDs) > 0 {
+		whereClauses = append(whereClauses, fmt.Sprintf("p.seller_id = ANY($%d)", argIdx))
+		args = append(args, q.SellerUUIDs)
 		argIdx++
 	}
 
@@ -409,11 +409,11 @@ func (r *ProductRepository) List(
 	} else {
 		// Storefront listings are always published-only, regardless of any
 		// status query parameter supplied by the caller. They also exclude
-		// products whose vendor is suspended/rejected: those items are not
+		// products whose seller is suspended/rejected: those items are not
 		// purchasable and must not surface in search or browse.
 		whereClauses = append(whereClauses, "p.status = 'published'")
-		whereClauses = append(whereClauses, `(p.vendor_id IS NULL OR EXISTS (
-			SELECT 1 FROM vendors v WHERE v.id = p.vendor_id AND v.status = 'active'
+		whereClauses = append(whereClauses, `(p.seller_id IS NULL OR EXISTS (
+			SELECT 1 FROM sellers v WHERE v.id = p.seller_id AND v.status = 'active'
 		))`)
 	}
 
@@ -570,7 +570,7 @@ func (r *ProductRepository) List(
 			so.content_type as so_content_type,
 			so.file_size as so_file_size,
 			pv.id AS default_variant_id,
-			p.vendor_id,
+			p.seller_id,
 			pv.sku AS sku,
 			GREATEST(
 				COALESCE((SELECT SUM(il.quantity) FROM product_variants pv_all JOIN inventory_ledgers il ON il.variant_id = pv_all.id WHERE pv_all.product_id = p.id AND pv_all.deleted_at IS NULL), 0) -
@@ -627,7 +627,7 @@ func (r *ProductRepository) List(
 			&soContentType,
 			&soFileSize,
 			&item.DefaultVariantID,
-			&item.VendorID,
+			&item.SellerID,
 			&item.SKU,
 			&item.StockQuantity,
 			&item.Price,

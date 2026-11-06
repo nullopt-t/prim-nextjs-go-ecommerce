@@ -355,7 +355,7 @@ func (h *Handler) RevokeUserSessions(c *gin.Context) {
 //	@Description	Returns every active session/device belonging to a staff account, newest activity first. Superadmin only.
 //	@Tags			Admin Users
 //	@Produce		json
-//	@Param			role	query		string	false	"Filter by staff role (vendor, support, admin, superadmin)"
+//	@Param			role	query		string	false	"Filter by staff role (seller, support, admin, superadmin)"
 //	@Failure		400		{object}	api.BadRequestErrorResponse	"Invalid role filter"
 //	@Failure		401		{object}	api.UnauthorizedErrorResponse	"Authentication required"
 //	@Failure		403		{object}	api.ForbiddenErrorResponse	"Superadmin privileges required"

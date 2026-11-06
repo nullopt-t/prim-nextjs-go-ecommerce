@@ -181,9 +181,9 @@ func NewService(
 
 // CreateProductInput defines the creation parameters for a new draft product.
 type CreateProductInput struct {
-	// VendorID marks the listing as merchant-owned. Nil creates a
+	// SellerID marks the listing as merchant-owned. Nil creates a
 	// platform-owned product (admin catalog).
-	VendorID      *uuid.UUID
+	SellerID      *uuid.UUID
 	BrandID       *uuid.UUID
 	CategoryID    uuid.UUID
 	Slug          *string
@@ -368,7 +368,7 @@ func (s *ProductService) CreateProductAsDraft(
 
 		product = &model.Product{
 			ID:            uuid.New(),
-			VendorID:      input.VendorID,
+			SellerID:      input.SellerID,
 			Slug:          finalSlug,
 			BrandID:       input.BrandID,
 			CategoryID:    input.CategoryID,
@@ -534,20 +534,20 @@ func (s *ProductService) UpdateProduct(
 }
 
 // GetByID fetches a single product by its unique identifier.
-// GetVendorProductStats projects catalog counters for the vendor dashboard.
-func (s *ProductService) GetVendorProductStats(
+// GetSellerProductStats projects catalog counters for the seller dashboard.
+func (s *ProductService) GetSellerProductStats(
 	ctx context.Context,
-	vendorID uuid.UUID,
+	sellerID uuid.UUID,
 	lowStockThreshold int,
-) (*model.VendorProductStats, error) {
-	var stats *model.VendorProductStats
+) (*model.SellerProductStats, error) {
+	var stats *model.SellerProductStats
 	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		stats, repoErr = s.productRepo.GetVendorProductStats(ctx, vendorID, lowStockThreshold)
+		stats, repoErr = s.productRepo.GetSellerProductStats(ctx, sellerID, lowStockThreshold)
 		return repoErr
 	})
 	if err != nil {
-		return nil, s.handleError(err, "get vendor product stats")
+		return nil, s.handleError(err, "get seller product stats")
 	}
 	return stats, nil
 }

@@ -42,9 +42,9 @@ type Coupon struct {
 	StartsAt      *time.Time         `json:"startsAt,omitempty"`
 	ExpiresAt     *time.Time         `json:"expiresAt,omitempty"`
 	Status        CouponStatus       `json:"status"`
-	// VendorID scopes the coupon to one merchant's products. Nil means a
+	// SellerID scopes the coupon to one merchant's products. Nil means a
 	// platform-wide coupon managed by the admin.
-	VendorID      *uuid.UUID         `json:"vendorId,omitempty"`
+	SellerID      *uuid.UUID         `json:"sellerId,omitempty"`
 	CreatedAt     time.Time          `json:"createdAt"`
 	UpdatedAt     time.Time          `json:"updatedAt"`
 

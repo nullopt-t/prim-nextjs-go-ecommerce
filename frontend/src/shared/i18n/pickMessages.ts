@@ -28,7 +28,7 @@ export const GROUP_MESSAGE_PATHS = {
 		"userReviews",
 	],
 	admin: ["admin"],
-	vendor: ["vendor"],
+	seller: ["seller"],
 	auth: ["auth"],
 	portal: ["portal"],
 	marketing: ["marketing"],

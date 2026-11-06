@@ -162,7 +162,7 @@ export default function OverviewContent() {
   return (
     <div className="w-full flex flex-col gap-6 pb-16">
       {/* ── Merchant Elevated Access Banner ── */}
-      {(user?.role === "vendor" || user?.role === "admin" || user?.role === "superadmin") && (
+      {(user?.role === "seller" || user?.role === "admin" || user?.role === "superadmin") && (
         <div className="flex w-full flex-col justify-between gap-4 rounded-lg border border-border bg-background p-4 sm:flex-row sm:items-center sm:p-5">
           <div className="flex items-center gap-3">
             <div className="min-w-0">
@@ -171,7 +171,7 @@ export default function OverviewContent() {
             </div>
           </div>
           <Link
-            href="/vendor/dashboard"
+            href="/seller/dashboard"
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             <span>{t("merchant.open")}</span>

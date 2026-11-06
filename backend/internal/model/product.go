@@ -103,8 +103,8 @@ type Product struct {
 	ThumbnailObjectID *uuid.UUID `db:"thumbnail_object_id" json:"thumbnailObjectId,omitempty"`
 	// DefaultVariantID points to the primary/default variant for this product.
 	DefaultVariantID *uuid.UUID `db:"default_variant_id" json:"defaultVariantId,omitempty"`
-	// VendorID is the owning vendor when this listing is merchant-owned (nil = platform-owned).
-	VendorID *uuid.UUID `db:"vendor_id" json:"vendorId,omitempty"`
+	// SellerID is the owning seller when this listing is merchant-owned (nil = platform-owned).
+	SellerID *uuid.UUID `db:"seller_id" json:"sellerId,omitempty"`
 
 	// CreatedAt is the timestamp when the product was added to the catalog.
 	CreatedAt time.Time `db:"created_at" json:"createdAt"`

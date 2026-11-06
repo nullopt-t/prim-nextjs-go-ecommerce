@@ -30,7 +30,7 @@ type SessionManager interface {
 // RoleRank defines numeric privilege levels for role hierarchy enforcement.
 var RoleRank = map[model.UserRole]int{
 	model.CustomerRole: 1,
-	model.VendorRole:   2,
+	model.SellerRole:   2,
 	model.SupportRole:  3,
 	model.AdminRole:    4,
 	model.SuperRole:    5,
@@ -346,7 +346,7 @@ func (s *UserService) UpdateUserRole(
 	// Role hierarchy: higher rank means greater privileges
 	roleRanks := map[model.UserRole]int{
 		model.CustomerRole: 1,
-		model.VendorRole:   2,
+		model.SellerRole:   2,
 		model.SupportRole:  3,
 		model.AdminRole:    4,
 		model.SuperRole:    5,
@@ -540,7 +540,7 @@ var staffRoles = []model.UserRole{
 	model.SuperRole,
 	model.AdminRole,
 	model.SupportRole,
-	model.VendorRole,
+	model.SellerRole,
 }
 
 // StaffSession is the administrative view of an active staff login device.
@@ -569,8 +569,8 @@ func (s *UserService) ListStaffSessions(
 	roles := staffRoles
 	if roleFilter != nil && *roleFilter != "" {
 		role := model.UserRole(strings.ToLower(strings.TrimSpace(*roleFilter)))
-		if GetRoleRank(role) < GetRoleRank(model.VendorRole) {
-			return nil, apierr.BadRequestError("role must be a staff role (vendor, support, admin or superadmin)").
+		if GetRoleRank(role) < GetRoleRank(model.SellerRole) {
+			return nil, apierr.BadRequestError("role must be a staff role (seller, support, admin or superadmin)").
 				WithCode(apierr.CodeInvalidInput)
 		}
 		roles = []model.UserRole{role}
