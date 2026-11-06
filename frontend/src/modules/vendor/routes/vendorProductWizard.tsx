@@ -10,6 +10,7 @@ import { catalogService } from "@/modules/catalog/api/catalogService";
 import type { Brand, Category, CategoryAttribute } from "@/modules/catalog/types";
 import { ErrorState } from "@/shared/ui/errorState";
 import { PageHeader } from "@/shared/ui/pageHeader";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/form/select";
 import { apiErrorMessage, notify } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
 
@@ -644,33 +645,31 @@ export function VendorProductWizard() {
 							<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 								<div className="space-y-1">
 									<label htmlFor="wizard-category" className="text-sm font-medium text-foreground">{t("products.form.category")}</label>
-									<select
-										id="wizard-category"
-										required
-										value={formData.categoryId}
-										onChange={(e) => setField("categoryId", e.target.value)}
-										className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-									>
-										<option value="">{t("products.form.chooseCategory")}</option>
-										{categories.map((c) => (
-											<option key={c.id} value={c.id}>{c.name}</option>
-										))}
-									</select>
+									<Select value={formData.categoryId} onValueChange={(value) => setField("categoryId", value)}>
+										<SelectTrigger id="wizard-category">
+											<SelectValue placeholder={t("products.form.chooseCategory")} />
+										</SelectTrigger>
+										<SelectContent>
+											{categories.map((c) => (
+												<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
 									{fieldError("categoryId")}
 								</div>
 								<div className="space-y-1">
 									<label htmlFor="wizard-brand" className="text-sm font-medium text-foreground">{t("products.form.brand")}</label>
-									<select
-										id="wizard-brand"
-										value={formData.brandId}
-										onChange={(e) => setField("brandId", e.target.value)}
-										className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-									>
-										<option value="">{t("products.form.noBrand")}</option>
-										{brands.map((b) => (
-											<option key={b.id} value={b.id}>{b.name}</option>
-										))}
-									</select>
+									<Select value={formData.brandId} onValueChange={(value) => setField("brandId", value === "__none" ? "" : value)}>
+										<SelectTrigger id="wizard-brand">
+											<SelectValue placeholder={t("products.form.noBrand")} />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="__none">{t("products.form.noBrand")}</SelectItem>
+											{brands.map((b) => (
+												<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
 								</div>
 							</div>
 						)}
@@ -704,15 +703,15 @@ export function VendorProductWizard() {
 						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div className="space-y-1">
 								<label htmlFor="wizard-type" className="text-sm font-medium text-foreground">{t("products.form.productType")}</label>
-								<select
-									id="wizard-type"
-									value={formData.productType}
-									onChange={(e) => setField("productType", e.target.value as "simple" | "variable")}
-									className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-								>
-									<option value="simple">{t("products.form.simple")}</option>
-									<option value="variable">{t("products.form.variable")}</option>
-								</select>
+								<Select value={formData.productType} onValueChange={(value) => setField("productType", value as "simple" | "variable")}>
+									<SelectTrigger id="wizard-type">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="simple">{t("products.form.simple")}</SelectItem>
+										<SelectItem value="variable">{t("products.form.variable")}</SelectItem>
+									</SelectContent>
+								</Select>
 							</div>
 						</div>
 						{formData.productType === "variable" && (
@@ -758,19 +757,18 @@ export function VendorProductWizard() {
 										<div key={rowIndex} className="rounded-lg border border-border p-3">
 											<div className="flex items-center gap-2">
 												{categoryAttributes.length > 0 ? (
-													<select
-														value={row.key}
-														onChange={(e) => updateRow({ ...row, key: e.target.value, value: "" })}
-														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-														aria-label={`${t("products.form.variationAxes")} ${rowIndex + 1}`}
-													>
-														<option value="">{t("wizard.attributes.chooseAttribute")}</option>
-														{available.map((attribute) => (
-															<option key={attribute.key} value={attribute.key}>
-																{attribute.label} · {attribute.key}
-															</option>
-														))}
-													</select>
+													<Select value={row.key} onValueChange={(value) => updateRow({ ...row, key: value, value: "" })}>
+														<SelectTrigger aria-label={`${t("products.form.variationAxes")} ${rowIndex + 1}`}>
+															<SelectValue placeholder={t("wizard.attributes.chooseAttribute")} />
+														</SelectTrigger>
+														<SelectContent>
+															{available.map((attribute) => (
+																<SelectItem key={attribute.key} value={attribute.key}>
+																	{attribute.label} · {attribute.key}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
 												) : (
 													<input
 														value={row.key}
@@ -794,17 +792,16 @@ export function VendorProductWizard() {
 												<div className="mt-3">
 													<p className="text-xs font-medium text-muted-foreground">{t("wizard.attributes.values")}</p>
 													{selectedAttribute?.allowedValues?.length ? (
-														<select
-															value={row.value}
-															onChange={(e) => updateRow({ ...row, value: e.target.value })}
-															className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-															aria-label={`${t("wizard.attributes.values")} ${rowIndex + 1}`}
-														>
-															<option value="">{t("wizard.attributes.chooseValue")}</option>
-															{selectedAttribute.allowedValues.map((value) => (
-																<option key={value} value={value}>{value}</option>
-															))}
-														</select>
+														<Select value={row.value} onValueChange={(value) => updateRow({ ...row, value })}>
+															<SelectTrigger className="mt-2" aria-label={`${t("wizard.attributes.values")} ${rowIndex + 1}`}>
+																<SelectValue placeholder={t("wizard.attributes.chooseValue")} />
+															</SelectTrigger>
+															<SelectContent>
+																{selectedAttribute.allowedValues.map((value) => (
+																	<SelectItem key={value} value={value}>{value}</SelectItem>
+																))}
+															</SelectContent>
+														</Select>
 													) : (
 														<input
 															value={row.value}
