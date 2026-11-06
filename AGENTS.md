@@ -36,6 +36,8 @@ Contributions made by AI agents to this repository must remain strictly private,
   - See `frontend/AGENTS.md` for frontend-specific rules.
 - `backend/`: Go 1.24, Gin HTTP framework, PostgreSQL (pgx), Redis session store, Kafka event streaming.
   - See `backend/AGENTS.md` for backend-specific architecture rules.
+- `docs/`: Reference documentation, architecture decision records, and feature standards.
+  - `docs/merchant-feature-benchmark.md`: Feature benchmark and parity reference mapped against the [Magento Open Source Merchant Guide](https://docs.magento-opensource.com/).
 - `docker-compose.yml`: Local full-stack development environment.
 
 ---
