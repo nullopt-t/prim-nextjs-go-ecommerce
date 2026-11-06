@@ -67,39 +67,16 @@ function draftKeyFor(productId?: string) {
 	return productId ? `prim:vendor-product-draft:${productId}` : "prim:vendor-product-draft:new";
 }
 
+// One composer row while building a single combination: an attribute plus
+// the one value it takes in that combination. Saved combinations are built
+// one at a time instead of expanding every value into a cartesian product.
 interface VariationRow {
 	key: string;
-	values: string[];
-	combinations: string[];
+	value: string;
 }
 
-function parseAxes(value: string): VariationRow[] {
-	return value
-		.split(",")
-		.map((item) => item.trim())
-		.filter(Boolean)
-		.map((key) => ({ key, values: [], combinations: [] }));
-}
-
-function unique(values: string[]): string[] {
-	return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
-}
-
-function expandCombinations(rows: VariationRow[]): Record<string, string>[] {
-	const valid = rows.filter((row) => row.key && row.values.length > 0);
-	if (valid.length === 0) return [];
-	return valid.reduce<Record<string, string>[]>(
-		(combinations, row) => {
-			const next: Record<string, string>[] = [];
-			for (const combination of combinations) {
-				for (const value of row.values) {
-					next.push({ ...combination, [row.key]: value });
-				}
-			}
-			return next;
-		},
-		[{}],
-	);
+function uniqueKeys(combinations: Record<string, string>[]): string[] {
+	return [...new Set(combinations.flatMap((combination) => Object.keys(combination)))];
 }
 
 function formatCombination(combination: Record<string, string>): string {
@@ -134,9 +111,9 @@ export function VendorProductWizard() {
 	const [attributesLoading, setAttributesLoading] = useState(false);
 	const [attributesError, setAttributesError] = useState<string | null>(null);
 	const [variationRows, setVariationRows] = useState<VariationRow[]>([]);
+	const [savedCombinations, setSavedCombinations] = useState<Record<string, string>[]>([]);
 	const [variantOverrides, setVariantOverrides] = useState<Record<string, VariantOverride>>({});
 	const [uploadingThumbnailKey, setUploadingThumbnailKey] = useState<string | null>(null);
-	const [customValues, setCustomValues] = useState<Record<number, string>>({});
 	const [loadingCatalog, setLoadingCatalog] = useState(true);
 	const [loadError, setLoadError] = useState<Error | null>(null);
 
@@ -195,8 +172,8 @@ export function VendorProductWizard() {
 	}, [formData, steps, mode]);
 
 	const combinations = useMemo(
-		() => (formData.productType === "variable" ? expandCombinations(variationRows) : []),
-		[formData.productType, variationRows],
+		() => (formData.productType === "variable" ? savedCombinations : []),
+		[formData.productType, savedCombinations],
 	);
 
 	const draftKey = draftKeyFor(productId);
@@ -219,12 +196,14 @@ export function VendorProductWizard() {
 					const parsed = JSON.parse(saved) as {
 						formData?: ProductForm;
 						variantOverrides?: Record<string, VariantOverride>;
+						savedCombinations?: Record<string, string>[];
 					} & ProductForm;
 					// Older drafts stored the form directly; newer drafts wrap it
-					// so per-variant overrides survive a refresh.
+					// so per-variant overrides and saved combinations survive a refresh.
 					const draftForm = parsed.formData ?? parsed;
 					setFormData({ ...EMPTY_FORM, ...draftForm });
-					setVariationRows(parseAxes(draftForm.variationAxes ?? ""));
+					setVariationRows([]);
+					setSavedCombinations(parsed.formData ? (parsed.savedCombinations ?? []) : []);
 					setVariantOverrides(parsed.formData ? (parsed.variantOverrides ?? {}) : {});
 					setHydrated(true);
 					return;
@@ -310,9 +289,9 @@ export function VendorProductWizard() {
 	// Persist the staged draft so back/forward navigation and refresh keep state.
 	useEffect(() => {
 		if (!hydrated) return;
-		sessionStorage.setItem(draftKey, JSON.stringify({ formData, variantOverrides }));
+		sessionStorage.setItem(draftKey, JSON.stringify({ formData, variantOverrides, savedCombinations }));
 		setLastSavedAt(Date.now());
-	}, [draftKey, formData, variantOverrides, hydrated]);
+	}, [draftKey, formData, variantOverrides, savedCombinations, hydrated]);
 
 	const setField = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => {
 		setFormData((current) => ({ ...current, [key]: value }));
@@ -337,10 +316,9 @@ export function VendorProductWizard() {
 			}
 		}
 		if (currentStep === 1 && formData.productType === "variable") {
-			const axes = variationRows.map((row) => row.key).filter(Boolean);
-			if (axes.length === 0) {
+			if (savedCombinations.length === 0) {
 				nextErrors.variationAxes = t("products.validation.axesRequired");
-			} else if (variationRows.some((row) => !row.key || row.values.length === 0)) {
+			} else if (variationRows.some((row) => row.key && !row.value)) {
 				nextErrors.variationAxes = t("wizard.attributes.rowsIncomplete");
 			}
 		}
@@ -393,6 +371,28 @@ export function VendorProductWizard() {
 		if (validateStep(step) && step < 3) setStep((step + 1) as WizardStep);
 	};
 
+	const syncSavedAxes = (next: Record<string, string>[]) => {
+		setSavedCombinations(next);
+		setField("variationAxes", uniqueKeys(next).join(", "));
+	};
+
+	const saveCombination = () => {
+		const combination: Record<string, string> = {};
+		for (const row of variationRows) {
+			if (!row.key || !row.value) return;
+			combination[row.key] = row.value;
+		}
+		if (Object.keys(combination).length === 0) return;
+		const key = combinationKey(combination);
+		if (savedCombinations.some((saved) => combinationKey(saved) === key)) return;
+		syncSavedAxes([...savedCombinations, combination]);
+		setVariationRows([]);
+	};
+
+	const removeSavedCombination = (index: number) => {
+		syncSavedAxes(savedCombinations.filter((_, i) => i !== index));
+	};
+
 	const goBack = () => {
 		if (step > 0) setStep((step - 1) as WizardStep);
 	};
@@ -415,7 +415,7 @@ export function VendorProductWizard() {
 
 	const finish = async (shouldPublish: boolean) => {
 		if (formData.productType === "variable") {
-			setField("variationAxes", variationRows.map((row) => row.key).filter(Boolean).join(", "));
+			setField("variationAxes", uniqueKeys(savedCombinations).join(", "));
 		}
 		if (!validateStep(0)) {
 			setStep(0);
@@ -451,9 +451,7 @@ export function VendorProductWizard() {
 			} else {
 				const slug = formData.slug.trim() || slugify(formData.title);
 				const highlightList = formData.highlights.split("\n").map((h) => h.trim()).filter(Boolean);
-				const axes = formData.productType === "variable"
-					? [...new Set(variationRows.map((row) => row.key).filter(Boolean))]
-					: undefined;
+				const axes = formData.productType === "variable" ? uniqueKeys(savedCombinations) : undefined;
 				const created = await vendorService.createProduct({
 					brandId: formData.brandId || undefined,
 					categoryId: formData.categoryId,
@@ -551,7 +549,7 @@ export function VendorProductWizard() {
 		{ label: t("products.form.category"), value: categories.find((c) => c.id === formData.categoryId)?.name ?? (mode === "edit" ? t("wizard.review.categoryUnchanged") : "—") },
 		{ label: t("products.form.brand"), value: brands.find((b) => b.id === formData.brandId)?.name ?? t("products.form.noBrand") },
 		{ label: t("products.form.productType"), value: formData.productType === "variable" ? t("products.form.variable") : t("products.form.simple") },
-		{ label: t("products.form.variationAxes"), value: variationRows.length > 0 ? variationRows.map((row) => `${row.key}(${row.values.join("|")})`).join(" · ") : (formData.variationAxes.trim() || "—") },
+		{ label: t("products.form.variationAxes"), value: savedCombinations.length > 0 ? uniqueKeys(savedCombinations).join(", ") : (formData.variationAxes.trim() || "—") },
 		{ label: t("products.form.skuCode"), value: formData.sku.trim() || "—" },
 		{ label: t("products.form.sellingPrice"), value: formData.price ? `${formData.currency.toUpperCase()} ${(Number(formData.price)).toFixed(2)}` : "—" },
 		{ label: t("products.form.compareAtPrice"), value: formData.crossesOutPrice ? `${formData.currency.toUpperCase()} ${Number(formData.crossesOutPrice).toFixed(2)}` : "—" },
@@ -727,7 +725,7 @@ export function VendorProductWizard() {
 									<button
 										type="button"
 										disabled={variationRows.length >= Math.max(categoryAttributes.length, 1) && categoryAttributes.length > 0}
-										onClick={() => setVariationRows((current) => [...current, { key: "", values: [], combinations: [] }])}
+										onClick={() => setVariationRows((current) => [...current, { key: "", value: "" }])}
 										className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
 									>
 										<Plus className="size-3.5" />
@@ -751,23 +749,18 @@ export function VendorProductWizard() {
 									const available = categoryAttributes.filter(
 										(attribute) => attribute.key === row.key || !usedKeys.includes(attribute.key),
 									);
-									const syncRows = (next: VariationRow[]) => {
-										setVariationRows(next);
-										setField("variationAxes", next.map((item) => item.key).filter(Boolean).join(", "));
-									};
 									const updateRow = (nextRow: VariationRow) => {
 										const next = [...variationRows];
 										next[rowIndex] = nextRow;
-										syncRows(next);
+										setVariationRows(next);
 									};
-									const customValue = customValues[rowIndex] ?? "";
 									return (
 										<div key={rowIndex} className="rounded-lg border border-border p-3">
 											<div className="flex items-center gap-2">
 												{categoryAttributes.length > 0 ? (
 													<select
 														value={row.key}
-														onChange={(e) => updateRow({ ...row, key: e.target.value, values: [] })}
+														onChange={(e) => updateRow({ ...row, key: e.target.value, value: "" })}
 														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
 														aria-label={`${t("products.form.variationAxes")} ${rowIndex + 1}`}
 													>
@@ -789,7 +782,7 @@ export function VendorProductWizard() {
 												)}
 												<button
 													type="button"
-													onClick={() => syncRows(variationRows.filter((_, index) => index !== rowIndex))}
+													onClick={() => setVariationRows(variationRows.filter((_, index) => index !== rowIndex))}
 													className="rounded-md border border-border p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
 													aria-label={t("actions.delete")}
 												>
@@ -800,110 +793,81 @@ export function VendorProductWizard() {
 											{row.key && (
 												<div className="mt-3">
 													<p className="text-xs font-medium text-muted-foreground">{t("wizard.attributes.values")}</p>
-													<div className="mt-2 flex flex-wrap items-center gap-2">
-														{selectedAttribute?.allowedValues?.length ? (
-															selectedAttribute.allowedValues.map((value) => {
-																const selected = row.values.includes(value);
-																return (
-																	<button
-																		key={value}
-																		type="button"
-																		onClick={() =>
-																			updateRow({
-																				...row,
-																				values: selected
-																					? row.values.filter((item) => item !== value)
-																					: [...row.values, value],
-																			})
-																		}
-																		className={`rounded-full border px-2.5 py-1 text-xs ${selected ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
-																	>
-																		{value}
-																	</button>
-																);
-															})
-														) : (
-															<>
-																{row.values.map((value) => (
-																	<button
-																		key={value}
-																		type="button"
-																		onClick={() => updateRow({ ...row, values: row.values.filter((item) => item !== value) })}
-																		className="rounded-full border border-primary bg-primary px-2.5 py-1 text-xs text-primary-foreground"
-																	>
-																		{value} ×
-																	</button>
-																))}
-																<div className="flex w-full min-w-52 flex-1 gap-2">
-																	<input
-																		value={customValue}
-																		onChange={(e) => setCustomValues((current) => ({ ...current, [rowIndex]: e.target.value }))}
-																		onKeyDown={(e) => {
-																			if (e.key !== "Enter") return;
-																			e.preventDefault();
-																			const value = customValue.trim();
-																			if (!value || row.values.includes(value)) return;
-																			updateRow({ ...row, values: [...row.values, value] });
-																			setCustomValues((current) => ({ ...current, [rowIndex]: "" }));
-																		}}
-																		placeholder={t("wizard.attributes.customValuePlaceholder")}
-																		className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-																	/>
-																	<button
-																		type="button"
-																		onClick={() => {
-																			const value = customValue.trim();
-																			if (!value || row.values.includes(value)) return;
-																			updateRow({ ...row, values: [...row.values, value] });
-																			setCustomValues((current) => ({ ...current, [rowIndex]: "" }));
-																		}}
-																		className="rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
-																	>
-																		{t("wizard.attributes.addValue")}
-																	</button>
-																</div>
-															</>
-														)}
-													</div>
+													{selectedAttribute?.allowedValues?.length ? (
+														<select
+															value={row.value}
+															onChange={(e) => updateRow({ ...row, value: e.target.value })}
+															className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+															aria-label={`${t("wizard.attributes.values")} ${rowIndex + 1}`}
+														>
+															<option value="">{t("wizard.attributes.chooseValue")}</option>
+															{selectedAttribute.allowedValues.map((value) => (
+																<option key={value} value={value}>{value}</option>
+															))}
+														</select>
+													) : (
+														<input
+															value={row.value}
+															onChange={(e) => updateRow({ ...row, value: e.target.value })}
+															placeholder={t("wizard.attributes.customValuePlaceholder")}
+															className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+														/>
+													)}
 												</div>
 											)}
 										</div>
 									);
 								})}
 
-								{expandCombinations(variationRows).length > 0 && (
+								{variationRows.length > 0 && (
+									<button
+										type="button"
+										disabled={!variationRows.every((row) => row.key && row.value)}
+										onClick={saveCombination}
+										className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-50"
+									>
+										<Check className="size-3.5" />
+										{t("wizard.attributes.saveCombination")}
+									</button>
+								)}
+
+								{savedCombinations.length > 0 && (
 									<div className="space-y-2">
-										<p className="text-xs text-muted-foreground">
-											{t("wizard.attributes.combinations", { count: expandCombinations(variationRows).length })}
+										<p className="text-xs font-semibold text-foreground">
+											{t("wizard.attributes.savedTitle")} · {t("wizard.attributes.combinations", { count: savedCombinations.length })}
 										</p>
 										<div className="overflow-x-auto rounded-md border border-border">
 											<table className="w-full text-start text-xs">
 												<thead>
 													<tr className="border-b border-border bg-secondary/40">
-														{variationRows.filter((row) => row.key).map((row) => (
-															<th key={row.key} className="px-3 py-2 text-start font-medium text-muted-foreground">
-																{categoryAttributes.find((attribute) => attribute.key === row.key)?.label ?? row.key}
+														{uniqueKeys(savedCombinations).map((key) => (
+															<th key={key} className="px-3 py-2 text-start font-medium text-muted-foreground">
+																{categoryAttributes.find((attribute) => attribute.key === key)?.label ?? key}
 															</th>
 														))}
+														<th className="px-3 py-2" />
 													</tr>
 												</thead>
 												<tbody className="divide-y divide-border">
-													{expandCombinations(variationRows).slice(0, 24).map((combination) => (
+													{savedCombinations.map((combination, index) => (
 														<tr key={combinationKey(combination)}>
-															{variationRows.filter((row) => row.key).map((row) => (
-																<td key={row.key} className="px-3 py-2 text-foreground">
-																	{combination[row.key]}
+															{uniqueKeys(savedCombinations).map((key) => (
+																<td key={key} className="px-3 py-2 text-foreground">
+																	{combination[key] ?? "—"}
 																</td>
 															))}
-														</tr>
-													))}
-													{expandCombinations(variationRows).length > 24 && (
-														<tr>
-															<td colSpan={Math.max(variationRows.filter((row) => row.key).length, 1)} className="px-3 py-2 text-muted-foreground">
-																{t("wizard.attributes.moreCombinations", { count: expandCombinations(variationRows).length - 24 })}
+															<td className="px-3 py-2 text-end">
+																<button
+																	type="button"
+																	onClick={() => removeSavedCombination(index)}
+																	className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+																	aria-label={t("actions.delete")}
+																>
+																	<Trash2 className="size-3.5" />
+																</button>
 															</td>
 														</tr>
-													)}
+													))}
 												</tbody>
 											</table>
 										</div>

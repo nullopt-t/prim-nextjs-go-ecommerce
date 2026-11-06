@@ -2837,14 +2837,17 @@
       },
       "attributes": {
         "title": "Attributes",
-        "subtitle": "Add one row per attribute, then pick the values that make up each variant combination.",
+        "subtitle": "Pick the attributes and values for one combination, save it, then repeat for the next.",
         "add": "Add attribute",
         "chooseAttribute": "Choose an attribute",
         "values": "Values",
         "customValuePlaceholder": "Type a value and add it",
         "addValue": "Add value",
         "combinations": "{count, plural, =1 {1 combination} other {# combinations}} will be created as variants.",
-        "moreCombinations": "+{count} more"
+        "moreCombinations": "+{count} more",
+        "saveCombination": "Save combination",
+        "savedTitle": "Saved combinations",
+        "chooseValue": "Choose a value"
       },
       "variants": {
         "title": "Variant pricing & stock",

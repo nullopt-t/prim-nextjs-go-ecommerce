@@ -2837,14 +2837,17 @@
       },
       "attributes": {
         "title": "السمات",
-        "subtitle": "أضف صفًا لكل سمة، ثم اختر القيم التي تكون كل تركيبة من المتغيرات.",
+        "subtitle": "اختر السمات والقيم لتركيبة واحدة، احفظها، ثم كرر ذلك للتركيبة التالية.",
         "add": "إضافة سمة",
         "chooseAttribute": "اختر سمة",
         "values": "القيم",
         "customValuePlaceholder": "اكتب قيمة وأضفها",
         "addValue": "إضافة قيمة",
         "combinations": "{count, plural, =1 {تركيبة واحدة} =2 {تركيبتان} few {# تركيبات} other {# تركيبة}} سيتم إنشاؤها كمتغيرات.",
-        "moreCombinations": "+{count} أخرى"
+        "moreCombinations": "+{count} أخرى",
+        "saveCombination": "حفظ التركيبة",
+        "savedTitle": "التركيبات المحفوظة",
+        "chooseValue": "اختر قيمة"
       },
       "variants": {
         "title": "تسعير كل متغير ومخزونه",
