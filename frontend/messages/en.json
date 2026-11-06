@@ -2223,7 +2223,7 @@
     },
     "pages": {
       "careers": {
-        "apply": "Interested in joining? Send your CV and portfolio to careers@prim.shop.",
+        "apply": "Interested in joining? Send your CV and portfolio to",
         "description": "Join a fast-growing team redefining modern e-commerce. We are constantly searching for passionate designers, engineers, product builders, and merchant operators.",
         "title": "Careers at PRIM"
       },
@@ -2244,6 +2244,7 @@
           "question": "What payment methods do you accept?"
         },
         "title": "Frequently Asked Questions",
+      "contactCta": "Still need help? Contact support.",
         "trackOrder": {
           "answer": "Once your order has shipped, you will receive an email containing a tracking number and link to track your package in real-time.",
           "question": "How do I track my order?"
@@ -2251,7 +2252,7 @@
       },
       "press": {
         "description": "Read about our latest product releases, company updates, and platform milestones.",
-        "inquiries": "For press inquiries and interview requests: press@prim.shop",
+        "inquiries": "For press inquiries and interview requests:",
         "title": "Press & News"
       },
       "returns": {
@@ -2260,7 +2261,8 @@
         "policyTitle": "Return Policy",
         "refundsDescription": "Once we receive your item, we will inspect it and notify you that we have received your returned item. We will immediately notify you on the status of your refund after inspecting the item. If your return is approved, we will initiate a refund via the original payment method.",
         "refundsTitle": "Refunds",
-        "title": "Returns & Exchanges"
+        "title": "Returns & Exchanges",
+      "contactCta": "Contact us to start a return."
       },
       "shipping": {
         "expressDescription": "Need it faster? We offer express delivery at checkout. Express orders are prioritized and typically arrive within 1 to 2 business days.",
@@ -2268,7 +2270,8 @@
         "intro": "We offer delivery options to ensure you receive your order as quickly and safely as possible.",
         "standardDescription": "Standard delivery typically takes {days}. Orders over {threshold} ship free; otherwise a flat rate of {rate} applies.",
         "standardTitle": "Standard Shipping",
-        "title": "Shipping Information"
+        "title": "Shipping Information",
+      "contactCta": "Contact us with any shipping question."
       }
     },
     "brands": {
