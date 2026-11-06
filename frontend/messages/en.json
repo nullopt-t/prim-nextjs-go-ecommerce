@@ -1955,6 +1955,11 @@
       "seeAll": "View all orders",
       "startShopping": "Start shopping",
       "title": "Open Orders & Tracking"
+    },
+    "merchant": {
+      "title": "Merchant Console",
+      "desc": "Manage your store, products, and payouts.",
+      "open": "Open Merchant Dashboard"
     }
   },
   "payment": {

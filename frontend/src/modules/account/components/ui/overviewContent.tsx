@@ -161,6 +161,25 @@ export default function OverviewContent() {
 
   return (
     <div className="w-full flex flex-col gap-6 pb-16">
+      {/* ── Merchant Elevated Access Banner ── */}
+      {(user?.role === "vendor" || user?.role === "admin" || user?.role === "superadmin") && (
+        <div className="flex w-full flex-col justify-between gap-4 rounded-lg border border-border bg-background p-4 sm:flex-row sm:items-center sm:p-5">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-foreground">{t("merchant.title")}</div>
+              <p className="mt-0.5 text-xs text-muted-foreground">{t("merchant.desc")}</p>
+            </div>
+          </div>
+          <Link
+            href="/vendor/dashboard"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            <span>{t("merchant.open")}</span>
+            <ExternalLink className="size-3.5" />
+          </Link>
+        </div>
+      )}
+
       {/* ── Staff Elevated Access Banner ── */}
       {(user?.role === "admin" || user?.role === "superadmin") && (
         <div className="w-full p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-primary/10 to-blue-500/10 border border-purple-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">

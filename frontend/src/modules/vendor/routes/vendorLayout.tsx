@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, usePathname } from "@/shared/i18n/navigation";
 import {
   LayoutDashboard,
@@ -12,15 +12,13 @@ import {
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { ErrorState } from "@/shared/ui/errorState";
-import { VendorProvider, useVendorContext } from "./vendorContext";
-import { VendorRegister } from "./vendorRegister";
+import { useVendorContext } from "./vendorContext";
 
-function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
+export function VendorLayout({ children }: { children?: React.ReactNode }) {
   const t = useTranslations("vendor");
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { vendor, loading, loadError, notRegistered, refreshVendor } = useVendorContext();
+  const { vendor } = useVendorContext();
 
   const navGroups = [
     {
@@ -45,43 +43,7 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
     },
   ];
 
-  const statusMessage = useMemo(() => {
-    if (!vendor) return "";
-    if (vendor.status === "pending") return t("statusPending");
-    if (vendor.status === "suspended") return t("statusSuspended");
-    if (vendor.status === "rejected") return t("statusRejected");
-    return "";
-  }, [t, vendor]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-2 border-accent-brand border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (notRegistered) {
-    return (
-      <div className="min-h-screen bg-secondary/15 text-foreground flex flex-col font-sans">
-        <main className="flex-1 p-4 md:p-8">
-          <VendorRegister />
-        </main>
-      </div>
-    );
-  }
-
-  if (loadError || !vendor) {
-    return (
-      <div className="mx-auto max-w-3xl p-4 md:p-8">
-        <ErrorState
-          title={t("profileLoadTitle")}
-          description={loadError?.message || t("profileLoadDescription")}
-          onRetry={() => void refreshVendor()}
-        />
-      </div>
-    );
-  }
+  if (!vendor) return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-muted/20 font-sans text-foreground">
@@ -146,11 +108,6 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
                   {(vendor.commissionRateBps / 100).toFixed(2)}%
                 </span>
               </div>
-              {statusMessage ? (
-                <div className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-400">
-                  {statusMessage}
-                </div>
-              ) : null}
             </div>
           </div>
 
@@ -162,7 +119,10 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
                 </div>
                 {group.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
+                  const isActive =
+                    pathname === item.path ||
+                    pathname.startsWith(`${item.path}/`) ||
+                    (item.path === "/vendor/dashboard" && pathname === "/vendor");
                   return (
                     <Link
                       key={item.path}
@@ -200,13 +160,5 @@ function VendorLayoutInner({ children }: { children?: React.ReactNode }) {
         </main>
       </div>
     </div>
-  );
-}
-
-export function VendorLayout({ children }: { children?: React.ReactNode }) {
-  return (
-    <VendorProvider>
-      <VendorLayoutInner>{children}</VendorLayoutInner>
-    </VendorProvider>
   );
 }

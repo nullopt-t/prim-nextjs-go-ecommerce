@@ -4,12 +4,14 @@ import { useState } from "react";
 import { Loader2, Store } from "lucide-react";
 import { vendorService } from "@/modules/vendor/api/vendorService";
 import { useVendorContext } from "./vendorContext";
+import { useRouter } from "@/shared/i18n/navigation";
 import { apiErrorMessage, notify } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
 
 export function VendorRegister() {
   const t = useTranslations("vendor");
   const { refreshVendor } = useVendorContext();
+  const router = useRouter();
 
   const [storeName, setStoreName] = useState("");
   const [slug, setSlug] = useState("");
@@ -27,6 +29,7 @@ export function VendorRegister() {
       });
       notify.success(t("register.success"));
       await refreshVendor();
+      router.replace("/vendor/dashboard");
     } catch (error) {
       notify.error(apiErrorMessage(error, t("register.submitFailed")));
     } finally {
