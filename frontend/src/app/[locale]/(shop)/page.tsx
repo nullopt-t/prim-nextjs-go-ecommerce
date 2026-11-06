@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import HomeLayout from "@/modules/home/components/layout/homeLayout";
+import { getCatalogSnapshot } from "@/shared/lib/server/catalog";
 import { getPublicSettings } from "@/shared/lib/server/publicSettings";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -16,6 +17,7 @@ export default async function HomePage({
   const { locale } = await params;
   const settings = await getPublicSettings();
   const storeName = settings?.storeName?.trim() || undefined;
+  const snapshot = await getCatalogSnapshot(24).catch(() => ({ products: [], categories: [], brands: [] }));
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -39,7 +41,7 @@ export default async function HomePage({
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <HomeLayout />
+      <HomeLayout products={snapshot.products} categories={snapshot.categories} />
     </>
   );
 }

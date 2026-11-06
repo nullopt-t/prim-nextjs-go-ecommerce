@@ -3,7 +3,7 @@
 import { useMemo, useRef } from "react";
 import { Link } from "@/shared/i18n/navigation";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
-import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
+import type { Category, ProductDetailsEntity } from "@/modules/catalog/types";
 import { ErrorState } from "@/shared/ui/errorState";
 import { ProductsCard } from "@/shared/ui/productsCard";
 import { useTranslations, useLocale } from "next-intl";
@@ -98,8 +98,15 @@ function CategoryShelf({ category, products }: CategoryShelfProps) {
   );
 }
 
-export default function CategoryShelves() {
-  const { categories, products, loading, errorMsg } = useCatalogContext();
+export default function CategoryShelves({
+  categories = [],
+  products = [],
+  loading = false,
+}: {
+  categories?: Category[];
+  products?: ProductDetailsEntity[];
+  loading?: boolean;
+}) {
   const locale = useLocale();
 
   // Create curated rows for each category that has items
@@ -139,7 +146,7 @@ export default function CategoryShelves() {
     );
   }
 
-  if (errorMsg && shelves.length === 0) {
+  if (!loading && shelves.length === 0 && categories.length === 0) {
     return <ErrorState />;
   }
 

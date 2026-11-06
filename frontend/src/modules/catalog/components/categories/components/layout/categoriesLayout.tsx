@@ -3,7 +3,7 @@
 import SectionGrid from "@/modules/home/components/ui/sectionGrid";
 import { useTranslations } from "next-intl";
 
-export default function CategoriesLayout() {
+export default function CategoriesLayout({ categories }: { categories?: import("@/modules/catalog/types").Category[] }) {
   const t = useTranslations("shop");
 
   return (
@@ -17,7 +17,7 @@ export default function CategoriesLayout() {
         </p>
       </div>
 
-      <SectionGrid />
+      <SectionGrid categories={categories} />
     </div>
   );
 }

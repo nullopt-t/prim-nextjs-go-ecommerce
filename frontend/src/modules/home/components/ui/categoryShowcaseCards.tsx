@@ -3,11 +3,12 @@
 import { useMemo } from "react";
 import { Link } from "@/shared/i18n/navigation";
 import { ArrowRight } from "lucide-react";
-import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
+
 import { ErrorState } from "@/shared/ui/errorState";
 import { useTranslations, useLocale } from "next-intl";
 import { normalizeMediaUrl } from "@/shared/lib/media";
 import { localizedName } from "@/shared/lib/localizedName";
+import type { Brand, Category, ProductDetailsEntity } from "@/modules/catalog/types";
 
 interface CategoryShowcaseCardProps {
   category: {
@@ -99,8 +100,15 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
   );
 }
 
-export default function CategoryShowcaseCards() {
-  const { categories, products, loading, errorMsg } = useCatalogContext();
+export default function CategoryShowcaseCards({
+  categories = [],
+  products = [],
+  loading = false,
+}: {
+  categories?: Category[];
+  products?: ProductDetailsEntity[];
+  loading?: boolean;
+}) {
   const locale = useLocale();
 
   const categoryGroups = useMemo(() => {
@@ -141,7 +149,7 @@ export default function CategoryShowcaseCards() {
     );
   }
 
-  if (errorMsg && categoryGroups.length === 0) return <ErrorState />;
+  if (!loading && categoryGroups.length === 0 && categories.length === 0) return <ErrorState />;
 
   if (categoryGroups.length === 0) return null;
 

@@ -4,11 +4,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/shared/i18n/navigation";
 import { ChevronLeft, ChevronRight, ArrowRight, Pause, Play } from "lucide-react";
-import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
+import type { ProductDetailsEntity } from "@/modules/catalog/types";
 import { useCurrency } from "@/modules/settings/model/publicSettingsContext";
 import { formatMoney } from "@/shared/lib/money";
 import { normalizeMediaUrl } from "@/shared/lib/media";
-import type { ProductDetailsEntity } from "@/modules/catalog/types";
 
 const AUTOPLAY_INTERVAL = 6000;
 
@@ -22,10 +21,9 @@ function productName(product: ProductDetailsEntity, locale: string): string {
 	return (typeof name === "string" && name.trim()) || product.title || "";
 }
 
-export default function Hero() {
+export default function Hero({ products = [] }: { products?: ProductDetailsEntity[] }) {
 	const t = useTranslations("home.hero");
 	const locale = useLocale();
-	const { products } = useCatalogContext();
 	const currency = useCurrency();
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [isPlaying, setIsPlaying] = useState(true);
