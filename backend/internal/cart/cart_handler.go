@@ -84,9 +84,11 @@ type AddItemRequest struct {
 }
 
 // UpdateQuantityRequest defines the request body payload for modifying an item's quantity in the cart.
+// Zero and negative quantities are intentionally passed through to the service,
+// which rejects them with INVALID_CART_QUANTITY instead of silently deleting the line.
 type UpdateQuantityRequest struct {
-	// New total quantity desired for this cart item (must be between 1 and 999)
-	Quantity int `json:"quantity" binding:"required,gt=0,lte=999" example:"3"`
+	// New total quantity desired for this cart item (must be greater than 0 and at most 999)
+	Quantity int `json:"quantity" binding:"lte=999" example:"3"`
 }
 
 type CartSummaryResponse struct {

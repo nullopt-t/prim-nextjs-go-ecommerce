@@ -285,6 +285,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		cartRepo,
 		variantRepository,
 		productRepo,
+		vendors.NewRepository(),
 		inventoryRepo,
 		objectRepository,
 		app.storageProvider,

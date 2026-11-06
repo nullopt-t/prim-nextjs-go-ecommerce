@@ -154,10 +154,16 @@ func (r *ProductRepository) GetBySlug(
 	ctx context.Context,
 	slug string,
 ) (*model.Product, error) {
+	// A vendor-owned product is only storefront-visible while its seller is
+	// active. Suspended/rejected vendor catalogs must not be reachable by slug
+	// or id, even though the product row itself is still published.
+	const visibleVendor = `(vendor_id IS NULL OR EXISTS (
+		SELECT 1 FROM vendors v WHERE v.id = products.vendor_id AND v.status = 'active'
+	))`
 	if parsedUUID, err := uuid.Parse(slug); err == nil && parsedUUID != uuid.Nil {
-		return r.get(ctx, "(slug = $1 OR id = $2) AND deleted_at IS NULL AND status = $3", slug, parsedUUID, model.PublicationStatusPublished)
+		return r.get(ctx, fmt.Sprintf("(slug = $1 OR id = $2) AND deleted_at IS NULL AND status = $3 AND %s", visibleVendor), slug, parsedUUID, model.PublicationStatusPublished)
 	}
-	return r.get(ctx, "slug = $1 AND deleted_at IS NULL AND status = $2", slug, model.PublicationStatusPublished)
+	return r.get(ctx, fmt.Sprintf("slug = $1 AND deleted_at IS NULL AND status = $2 AND %s", visibleVendor), slug, model.PublicationStatusPublished)
 }
 
 // SlugExists checks whether any product (including soft-deleted) has the specified slug.
@@ -398,8 +404,13 @@ func (r *ProductRepository) List(
 		}
 	} else {
 		// Storefront listings are always published-only, regardless of any
-		// status query parameter supplied by the caller.
+		// status query parameter supplied by the caller. They also exclude
+		// products whose vendor is suspended/rejected: those items are not
+		// purchasable and must not surface in search or browse.
 		whereClauses = append(whereClauses, "p.status = 'published'")
+		whereClauses = append(whereClauses, `(p.vendor_id IS NULL OR EXISTS (
+			SELECT 1 FROM vendors v WHERE v.id = p.vendor_id AND v.status = 'active'
+		))`)
 	}
 
 	if len(q.BrandUUIDs) > 0 || len(q.BrandNames) > 0 {

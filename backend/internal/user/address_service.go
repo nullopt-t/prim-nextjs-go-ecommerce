@@ -40,19 +40,36 @@ type UpdateAddressInput struct {
 	IsDefault  bool    `json:"isDefault"`
 }
 
+// addressStore is the consumer-owned persistence contract for customer
+// addresses. *AddressRepository is the production implementation; tests provide
+// an in-memory fake.
+type addressStore interface {
+	ListByUser(ctx context.Context, userID uuid.UUID) ([]model.UserAddress, error)
+	GetByIDAndUser(ctx context.Context, id, userID uuid.UUID) (*model.UserAddress, error)
+	LockUserAddresses(ctx context.Context, userID uuid.UUID) error
+	CountByUser(ctx context.Context, userID uuid.UUID) (int, error)
+	ClearDefault(ctx context.Context, userID uuid.UUID) error
+	SetDefault(ctx context.Context, id, userID uuid.UUID) error
+	Create(ctx context.Context, a *model.UserAddress) error
+	Update(ctx context.Context, a *model.UserAddress) error
+	SoftDelete(ctx context.Context, id, userID uuid.UUID) error
+	FindMostRecentActive(ctx context.Context, userID uuid.UUID) (*model.UserAddress, error)
+	FindMostRecentActiveExcluding(ctx context.Context, userID, excludeID uuid.UUID) (*model.UserAddress, error)
+}
+
 // AddressService orchestrates business logic for customer addresses:
 // input validation, database transactions, default address state machine transitions,
 // automatic default address promotion upon deletion, and tenant-scoped security.
 type AddressService struct {
 	dbRunner database.Runner
-	repo     *AddressRepository
+	repo     addressStore
 	logger   log.Logger
 }
 
 // NewAddressService constructs a new AddressService instance.
 func NewAddressService(
 	dbRunner database.Runner,
-	repo *AddressRepository,
+	repo addressStore,
 	logger log.Logger,
 ) *AddressService {
 	if dbRunner == nil {

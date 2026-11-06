@@ -774,10 +774,16 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 			return apierr.ForbiddenError("You are not authorized to cancel this order")
 		}
 
+		// Cancellation is idempotent: an already-cancelled order has already had
+		// its stock resolved and its payments refunded/failed. Returning here
+		// prevents a second release/restock and a duplicate refund.
+		if ord.Status == model.OrderStatusCancelled {
+			return nil
+		}
+
 		if !CanTransitionOrderStatus(ord.Status, model.OrderStatusCancelled) {
 			return apierr.BadRequestError("Order cannot be cancelled in its current state").WithCode(errcode.CodeInvalidOrderStatus)
 		}
-		wasAlreadyCancelled := ord.Status == model.OrderStatusCancelled
 
 		note := "Cancelled by customer"
 		if err := s.orderRepo.UpdateOrderStatus(ctx, id, model.OrderStatusCancelled); err != nil {
@@ -805,11 +811,9 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 			return s.handleError(err, "Failed to refund payment")
 		}
 
-		if !wasAlreadyCancelled {
-			ord.Status = model.OrderStatusCancelled
-			cancelledOrder = ord
-			customerName = s.resolveCustomerName(ctx, ord)
-		}
+		ord.Status = model.OrderStatusCancelled
+		cancelledOrder = ord
+		customerName = s.resolveCustomerName(ctx, ord)
 
 		return nil
 	})

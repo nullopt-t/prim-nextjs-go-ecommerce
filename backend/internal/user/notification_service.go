@@ -13,19 +13,31 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
+// notificationStore is the consumer-owned persistence contract for customer
+// notifications. *NotificationRepository is the production implementation;
+// tests provide an in-memory fake.
+type notificationStore interface {
+	Create(ctx context.Context, n *model.UserNotification) error
+	ListByUser(ctx context.Context, userID uuid.UUID, unreadOnly bool, q *pagination.ListQuery) ([]*model.UserNotification, int, error)
+	CountUnreadByUser(ctx context.Context, userID uuid.UUID) (int, error)
+	MarkAsRead(ctx context.Context, id int64, userID uuid.UUID) error
+	MarkAllAsRead(ctx context.Context, userID uuid.UUID) (int64, error)
+	Delete(ctx context.Context, id int64, userID uuid.UUID) error
+}
+
 // NotificationService coordinates business operations for customer notifications:
 // creation, paginated list retrieval, unread count aggregation, status updates (read),
 // and deletion.
 type NotificationService struct {
 	dbRunner database.Runner
-	repo     *NotificationRepository
+	repo     notificationStore
 	logger   log.Logger
 }
 
 // NewNotificationService constructs a new NotificationService instance.
 func NewNotificationService(
 	dbRunner database.Runner,
-	repo *NotificationRepository,
+	repo notificationStore,
 	logger log.Logger,
 ) *NotificationService {
 	if dbRunner == nil {

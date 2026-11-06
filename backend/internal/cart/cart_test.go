@@ -21,6 +21,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/pkg/api"
+	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
@@ -43,9 +44,18 @@ func (d *dummyProductService) GetByID(ctx context.Context, id uuid.UUID) (*model
 		return p, nil
 	}
 	return &model.Product{
-		ID:    id,
-		Title: "Test Headphones",
+		ID:     id,
+		Title:  "Test Headphones",
+		Status: model.PublicationStatusPublished,
 	}, nil
+}
+
+// dummyVendorReader keeps all cart fixtures platform-owned by reporting an
+// active vendor for any id (the dummy products carry no vendor).
+type dummyVendorReader struct{}
+
+func (dummyVendorReader) GetByID(ctx context.Context, id uuid.UUID) (*model.Vendor, error) {
+	return &model.Vendor{ID: id, Status: model.VendorStatusActive}, nil
 }
 
 type CartHTTPTestSuite struct {
@@ -130,14 +140,15 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	s.productService = &dummyProductService{
 		products: map[uuid.UUID]*model.Product{
 			s.productID: {
-				ID:    s.productID,
-				Title: "ANC Headphones",
+				ID:     s.productID,
+				Title:  "ANC Headphones",
+				Status: model.PublicationStatusPublished,
 			},
 		},
 	}
 
 	s.cartRepo = cart.NewRepository()
-	s.cartService = cart.NewService(s.txRunner, s.cartRepo, s.variantRepo, s.productService, s.inventoryRepo, object.NewRepository(), storage.NoopProvider{})
+	s.cartService = cart.NewService(s.txRunner, s.cartRepo, s.variantRepo, s.productService, dummyVendorReader{}, s.inventoryRepo, object.NewRepository(), storage.NoopProvider{})
 	s.handler = cart.NewHandler(s.cartService)
 
 	// Start Redis Container
@@ -719,6 +730,225 @@ func (s *CartHTTPTestSuite) TestHTTP_GuestCart_MergeEmptyGuestCartDoesNotError()
 	// Calling merge on a non-existent / empty guest cart session
 	err := s.cartService.MergeGuestCart(context.Background(), guestSessionID, userID)
 	s.Require().NoError(err)
+}
+
+// TestHTTP_UpdateItemQuantity_ZeroAndForeignItem pins that a quantity of zero
+// (or negative) is rejected with INVALID_QUANTITY instead of deleting the line,
+// and that an item from another cart is a 404, never a cross-cart mutation.
+func (s *CartHTTPTestSuite) TestHTTP_UpdateItemQuantity_ZeroAndForeignItem() {
+	sessionID := s.createGuestSession()
+	variantID := s.createVariant("SKU-ZERO-QTY", 1000, 10)
+
+	addBody, _ := json.Marshal(cart.AddItemRequest{VariantID: variantID, Quantity: 2})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/cart/items", bytes.NewReader(addBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: sessionID})
+	w := httptest.NewRecorder()
+	s.router.ServeHTTP(w, req)
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var addResp StrictDataEnvelope[cart.CartResponse]
+	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &addResp))
+	itemID := addResp.Data.Items[0].ID
+
+	for _, quantity := range []int{0, -1} {
+		body, _ := json.Marshal(cart.UpdateQuantityRequest{Quantity: quantity})
+		reqZero := httptest.NewRequest(http.MethodPatch, "/api/v1/cart/items/"+itemID, bytes.NewReader(body))
+		reqZero.Header.Set("Content-Type", "application/json")
+		reqZero.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: sessionID})
+		wZero := httptest.NewRecorder()
+		s.router.ServeHTTP(wZero, reqZero)
+
+		s.Require().Equal(http.StatusBadRequest, wZero.Code)
+		var errResp StrictErrorEnvelope
+		s.Require().NoError(json.Unmarshal(wZero.Body.Bytes(), &errResp))
+		s.Equal("INVALID_CART_QUANTITY", errResp.Code)
+	}
+
+	// The rejected updates must not have removed or changed the line.
+	reqGet := httptest.NewRequest(http.MethodGet, "/api/v1/cart", nil)
+	reqGet.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: sessionID})
+	wGet := httptest.NewRecorder()
+	s.router.ServeHTTP(wGet, reqGet)
+	var getResp StrictDataEnvelope[cart.CartResponse]
+	s.Require().NoError(json.Unmarshal(wGet.Body.Bytes(), &getResp))
+	s.Require().Len(getResp.Data.Items, 1)
+	s.Equal(2, getResp.Data.Items[0].Quantity)
+
+	// A second guest cannot mutate the first guest's line.
+	otherSession := s.createGuestSession()
+	body, _ := json.Marshal(cart.UpdateQuantityRequest{Quantity: 5})
+	reqForeign := httptest.NewRequest(http.MethodPatch, "/api/v1/cart/items/"+itemID, bytes.NewReader(body))
+	reqForeign.Header.Set("Content-Type", "application/json")
+	reqForeign.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: otherSession})
+	wForeign := httptest.NewRecorder()
+	s.router.ServeHTTP(wForeign, reqForeign)
+
+	s.Require().Equal(http.StatusNotFound, wForeign.Code)
+	var foreignErr StrictErrorEnvelope
+	s.Require().NoError(json.Unmarshal(wForeign.Body.Bytes(), &foreignErr))
+	s.Equal("CART_ITEM_NOT_FOUND", foreignErr.Code)
+
+	// And a missing item ID is also 404.
+	bodyMissing, _ := json.Marshal(cart.UpdateQuantityRequest{Quantity: 1})
+	reqMissing := httptest.NewRequest(http.MethodPatch, "/api/v1/cart/items/999999", bytes.NewReader(bodyMissing))
+	reqMissing.Header.Set("Content-Type", "application/json")
+	reqMissing.AddCookie(&http.Cookie{Name: middleware.SessionCookieName, Value: sessionID})
+	wMissing := httptest.NewRecorder()
+	s.router.ServeHTTP(wMissing, reqMissing)
+	s.Require().Equal(http.StatusNotFound, wMissing.Code)
+}
+
+// TestMergeGuestCart_UserHasNoCart covers the branch that previously created an
+// empty user cart, dropped every guest line, and left the guest cart alive.
+func (s *CartHTTPTestSuite) TestMergeGuestCart_UserHasNoCart() {
+	guestSessionID := s.createGuestSession()
+	userID, _ := s.createAuthenticatedUser()
+	variantID := s.createVariant("SKU-MERGE-NO-USER-CART", 1500, 10)
+
+	guestCart, err := s.cartService.GetOrCreateCart(context.Background(), nil, &guestSessionID)
+	s.Require().NoError(err)
+	_, err = s.cartService.AddItem(context.Background(), guestCart.ID, variantID, 3)
+	s.Require().NoError(err)
+
+	s.Require().NoError(s.cartService.MergeGuestCart(context.Background(), guestSessionID, userID))
+
+	userCart, err := s.cartService.GetCartByUserID(context.Background(), userID)
+	s.Require().NoError(err)
+	s.Require().NotEqual(guestCart.ID, userCart.ID)
+	s.Require().Len(userCart.Items, 1)
+	s.Equal(variantID, userCart.Items[0].VariantID)
+	s.Equal(3, userCart.Items[0].Quantity)
+
+	// The guest cart must be consumed, not left behind.
+	_, err = s.cartService.GetCartBySessionID(context.Background(), guestSessionID)
+	s.Require().Error(err)
+}
+
+// TestMergeGuestCart_RejectsCombinedQuantityAboveStock proves the merge does not
+// create an over-stock cart: guest 2 + user 4 against stock 5 is rejected and
+// both carts stay untouched.
+func (s *CartHTTPTestSuite) TestMergeGuestCart_RejectsCombinedQuantityAboveStock() {
+	guestSessionID := s.createGuestSession()
+	userID, _ := s.createAuthenticatedUser()
+	variantID := s.createVariant("SKU-MERGE-OVERSTOCK", 1000, 5)
+
+	guestCart, err := s.cartService.GetOrCreateCart(context.Background(), nil, &guestSessionID)
+	s.Require().NoError(err)
+	_, err = s.cartService.AddItem(context.Background(), guestCart.ID, variantID, 2)
+	s.Require().NoError(err)
+
+	userCart, err := s.cartService.GetOrCreateCart(context.Background(), &userID, nil)
+	s.Require().NoError(err)
+	_, err = s.cartService.AddItem(context.Background(), userCart.ID, variantID, 4)
+	s.Require().NoError(err)
+
+	err = s.cartService.MergeGuestCart(context.Background(), guestSessionID, userID)
+	s.Require().Error(err)
+	var apiErr *apierr.APIError
+	s.Require().ErrorAs(err, &apiErr)
+	s.Equal(http.StatusBadRequest, apiErr.Status)
+	s.Equal("INSUFFICIENT_INVENTORY", apiErr.Code)
+
+	reloadedUser, err := s.cartService.GetCartByID(context.Background(), userCart.ID)
+	s.Require().NoError(err)
+	s.Require().Len(reloadedUser.Items, 1)
+	s.Equal(4, reloadedUser.Items[0].Quantity)
+
+	reloadedGuest, err := s.cartService.GetCartBySessionID(context.Background(), guestSessionID)
+	s.Require().NoError(err)
+	s.Require().Len(reloadedGuest.Items, 1)
+	s.Equal(2, reloadedGuest.Items[0].Quantity)
+}
+
+// TestAddItem_ConcurrentSameVariantDoesNotOversell pins the cart-row lock: two
+// simultaneous adds of 3 against stock 5 must result in one success and a final
+// quantity of 3, never 6.
+func (s *CartHTTPTestSuite) TestAddItem_ConcurrentSameVariantDoesNotOversell() {
+	guestSessionID := s.createGuestSession()
+	variantID := s.createVariant("SKU-CONCURRENT-ADD", 1000, 5)
+
+	cart, err := s.cartService.GetOrCreateCart(context.Background(), nil, &guestSessionID)
+	s.Require().NoError(err)
+
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		go func() {
+			<-start
+			_, addErr := s.cartService.AddItem(context.Background(), cart.ID, variantID, 3)
+			results <- addErr
+		}()
+	}
+	close(start)
+
+	successes := 0
+	insufficient := 0
+	for i := 0; i < 2; i++ {
+		err := <-results
+		if err == nil {
+			successes++
+			continue
+		}
+		var apiErr *apierr.APIError
+		s.Require().ErrorAs(err, &apiErr)
+		s.Equal("INSUFFICIENT_INVENTORY", apiErr.Code)
+		insufficient++
+	}
+	// One add may also serialize after the other if it lands after the stock
+	// change; what must never happen is both succeeding.
+	s.GreaterOrEqual(successes, 1)
+	s.LessOrEqual(successes, 1)
+	s.Equal(1, insufficient)
+
+	finalCart, err := s.cartService.GetCartByID(context.Background(), cart.ID)
+	s.Require().NoError(err)
+	s.Require().Len(finalCart.Items, 1)
+	s.Equal(3, finalCart.Items[0].Quantity)
+}
+
+type suspendedVendorReader struct{}
+
+func (suspendedVendorReader) GetByID(ctx context.Context, id uuid.UUID) (*model.Vendor, error) {
+	return &model.Vendor{ID: id, Status: model.VendorStatusSuspended}, nil
+}
+
+// TestAddItem_RejectsUnavailableCatalog pins that unpublished products and
+// products owned by a suspended vendor cannot enter the cart.
+func (s *CartHTTPTestSuite) TestAddItem_RejectsUnavailableCatalog() {
+	guestSessionID := s.createGuestSession()
+	variantID := s.createVariant("SKU-UNAVAILABLE", 1000, 10)
+
+	cartSvc := cart.NewService(
+		s.txRunner, s.cartRepo, s.variantRepo, s.productService, suspendedVendorReader{},
+		s.inventoryRepo, object.NewRepository(), storage.NoopProvider{},
+	)
+	cartData, err := cartSvc.GetOrCreateCart(context.Background(), nil, &guestSessionID)
+	s.Require().NoError(err)
+
+	originalProduct := s.productService.products[s.productID]
+	defer func() { s.productService.products[s.productID] = originalProduct }()
+
+	vendorID := uuid.New()
+	s.productService.products[s.productID] = &model.Product{
+		ID: s.productID, Title: "Suspended Seller Product",
+		Status: model.PublicationStatusPublished, VendorID: &vendorID,
+	}
+
+	_, err = cartSvc.AddItem(context.Background(), cartData.ID, variantID, 1)
+	s.Require().Error(err)
+	var apiErr *apierr.APIError
+	s.Require().ErrorAs(err, &apiErr)
+	s.Equal(http.StatusBadRequest, apiErr.Status)
+
+	// Unpublished product, platform-owned.
+	s.productService.products[s.productID] = &model.Product{
+		ID: s.productID, Title: "Draft Product", Status: model.PublicationStatusDraft,
+	}
+	_, err = cartSvc.AddItem(context.Background(), cartData.ID, variantID, 1)
+	s.Require().Error(err)
+	s.Require().ErrorAs(err, &apiErr)
+	s.Equal(http.StatusBadRequest, apiErr.Status)
 }
 
 func TestCartHTTPTestSuite(t *testing.T) {

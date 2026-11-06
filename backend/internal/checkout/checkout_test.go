@@ -56,6 +56,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/user"
 	"github.com/nullopt-t/prim-backend/internal/vendors"
 	"github.com/nullopt-t/prim-backend/pkg/api"
+	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
@@ -75,9 +76,10 @@ type dummyProductService struct{}
 
 func (d *dummyProductService) GetByID(_ context.Context, id uuid.UUID) (*model.Product, error) {
 	return &model.Product{
-		ID:    id,
-		Title: "Integration Test Product",
-		Slug:  "integration-test-product",
+		ID:     id,
+		Title:  "Integration Test Product",
+		Slug:   "integration-test-product",
+		Status: model.PublicationStatusPublished,
 	}, nil
 }
 
@@ -156,8 +158,17 @@ type CheckoutTestSuite struct {
 	inventoryService *inventory.InventoryService
 	inventoryRepo    *inventory.InventoryRepository
 	orderRepo        *order.Repository
+	orderService     *order.OrderService
 	addressService   *user.AddressService
 	userService      *user.UserService
+	settingsService  *setting.Service
+	cartRepo         *cart.CartRepository
+	variantRepo      *variant.VariantRepository
+	productRepo      *product.ProductRepository
+	vendorRepo       *vendors.VendorRepository
+	couponService    *coupon.CouponService
+	addressRepo      *user.AddressRepository
+	userRepo         *user.UserRepository
 	orderNotifier    *fakeOrderNotifier
 	adminNotifier    *fakeAdminNotifier
 
@@ -232,43 +243,50 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	s.variantService = variant.NewService(logger, s.txRunner, object.NewRepository(), storage.NoopProvider{}, variantRepo, inventoryRepo, s.inventoryService)
 
 	cartRepo := cart.NewRepository()
+	s.cartRepo = cartRepo
 	s.cartService = cart.NewService(
 		s.txRunner,
 		cartRepo,
 		variantRepo,
 		&dummyProductService{},
+		vendors.NewRepository(),
 		inventoryRepo,
 		object.NewRepository(),
 		storage.NoopProvider{},
 	)
 
 	s.orderRepo = order.NewRepository()
-	settingsService := setting.NewService(s.txRunner, setting.NewRepository())
+	s.settingsService = setting.NewService(s.txRunner, setting.NewRepository())
 	s.orderNotifier = &fakeOrderNotifier{}
 	s.adminNotifier = &fakeAdminNotifier{}
 
-	userRepo := user.NewPostgresRepository()
-	s.userService = user.NewService(s.txRunner, userRepo, logger)
+	s.userRepo = user.NewPostgresRepository()
+	s.userService = user.NewService(s.txRunner, s.userRepo, logger)
 
-	orderService := order.NewService(s.txRunner, s.orderRepo, logger, s.inventoryRepo, s.inventoryService, userRepo, settingsService, s.orderNotifier)
+	s.orderService = order.NewService(s.txRunner, s.orderRepo, logger, s.inventoryRepo, s.inventoryService, s.userRepo, s.settingsService, s.orderNotifier)
 
-	addressRepo := user.NewAddressRepository()
-	s.addressService = user.NewAddressService(s.txRunner, addressRepo, logger)
+	s.addressRepo = user.NewAddressRepository()
+	s.addressService = user.NewAddressService(s.txRunner, s.addressRepo, logger)
+
+	s.variantRepo = variantRepo
+	s.productRepo = product.NewProductRepository()
+	s.vendorRepo = vendors.NewRepository()
+	s.couponService = coupon.NewService(s.txRunner, coupon.NewRepository())
 
 	s.checkoutService = checkout.NewService(
 		cartRepo,
 		s.cartService,
-		orderService,
+		s.orderService,
 		s.inventoryService,
-		userRepo,
-		addressRepo,
-		coupon.NewService(s.txRunner, coupon.NewRepository()),
-		variantRepo,
-		product.NewProductRepository(),
-		vendors.NewRepository(),
+		s.userRepo,
+		s.addressRepo,
+		s.couponService,
+		s.variantRepo,
+		s.productRepo,
+		s.vendorRepo,
 		object.NewRepository(),
 		storage.NoopProvider{},
-		settingsService,
+		s.settingsService,
 		s.txRunner,
 		s.orderNotifier,
 		s.adminNotifier,
@@ -324,6 +342,25 @@ func (s *CheckoutTestSuite) SetupTest() {
 	if s.orderNotifier != nil {
 		s.orderNotifier.reset()
 	}
+	s.restoreDefaultSettings()
+}
+
+// restoreDefaultSettings clears any per-test pricing/payment overrides so the
+// suite starts from the documented defaults.
+func (s *CheckoutTestSuite) restoreDefaultSettings() {
+	s.Require().NoError(s.settingsService.UpdateSettings(context.Background(), map[string]interface{}{
+		"allowCod":              true,
+		"allowCards":            true,
+		"codFee":                0.0,
+		"taxRatePercent":        0.0,
+		"pricesIncludeTax":      true,
+		"flatRateShipping":      9.99,
+		"freeShippingThreshold": 150.0,
+	}))
+}
+
+func (s *CheckoutTestSuite) updateSettings(items map[string]interface{}) {
+	s.Require().NoError(s.settingsService.UpdateSettings(context.Background(), items))
 }
 
 // =============================================================================
@@ -405,6 +442,91 @@ func (s *CheckoutTestSuite) addToCart(userID, variantID uuid.UUID, qty int) {
 	s.Require().NoError(err)
 	_, err = s.cartService.AddItem(context.Background(), c.ID, variantID, qty)
 	s.Require().NoError(err)
+}
+
+// seedGuestSession registers a guest session in Redis and returns its ID.
+func (s *CheckoutTestSuite) seedGuestSession() string {
+	ctx := context.Background()
+	sessionID := "guest_" + uuid.NewString()
+	data, err := json.Marshal(map[string]any{
+		"id":   sessionID,
+		"type": "guest",
+	})
+	s.Require().NoError(err)
+	s.Require().NoError(s.redisClient.Set(ctx, "auth:session:"+sessionID, data, time.Hour).Err())
+	return sessionID
+}
+
+// addToGuestCart adds an item to a guest cart owned by sessionID.
+func (s *CheckoutTestSuite) addToGuestCart(sessionID string, variantID uuid.UUID, qty int) {
+	c, err := s.cartService.GetOrCreateCart(context.Background(), nil, &sessionID)
+	s.Require().NoError(err)
+	_, err = s.cartService.AddItem(context.Background(), c.ID, variantID, qty)
+	s.Require().NoError(err)
+}
+
+// newCheckoutServiceWithOrderWriter builds a checkout service that shares every
+// real dependency but routes order writes through the supplied writer, so tests
+// can inject a failure at one step of the workflow.
+func (s *CheckoutTestSuite) newCheckoutServiceWithOrderWriter(writer checkout.OrderWriter) *checkout.CheckoutService {
+	return checkout.NewService(
+		s.cartRepo,
+		s.cartService,
+		writer,
+		s.inventoryService,
+		s.userRepo,
+		s.addressRepo,
+		s.couponService,
+		s.variantRepo,
+		s.productRepo,
+		s.vendorRepo,
+		object.NewRepository(),
+		storage.NoopProvider{},
+		s.settingsService,
+		s.txRunner,
+		s.orderNotifier,
+		s.adminNotifier,
+		log.NewNoopLogger(),
+	)
+}
+
+// newCheckoutServiceWithCoupon builds a checkout service that shares every real
+// dependency but uses the supplied coupon service (e.g. one with a fixed clock).
+func (s *CheckoutTestSuite) newCheckoutServiceWithCoupon(c *coupon.CouponService) *checkout.CheckoutService {
+	return checkout.NewService(
+		s.cartRepo,
+		s.cartService,
+		s.orderService,
+		s.inventoryService,
+		s.userRepo,
+		s.addressRepo,
+		c,
+		s.variantRepo,
+		s.productRepo,
+		s.vendorRepo,
+		object.NewRepository(),
+		storage.NoopProvider{},
+		s.settingsService,
+		s.txRunner,
+		s.orderNotifier,
+		s.adminNotifier,
+		log.NewNoopLogger(),
+	)
+}
+
+// failingPaymentOrderWriter delegates order creation to the real service but
+// fails when the checkout tries to record the payment.
+type failingPaymentOrderWriter struct {
+	real *order.OrderService
+	err  error
+}
+
+func (f *failingPaymentOrderWriter) PlaceOrder(ctx context.Context, in *order.CreateOrderInput) (*model.Order, error) {
+	return f.real.PlaceOrder(ctx, in)
+}
+
+func (f *failingPaymentOrderWriter) RecordPayment(ctx context.Context, in *order.CreatePaymentInput) (*model.Payment, error) {
+	return nil, f.err
 }
 
 type couponSeed struct {
@@ -1503,6 +1625,435 @@ func (s *CheckoutTestSuite) TestCheckout_Red_SuspendedVendorBlocked() {
 	// Restore the shared seeded product to the platform-owned baseline.
 	_, err := s.db.Exec(context.Background(), `UPDATE products SET vendor_id = NULL WHERE id = $1`, s.productID)
 	s.Require().NoError(err)
+}
+
+// =============================================================================
+// P0: shipping boundary, payment configuration, rollback, concurrency, coupons
+// =============================================================================
+
+// TestCheckout_ShippingBoundary pins the inclusive free-shipping edge: 14999
+// pays the flat rate, exactly 15000 is free.
+func (s *CheckoutTestSuite) TestCheckout_ShippingBoundary() {
+	cases := []struct {
+		name         string
+		subtotal     int64
+		wantShipping int64
+	}{
+		{name: "below threshold pays shipping", subtotal: 14999, wantShipping: shippingFee},
+		{name: "exactly at threshold ships free", subtotal: freeShippingThreshold, wantShipping: 0},
+	}
+
+	for _, tc := range cases {
+		s.Run(tc.name, func() {
+			userID, sessionID := s.seedUser()
+			addressID := s.seedAddress(userID)
+			variantID := s.seedPricedVariant(tc.subtotal, 5)
+			s.addToCart(userID, variantID, 1)
+
+			w := s.postCheckout(sessionID, checkout.CheckoutRequest{ShippingAddressID: addressID})
+			s.Require().Equal(http.StatusOK, w.Code)
+
+			var resp dataEnvelope[checkout.CheckoutResponse]
+			s.decodeSuccess(w, &resp)
+			orderID, err := uuid.Parse(resp.Data.OrderID)
+			s.Require().NoError(err)
+
+			o := s.fetchOrder(orderID)
+			s.Equal(tc.wantShipping, o.ShippingAmount)
+			s.Equal(tc.subtotal+tc.wantShipping, o.TotalAmount)
+		})
+	}
+}
+
+func (s *CheckoutTestSuite) TestCheckout_Red_CODDisabled() {
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	variantID := s.seedPricedVariant(1000, 5)
+	s.addToCart(userID, variantID, 1)
+	s.updateSettings(map[string]interface{}{"allowCod": false})
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
+		ShippingAddressID: addressID,
+		PaymentMethod:     "cod",
+	})
+	s.Require().Equal(http.StatusBadRequest, w.Code)
+	s.Equal("PAYMENT_METHOD_UNAVAILABLE", s.decodeError(w).Code)
+
+	s.Equal(0, s.countOrdersForUser(userID))
+	s.Equal(0, s.countPaymentsForUser(userID))
+	s.Equal(1, s.countActiveCartItems(userID))
+}
+
+func (s *CheckoutTestSuite) TestCheckout_Red_CardsDisabled() {
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	variantID := s.seedPricedVariant(1000, 5)
+	s.addToCart(userID, variantID, 1)
+	s.updateSettings(map[string]interface{}{"allowCards": false})
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
+		ShippingAddressID: addressID,
+		PaymentMethod:     "card",
+	})
+	s.Require().Equal(http.StatusBadRequest, w.Code)
+	s.Equal("PAYMENT_METHOD_UNAVAILABLE", s.decodeError(w).Code)
+	s.Equal(0, s.countOrdersForUser(userID))
+}
+
+// TestCheckout_CardPayment_HoldsStockWithoutCommitting proves a card checkout
+// records a pending payment and leaves the stock as a live reservation (the
+// sale only commits when the payment is captured).
+func (s *CheckoutTestSuite) TestCheckout_CardPayment_HoldsStockWithoutCommitting() {
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	variantID := s.seedPricedVariant(2500, 10)
+	s.addToCart(userID, variantID, 2)
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
+		ShippingAddressID: addressID,
+		PaymentMethod:     "card",
+	})
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var resp dataEnvelope[checkout.CheckoutResponse]
+	s.decodeSuccess(w, &resp)
+	orderID, err := uuid.Parse(resp.Data.OrderID)
+	s.Require().NoError(err)
+
+	p := s.fetchPayment(orderID)
+	s.Equal("pending", p.Status)
+	s.Equal(int64(5999), p.Amount)
+	// Note: "card" is the normalized method, so provider is "card", not a COD id.
+	s.Equal("card", p.Provider)
+
+	stock := s.fetchStock(variantID)
+	s.Equal(10, stock.OnHandQuantity, "capture has not happened, so on-hand is unchanged")
+	s.Equal(2, stock.ReservedQuantity)
+	s.Equal(8, stock.AvailableQuantity)
+	s.Equal(1, s.countActiveReservations(variantID))
+}
+
+// TestCheckout_CODFeeAndTaxOnDiscountedSubtotal verifies the fee is added and
+// tax is charged on the discounted subtotal, not the gross.
+func (s *CheckoutTestSuite) TestCheckout_CODFeeAndTaxOnDiscountedSubtotal() {
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	variantID := s.seedPricedVariant(10000, 5)
+	s.addToCart(userID, variantID, 1)
+
+	code := "TAX10-" + uuid.NewString()[:8]
+	s.seedCoupon(couponSeed{Code: code, DiscountType: "percentage", DiscountValue: 10})
+	s.updateSettings(map[string]interface{}{
+		"codFee":           5.00,
+		"taxRatePercent":   10.0,
+		"pricesIncludeTax": false,
+	})
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
+		ShippingAddressID: addressID,
+		CouponCode:        &code,
+	})
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var resp dataEnvelope[checkout.CheckoutResponse]
+	s.decodeSuccess(w, &resp)
+	orderID, err := uuid.Parse(resp.Data.OrderID)
+	s.Require().NoError(err)
+
+	// 10000 - 1000 discount = 9000 taxable; 10% tax = 900; + 999 shipping + 500 COD fee.
+	o := s.fetchOrder(orderID)
+	s.Equal(int64(1000), o.DiscountAmount)
+	s.Equal(int64(900), o.TaxAmount)
+	s.Equal(shippingFee, o.ShippingAmount)
+	s.Equal(int64(900+999+500+9000), o.TotalAmount)
+}
+
+func (s *CheckoutTestSuite) TestCheckout_PricesIncludeTaxSuppressesTax() {
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	variantID := s.seedPricedVariant(10000, 5)
+	s.addToCart(userID, variantID, 1)
+	s.updateSettings(map[string]interface{}{
+		"taxRatePercent":   10.0,
+		"pricesIncludeTax": true,
+	})
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{ShippingAddressID: addressID})
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var resp dataEnvelope[checkout.CheckoutResponse]
+	s.decodeSuccess(w, &resp)
+	orderID, err := uuid.Parse(resp.Data.OrderID)
+	s.Require().NoError(err)
+	s.Equal(int64(0), s.fetchOrder(orderID).TaxAmount)
+}
+
+// TestCheckout_RecordPaymentFailureRollsBackEverything injects a failure at
+// the payment-recording step (after order, reservation, and coupon redemption)
+// and asserts the whole workflow rolled back.
+func (s *CheckoutTestSuite) TestCheckout_RecordPaymentFailureRollsBackEverything() {
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	variantID := s.seedPricedVariant(1000, 10)
+	s.addToCart(userID, variantID, 2)
+
+	code := "ROLLBACK-" + uuid.NewString()[:8]
+	couponID := s.seedCoupon(couponSeed{Code: code, DiscountType: "fixed_amount", DiscountValue: 100})
+
+	svc := s.newCheckoutServiceWithOrderWriter(&failingPaymentOrderWriter{
+		real: s.orderService,
+		err:  errors.New("payment provider unavailable"),
+	})
+
+	_, err := svc.Checkout(context.Background(), &checkout.CheckoutInput{
+		CustomerID:        userID,
+		ShippingAddressID: addressID,
+		CouponCode:        &code,
+	})
+	s.Require().Error(err)
+
+	s.Equal(0, s.countOrdersForUser(userID), "order must roll back")
+	s.Equal(0, s.countPaymentsForUser(userID), "payment must roll back")
+	s.Equal(1, s.countActiveCartItems(userID), "cart must not be cleared")
+	s.Equal(0, s.countActiveReservations(variantID), "stock hold must roll back")
+	s.Empty(s.orderNotifier.placedNotifications())
+
+	stock := s.fetchStock(variantID)
+	s.Equal(10, stock.OnHandQuantity)
+	s.Equal(0, stock.ReservedQuantity)
+
+	var redemptions int
+	s.Require().NoError(s.db.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1`, couponID).Scan(&redemptions))
+	s.Equal(0, redemptions, "coupon redemption must roll back")
+	_ = sessionID
+}
+
+// TestCheckout_ConcurrentDoubleSubmit proves the cart lock allows exactly one
+// order, one payment, one stock commitment and one cart clear.
+func (s *CheckoutTestSuite) TestCheckout_ConcurrentDoubleSubmit() {
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	variantID := s.seedPricedVariant(1000, 10)
+	s.addToCart(userID, variantID, 1)
+
+	start := make(chan struct{})
+	responses := make(chan *httptest.ResponseRecorder, 2)
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			responses <- s.postCheckout(sessionID, checkout.CheckoutRequest{ShippingAddressID: addressID})
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(responses)
+
+	okCount, rejected := 0, 0
+	for w := range responses {
+		if w.Code == http.StatusOK {
+			okCount++
+			continue
+		}
+		s.Require().Equal(http.StatusBadRequest, w.Code, w.Body.String())
+		s.Equal("EMPTY_CART", s.decodeError(w).Code)
+		rejected++
+	}
+	s.Equal(1, okCount)
+	s.Equal(1, rejected)
+
+	s.Equal(1, s.countOrdersForUser(userID))
+	s.Equal(1, s.countPaymentsForUser(userID))
+	s.Equal(0, s.countActiveCartItems(userID))
+	s.Equal(0, s.countActiveReservations(variantID))
+
+	stock := s.fetchStock(variantID)
+	s.Equal(9, stock.OnHandQuantity, "exactly one unit was sold")
+}
+
+// TestCheckout_CouponMinAmountExcludesShipping pins that the threshold compares
+// the cart subtotal, not subtotal + shipping.
+func (s *CheckoutTestSuite) TestCheckout_CouponMinAmountExcludesShipping() {
+	code := "MIN100-" + uuid.NewString()[:8]
+	min := int64(11000)
+	s.seedCoupon(couponSeed{
+		Code: code, DiscountType: "fixed_amount", DiscountValue: 500, MinCartAmount: &min,
+	})
+
+	// 10000 subtotal + 999 shipping < 11000 threshold: must fail.
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	variantID := s.seedPricedVariant(10000, 5)
+	s.addToCart(userID, variantID, 1)
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
+		ShippingAddressID: addressID,
+		CouponCode:        &code,
+	})
+	s.Require().Equal(http.StatusBadRequest, w.Code)
+	s.Equal("COUPON_MIN_AMOUNT_NOT_MET", s.decodeError(w).Code)
+	s.Equal(0, s.countOrdersForUser(userID))
+
+	// Subtotal exactly equal to the minimum passes.
+	userID2, sessionID2 := s.seedUser()
+	addressID2 := s.seedAddress(userID2)
+	variantID2 := s.seedPricedVariant(11000, 5)
+	s.addToCart(userID2, variantID2, 1)
+
+	w2 := s.postCheckout(sessionID2, checkout.CheckoutRequest{
+		ShippingAddressID: addressID2,
+		CouponCode:        &code,
+	})
+	s.Require().Equal(http.StatusOK, w2.Code)
+}
+
+// TestCheckout_CouponGuestPreview covers optional-auth coupon preview on a guest
+// cart: it uses the guest cart, skips the per-user limit, and records nothing.
+func (s *CheckoutTestSuite) TestCheckout_CouponGuestPreview() {
+	sessionID := s.seedGuestSession()
+	variantID := s.seedPricedVariant(4000, 5)
+	s.addToGuestCart(sessionID, variantID, 1)
+
+	code := "GUEST-" + uuid.NewString()[:8]
+	couponID := s.seedCoupon(couponSeed{Code: code, DiscountType: "percentage", DiscountValue: 10})
+
+	w := s.postApplyCoupon(sessionID, map[string]any{"code": code})
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var resp dataEnvelope[checkout.CouponValidationResult]
+	s.decodeSuccess(w, &resp)
+	s.Equal(int64(4000), resp.Data.Subtotal)
+	s.Equal(int64(400), resp.Data.DiscountAmount)
+	s.Equal(shippingFee, resp.Data.Shipping)
+	s.Equal(int64(4599), resp.Data.Total)
+
+	var redemptions int
+	s.Require().NoError(s.db.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1`, couponID).Scan(&redemptions))
+	s.Equal(0, redemptions)
+}
+
+// TestCheckout_CouponGlobalLimitConcurrency proves the coupon row lock allows
+// only one checkout to consume the last global redemption.
+func (s *CheckoutTestSuite) TestCheckout_CouponGlobalLimitConcurrency() {
+	code := "LASTONE-" + uuid.NewString()[:8]
+	limit := int32(1)
+	s.seedCoupon(couponSeed{
+		Code: code, DiscountType: "fixed_amount", DiscountValue: 100, UsageLimit: &limit,
+	})
+
+	type prepared struct {
+		userID    uuid.UUID
+		sessionID string
+		addressID uuid.UUID
+	}
+	shoppers := make([]prepared, 2)
+	for i := range shoppers {
+		userID, sessionID := s.seedUser()
+		addressID := s.seedAddress(userID)
+		variantID := s.seedPricedVariant(5000, 5)
+		s.addToCart(userID, variantID, 1)
+		shoppers[i] = prepared{userID: userID, sessionID: sessionID, addressID: addressID}
+	}
+
+	start := make(chan struct{})
+	responses := make(chan *httptest.ResponseRecorder, 2)
+	var wg sync.WaitGroup
+	for _, shopper := range shoppers {
+		wg.Add(1)
+		go func(shopper prepared) {
+			defer wg.Done()
+			<-start
+			responses <- s.postCheckout(shopper.sessionID, checkout.CheckoutRequest{
+				ShippingAddressID: shopper.addressID,
+				CouponCode:        &code,
+			})
+		}(shopper)
+	}
+	close(start)
+	wg.Wait()
+	close(responses)
+
+	okCount, limitRejected := 0, 0
+	for w := range responses {
+		if w.Code == http.StatusOK {
+			okCount++
+			continue
+		}
+		s.Require().Equal(http.StatusBadRequest, w.Code, w.Body.String())
+		s.Equal("COUPON_USAGE_LIMIT_EXCEEDED", s.decodeError(w).Code)
+		limitRejected++
+	}
+	s.Equal(1, okCount)
+	s.Equal(1, limitRejected)
+
+	var redemptions int
+	s.Require().NoError(s.db.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM coupon_redemptions r JOIN coupons c ON c.id = r.coupon_id WHERE c.code = $1`, code).Scan(&redemptions))
+	s.Equal(1, redemptions)
+}
+
+// TestCheckout_CouponTimeBoundaries pins the inclusive start/expiry edges using
+// a fixed clock: starts_at == now and expires_at == now are both valid, one
+// nanosecond past either edge is not.
+func (s *CheckoutTestSuite) TestCheckout_CouponTimeBoundaries() {
+	fixed := time.Date(2030, 1, 1, 12, 0, 0, 0, time.UTC)
+	svc := s.newCheckoutServiceWithCoupon(coupon.NewService(
+		s.txRunner, coupon.NewRepository(), coupon.WithClock(func() time.Time { return fixed }),
+	))
+
+	// PostgreSQL timestamptz has microsecond precision, so use a full second
+	// on either side of the exact-equality cases.
+	before := fixed.Add(-time.Second)
+	after := fixed.Add(time.Second)
+	cases := []struct {
+		name      string
+		startsAt  *time.Time
+		expiresAt *time.Time
+		wantCode  string
+	}{
+		{name: "starts exactly now is active", startsAt: &fixed},
+		{name: "starts one second in the future is not started", startsAt: &after, wantCode: "COUPON_NOT_STARTED"},
+		{name: "expires exactly now is still active", expiresAt: &fixed},
+		{name: "expired one second ago is rejected", expiresAt: &before, wantCode: "COUPON_EXPIRED"},
+	}
+
+	for _, tc := range cases {
+		s.Run(tc.name, func() {
+			userID, sessionID := s.seedUser()
+			addressID := s.seedAddress(userID)
+			variantID := s.seedPricedVariant(5000, 5)
+			s.addToCart(userID, variantID, 1)
+
+			code := "EDGE-" + uuid.NewString()[:8]
+			s.seedCoupon(couponSeed{
+				Code: code, DiscountType: "fixed_amount", DiscountValue: 100,
+				StartsAt: tc.startsAt, ExpiresAt: tc.expiresAt,
+			})
+
+			_, err := svc.Checkout(context.Background(), &checkout.CheckoutInput{
+				CustomerID:        userID,
+				ShippingAddressID: addressID,
+				CouponCode:        &code,
+			})
+
+			if tc.wantCode == "" {
+				s.Require().NoError(err)
+				s.Equal(1, s.countOrdersForUser(userID))
+				_ = sessionID
+				return
+			}
+
+			s.Require().Error(err)
+			var apiErr *apierr.APIError
+			s.Require().ErrorAs(err, &apiErr)
+			s.Equal(tc.wantCode, apiErr.Code)
+			s.Equal(0, s.countOrdersForUser(userID))
+		})
+	}
 }
 
 func TestCheckoutTestSuite(t *testing.T) {

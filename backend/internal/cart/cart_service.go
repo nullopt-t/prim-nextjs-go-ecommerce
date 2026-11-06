@@ -22,6 +22,12 @@ type ProductReader interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error)
 }
 
+// VendorReader resolves a product's seller so the cart refuses items from a
+// suspended or rejected vendor rather than letting them fail only at checkout.
+type VendorReader interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*model.Vendor, error)
+}
+
 type InventoryReader interface {
 	GetStock(ctx context.Context, variantID uuid.UUID) (*model.InventoryStock, error)
 	GetStockForVariants(ctx context.Context, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
@@ -36,6 +42,7 @@ type CartService struct {
 	cartRepo        *CartRepository
 	variantReader   VariantReader
 	productReader   ProductReader
+	vendorReader    VendorReader
 	inventoryReader InventoryReader
 	objectReader    ObjectReader
 	storageProvider storage.StorageProvider
@@ -46,6 +53,7 @@ func NewService(
 	cartRepo *CartRepository,
 	variantReader VariantReader,
 	productReader ProductReader,
+	vendorReader VendorReader,
 	inventoryReader InventoryReader,
 	objectReader ObjectReader,
 	storageProvider storage.StorageProvider,
@@ -62,6 +70,9 @@ func NewService(
 	if productReader == nil {
 		panic("cart: product reader is required")
 	}
+	if vendorReader == nil {
+		panic("cart: vendor reader is required")
+	}
 	if inventoryReader == nil {
 		panic("cart: inventory reader is required")
 	}
@@ -76,6 +87,7 @@ func NewService(
 		cartRepo:        cartRepo,
 		variantReader:   variantReader,
 		productReader:   productReader,
+		vendorReader:    vendorReader,
 		inventoryReader: inventoryReader,
 		objectReader:    objectReader,
 		storageProvider: storageProvider,
@@ -304,12 +316,66 @@ func (s *CartService) AddItem(
 
 	var cart *model.Cart
 	txErr := s.dr.WithTx(ctx, func(ctx context.Context) error {
+		// Take the cart row lock before reading the existing line so a
+		// concurrent add of the same variant serializes here. Without the lock
+		// both requests could pass the stock check against the old quantity and
+		// the upsert would then push the cart above available stock.
+		if err := s.cartRepo.LockCartByID(ctx, cartID); err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.NotFoundError("Cart not found").WithCode(apierr.CodeNotFound)
+			}
+			return err
+		}
+
 		v, getErr := s.variantReader.GetByID(ctx, variantID)
 		if getErr != nil {
 			return apierr.NotFoundError("Variant not found").
 				WithCode(errcode.CodeVariantNotFound).
 				Wrap(getErr)
 		}
+
+		// Only published products from an active seller are addable. This keeps
+		// an unpublished listing or a suspended vendor's catalog out of the cart
+		// instead of surfacing the problem only at checkout.
+		product, productErr := s.productReader.GetByID(ctx, v.ProductID)
+		if productErr != nil {
+			if errors.Is(database.MapError(productErr), database.ErrNotFound) {
+				return apierr.NotFoundError("Product not found").
+					WithCode(errcode.CodeProductNotFound)
+			}
+			return apierr.InternalServerError("Failed to load product").Wrap(productErr)
+		}
+		if product == nil || product.Status != model.PublicationStatusPublished {
+			return apierr.BadRequestError("Product is not available").
+				WithCode(apierr.CodeInvalidInput)
+		}
+		if product.VendorID != nil {
+			vendor, vendorErr := s.vendorReader.GetByID(ctx, *product.VendorID)
+			if vendorErr != nil {
+				if errors.Is(database.MapError(vendorErr), database.ErrNotFound) {
+					return apierr.BadRequestError("Product is not available").
+						WithCode(apierr.CodeInvalidInput)
+				}
+				return apierr.InternalServerError("Failed to load product seller").Wrap(vendorErr)
+			}
+			if vendor == nil || vendor.Status != model.VendorStatusActive {
+				return apierr.BadRequestError("Product is not available").
+					WithCode(apierr.CodeInvalidInput)
+			}
+		}
+
+		current, cartErr := s.cartRepo.GetCartByID(ctx, cartID)
+		if cartErr != nil {
+			return cartErr
+		}
+		existingQuantity := 0
+		for i := range current.Items {
+			if current.Items[i].VariantID == v.ID {
+				existingQuantity = current.Items[i].Quantity
+				break
+			}
+		}
+		desiredQuantity := existingQuantity + quantity
 
 		if s.inventoryReader != nil {
 			stock, stockErr := s.inventoryReader.GetStock(ctx, v.ID)
@@ -320,7 +386,7 @@ func (s *CartService) AddItem(
 				}
 				return apierr.InternalServerError("Failed to check inventory").Wrap(stockErr)
 			}
-			if stock == nil || stock.AvailableQuantity < quantity {
+			if stock == nil || stock.AvailableQuantity < desiredQuantity {
 				return apierr.BadRequestError("Insufficient inventory available").
 					WithCode(errcode.CodeInsufficientInventory)
 			}
@@ -521,20 +587,47 @@ func (s *CartService) MergeGuestCart(
 			return err
 		}
 
+		// Validate the merged quantities against live stock before mutating.
+		// The merge is additive, so checking the guest quantity alone would let
+		// an existing user line plus the guest line exceed available stock.
+		combined := make(map[uuid.UUID]int, len(guestCart.Items)+4)
+		if userCart != nil {
+			for _, item := range userCart.Items {
+				combined[item.VariantID] += item.Quantity
+			}
+		}
+		for _, item := range guestCart.Items {
+			combined[item.VariantID] += item.Quantity
+		}
+		for variantID, quantity := range combined {
+			stock, stockErr := s.inventoryReader.GetStock(ctx, variantID)
+			if stockErr != nil {
+				var apiErr *apierr.APIError
+				if errors.As(stockErr, &apiErr) {
+					return apiErr
+				}
+				return apierr.InternalServerError("Failed to check inventory").Wrap(stockErr)
+			}
+			if stock == nil || stock.AvailableQuantity < quantity {
+				return apierr.BadRequestError("Insufficient inventory available to merge cart").
+					WithCode(errcode.CodeInsufficientInventory)
+			}
+		}
+
 		if userCart == nil {
 			userCart = &model.Cart{
+				ID:        uuid.New(),
 				UserID:    &userID,
 				SessionID: nil,
-				Items:     slices.Clone(guestCart.Items),
 			}
 			uErr := s.cartRepo.CreateCart(ctx, userCart)
 			if uErr != nil {
 				return uErr
 			}
-			return nil
 		}
 
 		for _, guestItem := range slices.Clone(guestCart.Items) {
+			guestItem.ID = 0
 			guestItem.CartID = userCart.ID
 			aErr := s.cartRepo.AddItem(ctx, &guestItem)
 			if aErr != nil {

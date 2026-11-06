@@ -61,19 +61,39 @@ type ValidationResult struct {
 type CouponService struct {
 	runner database.Runner
 	repo   *CouponRepository
+	now    func() time.Time
 }
 
-func NewService(runner database.Runner, repo *CouponRepository) *CouponService {
+// Option customizes a CouponService. It exists mainly to inject a deterministic
+// clock so start/expiry edges can be tested exactly; production callers use the
+// defaults.
+type Option func(*CouponService)
+
+// WithClock overrides the service clock used for coupon active-window checks.
+func WithClock(now func() time.Time) Option {
+	return func(s *CouponService) {
+		if now != nil {
+			s.now = now
+		}
+	}
+}
+
+func NewService(runner database.Runner, repo *CouponRepository, opts ...Option) *CouponService {
 	if runner == nil {
 		panic("coupon: runner is required")
 	}
 	if repo == nil {
 		panic("coupon: repo is required")
 	}
-	return &CouponService{
+	s := &CouponService{
 		runner: runner,
 		repo:   repo,
+		now:    time.Now,
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // handleError maps a repository error to a standard API error.
@@ -324,7 +344,7 @@ func (s *CouponService) validateActiveWindow(c *model.Coupon) error {
 			WithCode(errcode.CodeCouponInactive)
 	}
 
-	now := time.Now()
+	now := s.now()
 	if c.StartsAt != nil && now.Before(*c.StartsAt) {
 		return apierr.BadRequestError(fmt.Sprintf("Coupon '%s' has not started yet", c.Code)).
 			WithCode(errcode.CodeCouponNotStarted)
