@@ -2843,7 +2843,8 @@
         "values": "Values",
         "customValuePlaceholder": "Type a value and add it",
         "addValue": "Add value",
-        "combinations": "{count, plural, =1 {1 combination} other {# combinations}} will be created as variants."
+        "combinations": "{count, plural, =1 {1 combination} other {# combinations}} will be created as variants.",
+        "moreCombinations": "+{count} more"
       },
       "variants": {
         "title": "Variant pricing & stock",

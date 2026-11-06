@@ -2843,7 +2843,8 @@
         "values": "القيم",
         "customValuePlaceholder": "اكتب قيمة وأضفها",
         "addValue": "إضافة قيمة",
-        "combinations": "سيتم إنشاء {count, plural, =1 {تركيبة واحدة} other {عدد # تركيبات} } كمتغيرات."
+        "combinations": "{count, plural, =1 {تركيبة واحدة} =2 {تركيبتان} few {# تركيبات} other {# تركيبة}} سيتم إنشاؤها كمتغيرات.",
+        "moreCombinations": "+{count} أخرى"
       },
       "variants": {
         "title": "تسعير كل متغير ومخزونه",

@@ -872,9 +872,23 @@ export function VendorProductWizard() {
 								})}
 
 								{expandCombinations(variationRows).length > 0 && (
-									<p className="text-xs text-muted-foreground">
-										{t("wizard.attributes.combinations", { count: expandCombinations(variationRows).length })}
-									</p>
+									<div className="space-y-2">
+										<p className="text-xs text-muted-foreground">
+											{t("wizard.attributes.combinations", { count: expandCombinations(variationRows).length })}
+										</p>
+										<ul className="flex flex-wrap gap-1.5">
+											{expandCombinations(variationRows).slice(0, 24).map((combination) => (
+												<li key={combinationKey(combination)} className="rounded-full border border-border bg-secondary/40 px-2.5 py-1 text-xs text-foreground">
+													{formatCombination(combination)}
+												</li>
+											))}
+											{expandCombinations(variationRows).length > 24 && (
+												<li className="rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground">
+													{t("wizard.attributes.moreCombinations", { count: expandCombinations(variationRows).length - 24 })}
+												</li>
+											)}
+										</ul>
+									</div>
 								)}
 								{fieldError("variationAxes")}
 							</div>
