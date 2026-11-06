@@ -114,7 +114,7 @@ export function CountrySelect({
         <div className="absolute z-50 mt-1.5 w-full rounded-2xl bg-card border border-border shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           {/* Search Field */}
           <div className="p-2 border-b border-border/70 flex items-center gap-2 bg-secondary/30">
-            <Search className="size-4 text-muted-foreground shrink-0 ml-1.5 rtl:mr-1.5 rtl:ml-0" />
+            <Search className="size-4 text-muted-foreground shrink-0 ms-1.5" />
             <input
               ref={inputRef}
               type="text"

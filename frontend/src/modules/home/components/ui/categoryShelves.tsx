@@ -7,6 +7,7 @@ import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
 import { ErrorState } from "@/shared/ui/errorState";
 import { ProductsCard } from "@/shared/ui/productsCard";
 import { useTranslations, useLocale } from "next-intl";
+import { localizedName } from "@/shared/lib/localizedName";
 
 interface CategoryShelfProps {
   category: {
@@ -24,7 +25,10 @@ function CategoryShelf({ category, products }: CategoryShelfProps) {
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
-      const scrollAmount = direction === "left" ? -400 : 400;
+      // In RTL the horizontal scroll axis inverts, so flip the delta to keep
+      // "next" moving toward the end of the list.
+      const isRtl = locale === "ar";
+      const scrollAmount = (direction === "left" ? -400 : 400) * (isRtl ? -1 : 1);
       scrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
     }
   };
@@ -35,8 +39,8 @@ function CategoryShelf({ category, products }: CategoryShelfProps) {
     <div className="bg-card border border-border hover:border-accent-brand/40 rounded-2xl p-3.5 sm:p-5 relative group shadow-2xs transition-colors">
       {/* Header with Title and "Explore all" Link */}
       <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <div className="text-left rtl:text-right">
-          <h2 className="text-base sm:text-lg md:text-xl font-bold text-foreground">
+        <div className="text-start">
+          <h2 dir="auto" className="text-base sm:text-lg md:text-xl font-bold text-foreground">
             {category.name}
           </h2>
           <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
@@ -96,6 +100,7 @@ function CategoryShelf({ category, products }: CategoryShelfProps) {
 
 export default function CategoryShelves() {
   const { categories, products, loading, errorMsg } = useCatalogContext();
+  const locale = useLocale();
 
   // Create curated rows for each category that has items
   const shelves = useMemo(() => {
@@ -105,13 +110,14 @@ export default function CategoryShelves() {
 
     return categories
       .map((cat: any) => {
-        const catName = typeof cat.name === "object" ? (cat.name.en || cat.name.ar) : (cat.name || "—");
+        const catName = localizedName(cat.name, locale);
+        const enName = localizedName(cat.name, "en", "");
         const catProducts = products.filter(
           (p: any) =>
             p.categoryId === cat.id ||
             (typeof p.category === "string"
-              ? p.category.toLowerCase() === catName.toLowerCase()
-              : p.category?.name && String(p.category.name).toLowerCase() === catName.toLowerCase())
+              ? p.category.toLowerCase() === catName.toLowerCase() || p.category.toLowerCase() === enName.toLowerCase()
+              : p.category?.name && (String(p.category.name).toLowerCase() === catName.toLowerCase() || String(p.category.name).toLowerCase() === enName.toLowerCase()))
         );
         return {
           id: cat.id,
@@ -121,7 +127,7 @@ export default function CategoryShelves() {
         };
       })
       .filter((shelf: any) => shelf.products.length > 0);
-  }, [categories, products]);
+  }, [categories, products, locale]);
 
   if (loading && shelves.length === 0) {
     return (

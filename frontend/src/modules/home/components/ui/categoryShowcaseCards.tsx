@@ -7,6 +7,7 @@ import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
 import { ErrorState } from "@/shared/ui/errorState";
 import { useTranslations, useLocale } from "next-intl";
 import { normalizeMediaUrl } from "@/shared/lib/media";
+import { localizedName } from "@/shared/lib/localizedName";
 
 interface CategoryShowcaseCardProps {
   category: {
@@ -27,7 +28,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
   return (
     <div className="bg-card border border-border hover:border-accent-brand/50 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between shadow-2xs hover:shadow-sm transition-all">
       <div>
-        <h3 className="text-base sm:text-lg font-bold text-foreground mb-3 line-clamp-1 text-left rtl:text-right">
+        <h3 className="text-base sm:text-lg font-bold text-foreground mb-3 line-clamp-1 text-start">
           {category.name}
         </h3>
 
@@ -43,7 +44,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
                 <Link
                   key={productTarget}
                   href={`/products/${productTarget}`}
-                  className="group flex flex-col text-left rtl:text-right"
+                  className="group flex flex-col text-start"
                   title={productTitle}
                 >
                   <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-secondary/50 border border-border/40 group-hover:border-accent-brand/60 transition-colors">
@@ -67,7 +68,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
             return (
               <Link
                 href={`/products/${productTarget}`}
-                className="group block mb-3 text-left rtl:text-right"
+                className="group block mb-3 text-start"
                 title={productTitle}
               >
                 <div className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-secondary/50 border border-border/40 group-hover:border-accent-brand/60 transition-colors">
@@ -100,6 +101,7 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
 
 export default function CategoryShowcaseCards() {
   const { categories, products, loading, errorMsg } = useCatalogContext();
+  const locale = useLocale();
 
   const categoryGroups = useMemo(() => {
     if (!categories || categories.length === 0 || !products || products.length === 0) {
@@ -109,13 +111,14 @@ export default function CategoryShowcaseCards() {
     // Group products by category ID
     return categories
       .map((cat: any) => {
-        const catName = typeof cat.name === "object" ? (cat.name.en || cat.name.ar) : (cat.name || "—");
+        const catName = localizedName(cat.name, locale);
+        const enName = localizedName(cat.name, "en", "");
         const catProducts = products.filter(
           (p: any) =>
             p.categoryId === cat.id ||
             (typeof p.category === "string"
-              ? p.category.toLowerCase() === catName.toLowerCase()
-              : p.category?.name && String(p.category.name).toLowerCase() === catName.toLowerCase())
+              ? p.category.toLowerCase() === catName.toLowerCase() || p.category.toLowerCase() === enName.toLowerCase()
+              : p.category?.name && (String(p.category.name).toLowerCase() === catName.toLowerCase() || String(p.category.name).toLowerCase() === enName.toLowerCase()))
         );
         return {
           id: cat.id,
@@ -126,7 +129,7 @@ export default function CategoryShowcaseCards() {
       })
       .filter((group: any) => group.products.length > 0)
       .slice(0, 6);
-  }, [categories, products]);
+  }, [categories, products, locale]);
 
   if (loading && categoryGroups.length === 0) {
     return (

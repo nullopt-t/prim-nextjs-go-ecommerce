@@ -150,7 +150,7 @@ export function ProductsCard({
 
           {/* Discount Badge */}
           {cardDetails.discountPercentage && (
-            <span className="absolute top-2.5 ltr:left-2.5 rtl:right-2.5 bg-[#d4183d] text-white rounded-md px-1.5 py-0.5 text-[10px] font-bold shadow-xs">
+            <span className="absolute top-2.5 start-2.5 bg-[#d4183d] text-white rounded-md px-1.5 py-0.5 text-[10px] font-bold shadow-xs">
               {cardDetails.discountPercentage}
             </span>
           )}
@@ -161,7 +161,7 @@ export function ProductsCard({
               type="button"
               onClick={handleWishlistClick}
               aria-label={tCommon("header.wishlist")}
-              className="absolute top-2.5 ltr:right-2.5 rtl:left-2.5 flex items-center justify-center rounded-full size-7.5 transition-all shadow-xs cursor-pointer bg-accent-brand text-white hover:bg-accent-brand/90 scale-105"
+              className="absolute top-2.5 end-2.5 flex items-center justify-center rounded-full size-7.5 transition-all shadow-xs cursor-pointer bg-accent-brand text-white hover:bg-accent-brand/90 scale-105"
             >
               <Heart className="size-3.5 fill-current" />
             </button>
@@ -174,7 +174,7 @@ export function ProductsCard({
             href={productHref}
             className="block group/title"
           >
-            <h4 className="font-semibold text-xs sm:text-sm text-foreground group-hover/title:text-accent-brand transition-colors line-clamp-1">
+            <h4 dir="auto" className="font-semibold text-xs sm:text-sm text-foreground group-hover/title:text-accent-brand transition-colors line-clamp-1">
               {productName}
             </h4>
           </Link>

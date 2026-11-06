@@ -224,7 +224,7 @@ export default function OrderDetailsContent() {
             href="/user/orders"
             className="text-xs text-muted-foreground hover:text-accent-brand transition-colors mb-2 inline-flex items-center gap-1 group"
           >
-            <span className="rtl:rotate-180 group-hover:-translate-x-0.5 transition-transform">←</span>
+            <span className="rtl:rotate-180 group-hover:-translate-x-0.5 rtl:group-hover:translate-x-0.5 transition-transform" aria-hidden>←</span>
             <span>{t("backToOrders")}</span>
           </Link>
           <div className="flex flex-wrap items-center gap-3 mt-1">

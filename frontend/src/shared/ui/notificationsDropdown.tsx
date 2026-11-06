@@ -121,7 +121,7 @@ export function NotificationsDropdown() {
       {isOpen && (
         <div
           className={`absolute mt-2 w-80 sm:w-96 rounded-2xl bg-card border border-border/80 shadow-2xl z-50 overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150 ${
-            locale === "ar" ? "left-0 origin-top-left" : "right-0 origin-top-right"
+            "end-0 origin-top-end"
           }`}
         >
           {/* Header */}

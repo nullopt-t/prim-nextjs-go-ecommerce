@@ -100,11 +100,11 @@ export default function SideBar() {
       )}
 
       {/* Desktop Sidebar */}
-      <div className="hidden md:block p-2.5 lg:p-5 ltr:border-r rtl:border-l border-border min-h-full">
+      <div className="hidden md:block p-2.5 lg:p-5 border-e border-border min-h-full">
         <button
           type="button"
           aria-label={tProducts("sideBar.toggle")}
-          className="block ltr:ml-auto rtl:mr-auto text-muted-foreground mb-5 hover:text-accent-brand cursor-pointer"
+          className="block ms-auto text-muted-foreground mb-5 hover:text-accent-brand cursor-pointer"
           onClick={() => setIsOpenDesktop((prev) => !prev)}
         >
           {isOpenDesktop ? <PanelLeftClose className="size-5 rtl:rotate-180" /> : <PanelLeftOpen className="size-5 rtl:rotate-180" />}

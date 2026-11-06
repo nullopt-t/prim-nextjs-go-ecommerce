@@ -69,7 +69,7 @@ export default function Coupon() {
         <>
           <div className="flex gap-4">
             <div className="flex-1 bg-card border border-border focus-within:border-accent-brand rounded-xl transition-colors overflow-hidden flex items-center px-4 h-12 shadow-xs">
-              <Tag className="size-4 text-muted-foreground ltr:mr-2.5 rtl:ml-2.5 shrink-0" />
+              <Tag className="size-4 text-muted-foreground me-2.5 shrink-0" />
               <input
                 type="text"
                 placeholder={t("coupon.placeholder", { defaultMessage: "Enter promo code" })}

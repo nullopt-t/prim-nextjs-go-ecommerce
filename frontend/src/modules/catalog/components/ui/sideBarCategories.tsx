@@ -5,11 +5,14 @@ import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import SideBarTitle from "@/modules/catalog/components/ui/sideBarTitle";
 import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
+import { localizedName } from "@/shared/lib/localizedName";
+import { useLocale } from "next-intl";
 import { Link } from "@/shared/i18n/navigation";
 import { useTranslations } from "next-intl";
 
 export default function SideBarCategories() {
   const t = useTranslations("common.filters");
+  const locale = useLocale();
   const catRef = useRef<HTMLUListElement>(null);
   const [height, setHeight] = useState<number | undefined>(undefined);
   const [isOpen, setIsOpen] = useState(true);
@@ -56,10 +59,8 @@ export default function SideBarCategories() {
             </Link>
           </li>
           {categories.map((category: { id: string; name: string | { en?: string; ar?: string }; slug?: string }) => {
-            const catName = typeof category.name === "object"
-              ? (category.name.en || category.name.ar || "")
-              : (category.name || "");
-            const catSlug = category.slug || catName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+            const catName = localizedName(category.name, locale, "");
+            const catSlug = category.slug || category.id;
 
             const categoryId = category.id;
             const isActive = currentCategory === categoryId || currentCategory === catSlug;

@@ -26,7 +26,7 @@ export default function SideBarRatings() {
               type="button"
               key={value.id}
               onClick={() => setFilter("rating", isSelected ? null : value.stars)}
-              className={`flex gap-2.5 items-center group cursor-pointer ltr:text-left rtl:text-right py-1 px-1.5 rounded-lg transition-colors ${
+              className={`flex gap-2.5 items-center group cursor-pointer text-start py-1 px-1.5 rounded-lg transition-colors ${
                 isSelected ? "bg-accent-brand/10 text-accent-brand font-semibold" : "hover:bg-secondary"
               }`}
             >

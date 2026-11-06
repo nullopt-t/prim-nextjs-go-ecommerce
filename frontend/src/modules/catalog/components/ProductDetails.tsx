@@ -147,7 +147,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
             avatar: isOwn ? null : r.user?.avatar || null,
             rating: Number(r.rating) || 0,
             date: r.createdAt
-              ? new Date(r.createdAt).toLocaleDateString("en-US", {
+              ? new Date(r.createdAt).toLocaleDateString(locale, {
                   year: "numeric",
                   month: "long",
                   day: "numeric",
@@ -418,7 +418,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
         title: newReviewData.title,
         content: newReviewData.content,
         date: tProducts("details.reviewedOn", {
-          date: new Date().toLocaleDateString("en-US", {
+          date: new Date().toLocaleDateString(locale, {
             year: "numeric",
             month: "long",
             day: "numeric",

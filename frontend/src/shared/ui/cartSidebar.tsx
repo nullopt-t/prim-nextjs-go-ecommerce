@@ -45,10 +45,10 @@ export function CartSidebar() {
 
       {/* Sidebar Drawer */}
       <div
-        className={`fixed top-0 bottom-0 h-[100dvh] z-[100] w-full sm:w-[420px] max-w-full bg-background border-l border-border shadow-2xl transition-transform duration-300 ease-out flex flex-col ltr:right-0 rtl:left-0 rtl:border-r rtl:border-l-0 ${
+        className={`fixed top-0 bottom-0 h-[100dvh] z-[100] w-full sm:w-[420px] max-w-full bg-background border-s border-border shadow-2xl transition-transform duration-300 ease-out flex flex-col end-0 ${
           isCartOpen
             ? "translate-x-0"
-            : "ltr:translate-x-full rtl:-translate-x-full"
+            : "translate-x-full rtl:-translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-border bg-card/60 backdrop-blur-sm">

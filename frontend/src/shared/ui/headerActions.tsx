@@ -141,7 +141,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 				{isMenuOpen && (
 					<div
 						className={`absolute mt-2 w-64 rounded-2xl bg-card border border-border/80 shadow-xl py-2 z-50 animate-in fade-in-0 zoom-in-95 duration-150 ${
-							locale === "ar" ? "left-0 origin-top-left" : "right-0 origin-top-right"
+							"end-0 origin-top-end"
 						}`}
 					>
 						{/* User Info Header or Guest Header */}

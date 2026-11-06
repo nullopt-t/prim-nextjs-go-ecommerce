@@ -367,7 +367,7 @@ export function Checkout() {
 								className="flex-1 py-3.5 px-6 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm flex items-center justify-center gap-2"
 							>
 								<span>{t("success.trackOrders")}</span>
-								<ArrowRight className="size-4" />
+								<ArrowRight className="size-4 rtl:rotate-180" />
 							</button>
 							<button
 								onClick={() => router.push("/products")}
@@ -397,7 +397,7 @@ export function Checkout() {
 							className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm"
 						>
 							<span>{t("empty.discover")}</span>
-							<ArrowRight className="size-4" />
+							<ArrowRight className="size-4 rtl:rotate-180" />
 						</button>
 					</div>
 				</div>
@@ -419,10 +419,10 @@ export function Checkout() {
 						<nav aria-label={t("steps.progressAria")}>
 							<ol className="flex items-center justify-between relative">
 								{/* Connecting background line */}
-								<div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-border -z-10" />
+								<div className="absolute start-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-border -z-10" />
 								{/* Active progress colored line */}
 								<div
-									className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-accent-brand transition-all duration-300 -z-10"
+									className="absolute start-0 top-1/2 -translate-y-1/2 h-0.5 bg-accent-brand transition-all duration-300 -z-10"
 									style={{
 										width: currentStep === 1 ? "0%" : currentStep === 2 ? "50%" : "100%",
 									}}
@@ -808,7 +808,7 @@ export function Checkout() {
 											onClick={() => router.push("/cart")}
 											className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-xl hover:bg-secondary"
 										>
-											<ArrowLeft className="size-4" />
+											<ArrowLeft className="size-4 rtl:rotate-180" />
 											<span>{t("actions.returnToCart")}</span>
 										</button>
 										<button
@@ -817,7 +817,7 @@ export function Checkout() {
 											className="flex items-center gap-2 px-6 py-3 bg-accent-brand text-white font-semibold text-sm rounded-xl shadow-sm hover:bg-accent-brand/90 transition-all"
 										>
 											<span>{t("actions.continueToDelivery")}</span>
-											<ArrowRight className="size-4" />
+											<ArrowRight className="size-4 rtl:rotate-180" />
 										</button>
 									</div>
 								</motion.div>
@@ -955,7 +955,7 @@ export function Checkout() {
 												onClick={() => setCurrentStep(1)}
 												className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-xl hover:bg-secondary"
 											>
-												<ArrowLeft className="size-4" />
+												<ArrowLeft className="size-4 rtl:rotate-180" />
 												<span>{t("actions.backToAddress")}</span>
 											</button>
 											<button
@@ -964,7 +964,7 @@ export function Checkout() {
 												className="flex items-center gap-2 px-6 py-3 bg-accent-brand text-white font-semibold text-sm rounded-xl shadow-sm hover:bg-accent-brand/90 transition-all"
 											>
 												<span>{t("actions.continueToPayment")}</span>
-												<ArrowRight className="size-4" />
+												<ArrowRight className="size-4 rtl:rotate-180" />
 											</button>
 										</div>
 									</div>
@@ -1085,7 +1085,7 @@ export function Checkout() {
 												onClick={() => setCurrentStep(2)}
 												className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-3 py-2 rounded-xl hover:bg-secondary"
 											>
-												<ArrowLeft className="size-4" />
+												<ArrowLeft className="size-4 rtl:rotate-180" />
 												<span>{t("actions.backToDelivery")}</span>
 											</button>
 											<button
@@ -1172,7 +1172,7 @@ export function Checkout() {
 								) : (
 									<div className="flex gap-2">
 										<div className="flex-1 bg-secondary/30 border border-border focus-within:border-accent-brand rounded-xl overflow-hidden flex items-center px-3 h-9 transition-colors">
-											<Tag className="size-3.5 text-muted-foreground shrink-0 mr-2" />
+											<Tag className="size-3.5 text-muted-foreground shrink-0 me-2" />
 											<input
 												type="text"
 												placeholder={t("summary.promoPlaceholder")}
@@ -1252,14 +1252,14 @@ export function Checkout() {
 										className="w-full py-3.5 px-6 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2"
 									>
 										<span>{t("actions.continueToCheckout")}</span>
-										<ArrowRight className="size-4" />
+										<ArrowRight className="size-4 rtl:rotate-180" />
 									</button>
 									<button
 										type="button"
 										onClick={() => router.push("/cart")}
 										className="w-full py-2.5 px-6 rounded-xl text-muted-foreground hover:text-foreground font-medium text-xs transition-colors flex items-center justify-center gap-2"
 									>
-										<ArrowLeft className="size-3.5" />
+										<ArrowLeft className="size-3.5 rtl:rotate-180" />
 										<span>{t("actions.returnToCart")}</span>
 									</button>
 								</div>

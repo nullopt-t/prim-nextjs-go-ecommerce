@@ -4,7 +4,8 @@ import SideBar from "@/modules/catalog/components/ui/sideBar";
 import Content from "@/modules/catalog/components/ui/content";
 import { Title } from "@/shared/ui/title";
 import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { localizedName } from "@/shared/lib/localizedName";
 import type { Category, ProductDetailsEntity } from "@/modules/catalog/types";
 
 import { useSearchParams } from "next/navigation";
@@ -16,6 +17,7 @@ interface ProductsLayoutProps {
 
 export default function ProductsLayout({ category = "All", products }: ProductsLayoutProps) {
   const t = useTranslations("products");
+  const locale = useLocale();
   const { categories } = useCatalogContext();
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("q");
@@ -30,8 +32,7 @@ export default function ProductsLayout({ category = "All", products }: ProductsL
     const matchedCategory = categories.find((c: Category) => c.id === category || c.slug === category);
     if (matchedCategory) {
       const name = matchedCategory.name as string | { en?: string; ar?: string };
-      displayTitle =
-        typeof name === "object" ? (name.en || name.ar || category) : (name || category);
+      displayTitle = localizedName(name, locale, category);
     } else {
       displayTitle = category.replace(/-/g, " ");
     }
