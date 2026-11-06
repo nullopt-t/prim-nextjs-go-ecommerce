@@ -13,6 +13,8 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 interface ProductsLayoutProps {
   category?: string;
   products?: ProductDetailsEntity[];
+  /** Overrides the computed heading (e.g. brand pages). */
+  heading?: string;
   page?: number;
   totalItems?: number;
   totalPages?: number;
@@ -21,6 +23,7 @@ interface ProductsLayoutProps {
 export default function ProductsLayout({
   category = "All",
   products,
+  heading,
   page = 1,
   totalItems,
   totalPages = 1,
@@ -55,6 +58,11 @@ export default function ProductsLayout({
       displayTitle = category.replace(/-/g, " ");
     }
     displaySubtitle = t("layout.showingIn", { category: displayTitle });
+  }
+
+  if (heading) {
+    displayTitle = heading;
+    displaySubtitle = t("layout.showingAll");
   }
   return (
     <div>

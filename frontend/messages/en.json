@@ -1753,6 +1753,10 @@
       "wishlist": {
         "description": "View and manage your saved items",
         "title": "Your Wishlist | PRIM"
+      },
+      "brands": {
+        "description": "Browse every brand in the store catalog",
+        "title": "Brands"
       }
     }
   },
@@ -2266,6 +2270,13 @@
         "standardTitle": "Standard Shipping",
         "title": "Shipping Information"
       }
+    },
+    "brands": {
+      "title": "Brands",
+      "description": "Shop by the brands you trust.",
+      "emptyTitle": "No brands yet",
+      "emptyDescription": "Brands will appear here once they are added to the catalog.",
+      "productsCount": "{count} products"
     }
   },
   "userNav": {
