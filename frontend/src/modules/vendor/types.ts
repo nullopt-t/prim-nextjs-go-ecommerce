@@ -158,7 +158,7 @@ export interface CreateVendorVariantPayload {
   currency?: string;
   attributes?: Record<string, unknown>;
   isDefault?: boolean;
-  thumbnailObjectId?: string;
+  thumbnailUrl?: string;
 }
 
 export interface UpdateVendorVariantPayload {
@@ -169,20 +169,13 @@ export interface UpdateVendorVariantPayload {
   currency?: string;
   attributes?: Record<string, unknown>;
   isDefault?: boolean;
-  thumbnailObjectId?: string;
+  thumbnailUrl?: string;
 }
 
 export type StockReason = "restock" | "return" | "adjustment";
 
 export interface VendorMediaUpload {
-  id: string;
-  bucket: string;
-  objectKey: string;
-  contentType: string;
-  fileSize: number;
-  status: string;
   url: string;
-  createdAt: string;
 }
 export interface AdjustStockPayload {
   quantity: number;

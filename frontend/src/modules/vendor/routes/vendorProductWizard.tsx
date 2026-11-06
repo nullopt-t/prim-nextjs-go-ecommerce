@@ -118,7 +118,6 @@ interface VariantOverride {
 	crossesOutPrice?: string;
 	sku?: string;
 	stock?: string;
-	thumbnailObjectId?: string;
 	thumbnailUrl?: string;
 }
 
@@ -405,7 +404,7 @@ export function VendorProductWizard() {
 			const uploaded = await vendorService.uploadMedia(file);
 			setVariantOverrides((current) => ({
 				...current,
-				[key]: { ...(current[key] ?? {}), thumbnailObjectId: uploaded.data.id, thumbnailUrl: uploaded.data.url },
+				[key]: { ...(current[key] ?? {}), thumbnailUrl: uploaded.data.url },
 			}));
 		} catch (error) {
 			notify.error(apiErrorMessage(error, t("products.saveFailed")));
@@ -485,7 +484,7 @@ export function VendorProductWizard() {
 							currency: formData.currency.trim() || "EGP",
 							attributes: combination,
 							isDefault: index === 0,
-							thumbnailObjectId: override?.thumbnailObjectId,
+							thumbnailUrl: override?.thumbnailUrl,
 						});
 						if (variantStock !== undefined && Number.isFinite(variantStock) && variantStock !== 0) {
 							await vendorService.adjustStock(variant.data.id, { quantity: variantStock, reason: "restock" });
@@ -1032,7 +1031,7 @@ export function VendorProductWizard() {
 													{override.thumbnailUrl && (
 														<button
 															type="button"
-															onClick={() => setOverride({ thumbnailObjectId: undefined, thumbnailUrl: undefined })}
+															onClick={() => setOverride({ thumbnailUrl: undefined })}
 															className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive"
 														>
 															{t("wizard.variants.removeThumbnail")}
