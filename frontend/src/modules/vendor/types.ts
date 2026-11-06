@@ -174,6 +174,16 @@ export interface UpdateVendorVariantPayload {
 
 export type StockReason = "restock" | "return" | "adjustment";
 
+export interface VendorMediaUpload {
+  id: string;
+  bucket: string;
+  objectKey: string;
+  contentType: string;
+  fileSize: number;
+  status: string;
+  url: string;
+  createdAt: string;
+}
 export interface AdjustStockPayload {
   quantity: number;
   reason: StockReason;

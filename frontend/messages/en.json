@@ -2847,7 +2847,10 @@
       },
       "variants": {
         "title": "Variant pricing & stock",
-        "subtitle": "Set a price and stock for each combination. Empty prices inherit the default price above; empty stock adds no initial stock."
+        "subtitle": "Set a price and stock for each combination. Empty prices inherit the default price above; empty stock adds no initial stock.",
+        "thumbnail": "Thumbnail",
+        "chooseThumbnail": "Upload thumbnail",
+        "removeThumbnail": "Remove thumbnail"
       },
       "readinessTitle": "Listing readiness",
       "readinessPercent": "{percent}% ready",

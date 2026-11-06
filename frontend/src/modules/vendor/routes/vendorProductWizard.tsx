@@ -118,6 +118,8 @@ interface VariantOverride {
 	crossesOutPrice?: string;
 	sku?: string;
 	stock?: string;
+	thumbnailObjectId?: string;
+	thumbnailUrl?: string;
 }
 
 export function VendorProductWizard() {
@@ -134,6 +136,7 @@ export function VendorProductWizard() {
 	const [attributesError, setAttributesError] = useState<string | null>(null);
 	const [variationRows, setVariationRows] = useState<VariationRow[]>([]);
 	const [variantOverrides, setVariantOverrides] = useState<Record<string, VariantOverride>>({});
+	const [uploadingThumbnailKey, setUploadingThumbnailKey] = useState<string | null>(null);
 	const [customValues, setCustomValues] = useState<Record<number, string>>({});
 	const [loadingCatalog, setLoadingCatalog] = useState(true);
 	const [loadError, setLoadError] = useState<Error | null>(null);
@@ -395,6 +398,22 @@ export function VendorProductWizard() {
 		if (step > 0) setStep((step - 1) as WizardStep);
 	};
 
+	const uploadVariantThumbnail = async (key: string, file: File | undefined) => {
+		if (!file) return;
+		setUploadingThumbnailKey(key);
+		try {
+			const uploaded = await vendorService.uploadMedia(file);
+			setVariantOverrides((current) => ({
+				...current,
+				[key]: { ...(current[key] ?? {}), thumbnailObjectId: uploaded.data.id, thumbnailUrl: uploaded.data.url },
+			}));
+		} catch (error) {
+			notify.error(apiErrorMessage(error, t("products.saveFailed")));
+		} finally {
+			setUploadingThumbnailKey(null);
+		}
+	};
+
 	const finish = async (shouldPublish: boolean) => {
 		if (formData.productType === "variable") {
 			setField("variationAxes", variationRows.map((row) => row.key).filter(Boolean).join(", "));
@@ -466,6 +485,7 @@ export function VendorProductWizard() {
 							currency: formData.currency.trim() || "EGP",
 							attributes: combination,
 							isDefault: index === 0,
+							thumbnailObjectId: override?.thumbnailObjectId,
 						});
 						if (variantStock !== undefined && Number.isFinite(variantStock) && variantStock !== 0) {
 							await vendorService.adjustStock(variant.data.id, { quantity: variantStock, reason: "restock" });
@@ -984,6 +1004,40 @@ export function VendorProductWizard() {
 														onChange={(e) => setOverride({ stock: e.target.value })}
 														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
 													/>
+												</div>
+											</div>
+											<div className="mt-3 flex items-center gap-3">
+												{override.thumbnailUrl ? (
+													<img src={override.thumbnailUrl} alt={formatCombination(combination)} className="size-14 rounded-md border border-border object-cover" />
+												) : (
+													<div className="flex size-14 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">
+														{t("wizard.variants.thumbnail")}
+													</div>
+												)}
+												<div className="flex flex-wrap items-center gap-2">
+													<label className="inline-flex cursor-pointer items-center rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-secondary">
+														{uploadingThumbnailKey === key ? <Loader2 className="size-3.5 animate-spin" /> : null}
+														{t("wizard.variants.chooseThumbnail")}
+														<input
+															type="file"
+															accept="image/*"
+															disabled={uploadingThumbnailKey === key}
+															className="sr-only"
+															onChange={(e) => {
+																void uploadVariantThumbnail(key, e.target.files?.[0]);
+																e.target.value = "";
+															}}
+														/>
+													</label>
+													{override.thumbnailUrl && (
+														<button
+															type="button"
+															onClick={() => setOverride({ thumbnailObjectId: undefined, thumbnailUrl: undefined })}
+															className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive"
+														>
+															{t("wizard.variants.removeThumbnail")}
+														</button>
+													)}
 												</div>
 											</div>
 										</div>

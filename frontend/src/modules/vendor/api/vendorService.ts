@@ -12,6 +12,7 @@ import type {
   UpdateVendorVariantPayload,
   Vendor,
   VendorDashboard,
+  VendorMediaUpload,
   VendorOrder,
   VendorOrderItem,
   VendorPayout,
@@ -94,6 +95,11 @@ export const vendorService = {
     api.delete<ApiMessageResponse>(`/api/v1/vendor/variants/${variantId}`),
   adjustStock: (variantId: string, payload: AdjustStockPayload) =>
     api.post<ApiResponse<VendorStock>, AdjustStockPayload>(`/api/v1/vendor/variants/${variantId}/stock`, payload),
+  uploadMedia: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.upload<ApiResponse<VendorMediaUpload>>("/api/v1/vendor/media", formData);
+  },
 };
 
 export type {
@@ -108,6 +114,7 @@ export type {
   UpdateVendorVariantPayload,
   Vendor,
   VendorDashboard,
+  VendorMediaUpload,
   VendorOrder,
   VendorOrderItem,
   VendorPayout,
