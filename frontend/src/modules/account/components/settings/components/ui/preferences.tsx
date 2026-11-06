@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Toggle } from "@/shared/ui/Toggle";
 import { useTheme } from "@/shared/theme";
 import { useRouter, usePathname } from "@/shared/i18n/navigation";
@@ -30,6 +30,17 @@ function PreferenceRow({ label, description, right }: PreferenceRowProps) {
 export default function Preferences() {
   const { theme, toggle } = useTheme();
   const [emailNotification, setEmailNotification] = useState(false);
+
+  // Notification preference is stored locally (no account API yet) so the
+  // choice survives reloads instead of resetting every visit.
+  useEffect(() => {
+    setEmailNotification(localStorage.getItem("email_notifications") === "true");
+  }, []);
+
+  const handleEmailNotification = (value: boolean) => {
+    setEmailNotification(value);
+    localStorage.setItem("email_notifications", String(value));
+  };
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -94,7 +105,7 @@ export default function Preferences() {
         right={
           <Toggle
             isEnabled={emailNotification}
-            onChange={() => setEmailNotification(!emailNotification)}
+            onChange={() => handleEmailNotification(!emailNotification)}
           />
         }
       />

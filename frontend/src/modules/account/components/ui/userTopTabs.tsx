@@ -11,6 +11,7 @@ export const accountTabKeys = [
   { id: "address", key: "addresses", path: "/user/address" },
   { id: "payment", key: "payment", path: "/user/payment" },
   { id: "reviews", key: "reviews", path: "/user/reviews" },
+  { id: "wishlist", key: "wishlist", path: "/user/wishlist" },
   { id: "settings", key: "settings", path: "/user/settings" },
 ] as const;
 

@@ -2183,7 +2183,8 @@
       "phoneNotice": "Contact customer support to update your verified phone number.",
       "saveChanges": "Save Changes",
       "subtitle": "Your registered account identity and contact details.",
-      "title": "Personal Information"
+      "title": "Personal Information",
+      "saved": "Profile saved."
     },
     "preferences": {
       "darkMode": "Dark Mode",
@@ -2244,7 +2245,7 @@
           "question": "What payment methods do you accept?"
         },
         "title": "Frequently Asked Questions",
-      "contactCta": "Still need help? Contact support.",
+        "contactCta": "Still need help? Contact support.",
         "trackOrder": {
           "answer": "Once your order has shipped, you will receive an email containing a tracking number and link to track your package in real-time.",
           "question": "How do I track my order?"
@@ -2262,7 +2263,7 @@
         "refundsDescription": "Once we receive your item, we will inspect it and notify you that we have received your returned item. We will immediately notify you on the status of your refund after inspecting the item. If your return is approved, we will initiate a refund via the original payment method.",
         "refundsTitle": "Refunds",
         "title": "Returns & Exchanges",
-      "contactCta": "Contact us to start a return."
+        "contactCta": "Contact us to start a return."
       },
       "shipping": {
         "expressDescription": "Need it faster? We offer express delivery at checkout. Express orders are prioritized and typically arrive within 1 to 2 business days.",
@@ -2271,7 +2272,7 @@
         "standardDescription": "Standard delivery typically takes {days}. Orders over {threshold} ship free; otherwise a flat rate of {rate} applies.",
         "standardTitle": "Standard Shipping",
         "title": "Shipping Information",
-      "contactCta": "Contact us with any shipping question."
+        "contactCta": "Contact us with any shipping question."
       }
     },
     "brands": {
@@ -2315,7 +2316,8 @@
     "subtitle": "Manage your product reviews.",
     "title": "My Reviews",
     "toastDeleted": "Review deleted.",
-    "toastFailed": "Failed to delete review."
+    "toastFailed": "Failed to delete review.",
+    "viewProduct": "View product"
   },
   "vendor": {
     "actions": {
@@ -2684,6 +2686,7 @@
       "removeFailed": "Failed to remove from wishlist",
       "removed": "Removed from wishlist",
       "signInRequired": "Please sign in to save items to your wishlist"
-    }
+    },
+    "cancel": "Cancel"
   }
 }

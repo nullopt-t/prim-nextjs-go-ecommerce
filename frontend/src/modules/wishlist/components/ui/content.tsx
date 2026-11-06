@@ -10,6 +10,9 @@ import { notify } from "@/shared/lib/notify";
 import { normalizeProduct } from "@/modules/catalog/model/catalogContext";
 import { CardDetails } from "@/shared/ui/productsCard";
 import { Link } from "@/shared/i18n/navigation";
+import { ConfirmDialog } from "@/shared/ui/confirmDialog";
+import { useCurrency } from "@/modules/settings/model/publicSettingsContext";
+import { formatMoney } from "@/shared/lib/money";
 
 interface WishlistItemView {
   id: string;
@@ -29,6 +32,8 @@ export default function WishlistContent() {
   const { isAuthenticated } = useAuthContext();
   const { wishlistItems, loading, clearWishlist, removeFromWishlist, removeWishlistItem } = useWishlist();
   const { addToCart } = useCartContext();
+  const currency = useCurrency();
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   const [isAddingAll, setIsAddingAll] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -49,7 +54,7 @@ export default function WishlistContent() {
           variantId: item.variantId || item.defaultVariantId,
           slug: item.slug,
           productName: item.product,
-          productPrice: typeof item.price === "number" ? `EGP ${item.price.toFixed(2)}` : String(item.price),
+          productPrice: typeof item.price === "number" ? formatMoney(item.price, currency) : String(item.price),
           img: typeof item.img === "string" ? item.img : "/placeholder-product.png",
           quantity: 1,
         });
@@ -67,9 +72,7 @@ export default function WishlistContent() {
 
   const handleClearAll = async () => {
     if (items.length === 0 || isClearing) return;
-    if (typeof window !== "undefined" && !window.confirm(t("clearConfirm"))) {
-      return;
-    }
+    setConfirmClearOpen(false);
     setIsClearing(true);
     try {
       await clearWishlist();
@@ -90,7 +93,6 @@ export default function WishlistContent() {
       } else {
         await removeFromWishlist(String(item.productId || item.id), item.variantId, productName);
       }
-      notify.success(t("toast.itemRemoved", { name: productName }));
     } catch {
       // errors handled inside hook
     }
@@ -121,7 +123,7 @@ export default function WishlistContent() {
             <>
               <button
                 type="button"
-                onClick={handleClearAll}
+                onClick={() => setConfirmClearOpen(true)}
                 disabled={isClearing}
                 className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-destructive hover:bg-destructive/10 border border-destructive/20 transition-colors disabled:opacity-50 shadow-2xs"
               >
@@ -194,6 +196,16 @@ export default function WishlistContent() {
           onRemoveItem={handleRemove as (item: CardDetails & { slug?: string }) => void}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={confirmClearOpen}
+        title={t("clearConfirm")}
+        confirmLabel={t("clearAll")}
+        cancelLabel={t("cancel")}
+        loading={isClearing}
+        onConfirm={handleClearAll}
+        onClose={() => setConfirmClearOpen(false)}
+      />
     </div>
   );
 }

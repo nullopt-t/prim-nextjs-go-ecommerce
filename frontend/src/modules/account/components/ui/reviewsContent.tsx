@@ -84,6 +84,14 @@ function ReviewCard({
           {review.title && (
             <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{review.title}</p>
           )}
+          {review.productId && (
+            <Link
+              href={`/products/${review.productId}`}
+              className="text-[11px] font-medium text-accent-brand hover:underline"
+            >
+              {t("viewProduct")}
+            </Link>
+          )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${badgeCfg.className}`}>

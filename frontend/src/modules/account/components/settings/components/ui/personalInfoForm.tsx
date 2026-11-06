@@ -30,7 +30,7 @@ export default function PersonalInfoForm() {
         phone: phone.trim() || undefined,
       });
       await refreshUser();
-      notify.success(t("saveChanges"));
+      notify.success(t("saved"));
     } catch (err) {
       notify.error(apiErrorMessage(err, "Failed to update profile"));
     } finally {

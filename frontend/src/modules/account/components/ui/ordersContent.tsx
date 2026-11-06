@@ -151,18 +151,15 @@ function OrderCard({ order }: { order: Order }) {
 
   return (
     <div className="group relative bg-secondary/30 hover:bg-secondary/50 border border-border/50 hover:border-accent-brand/40 rounded-xl p-3.5 sm:p-4 shadow-2xs transition-all duration-200">
-      {/* Background card link to order details */}
-      <Link
-        href={`/user/orders/${order.id}`}
-        className="absolute inset-0 z-0 rounded-xl"
-        aria-label={`View order ${shortOrderId}`}
-      />
 
-      <div className="relative z-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-border/50 pointer-events-none">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-border/50">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono font-bold text-xs sm:text-sm text-foreground group-hover:text-accent-brand transition-colors">
+          <Link
+            href={`/user/orders/${order.id}`}
+            className="font-mono font-bold text-xs sm:text-sm text-foreground group-hover:text-accent-brand transition-colors"
+          >
             #{shortOrderId}
-          </span>
+          </Link>
           <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${statusCfg.badgeClass}`}>
             {t(`status.${order.status}`)}
           </span>
@@ -185,31 +182,30 @@ function OrderCard({ order }: { order: Order }) {
         </div>
       </div>
 
-      <div className="relative z-1 pt-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="pt-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Item image thumbnails / icons */}
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex items-center -space-x-2 rtl:space-x-reverse shrink-0">
             {itemSnapshots.slice(0, 4).map((it, idx) => {
               const thumbnailElement = (
                 <div
-                  className="size-11 rounded-lg bg-background border border-border/60 overflow-hidden shrink-0 flex items-center justify-center p-1 shadow-2xs hover:scale-105 transition-transform duration-200 cursor-pointer"
+                  className="size-11 rounded-lg bg-background border border-border/60 overflow-hidden shrink-0 flex items-center justify-center p-1 shadow-2xs"
                   title={it.title}
                 >
-                  <img
-                    src={it.img}
-                    alt={it.title}
-                    className="w-full h-full object-contain"
-                  />
+                  {it.img ? (
+                    <img
+                      src={it.img}
+                      alt={it.title}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <span className="sr-only">{it.title}</span>
+                  )}
                 </div>
               );
 
               return it.productHref ? (
-                <Link
-                  key={idx}
-                  href={it.productHref}
-                  className="relative z-10 shrink-0"
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <Link key={idx} href={it.productHref} className="shrink-0">
                   {thumbnailElement}
                 </Link>
               ) : (
@@ -226,7 +222,7 @@ function OrderCard({ order }: { order: Order }) {
           </div>
 
           <div className="flex flex-col min-w-0 text-xs">
-            <span className="font-semibold text-foreground text-xs truncate pointer-events-none">
+            <span className="font-semibold text-foreground text-xs truncate">
               {t("itemCount", { count: itemSnapshots.length })}
             </span>
             <div className="text-[11px] text-muted-foreground truncate max-w-md flex flex-wrap items-center gap-1 mt-0.5">
@@ -235,8 +231,7 @@ function OrderCard({ order }: { order: Order }) {
                   {it.productHref ? (
                     <Link
                       href={it.productHref}
-                      className="relative z-10 hover:text-accent-brand hover:underline transition-colors"
-                      onClick={(e) => e.stopPropagation()}
+                      className="hover:text-accent-brand hover:underline transition-colors"
                     >
                       {it.title}
                     </Link>
@@ -251,7 +246,7 @@ function OrderCard({ order }: { order: Order }) {
         </div>
 
         {destinationAddress && (
-          <div className="text-[11px] text-muted-foreground truncate max-w-xs self-start md:self-center pointer-events-none">
+          <div className="text-[11px] text-muted-foreground truncate max-w-xs self-start md:self-center">
             <span>{t("card.shippedTo")}: </span>
             <span className="font-medium text-foreground">{destinationAddress}</span>
           </div>
