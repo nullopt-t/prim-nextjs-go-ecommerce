@@ -209,3 +209,9 @@ Load the most specific one before starting.
   client behavior.
 - No secrets or internal service URLs are exposed to the client bundle.
 
+## Git & Contribution Privacy (MANDATORY)
+
+- **No AI Co-Authors**: Never append `Co-Authored-By`, `Co-authored-by`, `Signed-off-by`, or any secondary author metadata to commit messages.
+- **No Bot Branding**: Never include `🤖 Generated with ...`, bot tags, or AI signatures in commit messages, PRs, or source files.
+- **Sole Author**: All commits must be authored exclusively under the repository owner's git user (`Amr Ali`).
+

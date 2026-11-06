@@ -211,3 +211,9 @@ Load the most specific one before starting; do not restate its content here.
 - Migration has a working down path when schema changed.
 - Errors are typed and handled; no driver types reach handlers.
 - External-side-effect failure paths are stated and covered.
+
+## Git & Contribution Privacy (MANDATORY)
+
+- **No AI Co-Authors**: Never append `Co-Authored-By`, `Co-authored-by`, `Signed-off-by`, or any secondary author metadata to commit messages.
+- **No Bot Branding**: Never include `🤖 Generated with ...`, bot tags, or AI signatures in commit messages, PRs, or source files.
+- **Sole Author**: All commits must be authored exclusively under the repository owner's git user (`Amr Ali`).

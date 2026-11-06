@@ -49,3 +49,8 @@
 # Fixes #456
 #
 # -------------------------------------------------------------------
+# STRICT PRIVACY & ATTRIBUTION RULES (MANDATORY):
+# - NEVER append "Co-Authored-By", "Co-authored-by", or "Signed-off-by".
+# - NEVER insert AI bot watermarks (e.g. 🤖 Generated with Codebuff/Claude).
+# - Commits must be attributed exclusively to Amr Ali.
+# -------------------------------------------------------------------

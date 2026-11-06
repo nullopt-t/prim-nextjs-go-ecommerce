@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# .githooks/commit-msg
+# Automatically strips AI tool co-authors, watermarks, and bot metadata before committing.
+
+COMMIT_MSG_FILE="$1"
+
+if [ -f "$COMMIT_MSG_FILE" ]; then
+    sed -i -E \
+        -e '/^[Cc]o-[Aa]uthored-[Bb]y:.*([Bb]ot|codebuff|freebuff|aider|claude|copilot|cursor|anthropic|openai|gemini|antigravity|noreply)/d' \
+        -e '/🤖.*Generated with/d' \
+        -e '/[Gg]enerated with.*(Codebuff|Freebuff|Aider|Claude|Copilot|Cursor)/d' \
+        "$COMMIT_MSG_FILE"
+fi
+
+exit 0
